@@ -74,13 +74,17 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Abort => Abort,
             Return => Return,
             Unreachable => Unreachable,
-            FalseEdges { real_target, imaginary_target } => {
-                FalseEdges { real_target, imaginary_target }
+            FalseEdge { real_target, imaginary_target } => {
+                FalseEdge { real_target, imaginary_target }
             }
             FalseUnwind { real_target, unwind } => FalseUnwind { real_target, unwind },
-            InlineAsm { template, ref operands, options, destination } => {
-                InlineAsm { template, operands: operands.fold_with(folder), options, destination }
-            }
+            InlineAsm { template, ref operands, options, line_spans, destination } => InlineAsm {
+                template,
+                operands: operands.fold_with(folder),
+                options,
+                line_spans,
+                destination,
+            },
         };
         Terminator { source_info: self.source_info, kind }
     }
@@ -130,7 +134,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             | Return
             | GeneratorDrop
             | Unreachable
-            | FalseEdges { .. }
+            | FalseEdge { .. }
             | FalseUnwind { .. } => false,
         }
     }
@@ -173,6 +177,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
         match *self {
             Use(ref op) => Use(op.fold_with(folder)),
             Repeat(ref op, len) => Repeat(op.fold_with(folder), len),
+            ThreadLocalRef(did) => ThreadLocalRef(did.fold_with(folder)),
             Ref(region, bk, ref place) => {
                 Ref(region.fold_with(folder), bk, place.fold_with(folder))
             }
@@ -216,6 +221,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
         match *self {
             Use(ref op) => op.visit_with(visitor),
             Repeat(ref op, _) => op.visit_with(visitor),
+            ThreadLocalRef(did) => did.visit_with(visitor),
             Ref(region, _, ref place) => region.visit_with(visitor) || place.visit_with(visitor),
             AddressOf(_, ref place) => place.visit_with(visitor),
             Len(ref place) => place.visit_with(visitor),

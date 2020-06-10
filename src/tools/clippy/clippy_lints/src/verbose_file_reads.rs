@@ -9,6 +9,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** `fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
     /// See also: [fs::read docs](https://doc.rust-lang.org/std/fs/fn.read.html), [fs::read_to_string docs](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)
+    ///
     /// **Known problems:** None.
     ///
     /// **Example:**

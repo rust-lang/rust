@@ -100,10 +100,12 @@ impl<'tcx, T> UndoLogs<T> for InferCtxtUndoLogs<'tcx>
 where
     UndoLog<'tcx>: From<T>,
 {
+    #[inline]
     fn num_open_snapshots(&self) -> usize {
         self.num_open_snapshots
     }
 
+    #[inline]
     fn push(&mut self, undo: T) {
         if self.in_snapshot() {
             self.logs.push(undo.into())

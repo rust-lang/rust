@@ -9,6 +9,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
+use rustc_span::hygiene::DesugaringKind;
 use rustc_span::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -203,7 +204,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         label: &Destination,
         cf_type: &str,
     ) -> bool {
-        if self.cx == LabeledBlock {
+        if !span.is_desugaring(DesugaringKind::QuestionMark) && self.cx == LabeledBlock {
             if label.label.is_none() {
                 struct_span_err!(
                     self.sess,

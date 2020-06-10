@@ -85,6 +85,9 @@ pub struct Lint {
     pub future_incompatible: Option<FutureIncompatibleInfo>,
 
     pub is_plugin: bool,
+
+    /// `Some` if this lint is feature gated, otherwise `None`.
+    pub feature_gate: Option<Symbol>,
 }
 
 /// Extra information for a future incompatibility lint.
@@ -107,6 +110,7 @@ impl Lint {
             is_plugin: false,
             report_in_external_macro: false,
             future_incompatible: None,
+            feature_gate: None,
         }
     }
 
@@ -276,7 +280,9 @@ macro_rules! declare_lint {
         );
     );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $(@future_incompatible = $fi:expr;)? $($v:ident),*) => (
+     $(@future_incompatible = $fi:expr;)?
+     $(@feature_gate = $gate:expr;)?
+     $($v:ident),*) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
@@ -285,6 +291,7 @@ macro_rules! declare_lint {
             is_plugin: false,
             $($v: true,)*
             $(future_incompatible: Some($fi),)*
+            $(feature_gate: Some($gate),)*
             ..$crate::lint::Lint::default_fields_for_macro()
         };
     );
@@ -328,6 +335,7 @@ macro_rules! declare_tool_lint {
             report_in_external_macro: $external,
             future_incompatible: None,
             is_plugin: true,
+            feature_gate: None,
         };
     );
 }
@@ -347,14 +355,14 @@ pub trait LintPass {
     fn name(&self) -> &'static str;
 }
 
-/// Implements `LintPass for $name` with the given list of `Lint` statics.
+/// Implements `LintPass for $ty` with the given list of `Lint` statics.
 #[macro_export]
 macro_rules! impl_lint_pass {
-    ($name:ident => [$($lint:expr),* $(,)?]) => {
-        impl $crate::lint::LintPass for $name {
-            fn name(&self) -> &'static str { stringify!($name) }
+    ($ty:ty => [$($lint:expr),* $(,)?]) => {
+        impl $crate::lint::LintPass for $ty {
+            fn name(&self) -> &'static str { stringify!($ty) }
         }
-        impl $name {
+        impl $ty {
             pub fn get_lints() -> $crate::lint::LintArray { $crate::lint_array!($($lint),*) }
         }
     };

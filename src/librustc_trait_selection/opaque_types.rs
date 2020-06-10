@@ -647,7 +647,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // shifting.
         let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
         let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> =
-            substs.iter().enumerate().map(|(index, subst)| (*subst, id_substs[index])).collect();
+            substs.iter().enumerate().map(|(index, subst)| (subst, id_substs[index])).collect();
 
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
@@ -670,7 +670,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 // `least_region`. We cannot use `push_outlives_components` because regions in
 // closure signatures are not included in their outlives components. We need to
 // ensure all regions outlive the given bound so that we don't end up with,
-// say, `ReScope` appearing in a return type and causing ICEs when other
+// say, `ReVar` appearing in a return type and causing ICEs when other
 // functions end up with region constraints involving regions from other
 // functions.
 //
@@ -816,7 +816,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
             // The regions that we expect from borrow checking.
             ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReEmpty(ty::UniverseIndex::ROOT) => {}
 
-            ty::ReEmpty(_) | ty::RePlaceholder(_) | ty::ReVar(_) | ty::ReScope(_) => {
+            ty::ReEmpty(_) | ty::RePlaceholder(_) | ty::ReVar(_) => {
                 // All of the regions in the type should either have been
                 // erased by writeback, or mapped back to named regions by
                 // borrow checking.
@@ -835,7 +835,6 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 if let Some(hidden_ty) = self.hidden_ty.take() {
                     unexpected_hidden_region_diagnostic(
                         self.tcx,
-                        None,
                         self.tcx.def_span(self.opaque_type_def_id),
                         hidden_ty,
                         r,
@@ -891,7 +890,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 // during codegen.
 
                 let generics = self.tcx.generics_of(def_id);
-                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
+                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
                     if index < generics.parent_count {
                         // Accommodate missing regions in the parent kinds...
                         self.fold_kind_mapping_missing_regions_to_empty(kind)
@@ -906,7 +905,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
             ty::Generator(def_id, substs, movability) => {
                 let generics = self.tcx.generics_of(def_id);
-                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, &kind)| {
+                let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
                     if index < generics.parent_count {
                         // Accommodate missing regions in the parent kinds...
                         self.fold_kind_mapping_missing_regions_to_empty(kind)
@@ -1168,7 +1167,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
 
         for predicate in &bounds.predicates {
-            if let ty::Predicate::Projection(projection) = &predicate {
+            if let ty::PredicateKind::Projection(projection) = predicate.kind() {
                 if projection.skip_binder().ty.references_error() {
                     // No point on adding these obligations since there's a type error involved.
                     return ty_var;
@@ -1254,9 +1253,6 @@ pub fn may_define_opaque_type(
 ///
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
-//
-// FIXME: callers may only have a `&[Predicate]`, not a `Vec`, so that's
-// what this code should accept.
 crate fn required_region_bounds(
     tcx: TyCtxt<'tcx>,
     erased_self_ty: Ty<'tcx>,
@@ -1269,17 +1265,17 @@ crate fn required_region_bounds(
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|obligation| {
             debug!("required_region_bounds(obligation={:?})", obligation);
-            match obligation.predicate {
-                ty::Predicate::Projection(..)
-                | ty::Predicate::Trait(..)
-                | ty::Predicate::Subtype(..)
-                | ty::Predicate::WellFormed(..)
-                | ty::Predicate::ObjectSafe(..)
-                | ty::Predicate::ClosureKind(..)
-                | ty::Predicate::RegionOutlives(..)
-                | ty::Predicate::ConstEvaluatable(..)
-                | ty::Predicate::ConstEquate(..) => None,
-                ty::Predicate::TypeOutlives(predicate) => {
+            match obligation.predicate.kind() {
+                ty::PredicateKind::Projection(..)
+                | ty::PredicateKind::Trait(..)
+                | ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..) => None,
+                ty::PredicateKind::TypeOutlives(predicate) => {
                     // Search for a bound of the form `erased_self_ty
                     // : 'a`, but be wary of something like `for<'a>
                     // erased_self_ty : 'a` (we interpret a

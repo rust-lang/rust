@@ -358,6 +358,13 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx, u64>;
+
+    fn thread_local_alloc_id(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        did: DefId,
+    ) -> InterpResult<'tcx, AllocId> {
+        throw_unsup!(ThreadLocalStatic(did))
+    }
 }
 
 // A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines

@@ -327,18 +327,9 @@ impl Definitions {
 
     #[inline]
     pub fn local_def_id(&self, node: ast::NodeId) -> LocalDefId {
-        self.opt_local_def_id(node).unwrap()
-    }
-
-    #[inline]
-    pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
-        if let Some(def_id) = def_id.as_local() {
-            let node_id = self.def_id_to_node_id[def_id];
-            if node_id != ast::DUMMY_NODE_ID {
-                return Some(node_id);
-            }
-        }
-        None
+        self.opt_local_def_id(node).unwrap_or_else(|| {
+            panic!("no entry for node id: `{:?}` / `{:?}`", node, self.opt_node_id_to_hir_id(node))
+        })
     }
 
     #[inline]
@@ -371,6 +362,12 @@ impl Definitions {
     pub fn opt_local_def_id_to_hir_id(&self, id: LocalDefId) -> Option<hir::HirId> {
         let node_id = self.def_id_to_node_id[id];
         self.node_id_to_hir_id[node_id]
+    }
+
+    #[inline]
+    pub fn opt_hir_id_to_local_def_id(&self, hir_id: hir::HirId) -> Option<LocalDefId> {
+        let node_id = self.hir_id_to_node_id(hir_id);
+        self.opt_local_def_id(node_id)
     }
 
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.

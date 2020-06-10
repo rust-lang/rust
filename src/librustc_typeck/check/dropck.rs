@@ -5,7 +5,6 @@ use rustc_errors::{struct_span_err, ErrorReported};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferOk, RegionckMode, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
-use rustc_middle::middle::region;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
@@ -120,8 +119,6 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             return Err(ErrorReported);
         }
 
-        let region_scope_tree = region::ScopeTree::default();
-
         // NB. It seems a bit... suspicious to use an empty param-env
         // here. The correct thing, I imagine, would be
         // `OutlivesEnvironment::new(impl_param_env)`, which would
@@ -134,7 +131,6 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 
         infcx.resolve_regions_and_report_errors(
             drop_impl_did.to_def_id(),
-            &region_scope_tree,
             &outlives_env,
             RegionckMode::default(),
         );
@@ -205,7 +201,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // just to look for all the predicates directly.
 
     assert_eq!(dtor_predicates.parent, None);
-    for (predicate, predicate_sp) in dtor_predicates.predicates {
+    for &(predicate, predicate_sp) in dtor_predicates.predicates {
         // (We do not need to worry about deep analysis of type
         // expressions etc because the Drop impls are already forced
         // to take on a structure that is roughly an alpha-renaming of
@@ -228,23 +224,25 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         // This implementation solves (Issue #59497) and (Issue #58311).
         // It is unclear to me at the moment whether the approach based on `relate`
         // could be extended easily also to the other `Predicate`.
-        let predicate_matches_closure = |p: &'_ Predicate<'tcx>| {
+        let predicate_matches_closure = |p: Predicate<'tcx>| {
             let mut relator: SimpleEqRelation<'tcx> = SimpleEqRelation::new(tcx, self_param_env);
-            match (predicate, p) {
-                (Predicate::Trait(a, _), Predicate::Trait(b, _)) => relator.relate(a, b).is_ok(),
-                (Predicate::Projection(a), Predicate::Projection(b)) => {
+            match (predicate.kind(), p.kind()) {
+                (ty::PredicateKind::Trait(a, _), ty::PredicateKind::Trait(b, _)) => {
+                    relator.relate(a, b).is_ok()
+                }
+                (ty::PredicateKind::Projection(a), ty::PredicateKind::Projection(b)) => {
                     relator.relate(a, b).is_ok()
                 }
                 _ => predicate == p,
             }
         };
 
-        if !assumptions_in_impl_context.iter().any(predicate_matches_closure) {
+        if !assumptions_in_impl_context.iter().copied().any(predicate_matches_closure) {
             let item_span = tcx.hir().span(self_type_hir_id);
             let self_descr = tcx.def_kind(self_type_did).descr(self_type_did.to_def_id());
             struct_span_err!(
                 tcx.sess,
-                *predicate_sp,
+                predicate_sp,
                 E0367,
                 "`Drop` impl requires `{}` but the {} it is implemented for does not",
                 predicate,

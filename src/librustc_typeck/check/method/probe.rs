@@ -796,23 +796,26 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
         // FIXME: do we want to commit to this behavior for param bounds?
 
-        let bounds = self.param_env.caller_bounds.iter().filter_map(|predicate| match *predicate {
-            ty::Predicate::Trait(ref trait_predicate, _) => {
-                match trait_predicate.skip_binder().trait_ref.self_ty().kind {
-                    ty::Param(ref p) if *p == param_ty => Some(trait_predicate.to_poly_trait_ref()),
-                    _ => None,
+        let bounds =
+            self.param_env.caller_bounds.iter().filter_map(|predicate| match predicate.kind() {
+                ty::PredicateKind::Trait(ref trait_predicate, _) => {
+                    match trait_predicate.skip_binder().trait_ref.self_ty().kind {
+                        ty::Param(ref p) if *p == param_ty => {
+                            Some(trait_predicate.to_poly_trait_ref())
+                        }
+                        _ => None,
+                    }
                 }
-            }
-            ty::Predicate::Subtype(..)
-            | ty::Predicate::Projection(..)
-            | ty::Predicate::RegionOutlives(..)
-            | ty::Predicate::WellFormed(..)
-            | ty::Predicate::ObjectSafe(..)
-            | ty::Predicate::ClosureKind(..)
-            | ty::Predicate::TypeOutlives(..)
-            | ty::Predicate::ConstEvaluatable(..)
-            | ty::Predicate::ConstEquate(..) => None,
-        });
+                ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Projection(..)
+                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::TypeOutlives(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..) => None,
+            });
 
         self.elaborate_bounds(bounds, |this, poly_trait_ref, item| {
             let trait_ref = this.erase_late_bound_regions(&poly_trait_ref);
@@ -1300,7 +1303,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .at(&ObligationCause::dummy(), self.param_env)
                     .sup(candidate.xform_self_ty, self_ty);
                 match self.select_trait_candidate(trait_ref) {
-                    Ok(Some(traits::Vtable::VtableImpl(ref impl_data))) => {
+                    Ok(Some(traits::ImplSource::ImplSourceUserDefined(ref impl_data))) => {
                         // If only a single impl matches, make the error message point
                         // to that impl.
                         ImplSource(impl_data.impl_def_id)
@@ -1374,17 +1377,17 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 TraitCandidate(trait_ref) => {
-                    let predicate = trait_ref.without_const().to_predicate();
+                    let predicate = trait_ref.without_const().to_predicate(self.tcx);
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
                         result = ProbeResult::NoMatch;
                         if self.probe(|_| {
                             match self.select_trait_candidate(trait_ref) {
                                 Err(_) => return true,
-                                Ok(Some(vtable))
-                                    if !vtable.borrow_nested_obligations().is_empty() =>
+                                Ok(Some(impl_source))
+                                    if !impl_source.borrow_nested_obligations().is_empty() =>
                                 {
-                                    for obligation in vtable.borrow_nested_obligations() {
+                                    for obligation in impl_source.borrow_nested_obligations() {
                                         // Determine exactly which obligation wasn't met, so
                                         // that we can give more context in the error.
                                         if !self.predicate_may_hold(&obligation) {

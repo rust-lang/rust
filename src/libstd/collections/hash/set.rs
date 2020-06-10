@@ -970,6 +970,16 @@ where
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         self.map.extend(iter.into_iter().map(|k| (k, ())));
     }
+
+    #[inline]
+    fn extend_one(&mut self, item: T) {
+        self.map.insert(item, ());
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.map.extend_reserve(additional);
+    }
 }
 
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
@@ -981,6 +991,16 @@ where
     #[inline]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &item: &'a T) {
+        self.map.insert(item, ());
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        Extend::<T>::extend_reserve(self, additional)
     }
 }
 

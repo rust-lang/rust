@@ -32,7 +32,7 @@ rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
 rustc_session = { path = "../librustc_session" }
 rustc_error_codes = { path = "../librustc_error_codes" }
 rustc_interface = { path = "../librustc_interface" }
-rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_serialize = { path = "../librustc_serialize" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 

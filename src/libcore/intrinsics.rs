@@ -54,7 +54,6 @@
 )]
 #![allow(missing_docs)]
 
-#[cfg(not(bootstrap))]
 use crate::marker::DiscriminantKind;
 use crate::mem;
 
@@ -1314,6 +1313,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`std::pointer::offset`](../../std/primitive.pointer.html#method.offset).
     #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Calculates the offset from a pointer, potentially wrapping.
@@ -1331,6 +1331,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`std::pointer::wrapping_offset`](../../std/primitive.pointer.html#method.wrapping_offset).
     #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
@@ -1914,11 +1915,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is
     /// [`std::mem::discriminant`](../../std/mem/fn.discriminant.html)
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
-    #[cfg(not(bootstrap))]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
-    #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
-    #[cfg(bootstrap)]
-    pub fn discriminant_value<T>(v: &T) -> u64;
 
     /// Rust's "try catch" construct which invokes the function pointer `try_fn`
     /// with the data pointer `data`.

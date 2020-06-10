@@ -58,5 +58,11 @@ error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enu
 LL |     Struct { x: Option<Option<u8>> },
    |                 ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:77:14
+   |
+LL |         foo: Option<Option<Cow<'a, str>>>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
 

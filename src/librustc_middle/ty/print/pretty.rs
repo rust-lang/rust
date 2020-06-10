@@ -1,6 +1,7 @@
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
-use crate::middle::region;
-use crate::mir::interpret::{sign_extend, truncate, AllocId, ConstValue, Pointer, Scalar};
+use crate::mir::interpret::{
+    sign_extend, truncate, AllocId, ConstValue, GlobalAlloc, Pointer, Scalar,
+};
 use crate::ty::layout::IntegerExt;
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
@@ -495,7 +496,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Never => p!(write("!")),
             ty::Tuple(ref tys) => {
-                p!(write("("), comma_sep(tys.iter().copied()));
+                p!(write("("), comma_sep(tys.iter()));
                 if tys.len() == 1 {
                     p!(write(","));
                 }
@@ -560,7 +561,7 @@ pub trait PrettyPrinter<'tcx>:
                         // FIXME(eddyb) print this with `print_def_path`.
                         if !substs.is_empty() {
                             p!(write("::"));
-                            p!(generic_delimiters(|cx| cx.comma_sep(substs.iter().copied())));
+                            p!(generic_delimiters(|cx| cx.comma_sep(substs.iter())));
                         }
                         return Ok(self);
                     }
@@ -611,7 +612,7 @@ pub trait PrettyPrinter<'tcx>:
                         let mut sep = " ";
                         for (&var_id, upvar_ty) in self
                             .tcx()
-                            .upvars(did)
+                            .upvars_mentioned(did)
                             .as_ref()
                             .iter()
                             .flat_map(|v| v.keys())
@@ -660,7 +661,7 @@ pub trait PrettyPrinter<'tcx>:
                         let mut sep = " ";
                         for (&var_id, upvar_ty) in self
                             .tcx()
-                            .upvars(did)
+                            .upvars_mentioned(did)
                             .as_ref()
                             .iter()
                             .flat_map(|v| v.keys())
@@ -952,15 +953,20 @@ pub trait PrettyPrinter<'tcx>:
                     },
                     _,
                 ),
-            ) => {
-                let byte_str = self
-                    .tcx()
-                    .global_alloc(ptr.alloc_id)
-                    .unwrap_memory()
-                    .get_bytes(&self.tcx(), ptr, Size::from_bytes(*data))
-                    .unwrap();
-                p!(pretty_print_byte_str(byte_str));
-            }
+            ) => match self.tcx().get_global_alloc(ptr.alloc_id) {
+                Some(GlobalAlloc::Memory(alloc)) => {
+                    if let Ok(byte_str) = alloc.get_bytes(&self.tcx(), ptr, Size::from_bytes(*data))
+                    {
+                        p!(pretty_print_byte_str(byte_str))
+                    } else {
+                        p!(write("<too short allocation>"))
+                    }
+                }
+                // FIXME: for statics and functions, we could in principle print more detail.
+                Some(GlobalAlloc::Static(def_id)) => p!(write("<static({:?})>", def_id)),
+                Some(GlobalAlloc::Function(_)) => p!(write("<function>")),
+                None => p!(write("<dangling pointer>")),
+            },
             // Bool
             (Scalar::Raw { data: 0, .. }, ty::Bool) => p!(write("false")),
             (Scalar::Raw { data: 1, .. }, ty::Bool) => p!(write("true")),
@@ -1019,6 +1025,9 @@ pub trait PrettyPrinter<'tcx>:
                 )?;
             }
             (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
+                // FIXME: this can ICE when the ptr is dangling or points to a non-function.
+                // We should probably have a helper method to share code with the "Byte strings"
+                // printing above (which also has to handle pointers to all sorts of things).
                 let instance = self.tcx().global_alloc(ptr.alloc_id).unwrap_fn();
                 self = self.typed_value(
                     |this| this.print_value_path(instance.def_id(), instance.substs),
@@ -1588,9 +1597,9 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 false
             }
 
-            ty::ReScope(_) | ty::ReVar(_) if identify_regions => true,
+            ty::ReVar(_) if identify_regions => true,
 
-            ty::ReVar(_) | ty::ReScope(_) | ty::ReErased => false,
+            ty::ReVar(_) | ty::ReErased => false,
 
             ty::ReStatic | ty::ReEmpty(_) => true,
         }
@@ -1666,32 +1675,12 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
                     }
                 }
             }
-            ty::ReScope(scope) if identify_regions => {
-                match scope.data {
-                    region::ScopeData::Node => p!(write("'{}s", scope.item_local_id().as_usize())),
-                    region::ScopeData::CallSite => {
-                        p!(write("'{}cs", scope.item_local_id().as_usize()))
-                    }
-                    region::ScopeData::Arguments => {
-                        p!(write("'{}as", scope.item_local_id().as_usize()))
-                    }
-                    region::ScopeData::Destruction => {
-                        p!(write("'{}ds", scope.item_local_id().as_usize()))
-                    }
-                    region::ScopeData::Remainder(first_statement_index) => p!(write(
-                        "'{}_{}rs",
-                        scope.item_local_id().as_usize(),
-                        first_statement_index.index()
-                    )),
-                }
-                return Ok(self);
-            }
             ty::ReVar(region_vid) if identify_regions => {
                 p!(write("{:?}", region_vid));
                 return Ok(self);
             }
             ty::ReVar(_) => {}
-            ty::ReScope(_) | ty::ReErased => {}
+            ty::ReErased => {}
             ty::ReStatic => {
                 p!(write("'static"));
                 return Ok(self);
@@ -1935,7 +1924,7 @@ define_print_and_forward_display! {
     (self, cx):
 
     &'tcx ty::List<Ty<'tcx>> {
-        p!(write("{{"), comma_sep(self.iter().copied()), write("}}"))
+        p!(write("{{"), comma_sep(self.iter()), write("}}"))
     }
 
     ty::TypeAndMut<'tcx> {
@@ -2031,34 +2020,34 @@ define_print_and_forward_display! {
     }
 
     ty::Predicate<'tcx> {
-        match *self {
-            ty::Predicate::Trait(ref data, constness) => {
+        match self.kind() {
+            &ty::PredicateKind::Trait(ref data, constness) => {
                 if let hir::Constness::Const = constness {
                     p!(write("const "));
                 }
                 p!(print(data))
             }
-            ty::Predicate::Subtype(ref predicate) => p!(print(predicate)),
-            ty::Predicate::RegionOutlives(ref predicate) => p!(print(predicate)),
-            ty::Predicate::TypeOutlives(ref predicate) => p!(print(predicate)),
-            ty::Predicate::Projection(ref predicate) => p!(print(predicate)),
-            ty::Predicate::WellFormed(ty) => p!(print(ty), write(" well-formed")),
-            ty::Predicate::ObjectSafe(trait_def_id) => {
+            ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),
+            ty::PredicateKind::RegionOutlives(predicate) => p!(print(predicate)),
+            ty::PredicateKind::TypeOutlives(predicate) => p!(print(predicate)),
+            ty::PredicateKind::Projection(predicate) => p!(print(predicate)),
+            ty::PredicateKind::WellFormed(arg) => p!(print(arg), write(" well-formed")),
+            &ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!(write("the trait `"),
                    print_def_path(trait_def_id, &[]),
                    write("` is object-safe"))
             }
-            ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) => {
+            &ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => {
                 p!(write("the closure `"),
                    print_value_path(closure_def_id, &[]),
                    write("` implements the trait `{}`", kind))
             }
-            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+            &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                 p!(write("the constant `"),
                    print_value_path(def_id, substs),
                    write("` can be evaluated"))
             }
-            ty::Predicate::ConstEquate(c1, c2) => {
+            ty::PredicateKind::ConstEquate(c1, c2) => {
                 p!(write("the constant `"),
                    print(c1),
                    write("` equals `"),

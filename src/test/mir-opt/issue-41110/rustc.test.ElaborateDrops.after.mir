@@ -37,7 +37,7 @@ fn test() -> () {
         StorageLive(_3);                 // scope 2 at $DIR/issue-41110.rs:17:5: 17:12
         StorageLive(_4);                 // scope 2 at $DIR/issue-41110.rs:17:10: 17:11
         _4 = move _2;                    // scope 2 at $DIR/issue-41110.rs:17:10: 17:11
-        _3 = const std::mem::drop::<S>(move _4) -> [return: bb1, unwind: bb7]; // scope 2 at $DIR/issue-41110.rs:17:5: 17:12
+        _3 = const std::mem::drop::<S>(move _4) -> [return: bb2, unwind: bb5]; // scope 2 at $DIR/issue-41110.rs:17:5: 17:12
                                          // ty::Const
                                          // + ty: fn(S) {std::mem::drop::<S>}
                                          // + val: Value(Scalar(<ZST>))
@@ -46,7 +46,11 @@ fn test() -> () {
                                          // + literal: Const { ty: fn(S) {std::mem::drop::<S>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-41110.rs:14:1: 19:2
+    }
+
+    bb2: {
         StorageDead(_4);                 // scope 2 at $DIR/issue-41110.rs:17:11: 17:12
         StorageDead(_3);                 // scope 2 at $DIR/issue-41110.rs:17:12: 17:13
         StorageLive(_5);                 // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
@@ -61,11 +65,27 @@ fn test() -> () {
         goto -> bb12;                    // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
     }
 
-    bb2: {
-        goto -> bb3;                     // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
+    bb3 (cleanup): {
+        goto -> bb15;                    // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
     }
 
-    bb3: {
+    bb4 (cleanup): {
+        goto -> bb3;                     // scope 1 at $DIR/issue-41110.rs:19:1: 19:2
+    }
+
+    bb5 (cleanup): {
+        goto -> bb4;                     // scope 2 at $DIR/issue-41110.rs:17:11: 17:12
+    }
+
+    bb6: {
+        goto -> bb8;                     // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
+    }
+
+    bb7 (cleanup): {
+        goto -> bb4;                     // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
+    }
+
+    bb8: {
         StorageDead(_5);                 // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
         _0 = const ();                   // scope 0 at $DIR/issue-41110.rs:14:15: 19:2
                                          // ty::Const
@@ -74,15 +94,15 @@ fn test() -> () {
                                          // mir::Constant
                                          // + span: $DIR/issue-41110.rs:14:15: 19:2
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-        drop(_2) -> [return: bb4, unwind: bb9]; // scope 1 at $DIR/issue-41110.rs:19:1: 19:2
+        drop(_2) -> [return: bb9, unwind: bb3]; // scope 1 at $DIR/issue-41110.rs:19:1: 19:2
     }
 
-    bb4: {
+    bb9: {
         StorageDead(_2);                 // scope 1 at $DIR/issue-41110.rs:19:1: 19:2
-        goto -> bb5;                     // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
+        goto -> bb10;                    // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
     }
 
-    bb5: {
+    bb10: {
         _6 = const false;                // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
                                          // ty::Const
                                          // + ty: bool
@@ -94,41 +114,32 @@ fn test() -> () {
         return;                          // scope 0 at $DIR/issue-41110.rs:19:2: 19:2
     }
 
-    bb6 (cleanup): {
-        goto -> bb8;                     // scope 2 at $DIR/issue-41110.rs:18:9: 18:10
-    }
-
-    bb7 (cleanup): {
-        goto -> bb8;                     // scope 2 at $DIR/issue-41110.rs:17:11: 17:12
-    }
-
-    bb8 (cleanup): {
-        goto -> bb9;                     // scope 1 at $DIR/issue-41110.rs:19:1: 19:2
-    }
-
-    bb9 (cleanup): {
-        goto -> bb14;                    // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
-    }
-
-    bb10 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue-41110.rs:14:1: 19:2
-    }
-
     bb11 (cleanup): {
         _2 = move _5;                    // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
-        goto -> bb6;                     // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
+        goto -> bb7;                     // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
     }
 
     bb12: {
         _2 = move _5;                    // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
-        goto -> bb2;                     // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
+        goto -> bb6;                     // scope 2 at $DIR/issue-41110.rs:18:5: 18:6
     }
 
     bb13 (cleanup): {
-        drop(_1) -> bb10;                // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
+        drop(_1) -> bb1;                 // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
     }
 
     bb14 (cleanup): {
-        switchInt(_6) -> [false: bb10, otherwise: bb13]; // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
+        _6 = const false;                // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41110.rs:19:1: 19:2
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        goto -> bb13;                    // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
+    }
+
+    bb15 (cleanup): {
+        switchInt(_6) -> [false: bb1, otherwise: bb14]; // scope 0 at $DIR/issue-41110.rs:19:1: 19:2
     }
 }

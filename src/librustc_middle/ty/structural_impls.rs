@@ -87,8 +87,6 @@ impl fmt::Debug for ty::RegionKind {
 
             ty::ReFree(ref fr) => fr.fmt(f),
 
-            ty::ReScope(id) => write!(f, "ReScope({:?})", id),
-
             ty::ReStatic => write!(f, "ReStatic"),
 
             ty::ReVar(ref vid) => vid.fmt(f),
@@ -221,26 +219,34 @@ impl fmt::Debug for ty::ProjectionPredicate<'tcx> {
 
 impl fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.kind())
+    }
+}
+
+impl fmt::Debug for ty::PredicateKind<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::Predicate::Trait(ref a, constness) => {
+            ty::PredicateKind::Trait(ref a, constness) => {
                 if let hir::Constness::Const = constness {
                     write!(f, "const ")?;
                 }
                 a.fmt(f)
             }
-            ty::Predicate::Subtype(ref pair) => pair.fmt(f),
-            ty::Predicate::RegionOutlives(ref pair) => pair.fmt(f),
-            ty::Predicate::TypeOutlives(ref pair) => pair.fmt(f),
-            ty::Predicate::Projection(ref pair) => pair.fmt(f),
-            ty::Predicate::WellFormed(ty) => write!(f, "WellFormed({:?})", ty),
-            ty::Predicate::ObjectSafe(trait_def_id) => write!(f, "ObjectSafe({:?})", trait_def_id),
-            ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+            ty::PredicateKind::Subtype(ref pair) => pair.fmt(f),
+            ty::PredicateKind::RegionOutlives(ref pair) => pair.fmt(f),
+            ty::PredicateKind::TypeOutlives(ref pair) => pair.fmt(f),
+            ty::PredicateKind::Projection(ref pair) => pair.fmt(f),
+            ty::PredicateKind::WellFormed(data) => write!(f, "WellFormed({:?})", data),
+            ty::PredicateKind::ObjectSafe(trait_def_id) => {
+                write!(f, "ObjectSafe({:?})", trait_def_id)
+            }
+            ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
                 write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_substs, kind)
             }
-            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+            ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                 write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
             }
-            ty::Predicate::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
+            ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
         }
     }
 }
@@ -467,37 +473,39 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialProjection<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
-    type Lifted = ty::Predicate<'tcx>;
+impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
+    type Lifted = ty::PredicateKind<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match *self {
-            ty::Predicate::Trait(ref binder, constness) => {
-                tcx.lift(binder).map(|binder| ty::Predicate::Trait(binder, constness))
+            ty::PredicateKind::Trait(ref binder, constness) => {
+                tcx.lift(binder).map(|binder| ty::PredicateKind::Trait(binder, constness))
             }
-            ty::Predicate::Subtype(ref binder) => tcx.lift(binder).map(ty::Predicate::Subtype),
-            ty::Predicate::RegionOutlives(ref binder) => {
-                tcx.lift(binder).map(ty::Predicate::RegionOutlives)
+            ty::PredicateKind::Subtype(ref binder) => {
+                tcx.lift(binder).map(ty::PredicateKind::Subtype)
             }
-            ty::Predicate::TypeOutlives(ref binder) => {
-                tcx.lift(binder).map(ty::Predicate::TypeOutlives)
+            ty::PredicateKind::RegionOutlives(ref binder) => {
+                tcx.lift(binder).map(ty::PredicateKind::RegionOutlives)
             }
-            ty::Predicate::Projection(ref binder) => {
-                tcx.lift(binder).map(ty::Predicate::Projection)
+            ty::PredicateKind::TypeOutlives(ref binder) => {
+                tcx.lift(binder).map(ty::PredicateKind::TypeOutlives)
             }
-            ty::Predicate::WellFormed(ty) => tcx.lift(&ty).map(ty::Predicate::WellFormed),
-            ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+            ty::PredicateKind::Projection(ref binder) => {
+                tcx.lift(binder).map(ty::PredicateKind::Projection)
+            }
+            ty::PredicateKind::WellFormed(ty) => tcx.lift(&ty).map(ty::PredicateKind::WellFormed),
+            ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
                 tcx.lift(&closure_substs).map(|closure_substs| {
-                    ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind)
+                    ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind)
                 })
             }
-            ty::Predicate::ObjectSafe(trait_def_id) => {
-                Some(ty::Predicate::ObjectSafe(trait_def_id))
+            ty::PredicateKind::ObjectSafe(trait_def_id) => {
+                Some(ty::PredicateKind::ObjectSafe(trait_def_id))
             }
-            ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                tcx.lift(&substs).map(|substs| ty::Predicate::ConstEvaluatable(def_id, substs))
+            ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+                tcx.lift(&substs).map(|substs| ty::PredicateKind::ConstEvaluatable(def_id, substs))
             }
-            ty::Predicate::ConstEquate(c1, c2) => {
-                tcx.lift(&(c1, c2)).map(|(c1, c2)| ty::Predicate::ConstEquate(c1, c2))
+            ty::PredicateKind::ConstEquate(c1, c2) => {
+                tcx.lift(&(c1, c2)).map(|(c1, c2)| ty::PredicateKind::ConstEquate(c1, c2))
             }
         }
     }
@@ -977,6 +985,17 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        let new = ty::PredicateKind::super_fold_with(self.kind, folder);
+        if new != *self.kind { folder.tcx().mk_predicate(new) } else { *self }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        ty::PredicateKind::super_visit_with(self.kind, visitor)
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         fold_list(*self, folder, |tcx, v| tcx.intern_predicates(v))
@@ -1001,7 +1020,11 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         let ty = self.ty.fold_with(folder);
         let val = self.val.fold_with(folder);
-        folder.tcx().mk_const(ty::Const { ty, val })
+        if ty != self.ty || val != self.val {
+            folder.tcx().mk_const(ty::Const { ty, val })
+        } else {
+            *self
+        }
     }
 
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
@@ -1073,7 +1096,7 @@ where
     // Look for the first element that changed
     if let Some((i, new_t)) = iter.by_ref().enumerate().find_map(|(i, t)| {
         let new_t = t.fold_with(folder);
-        if new_t == *t { None } else { Some((i, new_t)) }
+        if new_t == t { None } else { Some((i, new_t)) }
     }) {
         // An element changed, prepare to intern the resulting list
         let mut new_list = SmallVec::<[_; 8]>::with_capacity(list.len());

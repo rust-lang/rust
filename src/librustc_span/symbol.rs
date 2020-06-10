@@ -2,7 +2,7 @@
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
-use arena::DroplessArena;
+use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_macros::{symbols, HashStable_Generic};
@@ -147,6 +147,7 @@ symbols! {
         Arc,
         Arguments,
         ArgumentV1,
+        arith_offset,
         arm_target_feature,
         asm,
         assert,
@@ -516,6 +517,7 @@ symbols! {
         not,
         note,
         object_safe_for_dispatch,
+        offset,
         Ok,
         omit_gdb_pretty_printer_section,
         on,
@@ -806,6 +808,7 @@ symbols! {
         unmarked_api,
         unreachable_code,
         unrestricted_attribute_tokens,
+        unsafe_block_in_unsafe_fn,
         unsafe_no_drop_flag,
         unsized_locals,
         unsized_tuple_coercion,

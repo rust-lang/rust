@@ -251,6 +251,18 @@ fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         )
     }
 
+    fn is_for_loop_arg(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+        let mut cur_expr = expr;
+        while let Some(parent_expr) = get_parent_expr(cx, cur_expr) {
+            match higher::for_loop(parent_expr) {
+                Some((_, args, _)) if args.hir_id == expr.hir_id => return true,
+                _ => cur_expr = parent_expr,
+            }
+        }
+
+        false
+    }
+
     fn is_empty_range(limits: RangeLimits, ordering: Ordering) -> bool {
         match limits {
             RangeLimits::HalfOpen => ordering != Ordering::Less,
@@ -268,19 +280,17 @@ fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if is_empty_range(limits, ordering);
         then {
             if inside_indexing_expr(cx, expr) {
-                let (reason, outcome) = if ordering == Ordering::Equal {
-                    ("empty", "always yield an empty slice")
-                } else {
-                    ("reversed", "panic at run-time")
-                };
-
-                span_lint(
-                    cx,
-                    REVERSED_EMPTY_RANGES,
-                    expr.span,
-                    &format!("this range is {} and using it to index a slice will {}", reason, outcome),
-                );
-            } else {
+                // Avoid linting `N..N` as it has proven to be useful, see #5689 and #5628 ...
+                if ordering != Ordering::Equal {
+                    span_lint(
+                        cx,
+                        REVERSED_EMPTY_RANGES,
+                        expr.span,
+                        "this range is reversed and using it to index a slice will panic at run-time",
+                    );
+                }
+            // ... except in for loop arguments for backwards compatibility with `reverse_range_loop`
+            } else if ordering != Ordering::Equal || is_for_loop_arg(cx, expr) {
                 span_lint_and_then(
                     cx,
                     REVERSED_EMPTY_RANGES,

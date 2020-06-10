@@ -25,6 +25,7 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
+use crate::def_id::{DefId, CRATE_DEF_INDEX};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
 use crate::GLOBALS;
@@ -155,7 +156,12 @@ crate struct HygieneData {
 impl HygieneData {
     crate fn new(edition: Edition) -> Self {
         HygieneData {
-            expn_data: vec![Some(ExpnData::default(ExpnKind::Root, DUMMY_SP, edition))],
+            expn_data: vec![Some(ExpnData::default(
+                ExpnKind::Root,
+                DUMMY_SP,
+                edition,
+                Some(DefId::local(CRATE_DEF_INDEX)),
+            ))],
             syntax_context_data: vec![SyntaxContextData {
                 outer_expn: ExpnId::root(),
                 outer_transparency: Transparency::Opaque,
@@ -673,11 +679,19 @@ pub struct ExpnData {
     pub local_inner_macros: bool,
     /// Edition of the crate in which the macro is defined.
     pub edition: Edition,
+    /// The `DefId` of the macro being invoked,
+    /// if this `ExpnData` corresponds to a macro invocation
+    pub macro_def_id: Option<DefId>,
 }
 
 impl ExpnData {
     /// Constructs expansion data with default properties.
-    pub fn default(kind: ExpnKind, call_site: Span, edition: Edition) -> ExpnData {
+    pub fn default(
+        kind: ExpnKind,
+        call_site: Span,
+        edition: Edition,
+        macro_def_id: Option<DefId>,
+    ) -> ExpnData {
         ExpnData {
             kind,
             parent: ExpnId::root(),
@@ -687,6 +701,7 @@ impl ExpnData {
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition,
+            macro_def_id,
         }
     }
 
@@ -695,10 +710,11 @@ impl ExpnData {
         call_site: Span,
         edition: Edition,
         allow_internal_unstable: Lrc<[Symbol]>,
+        macro_def_id: Option<DefId>,
     ) -> ExpnData {
         ExpnData {
             allow_internal_unstable: Some(allow_internal_unstable),
-            ..ExpnData::default(kind, call_site, edition)
+            ..ExpnData::default(kind, call_site, edition, macro_def_id)
         }
     }
 

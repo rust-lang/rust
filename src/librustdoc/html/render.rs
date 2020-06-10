@@ -31,7 +31,6 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
 use std::error;
-
 use std::ffi::OsStr;
 use std::fmt::{self, Formatter, Write};
 use std::fs::{self, File};
@@ -40,6 +39,7 @@ use std::io::{self, BufReader};
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::str;
+use std::string::ToString;
 use std::sync::Arc;
 
 use rustc_ast_pretty::pprust;
@@ -92,7 +92,7 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 #[derive(Debug)]
 pub struct Error {
     pub file: PathBuf,
-    pub error: io::Error,
+    pub error: String,
 }
 
 impl error::Error for Error {}
@@ -109,8 +109,11 @@ impl std::fmt::Display for Error {
 }
 
 impl PathError for Error {
-    fn new<P: AsRef<Path>>(e: io::Error, path: P) -> Error {
-        Error { file: path.as_ref().to_path_buf(), error: e }
+    fn new<S, P: AsRef<Path>>(e: S, path: P) -> Error
+    where
+        S: ToString + Sized,
+    {
+        Error { file: path.as_ref().to_path_buf(), error: e.to_string() }
     }
 }
 
@@ -470,7 +473,7 @@ pub fn run(
     } = options;
 
     let src_root = match krate.src {
-        FileName::Real(ref p) => match p.parent() {
+        FileName::Real(ref p) => match p.local_path().parent() {
             Some(p) => p.to_path_buf(),
             None => PathBuf::new(),
         },
@@ -562,7 +565,7 @@ pub fn run(
 
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-    write_shared(&cx, &krate, index, &md_opts, diag)?;
+    write_shared(&cx, &krate, index, &md_opts)?;
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
 
     // And finally render the whole crate's documentation
@@ -582,7 +585,6 @@ fn write_shared(
     krate: &clean::Crate,
     search_index: String,
     options: &RenderOptions,
-    diag: &rustc_errors::Handler,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
@@ -928,7 +930,8 @@ themePicker.onblur = handleThemeButtonsBlur;
             md_opts.output = cx.dst.clone();
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
-            crate::markdown::render(index_page, md_opts, diag, cx.shared.edition);
+            crate::markdown::render(&index_page, md_opts, cx.shared.edition)
+                .map_err(|e| Error::new(e, &index_page))?;
         } else {
             let dst = cx.dst.join("index.html");
             let page = layout::Page {
@@ -1618,9 +1621,10 @@ impl Context {
 
         // We can safely ignore synthetic `SourceFile`s.
         let file = match item.source.filename {
-            FileName::Real(ref path) => path,
+            FileName::Real(ref path) => path.local_path().to_path_buf(),
             _ => return None,
         };
+        let file = &file;
 
         let (krate, path) = if item.source.cnum == LOCAL_CRATE {
             if let Some(path) = self.shared.local_sources.get(file) {
@@ -4064,9 +4068,9 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_none())
                 .flat_map(move |i| get_methods(i.inner_impl(), false, used_links_bor, false))
                 .collect::<Vec<_>>();
-            // We want links' order to be reproducible so we don't use unstable sort.
-            ret.sort();
             if !ret.is_empty() {
+                // We want links' order to be reproducible so we don't use unstable sort.
+                ret.sort();
                 out.push_str(&format!(
                     "<a class=\"sidebar-title\" href=\"#implementations\">Methods</a>\
                      <div class=\"sidebar-links\">{}</div>",
@@ -4237,7 +4241,7 @@ fn is_negative_impl(i: &clean::Impl) -> bool {
 fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     let mut sidebar = String::new();
 
-    let types = t
+    let mut types = t
         .items
         .iter()
         .filter_map(|m| match m.name {
@@ -4246,8 +4250,8 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             }
             _ => None,
         })
-        .collect::<String>();
-    let consts = t
+        .collect::<Vec<_>>();
+    let mut consts = t
         .items
         .iter()
         .filter_map(|m| match m.name {
@@ -4256,7 +4260,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             }
             _ => None,
         })
-        .collect::<String>();
+        .collect::<Vec<_>>();
     let mut required = t
         .items
         .iter()
@@ -4279,24 +4283,26 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         .collect::<Vec<String>>();
 
     if !types.is_empty() {
+        types.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#associated-types\">\
-                                   Associated Types</a><div class=\"sidebar-links\">{}</div>",
-            types
+                Associated Types</a><div class=\"sidebar-links\">{}</div>",
+            types.join("")
         ));
     }
     if !consts.is_empty() {
+        consts.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#associated-const\">\
-                                   Associated Constants</a><div class=\"sidebar-links\">{}</div>",
-            consts
+                Associated Constants</a><div class=\"sidebar-links\">{}</div>",
+            consts.join("")
         ));
     }
     if !required.is_empty() {
         required.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#required-methods\">\
-                                   Required Methods</a><div class=\"sidebar-links\">{}</div>",
+                Required Methods</a><div class=\"sidebar-links\">{}</div>",
             required.join("")
         ));
     }
@@ -4304,7 +4310,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         provided.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#provided-methods\">\
-                                   Provided Methods</a><div class=\"sidebar-links\">{}</div>",
+                Provided Methods</a><div class=\"sidebar-links\">{}</div>",
             provided.join("")
         ));
     }
@@ -4322,8 +4328,8 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             res.sort();
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#foreign-impls\">\
-                                       Implementations on Foreign Types</a><div \
-                                       class=\"sidebar-links\">{}</div>",
+                    Implementations on Foreign Types</a><div \
+                    class=\"sidebar-links\">{}</div>",
                 res.into_iter()
                     .map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name)))
                     .collect::<Vec<_>>()
@@ -4336,7 +4342,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     if t.auto {
         sidebar.push_str(
             "<a class=\"sidebar-title\" \
-                          href=\"#synthetic-implementors\">Auto Implementors</a>",
+                href=\"#synthetic-implementors\">Auto Implementors</a>",
         );
     }
 
@@ -4362,18 +4368,18 @@ fn sidebar_typedef(buf: &mut Buffer, it: &clean::Item) {
 }
 
 fn get_struct_fields_name(fields: &[clean::Item]) -> String {
-    fields
+    let mut fields = fields
         .iter()
         .filter(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false })
         .filter_map(|f| match f.name {
-            Some(ref name) => Some(format!(
-                "<a href=\"#structfield.{name}\">\
-                                              {name}</a>",
-                name = name
-            )),
+            Some(ref name) => {
+                Some(format!("<a href=\"#structfield.{name}\">{name}</a>", name = name))
+            }
             _ => None,
         })
-        .collect()
+        .collect::<Vec<_>>();
+    fields.sort();
+    fields.join("")
 }
 
 fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
@@ -4383,7 +4389,7 @@ fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
     if !fields.is_empty() {
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
-                                   <div class=\"sidebar-links\">{}</div>",
+             <div class=\"sidebar-links\">{}</div>",
             fields
         ));
     }
@@ -4398,23 +4404,20 @@ fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
 fn sidebar_enum(buf: &mut Buffer, it: &clean::Item, e: &clean::Enum) {
     let mut sidebar = String::new();
 
-    let variants = e
+    let mut variants = e
         .variants
         .iter()
         .filter_map(|v| match v.name {
-            Some(ref name) => Some(format!(
-                "<a href=\"#variant.{name}\">{name}\
-                                                                 </a>",
-                name = name
-            )),
+            Some(ref name) => Some(format!("<a href=\"#variant.{name}\">{name}</a>", name = name)),
             _ => None,
         })
-        .collect::<String>();
+        .collect::<Vec<_>>();
     if !variants.is_empty() {
+        variants.sort_unstable();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#variants\">Variants</a>\
-                                   <div class=\"sidebar-links\">{}</div>",
-            variants
+             <div class=\"sidebar-links\">{}</div>",
+            variants.join(""),
         ));
     }
 

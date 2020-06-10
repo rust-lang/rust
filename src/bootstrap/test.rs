@@ -360,7 +360,12 @@ impl Step for Miri {
 
         let miri =
             builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
-        if let Some(miri) = miri {
+        let cargo_miri = builder.ensure(tool::CargoMiri {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
+        if let (Some(miri), Some(_cargo_miri)) = (miri, cargo_miri) {
             let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "install");
             cargo.arg("xargo");
             // Configure `cargo install` path. cargo adds a `bin/`.
@@ -378,14 +383,16 @@ impl Step for Miri {
                 Mode::ToolRustc,
                 host,
                 "run",
-                "src/tools/miri",
+                "src/tools/miri/cargo-miri",
                 SourceType::Submodule,
                 &[],
             );
-            cargo.arg("--bin").arg("cargo-miri").arg("--").arg("miri").arg("setup");
+            cargo.arg("--").arg("miri").arg("setup");
 
             // Tell `cargo miri setup` where to find the sources.
             cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
+            // Tell it where to find Miri.
+            cargo.env("MIRI", &miri);
             // Debug things.
             cargo.env("RUST_BACKTRACE", "1");
             // Overwrite bootstrap's `rustc` wrapper overwriting our flags.
@@ -437,7 +444,9 @@ impl Step for Miri {
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", miri_sysroot);
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-            cargo.env("MIRI_PATH", miri);
+            cargo.env("MIRI", miri);
+
+            cargo.arg("--").args(builder.config.cmd.test_args());
 
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
@@ -514,43 +523,37 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        let clippy = builder.ensure(tool::Clippy {
+        let clippy = builder
+            .ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() })
+            .expect("in-tree tool");
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
             compiler,
-            target: self.host,
-            extra_features: Vec::new(),
-        });
-        if let Some(clippy) = clippy {
-            let mut cargo = tool::prepare_tool_cargo(
-                builder,
-                compiler,
-                Mode::ToolRustc,
-                host,
-                "test",
-                "src/tools/clippy",
-                SourceType::InTree,
-                &[],
-            );
+            Mode::ToolRustc,
+            host,
+            "test",
+            "src/tools/clippy",
+            SourceType::InTree,
+            &[],
+        );
 
-            // clippy tests need to know about the stage sysroot
-            cargo.env("SYSROOT", builder.sysroot(compiler));
-            cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
-            cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-            let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
-            let target_libs = builder
-                .stage_out(compiler, Mode::ToolRustc)
-                .join(&self.host)
-                .join(builder.cargo_dir());
-            cargo.env("HOST_LIBS", host_libs);
-            cargo.env("TARGET_LIBS", target_libs);
-            // clippy tests need to find the driver
-            cargo.env("CLIPPY_DRIVER_PATH", clippy);
+        // clippy tests need to know about the stage sysroot
+        cargo.env("SYSROOT", builder.sysroot(compiler));
+        cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
+        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
+        let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
+        let target_libs =
+            builder.stage_out(compiler, Mode::ToolRustc).join(&self.host).join(builder.cargo_dir());
+        cargo.env("HOST_LIBS", host_libs);
+        cargo.env("TARGET_LIBS", target_libs);
+        // clippy tests need to find the driver
+        cargo.env("CLIPPY_DRIVER_PATH", clippy);
 
-            builder.add_rustc_lib_path(compiler, &mut cargo);
+        cargo.arg("--").args(builder.config.cmd.test_args());
 
-            try_run(builder, &mut cargo.into());
-        } else {
-            eprintln!("failed to test clippy: could not build");
-        }
+        builder.add_rustc_lib_path(compiler, &mut cargo);
+
+        try_run(builder, &mut cargo.into());
     }
 }
 
@@ -1766,7 +1769,7 @@ impl Step for Crate {
         } else if builder.remote_tested(target) {
             cargo.env(
                 format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
-                format!("{} run", builder.tool_exe(Tool::RemoteTestClient).display()),
+                format!("{} run 0", builder.tool_exe(Tool::RemoteTestClient).display()),
             );
         }
 

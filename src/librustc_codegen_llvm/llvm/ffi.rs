@@ -1655,7 +1655,6 @@ extern "C" {
 
     pub fn LLVMRustDIBuilderCreateSubroutineType(
         Builder: &DIBuilder<'a>,
-        File: &'a DIFile,
         ParameterTypes: &'a DIArray,
     ) -> &'a DICompositeType;
 
@@ -1682,7 +1681,6 @@ extern "C" {
         Name: *const c_char,
         NameLen: size_t,
         SizeInBits: u64,
-        AlignInBits: u32,
         Encoding: c_uint,
     ) -> &'a DIBasicType;
 
@@ -1880,9 +1878,6 @@ extern "C" {
         Name: *const c_char,
         NameLen: size_t,
         Ty: &'a DIType,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        ColumnNo: c_uint,
     ) -> &'a DITemplateTypeParameter;
 
     pub fn LLVMRustDIBuilderCreateNameSpace(
@@ -1948,7 +1943,6 @@ extern "C" {
         Reloc: RelocModel,
         Level: CodeGenOptLevel,
         UseSoftFP: bool,
-        PositionIndependentExecutable: bool,
         FunctionSections: bool,
         DataSections: bool,
         TrapUnreachable: bool,
@@ -2076,7 +2070,14 @@ extern "C" {
     );
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustWriteSMDiagnosticToString(d: &SMDiagnostic, s: &RustString);
+    pub fn LLVMRustUnpackSMDiagnostic(
+        d: &SMDiagnostic,
+        message_out: &RustString,
+        buffer_out: &RustString,
+        loc_out: &mut c_uint,
+        ranges_out: *mut c_uint,
+        num_ranges: &mut usize,
+    ) -> bool;
 
     pub fn LLVMRustWriteArchive(
         Dst: *const c_char,

@@ -445,7 +445,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     const char *TripleStr, const char *CPU, const char *Feature,
     const char *ABIStr, LLVMRustCodeModel RustCM, LLVMRustRelocModel RustReloc,
     LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
-    bool PositionIndependentExecutable, bool FunctionSections,
+    bool FunctionSections,
     bool DataSections,
     bool TrapUnreachable,
     bool Singlethread,

@@ -579,8 +579,6 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(weak_into_raw)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new("hello".to_owned());
@@ -589,7 +587,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert_eq!(x_ptr, Arc::as_ptr(&y));
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
-    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
         let fake_ptr = ptr as *mut T;
@@ -867,12 +865,10 @@ impl<T: ?Sized> Arc<T> {
     unsafe fn drop_slow(&mut self) {
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
-        ptr::drop_in_place(&mut self.ptr.as_mut().data);
+        ptr::drop_in_place(Self::get_mut_unchecked(self));
 
-        if self.inner().weak.fetch_sub(1, Release) == 1 {
-            acquire!(self.inner().weak);
-            Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
-        }
+        // Drop the weak ref collectively held by all strong references
+        drop(Weak { ptr: self.ptr });
     }
 
     #[inline]
@@ -1097,11 +1093,7 @@ impl<T: ?Sized> Clone for Arc<T> {
         // We abort because such a program is incredibly degenerate, and we
         // don't care to support it.
         if old_size > MAX_REFCOUNT {
-            // remove `unsafe` on bootstrap bump
-            #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
-            unsafe {
-                abort();
-            }
+            abort();
         }
 
         Self::from_inner(self.ptr)
@@ -1204,7 +1196,7 @@ impl<T: Clone> Arc<T> {
 
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
-        unsafe { &mut this.ptr.as_mut().data }
+        unsafe { Self::get_mut_unchecked(this) }
     }
 }
 
@@ -1280,7 +1272,9 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
-        &mut this.ptr.as_mut().data
+        // We are careful to *not* create a reference covering the "count" fields, as
+        // this would alias with concurrent access to the reference counts (e.g. by `Weak`).
+        &mut (*this.ptr.as_ptr()).data
     }
 
     /// Determine whether this is the unique reference (including weak refs) to
@@ -1449,8 +1443,6 @@ impl<T> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(weak_into_raw)]
-    ///
     /// use std::sync::Arc;
     /// use std::ptr;
     ///
@@ -1468,7 +1460,7 @@ impl<T> Weak<T> {
     /// ```
     ///
     /// [`null`]: ../../std/ptr/fn.null.html
-    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
         let offset = data_offset_sized::<T>();
         let ptr = self.ptr.cast::<u8>().as_ptr().wrapping_offset(offset);
@@ -1486,8 +1478,6 @@ impl<T> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(weak_into_raw)]
-    ///
     /// use std::sync::{Arc, Weak};
     ///
     /// let strong = Arc::new("hello".to_owned());
@@ -1503,7 +1493,7 @@ impl<T> Weak<T> {
     ///
     /// [`from_raw`]: struct.Weak.html#method.from_raw
     /// [`as_ptr`]: struct.Weak.html#method.as_ptr
-    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn into_raw(self) -> *const T {
         let result = self.as_ptr();
         mem::forget(self);
@@ -1531,8 +1521,6 @@ impl<T> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(weak_into_raw)]
-    ///
     /// use std::sync::{Arc, Weak};
     ///
     /// let strong = Arc::new("hello".to_owned());
@@ -1557,7 +1545,7 @@ impl<T> Weak<T> {
     /// [`Weak`]: struct.Weak.html
     /// [`Arc`]: struct.Arc.html
     /// [`forget`]: ../../std/mem/fn.forget.html
-    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
         if ptr.is_null() {
             Self::new()
@@ -1569,6 +1557,13 @@ impl<T> Weak<T> {
             Weak { ptr: NonNull::new(ptr).expect("Invalid pointer passed to from_raw") }
         }
     }
+}
+
+/// Helper type to allow accessing the reference counts without
+/// making any assertions about the data field.
+struct WeakInner<'a> {
+    weak: &'a atomic::AtomicUsize,
+    strong: &'a atomic::AtomicUsize,
 }
 
 impl<T: ?Sized> Weak<T> {
@@ -1617,11 +1612,7 @@ impl<T: ?Sized> Weak<T> {
 
             // See comments in `Arc::clone` for why we do this (for `mem::forget`).
             if n > MAX_REFCOUNT {
-                // remove `unsafe` on bootstrap bump
-                #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
-                unsafe {
-                    abort();
-                }
+                abort();
             }
 
             // Relaxed is valid for the same reason it is on Arc's Clone impl
@@ -1678,8 +1669,18 @@ impl<T: ?Sized> Weak<T> {
     /// Returns `None` when the pointer is dangling and there is no allocated `ArcInner`,
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
-    fn inner(&self) -> Option<&ArcInner<T>> {
-        if is_dangling(self.ptr) { None } else { Some(unsafe { self.ptr.as_ref() }) }
+    fn inner(&self) -> Option<WeakInner<'_>> {
+        if is_dangling(self.ptr) {
+            None
+        } else {
+            // We are careful to *not* create a reference covering the "data" field, as
+            // the field may be mutated concurrently (for example, if the last `Arc`
+            // is dropped, the data field will be dropped in-place).
+            Some(unsafe {
+                let ptr = self.ptr.as_ptr();
+                WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak }
+            })
+        }
     }
 
     /// Returns `true` if the two `Weak`s point to the same allocation (similar to
@@ -1758,10 +1759,7 @@ impl<T: ?Sized> Clone for Weak<T> {
 
         // See comments in Arc::clone() for why we do this (for mem::forget).
         if old_size > MAX_REFCOUNT {
-            #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
-            unsafe {
-                abort();
-            }
+            abort();
         }
 
         Weak { ptr: self.ptr }

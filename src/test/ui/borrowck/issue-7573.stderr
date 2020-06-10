@@ -1,16 +1,14 @@
-error: borrowed data cannot be stored outside of its closure
-  --> $DIR/issue-7573.rs:21:27
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/issue-7573.rs:17:9
    |
 LL |     let mut lines_to_use: Vec<&CrateId> = Vec::new();
-   |                               - cannot infer an appropriate lifetime...
+   |         ---------------- `lines_to_use` declared here, outside of the closure body
 LL |
 LL |     let push_id = |installed_id: &CrateId| {
-   |         -------   ------------------------ borrowed data cannot outlive this closure
-   |         |
-   |         ...so that variable is valid at time of its declaration
-...
+   |                    ------------ `installed_id` is a reference that is only valid in the closure body
+LL |
 LL |         lines_to_use.push(installed_id);
-   |                           ^^^^^^^^^^^^ cannot be stored outside of its closure
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `installed_id` escapes the closure body here
 
 error: aborting due to previous error
 

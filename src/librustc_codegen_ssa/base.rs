@@ -44,6 +44,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, EntryFnType};
+use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
 use rustc_span::Span;
 use rustc_symbol_mangling::test as symbol_names_test;
@@ -895,7 +896,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
             .native_libraries(krate)
             .iter()
             .filter(|lib| {
-                if lib.kind != cstore::NativeLibraryKind::NativeUnknown {
+                if !matches!(lib.kind, NativeLibKind::Dylib | NativeLibKind::Unspecified) {
                     return false;
                 }
                 let cfg = match lib.cfg {
@@ -947,7 +948,7 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
         match compute_per_cgu_lto_type(
             &tcx.sess.lto(),
             &tcx.sess.opts,
-            &tcx.sess.crate_types.borrow(),
+            &tcx.sess.crate_types(),
             ModuleKind::Regular,
         ) {
             ComputedLtoType::No => CguReuse::PostLto,

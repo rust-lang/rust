@@ -505,7 +505,7 @@ jobs:
           - name: x86_64-msvc-cargo
             env:
               SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
-              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
               VCVARS_BAT: vcvars64.bat
               # FIXME(#59637)
               NO_DEBUG_ASSERTIONS: 1

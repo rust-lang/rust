@@ -27,6 +27,10 @@ declare_clippy_lint! {
     /// ```rust
     /// fn foo<T: Drop>() {}
     /// ```
+    /// Could be written as:
+    /// ```rust
+    /// fn foo<T>() {}
+    /// ```
     pub DROP_BOUNDS,
     correctness,
     "Bounds of the form `T: Drop` are useless"

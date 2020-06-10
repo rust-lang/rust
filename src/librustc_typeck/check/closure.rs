@@ -3,7 +3,6 @@
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
-use crate::middle::region;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::{FutureTraitLangItem, GeneratorTraitLangItem};
@@ -17,7 +16,6 @@ use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
-use rustc_trait_selection::traits::Obligation;
 use std::cmp;
 use std::iter;
 
@@ -92,18 +90,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             base_substs.extend_to(self.tcx, expr_def_id.to_def_id(), |param, _| match param.kind {
                 GenericParamDefKind::Lifetime => span_bug!(expr.span, "closure has lifetime param"),
                 GenericParamDefKind::Type { .. } => if param.index as usize == tupled_upvars_idx {
-                    self.tcx.mk_tup(self.tcx.upvars(expr_def_id).iter().flat_map(|upvars| {
-                        upvars.iter().map(|(&var_hir_id, _)| {
-                            // Create type variables (for now) to represent the transformed
-                            // types of upvars. These will be unified during the upvar
-                            // inference phase (`upvar.rs`).
-                            self.infcx.next_ty_var(TypeVariableOrigin {
-                                // FIXME(eddyb) distinguish upvar inference variables from the rest.
-                                kind: TypeVariableOriginKind::ClosureSynthetic,
-                                span: self.tcx.hir().span(var_hir_id),
+                    self.tcx.mk_tup(self.tcx.upvars_mentioned(expr_def_id).iter().flat_map(
+                        |upvars| {
+                            upvars.iter().map(|(&var_hir_id, _)| {
+                                // Create type variables (for now) to represent the transformed
+                                // types of upvars. These will be unified during the upvar
+                                // inference phase (`upvar.rs`).
+                                self.infcx.next_ty_var(TypeVariableOrigin {
+                                    // FIXME(eddyb) distinguish upvar inference variables from the rest.
+                                    kind: TypeVariableOriginKind::ClosureSynthetic,
+                                    span: self.tcx.hir().span(var_hir_id),
+                                })
                             })
-                        })
-                    }))
+                        },
+                    ))
                 } else {
                     // Create type variables (for now) to represent the various
                     // pieces of information kept in `{Closure,Generic}Substs`.
@@ -179,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
                     let pb = pb.with_self_ty(self.tcx, self.tcx.types.trait_object_dummy_self);
-                    self.deduce_sig_from_projection(None, &pb)
+                    self.deduce_sig_from_projection(None, pb)
                 });
                 let kind = object_type
                     .principal_def_id()
@@ -206,7 +206,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     obligation.predicate
                 );
 
-                if let ty::Predicate::Projection(ref proj_predicate) = obligation.predicate {
+                if let &ty::PredicateKind::Projection(proj_predicate) = obligation.predicate.kind()
+                {
                     // Given a Projection predicate, we can potentially infer
                     // the complete signature.
                     self.deduce_sig_from_projection(Some(obligation.cause.span), proj_predicate)
@@ -236,7 +237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_sig_from_projection(
         &self,
         cause_span: Option<Span>,
-        projection: &ty::PolyProjectionPredicate<'tcx>,
+        projection: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
         let tcx = self.tcx;
 
@@ -516,21 +517,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let InferOk { value: (), obligations } =
                     self.at(&cause, self.param_env).eq(*expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
-
-                // Also, require that the supplied type must outlive
-                // the closure body.
-                let closure_body_region = self.tcx.mk_region(ty::ReScope(region::Scope {
-                    id: body.value.hir_id.local_id,
-                    data: region::ScopeData::Node,
-                }));
-                all_obligations.push(Obligation::new(
-                    cause,
-                    self.param_env,
-                    ty::Predicate::TypeOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
-                        supplied_ty,
-                        closure_body_region,
-                    ))),
-                ));
             }
 
             let (supplied_output_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
@@ -641,7 +627,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // where R is the return type we are expecting. This type `T`
         // will be our output.
         let output_ty = self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
-            if let ty::Predicate::Projection(ref proj_predicate) = obligation.predicate {
+            if let &ty::PredicateKind::Projection(proj_predicate) = obligation.predicate.kind() {
                 self.deduce_future_output_from_projection(obligation.cause.span, proj_predicate)
             } else {
                 None
@@ -662,7 +648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn deduce_future_output_from_projection(
         &self,
         cause_span: Span,
-        predicate: &ty::PolyProjectionPredicate<'tcx>,
+        predicate: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<Ty<'tcx>> {
         debug!("deduce_future_output_from_projection(predicate={:?})", predicate);
 

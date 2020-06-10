@@ -53,6 +53,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = this.source_info(expr_span);
 
         match expr.kind {
+            ExprKind::ThreadLocalRef(did) => block.and(Rvalue::ThreadLocalRef(did)),
             ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, source_info);
                 this.in_scope(region_scope, lint_level, |this| this.as_rvalue(block, scope, value))

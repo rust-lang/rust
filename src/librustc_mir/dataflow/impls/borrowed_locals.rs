@@ -173,6 +173,7 @@ where
 
             mir::Rvalue::Cast(..)
             | mir::Rvalue::Use(..)
+            | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::Len(..)
             | mir::Rvalue::BinaryOp(..)
@@ -199,7 +200,7 @@ where
             TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }

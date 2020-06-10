@@ -14,14 +14,14 @@ use crate::mir::Body;
 use crate::mir::GeneratorLayout;
 use crate::traits::{self, Reveal};
 use crate::ty;
-use crate::ty::subst::{InternalSubsts, Subst, SubstsRef};
+use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use rustc_ast::ast;
-use rustc_ast::node_id::{NodeId, NodeMap, NodeSet};
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -31,7 +31,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::lang_items::{FnMutTraitLangItem, FnOnceTraitLangItem, FnTraitLangItem};
-use rustc_hir::{Constness, GlobMap, Node, TraitMap};
+use rustc_hir::{Constness, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Encodable, Encoder};
@@ -120,12 +120,12 @@ mod sty;
 pub struct ResolverOutputs {
     pub definitions: rustc_hir::definitions::Definitions,
     pub cstore: Box<CrateStoreDyn>,
-    pub extern_crate_map: NodeMap<CrateNum>,
-    pub trait_map: TraitMap<NodeId>,
-    pub maybe_unused_trait_imports: NodeSet,
-    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
-    pub export_map: ExportMap<NodeId>,
-    pub glob_map: GlobMap,
+    pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
+    pub trait_map: FxHashMap<hir::HirId, Vec<hir::TraitCandidate<hir::HirId>>>,
+    pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
+    pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
+    pub export_map: ExportMap<LocalDefId>,
+    pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.
     pub extern_prelude: FxHashMap<Symbol, bool>,
@@ -1016,9 +1016,31 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 }
 
+#[derive(Clone, Copy, Hash, RustcEncodable, RustcDecodable, Lift)]
+#[derive(HashStable)]
+pub struct Predicate<'tcx> {
+    kind: &'tcx PredicateKind<'tcx>,
+}
+
+impl<'tcx> PartialEq for Predicate<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        // `self.kind` is always interned.
+        ptr::eq(self.kind, other.kind)
+    }
+}
+
+impl<'tcx> Eq for Predicate<'tcx> {}
+
+impl<'tcx> Predicate<'tcx> {
+    #[inline(always)]
+    pub fn kind(self) -> &'tcx PredicateKind<'tcx> {
+        self.kind
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, TypeFoldable)]
-pub enum Predicate<'tcx> {
+pub enum PredicateKind<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
@@ -1039,7 +1061,7 @@ pub enum Predicate<'tcx> {
     Projection(PolyProjectionPredicate<'tcx>),
 
     /// No syntax: `T` well-formed.
-    WellFormed(Ty<'tcx>),
+    WellFormed(GenericArg<'tcx>),
 
     /// Trait must be object-safe.
     ObjectSafe(DefId),
@@ -1073,12 +1095,6 @@ pub struct CratePredicatesMap<'tcx> {
     pub predicates: FxHashMap<DefId, &'tcx [(ty::Predicate<'tcx>, Span)]>,
 }
 
-impl<'tcx> AsRef<Predicate<'tcx>> for Predicate<'tcx> {
-    fn as_ref(&self) -> &Predicate<'tcx> {
-        self
-    }
-}
-
 impl<'tcx> Predicate<'tcx> {
     /// Performs a substitution suitable for going from a
     /// poly-trait-ref to supertraits that must hold if that
@@ -1086,7 +1102,7 @@ impl<'tcx> Predicate<'tcx> {
     /// substitution in terms of what happens with bound regions. See
     /// lengthy comment below for details.
     pub fn subst_supertrait(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         trait_ref: &ty::PolyTraitRef<'tcx>,
     ) -> ty::Predicate<'tcx> {
@@ -1151,34 +1167,37 @@ impl<'tcx> Predicate<'tcx> {
         // this trick achieves that).
 
         let substs = &trait_ref.skip_binder().substs;
-        match *self {
-            Predicate::Trait(ref binder, constness) => {
-                Predicate::Trait(binder.map_bound(|data| data.subst(tcx, substs)), constness)
+        let kind = self.kind();
+        let new = match kind {
+            &PredicateKind::Trait(ref binder, constness) => {
+                PredicateKind::Trait(binder.map_bound(|data| data.subst(tcx, substs)), constness)
             }
-            Predicate::Subtype(ref binder) => {
-                Predicate::Subtype(binder.map_bound(|data| data.subst(tcx, substs)))
+            PredicateKind::Subtype(binder) => {
+                PredicateKind::Subtype(binder.map_bound(|data| data.subst(tcx, substs)))
             }
-            Predicate::RegionOutlives(ref binder) => {
-                Predicate::RegionOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
+            PredicateKind::RegionOutlives(binder) => {
+                PredicateKind::RegionOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
             }
-            Predicate::TypeOutlives(ref binder) => {
-                Predicate::TypeOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
+            PredicateKind::TypeOutlives(binder) => {
+                PredicateKind::TypeOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
             }
-            Predicate::Projection(ref binder) => {
-                Predicate::Projection(binder.map_bound(|data| data.subst(tcx, substs)))
+            PredicateKind::Projection(binder) => {
+                PredicateKind::Projection(binder.map_bound(|data| data.subst(tcx, substs)))
             }
-            Predicate::WellFormed(data) => Predicate::WellFormed(data.subst(tcx, substs)),
-            Predicate::ObjectSafe(trait_def_id) => Predicate::ObjectSafe(trait_def_id),
-            Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
-                Predicate::ClosureKind(closure_def_id, closure_substs.subst(tcx, substs), kind)
+            &PredicateKind::WellFormed(data) => PredicateKind::WellFormed(data.subst(tcx, substs)),
+            &PredicateKind::ObjectSafe(trait_def_id) => PredicateKind::ObjectSafe(trait_def_id),
+            &PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
+                PredicateKind::ClosureKind(closure_def_id, closure_substs.subst(tcx, substs), kind)
             }
-            Predicate::ConstEvaluatable(def_id, const_substs) => {
-                Predicate::ConstEvaluatable(def_id, const_substs.subst(tcx, substs))
+            &PredicateKind::ConstEvaluatable(def_id, const_substs) => {
+                PredicateKind::ConstEvaluatable(def_id, const_substs.subst(tcx, substs))
             }
-            Predicate::ConstEquate(c1, c2) => {
-                Predicate::ConstEquate(c1.subst(tcx, substs), c2.subst(tcx, substs))
+            PredicateKind::ConstEquate(c1, c2) => {
+                PredicateKind::ConstEquate(c1.subst(tcx, substs), c2.subst(tcx, substs))
             }
-        }
+        };
+
+        if new != *kind { new.to_predicate(tcx) } else { self }
     }
 }
 
@@ -1191,17 +1210,17 @@ pub struct TraitPredicate<'tcx> {
 pub type PolyTraitPredicate<'tcx> = ty::Binder<TraitPredicate<'tcx>>;
 
 impl<'tcx> TraitPredicate<'tcx> {
-    pub fn def_id(&self) -> DefId {
+    pub fn def_id(self) -> DefId {
         self.trait_ref.def_id
     }
 
-    pub fn self_ty(&self) -> Ty<'tcx> {
+    pub fn self_ty(self) -> Ty<'tcx> {
         self.trait_ref.self_ty()
     }
 }
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
-    pub fn def_id(&self) -> DefId {
+    pub fn def_id(self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()
     }
@@ -1293,85 +1312,96 @@ impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
 }
 
 pub trait ToPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx>;
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx>;
+}
+
+impl ToPredicate<'tcx> for PredicateKind<'tcx> {
+    #[inline(always)]
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        tcx.mk_predicate(*self)
+    }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::PredicateKind::Trait(
             ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.value }),
             self.constness,
         )
+        .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&TraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::PredicateKind::Trait(
             ty::Binder::dummy(ty::TraitPredicate { trait_ref: *self.value }),
             self.constness,
         )
+        .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(self.value.to_poly_trait_predicate(), self.constness)
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
+            .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&PolyTraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        ty::Predicate::Trait(self.value.to_poly_trait_predicate(), self.constness)
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
+            .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        Predicate::RegionOutlives(*self)
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::RegionOutlives(*self).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        Predicate::TypeOutlives(*self)
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::TypeOutlives(*self).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
-        Predicate::Projection(*self)
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::Projection(*self).to_predicate(tcx)
     }
 }
 
 impl<'tcx> Predicate<'tcx> {
-    pub fn to_opt_poly_trait_ref(&self) -> Option<PolyTraitRef<'tcx>> {
-        match *self {
-            Predicate::Trait(ref t, _) => Some(t.to_poly_trait_ref()),
-            Predicate::Projection(..)
-            | Predicate::Subtype(..)
-            | Predicate::RegionOutlives(..)
-            | Predicate::WellFormed(..)
-            | Predicate::ObjectSafe(..)
-            | Predicate::ClosureKind(..)
-            | Predicate::TypeOutlives(..)
-            | Predicate::ConstEvaluatable(..)
-            | Predicate::ConstEquate(..) => None,
+    pub fn to_opt_poly_trait_ref(self) -> Option<PolyTraitRef<'tcx>> {
+        match self.kind() {
+            &PredicateKind::Trait(ref t, _) => Some(t.to_poly_trait_ref()),
+            PredicateKind::Projection(..)
+            | PredicateKind::Subtype(..)
+            | PredicateKind::RegionOutlives(..)
+            | PredicateKind::WellFormed(..)
+            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::ClosureKind(..)
+            | PredicateKind::TypeOutlives(..)
+            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::ConstEquate(..) => None,
         }
     }
 
-    pub fn to_opt_type_outlives(&self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
-        match *self {
-            Predicate::TypeOutlives(data) => Some(data),
-            Predicate::Trait(..)
-            | Predicate::Projection(..)
-            | Predicate::Subtype(..)
-            | Predicate::RegionOutlives(..)
-            | Predicate::WellFormed(..)
-            | Predicate::ObjectSafe(..)
-            | Predicate::ClosureKind(..)
-            | Predicate::ConstEvaluatable(..)
-            | Predicate::ConstEquate(..) => None,
+    pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
+        match self.kind() {
+            &PredicateKind::TypeOutlives(data) => Some(data),
+            PredicateKind::Trait(..)
+            | PredicateKind::Projection(..)
+            | PredicateKind::Subtype(..)
+            | PredicateKind::RegionOutlives(..)
+            | PredicateKind::WellFormed(..)
+            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::ClosureKind(..)
+            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::ConstEquate(..) => None,
         }
     }
 }
@@ -1617,7 +1647,7 @@ pub struct ConstnessAnd<T> {
     pub value: T,
 }
 
-// FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate()` to ensure that
+// FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
 // the constness of trait bounds is being propagated correctly.
 pub trait WithConstness: Sized {
     #[inline]
@@ -1816,7 +1846,7 @@ pub struct FieldDef {
 
 /// The definition of a user-defined type, e.g., a `struct`, `enum`, or `union`.
 ///
-/// These are all interned (by `intern_adt_def`) into the `adt_defs` table.
+/// These are all interned (by `alloc_adt_def`) into the global arena.
 ///
 /// The initialism *ADT* stands for an [*algebraic data type (ADT)*][adt].
 /// This is slightly wrong because `union`s are not ADTs.
@@ -2007,6 +2037,8 @@ impl ReprOptions {
         self.flags.contains(ReprFlags::HIDE_NICHE)
     }
 
+    /// Returns the discriminant type, given these `repr` options.
+    /// This must only be called on enums!
     pub fn discr_type(&self) -> attr::IntType {
         self.int.unwrap_or(attr::SignedInt(ast::IntTy::Isize))
     }
@@ -2239,6 +2271,7 @@ impl<'tcx> AdtDef {
 
     #[inline]
     pub fn eval_explicit_discr(&self, tcx: TyCtxt<'tcx>, expr_did: DefId) -> Option<Discr<'tcx>> {
+        assert!(self.is_enum());
         let param_env = tcx.param_env(expr_did);
         let repr_type = self.repr.discr_type();
         match tcx.const_eval_poly(expr_did) {
@@ -2275,6 +2308,7 @@ impl<'tcx> AdtDef {
         &'tcx self,
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
+        assert!(self.is_enum());
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx);
         let mut prev_discr = None::<Discr<'tcx>>;
@@ -2307,6 +2341,7 @@ impl<'tcx> AdtDef {
         tcx: TyCtxt<'tcx>,
         variant_index: VariantIdx,
     ) -> Discr<'tcx> {
+        assert!(self.is_enum());
         let (val, offset) = self.discriminant_def_for_variant(variant_index);
         let explicit_value = val
             .and_then(|expr_did| self.eval_explicit_discr(tcx, expr_did))

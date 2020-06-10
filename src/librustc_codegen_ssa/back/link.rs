@@ -1,17 +1,18 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::cstore::{EncodedMetadata, LibSource, NativeLibrary, NativeLibraryKind};
+use rustc_middle::middle::cstore::{EncodedMetadata, LibSource, NativeLib};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, Sanitizer};
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
+use rustc_session::utils::NativeLibKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::crt_objects::CrtObjectsFallback;
+use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel};
 
@@ -24,16 +25,10 @@ use crate::{looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FIL
 use cc::windows_registry;
 use tempfile::{Builder as TempFileBuilder, TempDir};
 
-use std::ascii;
-use std::char;
-use std::env;
 use std::ffi::OsString;
-use std::fmt;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
-use std::str;
+use std::{ascii, char, env, fmt, fs, io, mem, str};
 
 pub fn remove(sess: &Session, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -52,7 +47,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
 ) {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
-    for &crate_type in sess.crate_types.borrow().iter() {
+    for &crate_type in sess.crate_types().iter() {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
         if (sess.opts.debugging_opts.no_codegen || !sess.opts.output_types.should_codegen())
             && !output_metadata
@@ -183,6 +178,7 @@ fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> Command {
                     "x86_64" => Some("x64".to_string()),
                     "x86" => Some("x86".to_string()),
                     "aarch64" => Some("arm64".to_string()),
+                    "arm" => Some("arm".to_string()),
                     _ => None,
                 };
                 if let Some(ref a) = arch {
@@ -327,11 +323,12 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
         match lib.kind {
-            NativeLibraryKind::NativeStatic => {}
-            NativeLibraryKind::NativeStaticNobundle
-            | NativeLibraryKind::NativeFramework
-            | NativeLibraryKind::NativeRawDylib
-            | NativeLibraryKind::NativeUnknown => continue,
+            NativeLibKind::StaticBundle => {}
+            NativeLibKind::StaticNoBundle
+            | NativeLibKind::Dylib
+            | NativeLibKind::Framework
+            | NativeLibKind::RawDylib
+            | NativeLibKind::Unspecified => continue,
         }
         if let Some(name) = lib.name {
             ab.add_native_library(name);
@@ -430,7 +427,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
         // object files come from where and selectively skip them.
         let skip_object_files = native_libs
             .iter()
-            .any(|lib| lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib));
+            .any(|lib| lib.kind == NativeLibKind::StaticBundle && !relevant_lib(sess, lib));
         ab.add_rlib(
             path,
             &name.as_str(),
@@ -533,6 +530,61 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
             warn!("Linker does not support -no-pie command line option. Retrying without.");
             for arg in cmd.take_args() {
                 if arg.to_string_lossy() != "-no-pie" {
+                    cmd.arg(arg);
+                }
+            }
+            info!("{:?}", &cmd);
+            continue;
+        }
+
+        // Detect '-static-pie' used with an older version of gcc or clang not supporting it.
+        // Fallback from '-static-pie' to '-static' in that case.
+        if sess.target.target.options.linker_is_gnu
+            && flavor != LinkerFlavor::Ld
+            && (out.contains("unrecognized command line option")
+                || out.contains("unknown argument"))
+            && (out.contains("-static-pie") || out.contains("--no-dynamic-linker"))
+            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-static-pie")
+        {
+            info!("linker output: {:?}", out);
+            warn!(
+                "Linker does not support -static-pie command line option. Retrying with -static instead."
+            );
+            // Mirror `add_(pre,post)_link_objects` to replace CRT objects.
+            let fallback = crt_objects_fallback(sess, crate_type);
+            let opts = &sess.target.target.options;
+            let pre_objects =
+                if fallback { &opts.pre_link_objects_fallback } else { &opts.pre_link_objects };
+            let post_objects =
+                if fallback { &opts.post_link_objects_fallback } else { &opts.post_link_objects };
+            let get_objects = |objects: &CrtObjects, kind| {
+                objects
+                    .get(&kind)
+                    .iter()
+                    .copied()
+                    .flatten()
+                    .map(|obj| get_object_file_path(sess, obj).into_os_string())
+                    .collect::<Vec<_>>()
+            };
+            let pre_objects_static_pie = get_objects(pre_objects, LinkOutputKind::StaticPicExe);
+            let post_objects_static_pie = get_objects(post_objects, LinkOutputKind::StaticPicExe);
+            let mut pre_objects_static = get_objects(pre_objects, LinkOutputKind::StaticNoPicExe);
+            let mut post_objects_static = get_objects(post_objects, LinkOutputKind::StaticNoPicExe);
+            // Assume that we know insertion positions for the replacement arguments from replaced
+            // arguments, which is true for all supported targets.
+            assert!(pre_objects_static.is_empty() || !pre_objects_static_pie.is_empty());
+            assert!(post_objects_static.is_empty() || !post_objects_static_pie.is_empty());
+            for arg in cmd.take_args() {
+                if arg.to_string_lossy() == "-static-pie" {
+                    // Replace the output kind.
+                    cmd.arg("-static");
+                } else if pre_objects_static_pie.contains(&arg) {
+                    // Replace the pre-link objects (replace the first and remove the rest).
+                    cmd.args(mem::take(&mut pre_objects_static));
+                } else if post_objects_static_pie.contains(&arg) {
+                    // Replace the post-link objects (replace the first and remove the rest).
+                    cmd.args(mem::take(&mut post_objects_static));
+                } else {
                     cmd.arg(arg);
                 }
             }
@@ -872,11 +924,8 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
 
     // If we're only producing artifacts that are archives, no need to preserve
     // the objects as they're losslessly contained inside the archives.
-    let output_linked = sess
-        .crate_types
-        .borrow()
-        .iter()
-        .any(|&x| x != CrateType::Rlib && x != CrateType::Staticlib);
+    let output_linked =
+        sess.crate_types().iter().any(|&x| x != CrateType::Rlib && x != CrateType::Staticlib);
     if !output_linked {
         return false;
     }
@@ -907,26 +956,28 @@ enum RlibFlavor {
     StaticlibBase,
 }
 
-fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
+fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
     let lib_args: Vec<_> = all_native_libs
         .iter()
         .filter(|l| relevant_lib(sess, l))
         .filter_map(|lib| {
             let name = lib.name?;
             match lib.kind {
-                NativeLibraryKind::NativeStaticNobundle | NativeLibraryKind::NativeUnknown => {
+                NativeLibKind::StaticNoBundle
+                | NativeLibKind::Dylib
+                | NativeLibKind::Unspecified => {
                     if sess.target.target.options.is_like_msvc {
                         Some(format!("{}.lib", name))
                     } else {
                         Some(format!("-l{}", name))
                     }
                 }
-                NativeLibraryKind::NativeFramework => {
+                NativeLibKind::Framework => {
                     // ld-only syntax, since there are no frameworks in MSVC
                     Some(format!("-framework {}", name))
                 }
                 // These are included, no need to print them
-                NativeLibraryKind::NativeStatic | NativeLibraryKind::NativeRawDylib => None,
+                NativeLibKind::StaticBundle | NativeLibKind::RawDylib => None,
             }
         })
         .collect();
@@ -1192,9 +1243,10 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
     };
 
     // Adjust the output kind to target capabilities.
-    let pic_exe_supported = sess.target.target.options.position_independent_executables;
-    let static_pic_exe_supported = false; // FIXME: Add this option to target specs.
-    let static_dylib_supported = sess.target.target.options.crt_static_allows_dylibs;
+    let opts = &sess.target.target.options;
+    let pic_exe_supported = opts.position_independent_executables;
+    let static_pic_exe_supported = opts.static_position_independent_executables;
+    let static_dylib_supported = opts.crt_static_allows_dylibs;
     match kind {
         LinkOutputKind::DynamicPicExe if !pic_exe_supported => LinkOutputKind::DynamicNoPicExe,
         LinkOutputKind::StaticPicExe if !static_pic_exe_supported => LinkOutputKind::StaticNoPicExe,
@@ -1250,19 +1302,9 @@ fn add_post_link_objects(
 
 /// Add arbitrary "pre-link" args defined by the target spec or from command line.
 /// FIXME: Determine where exactly these args need to be inserted.
-fn add_pre_link_args(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    flavor: LinkerFlavor,
-    crate_type: CrateType,
-) {
+fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
         cmd.args(args);
-    }
-    if let Some(args) = sess.target.target.options.pre_link_args_crt.get(&flavor) {
-        if sess.crt_static(Some(crate_type)) {
-            cmd.args(args);
-        }
     }
     cmd.args(&sess.opts.debugging_opts.pre_link_args);
 }
@@ -1499,7 +1541,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     let crt_objects_fallback = crt_objects_fallback(sess, crate_type);
 
     // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
-    add_pre_link_args(cmd, sess, flavor, crate_type);
+    add_pre_link_args(cmd, sess, flavor);
 
     // NO-OPT-OUT
     add_link_script(cmd, sess, tmpdir, crate_type);
@@ -1578,16 +1620,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    // FIXME: Support `StaticPicExe` correctly.
-    match link_output_kind {
-        LinkOutputKind::DynamicPicExe | LinkOutputKind::StaticPicExe => {
-            cmd.position_independent_executable()
-        }
-        LinkOutputKind::DynamicNoPicExe | LinkOutputKind::StaticNoPicExe => {
-            cmd.no_position_independent_executable()
-        }
-        _ => {}
-    }
+    cmd.set_output_kind(link_output_kind, out_filename);
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     add_relro_args(cmd, sess);
@@ -1615,17 +1648,6 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         codegen_results,
         tmpdir,
     );
-
-    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    // FIXME: Merge with the previous `link_output_kind` match,
-    // and support `StaticPicExe` and `StaticDylib` correctly.
-    match link_output_kind {
-        LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => {
-            cmd.build_static_executable()
-        }
-        LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => cmd.build_dylib(out_filename),
-        _ => {}
-    }
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     if sess.opts.cg.profile_generate.enabled() {
@@ -1696,11 +1718,11 @@ fn add_local_native_libraries(
             None => continue,
         };
         match lib.kind {
-            NativeLibraryKind::NativeUnknown => cmd.link_dylib(name),
-            NativeLibraryKind::NativeFramework => cmd.link_framework(name),
-            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(name),
-            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(name, &search_path),
-            NativeLibraryKind::NativeRawDylib => {
+            NativeLibKind::Dylib | NativeLibKind::Unspecified => cmd.link_dylib(name),
+            NativeLibKind::Framework => cmd.link_framework(name),
+            NativeLibKind::StaticNoBundle => cmd.link_staticlib(name),
+            NativeLibKind::StaticBundle => cmd.link_whole_staticlib(name, &search_path),
+            NativeLibKind::RawDylib => {
                 // FIXME(#58713): Proper handling for raw dylibs.
                 bug!("raw_dylib feature not yet implemented");
             }
@@ -1890,7 +1912,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
         let skip_native = native_libs
             .iter()
-            .any(|lib| lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib));
+            .any(|lib| lib.kind == NativeLibKind::StaticBundle && !relevant_lib(sess, lib));
 
         if (!are_upstream_rust_objects_already_included(sess)
             || ignored_for_lto(sess, &codegen_results.crate_info, cnum))
@@ -2032,9 +2054,9 @@ fn add_upstream_native_libraries(
                 continue;
             }
             match lib.kind {
-                NativeLibraryKind::NativeUnknown => cmd.link_dylib(name),
-                NativeLibraryKind::NativeFramework => cmd.link_framework(name),
-                NativeLibraryKind::NativeStaticNobundle => {
+                NativeLibKind::Dylib | NativeLibKind::Unspecified => cmd.link_dylib(name),
+                NativeLibKind::Framework => cmd.link_framework(name),
+                NativeLibKind::StaticNoBundle => {
                     // Link "static-nobundle" native libs only if the crate they originate from
                     // is being linked statically to the current crate.  If it's linked dynamically
                     // or is an rlib already included via some other dylib crate, the symbols from
@@ -2046,8 +2068,8 @@ fn add_upstream_native_libraries(
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
                 // previously
-                NativeLibraryKind::NativeStatic => {}
-                NativeLibraryKind::NativeRawDylib => {
+                NativeLibKind::StaticBundle => {}
+                NativeLibKind::RawDylib => {
                     // FIXME(#58713): Proper handling for raw dylibs.
                     bug!("raw_dylib feature not yet implemented");
                 }
@@ -2056,7 +2078,7 @@ fn add_upstream_native_libraries(
     }
 }
 
-fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
+fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
         Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,

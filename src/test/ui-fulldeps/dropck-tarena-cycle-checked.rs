@@ -8,9 +8,9 @@
 
 #![feature(rustc_private)]
 
-extern crate arena;
+extern crate rustc_arena;
 
-use arena::TypedArena;
+use rustc_arena::TypedArena;
 use std::cell::Cell;
 use id::Id;
 

@@ -8,9 +8,9 @@ checksum = "7e522997b529f05601e05166c07ed17789691f562762c7f3b987263d2dedee5c"
 
 [[package]]
 name = "aho-corasick"
-version = "0.7.3"
+version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6f484ae0c99fec2e858eb6134949117399f222608d84cadb3f58c1f97c2364c"
+checksum = "8716408b8bc624ed7f65d223ddb9ac2d044c0547b6fa4b0d554f3a9540496ada"
 dependencies = [
  "memchr",
 ]
@@ -32,7 +32,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e266e1f4be5ffa05309f650e2586fe1d3ae6034eb24025a7ae1dfecc330823a"
 dependencies = [
  "html5ever",
- "lazy_static 1.4.0",
+ "lazy_static",
  "maplit",
  "matches",
  "tendril",
@@ -47,6 +47,12 @@ checksum = "c7021ce4924a3f25f802b2cccd1af585e39ea1a363a1aa2e72afe54b67a3a7a7"
 dependencies = [
  "ansi_term",
 ]
+
+[[package]]
+name = "annotate-snippets"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d78ea013094e5ea606b1c05fe35f1dd7ea1eb1ea259908d040b25bd5ec677ee5"
 
 [[package]]
 name = "ansi_term"
@@ -70,14 +76,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1025aeae2b664ca0ea726a89d574fe8f4e77dd712d443236ad1de00379450cf6"
 
 [[package]]
-name = "arena"
-version = "0.0.0"
-dependencies = [
- "rustc_data_structures",
- "smallvec 1.4.0",
-]
-
-[[package]]
 name = "argon2rs"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -98,12 +96,12 @@ dependencies = [
 
 [[package]]
 name = "atty"
-version = "0.2.11"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a7d5b8723950951411ee34d271d99dddcc2035a16ab25310ea2c8cfd4369652"
+checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
 dependencies = [
+ "hermit-abi",
  "libc",
- "termion",
  "winapi 0.3.8",
 ]
 
@@ -210,9 +208,10 @@ dependencies = [
  "filetime",
  "getopts",
  "ignore",
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "num_cpus",
+ "opener",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -282,15 +281,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "716960a18f978640f25101b5cbf1c6f6b0d3192fab36a2d98ca96f0ecbe41010"
 
 [[package]]
-name = "c2-chacha"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "214238caa1bf3a496ec3392968969cab8549f96ff30652c9e56885329315f6bb"
-dependencies = [
- "ppv-lite86",
-]
-
-[[package]]
 name = "cargo"
 version = "0.46.0"
 dependencies = [
@@ -320,7 +310,7 @@ dependencies = [
  "ignore",
  "im-rc",
  "jobserver",
- "lazy_static 1.4.0",
+ "lazy_static",
  "lazycell",
  "libc",
  "libgit2-sys",
@@ -336,7 +326,7 @@ dependencies = [
  "rustc-workspace-hack",
  "rustfix",
  "same-file",
- "semver",
+ "semver 0.10.0",
  "serde",
  "serde_ignored",
  "serde_json",
@@ -351,6 +341,19 @@ dependencies = [
  "url 2.1.0",
  "walkdir",
  "winapi 0.3.8",
+]
+
+[[package]]
+name = "cargo-miri"
+version = "0.1.0"
+dependencies = [
+ "cargo_metadata 0.9.1",
+ "directories",
+ "rustc-workspace-hack",
+ "rustc_version",
+ "serde",
+ "serde_json",
+ "vergen",
 ]
 
 [[package]]
@@ -374,7 +377,7 @@ dependencies = [
  "flate2",
  "git2",
  "glob",
- "lazy_static 1.4.0",
+ "lazy_static",
  "remove_dir_all",
  "serde_json",
  "tar",
@@ -388,7 +391,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "929766d993a2fde7a0ae962ee82429069cd7b68839cd9375b98efd719df65d3a"
 dependencies = [
  "failure",
- "semver",
+ "semver 0.9.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -400,7 +403,7 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "46e3374c604fb39d1a2f35ed5e4a4e30e60d01fab49446e08f1b3e9a90aef202"
 dependencies = [
- "semver",
+ "semver 0.9.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -412,9 +415,9 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.52"
+version = "1.0.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d87b23d6a92cd03af510a5ade527033f6aa6fa92161e2d5863a907d4c5e31d"
+checksum = "7bbb73db36c1246e9034e307d0fba23f9a2e251faa47ade70c1bd252220c8311"
 dependencies = [
  "jobserver",
 ]
@@ -468,7 +471,7 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e4782d108e420a1fcf94d8a919cf248db33c5071678e87d9c2d4f20ed1feb32"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
 ]
 
 [[package]]
@@ -536,10 +539,10 @@ dependencies = [
  "clippy_lints",
  "compiletest_rs",
  "derive-new",
- "lazy_static 1.4.0",
+ "lazy_static",
  "rustc-workspace-hack",
  "rustc_tools_util 0.2.0",
- "semver",
+ "semver 0.9.0",
  "serde",
  "tempfile",
  "tester",
@@ -556,13 +559,15 @@ dependencies = [
  "cargo_metadata 0.9.1",
  "if_chain",
  "itertools 0.9.0",
- "lazy_static 1.4.0",
+ "lazy_static",
  "pulldown-cmark 0.7.1",
  "quine-mc_cluskey",
+ "quote 1.0.2",
  "regex-syntax",
- "semver",
+ "semver 0.9.0",
  "serde",
  "smallvec 1.4.0",
+ "syn 1.0.11",
  "toml",
  "unicode-normalization",
  "url 2.1.0",
@@ -608,11 +613,13 @@ dependencies = [
 
 [[package]]
 name = "colored"
-version = "1.6.0"
+version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0aa3473e85a3161b59845d6096b289bb577874cafeaf75ea1b1beaa6572c7fc"
+checksum = "f4ffc801dacf156c5854b9df4f425a626539c3a6ef7893cc0c5084a23f0b6c59"
 dependencies = [
- "lazy_static 0.2.11",
+ "atty",
+ "lazy_static",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -635,9 +642,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.28"
+version = "0.1.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "439a6fab343b1dab347823537734a5cd4ae6ae2000b465ab886f64cdb723bd14"
+checksum = "7bc4ac2c824d2bfc612cba57708198547e9a26943af0632aff033e0693074d5c"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -650,7 +657,7 @@ dependencies = [
  "diff",
  "env_logger 0.7.1",
  "getopts",
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "log",
  "miow 0.3.3",
@@ -807,7 +814,7 @@ dependencies = [
  "arrayvec",
  "cfg-if",
  "crossbeam-utils 0.6.5",
- "lazy_static 1.4.0",
+ "lazy_static",
  "memoffset",
  "scopeguard",
 ]
@@ -828,7 +835,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8306fcef4a7b563b76b7dd949ca48f52bc1141aa067d2ea09565f3e2652aa5c"
 dependencies = [
  "cfg-if",
- "lazy_static 1.4.0",
+ "lazy_static",
 ]
 
 [[package]]
@@ -839,7 +846,7 @@ checksum = "c3c7c73a2d1e9fc0886a08b93e98eb643461230d5f1925e4036204d5f2e261a8"
 dependencies = [
  "autocfg 1.0.0",
  "cfg-if",
- "lazy_static 1.4.0",
+ "lazy_static",
 ]
 
 [[package]]
@@ -1045,7 +1052,7 @@ version = "2.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a99a310cd1f9770e7bf8e48810c7bcbb0e078c8fb23a8c7bcf0da4c2bf61a455"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
  "regex",
  "serde",
  "serde_derive",
@@ -1189,14 +1196,6 @@ dependencies = [
  "libc",
  "libz-sys",
  "miniz_oxide",
-]
-
-[[package]]
-name = "fmt_macros"
-version = "0.0.0"
-dependencies = [
- "rustc_lexer",
- "rustc_span",
 ]
 
 [[package]]
@@ -1379,10 +1378,6 @@ dependencies = [
  "log",
  "regex",
 ]
-
-[[package]]
-name = "graphviz"
-version = "0.0.0"
 
 [[package]]
 name = "h2"
@@ -1613,12 +1608,12 @@ checksum = "522daefc3b69036f80c7d2990b28ff9e0471c683bad05ca258e0a01dd22c5a1e"
 dependencies = [
  "crossbeam-channel",
  "globset",
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "memchr",
  "regex",
  "same-file",
- "thread_local 1.0.1",
+ "thread_local",
  "walkdir",
  "winapi-util",
 ]
@@ -1650,7 +1645,7 @@ dependencies = [
  "clap",
  "failure",
  "flate2",
- "lazy_static 1.4.0",
+ "lazy_static",
  "num_cpus",
  "rayon",
  "remove_dir_all",
@@ -1674,15 +1669,6 @@ name = "is-match"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e5b386aef33a1c677be65237cb9d32c3f3ef56bd035949710c4bb13083eb053"
-
-[[package]]
-name = "itertools"
-version = "0.7.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f58856976b776fedd95533137617a02fb25719f40e7d9b01c7043cd65474f450"
-dependencies = [
- "either",
-]
 
 [[package]]
 name = "itertools"
@@ -1822,7 +1808,7 @@ dependencies = [
  "bytes",
  "globset",
  "jsonrpc-core",
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "tokio",
  "tokio-codec",
@@ -1841,12 +1827,6 @@ dependencies = [
 
 [[package]]
 name = "lazy_static"
-version = "0.2.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76f033c7ad61445c5b347c7382dd1237847eb1bce590fe50365dcb33d546be73"
-
-[[package]]
-name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
@@ -1859,9 +1839,9 @@ checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
 
 [[package]]
 name = "libc"
-version = "0.2.69"
+version = "0.2.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99e85c08494b21a9054e7fe1374a732aeadaff3980b6990b94bfd3a70f690005"
+checksum = "9457b06509d27052635f90d6466700c65095fdf75409b3fbdd903e988b886f49"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -1950,7 +1930,7 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19af41f0565d7c19b2058153ad0b42d4d5ce89ec4dbf06ed6741114a8b63e7cd"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
 ]
 
 [[package]]
@@ -2054,7 +2034,7 @@ dependencies = [
  "error-chain",
  "handlebars",
  "itertools 0.8.0",
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "memchr",
  "open",
@@ -2089,7 +2069,7 @@ dependencies = [
  "rayon",
  "regex",
  "reqwest",
- "semver",
+ "semver 0.9.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -2110,9 +2090,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.3.2"
+version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53445de381a1f436797497c61d851644d0e8e88e6140f22872ad33a704933978"
+checksum = "3728d817d99e5ac407411fa471ff9800a778d88a24685968b36824eaf4bee400"
 
 [[package]]
 name = "memmap"
@@ -2239,22 +2219,17 @@ name = "miri"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "cargo_metadata 0.9.1",
  "colored",
  "compiletest_rs",
- "directories",
  "env_logger 0.7.1",
  "getrandom",
  "hex 0.4.0",
+ "libc",
  "log",
- "num-traits",
  "rand 0.7.3",
  "rustc-workspace-hack",
  "rustc_version",
- "serde",
- "serde_json",
  "shell-escape",
- "vergen",
 ]
 
 [[package]]
@@ -2263,7 +2238,7 @@ version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b2df1a4c22fd44a62147fd8f13dd0f95c9d8ca7b2610299b2a2f9cf8964274e"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "log",
  "openssl",
@@ -2327,6 +2302,9 @@ name = "once_cell"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6a04cb71e910d0034815600180f62a95bf6e67942d7ab52a166a68c7d7e9cd0"
+dependencies = [
+ "parking_lot 0.9.0",
+]
 
 [[package]]
 name = "opaque-debug"
@@ -2358,7 +2336,7 @@ dependencies = [
  "bitflags",
  "cfg-if",
  "foreign-types",
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "openssl-sys",
 ]
@@ -2633,9 +2611,9 @@ dependencies = [
 
 [[package]]
 name = "ppv-lite86"
-version = "0.2.6"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74490b50b9fbe561ac330df47c08f3f33073d2d00c150f719147d7c54522fa1b"
+checksum = "237a5ed80e274dbc66f86bd59c1e25edc039660be53194b5fe0a482e0f2612ea"
 
 [[package]]
 name = "precomputed-hash"
@@ -2736,7 +2714,7 @@ checksum = "9bf259a81de2b2eb9850ec990ec78e6a25319715584fd7652b9b26f96fcb1510"
 dependencies = [
  "error-chain",
  "idna 0.2.0",
- "lazy_static 1.4.0",
+ "lazy_static",
  "regex",
  "url 2.1.0",
 ]
@@ -2802,16 +2780,16 @@ dependencies = [
 
 [[package]]
 name = "racer"
-version = "2.1.33"
+version = "2.1.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54322b696f7df20e0d79d0244a1088f387b7164a5f17987c4ab984dec1a23e42"
+checksum = "cc9caecf1286a3ed28d3ae35207a178ba12e58de95540781e5c6cba05e0f0833"
 dependencies = [
  "bitflags",
  "clap",
  "derive_more",
  "env_logger 0.7.1",
  "humantime 2.0.0",
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "rls-span",
  "rustc-ap-rustc_ast",
@@ -2850,7 +2828,7 @@ checksum = "6a6b1679d49b24bbfe0c803429aa1874472f50d9b363131f0e89fc356b544d03"
 dependencies = [
  "getrandom",
  "libc",
- "rand_chacha 0.2.1",
+ "rand_chacha 0.2.2",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
 ]
@@ -2867,11 +2845,11 @@ dependencies = [
 
 [[package]]
 name = "rand_chacha"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03a2a90da8c7523f554344f921aa97283eadf6ac484a6d2a7d0212fa7f8d6853"
+checksum = "f4c8ed856279c9737206bf725bf36935d8666ead7aa69b52be55af369d193402"
 dependencies = [
- "c2-chacha",
+ "ppv-lite86",
  "rand_core 0.5.1",
 ]
 
@@ -2994,7 +2972,7 @@ dependencies = [
  "crossbeam-deque",
  "crossbeam-queue",
  "crossbeam-utils 0.6.5",
- "lazy_static 1.4.0",
+ "lazy_static",
  "num_cpus",
 ]
 
@@ -3014,15 +2992,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2439c63f3f6139d1b57529d16bc3b8bb855230c8efcc5d3a896c8bea7c3b1e84"
 
 [[package]]
-name = "redox_termios"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e891cfe48e9100a70a3b6eb652fef28920c117d366339687bd5576160db0f76"
-dependencies = [
- "redox_syscall",
-]
-
-[[package]]
 name = "redox_users"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3036,25 +3005,21 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.1.6"
+version = "1.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f0a0bcab2fd7d1d7c54fa9eae6f43eddeb9ce2e7352f8518a814a4f65d60c58"
+checksum = "a6020f034922e3194c711b82a627453881bc4682166cabb07134a10c26ba7692"
 dependencies = [
  "aho-corasick",
  "memchr",
  "regex-syntax",
- "thread_local 0.3.6",
- "utf8-ranges",
+ "thread_local",
 ]
 
 [[package]]
 name = "regex-syntax"
-version = "0.6.6"
+version = "0.6.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcfd8681eebe297b81d98498869d4aae052137651ad7b96822f09ceb690d0a96"
-dependencies = [
- "ucd-util",
-]
+checksum = "7fe5bd57d1d7414c6b5ed48563a2c855d995ff777729dcd91c369ec7fea395ae"
 
 [[package]]
 name = "remote-test-client"
@@ -3123,7 +3088,7 @@ dependencies = [
  "home",
  "itertools 0.8.0",
  "jsonrpc-core",
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "lsp-codec",
  "lsp-types",
@@ -3157,13 +3122,13 @@ dependencies = [
 
 [[package]]
 name = "rls-analysis"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c0d208ad66717501222c74b42d9e823a7612592e85ed78b04074c8f58c0be0a"
+checksum = "534032993e1b60e5db934eab2dde54da7afd1e46c3465fddb2b29eb47cb1ed3a"
 dependencies = [
  "derive-new",
  "fst",
- "itertools 0.7.8",
+ "itertools 0.8.0",
  "json",
  "log",
  "rls-data",
@@ -3211,9 +3176,9 @@ dependencies = [
 
 [[package]]
 name = "rls-span"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1cb4694410d8d2ce43ccff3682f1c782158a018d5a9a92185675677f7533eb3"
+checksum = "f2e9bed56f6272bd85d9d06d1aaeef80c5fddc78a82199eb36dceb5f94e7d934"
 dependencies = [
  "serde",
 ]
@@ -3243,9 +3208,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-arena"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81dfcfbb0ddfd533abf8c076e3b49d1e5042d1962526a12ce2c66d514b24cca3"
+checksum = "fdaf0295fc40b10ec1091aad1a1760b4bb3b4e7c4f77d543d1a2e9d50a01e6b1"
 dependencies = [
  "rustc-ap-rustc_data_structures",
  "smallvec 1.4.0",
@@ -3253,15 +3218,15 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-graphviz"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7490bb07b014a7f9531bde33c905a805e08095dbefdb4c9988a1b19fe6d019fd"
+checksum = "8028e8cdb4eb71810d0c22a5a5e1e3106c81123be63ce7f044b6d4ac100d8941"
 
 [[package]]
 name = "rustc-ap-rustc_ast"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "189f16dbb8dd11089274c9ced58b0cae9e1ea3e434a58f3db683817eda849e58"
+checksum = "16e9e502bb3a5568433db1cf2fb1f1e1074934636069cf744ad7c77b58e1428e"
 dependencies = [
  "log",
  "rustc-ap-rustc_data_structures",
@@ -3276,9 +3241,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_ast_passes"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbe619609b56a617fa986332b066d53270093c816d8ff8281fc90e1dbe74c1cc"
+checksum = "faf35ffecab28f97f7ac01cf6a13afaca6408529d15eb95f317a43b2ffb88933"
 dependencies = [
  "itertools 0.8.0",
  "log",
@@ -3295,21 +3260,20 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_ast_pretty"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26ab1495f7b420e937688749c1da5763aaabd6ebe8cacb758665a0b8481da094"
+checksum = "3684ed43dc552f1e030e3f7a5a300a7a834bdda4e9e00ab80284be4220d8c603"
 dependencies = [
  "log",
  "rustc-ap-rustc_ast",
- "rustc-ap-rustc_data_structures",
  "rustc-ap-rustc_span",
 ]
 
 [[package]]
 name = "rustc-ap-rustc_attr"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e057495724c60729c1d1d9d49374e0b3ebd6d3481cd161b2871f52fe017b7b5"
+checksum = "31b413927daa666983b3b49227f9ac218aa29254546abdb585f20cd71c391870"
 dependencies = [
  "rustc-ap-rustc_ast",
  "rustc-ap-rustc_ast_pretty",
@@ -3320,22 +3284,22 @@ dependencies = [
  "rustc-ap-rustc_session",
  "rustc-ap-rustc_span",
  "rustc-ap-serialize",
- "smallvec 1.4.0",
+ "version_check",
 ]
 
 [[package]]
 name = "rustc-ap-rustc_data_structures"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2130997667833692f4bec4681d0e73b066d5a01dac1d8a68f22068b82bf173a"
+checksum = "4b1c6069e5c522657f1c6f5ab33074e097092f48e804cc896d337e319aacbd60"
 dependencies = [
  "bitflags",
  "cfg-if",
  "crossbeam-utils 0.7.2",
- "ena 0.13.1",
+ "ena 0.14.0",
  "indexmap",
  "jobserver",
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "log",
  "measureme",
@@ -3348,16 +3312,17 @@ dependencies = [
  "rustc-rayon-core",
  "smallvec 1.4.0",
  "stable_deref_trait",
+ "stacker",
  "winapi 0.3.8",
 ]
 
 [[package]]
 name = "rustc-ap-rustc_errors"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "908e1ea187c6bb368af4ba6db980001e920515e67371ddc4086e749baabe6080"
+checksum = "0c374e89b3c9714869ef86076942155383804ba6778c26be2169d324563c31f9"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.6.1",
  "atty",
  "log",
  "rustc-ap-rustc_data_structures",
@@ -3371,9 +3336,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_expand"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50066a75bca872ff933b0ee8a582d18ef1876c8054a392f60c39e538446bfb00"
+checksum = "259d2a7aa7a12f3c99a4ce4123643ec065f1a26f8e89be1f9bedd9757ea53fdc"
 dependencies = [
  "log",
  "rustc-ap-rustc_ast",
@@ -3393,26 +3358,26 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_feature"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96fb53e1710e6de7c2e371ca56c857b79f9b399aba58aa6b6fbed6e2f677d3f6"
+checksum = "c0296fbc29b629d5ae2ebee1bbf0407bb22de04d26d87216c20899b79579ccb3"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
  "rustc-ap-rustc_data_structures",
  "rustc-ap-rustc_span",
 ]
 
 [[package]]
 name = "rustc-ap-rustc_fs_util"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3f91357e5e468fc2729211571d769723c728a34e200d90a70164e945f881e09"
+checksum = "34734f6cc681399630acd836a14207c6b5b9671a290cc7cad0354b0a4d71b3c9"
 
 [[package]]
 name = "rustc-ap-rustc_index"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32220c3e6cdf226f38e4474b747dca15f3106bb680c74f10b299af3f6cdb1663"
+checksum = "d1e4508753d71d3523209c2ca5086db15a1413e71ebf17ad5412bb7ced5e44c2"
 dependencies = [
  "rustc-ap-serialize",
  "smallvec 1.4.0",
@@ -3420,18 +3385,18 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b324d2a2bacad344e53e182e5ca04ffb74745b932849aa074f8f7fec8177da5"
+checksum = "42b9fcd8407e322908a721262fbc0b35b5f3c35bb173a26dd1e0070bde336e33"
 dependencies = [
  "unicode-xid 0.2.0",
 ]
 
 [[package]]
 name = "rustc-ap-rustc_macros"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59686c56d5f1b3ed47d0f070c257ed35caf24ecf2d744dd11fe44b1014baee0f"
+checksum = "3d104115a689367d2e0bcd99f37e0ebd6b9c8c78bab0d9cbea5bae86323601b5"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
@@ -3441,9 +3406,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_parse"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dfb0c11c591ec5f87bbadb10819795abc9035ff79a26703c1b6c9487ac51f49"
+checksum = "afaaab91853fc5a3916785ccae727a4433359d9787c260d42b96a2265fe5b287"
 dependencies = [
  "bitflags",
  "log",
@@ -3455,15 +3420,14 @@ dependencies = [
  "rustc-ap-rustc_lexer",
  "rustc-ap-rustc_session",
  "rustc-ap-rustc_span",
- "smallvec 1.4.0",
  "unicode-normalization",
 ]
 
 [[package]]
 name = "rustc-ap-rustc_session"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d1a194b1a81d7233ee492847638dc9ebdb7d084300e5ade8dea0ceaa98f95b9"
+checksum = "86e756a57ce6ce1b868e35e64a7e10ab28d49ece80d7c661b07aff5afc6e5d2d"
 dependencies = [
  "getopts",
  "log",
@@ -3481,9 +3445,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_span"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a648146050fed6b58e681ec22488e728f60e16036bb7497c9815e3debd1e4242"
+checksum = "21031c3396ee452f4c6e994b67513a633055c57c86d00336afd9d63149518f34"
 dependencies = [
  "cfg-if",
  "log",
@@ -3500,9 +3464,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_target"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28cf28798f0988b808e3616713630e4098d68c6f1f41052a2f7e922e094da744"
+checksum = "ff21badfbead5b0050391eaad8840f2e4fcb03b6b0fc6006f447443529e9ae6e"
 dependencies = [
  "bitflags",
  "log",
@@ -3515,9 +3479,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-serialize"
-version = "654.0.0"
+version = "659.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "756e8f526ec7906e132188bf25e3c10a6ee42ab77294ecb3b3602647f0508eef"
+checksum = "768b5a305669d934522712bc13502962edfde5128ea63b9e7db4000410be1dc6"
 dependencies = [
  "indexmap",
  "smallvec 1.4.0",
@@ -3571,7 +3535,7 @@ dependencies = [
  "crossbeam-deque",
  "crossbeam-queue",
  "crossbeam-utils 0.6.5",
- "lazy_static 1.4.0",
+ "lazy_static",
  "num_cpus",
 ]
 
@@ -3622,6 +3586,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_arena"
+version = "0.0.0"
+dependencies = [
+ "rustc_data_structures",
+ "smallvec 1.4.0",
+]
+
+[[package]]
 name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
@@ -3631,9 +3603,9 @@ dependencies = [
  "rustc_index",
  "rustc_lexer",
  "rustc_macros",
+ "rustc_serialize",
  "rustc_span",
  "scoped-tls",
- "serialize",
  "smallvec 1.4.0",
 ]
 
@@ -3641,8 +3613,8 @@ dependencies = [
 name = "rustc_ast_lowering"
 version = "0.0.0"
 dependencies = [
- "arena",
  "log",
+ "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -3692,9 +3664,9 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_macros",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "serialize",
  "version_check",
 ]
 
@@ -3702,7 +3674,6 @@ dependencies = [
 name = "rustc_builtin_macros"
 version = "0.0.0"
 dependencies = [
- "fmt_macros",
  "log",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3712,6 +3683,7 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_parse",
+ "rustc_parse_format",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -3740,10 +3712,10 @@ dependencies = [
  "rustc_index",
  "rustc_llvm",
  "rustc_middle",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "serialize",
  "smallvec 1.4.0",
 ]
 
@@ -3768,11 +3740,11 @@ dependencies = [
  "rustc_incremental",
  "rustc_index",
  "rustc_middle",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_symbol_mangling",
  "rustc_target",
- "serialize",
  "tempfile",
 ]
 
@@ -3784,19 +3756,20 @@ dependencies = [
  "cfg-if",
  "crossbeam-utils 0.7.2",
  "ena 0.14.0",
- "graphviz",
  "indexmap",
  "jobserver",
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "log",
  "measureme",
+ "once_cell",
  "parking_lot 0.10.2",
  "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",
+ "rustc_graphviz",
  "rustc_index",
- "serialize",
+ "rustc_serialize",
  "smallvec 1.4.0",
  "stable_deref_trait",
  "stacker",
@@ -3808,7 +3781,7 @@ name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
  "env_logger 0.7.1",
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "log",
  "rustc_ast",
@@ -3828,10 +3801,10 @@ dependencies = [
  "rustc_parse",
  "rustc_plugin_impl",
  "rustc_save_analysis",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "serialize",
  "winapi 0.3.8",
 ]
 
@@ -3843,12 +3816,12 @@ version = "0.0.0"
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.8.0",
  "atty",
  "log",
  "rustc_data_structures",
+ "rustc_serialize",
  "rustc_span",
- "serialize",
  "termcolor",
  "termize",
  "unicode-width",
@@ -3869,9 +3842,9 @@ dependencies = [
  "rustc_feature",
  "rustc_lexer",
  "rustc_parse",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "serialize",
  "smallvec 1.4.0",
 ]
 
@@ -3879,7 +3852,7 @@ dependencies = [
 name = "rustc_feature"
 version = "0.0.0"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
  "rustc_data_structures",
  "rustc_span",
 ]
@@ -3889,18 +3862,22 @@ name = "rustc_fs_util"
 version = "0.0.0"
 
 [[package]]
+name = "rustc_graphviz"
+version = "0.0.0"
+
+[[package]]
 name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",
+ "rustc_serialize",
  "rustc_span",
  "rustc_target",
- "serialize",
  "smallvec 1.4.0",
 ]
 
@@ -3919,24 +3896,24 @@ dependencies = [
 name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
- "graphviz",
  "log",
  "rand 0.7.3",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_fs_util",
+ "rustc_graphviz",
  "rustc_hir",
  "rustc_middle",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "serialize",
 ]
 
 [[package]]
 name = "rustc_index"
 version = "0.0.0"
 dependencies = [
- "serialize",
+ "rustc_serialize",
  "smallvec 1.4.0",
 ]
 
@@ -3944,19 +3921,19 @@ dependencies = [
 name = "rustc_infer"
 version = "0.0.0"
 dependencies = [
- "graphviz",
  "log",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_graphviz",
  "rustc_hir",
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "serialize",
  "smallvec 1.4.0",
 ]
 
@@ -3990,6 +3967,7 @@ dependencies = [
  "rustc_plugin_impl",
  "rustc_privacy",
  "rustc_resolve",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_symbol_mangling",
@@ -3998,7 +3976,6 @@ dependencies = [
  "rustc_traits",
  "rustc_ty",
  "rustc_typeck",
- "serialize",
  "smallvec 1.4.0",
  "tempfile",
  "winapi 0.3.8",
@@ -4068,10 +4045,10 @@ dependencies = [
  "rustc_hir_pretty",
  "rustc_index",
  "rustc_middle",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "serialize",
  "smallvec 1.4.0",
  "stable_deref_trait",
  "winapi 0.3.8",
@@ -4081,7 +4058,6 @@ dependencies = [
 name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
- "arena",
  "bitflags",
  "byteorder",
  "chalk-ir",
@@ -4090,6 +4066,7 @@ dependencies = [
  "polonius-engine",
  "rustc-rayon-core",
  "rustc_apfloat",
+ "rustc_arena",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -4099,11 +4076,11 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_query_system",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
  "scoped-tls",
- "serialize",
  "smallvec 1.4.0",
 ]
 
@@ -4112,7 +4089,6 @@ name = "rustc_mir"
 version = "0.0.0"
 dependencies = [
  "either",
- "graphviz",
  "itertools 0.8.0",
  "log",
  "log_settings",
@@ -4122,17 +4098,18 @@ dependencies = [
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_graphviz",
  "rustc_hir",
  "rustc_index",
  "rustc_infer",
  "rustc_lexer",
  "rustc_macros",
  "rustc_middle",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "serialize",
  "smallvec 1.4.0",
 ]
 
@@ -4140,9 +4117,9 @@ dependencies = [
 name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
- "arena",
  "log",
  "rustc_apfloat",
+ "rustc_arena",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -4151,11 +4128,11 @@ dependencies = [
  "rustc_index",
  "rustc_infer",
  "rustc_middle",
+ "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "serialize",
  "smallvec 1.4.0",
 ]
 
@@ -4174,6 +4151,14 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "unicode-normalization",
+]
+
+[[package]]
+name = "rustc_parse_format"
+version = "0.0.0"
+dependencies = [
+ "rustc_lexer",
+ "rustc_span",
 ]
 
 [[package]]
@@ -4227,15 +4212,15 @@ dependencies = [
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
- "arena",
  "log",
  "parking_lot 0.10.2",
  "rustc-rayon-core",
+ "rustc_arena",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_index",
+ "rustc_serialize",
  "rustc_span",
- "serialize",
  "smallvec 1.4.0",
 ]
 
@@ -4243,9 +4228,9 @@ dependencies = [
 name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
- "arena",
  "bitflags",
  "log",
+ "rustc_arena",
  "rustc_ast",
  "rustc_ast_lowering",
  "rustc_ast_pretty",
@@ -4282,6 +4267,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_serialize"
+version = "0.0.0"
+dependencies = [
+ "indexmap",
+ "smallvec 1.4.0",
+]
+
+[[package]]
 name = "rustc_session"
 version = "0.0.0"
 dependencies = [
@@ -4293,24 +4286,24 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fs_util",
+ "rustc_serialize",
  "rustc_span",
  "rustc_target",
- "serialize",
 ]
 
 [[package]]
 name = "rustc_span"
 version = "0.0.0"
 dependencies = [
- "arena",
  "cfg-if",
  "log",
  "md-5",
+ "rustc_arena",
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",
+ "rustc_serialize",
  "scoped-tls",
- "serialize",
  "sha-1",
  "unicode-width",
 ]
@@ -4340,8 +4333,8 @@ dependencies = [
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",
+ "rustc_serialize",
  "rustc_span",
- "serialize",
 ]
 
 [[package]]
@@ -4358,7 +4351,6 @@ checksum = "b725dadae9fabc488df69a287f5a99c5eaf5d10853842a8a3dfac52476f544ee"
 name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
- "fmt_macros",
  "log",
  "rustc_ast",
  "rustc_attr",
@@ -4369,6 +4361,7 @@ dependencies = [
  "rustc_infer",
  "rustc_macros",
  "rustc_middle",
+ "rustc_parse_format",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -4414,8 +4407,8 @@ dependencies = [
 name = "rustc_typeck"
 version = "0.0.0"
 dependencies = [
- "arena",
  "log",
+ "rustc_arena",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -4437,7 +4430,7 @@ version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 dependencies = [
- "semver",
+ "semver 0.9.0",
 ]
 
 [[package]]
@@ -4488,9 +4481,9 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.4.14"
+version = "1.4.15"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.6.1",
  "bytecount",
  "cargo_metadata 0.8.0",
  "derive-new",
@@ -4501,11 +4494,12 @@ dependencies = [
  "getopts",
  "ignore",
  "itertools 0.8.0",
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "regex",
  "rustc-ap-rustc_ast",
  "rustc-ap-rustc_ast_pretty",
+ "rustc-ap-rustc_attr",
  "rustc-ap-rustc_data_structures",
  "rustc-ap-rustc_errors",
  "rustc-ap-rustc_expand",
@@ -4545,7 +4539,7 @@ version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "87f550b06b6cba9c8b8be3ee73f391990116bf527450d2556e9b9ce263b9a021"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
  "winapi 0.3.8",
 ]
 
@@ -4593,6 +4587,16 @@ name = "semver"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
+dependencies = [
+ "semver-parser",
+ "serde",
+]
+
+[[package]]
+name = "semver"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "394cec28fa623e00903caf7ba4fa6fb9a0e260280bb8cdbbba029611108a0190"
 dependencies = [
  "semver-parser",
  "serde",
@@ -4665,14 +4669,6 @@ dependencies = [
  "itoa",
  "serde",
  "url 1.7.2",
-]
-
-[[package]]
-name = "serialize"
-version = "0.0.0"
-dependencies = [
- "indexmap",
- "smallvec 1.4.0",
 ]
 
 [[package]]
@@ -4811,7 +4807,7 @@ version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25d70109977172b127fe834e5449e5ab1740b9ba49fa18a2020f509174f25423"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
  "new_debug_unreachable",
  "phf_shared",
  "precomputed-hash",
@@ -4995,17 +4991,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "termion"
-version = "1.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "689a3bdfaab439fd92bc87df5c4c78417d3cbe537487274e9b0b2dce76e92096"
-dependencies = [
- "libc",
- "redox_syscall",
- "redox_termios",
-]
-
-[[package]]
 name = "termize"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5071,20 +5056,11 @@ dependencies = [
 
 [[package]]
 name = "thread_local"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
-dependencies = [
- "lazy_static 1.4.0",
-]
-
-[[package]]
-name = "thread_local"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d40c6d1b69745a6ec6fb1ca717914848da4b44ae29d9b3080cbee91d72a69b14"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
 ]
 
 [[package]]
@@ -5092,7 +5068,7 @@ name = "tidy"
 version = "0.1.0"
 dependencies = [
  "cargo_metadata 0.9.1",
- "lazy_static 1.4.0",
+ "lazy_static",
  "regex",
  "walkdir",
 ]
@@ -5217,7 +5193,7 @@ checksum = "afbd6ef1b8cc2bd2c2b580d882774d443ebb1c6ceefe35ba9ea4ab586c89dbe8"
 dependencies = [
  "crossbeam-queue",
  "futures",
- "lazy_static 1.4.0",
+ "lazy_static",
  "libc",
  "log",
  "mio",
@@ -5236,7 +5212,7 @@ checksum = "6732fe6b53c8d11178dcb77ac6d9682af27fc6d4cb87789449152e5377377146"
 dependencies = [
  "crossbeam-utils 0.6.5",
  "futures",
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "mio",
  "num_cpus",
@@ -5307,7 +5283,7 @@ dependencies = [
  "crossbeam-queue",
  "crossbeam-utils 0.6.5",
  "futures",
- "lazy_static 1.4.0",
+ "lazy_static",
  "log",
  "num_cpus",
  "slab",
@@ -5377,7 +5353,7 @@ dependencies = [
  "failure",
  "failure_derive",
  "is-match",
- "lazy_static 1.4.0",
+ "lazy_static",
  "regex",
  "toml",
  "toml-query_derive",
@@ -5421,7 +5397,7 @@ version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca6b52bf4da6512f0f07785a04769222e50d29639e7ecd016b7806fd2de306b4"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
  "regex",
 ]
 
@@ -5430,12 +5406,6 @@ name = "ucd-trie"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71a9c5b1fe77426cf144cc30e49e955270f5086e31a6441dfa8b32efc09b9d77"
-
-[[package]]
-name = "ucd-util"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "535c204ee4d8434478593480b8f86ab45ec9aae0e83c568ca81abf0fd0e88f86"
 
 [[package]]
 name = "unicase"
@@ -5571,12 +5541,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1262dfab4c30d5cb7c07026be00ee343a6cf5027fdc0104a9160f354e5db75c"
 
 [[package]]
-name = "utf8-ranges"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "796f7e48bef87609f7ade7e06495a87d5cd06c7866e6a5cbfceffc558a243737"
-
-[[package]]
 name = "utf8parse"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5605,13 +5569,12 @@ checksum = "05c78687fb1a80548ae3250346c3db86a80a7cdd77bda190189f2d0a0987c81a"
 
 [[package]]
 name = "vergen"
-version = "3.0.4"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aba5e34f93dc7051dfad05b98a18e9156f27e7b431fe1d2398cb6061c0a1dba"
+checksum = "4ce50d8996df1f85af15f2cd8d33daae6e479575123ef4314a51a70a230739cb"
 dependencies = [
  "bitflags",
  "chrono",
- "failure",
 ]
 
 [[package]]
@@ -5758,7 +5721,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59893318ba3ad2b704498c7761214a10eaf42c5f838bce9fc0145bf2ba658cfa"
 dependencies = [
- "lazy_static 1.4.0",
+ "lazy_static",
  "thiserror",
  "yaml-rust 0.4.3",
 ]

@@ -283,7 +283,10 @@ crate enum ExprKind<'tcx> {
         template: &'tcx [InlineAsmTemplatePiece],
         operands: Vec<InlineAsmOperand<'tcx>>,
         options: InlineAsmOptions,
+        line_spans: &'tcx [Span],
     },
+    /// An expression taking a reference to a thread local.
+    ThreadLocalRef(DefId),
     LlvmInlineAsm {
         asm: &'tcx hir::LlvmInlineAsmInner,
         outputs: Vec<ExprRef<'tcx>>,

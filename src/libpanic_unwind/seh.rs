@@ -327,8 +327,5 @@ pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
 #[lang = "eh_personality"]
 #[cfg(not(test))]
 fn rust_eh_personality() {
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
-    unsafe {
-        core::intrinsics::abort()
-    }
+    core::intrinsics::abort()
 }

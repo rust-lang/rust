@@ -720,7 +720,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFile(
 
 extern "C" LLVMMetadataRef
 LLVMRustDIBuilderCreateSubroutineType(LLVMRustDIBuilderRef Builder,
-                                      LLVMMetadataRef File,
                                       LLVMMetadataRef ParameterTypes) {
   return wrap(Builder->createSubroutineType(
       DITypeRefArray(unwrap<MDTuple>(ParameterTypes))));
@@ -755,7 +754,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateBasicType(
     LLVMRustDIBuilderRef Builder, const char *Name, size_t NameLen,
-    uint64_t SizeInBits, uint32_t AlignInBits, unsigned Encoding) {
+    uint64_t SizeInBits, unsigned Encoding) {
   return wrap(Builder->createBasicType(StringRef(Name, NameLen), SizeInBits, Encoding));
 }
 
@@ -964,9 +963,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen,
-    LLVMMetadataRef Ty, LLVMMetadataRef File, unsigned LineNo,
-    unsigned ColumnNo) {
+    const char *Name, size_t NameLen, LLVMMetadataRef Ty) {
   return wrap(Builder->createTemplateTypeParameter(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty)));
 }
@@ -1219,10 +1216,33 @@ extern "C" void LLVMRustSetInlineAsmDiagnosticHandler(
   unwrap(C)->setInlineAsmDiagnosticHandler(H, CX);
 }
 
-extern "C" void LLVMRustWriteSMDiagnosticToString(LLVMSMDiagnosticRef D,
-                                                  RustStringRef Str) {
-  RawRustStringOstream OS(Str);
-  unwrap(D)->print("", OS);
+extern "C" bool LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef,
+                                           RustStringRef MessageOut,
+                                           RustStringRef BufferOut,
+                                           unsigned* LocOut,
+                                           unsigned* RangesOut,
+                                           size_t* NumRanges) {
+  SMDiagnostic& D = *unwrap(DRef);
+  RawRustStringOstream MessageOS(MessageOut);
+  MessageOS << D.getMessage();
+
+  if (D.getLoc() == SMLoc())
+    return false;
+
+  const SourceMgr &LSM = *D.getSourceMgr();
+  const MemoryBuffer *LBuf = LSM.getMemoryBuffer(LSM.FindBufferContainingLoc(D.getLoc()));
+  LLVMRustStringWriteImpl(BufferOut, LBuf->getBufferStart(), LBuf->getBufferSize());
+
+  *LocOut = D.getLoc().getPointer() - LBuf->getBufferStart();
+
+  *NumRanges = std::min(*NumRanges, D.getRanges().size());
+  size_t LineStart = *LocOut - (size_t)D.getColumnNo();
+  for (size_t i = 0; i < *NumRanges; i++) {
+    RangesOut[i * 2] = LineStart + D.getRanges()[i].first;
+    RangesOut[i * 2 + 1] = LineStart + D.getRanges()[i].second;
+  }
+
+  return true;
 }
 
 extern "C" LLVMValueRef LLVMRustBuildCleanupPad(LLVMBuilderRef B,

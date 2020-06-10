@@ -1,5 +1,5 @@
 use crate::obligation_forest::{ForestObligation, ObligationForest};
-use graphviz as dot;
+use rustc_graphviz as dot;
 use std::env::var_os;
 use std::fs::File;
 use std::io::BufWriter;

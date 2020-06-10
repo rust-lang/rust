@@ -1,5 +1,7 @@
 #![crate_name = "foo"]
 
+// ignore-tidy-linelength
+
 // @has foo/index.html '//a/@href' '../foo/struct.Foo.html#method.new'
 // @has foo/struct.Foo.html '//a/@href' '../foo/struct.Foo.html#method.new'
 
@@ -24,6 +26,92 @@ pub struct Bar;
 
 impl Bar {
     pub fn new2() -> Self {
+        unimplemented!()
+    }
+}
+
+pub struct MyStruct {
+    // @has foo/struct.MyStruct.html '//a/@href' '../foo/struct.MyStruct.html#structfield.struct_field'
+
+    /// [`struct_field`]
+    ///
+    /// [`struct_field`]: Self::struct_field
+    pub struct_field: u8,
+}
+
+pub enum MyEnum {
+    // @has foo/enum.MyEnum.html '//a/@href' '../foo/enum.MyEnum.html#EnumVariant.v'
+
+    /// [`EnumVariant`]
+    ///
+    /// [`EnumVariant`]: Self::EnumVariant
+    EnumVariant,
+}
+
+pub union MyUnion {
+    // @has foo/union.MyUnion.html '//a/@href' '../foo/union.MyUnion.html#structfield.union_field'
+
+    /// [`union_field`]
+    ///
+    /// [`union_field`]: Self::union_field
+    pub union_field: f32,
+}
+
+pub trait MyTrait {
+    // @has foo/trait.MyTrait.html '//a/@href' '../foo/trait.MyTrait.html#associatedtype.AssoType'
+
+    /// [`AssoType`]
+    ///
+    /// [`AssoType`]: Self::AssoType
+    type AssoType;
+
+    // @has foo/trait.MyTrait.html '//a/@href' '../foo/trait.MyTrait.html#associatedconstant.ASSO_CONST'
+
+    /// [`ASSO_CONST`]
+    ///
+    /// [`ASSO_CONST`]: Self::ASSO_CONST
+    const ASSO_CONST: i32 = 1;
+
+    // @has foo/trait.MyTrait.html '//a/@href' '../foo/trait.MyTrait.html#method.asso_fn'
+
+    /// [`asso_fn`]
+    ///
+    /// [`asso_fn`]: Self::asso_fn
+    fn asso_fn() {}
+}
+
+impl MyStruct {
+    // @has foo/struct.MyStruct.html '//a/@href' '../foo/struct.MyStruct.html#method.for_impl'
+
+    /// [`for_impl`]
+    ///
+    /// [`for_impl`]: Self::for_impl
+    pub fn for_impl() {
+        unimplemented!()
+    }
+}
+
+impl MyTrait for MyStruct {
+    // @has foo/struct.MyStruct.html '//a/@href' '../foo/struct.MyStruct.html#associatedtype.AssoType'
+
+    /// [`AssoType`]
+    ///
+    /// [`AssoType`]: Self::AssoType
+    type AssoType = u32;
+
+    // @has foo/struct.MyStruct.html '//a/@href' '../foo/struct.MyStruct.html#associatedconstant.ASSO_CONST'
+
+    /// [`ASSO_CONST`]
+    ///
+    /// [`ASSO_CONST`]: Self::ASSO_CONST
+    const ASSO_CONST: i32 = 10;
+
+    // @has foo/struct.MyStruct.html '//a/@href' '../foo/struct.MyStruct.html#method.asso_fn'
+
+    /// [`asso_fn`]
+    ///
+    /// [`asso_fn`]: Self::asso_fn
+    fn asso_fn() {
         unimplemented!()
     }
 }

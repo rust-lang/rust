@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Detects giving a mutable reference to a function that only
+    /// **What it does:** Detects passing a mutable reference to a function that only
     /// requires an immutable reference.
     ///
     /// **Why is this bad?** The immutable reference rules out all other references
@@ -16,7 +16,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```ignore
+    /// // Bad
     /// my_vec.push(&mut value)
+    ///
+    /// // Good
+    /// my_vec.push(&value)
     /// ```
     pub UNNECESSARY_MUT_PASSED,
     style,

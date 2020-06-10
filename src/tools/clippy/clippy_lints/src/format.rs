@@ -25,9 +25,13 @@ declare_clippy_lint! {
     ///
     /// **Examples:**
     /// ```rust
+    ///
+    /// // Bad
     /// # let foo = "foo";
-    /// format!("foo");
     /// format!("{}", foo);
+    ///
+    /// // Good
+    /// format!("foo");
     /// ```
     pub USELESS_FORMAT,
     complexity,

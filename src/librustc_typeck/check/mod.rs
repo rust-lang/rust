@@ -31,9 +31,6 @@ can be broken down into several distinct phases:
   final assignments of the various region variables if there is some
   flexibility.
 
-- vtable: find and records the impls to use for each trait bound that
-  appears on a type parameter.
-
 - writeback: writes the final types within a function body, replacing
   type variables with their final inferred types.  These final types
   are written into the `tcx.node_types` table, which should *never* contain
@@ -87,7 +84,9 @@ mod upvar;
 mod wfcheck;
 pub mod writeback;
 
-use crate::astconv::{AstConv, GenericArgCountMismatch, PathSeg};
+use crate::astconv::{
+    AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, PathSeg,
+};
 use rustc_ast::ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr as attr;
@@ -106,22 +105,21 @@ use rustc_hir::lang_items::{
 use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
+use rustc_infer::infer;
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_infer::infer::{self, InferCtxt, InferOk, InferResult, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, InferOk, InferResult, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::hir::map::blocks::FnLikeNode;
-use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::{
-    GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSelfTy, UserSubsts,
-};
+use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::subst::{GenericArgKind, UserSelfTy, UserSubsts};
 use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, Const, GenericParamDefKind, RegionKind, ToPolyTraitRef,
@@ -667,13 +665,6 @@ impl Inherited<'a, 'tcx> {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = tcx.hir().maybe_body_owned_by(item_id);
-        let implicit_region_bound = body_id.map(|body_id| {
-            let body = tcx.hir().body(body_id);
-            tcx.mk_region(ty::ReScope(region::Scope {
-                id: body.value.hir_id.local_id,
-                data: region::ScopeData::CallSite,
-            }))
-        });
 
         Inherited {
             tables: MaybeInProgressTables { maybe_tables: infcx.in_progress_tables },
@@ -686,7 +677,7 @@ impl Inherited<'a, 'tcx> {
             deferred_generator_interiors: RefCell::new(Vec::new()),
             opaque_types: RefCell::new(Default::default()),
             opaque_types_vars: RefCell::new(Default::default()),
-            implicit_region_bound,
+            implicit_region_bound: None,
             body_id,
         }
     }
@@ -1337,12 +1328,9 @@ fn check_fn<'a, 'tcx>(
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
     let maybe_va_list = if fn_sig.c_variadic {
-        let va_list_did =
-            tcx.require_lang_item(VaListTypeLangItem, Some(body.params.last().unwrap().span));
-        let region = tcx.mk_region(ty::ReScope(region::Scope {
-            id: body.value.hir_id.local_id,
-            data: region::ScopeData::CallSite,
-        }));
+        let span = body.params.last().unwrap().span;
+        let va_list_did = tcx.require_lang_item(VaListTypeLangItem, Some(span));
+        let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
 
         Some(tcx.type_of(va_list_did).subst(tcx, &[region.into()]))
     } else {
@@ -1458,7 +1446,7 @@ fn check_fn<'a, 'tcx>(
                 inherited.register_predicate(traits::Obligation::new(
                     cause,
                     param_env,
-                    trait_ref.without_const().to_predicate(),
+                    trait_ref.without_const().to_predicate(tcx),
                 ));
             }
         }
@@ -1632,12 +1620,17 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
     struct ProhibitOpaqueVisitor<'tcx> {
         opaque_identity_ty: Ty<'tcx>,
         generics: &'tcx ty::Generics,
+        ty: Option<Ty<'tcx>>,
     };
 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
-            if t == self.opaque_identity_ty { false } else { t.super_visit_with(self) }
+            if t != self.opaque_identity_ty && t.super_visit_with(self) {
+                self.ty = Some(t);
+                return true;
+            }
+            false
         }
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
@@ -1660,46 +1653,61 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
         }
     }
 
-    let prohibit_opaque = match item.kind {
-        ItemKind::OpaqueTy(hir::OpaqueTy {
-            origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
-            ..
-        }) => {
-            let mut visitor = ProhibitOpaqueVisitor {
-                opaque_identity_ty: tcx.mk_opaque(
-                    def_id.to_def_id(),
-                    InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
-                ),
-                generics: tcx.generics_of(def_id),
-            };
-            debug!("check_opaque_for_inheriting_lifetimes: visitor={:?}", visitor);
-
-            tcx.predicates_of(def_id)
-                .predicates
-                .iter()
-                .any(|(predicate, _)| predicate.visit_with(&mut visitor))
-        }
-        _ => false,
-    };
-
-    debug!("check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}", prohibit_opaque);
-    if prohibit_opaque {
-        let is_async = match item.kind {
-            ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
-                hir::OpaqueTyOrigin::AsyncFn => true,
-                _ => false,
-            },
-            _ => unreachable!(),
+    if let ItemKind::OpaqueTy(hir::OpaqueTy {
+        origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
+        ..
+    }) = item.kind
+    {
+        let mut visitor = ProhibitOpaqueVisitor {
+            opaque_identity_ty: tcx.mk_opaque(
+                def_id.to_def_id(),
+                InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
+            ),
+            generics: tcx.generics_of(def_id),
+            ty: None,
         };
-
-        tcx.sess.span_err(
-            span,
-            &format!(
-            "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
-             a parent scope",
-            if is_async { "async fn" } else { "impl Trait" },
-        ),
+        let prohibit_opaque = tcx
+            .predicates_of(def_id)
+            .predicates
+            .iter()
+            .any(|(predicate, _)| predicate.visit_with(&mut visitor));
+        debug!(
+            "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor={:?}",
+            prohibit_opaque, visitor
         );
+
+        if prohibit_opaque {
+            let is_async = match item.kind {
+                ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
+                    hir::OpaqueTyOrigin::AsyncFn => true,
+                    _ => false,
+                },
+                _ => unreachable!(),
+            };
+
+            let mut err = struct_span_err!(
+                tcx.sess,
+                span,
+                E0760,
+                "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
+             a parent scope",
+                if is_async { "async fn" } else { "impl Trait" },
+            );
+
+            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
+                if snippet == "Self" {
+                    if let Some(ty) = visitor.ty {
+                        err.span_suggestion(
+                            span,
+                            "consider spelling out the type instead",
+                            format!("{:?}", ty),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+            err.emit();
+        }
     }
 }
 
@@ -2223,8 +2231,8 @@ fn bounds_from_generic_predicates(
     let mut projections = vec![];
     for (predicate, _) in predicates.predicates {
         debug!("predicate {:?}", predicate);
-        match predicate {
-            ty::Predicate::Trait(trait_predicate, _) => {
+        match predicate.kind() {
+            ty::PredicateKind::Trait(trait_predicate, _) => {
                 let entry = types.entry(trait_predicate.skip_binder().self_ty()).or_default();
                 let def_id = trait_predicate.skip_binder().def_id();
                 if Some(def_id) != tcx.lang_items().sized_trait() {
@@ -2233,7 +2241,7 @@ fn bounds_from_generic_predicates(
                     entry.push(trait_predicate.skip_binder().def_id());
                 }
             }
-            ty::Predicate::Projection(projection_pred) => {
+            ty::PredicateKind::Projection(projection_pred) => {
                 projections.push(projection_pred);
             }
             _ => {}
@@ -2769,8 +2777,8 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         ty::GenericPredicates {
             parent: None,
             predicates: tcx.arena.alloc_from_iter(self.param_env.caller_bounds.iter().filter_map(
-                |&predicate| match predicate {
-                    ty::Predicate::Trait(ref data, _)
+                |predicate| match predicate.kind() {
+                    ty::PredicateKind::Trait(ref data, _)
                         if data.skip_binder().self_ty().is_param(index) =>
                     {
                         // HACK(eddyb) should get the original `Span`.
@@ -3341,7 +3349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> Ty<'tcx> {
         let t = AstConv::ast_ty_to_ty(self, ast_t);
-        self.register_wf_obligation(t, ast_t.span, traits::MiscObligation);
+        self.register_wf_obligation(t.into(), ast_t.span, traits::MiscObligation);
         t
     }
 
@@ -3361,28 +3369,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn to_const(&self, ast_c: &hir::AnonConst) -> &'tcx ty::Const<'tcx> {
         let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
         let c = ty::Const::from_anon_const(self.tcx, const_def_id);
-
-        // HACK(eddyb) emulate what a `WellFormedConst` obligation would do.
-        // This code should be replaced with the proper WF handling ASAP.
-        if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = c.val {
-            assert!(promoted.is_none());
-
-            // HACK(eddyb) let's hope these are always empty.
-            // let obligations = self.nominal_obligations(def_id, substs);
-            // self.out.extend(obligations);
-
-            let cause = traits::ObligationCause::new(
-                self.tcx.def_span(const_def_id.to_def_id()),
-                self.body_id,
-                traits::MiscObligation,
-            );
-            self.register_predicate(traits::Obligation::new(
-                cause,
-                self.param_env,
-                ty::Predicate::ConstEvaluatable(def_id, substs),
-            ));
-        }
-
+        self.register_wf_obligation(
+            c.into(),
+            self.tcx.hir().span(ast_c.hir_id),
+            ObligationCauseCode::MiscObligation,
+        );
         c
     }
 
@@ -3415,11 +3406,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Registers an obligation for checking later, during regionck, that the type `ty` must
-    /// outlive the region `r`.
+    /// Registers an obligation for checking later, during regionck, that `arg` is well-formed.
     pub fn register_wf_obligation(
         &self,
-        ty: Ty<'tcx>,
+        arg: subst::GenericArg<'tcx>,
         span: Span,
         code: traits::ObligationCauseCode<'tcx>,
     ) {
@@ -3428,16 +3418,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_predicate(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::Predicate::WellFormed(ty),
+            ty::PredicateKind::WellFormed(arg).to_predicate(self.tcx),
         ));
     }
 
-    /// Registers obligations that all types appearing in `substs` are well-formed.
+    /// Registers obligations that all `substs` are well-formed.
     pub fn add_wf_bounds(&self, substs: SubstsRef<'tcx>, expr: &hir::Expr<'_>) {
-        for ty in substs.types() {
-            if !ty.references_error() {
-                self.register_wf_obligation(ty, expr.span, traits::MiscObligation);
-            }
+        for arg in substs.iter().filter(|arg| {
+            matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
+        }) {
+            self.register_wf_obligation(arg, expr.span, traits::MiscObligation);
         }
     }
 
@@ -3820,7 +3810,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         expected_vid: ty::TyVid,
     ) -> bool {
-        let self_ty = self.shallow_resolve(trait_ref.self_ty());
+        let self_ty = self.shallow_resolve(trait_ref.skip_binder().self_ty());
         debug!(
             "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?}, expected_vid={:?})",
             trait_ref, self_ty, expected_vid
@@ -3857,18 +3847,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .borrow()
             .pending_obligations()
             .into_iter()
-            .filter_map(move |obligation| match obligation.predicate {
-                ty::Predicate::Projection(ref data) => {
+            .filter_map(move |obligation| match obligation.predicate.kind() {
+                ty::PredicateKind::Projection(ref data) => {
                     Some((data.to_poly_trait_ref(self.tcx), obligation))
                 }
-                ty::Predicate::Trait(ref data, _) => Some((data.to_poly_trait_ref(), obligation)),
-                ty::Predicate::Subtype(..) => None,
-                ty::Predicate::RegionOutlives(..) => None,
-                ty::Predicate::TypeOutlives(..) => None,
-                ty::Predicate::WellFormed(..) => None,
-                ty::Predicate::ObjectSafe(..) => None,
-                ty::Predicate::ConstEvaluatable(..) => None,
-                ty::Predicate::ConstEquate(..) => None,
+                ty::PredicateKind::Trait(ref data, _) => {
+                    Some((data.to_poly_trait_ref(), obligation))
+                }
+                ty::PredicateKind::Subtype(..) => None,
+                ty::PredicateKind::RegionOutlives(..) => None,
+                ty::PredicateKind::TypeOutlives(..) => None,
+                ty::PredicateKind::WellFormed(..) => None,
+                ty::PredicateKind::ObjectSafe(..) => None,
+                ty::PredicateKind::ConstEvaluatable(..) => None,
+                ty::PredicateKind::ConstEquate(..) => None,
                 // N.B., this predicate is created by breaking down a
                 // `ClosureType: FnFoo()` predicate, where
                 // `ClosureType` represents some `Closure`. It can't
@@ -3877,7 +3869,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this closure yet; this is exactly why the other
                 // code is looking for a self type of a unresolved
                 // inference variable.
-                ty::Predicate::ClosureKind(..) => None,
+                ty::PredicateKind::ClosureKind(..) => None,
             })
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))
     }
@@ -3907,8 +3899,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // All the input types from the fn signature must outlive the call
         // so as to validate implied bounds.
-        for (fn_input_ty, arg_expr) in fn_inputs.iter().zip(args.iter()) {
-            self.register_wf_obligation(fn_input_ty, arg_expr.span, traits::MiscObligation);
+        for (&fn_input_ty, arg_expr) in fn_inputs.iter().zip(args.iter()) {
+            self.register_wf_obligation(fn_input_ty.into(), arg_expr.span, traits::MiscObligation);
         }
 
         let expected_arg_count = fn_inputs.len();
@@ -4075,7 +4067,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("check_closures={}", check_closures);
 
             // More awful hacks: before we check argument types, try to do
-            // an "opportunistic" vtable resolution of any trait bounds on
+            // an "opportunistic" trait resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
                 self.select_obligations_where_possible(false, |errors| {
@@ -4206,7 +4198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 continue;
             }
 
-            if let ty::Predicate::Trait(predicate, _) = error.obligation.predicate {
+            if let ty::PredicateKind::Trait(predicate, _) = error.obligation.predicate.kind() {
                 // Collect the argument position for all arguments that could have caused this
                 // `FulfillmentError`.
                 let mut referenced_in = final_arg_types
@@ -4253,7 +4245,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let hir::ExprKind::Path(qpath) = &path.kind {
                 if let hir::QPath::Resolved(_, path) = &qpath {
                     for error in errors {
-                        if let ty::Predicate::Trait(predicate, _) = error.obligation.predicate {
+                        if let ty::PredicateKind::Trait(predicate, _) =
+                            error.obligation.predicate.kind()
+                        {
                             // If any of the type arguments in this path segment caused the
                             // `FullfillmentError`, point at its span (#61860).
                             for arg in path
@@ -5322,10 +5316,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 let predicate =
-                    ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
+                    ty::PredicateKind::Projection(ty::Binder::bind(ty::ProjectionPredicate {
                         projection_ty,
                         ty: expected,
-                    }));
+                    }))
+                    .to_predicate(self.tcx);
                 let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
 
                 debug!("suggest_missing_await: trying obligation {:?}", obligation);
@@ -5438,7 +5433,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
                 match container {
                     ty::TraitContainer(trait_did) => {
-                        callee::check_legal_trait_for_method_call(tcx, span, trait_did)
+                        callee::check_legal_trait_for_method_call(tcx, span, None, trait_did)
                     }
                     ty::ImplContainer(impl_def_id) => {
                         if segments.len() == 1 {
@@ -5500,11 +5495,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
-            if let Err(GenericArgCountMismatch { reported: Some(ErrorReported), .. }) =
-                AstConv::check_generic_arg_count_for_call(
-                    tcx, span, &generics, &seg, false, // `is_method_call`
-                )
-            {
+            if let GenericArgCountResult {
+                correct: Err(GenericArgCountMismatch { reported: Some(ErrorReported), .. }),
+                ..
+            } = AstConv::check_generic_arg_count_for_call(
+                tcx, span, &generics, &seg, false, // `is_method_call`
+            ) {
                 infer_args_for_err.insert(index);
                 self.set_tainted_by_errors(); // See issue #53251.
             }
@@ -5560,6 +5556,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // escaping late-bound regions, and nor should the base type scheme.
         let ty = tcx.type_of(def_id);
 
+        let arg_count = GenericArgCountResult {
+            explicit_late_bound: ExplicitLateBound::No,
+            correct: if infer_args_for_err.is_empty() {
+                Ok(())
+            } else {
+                Err(GenericArgCountMismatch::default())
+            },
+        };
+
         let substs = self_ctor_substs.unwrap_or_else(|| {
             AstConv::create_substs_for_generic_args(
                 tcx,
@@ -5567,7 +5572,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &[][..],
                 has_self,
                 self_ty,
-                infer_args_for_err.is_empty(),
+                arg_count,
                 // Provide the generic args, and whether types should be inferred.
                 |def_id| {
                     if let Some(&PathSeg(_, index)) =

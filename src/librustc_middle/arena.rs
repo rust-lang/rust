@@ -61,7 +61,7 @@ macro_rules! arena_types {
             [few] privacy_access_levels: rustc_middle::middle::privacy::AccessLevels,
             [few] foreign_module: rustc_middle::middle::cstore::ForeignModule,
             [few] foreign_modules: Vec<rustc_middle::middle::cstore::ForeignModule>,
-            [] upvars: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
+            [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<$tcx>,
             [] attribute: rustc_ast::ast::Attribute,
@@ -76,8 +76,16 @@ macro_rules! arena_types {
             [few] hir_definitions: rustc_hir::definitions::Definitions,
             [] hir_owner: rustc_middle::hir::Owner<$tcx>,
             [] hir_owner_nodes: rustc_middle::hir::OwnerNodes<$tcx>,
+
+            // Note that this deliberately duplicates items in the `rustc_hir::arena`,
+            // since we need to allocate this type on both the `rustc_hir` arena
+            // (during lowering) and the `librustc_middle` arena (for decoding MIR)
+            [decode] asm_template: rustc_ast::ast::InlineAsmTemplatePiece,
+
+            // This is used to decode the &'tcx [Span] for InlineAsm's line_spans.
+            [decode] span: rustc_span::Span,
         ], $tcx);
     )
 }
 
-arena_types!(arena::declare_arena, [], 'tcx);
+arena_types!(rustc_arena::declare_arena, [], 'tcx);

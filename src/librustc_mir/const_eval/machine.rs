@@ -10,6 +10,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_ast::ast::Mutability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::AssertMessage;
+use rustc_session::Limit;
 use rustc_span::symbol::Symbol;
 
 use crate::interpret::{
@@ -109,8 +110,8 @@ pub struct MemoryExtra {
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
-    pub(super) fn new(const_eval_limit: usize) -> Self {
-        CompileTimeInterpreter { steps_remaining: const_eval_limit, stack: Vec::new() }
+    pub(super) fn new(const_eval_limit: Limit) -> Self {
+        CompileTimeInterpreter { steps_remaining: const_eval_limit.0, stack: Vec::new() }
     }
 }
 

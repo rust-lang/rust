@@ -2105,8 +2105,8 @@ mod tests {
     }
 
     #[test]
-    fn test_command_implements_send() {
-        fn take_send_type<T: Send>(_: T) {}
-        take_send_type(Command::new(""))
+    fn test_command_implements_send_sync() {
+        fn take_send_sync_type<T: Send + Sync>(_: T) {}
+        take_send_sync_type(Command::new(""))
     }
 }

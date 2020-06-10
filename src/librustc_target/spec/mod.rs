@@ -618,6 +618,7 @@ supported_targets! {
     ("i686-uwp-windows-msvc", i686_uwp_windows_msvc),
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
+    ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
 
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
@@ -732,8 +733,7 @@ pub struct TargetOptions {
     pub lld_flavor: LldFlavor,
 
     /// Linker arguments that are passed *before* any user-defined libraries.
-    pub pre_link_args: LinkArgs, // ... unconditionally
-    pub pre_link_args_crt: LinkArgs, // ... when linking with a bundled crt
+    pub pre_link_args: LinkArgs,
     /// Objects to link before and after all other object code.
     pub pre_link_objects: CrtObjects,
     pub post_link_objects: CrtObjects,
@@ -855,6 +855,8 @@ pub struct TargetOptions {
     /// the functions in the executable are not randomized and can be used
     /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
+    /// Executables that are both statically linked and position-independent are supported.
+    pub static_position_independent_executables: bool,
     /// Determines if the target always requires using the PLT for indirect
     /// library calls or not. This controls the default value of the `-Z plt` flag.
     pub needs_plt: bool,
@@ -994,7 +996,6 @@ impl Default for TargetOptions {
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
-            pre_link_args_crt: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             link_script: None,
             asm_args: Vec::new(),
@@ -1028,6 +1029,7 @@ impl Default for TargetOptions {
             has_rpath: false,
             no_default_libraries: true,
             position_independent_executables: false,
+            static_position_independent_executables: false,
             needs_plt: false,
             relro_level: RelroLevel::None,
             pre_link_objects: Default::default(),
@@ -1393,7 +1395,6 @@ impl Target {
         key!(post_link_objects_fallback, link_objects);
         key!(crt_objects_fallback, crt_objects_fallback)?;
         key!(pre_link_args, link_args);
-        key!(pre_link_args_crt, link_args);
         key!(late_link_args, link_args);
         key!(late_link_args_dynamic, link_args);
         key!(late_link_args_static, link_args);
@@ -1432,6 +1433,7 @@ impl Target {
         key!(has_rpath, bool);
         key!(no_default_libraries, bool);
         key!(position_independent_executables, bool);
+        key!(static_position_independent_executables, bool);
         key!(needs_plt, bool);
         key!(relro_level, RelroLevel)?;
         key!(archive_format);
@@ -1624,7 +1626,6 @@ impl ToJson for Target {
         target_option_val!(post_link_objects_fallback);
         target_option_val!(crt_objects_fallback);
         target_option_val!(link_args - pre_link_args);
-        target_option_val!(link_args - pre_link_args_crt);
         target_option_val!(link_args - late_link_args);
         target_option_val!(link_args - late_link_args_dynamic);
         target_option_val!(link_args - late_link_args_static);
@@ -1663,6 +1664,7 @@ impl ToJson for Target {
         target_option_val!(has_rpath);
         target_option_val!(no_default_libraries);
         target_option_val!(position_independent_executables);
+        target_option_val!(static_position_independent_executables);
         target_option_val!(needs_plt);
         target_option_val!(relro_level);
         target_option_val!(archive_format);

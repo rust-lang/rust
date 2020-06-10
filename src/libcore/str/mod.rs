@@ -2270,12 +2270,11 @@ impl str {
         self.len() == 0
     }
 
-    /// Checks that `index`-th byte lies at the start and/or end of a
-    /// UTF-8 code point sequence.
+    /// Checks that `index`-th byte is the first byte in a UTF-8 code point
+    /// sequence or the end of the string.
     ///
     /// The start and end of the string (when `index == self.len()`) are
-    /// considered to be
-    /// boundaries.
+    /// considered to be boundaries.
     ///
     /// Returns `false` if `index` is greater than `self.len()`.
     ///
@@ -4052,15 +4051,13 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_strip)]
-    ///
     /// assert_eq!("foo:bar".strip_prefix("foo:"), Some("bar"));
     /// assert_eq!("foo:bar".strip_prefix("bar"), None);
     /// assert_eq!("foofoo".strip_prefix("foo"), Some("foo"));
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "str_strip", reason = "newly added", issue = "67302")]
+    #[stable(feature = "str_strip", since = "1.45.0")]
     pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a str> {
         prefix.strip_prefix_of(self)
     }
@@ -4082,14 +4079,13 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_strip)]
     /// assert_eq!("bar:foo".strip_suffix(":foo"), Some("bar"));
     /// assert_eq!("bar:foo".strip_suffix("bar"), None);
     /// assert_eq!("foofoo".strip_suffix("foo"), Some("foo"));
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "str_strip", reason = "newly added", issue = "67302")]
+    #[stable(feature = "str_strip", since = "1.45.0")]
     pub fn strip_suffix<'a, P>(&'a self, suffix: P) -> Option<&'a str>
     where
         P: Pattern<'a>,

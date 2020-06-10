@@ -596,8 +596,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         while !queue.is_empty() {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
-            let trait_pred = match obligation.predicate {
-                ty::Predicate::Trait(trait_pred, _) if traits.contains(&trait_pred.def_id()) => {
+            let trait_pred = match obligation.predicate.kind() {
+                &ty::PredicateKind::Trait(trait_pred, _)
+                    if traits.contains(&trait_pred.def_id()) =>
+                {
                     if unsize_did == trait_pred.def_id() {
                         let unsize_ty = trait_pred.skip_binder().trait_ref.substs[1].expect_ty();
                         if let ty::Tuple(..) = unsize_ty.kind {
@@ -655,7 +657,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // be silent, as it causes a type mismatch later.
                 }
 
-                Ok(Some(vtable)) => queue.extend(vtable.nested_obligations()),
+                Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
             }
         }
 
@@ -885,7 +887,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
         coerce
             .autoderef(rustc_span::DUMMY_SP, expr_ty)
-            .find_map(|(ty, steps)| coerce.unify(ty, target).ok().map(|_| steps))
+            .find_map(|(ty, steps)| self.probe(|_| coerce.unify(ty, target)).ok().map(|_| steps))
     }
 
     /// Given some expressions, their known unified type and another expression,

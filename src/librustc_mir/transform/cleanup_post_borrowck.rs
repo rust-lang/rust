@@ -35,6 +35,10 @@ impl<'tcx> MirPass<'tcx> for CleanupNonCodegenStatements {
         let mut delete = DeleteNonCodegenStatements { tcx };
         delete.visit_body(body);
         body.user_type_annotations.raw.clear();
+
+        for decl in &mut body.local_decls {
+            decl.user_ty = None;
+        }
     }
 }
 

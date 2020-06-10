@@ -2,7 +2,7 @@
 
 #![allow(non_upper_case_globals)]
 #![feature(rustc_private)]
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 
 pub const other: u8 = 1;
 pub const f: u8 = 1;

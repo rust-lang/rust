@@ -11,6 +11,7 @@ use walkdir::WalkDir;
 
 pub mod fmt;
 pub mod new_lint;
+pub mod ra_setup;
 pub mod stderr_length_check;
 pub mod update_lints;
 
@@ -400,7 +401,7 @@ fn test_replace_region_no_changes() {
         changed: false,
         new_lines: "123\n456\n789".to_string(),
     };
-    let result = replace_region_in_text(text, r#"^\s*123$"#, r#"^\s*456"#, false, || vec![]);
+    let result = replace_region_in_text(text, r#"^\s*123$"#, r#"^\s*456"#, false, Vec::new);
     assert_eq!(expected, result);
 }
 

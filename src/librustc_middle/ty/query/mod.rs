@@ -4,8 +4,8 @@ use crate::hir::map;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
-use crate::middle::cstore::{CrateSource, DepKind, NativeLibraryKind};
-use crate::middle::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLibrary};
+use crate::middle::cstore::{CrateSource, DepKind};
+use crate::middle::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
@@ -27,7 +27,7 @@ use crate::traits::query::{
     OutlivesBound,
 };
 use crate::traits::specialization_graph;
-use crate::traits::{self, Vtable};
+use crate::traits::{self, ImplSource};
 use crate::ty::steal::Steal;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
@@ -46,6 +46,7 @@ use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, HirIdSet, ItemLocalId, TraitCandidate};
 use rustc_index::vec::IndexVec;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
+use rustc_session::utils::NativeLibKind;
 use rustc_session::CrateDisambiguator;
 use rustc_target::spec::PanicStrategy;
 

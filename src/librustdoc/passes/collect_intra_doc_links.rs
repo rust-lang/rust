@@ -8,7 +8,7 @@ use rustc_hir::def::{
     Namespace::{self, *},
     PerNS, Res,
 };
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
@@ -61,7 +61,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         &self,
         path_str: &str,
         current_item: &Option<String>,
-        module_id: rustc_ast::ast::NodeId,
+        module_id: LocalDefId,
     ) -> Result<(Res, Option<String>), ErrorKind> {
         let cx = self.cx;
 
@@ -137,7 +137,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
         // In case we're in a module, try to resolve the relative path.
         if let Some(module_id) = parent_id.or(self.mod_ids.last().cloned()) {
-            let module_id = cx.tcx.hir().hir_id_to_node_id(module_id);
+            let module_id = cx.tcx.hir().local_def_id(module_id);
             let result = cx.enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
             });
@@ -232,37 +232,46 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::TyAlias,
                     did,
                 ) => {
-                    // We need item's parent to know if it's
-                    // trait impl or struct/enum/etc impl
-                    let item_parent = item_opt
+                    // Checks if item_name belongs to `impl SomeItem`
+                    let impl_item = cx
+                        .tcx
+                        .inherent_impls(did)
+                        .iter()
+                        .flat_map(|imp| cx.tcx.associated_items(*imp).in_definition_order())
+                        .find(|item| item.ident.name == item_name);
+                    let trait_item = item_opt
                         .and_then(|item| self.cx.as_local_hir_id(item.def_id))
                         .and_then(|item_hir| {
+                            // Checks if item_name belongs to `impl SomeTrait for SomeItem`
                             let parent_hir = self.cx.tcx.hir().get_parent_item(item_hir);
-                            self.cx.tcx.hir().find(parent_hir)
+                            let item_parent = self.cx.tcx.hir().find(parent_hir);
+                            match item_parent {
+                                Some(hir::Node::Item(hir::Item {
+                                    kind: hir::ItemKind::Impl { of_trait: Some(_), self_ty, .. },
+                                    ..
+                                })) => cx
+                                    .tcx
+                                    .associated_item_def_ids(self_ty.hir_id.owner)
+                                    .iter()
+                                    .map(|child| {
+                                        let associated_item = cx.tcx.associated_item(*child);
+                                        associated_item
+                                    })
+                                    .find(|child| child.ident.name == item_name),
+                                _ => None,
+                            }
                         });
-                    let item = match item_parent {
-                        Some(hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::Impl { of_trait: Some(_), self_ty, .. },
-                            ..
-                        })) => {
-                            // trait impl
-                            cx.tcx
-                                .associated_item_def_ids(self_ty.hir_id.owner)
-                                .iter()
-                                .map(|child| {
-                                    let associated_item = cx.tcx.associated_item(*child);
-                                    associated_item
-                                })
-                                .find(|child| child.ident.name == item_name)
+                    let item = match (impl_item, trait_item) {
+                        (Some(from_impl), Some(_)) => {
+                            // Although it's ambiguous, return impl version for compat. sake.
+                            // To handle that properly resolve() would have to support
+                            // something like
+                            // [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
+                            Some(from_impl)
                         }
-                        _ => {
-                            // struct/enum/etc. impl
-                            cx.tcx
-                                .inherent_impls(did)
-                                .iter()
-                                .flat_map(|imp| cx.tcx.associated_items(*imp).in_definition_order())
-                                .find(|item| item.ident.name == item_name)
-                        }
+                        (None, Some(from_trait)) => Some(from_trait),
+                        (Some(from_impl), None) => Some(from_impl),
+                        _ => None,
                     };
 
                     if let Some(item) = item {
@@ -422,6 +431,43 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         look_for_tests(&cx, &dox, &item, true);
 
+        // find item's parent to resolve `Self` in item's docs below
+        let parent_name = self.cx.as_local_hir_id(item.def_id).and_then(|item_hir| {
+            let parent_hir = self.cx.tcx.hir().get_parent_item(item_hir);
+            let item_parent = self.cx.tcx.hir().find(parent_hir);
+            match item_parent {
+                Some(hir::Node::Item(hir::Item {
+                    kind:
+                        hir::ItemKind::Impl {
+                            self_ty:
+                                hir::Ty {
+                                    kind:
+                                        hir::TyKind::Path(hir::QPath::Resolved(
+                                            _,
+                                            hir::Path { segments, .. },
+                                        )),
+                                    ..
+                                },
+                            ..
+                        },
+                    ..
+                })) => segments.first().and_then(|seg| Some(seg.ident.to_string())),
+                Some(hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Enum(..), ..
+                }))
+                | Some(hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Struct(..), ..
+                }))
+                | Some(hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Union(..), ..
+                }))
+                | Some(hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Trait(..), ..
+                })) => Some(ident.to_string()),
+                _ => None,
+            }
+        });
+
         for (ori_link, link_range) in markdown_links(&dox) {
             // Bail early for real links.
             if ori_link.contains('/') {
@@ -458,7 +504,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             };
             let (res, fragment) = {
                 let mut kind = None;
-                let path_str = if let Some(prefix) =
+                let mut path_str = if let Some(prefix) =
                     ["struct@", "enum@", "type@", "trait@", "union@"]
                         .iter()
                         .find(|p| link.starts_with(**p))
@@ -512,6 +558,15 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 let base_node =
                     if item.is_mod() && item.attrs.inner_docs { None } else { parent_node };
 
+                let resolved_self;
+                // replace `Self` with suitable item's parent name
+                if path_str.starts_with("Self::") {
+                    if let Some(ref name) = parent_name {
+                        resolved_self = format!("{}::{}", name, &path_str[6..]);
+                        path_str = &resolved_self;
+                    }
+                }
+
                 match kind {
                     Some(ns @ ValueNS) => {
                         match self.resolve(
@@ -520,7 +575,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             &current_item,
                             base_node,
                             &extra_fragment,
-                            None,
+                            Some(&item),
                         ) {
                             Ok(res) => res,
                             Err(ErrorKind::ResolutionFailure) => {
@@ -543,7 +598,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             &current_item,
                             base_node,
                             &extra_fragment,
-                            None,
+                            Some(&item),
                         ) {
                             Ok(res) => res,
                             Err(ErrorKind::ResolutionFailure) => {
@@ -568,7 +623,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 &current_item,
                                 base_node,
                                 &extra_fragment,
-                                None,
+                                Some(&item),
                             ) {
                                 Err(ErrorKind::AnchorFailure(msg)) => {
                                     anchor_failure(cx, &item, &ori_link, &dox, link_range, msg);

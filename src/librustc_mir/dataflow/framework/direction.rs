@@ -453,7 +453,7 @@ impl Direction for Forward {
                 propagate(target, exit_state);
             }
 
-            FalseEdges { real_target, imaginary_target } => {
+            FalseEdge { real_target, imaginary_target } => {
                 propagate(real_target, exit_state);
                 propagate(imaginary_target, exit_state);
             }
@@ -482,7 +482,7 @@ impl Direction for Forward {
                 }
             }
 
-            InlineAsm { template: _, operands: _, options: _, destination } => {
+            InlineAsm { template: _, operands: _, options: _, line_spans: _, destination } => {
                 if let Some(target) = destination {
                     propagate(target, exit_state);
                 }

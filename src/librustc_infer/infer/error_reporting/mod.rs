@@ -60,8 +60,7 @@ use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::Node;
-use rustc_middle::middle::region;
+use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self,
@@ -81,58 +80,12 @@ pub mod nice_region_error;
 
 pub(super) fn note_and_explain_region(
     tcx: TyCtxt<'tcx>,
-    region_scope_tree: &region::ScopeTree,
     err: &mut DiagnosticBuilder<'_>,
     prefix: &str,
     region: ty::Region<'tcx>,
     suffix: &str,
 ) {
     let (description, span) = match *region {
-        ty::ReScope(scope) => {
-            let new_string;
-            let unknown_scope =
-                || format!("{}unknown scope: {:?}{}.  Please report a bug.", prefix, scope, suffix);
-            let span = scope.span(tcx, region_scope_tree);
-            let hir_id = scope.hir_id(region_scope_tree);
-            let tag = match hir_id.and_then(|hir_id| tcx.hir().find(hir_id)) {
-                Some(Node::Block(_)) => "block",
-                Some(Node::Expr(expr)) => match expr.kind {
-                    hir::ExprKind::Call(..) => "call",
-                    hir::ExprKind::MethodCall(..) => "method call",
-                    hir::ExprKind::Match(.., hir::MatchSource::IfLetDesugar { .. }) => "if let",
-                    hir::ExprKind::Match(.., hir::MatchSource::WhileLetDesugar) => "while let",
-                    hir::ExprKind::Match(.., hir::MatchSource::ForLoopDesugar) => "for",
-                    hir::ExprKind::Match(..) => "match",
-                    _ => "expression",
-                },
-                Some(Node::Stmt(_)) => "statement",
-                Some(Node::Item(it)) => item_scope_tag(&it),
-                Some(Node::TraitItem(it)) => trait_item_scope_tag(&it),
-                Some(Node::ImplItem(it)) => impl_item_scope_tag(&it),
-                Some(_) | None => {
-                    err.span_note(span, &unknown_scope());
-                    return;
-                }
-            };
-            let scope_decorated_tag = match scope.data {
-                region::ScopeData::Node => tag,
-                region::ScopeData::CallSite => "scope of call-site for function",
-                region::ScopeData::Arguments => "scope of function body",
-                region::ScopeData::Destruction => {
-                    new_string = format!("destruction scope surrounding {}", tag);
-                    &new_string[..]
-                }
-                region::ScopeData::Remainder(first_statement_index) => {
-                    new_string = format!(
-                        "block suffix following statement {}",
-                        first_statement_index.index()
-                    );
-                    &new_string[..]
-                }
-            };
-            explain_span(tcx, scope_decorated_tag, span)
-        }
-
         ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
             msg_span_from_free_region(tcx, region)
         }
@@ -284,7 +237,6 @@ fn explain_span(tcx: TyCtxt<'tcx>, heading: &str, span: Span) -> (String, Option
 
 pub fn unexpected_hidden_region_diagnostic(
     tcx: TyCtxt<'tcx>,
-    region_scope_tree: Option<&region::ScopeTree>,
     span: Span,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
@@ -297,64 +249,56 @@ pub fn unexpected_hidden_region_diagnostic(
     );
 
     // Explain the region we are capturing.
-    if let ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty(_) = hidden_region {
-        // Assuming regionck succeeded (*), we ought to always be
-        // capturing *some* region from the fn header, and hence it
-        // ought to be free. So under normal circumstances, we will go
-        // down this path which gives a decent human readable
-        // explanation.
-        //
-        // (*) if not, the `tainted_by_errors` field would be set to
-        // `Some(ErrorReported)` in any case, so we wouldn't be here at all.
-        note_and_explain_free_region(
-            tcx,
-            &mut err,
-            &format!("hidden type `{}` captures ", hidden_ty),
-            hidden_region,
-            "",
-        );
-    } else {
-        // Ugh. This is a painful case: the hidden region is not one
-        // that we can easily summarize or explain. This can happen
-        // in a case like
-        // `src/test/ui/multiple-lifetimes/ordinary-bounds-unsuited.rs`:
-        //
-        // ```
-        // fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b> {
-        //   if condition() { a } else { b }
-        // }
-        // ```
-        //
-        // Here the captured lifetime is the intersection of `'a` and
-        // `'b`, which we can't quite express.
-
-        if let Some(region_scope_tree) = region_scope_tree {
-            // If the `region_scope_tree` is available, this is being
-            // invoked from the "region inferencer error". We can at
-            // least report a really cryptic error for now.
-            note_and_explain_region(
+    match hidden_region {
+        ty::ReEmpty(ty::UniverseIndex::ROOT) => {
+            // All lifetimes shorter than the function body are `empty` in
+            // lexical region resolution. The default explanation of "an empty
+            // lifetime" isn't really accurate here.
+            let message = format!(
+                "hidden type `{}` captures lifetime smaller than the function body",
+                hidden_ty
+            );
+            err.span_note(span, &message);
+        }
+        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic | ty::ReEmpty(_) => {
+            // Assuming regionck succeeded (*), we ought to always be
+            // capturing *some* region from the fn header, and hence it
+            // ought to be free. So under normal circumstances, we will go
+            // down this path which gives a decent human readable
+            // explanation.
+            //
+            // (*) if not, the `tainted_by_errors` field would be set to
+            // `Some(ErrorReported)` in any case, so we wouldn't be here at all.
+            note_and_explain_free_region(
                 tcx,
-                region_scope_tree,
                 &mut err,
                 &format!("hidden type `{}` captures ", hidden_ty),
                 hidden_region,
                 "",
             );
-        } else {
-            // If the `region_scope_tree` is *unavailable*, this is
-            // being invoked by the code that comes *after* region
-            // inferencing. This is a bug, as the region inferencer
-            // ought to have noticed the failed constraint and invoked
-            // error reporting, which in turn should have prevented us
-            // from getting trying to infer the hidden type
-            // completely.
-            tcx.sess.delay_span_bug(
-                span,
-                &format!(
-                    "hidden type captures unexpected lifetime `{:?}` \
-                     but no region inference failure",
-                    hidden_region,
-                ),
+        }
+        _ => {
+            // Ugh. This is a painful case: the hidden region is not one
+            // that we can easily summarize or explain. This can happen
+            // in a case like
+            // `src/test/ui/multiple-lifetimes/ordinary-bounds-unsuited.rs`:
+            //
+            // ```
+            // fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b> {
+            //   if condition() { a } else { b }
+            // }
+            // ```
+            //
+            // Here the captured lifetime is the intersection of `'a` and
+            // `'b`, which we can't quite express.
+
+            // We can at least report a really cryptic error for now.
+            note_and_explain_region(
+                tcx,
+                &mut err,
+                &format!("hidden type `{}` captures ", hidden_ty),
+                hidden_region,
+                "",
             );
         }
     }
@@ -363,11 +307,7 @@ pub fn unexpected_hidden_region_diagnostic(
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn report_region_errors(
-        &self,
-        region_scope_tree: &region::ScopeTree,
-        errors: &Vec<RegionResolutionError<'tcx>>,
-    ) {
+    pub fn report_region_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
         // try to pre-process the errors, which will group some of them
@@ -390,17 +330,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     // general bit of code that displays the error information
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
                         if sub.is_placeholder() || sup.is_placeholder() {
-                            self.report_placeholder_failure(region_scope_tree, origin, sub, sup)
-                                .emit();
+                            self.report_placeholder_failure(origin, sub, sup).emit();
                         } else {
-                            self.report_concrete_failure(region_scope_tree, origin, sub, sup)
-                                .emit();
+                            self.report_concrete_failure(origin, sub, sup).emit();
                         }
                     }
 
                     RegionResolutionError::GenericBoundFailure(origin, param_ty, sub) => {
                         self.report_generic_bound_failure(
-                            region_scope_tree,
                             origin.span(),
                             Some(origin),
                             param_ty,
@@ -417,29 +354,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         sup_r,
                     ) => {
                         if sub_r.is_placeholder() {
-                            self.report_placeholder_failure(
-                                region_scope_tree,
-                                sub_origin,
-                                sub_r,
-                                sup_r,
-                            )
-                            .emit();
+                            self.report_placeholder_failure(sub_origin, sub_r, sup_r).emit();
                         } else if sup_r.is_placeholder() {
-                            self.report_placeholder_failure(
-                                region_scope_tree,
-                                sup_origin,
-                                sub_r,
-                                sup_r,
-                            )
-                            .emit();
+                            self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
                         } else {
                             self.report_sub_sup_conflict(
-                                region_scope_tree,
-                                var_origin,
-                                sub_origin,
-                                sub_r,
-                                sup_origin,
-                                sup_r,
+                                var_origin, sub_origin, sub_r, sup_origin, sup_r,
                             );
                         }
                     }
@@ -460,13 +380,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // value.
                         let sub_r = self.tcx.mk_region(ty::ReEmpty(var_universe));
 
-                        self.report_placeholder_failure(
-                            region_scope_tree,
-                            sup_origin,
-                            sub_r,
-                            sup_r,
-                        )
-                        .emit();
+                        self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
                     }
 
                     RegionResolutionError::MemberConstraintFailure {
@@ -477,7 +391,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         let hidden_ty = self.resolve_vars_if_possible(&hidden_ty);
                         unexpected_hidden_region_diagnostic(
                             self.tcx,
-                            Some(region_scope_tree),
                             span,
                             hidden_ty,
                             member_region,
@@ -1074,12 +987,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         fn push_ty_ref<'tcx>(
-            r: &ty::Region<'tcx>,
+            region: &ty::Region<'tcx>,
             ty: Ty<'tcx>,
             mutbl: hir::Mutability,
             s: &mut DiagnosticStyledString,
         ) {
-            let mut r = r.to_string();
+            let mut r = region.to_string();
             if r == "'_" {
                 r.clear();
             } else {
@@ -1754,67 +1667,107 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn report_generic_bound_failure(
         &self,
-        region_scope_tree: &region::ScopeTree,
         span: Span,
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
     ) {
-        self.construct_generic_bound_failure(region_scope_tree, span, origin, bound_kind, sub)
-            .emit();
+        self.construct_generic_bound_failure(span, origin, bound_kind, sub).emit();
     }
 
     pub fn construct_generic_bound_failure(
         &self,
-        region_scope_tree: &region::ScopeTree,
         span: Span,
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
     ) -> DiagnosticBuilder<'a> {
+        let hir = &self.tcx.hir();
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
-        let type_param_span = match (self.in_progress_tables, bound_kind) {
-            (Some(ref table), GenericKind::Param(ref param)) => {
-                let table_owner = table.borrow().hir_owner;
-                table_owner.and_then(|table_owner| {
-                    let generics = self.tcx.generics_of(table_owner.to_def_id());
-                    // Account for the case where `param` corresponds to `Self`,
-                    // which doesn't have the expected type argument.
-                    if !(generics.has_self && param.index == 0) {
-                        let type_param = generics.type_param(param, self.tcx);
-                        let hir = &self.tcx.hir();
-                        type_param.def_id.as_local().map(|def_id| {
-                            // Get the `hir::Param` to verify whether it already has any bounds.
-                            // We do this to avoid suggesting code that ends up as `T: 'a'b`,
-                            // instead we suggest `T: 'a + 'b` in that case.
-                            let id = hir.as_local_hir_id(def_id);
-                            let mut has_bounds = false;
-                            if let Node::GenericParam(param) = hir.get(id) {
-                                has_bounds = !param.bounds.is_empty();
-                            }
-                            let sp = hir.span(id);
-                            // `sp` only covers `T`, change it so that it covers
-                            // `T:` when appropriate
-                            let is_impl_trait = bound_kind.to_string().starts_with("impl ");
-                            let sp = if has_bounds && !is_impl_trait {
-                                sp.to(self
-                                    .tcx
-                                    .sess
-                                    .source_map()
-                                    .next_point(self.tcx.sess.source_map().next_point(sp)))
-                            } else {
-                                sp
-                            };
-                            (sp, has_bounds, is_impl_trait)
-                        })
+        let generics =
+            self.in_progress_tables.and_then(|table| table.borrow().hir_owner).map(|table_owner| {
+                let hir_id = hir.as_local_hir_id(table_owner);
+                let parent_id = hir.get_parent_item(hir_id);
+                (
+                    // Parent item could be a `mod`, so we check the HIR before calling:
+                    if let Some(Node::Item(Item {
+                        kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
+                        ..
+                    })) = hir.find(parent_id)
+                    {
+                        Some(self.tcx.generics_of(hir.local_def_id(parent_id).to_def_id()))
                     } else {
                         None
-                    }
-                })
+                    },
+                    self.tcx.generics_of(table_owner.to_def_id()),
+                )
+            });
+        let type_param_span = match (generics, bound_kind) {
+            (Some((_, ref generics)), GenericKind::Param(ref param)) => {
+                // Account for the case where `param` corresponds to `Self`,
+                // which doesn't have the expected type argument.
+                if !(generics.has_self && param.index == 0) {
+                    let type_param = generics.type_param(param, self.tcx);
+                    type_param.def_id.as_local().map(|def_id| {
+                        // Get the `hir::Param` to verify whether it already has any bounds.
+                        // We do this to avoid suggesting code that ends up as `T: 'a'b`,
+                        // instead we suggest `T: 'a + 'b` in that case.
+                        let id = hir.as_local_hir_id(def_id);
+                        let mut has_bounds = false;
+                        if let Node::GenericParam(param) = hir.get(id) {
+                            has_bounds = !param.bounds.is_empty();
+                        }
+                        let sp = hir.span(id);
+                        // `sp` only covers `T`, change it so that it covers
+                        // `T:` when appropriate
+                        let is_impl_trait = bound_kind.to_string().starts_with("impl ");
+                        let sp = if has_bounds && !is_impl_trait {
+                            sp.to(self
+                                .tcx
+                                .sess
+                                .source_map()
+                                .next_point(self.tcx.sess.source_map().next_point(sp)))
+                        } else {
+                            sp
+                        };
+                        (sp, has_bounds, is_impl_trait)
+                    })
+                } else {
+                    None
+                }
             }
             _ => None,
         };
+        let new_lt = generics
+            .as_ref()
+            .and_then(|(parent_g, g)| {
+                let possible: Vec<_> = (b'a'..=b'z').map(|c| format!("'{}", c as char)).collect();
+                let mut lts_names = g
+                    .params
+                    .iter()
+                    .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
+                    .map(|p| p.name.as_str())
+                    .collect::<Vec<_>>();
+                if let Some(g) = parent_g {
+                    lts_names.extend(
+                        g.params
+                            .iter()
+                            .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
+                            .map(|p| p.name.as_str()),
+                    );
+                }
+                let lts = lts_names.iter().map(|s| -> &str { &*s }).collect::<Vec<_>>();
+                possible.into_iter().find(|candidate| !lts.contains(&candidate.as_str()))
+            })
+            .unwrap_or("'lt".to_string());
+        let add_lt_sugg = generics
+            .as_ref()
+            .and_then(|(_, g)| g.params.first())
+            .and_then(|param| param.def_id.as_local())
+            .map(|def_id| {
+                (hir.span(hir.as_local_hir_id(def_id)).shrink_to_lo(), format!("{}, ", new_lt))
+            });
 
         let labeled_user_string = match bound_kind {
             GenericKind::Param(ref p) => format!("the parameter type `{}`", p),
@@ -1871,6 +1824,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         }
 
+        let new_binding_suggestion =
+            |err: &mut DiagnosticBuilder<'tcx>,
+             type_param_span: Option<(Span, bool, bool)>,
+             bound_kind: GenericKind<'tcx>| {
+                let msg = "consider introducing an explicit lifetime bound";
+                if let Some((sp, has_lifetimes, is_impl_trait)) = type_param_span {
+                    let suggestion = if is_impl_trait {
+                        (sp.shrink_to_hi(), format!(" + {}", new_lt))
+                    } else {
+                        let tail = if has_lifetimes { " +" } else { "" };
+                        (sp, format!("{}: {}{}", bound_kind, new_lt, tail))
+                    };
+                    let mut sugg =
+                        vec![suggestion, (span.shrink_to_hi(), format!(" + {}", new_lt))];
+                    if let Some(lt) = add_lt_sugg {
+                        sugg.push(lt);
+                        sugg.rotate_right(1);
+                    }
+                    // `MaybeIncorrect` due to issue #41966.
+                    err.multipart_suggestion(msg, sugg, Applicability::MaybeIncorrect);
+                }
+            };
+
         let mut err = match *sub {
             ty::ReEarlyBound(ty::EarlyBoundRegion { name, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: ty::BrNamed(_, name), .. }) => {
@@ -1912,18 +1888,28 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "{} may not live long enough",
                     labeled_user_string
                 );
-                err.help(&format!(
-                    "consider adding an explicit lifetime bound for `{}`",
-                    bound_kind
-                ));
                 note_and_explain_region(
                     self.tcx,
-                    region_scope_tree,
                     &mut err,
                     &format!("{} must be valid for ", labeled_user_string),
                     sub,
                     "...",
                 );
+                if let Some(infer::RelateParamBound(_, t)) = origin {
+                    let t = self.resolve_vars_if_possible(&t);
+                    match t.kind {
+                        // We've got:
+                        // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
+                        // suggest:
+                        // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
+                        ty::Closure(_, _substs) | ty::Opaque(_, _substs) => {
+                            new_binding_suggestion(&mut err, type_param_span, bound_kind);
+                        }
+                        _ => {
+                            binding_suggestion(&mut err, type_param_span, bound_kind, new_lt);
+                        }
+                    }
+                }
                 err
             }
         };
@@ -1936,7 +1922,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     fn report_sub_sup_conflict(
         &self,
-        region_scope_tree: &region::ScopeTree,
         var_origin: RegionVariableOrigin,
         sub_origin: SubregionOrigin<'tcx>,
         sub_region: Region<'tcx>,
@@ -1947,21 +1932,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         note_and_explain_region(
             self.tcx,
-            region_scope_tree,
             &mut err,
             "first, the lifetime cannot outlive ",
             sup_region,
             "...",
         );
 
+        debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
+        debug!("report_sub_sup_conflict: sub_region={:?}", sub_region);
+        debug!("report_sub_sup_conflict: sub_origin={:?}", sub_origin);
+        debug!("report_sub_sup_conflict: sup_region={:?}", sup_region);
+        debug!("report_sub_sup_conflict: sup_origin={:?}", sup_origin);
+
         if let (&infer::Subtype(ref sup_trace), &infer::Subtype(ref sub_trace)) =
             (&sup_origin, &sub_origin)
         {
-            debug!("report_sub_sup_conflict: var_origin={:?}", var_origin);
-            debug!("report_sub_sup_conflict: sub_region={:?}", sub_region);
-            debug!("report_sub_sup_conflict: sub_origin={:?}", sub_origin);
-            debug!("report_sub_sup_conflict: sup_region={:?}", sup_region);
-            debug!("report_sub_sup_conflict: sup_origin={:?}", sup_origin);
             debug!("report_sub_sup_conflict: sup_trace={:?}", sup_trace);
             debug!("report_sub_sup_conflict: sub_trace={:?}", sub_trace);
             debug!("report_sub_sup_conflict: sup_trace.values={:?}", sup_trace.values);
@@ -1973,7 +1958,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if sub_expected == sup_expected && sub_found == sup_found {
                     note_and_explain_region(
                         self.tcx,
-                        region_scope_tree,
                         &mut err,
                         "...but the lifetime must also be valid for ",
                         sub_region,
@@ -1995,7 +1979,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         note_and_explain_region(
             self.tcx,
-            region_scope_tree,
             &mut err,
             "but, the lifetime must be valid for ",
             sub_region,

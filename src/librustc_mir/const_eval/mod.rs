@@ -5,7 +5,6 @@ use std::convert::TryFrom;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
-use rustc_target::abi::VariantIdx;
 
 use crate::interpret::{intern_const_alloc_recursive, ConstValue, InternKind, InterpCx};
 
@@ -18,32 +17,6 @@ pub use error::*;
 pub use eval_queries::*;
 pub use fn_queries::*;
 pub use machine::*;
-
-/// Extracts a field of a (variant of a) const.
-// this function uses `unwrap` copiously, because an already validated constant must have valid
-// fields and can thus never fail outside of compiler bugs
-pub(crate) fn const_field<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    variant: Option<VariantIdx>,
-    field: mir::Field,
-    value: &'tcx ty::Const<'tcx>,
-) -> ConstValue<'tcx> {
-    trace!("const_field: {:?}, {:?}", field, value);
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    // get the operand again
-    let op = ecx.eval_const_to_op(value, None).unwrap();
-    // downcast
-    let down = match variant {
-        None => op,
-        Some(variant) => ecx.operand_downcast(op, variant).unwrap(),
-    };
-    // then project
-    let field = ecx.operand_field(down, field.index()).unwrap();
-    // and finally move back to the const world, always normalizing because
-    // this is not called for statics.
-    op_to_const(&ecx, field)
-}
 
 pub(crate) fn const_caller_location(
     tcx: TyCtxt<'tcx>,

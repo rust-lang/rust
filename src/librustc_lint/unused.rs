@@ -146,7 +146,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
                     for (predicate, _) in cx.tcx.predicates_of(def).predicates {
-                        if let ty::Predicate::Trait(ref poly_trait_predicate, _) = predicate {
+                        if let ty::PredicateKind::Trait(ref poly_trait_predicate, _) =
+                            predicate.kind()
+                        {
                             let trait_ref = poly_trait_predicate.skip_binder().trait_ref;
                             let def_id = trait_ref.def_id;
                             let descr_pre =

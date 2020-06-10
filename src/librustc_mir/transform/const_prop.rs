@@ -606,7 +606,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
-            literal: self.tcx.mk_const(*ty::Const::from_scalar(self.tcx, scalar, ty)),
+            literal: ty::Const::from_scalar(self.tcx, scalar, ty),
         }))
     }
 
@@ -1013,7 +1013,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::InlineAsm { .. } => {}
             // Every argument in our function calls can be const propagated.

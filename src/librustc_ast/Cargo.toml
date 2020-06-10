@@ -10,7 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_serialize = { path = "../librustc_serialize" }
 log = "0.4"
 scoped-tls = "1.0"
 rustc_span = { path = "../librustc_span" }

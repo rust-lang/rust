@@ -408,7 +408,7 @@ impl<'tcx> Body<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum Safety {
     Safe,
     /// Unsafe because of a PushUnsafeBlock
@@ -1072,7 +1072,8 @@ pub enum TerminatorKind<'tcx> {
     Abort,
 
     /// Indicates a normal return. The return place should have
-    /// been filled in by now. This should occur at most once.
+    /// been filled in before this executes. This can occur multiple times
+    /// in different basic blocks.
     Return,
 
     /// Indicates a terminator that can never be reached.
@@ -1159,7 +1160,7 @@ pub enum TerminatorKind<'tcx> {
 
     /// A block where control flow only ever takes one real path, but borrowck
     /// needs to be more conservative.
-    FalseEdges {
+    FalseEdge {
         /// The target normal control flow will take.
         real_target: BasicBlock,
         /// A block control flow could conceptually jump to, but won't in
@@ -1192,6 +1193,10 @@ pub enum TerminatorKind<'tcx> {
 
         /// Miscellaneous options for the inline assembly.
         options: InlineAsmOptions,
+
+        /// Source spans for each line of the inline assembly code. These are
+        /// used to map assembler errors back to the line in the source code.
+        line_spans: &'tcx [Span],
 
         /// Destination block after the inline assembly returns, unless it is
         /// diverging (InlineAsmOptions::NORETURN).
@@ -1309,7 +1314,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 Some(t).into_iter().chain(slice::from_ref(u))
             }
             SwitchInt { ref targets, .. } => None.into_iter().chain(&targets[..]),
-            FalseEdges { ref real_target, ref imaginary_target } => {
+            FalseEdge { ref real_target, ref imaginary_target } => {
                 Some(real_target).into_iter().chain(slice::from_ref(imaginary_target))
             }
         }
@@ -1343,7 +1348,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 Some(t).into_iter().chain(slice::from_mut(u))
             }
             SwitchInt { ref mut targets, .. } => None.into_iter().chain(&mut targets[..]),
-            FalseEdges { ref mut real_target, ref mut imaginary_target } => {
+            FalseEdge { ref mut real_target, ref mut imaginary_target } => {
                 Some(real_target).into_iter().chain(slice::from_mut(imaginary_target))
             }
         }
@@ -1359,7 +1364,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::InlineAsm { .. } => None,
             TerminatorKind::Call { cleanup: ref unwind, .. }
             | TerminatorKind::Assert { cleanup: ref unwind, .. }
@@ -1379,7 +1384,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::InlineAsm { .. } => None,
             TerminatorKind::Call { cleanup: ref mut unwind, .. }
             | TerminatorKind::Assert { cleanup: ref mut unwind, .. }
@@ -1593,9 +1598,9 @@ impl<'tcx> TerminatorKind<'tcx> {
                 msg.fmt_assert_args(fmt)?;
                 write!(fmt, ")")
             }
-            FalseEdges { .. } => write!(fmt, "falseEdges"),
+            FalseEdge { .. } => write!(fmt, "falseEdge"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),
-            InlineAsm { template, ref operands, options, destination: _ } => {
+            InlineAsm { template, ref operands, options, .. } => {
                 write!(fmt, "asm!(\"{}\"", InlineAsmTemplatePiece::to_string(template))?;
                 for op in operands {
                     write!(fmt, ", ")?;
@@ -1678,7 +1683,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Assert { cleanup: None, .. } => vec!["".into()],
             Assert { .. } => vec!["success".into(), "unwind".into()],
-            FalseEdges { .. } => vec!["real".into(), "imaginary".into()],
+            FalseEdge { .. } => vec!["real".into(), "imaginary".into()],
             FalseUnwind { unwind: Some(_), .. } => vec!["real".into(), "cleanup".into()],
             FalseUnwind { unwind: None, .. } => vec!["real".into()],
             InlineAsm { destination: Some(_), .. } => vec!["".into()],
@@ -2077,10 +2082,10 @@ impl Debug for Place<'_> {
                 ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
                     write!(fmt, "[-{:?} of {:?}]", offset, min_length)?;
                 }
-                ProjectionElem::Subslice { from, to, from_end: true } if *to == 0 => {
+                ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
                     write!(fmt, "[{:?}:]", from)?;
                 }
-                ProjectionElem::Subslice { from, to, from_end: true } if *from == 0 => {
+                ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
                     write!(fmt, "[:-{:?}]", to)?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: true } => {
@@ -2208,6 +2213,11 @@ pub enum Rvalue<'tcx> {
 
     /// &x or &mut x
     Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
+
+    /// Accessing a thread local static. This is inherently a runtime operation, even if llvm
+    /// treats it as an access to a static. This `Rvalue` yields a reference to the thread local
+    /// static.
+    ThreadLocalRef(DefId),
 
     /// Create a raw pointer to the given place
     /// Can be generated by raw address of expressions (`&raw const x`),
@@ -2348,6 +2358,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Discriminant(ref place) => write!(fmt, "discriminant({:?})", place),
             NullaryOp(ref op, ref t) => write!(fmt, "{:?}({:?})", op, t),
+            ThreadLocalRef(did) => ty::tls::with(|tcx| {
+                let muta = tcx.static_mutability(did).unwrap().prefix_str();
+                write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
+            }),
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
@@ -2439,7 +2453,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(upvars) = tcx.upvars(def_id) {
+                            if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in upvars.keys().zip(places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
@@ -2458,7 +2472,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let name = format!("[generator@{:?}]", tcx.hir().span(hir_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(upvars) = tcx.upvars(def_id) {
+                            if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in upvars.keys().zip(places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
@@ -2501,7 +2515,10 @@ impl Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.literal.val.try_to_scalar() {
             Some(Scalar::Ptr(ptr)) => match tcx.global_alloc(ptr.alloc_id) {
-                GlobalAlloc::Static(def_id) => Some(def_id),
+                GlobalAlloc::Static(def_id) => {
+                    assert!(!tcx.is_thread_local_static(def_id));
+                    Some(def_id)
+                }
                 _ => None,
             },
             _ => None,

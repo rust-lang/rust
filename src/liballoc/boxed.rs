@@ -865,6 +865,25 @@ impl From<Box<str>> for Box<[u8]> {
     }
 }
 
+#[stable(feature = "box_from_array", since = "1.45.0")]
+impl<T, const N: usize> From<[T; N]> for Box<[T]>
+where
+    [T; N]: LengthAtMost32,
+{
+    /// Converts a `[T; N]` into a `Box<[T]>`
+    ///
+    /// This conversion moves the array to newly heap-allocated memory.
+    ///
+    /// # Examples
+    /// ```rust
+    /// let boxed: Box<[u8]> = Box::from([4, 2]);
+    /// println!("{:?}", boxed);
+    /// ```
+    fn from(array: [T; N]) -> Box<[T]> {
+        box array
+    }
+}
+
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
 impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]>
 where
@@ -1089,6 +1108,14 @@ impl<A> FromIterator<A> for Box<[A]> {
 impl<T: Clone> Clone for Box<[T]> {
     fn clone(&self) -> Self {
         self.to_vec().into_boxed_slice()
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        if self.len() == other.len() {
+            self.clone_from_slice(&other);
+        } else {
+            *self = other.clone();
+        }
     }
 }
 

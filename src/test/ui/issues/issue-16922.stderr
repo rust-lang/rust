@@ -1,11 +1,18 @@
-error[E0621]: explicit lifetime required in the type of `value`
-  --> $DIR/issue-16922.rs:4:5
+error: cannot infer an appropriate lifetime
+  --> $DIR/issue-16922.rs:4:14
    |
 LL | fn foo<T: Any>(value: &T) -> Box<dyn Any> {
-   |                       -- help: add explicit lifetime `'static` to the type of `value`: `&'static T`
+   |                       -- data with this lifetime...
 LL |     Box::new(value) as Box<dyn Any>
-   |     ^^^^^^^^^^^^^^^ lifetime `'static` required
+   |     ---------^^^^^-
+   |     |        |
+   |     |        ...and is captured here
+   |     ...is required to be `'static` by this...
+   |
+help: to permit non-static references in a `dyn Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 3:1
+   |
+LL | fn foo<T: Any>(value: &T) -> Box<dyn Any + '_> {
+   |                                          ^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0621`.

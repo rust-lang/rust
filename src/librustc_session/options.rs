@@ -3,7 +3,7 @@ use crate::config::*;
 use crate::early_error;
 use crate::lint;
 use crate::search_paths::SearchPath;
-use crate::utils::NativeLibraryKind;
+use crate::utils::NativeLibKind;
 
 use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy};
 use rustc_target::spec::{RelocModel, RelroLevel, TargetTriple, TlsModel};
@@ -93,7 +93,7 @@ top_level_options!(
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
-        libs: Vec<(String, Option<String>, Option<NativeLibraryKind>)> [TRACKED],
+        libs: Vec<(String, Option<String>, NativeLibKind)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [UNTRACKED],
 
         target_triple: TargetTriple [TRACKED],
@@ -955,6 +955,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "print layout information for each type encountered (default: no)"),
     profile: bool = (false, parse_bool, [TRACKED],
         "insert profiling code (default: no)"),
+    profile_emit: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+        "file path to emit profiling data at runtime when using 'profile' \
+        (default based on relative source path)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing (default: no)"),
     query_stats: bool = (false, parse_bool, [UNTRACKED],
@@ -993,6 +996,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "make the current crate share its generic instantiations"),
     show_span: Option<String> = (None, parse_opt_string, [TRACKED],
         "show spans for compiler debugging (expr|pat|ty)"),
+    span_debug: bool = (false, parse_bool, [UNTRACKED],
+        "forward proc_macro::Span's `Debug` impl to `Span`"),
     // o/w tests have closure@path
     span_free_formats: bool = (false, parse_bool, [UNTRACKED],
         "exclude spans when debug-printing compiler state (default: no)"),
@@ -1045,6 +1050,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "adds unstable command line options to rustc interface (default: no)"),
     use_ctors_section: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "use legacy .ctors section for initializers rather than .init_array"),
+    validate_mir: bool = (false, parse_bool, [UNTRACKED],
+        "validate MIR after each transformation"),
     verbose: bool = (false, parse_bool, [UNTRACKED],
         "in general, enable more debug printouts (default: no)"),
     verify_llvm_ir: bool = (false, parse_bool, [TRACKED],

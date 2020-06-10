@@ -241,7 +241,7 @@ function loadMainJsAndIndex(mainJs, searchIndex, storageJs, crate) {
     ALIASES = {};
     finalJS += 'window = { "currentCrate": "' + crate + '" };\n';
     finalJS += 'var rootPath = "../";\n';
-    finalJS += loadThings(["onEach"], 'function', extractFunction, storageJs);
+    finalJS += loadThings(["hasOwnProperty", "onEach"], 'function', extractFunction, storageJs);
     finalJS += loadThings(arraysToLoad, 'array', extractArrayVariable, mainJs);
     finalJS += loadThings(variablesToLoad, 'variable', extractVariable, mainJs);
     finalJS += loadThings(functionsToLoad, 'function', extractFunction, mainJs);

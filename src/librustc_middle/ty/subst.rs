@@ -340,11 +340,11 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
         target_substs: SubstsRef<'tcx>,
     ) -> SubstsRef<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
-        tcx.mk_substs(target_substs.iter().chain(&self[defs.params.len()..]).cloned())
+        tcx.mk_substs(target_substs.iter().chain(self.iter().skip(defs.params.len())))
     }
 
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> SubstsRef<'tcx> {
-        tcx.mk_substs(self.iter().take(generics.count()).cloned())
+        tcx.mk_substs(self.iter().take(generics.count()))
     }
 }
 

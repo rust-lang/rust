@@ -1,7 +1,11 @@
+// aux-build:proc_macro_attr.rs
 #![warn(clippy::empty_line_after_outer_attr)]
 #![allow(clippy::assertions_on_constants)]
 #![feature(custom_inner_attributes)]
 #![rustfmt::skip]
+
+#[macro_use]
+extern crate proc_macro_attr;
 
 // This should produce a warning
 #[crate_type = "lib"]
@@ -93,4 +97,17 @@ pub struct S;
 /* test */
 pub struct T;
 
-fn main() { }
+// This should not produce a warning
+// See https://github.com/rust-lang/rust-clippy/issues/5567
+#[fake_async_trait]
+pub trait Bazz {
+    fn foo() -> Vec<u8> {
+        let _i = "";
+
+
+
+        vec![]
+    }
+}
+
+fn main() {}

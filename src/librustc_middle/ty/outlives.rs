@@ -70,7 +70,7 @@ fn compute_components(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, out: &mut SmallVec<[Compo
                 // consistent with previous (accidental) behavior.
                 // See https://github.com/rust-lang/rust/issues/70917
                 // for further background and discussion.
-                for &child in substs {
+                for child in substs {
                     match child.unpack() {
                         GenericArgKind::Type(ty) => {
                             compute_components(tcx, ty, out);

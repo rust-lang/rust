@@ -1,12 +1,12 @@
-error: borrowed data cannot be stored outside of its closure
-  --> $DIR/regions-escape-bound-fn.rs:8:27
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/regions-escape-bound-fn.rs:11:18
    |
 LL |     let mut x: Option<&isize> = None;
-   |         ----- borrowed data cannot be stored into here...
+   |         ----- `x` declared here, outside of the closure body
 LL |     with_int(|y| x = Some(y));
-   |              ---          ^ cannot be stored outside of its closure
-   |              |
-   |              ...because it cannot outlive this closure
+   |               -  ^^^^^^^^^^^ `y` escapes the closure body here
+   |               |
+   |               `y` is a reference that is only valid in the closure body
 
 error: aborting due to previous error
 

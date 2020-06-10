@@ -141,3 +141,11 @@ fn main() {
 fn test_slice(b: &[u8]) {
     if !b.is_empty() {}
 }
+
+mod issue_3807 {
+    // Avoid suggesting changes to ranges if the user did not enable `range_is_empty`.
+    // See https://github.com/rust-lang/rust/issues/48111#issuecomment-445132965
+    fn no_suggestion() {
+        let _ = (0..42).len() == 0;
+    }
+}

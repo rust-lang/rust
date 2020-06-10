@@ -17,6 +17,7 @@ pub mod add_call_guards;
 pub mod add_moves_for_packed_drops;
 pub mod add_retag;
 pub mod check_consts;
+pub mod check_packed_ref;
 pub mod check_unsafety;
 pub mod cleanup_post_borrowck;
 pub mod const_prop;
@@ -39,6 +40,7 @@ pub mod simplify_branches;
 pub mod simplify_try;
 pub mod uninhabited_enum_branching;
 pub mod unreachable_prop;
+pub mod validate;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     self::check_unsafety::provide(providers);
@@ -147,12 +149,18 @@ pub fn run_passes(
     passes: &[&[&dyn MirPass<'tcx>]],
 ) {
     let phase_index = mir_phase.phase_index();
+    let source = MirSource { instance, promoted };
+    let validate = tcx.sess.opts.debugging_opts.validate_mir;
 
     if body.phase >= mir_phase {
         return;
     }
 
-    let source = MirSource { instance, promoted };
+    if validate {
+        validate::Validator { when: format!("input to phase {:?}", mir_phase) }
+            .run_pass(tcx, source, body);
+    }
+
     let mut index = 0;
     let mut run_pass = |pass: &dyn MirPass<'tcx>| {
         let run_hooks = |body: &_, index, is_after| {
@@ -169,6 +177,11 @@ pub fn run_passes(
         pass.run_pass(tcx, source, body);
         run_hooks(body, index, true);
 
+        if validate {
+            validate::Validator { when: format!("after {} in phase {:?}", pass.name(), mir_phase) }
+                .run_pass(tcx, source, body);
+        }
+
         index += 1;
     };
 
@@ -179,6 +192,11 @@ pub fn run_passes(
     }
 
     body.phase = mir_phase;
+
+    if mir_phase == MirPhase::Optimized {
+        validate::Validator { when: format!("end of phase {:?}", mir_phase) }
+            .run_pass(tcx, source, body);
+    }
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
@@ -211,10 +229,11 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     validator.qualifs_in_return_place()
 }
 
+/// Make MIR ready for const evaluation. This is run on all MIR, not just on consts!
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> Steal<Body<'_>> {
     let def_id = def_id.expect_local();
 
-    // Unsafety check uses the raw mir, so make sure it is run
+    // Unsafety check uses the raw mir, so make sure it is run.
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut body = tcx.mir_built(def_id).steal();
@@ -230,6 +249,8 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> Steal<Body<'_>> {
         None,
         MirPhase::Const,
         &[&[
+            // MIR-level lints.
+            &check_packed_ref::CheckPackedRef,
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck,

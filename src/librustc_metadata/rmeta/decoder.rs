@@ -10,7 +10,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, Once};
+use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, OnceCell};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_hir as hir;
@@ -23,7 +23,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::dep_graph::{self, DepNode, DepNodeExt, DepNodeIndex};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::cstore::{CrateSource, ExternCrate};
-use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLibrary};
+use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, interpret, Body, Promoted};
@@ -79,7 +79,7 @@ crate struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
-    source_map_import_info: Once<Vec<ImportedSourceFile>>,
+    source_map_import_info: OnceCell<Vec<ImportedSourceFile>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_state: AllocDecodingState,
     /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
@@ -1278,7 +1278,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
-    fn get_native_libraries(&self, sess: &Session) -> Vec<NativeLibrary> {
+    fn get_native_libraries(&self, sess: &Session) -> Vec<NativeLib> {
         if self.root.is_proc_macro_crate() {
             // Proc macro crates do not have any *target* native libraries.
             vec![]
@@ -1471,22 +1471,29 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
             if let Some(virtual_dir) = virtual_rust_source_base_dir {
                 if let Some(real_dir) = &sess.real_rust_source_base_dir {
-                    if let rustc_span::FileName::Real(path) = name {
-                        if let Ok(rest) = path.strip_prefix(virtual_dir) {
-                            let new_path = real_dir.join(rest);
-                            debug!(
-                                "try_to_translate_virtual_to_real: `{}` -> `{}`",
-                                path.display(),
-                                new_path.display(),
-                            );
-                            *path = new_path;
+                    if let rustc_span::FileName::Real(old_name) = name {
+                        if let rustc_span::RealFileName::Named(one_path) = old_name {
+                            if let Ok(rest) = one_path.strip_prefix(virtual_dir) {
+                                let virtual_name = one_path.clone();
+                                let new_path = real_dir.join(rest);
+                                debug!(
+                                    "try_to_translate_virtual_to_real: `{}` -> `{}`",
+                                    virtual_name.display(),
+                                    new_path.display(),
+                                );
+                                let new_name = rustc_span::RealFileName::Devirtualized {
+                                    local_path: new_path,
+                                    virtual_name,
+                                };
+                                *old_name = new_name;
+                            }
                         }
                     }
                 }
             }
         };
 
-        self.cdata.source_map_import_info.init_locking(|| {
+        self.cdata.source_map_import_info.get_or_init(|| {
             let external_source_map = self.root.source_map.decode(self);
 
             external_source_map
@@ -1600,7 +1607,7 @@ impl CrateMetadata {
             def_path_table,
             trait_impls,
             raw_proc_macros,
-            source_map_import_info: Once::new(),
+            source_map_import_info: OnceCell::new(),
             alloc_decoding_state,
             dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
             cnum,

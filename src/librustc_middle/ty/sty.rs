@@ -6,7 +6,6 @@ use self::InferTy::*;
 use self::TyKind::*;
 
 use crate::infer::canonical::Canonical;
-use crate::middle::region;
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::{LitToConstInput, Scalar};
 use crate::mir::Promoted;
@@ -30,6 +29,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
+use ty::util::IntTypeExt;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
@@ -612,15 +612,16 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
         use crate::ty::ToPredicate;
         match *self.skip_binder() {
             ExistentialPredicate::Trait(tr) => {
-                Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate()
+                Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
             }
             ExistentialPredicate::Projection(p) => {
-                ty::Predicate::Projection(Binder(p.with_self_ty(tcx, self_ty)))
+                ty::PredicateKind::Projection(Binder(p.with_self_ty(tcx, self_ty)))
+                    .to_predicate(tcx)
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let trait_ref =
                     Binder(ty::TraitRef { def_id: did, substs: tcx.mk_substs_trait(self_ty, &[]) });
-                trait_ref.without_const().to_predicate()
+                trait_ref.without_const().to_predicate(tcx)
             }
         }
     }
@@ -669,7 +670,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     pub fn projection_bounds<'a>(
         &'a self,
     ) -> impl Iterator<Item = ExistentialProjection<'tcx>> + 'a {
-        self.iter().filter_map(|predicate| match *predicate {
+        self.iter().filter_map(|predicate| match predicate {
             ExistentialPredicate::Projection(projection) => Some(projection),
             _ => None,
         })
@@ -677,7 +678,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
     #[inline]
     pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
-        self.iter().filter_map(|predicate| match *predicate {
+        self.iter().filter_map(|predicate| match predicate {
             ExistentialPredicate::AutoTrait(did) => Some(did),
             _ => None,
         })
@@ -708,7 +709,7 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
     pub fn iter<'a>(
         &'a self,
     ) -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx {
-        self.skip_binder().iter().cloned().map(Binder::bind)
+        self.skip_binder().iter().map(Binder::bind)
     }
 }
 
@@ -723,10 +724,6 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 ///
 /// Trait references also appear in object types like `Foo<U>`, but in
 /// that case the `Self` parameter is absent from the substitutions.
-///
-/// Note that a `TraitRef` introduces a level of region binding, to
-/// account for higher-ranked trait bounds like `T: for<'a> Foo<&'a U>`
-/// or higher-ranked object types.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub struct TraitRef<'tcx> {
@@ -764,8 +761,8 @@ impl<'tcx> TraitRef<'tcx> {
 pub type PolyTraitRef<'tcx> = Binder<TraitRef<'tcx>>;
 
 impl<'tcx> PolyTraitRef<'tcx> {
-    pub fn self_ty(&self) -> Ty<'tcx> {
-        self.skip_binder().self_ty()
+    pub fn self_ty(&self) -> Binder<Ty<'tcx>> {
+        self.map_bound_ref(|tr| tr.self_ty())
     }
 
     pub fn def_id(&self) -> DefId {
@@ -1178,17 +1175,15 @@ rustc_index::newtype_index! {
 
 pub type Region<'tcx> = &'tcx RegionKind;
 
-/// Representation of (lexical) regions. Note that the NLL checker
-/// uses a distinct representation of regions. For this reason, it
-/// internally replaces all the regions with inference variables --
-/// the index of the variable is then used to index into internal NLL
-/// data structures. See `rustc_mir::borrow_check` module for more
-/// information.
+/// Representation of regions. Note that the NLL checker uses a distinct
+/// representation of regions. For this reason, it internally replaces all the
+/// regions with inference variables -- the index of the variable is then used
+/// to index into internal NLL data structures. See `rustc_mir::borrow_check`
+/// module for more information.
 ///
 /// ## The Region lattice within a given function
 ///
-/// In general, the (lexical, and hence deprecated) region lattice
-/// looks like
+/// In general, the region lattice looks like
 ///
 /// ```
 /// static ----------+-----...------+       (greatest)
@@ -1196,7 +1191,6 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// early-bound and  |              |
 /// free regions     |              |
 /// |                |              |
-/// scope regions    |              |
 /// |                |              |
 /// empty(root)   placeholder(U1)   |
 /// |            /                  |
@@ -1211,13 +1205,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 /// Early-bound/free regions are the named lifetimes in scope from the
 /// function declaration. They have relationships to one another
 /// determined based on the declared relationships from the
-/// function. They all collectively outlive the scope regions. (See
-/// `RegionRelations` type, and particularly
-/// `crate::infer::outlives::free_region_map::FreeRegionMap`.)
-///
-/// The scope regions are related to one another based on the AST
-/// structure. (See `RegionRelations` type, and particularly the
-/// `rustc_middle::middle::region::ScopeTree`.)
+/// function.
 ///
 /// Note that inference variables and bound regions are not included
 /// in this diagram. In the case of inference variables, they should
@@ -1305,11 +1293,6 @@ pub enum RegionKind {
     /// that refer to bound region parameters are modified to refer to free
     /// region parameters.
     ReFree(FreeRegion),
-
-    /// A concrete region naming some statically determined scope
-    /// (e.g., an expression or sequence of statements) within the
-    /// current function.
-    ReScope(region::Scope),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
@@ -1534,7 +1517,6 @@ impl RegionKind {
             RegionKind::ReEarlyBound(ebr) => ebr.has_name(),
             RegionKind::ReLateBound(_, br) => br.is_named(),
             RegionKind::ReFree(fr) => fr.bound_region.is_named(),
-            RegionKind::ReScope(..) => false,
             RegionKind::ReStatic => true,
             RegionKind::ReVar(..) => false,
             RegionKind::RePlaceholder(placeholder) => placeholder.name.is_named(),
@@ -1615,7 +1597,7 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_RE_PARAM;
                 flags = flags | TypeFlags::STILL_FURTHER_SPECIALIZABLE;
             }
-            ty::ReFree { .. } | ty::ReScope { .. } => {
+            ty::ReFree { .. } => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
             }
@@ -2111,11 +2093,25 @@ impl<'tcx> TyS<'tcx> {
         variant_index: VariantIdx,
     ) -> Option<Discr<'tcx>> {
         match self.kind {
-            TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
+            TyKind::Adt(adt, _) if adt.is_enum() => {
+                Some(adt.discriminant_for_variant(tcx, variant_index))
+            }
             TyKind::Generator(def_id, substs, _) => {
                 Some(substs.as_generator().discriminant_for_variant(def_id, tcx, variant_index))
             }
             _ => None,
+        }
+    }
+
+    /// Returns the type of the discriminant of this type.
+    pub fn discriminant_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self.kind {
+            ty::Adt(adt, _) if adt.is_enum() => adt.repr.discr_type().to_ty(tcx),
+            ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
+            _ => {
+                // This can only be `0`, for now, so `u8` will suffice.
+                tcx.types.u8
+            }
         }
     }
 

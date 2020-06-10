@@ -10,7 +10,6 @@ pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::{SourceMap, Spanned};
@@ -524,6 +523,13 @@ impl WhereClause<'_> {
     /// space where the `where` clause should be. Only of use for diagnostic suggestions.
     pub fn span_for_predicates_or_empty_place(&self) -> Span {
         self.span
+    }
+
+    /// `Span` where further predicates would be suggested, accounting for trailing commas, like
+    ///  in `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
+    pub fn tail_span_for_suggestion(&self) -> Span {
+        let end = self.span_for_predicates_or_empty_place().shrink_to_hi();
+        self.predicates.last().map(|p| p.span()).unwrap_or(end).shrink_to_hi().to(end)
     }
 }
 
@@ -2107,6 +2113,7 @@ pub struct InlineAsm<'hir> {
     pub template: &'hir [InlineAsmTemplatePiece],
     pub operands: &'hir [InlineAsmOperand<'hir>],
     pub options: InlineAsmOptions,
+    pub line_spans: &'hir [Span],
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic, PartialEq)]
@@ -2663,10 +2670,6 @@ impl<ID> TraitCandidate<ID> {
 
 // Trait method resolution
 pub type TraitMap<ID = HirId> = NodeMap<Vec<TraitCandidate<ID>>>;
-
-// Map from the NodeId of a glob import to a list of items which are actually
-// imported.
-pub type GlobMap = NodeMap<FxHashSet<Symbol>>;
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum Node<'hir> {

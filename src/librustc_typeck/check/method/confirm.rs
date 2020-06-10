@@ -312,7 +312,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             parent_substs,
             false,
             None,
-            arg_count_correct.is_ok(),
+            arg_count_correct,
             // Provide the generic args, and whether types should be inferred.
             |def_id| {
                 // The last component of the returned tuple here is unimportant.
@@ -413,7 +413,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // the function type must also be well-formed (this is not
         // implied by the substs being well-formed because of inherent
         // impls and late-bound regions - see issue #28609).
-        self.register_wf_obligation(fty, self.span, traits::MiscObligation);
+        self.register_wf_obligation(fty.into(), self.span, traits::MiscObligation);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -574,8 +574,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         };
 
         traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
-            .filter_map(|obligation| match obligation.predicate {
-                ty::Predicate::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
+            .filter_map(|obligation| match obligation.predicate.kind() {
+                ty::PredicateKind::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
                     let span = predicates
                         .predicates
                         .iter()
@@ -597,9 +597,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick<'_>) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
         match pick.item.container {
-            ty::TraitContainer(trait_def_id) => {
-                callee::check_legal_trait_for_method_call(self.tcx, self.span, trait_def_id)
-            }
+            ty::TraitContainer(trait_def_id) => callee::check_legal_trait_for_method_call(
+                self.tcx,
+                self.span,
+                Some(self.self_expr.span),
+                trait_def_id,
+            ),
             ty::ImplContainer(..) => {}
         }
     }

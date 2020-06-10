@@ -87,7 +87,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ) -> CanonicalVarValues<'tcx> {
         let var_values: IndexVec<BoundVar, GenericArg<'tcx>> = variables
             .iter()
-            .map(|info| self.instantiate_canonical_var(span, *info, &universe_map))
+            .map(|info| self.instantiate_canonical_var(span, info, &universe_map))
             .collect();
 
         CanonicalVarValues { var_values }

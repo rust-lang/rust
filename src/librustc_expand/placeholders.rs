@@ -34,6 +34,7 @@ pub fn placeholder(
             span,
             attrs: ast::AttrVec::new(),
             kind: ast::ExprKind::MacCall(mac_placeholder()),
+            tokens: None,
         })
     };
     let ty = || P(ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span });

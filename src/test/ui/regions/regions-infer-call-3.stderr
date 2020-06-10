@@ -1,30 +1,11 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter 'r in function call due to conflicting requirements
+error: lifetime may not live long enough
   --> $DIR/regions-infer-call-3.rs:8:24
    |
 LL |     let z = with(|y| { select(x, y) });
-   |                        ^^^^^^^^^^^^
-   |
-note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 8:18...
-  --> $DIR/regions-infer-call-3.rs:8:18
-   |
-LL |     let z = with(|y| { select(x, y) });
-   |                  ^^^^^^^^^^^^^^^^^^^^
-note: ...so that reference does not outlive borrowed content
-  --> $DIR/regions-infer-call-3.rs:8:34
-   |
-LL |     let z = with(|y| { select(x, y) });
-   |                                  ^
-note: but, the lifetime must be valid for the call at 8:13...
-  --> $DIR/regions-infer-call-3.rs:8:13
-   |
-LL |     let z = with(|y| { select(x, y) });
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...so type `&isize` of expression is valid during the expression
-  --> $DIR/regions-infer-call-3.rs:8:13
-   |
-LL |     let z = with(|y| { select(x, y) });
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   --   ^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
+   |                   ||
+   |                   |return type of closure is &'2 isize
+   |                   has type `&'1 isize`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

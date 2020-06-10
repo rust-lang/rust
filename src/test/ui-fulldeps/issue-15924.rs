@@ -6,11 +6,11 @@
 
 #![feature(rustc_private)]
 
-extern crate serialize;
+extern crate rustc_serialize;
 
 use std::fmt;
-use serialize::{Encoder, Encodable};
-use serialize::json;
+use rustc_serialize::{Encoder, Encodable};
+use rustc_serialize::json;
 
 struct Foo<T: Encodable> {
     v: T,

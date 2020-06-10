@@ -143,7 +143,7 @@ pub fn relate_substs<R: TypeRelation<'tcx>>(
 
     let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
-        relation.relate_with_variance(variance, a, b)
+        relation.relate_with_variance(variance, &a, &b)
     });
 
     Ok(tcx.mk_substs(params)?)
@@ -319,7 +319,7 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
     ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
         assert_eq!(a.0.len(), b.0.len());
         let tcx = relation.tcx();
-        let types = tcx.mk_type_list(a.0.iter().zip(b.0).map(|(a, b)| relation.relate(a, b)))?;
+        let types = tcx.mk_type_list(a.0.iter().zip(b.0).map(|(a, b)| relation.relate(&a, &b)))?;
         Ok(GeneratorWitness(types))
     }
 }
@@ -633,7 +633,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
         let tcx = relation.tcx();
         let v = a.iter().zip(b.iter()).map(|(ep_a, ep_b)| {
             use crate::ty::ExistentialPredicate::*;
-            match (*ep_a, *ep_b) {
+            match (ep_a, ep_b) {
                 (Trait(ref a), Trait(ref b)) => Ok(Trait(relation.relate(a, b)?)),
                 (Projection(ref a), Projection(ref b)) => Ok(Projection(relation.relate(a, b)?)),
                 (AutoTrait(ref a), AutoTrait(ref b)) if a == b => Ok(AutoTrait(*a)),

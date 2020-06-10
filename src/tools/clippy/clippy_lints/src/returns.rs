@@ -8,7 +8,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;
 
-use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_sugg, span_lint_and_then};
+use crate::utils::{snippet_opt, span_lint_and_sugg, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for return statements at the end of a block.
@@ -34,33 +34,6 @@ declare_clippy_lint! {
     pub NEEDLESS_RETURN,
     style,
     "using a return statement like `return expr;` where an expression would suffice"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for `let`-bindings, which are subsequently
-    /// returned.
-    ///
-    /// **Why is this bad?** It is just extraneous code. Remove it to make your code
-    /// more rusty.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// fn foo() -> String {
-    ///     let x = String::new();
-    ///     x
-    /// }
-    /// ```
-    /// instead, use
-    /// ```
-    /// fn foo() -> String {
-    ///     String::new()
-    /// }
-    /// ```
-    pub LET_AND_RETURN,
-    style,
-    "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block"
 }
 
 declare_clippy_lint! {
@@ -90,7 +63,7 @@ enum RetReplacement {
     Block,
 }
 
-declare_lint_pass!(Return => [NEEDLESS_RETURN, LET_AND_RETURN, UNUSED_UNIT]);
+declare_lint_pass!(Return => [NEEDLESS_RETURN, UNUSED_UNIT]);
 
 impl Return {
     // Check the final stmt or expr in a block for unnecessary return.
@@ -105,7 +78,7 @@ impl Return {
         }
     }
 
-    // Check a the final expression in a block if it's a return.
+    // Check the final expression in a block if it's a return.
     fn check_final_expr(
         &mut self,
         cx: &EarlyContext<'_>,
@@ -186,54 +159,6 @@ impl Return {
             },
         }
     }
-
-    // Check for "let x = EXPR; x"
-    fn check_let_return(cx: &EarlyContext<'_>, block: &ast::Block) {
-        let mut it = block.stmts.iter();
-
-        // we need both a let-binding stmt and an expr
-        if_chain! {
-            if let Some(retexpr) = it.next_back();
-            if let ast::StmtKind::Expr(ref retexpr) = retexpr.kind;
-            if let Some(stmt) = it.next_back();
-            if let ast::StmtKind::Local(ref local) = stmt.kind;
-            // don't lint in the presence of type inference
-            if local.ty.is_none();
-            if local.attrs.is_empty();
-            if let Some(ref initexpr) = local.init;
-            if let ast::PatKind::Ident(_, ident, _) = local.pat.kind;
-            if let ast::ExprKind::Path(_, ref path) = retexpr.kind;
-            if match_path_ast(path, &[&*ident.name.as_str()]);
-            if !in_external_macro(cx.sess(), initexpr.span);
-            if !in_external_macro(cx.sess(), retexpr.span);
-            if !in_external_macro(cx.sess(), local.span);
-            if !in_macro(local.span);
-            then {
-                span_lint_and_then(
-                    cx,
-                    LET_AND_RETURN,
-                    retexpr.span,
-                    "returning the result of a `let` binding from a block",
-                    |err| {
-                        err.span_label(local.span, "unnecessary `let` binding");
-
-                        if let Some(snippet) = snippet_opt(cx, initexpr.span) {
-                            err.multipart_suggestion(
-                                "return the expression directly",
-                                vec![
-                                    (local.span, String::new()),
-                                    (retexpr.span, snippet),
-                                ],
-                                Applicability::MachineApplicable,
-                            );
-                        } else {
-                            err.span_help(initexpr.span, "this expression can be directly returned");
-                        }
-                    },
-                );
-            }
-        }
-    }
 }
 
 impl EarlyLintPass for Return {
@@ -254,7 +179,6 @@ impl EarlyLintPass for Return {
     }
 
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
-        Self::check_let_return(cx, block);
         if_chain! {
             if let Some(ref stmt) = block.stmts.last();
             if let ast::StmtKind::Expr(ref expr) = stmt.kind;

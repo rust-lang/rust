@@ -15,8 +15,7 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for expressions of the form `if c { true } else {
-    /// false }`
-    /// (or vice versa) and suggest using the condition directly.
+    /// false }` (or vice versa) and suggests using the condition directly.
     ///
     /// **Why is this bad?** Redundant code.
     ///

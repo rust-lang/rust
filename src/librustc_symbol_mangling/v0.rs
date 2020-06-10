@@ -477,7 +477,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         for predicate in predicates {
-            match *predicate {
+            match predicate {
                 ty::ExistentialPredicate::Trait(trait_ref) => {
                     // Use a type that can't appear in defaults of type parameters.
                     let dummy_self = self.tcx.mk_ty_infer(ty::FreshTy(0));

@@ -7,7 +7,7 @@
 
 #![feature(rustc_private)]
 
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 
 use std::cell::{Cell, RefCell};
 use rustc_serialize::{Encodable, Decodable};

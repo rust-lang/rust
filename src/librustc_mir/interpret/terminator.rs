@@ -50,7 +50,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call { ref func, ref args, destination, ref cleanup, .. } => {
+            Call {
+                ref func,
+                ref args,
+                destination,
+                ref cleanup,
+                from_hir_call: _from_hir_call,
+            } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
@@ -123,7 +129,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             // These should never occur for MIR we actually run.
             DropAndReplace { .. }
-            | FalseEdges { .. }
+            | FalseEdge { .. }
             | FalseUnwind { .. }
             | Yield { .. }
             | GeneratorDrop => span_bug!(

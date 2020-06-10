@@ -32,7 +32,7 @@ fn main() -> () {
         StorageLive(_3);                 // scope 0 at $DIR/issue-41110.rs:8:21: 8:27
         StorageLive(_4);                 // scope 0 at $DIR/issue-41110.rs:8:21: 8:22
         _4 = S;                          // scope 0 at $DIR/issue-41110.rs:8:21: 8:22
-        _3 = const S::id(move _4) -> [return: bb1, unwind: bb4]; // scope 0 at $DIR/issue-41110.rs:8:21: 8:27
+        _3 = const S::id(move _4) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-41110.rs:8:21: 8:27
                                          // ty::Const
                                          // + ty: fn(S) -> S {S::id}
                                          // + val: Value(Scalar(<ZST>))
@@ -41,7 +41,11 @@ fn main() -> () {
                                          // + literal: Const { ty: fn(S) -> S {S::id}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-41110.rs:7:1: 9:2
+    }
+
+    bb2: {
         StorageDead(_4);                 // scope 0 at $DIR/issue-41110.rs:8:26: 8:27
         _5 = const false;                // scope 0 at $DIR/issue-41110.rs:8:13: 8:28
                                          // ty::Const
@@ -50,7 +54,7 @@ fn main() -> () {
                                          // mir::Constant
                                          // + span: $DIR/issue-41110.rs:8:13: 8:28
                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-        _1 = const S::other(move _2, move _3) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/issue-41110.rs:8:13: 8:28
+        _1 = const S::other(move _2, move _3) -> [return: bb6, unwind: bb5]; // scope 0 at $DIR/issue-41110.rs:8:13: 8:28
                                          // ty::Const
                                          // + ty: fn(S, S) {S::other}
                                          // + val: Value(Scalar(<ZST>))
@@ -59,7 +63,19 @@ fn main() -> () {
                                          // + literal: Const { ty: fn(S, S) {S::other}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb2: {
+    bb3 (cleanup): {
+        goto -> bb9;                     // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
+    }
+
+    bb4 (cleanup): {
+        goto -> bb3;                     // scope 0 at $DIR/issue-41110.rs:8:26: 8:27
+    }
+
+    bb5 (cleanup): {
+        goto -> bb3;                     // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
+    }
+
+    bb6: {
         StorageDead(_3);                 // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
         _5 = const false;                // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
                                          // ty::Const
@@ -80,27 +96,22 @@ fn main() -> () {
         return;                          // scope 0 at $DIR/issue-41110.rs:9:2: 9:2
     }
 
-    bb3 (cleanup): {
-        goto -> bb5;                     // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
-    }
-
-    bb4 (cleanup): {
-        goto -> bb5;                     // scope 0 at $DIR/issue-41110.rs:8:26: 8:27
-    }
-
-    bb5 (cleanup): {
-        goto -> bb8;                     // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
-    }
-
-    bb6 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue-41110.rs:7:1: 9:2
-    }
-
     bb7 (cleanup): {
-        drop(_2) -> bb6;                 // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
+        drop(_2) -> bb1;                 // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
     }
 
     bb8 (cleanup): {
-        switchInt(_5) -> [false: bb6, otherwise: bb7]; // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
+        _5 = const false;                // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
+                                         // ty::Const
+                                         // + ty: bool
+                                         // + val: Value(Scalar(0x00))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41110.rs:8:27: 8:28
+                                         // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+        goto -> bb7;                     // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
+    }
+
+    bb9 (cleanup): {
+        switchInt(_5) -> [false: bb1, otherwise: bb8]; // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
     }
 }

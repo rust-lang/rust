@@ -343,14 +343,19 @@ impl<T> Vec<T> {
     ///
     /// // The vector contains no items, even though it has capacity for more
     /// assert_eq!(vec.len(), 0);
+    /// assert_eq!(vec.capacity(), 10);
     ///
     /// // These are all done without reallocating...
     /// for i in 0..10 {
     ///     vec.push(i);
     /// }
+    /// assert_eq!(vec.len(), 10);
+    /// assert_eq!(vec.capacity(), 10);
     ///
     /// // ...but this may make the vector reallocate
     /// vec.push(11);
+    /// assert_eq!(vec.len(), 11);
+    /// assert!(vec.capacity() >= 11);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -979,7 +984,7 @@ impl<T> Vec<T> {
             // bounds check above succeeds there must be a last element (which
             // can be self[index] itself).
             let last = ptr::read(self.as_ptr().add(len - 1));
-            let hole: *mut T = self.as_mut_ptr().add(index);
+            let hole = self.as_mut_ptr().add(index);
             self.set_len(len - 1);
             ptr::replace(hole, last)
         }
@@ -1901,6 +1906,22 @@ unsafe impl<T: ?Sized> IsZero for Option<Box<T>> {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl<T> ops::Deref for Vec<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &[T] {
+        unsafe { slice::from_raw_parts(self.as_ptr(), self.len) }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> ops::DerefMut for Vec<T> {
+    fn deref_mut(&mut self) -> &mut [T] {
+        unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for Vec<T> {
     #[cfg(not(test))]
     fn clone(&self) -> Vec<T> {
@@ -1952,22 +1973,6 @@ impl<T, I: SliceIndex<[T]>> IndexMut<I> for Vec<T> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(&mut **self, index)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::Deref for Vec<T> {
-    type Target = [T];
-
-    fn deref(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.as_ptr(), self.len) }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::DerefMut for Vec<T> {
-    fn deref_mut(&mut self) -> &mut [T] {
-        unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
     }
 }
 
@@ -2044,6 +2049,16 @@ impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
+    }
+
+    #[inline]
+    fn extend_one(&mut self, item: T) {
+        self.push(item);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.reserve(additional);
     }
 }
 
@@ -2315,6 +2330,16 @@ impl<T> Vec<T> {
 impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter())
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &item: &'a T) {
+        self.push(item);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.reserve(additional);
     }
 }
 
@@ -2600,6 +2625,13 @@ impl<T> IntoIter<T> {
 
     fn as_raw_mut_slice(&mut self) -> *mut [T] {
         ptr::slice_from_raw_parts_mut(self.ptr as *mut T, self.len())
+    }
+}
+
+#[stable(feature = "vec_intoiter_as_ref", since = "1.46.0")]
+impl<T> AsRef<[T]> for IntoIter<T> {
+    fn as_ref(&self) -> &[T] {
+        self.as_slice()
     }
 }
 
@@ -2945,12 +2977,12 @@ impl<T> Drain<'_, T> {
     }
 
     /// Makes room for inserting more elements before the tail.
-    unsafe fn move_tail(&mut self, extra_capacity: usize) {
+    unsafe fn move_tail(&mut self, additional: usize) {
         let vec = self.vec.as_mut();
-        let used_capacity = self.tail_start + self.tail_len;
-        vec.buf.reserve(used_capacity, extra_capacity);
+        let len = self.tail_start + self.tail_len;
+        vec.buf.reserve(len, additional);
 
-        let new_tail_start = self.tail_start + extra_capacity;
+        let new_tail_start = self.tail_start + additional;
         let src = vec.as_ptr().add(self.tail_start);
         let dst = vec.as_mut_ptr().add(new_tail_start);
         ptr::copy(src, dst, self.tail_len);

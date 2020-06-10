@@ -9,7 +9,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 fn main() {
     let sample = [1; 5];
     let len = sample.iter().count();
-    if sample.iter().next().is_none() {
+    if sample.get(0).is_none() {
         // Empty
     }
     sample.iter().cloned().any(|x| x == 1);

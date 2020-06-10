@@ -14,11 +14,11 @@ use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::{builtin, Level, Lint};
+use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{source_map::MultiSpan, Span, DUMMY_SP};
 
 use std::cmp;
 
@@ -80,11 +80,13 @@ impl<'s> LintLevelsBuilder<'s> {
             let level = cmp::min(level, self.sets.lint_cap);
 
             let lint_flag_val = Symbol::intern(lint_name);
+
             let ids = match store.find_lints(&lint_name) {
                 Ok(ids) => ids,
                 Err(_) => continue, // errors handled in check_lint_name_cmdline above
             };
             for id in ids {
+                self.check_gated_lint(id, DUMMY_SP);
                 let src = LintSource::CommandLine(lint_flag_val);
                 specs.insert(id, (level, src));
             }
@@ -212,8 +214,9 @@ impl<'s> LintLevelsBuilder<'s> {
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintSource::Node(name, li.span(), reason);
-                        for id in ids {
-                            specs.insert(*id, (level, src));
+                        for &id in ids {
+                            self.check_gated_lint(id, attr.span);
+                            specs.insert(id, (level, src));
                         }
                     }
 
@@ -381,6 +384,21 @@ impl<'s> LintLevelsBuilder<'s> {
         }
 
         BuilderPush { prev, changed: prev != self.cur }
+    }
+
+    /// Checks if the lint is gated on a feature that is not enabled.
+    fn check_gated_lint(&self, lint_id: LintId, span: Span) {
+        if let Some(feature) = lint_id.lint.feature_gate {
+            if !self.sess.features_untracked().enabled(feature) {
+                feature_err(
+                    &self.sess.parse_sess,
+                    feature,
+                    span,
+                    &format!("the `{}` lint is unstable", lint_id.lint.name_lower()),
+                )
+                .emit();
+            }
+        }
     }
 
     /// Called after `push` when the scope of a set of attributes are exited.

@@ -8,13 +8,13 @@ LL | enum MList { Cons(isize, MList), Nil }
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `MList` representable
 
-error[E0391]: cycle detected when processing `MList`
+error[E0391]: cycle detected when computing drop-check constraints for `MList`
   --> $DIR/infinite-tag-type-recursion.rs:1:1
    |
 LL | enum MList { Cons(isize, MList), Nil }
    | ^^^^^^^^^^
    |
-   = note: ...which again requires processing `MList`, completing the cycle
+   = note: ...which again requires computing drop-check constraints for `MList`, completing the cycle
    = note: cycle used when computing dropck types for `Canonical { max_universe: U0, variables: [], value: ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: UserFacing, def_id: None }, value: MList } }`
 
 error: aborting due to 2 previous errors

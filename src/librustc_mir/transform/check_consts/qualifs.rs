@@ -153,7 +153,9 @@ where
     F: FnMut(Local) -> bool,
 {
     match rvalue {
-        Rvalue::NullaryOp(..) => Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)),
+        Rvalue::ThreadLocalRef(_) | Rvalue::NullaryOp(..) => {
+            Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx))
+        }
 
         Rvalue::Discriminant(place) | Rvalue::Len(place) => {
             in_place::<Q, _>(cx, in_local, place.as_ref())
@@ -206,8 +208,8 @@ where
     F: FnMut(Local) -> bool,
 {
     let mut projection = place.projection;
-    while let [ref proj_base @ .., proj_elem] = projection {
-        match *proj_elem {
+    while let &[ref proj_base @ .., proj_elem] = projection {
+        match proj_elem {
             ProjectionElem::Index(index) if in_local(index) => return true,
 
             ProjectionElem::Deref

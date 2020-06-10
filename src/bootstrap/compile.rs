@@ -773,7 +773,8 @@ impl Step for Assemble {
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.
-        dist::maybe_install_llvm_dylib(builder, target_compiler.host, &sysroot);
+        dist::maybe_install_llvm_runtime(builder, target_compiler.host, &sysroot);
+        dist::maybe_install_llvm_target(builder, target_compiler.host, &sysroot);
 
         // Link the compiler binary itself into place
         let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);

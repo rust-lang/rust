@@ -291,7 +291,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Tuple(subtys) => {
-                for &subty in subtys {
+                for subty in subtys {
                     self.add_constraints_from_ty(current, subty.expect_ty(), variance);
                 }
             }
@@ -444,7 +444,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::ReFree(..)
-            | ty::ReScope(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
             | ty::ReEmpty(_)

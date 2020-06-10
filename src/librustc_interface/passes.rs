@@ -7,7 +7,7 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::sync::{par_iter, Lrc, Once, ParallelIterator, WorkerLocal};
+use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_errors::{ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
@@ -33,7 +33,7 @@ use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_span::FileName;
+use rustc_span::{FileName, RealFileName};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 
@@ -169,10 +169,10 @@ pub fn register_plugins<'a>(
     sess.init_features(features);
 
     let crate_types = util::collect_crate_types(sess, &krate.attrs);
-    sess.crate_types.set(crate_types);
+    sess.init_crate_types(crate_types);
 
     let disambiguator = util::compute_crate_disambiguator(sess);
-    sess.crate_disambiguator.set(disambiguator);
+    sess.crate_disambiguator.set(disambiguator).expect("not yet initialized");
     rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
 
     if sess.opts.incremental.is_some() {
@@ -244,7 +244,7 @@ fn configure_and_expand_inner<'a>(
             alt_std_name,
         );
         if let Some(name) = name {
-            sess.parse_sess.injected_crate_name.set(name);
+            sess.parse_sess.injected_crate_name.set(name).expect("not yet initialized");
         }
         krate
     });
@@ -288,9 +288,10 @@ fn configure_and_expand_inner<'a>(
         let features = sess.features_untracked();
         let cfg = rustc_expand::expand::ExpansionConfig {
             features: Some(&features),
-            recursion_limit: *sess.recursion_limit.get(),
+            recursion_limit: sess.recursion_limit(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
+            span_debug: sess.opts.debugging_opts.span_debug,
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
@@ -358,7 +359,7 @@ fn configure_and_expand_inner<'a>(
         rustc_ast_passes::ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
     });
 
-    let crate_types = sess.crate_types.borrow();
+    let crate_types = sess.crate_types();
     let is_proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
 
     // For backwards compatibility, we don't try to run proc macro injection
@@ -488,7 +489,7 @@ fn generated_output_paths(
             // If the filename has been overridden using `-o`, it will not be modified
             // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
             OutputType::Exe if !exact_name => {
-                for crate_type in sess.crate_types.borrow().iter() {
+                for crate_type in sess.crate_types().iter() {
                     let p = filename_for_input(sess, *crate_type, crate_name, outputs);
                     out_filenames.push(p);
                 }
@@ -569,13 +570,16 @@ fn write_out_deps(
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
                     if let Some((path, _)) = source.dylib {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        let file_name = FileName::Real(RealFileName::Named(path));
+                        files.push(escape_dep_filename(&file_name));
                     }
                     if let Some((path, _)) = source.rlib {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        let file_name = FileName::Real(RealFileName::Named(path));
+                        files.push(escape_dep_filename(&file_name));
                     }
                     if let Some((path, _)) = source.rmeta {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        let file_name = FileName::Real(RealFileName::Named(path));
+                        files.push(escape_dep_filename(&file_name));
                     }
                 }
             });
@@ -721,7 +725,7 @@ pub fn create_global_ctxt<'tcx>(
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
-    global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
+    global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
@@ -743,7 +747,7 @@ pub fn create_global_ctxt<'tcx>(
     }
 
     let gcx = sess.time("setup_global_ctxt", || {
-        global_ctxt.init_locking(|| {
+        global_ctxt.get_or_init(|| {
             TyCtxt::create_global_ctxt(
                 sess,
                 lint_store,
@@ -838,7 +842,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
 
     sess.time("MIR_effect_checking", || {
         for def_id in tcx.body_owners() {
-            mir::transform::check_unsafety::check_unsafety(tcx, def_id.to_def_id())
+            mir::transform::check_unsafety::check_unsafety(tcx, def_id)
         }
     });
 
@@ -905,8 +909,7 @@ fn encode_and_write_metadata(
 
     let metadata_kind = tcx
         .sess
-        .crate_types
-        .borrow()
+        .crate_types()
         .iter()
         .map(|ty| match *ty {
             CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => MetadataKind::None,

@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! This crate is responsible for the part of name resolution that doesn't require type checker.
 //!
 //! Module structure of the crate is built here.
@@ -17,11 +19,12 @@ pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
+use rustc_arena::TypedArena;
 use rustc_ast::ast::{self, FloatTy, IntTy, NodeId, UintTy};
 use rustc_ast::ast::{Crate, CRATE_NODE_ID};
 use rustc_ast::ast::{ItemKind, Path};
 use rustc_ast::attr;
-use rustc_ast::node_id::{NodeMap, NodeSet};
+use rustc_ast::node_id::NodeMap;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast_pretty::pprust;
@@ -35,7 +38,7 @@ use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::{DefKey, Definitions};
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
-use rustc_hir::{GlobMap, TraitMap};
+use rustc_hir::TraitMap;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::hir::exports::ExportMap;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
@@ -251,21 +254,31 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
     }
 }
 
-struct UsePlacementFinder {
-    target_module: NodeId,
+struct UsePlacementFinder<'d> {
+    definitions: &'d Definitions,
+    target_module: LocalDefId,
     span: Option<Span>,
     found_use: bool,
 }
 
-impl UsePlacementFinder {
-    fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
-        let mut finder = UsePlacementFinder { target_module, span: None, found_use: false };
-        visit::walk_crate(&mut finder, krate);
-        (finder.span, finder.found_use)
+impl<'d> UsePlacementFinder<'d> {
+    fn check(
+        definitions: &'d Definitions,
+        krate: &Crate,
+        target_module: DefId,
+    ) -> (Option<Span>, bool) {
+        if let Some(target_module) = target_module.as_local() {
+            let mut finder =
+                UsePlacementFinder { definitions, target_module, span: None, found_use: false };
+            visit::walk_crate(&mut finder, krate);
+            (finder.span, finder.found_use)
+        } else {
+            (None, false)
+        }
     }
 }
 
-impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
+impl<'tcx, 'd> Visitor<'tcx> for UsePlacementFinder<'d> {
     fn visit_mod(
         &mut self,
         module: &'tcx ast::Mod,
@@ -276,7 +289,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
         if self.span.is_some() {
             return;
         }
-        if node_id != self.target_module {
+        if self.definitions.local_def_id(node_id) != self.target_module {
             visit::walk_mod(self, module);
             return;
         }
@@ -606,13 +619,13 @@ struct PrivacyError<'a> {
 
 struct UseError<'a> {
     err: DiagnosticBuilder<'a>,
-    /// Attach `use` statements for these candidates.
+    /// Candidates which user could `use` to access the missing type.
     candidates: Vec<ImportSuggestion>,
-    /// The `NodeId` of the module to place the use-statements in.
-    node_id: NodeId,
-    /// Whether the diagnostic should state that it's "better".
-    better: bool,
-    /// Extra free form suggestion. Currently used to suggest new type parameter.
+    /// The `DefId` of the module to place the use-statements in.
+    def_id: DefId,
+    /// Whether the diagnostic should say "instead" (as in `consider importing ... instead`).
+    instead: bool,
+    /// Extra free-form suggestion.
     suggestion: Option<(Span, &'static str, String, Applicability)>,
 }
 
@@ -864,8 +877,8 @@ pub struct Resolver<'a> {
     label_res_map: NodeMap<NodeId>,
 
     /// `CrateNum` resolutions of `extern crate` items.
-    extern_crate_map: NodeMap<CrateNum>,
-    export_map: ExportMap<NodeId>,
+    extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
+    export_map: ExportMap<LocalDefId>,
     trait_map: TraitMap<NodeId>,
 
     /// A map from nodes to anonymous modules.
@@ -893,11 +906,11 @@ pub struct Resolver<'a> {
     underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
-    glob_map: GlobMap,
+    glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
-    maybe_unused_trait_imports: NodeSet,
-    maybe_unused_extern_crates: Vec<(NodeId, Span)>,
+    maybe_unused_trait_imports: FxHashSet<LocalDefId>,
+    maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -922,11 +935,10 @@ pub struct Resolver<'a> {
     dummy_ext_bang: Lrc<SyntaxExtension>,
     dummy_ext_derive: Lrc<SyntaxExtension>,
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
-    macro_defs: FxHashMap<ExpnId, DefId>,
-    local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
+    local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
     ast_transform_scopes: FxHashMap<ExpnId, Module<'a>>,
-    unused_macros: NodeMap<Span>,
-    proc_macro_stubs: NodeSet,
+    unused_macros: FxHashMap<LocalDefId, (NodeId, Span)>,
+    proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
         Vec<(Ident, MacroKind, ParentScope<'a>, Option<&'a NameBinding<'a>>)>,
@@ -970,13 +982,13 @@ pub struct Resolver<'a> {
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
 #[derive(Default)]
 pub struct ResolverArenas<'a> {
-    modules: arena::TypedArena<ModuleData<'a>>,
+    modules: TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
-    name_bindings: arena::TypedArena<NameBinding<'a>>,
-    imports: arena::TypedArena<Import<'a>>,
-    name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
-    macro_rules_bindings: arena::TypedArena<MacroRulesBinding<'a>>,
-    ast_paths: arena::TypedArena<ast::Path>,
+    name_bindings: TypedArena<NameBinding<'a>>,
+    imports: TypedArena<Import<'a>>,
+    name_resolutions: TypedArena<RefCell<NameResolution<'a>>>,
+    macro_rules_bindings: TypedArena<MacroRulesBinding<'a>>,
+    ast_paths: TypedArena<ast::Path>,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -1152,9 +1164,6 @@ impl<'a> Resolver<'a> {
         let mut invocation_parent_scopes = FxHashMap::default();
         invocation_parent_scopes.insert(ExpnId::root(), ParentScope::module(graph_root));
 
-        let mut macro_defs = FxHashMap::default();
-        macro_defs.insert(ExpnId::root(), root_def_id);
-
         let features = session.features_untracked();
         let non_macro_attr =
             |mark_used| Lrc::new(SyntaxExtension::non_macro_attr(mark_used, session.edition()));
@@ -1229,7 +1238,6 @@ impl<'a> Resolver<'a> {
             invocation_parent_scopes,
             output_macro_rules_scopes: Default::default(),
             helper_attrs: Default::default(),
-            macro_defs,
             local_macro_def_scopes: FxHashMap::default(),
             name_already_seen: FxHashMap::default(),
             potentially_unused_imports: Vec::new(),
@@ -1271,15 +1279,33 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn into_outputs(self) -> ResolverOutputs {
+        let definitions = self.definitions;
+        let extern_crate_map = self.extern_crate_map;
+        let export_map = self.export_map;
+        let trait_map = self
+            .trait_map
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    definitions.node_id_to_hir_id(k),
+                    v.into_iter()
+                        .map(|tc| tc.map_import_ids(|id| definitions.node_id_to_hir_id(id)))
+                        .collect(),
+                )
+            })
+            .collect();
+        let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
+        let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
+        let glob_map = self.glob_map;
         ResolverOutputs {
-            definitions: self.definitions,
+            definitions: definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
-            extern_crate_map: self.extern_crate_map,
-            export_map: self.export_map,
-            trait_map: self.trait_map,
-            glob_map: self.glob_map,
-            maybe_unused_trait_imports: self.maybe_unused_trait_imports,
-            maybe_unused_extern_crates: self.maybe_unused_extern_crates,
+            extern_crate_map,
+            export_map,
+            trait_map,
+            glob_map,
+            maybe_unused_trait_imports,
+            maybe_unused_extern_crates,
             extern_prelude: self
                 .extern_prelude
                 .iter()
@@ -1294,7 +1320,21 @@ impl<'a> Resolver<'a> {
             cstore: Box::new(self.cstore().clone()),
             extern_crate_map: self.extern_crate_map.clone(),
             export_map: self.export_map.clone(),
-            trait_map: self.trait_map.clone(),
+            trait_map: self
+                .trait_map
+                .iter()
+                .map(|(&k, v)| {
+                    (
+                        self.definitions.node_id_to_hir_id(k),
+                        v.iter()
+                            .cloned()
+                            .map(|tc| {
+                                tc.map_import_ids(|id| self.definitions.node_id_to_hir_id(id))
+                            })
+                            .collect(),
+                    )
+                })
+                .collect(),
             glob_map: self.glob_map.clone(),
             maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
             maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
@@ -1335,8 +1375,8 @@ impl<'a> Resolver<'a> {
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
         loop {
-            match self.macro_defs.get(&ctxt.outer_expn()) {
-                Some(&def_id) => return def_id,
+            match ctxt.outer_expn().expn_data().macro_def_id {
+                Some(def_id) => return def_id,
                 None => ctxt.remove_mark(),
             };
         }
@@ -1439,7 +1479,8 @@ impl<'a> Resolver<'a> {
     #[inline]
     fn add_to_glob_map(&mut self, import: &Import<'_>, ident: Ident) {
         if import.is_glob() {
-            self.glob_map.entry(import.id).or_default().insert(ident.name);
+            let def_id = self.definitions.local_def_id(import.id);
+            self.glob_map.entry(def_id).or_default().insert(ident.name);
         }
     }
 
@@ -1820,7 +1861,7 @@ impl<'a> Resolver<'a> {
                 && module.expansion.is_descendant_of(parent.expansion)
             {
                 // The macro is a proc macro derive
-                if let Some(&def_id) = self.macro_defs.get(&module.expansion) {
+                if let Some(def_id) = module.expansion.expn_data().macro_def_id {
                     if let Some(ext) = self.get_macro_by_def_id(def_id) {
                         if !ext.is_builtin && ext.macro_kind() == MacroKind::Derive {
                             if parent.expansion.outer_expn_is_descendant_of(span.ctxt()) {
@@ -2515,12 +2556,12 @@ impl<'a> Resolver<'a> {
     }
 
     fn report_with_use_injections(&mut self, krate: &Crate) {
-        for UseError { mut err, candidates, node_id, better, suggestion } in
+        for UseError { mut err, candidates, def_id, instead, suggestion } in
             self.use_injections.drain(..)
         {
-            let (span, found_use) = UsePlacementFinder::check(krate, node_id);
+            let (span, found_use) = UsePlacementFinder::check(&self.definitions, krate, def_id);
             if !candidates.is_empty() {
-                diagnostics::show_candidates(&mut err, span, &candidates, better, found_use);
+                diagnostics::show_candidates(&mut err, span, &candidates, instead, found_use);
             } else if let Some((span, msg, sugg, appl)) = suggestion {
                 err.span_suggestion(span, msg, sugg, appl);
             }
@@ -2840,7 +2881,7 @@ impl<'a> Resolver<'a> {
         span: Span,
         path_str: &str,
         ns: Namespace,
-        module_id: NodeId,
+        module_id: LocalDefId,
     ) -> Result<(ast::Path, Res), ()> {
         let path = if path_str.starts_with("::") {
             ast::Path {
@@ -2860,10 +2901,7 @@ impl<'a> Resolver<'a> {
                     .collect(),
             }
         };
-        let module = self.block_map.get(&module_id).copied().unwrap_or_else(|| {
-            let def_id = self.definitions.local_def_id(module_id);
-            self.module_map.get(&def_id).copied().unwrap_or(self.graph_root)
-        });
+        let module = self.module_map.get(&module_id).copied().unwrap_or(self.graph_root);
         let parent_scope = &ParentScope::module(module);
         let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
         Ok((path, res))

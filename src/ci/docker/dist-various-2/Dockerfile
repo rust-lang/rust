@@ -28,6 +28,29 @@ RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no
 RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7924C5513486
 RUN add-apt-repository -y 'deb http://apt.dilos.org/dilos dilos2 main'
 
+ENV \
+    AR_x86_64_fuchsia=x86_64-fuchsia-ar \
+    CC_x86_64_fuchsia=x86_64-fuchsia-clang \
+    CXX_x86_64_fuchsia=x86_64-fuchsia-clang++ \
+    AR_aarch64_fuchsia=aarch64-fuchsia-ar \
+    CC_aarch64_fuchsia=aarch64-fuchsia-clang \
+    CXX_aarch64_fuchsia=aarch64-fuchsia-clang++ \
+    AR_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-ar \
+    CC_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-gcc \
+    CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-g++ \
+    AR_x86_64_sun_solaris=x86_64-sun-solaris2.10-ar \
+    CC_x86_64_sun_solaris=x86_64-sun-solaris2.10-gcc \
+    CXX_x86_64_sun_solaris=x86_64-sun-solaris2.10-g++ \
+    CC_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-gcc-7 \
+    CXX_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-g++-7 \
+    AR_x86_64_fortanix_unknown_sgx=ar \
+    CC_x86_64_fortanix_unknown_sgx=x86_64-fortanix-unknown-sgx-clang-11 \
+    CFLAGS_x86_64_fortanix_unknown_sgx="-mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
+    CXX_x86_64_fortanix_unknown_sgx=x86_64-fortanix-unknown-sgx-clang++-11 \
+    CXXFLAGS_x86_64_fortanix_unknown_sgx="-mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
+    CC=gcc-7 \
+    CXX=g++-7
+
 WORKDIR /build
 COPY scripts/musl.sh /build
 RUN env \
@@ -46,33 +69,17 @@ COPY dist-various-2/build-solaris-toolchain.sh /tmp/
 RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386
 RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc
 COPY dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
+COPY dist-various-2/x86_64-fortanix-unknown-sgx-clang-wrap.sh /usr/bin/x86_64-fortanix-unknown-sgx-clang-11
+RUN ln -s /usr/bin/x86_64-fortanix-unknown-sgx-clang-11 /usr/bin/x86_64-fortanix-unknown-sgx-clang++-11
 # We pass the commit id of the port of LLVM's libunwind to the build script.
 # Any update to the commit id here, should cause the container image to be re-built from this point on.
-RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh "5125c169b30837208a842f85f7ae44a83533bd0e"
+RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh "800f95131fe6acd20b96b6f4723ca3c820f3d379"
 
 COPY dist-various-2/build-wasi-toolchain.sh /tmp/
 RUN /tmp/build-wasi-toolchain.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-ENV \
-    AR_x86_64_fuchsia=x86_64-fuchsia-ar \
-    CC_x86_64_fuchsia=x86_64-fuchsia-clang \
-    CXX_x86_64_fuchsia=x86_64-fuchsia-clang++ \
-    AR_aarch64_fuchsia=aarch64-fuchsia-ar \
-    CC_aarch64_fuchsia=aarch64-fuchsia-clang \
-    CXX_aarch64_fuchsia=aarch64-fuchsia-clang++ \
-    AR_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-ar \
-    CC_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-gcc \
-    CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-g++ \
-    AR_x86_64_sun_solaris=x86_64-sun-solaris2.10-ar \
-    CC_x86_64_sun_solaris=x86_64-sun-solaris2.10-gcc \
-    CXX_x86_64_sun_solaris=x86_64-sun-solaris2.10-g++ \
-    CC_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-gcc-7 \
-    CXX_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-g++-7 \
-    CC=gcc-7 \
-    CXX=g++-7
 
 ENV CARGO_TARGET_X86_64_FUCHSIA_AR /usr/local/bin/llvm-ar
 ENV CARGO_TARGET_X86_64_FUCHSIA_RUSTFLAGS \

@@ -1006,11 +1006,12 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
+    pub tokens: Option<TokenStream>,
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr, 96);
+rustc_data_structures::static_assert_size!(Expr, 104);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
@@ -1251,7 +1252,7 @@ pub enum ExprKind {
     Ret(Option<P<Expr>>),
 
     /// Output of the `asm!()` macro.
-    InlineAsm(InlineAsm),
+    InlineAsm(P<InlineAsm>),
     /// Output of the `llvm_asm!()` macro.
     LlvmInlineAsm(P<LlvmInlineAsm>),
 
@@ -1970,6 +1971,7 @@ pub struct InlineAsm {
     pub template: Vec<InlineAsmTemplatePiece>,
     pub operands: Vec<(InlineAsmOperand, Span)>,
     pub options: InlineAsmOptions,
+    pub line_spans: Vec<Span>,
 }
 
 /// Inline assembly dialect.

@@ -324,7 +324,9 @@ usercall:
 /*  return */
     mov %rsi,%rax /*  RAX = return value */
     /* NOP: mov %rdx,%rdx */ /*  RDX = return value */
-    ret
+    pop %r11
+    lfence
+    jmp *%r11
 
 /*
 The following functions need to be defined externally:
@@ -343,20 +345,28 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
 .global get_tcs_addr
 get_tcs_addr:
     mov %gs:tcsls_tcs_addr,%rax
-    ret
+    pop %r11
+    lfence
+    jmp *%r11
 
 .global get_tls_ptr
 get_tls_ptr:
     mov %gs:tcsls_tls_ptr,%rax
-    ret
+    pop %r11
+    lfence
+    jmp *%r11
 
 .global set_tls_ptr
 set_tls_ptr:
     mov %rdi,%gs:tcsls_tls_ptr
-    ret
+    pop %r11
+    lfence
+    jmp *%r11
 
 .global take_debug_panic_buf_ptr
 take_debug_panic_buf_ptr:
     xor %rax,%rax
     xchg %gs:tcsls_debug_panic_buf_ptr,%rax
-    ret
+    pop %r11
+    lfence
+    jmp *%r11

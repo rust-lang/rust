@@ -736,6 +736,16 @@ impl<I: Idx, T> Extend<T> for IndexVec<I, T> {
     fn extend<J: IntoIterator<Item = T>>(&mut self, iter: J) {
         self.raw.extend(iter);
     }
+
+    #[inline]
+    fn extend_one(&mut self, item: T) {
+        self.raw.push(item);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.raw.reserve(additional);
+    }
 }
 
 impl<I: Idx, T> FromIterator<T> for IndexVec<I, T> {

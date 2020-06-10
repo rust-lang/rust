@@ -86,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 }
             },
             FnKind::Method(..) => (),
-            _ => return,
+            FnKind::Closure(..) => return,
         }
 
         // Exclude non-inherent impls
@@ -111,10 +111,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
 
-        let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds.iter().copied())
+        let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds.iter())
             .filter(|p| !p.is_global())
             .filter_map(|obligation| {
-                if let ty::Predicate::Trait(poly_trait_ref, _) = obligation.predicate {
+                if let ty::PredicateKind::Trait(poly_trait_ref, _) = obligation.predicate.kind() {
                     if poly_trait_ref.def_id() == sized_trait || poly_trait_ref.skip_binder().has_escaping_bound_vars()
                     {
                         return None;
@@ -179,7 +179,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                 .substs
                                 .iter()
                                 .skip(1)
-                                .cloned()
                                 .collect::<Vec<_>>();
                             implements_trait(cx, ty_empty_region, t.def_id(), ty_params)
                         })

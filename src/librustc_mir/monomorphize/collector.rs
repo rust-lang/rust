@@ -430,7 +430,7 @@ fn check_recursion_limit<'tcx>(
     // Code that needs to instantiate the same function recursively
     // more than the recursion limit is assumed to be causing an
     // infinite expansion.
-    if adjusted_recursion_depth > *tcx.sess.recursion_limit.get() {
+    if !tcx.sess.recursion_limit().value_within_limit(adjusted_recursion_depth) {
         let error = format!("reached the recursion limit while instantiating `{}`", instance);
         if let Some(def_id) = def_id.as_local() {
             let hir_id = tcx.hir().as_local_hir_id(def_id);
@@ -449,7 +449,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let type_length = instance
         .substs
         .iter()
-        .flat_map(|&arg| arg.walk())
+        .flat_map(|arg| arg.walk())
         .filter(|arg| match arg.unpack() {
             GenericArgKind::Type(_) | GenericArgKind::Const(_) => true,
             GenericArgKind::Lifetime(_) => false,
@@ -463,8 +463,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     // which means that rustc basically hangs.
     //
     // Bail out in these cases to avoid that bad user experience.
-    let type_length_limit = *tcx.sess.type_length_limit.get();
-    if type_length > type_length_limit {
+    if !tcx.sess.type_length_limit().value_within_limit(type_length) {
         // The instance name is already known to be too long for rustc.
         // Show only the first and last 32 characters to avoid blasting
         // the user's terminal with thousands of lines of type-name.
@@ -633,17 +632,24 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let ty = self.monomorphize(ty);
                 visit_drop_use(self.tcx, ty, true, self.output);
             }
+            mir::TerminatorKind::InlineAsm { ref operands, .. } => {
+                for op in operands {
+                    if let mir::InlineAsmOperand::SymFn { value } = op {
+                        let fn_ty = self.monomorphize(value.literal.ty);
+                        visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
+                    }
+                }
+            }
             mir::TerminatorKind::Goto { .. }
             | mir::TerminatorKind::SwitchInt { .. }
             | mir::TerminatorKind::Resume
             | mir::TerminatorKind::Abort
             | mir::TerminatorKind::Return
             | mir::TerminatorKind::Unreachable
-            | mir::TerminatorKind::Assert { .. }
-            | mir::TerminatorKind::InlineAsm { .. } => {}
+            | mir::TerminatorKind::Assert { .. } => {}
             mir::TerminatorKind::GeneratorDrop
             | mir::TerminatorKind::Yield { .. }
-            | mir::TerminatorKind::FalseEdges { .. }
+            | mir::TerminatorKind::FalseEdge { .. }
             | mir::TerminatorKind::FalseUnwind { .. } => bug!(),
         }
 
@@ -1137,6 +1143,7 @@ fn create_mono_items_for_default_impls<'tcx>(
 fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut Vec<MonoItem<'tcx>>) {
     match tcx.global_alloc(alloc_id) {
         GlobalAlloc::Static(def_id) => {
+            assert!(!tcx.is_thread_local_static(def_id));
             let instance = Instance::mono(tcx, def_id);
             if should_monomorphize_locally(tcx, &instance) {
                 trace!("collecting static {:?}", def_id);

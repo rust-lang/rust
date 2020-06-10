@@ -1,9 +1,9 @@
-// run-pass
 #![feature(const_generics)]
-#![allow(incomplete_features)]
+//~^ WARN the feature `const_generics` is incomplete
 trait Foo {}
 
 impl<const N: usize> Foo for [(); N] where Self: FooImpl<{ N == 0 }> {}
+//~^ ERROR constant expression depends on a generic parameter
 
 trait FooImpl<const IS_ZERO: bool> {}
 

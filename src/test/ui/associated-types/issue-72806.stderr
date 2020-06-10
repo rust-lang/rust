@@ -1,0 +1,9 @@
+error[E0271]: type mismatch resolving `<Foo2 as Bar2>::Ok == char`
+  --> $DIR/issue-72806.rs:12:6
+   |
+LL | impl Bar for Foo {
+   |      ^^^ expected `u32`, found `char`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.

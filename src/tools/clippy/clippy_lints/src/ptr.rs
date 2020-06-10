@@ -2,7 +2,7 @@
 
 use crate::utils::ptr::get_spans;
 use crate::utils::{
-    is_type_diagnostic_item, match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_sugg,
+    is_allowed, is_type_diagnostic_item, match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_sugg,
     span_lint_and_then, walk_ptrs_hir_ty,
 };
 use if_chain::if_chain;
@@ -47,7 +47,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```ignore
+    /// // Bad
     /// fn foo(&Vec<u32>) { .. }
+    ///
+    /// // Good
+    /// fn foo(&[u32]) { .. }
     /// ```
     pub PTR_ARG,
     style,
@@ -65,7 +69,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```ignore
+    /// // Bad
     /// if x == ptr::null {
+    ///     ..
+    /// }
+    ///
+    /// // Good
+    /// if x.is_null() {
     ///     ..
     /// }
     /// ```
@@ -76,19 +86,16 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** This lint checks for functions that take immutable
-    /// references and return
-    /// mutable ones.
+    /// references and return mutable ones.
     ///
     /// **Why is this bad?** This is trivially unsound, as one can create two
-    /// mutable references
-    /// from the same (immutable!) source. This
-    /// [error](https://github.com/rust-lang/rust/issues/39465)
+    /// mutable references from the same (immutable!) source.
+    /// This [error](https://github.com/rust-lang/rust/issues/39465)
     /// actually lead to an interim Rust release 1.15.1.
     ///
     /// **Known problems:** To be on the conservative side, if there's at least one
-    /// mutable reference
-    /// with the output lifetime, this lint will not trigger. In practice, this
-    /// case is unlikely anyway.
+    /// mutable reference with the output lifetime, this lint will not trigger.
+    /// In practice, this case is unlikely anyway.
     ///
     /// **Example:**
     /// ```ignore
@@ -150,8 +157,16 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_
     let fn_def_id = cx.tcx.hir().local_def_id(fn_id);
     let sig = cx.tcx.fn_sig(fn_def_id);
     let fn_ty = sig.skip_binder();
+    let body = opt_body_id.map(|id| cx.tcx.hir().body(id));
 
     for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
+        // Honor the allow attribute on parameters. See issue 5644.
+        if let Some(body) = &body {
+            if is_allowed(cx, PTR_ARG, body.params[idx].hir_id) {
+                continue;
+            }
+        }
+
         if let ty::Ref(_, ty, Mutability::Not) = ty.kind {
             if is_type_diagnostic_item(cx, ty, sym!(vec_type)) {
                 let mut ty_snippet = None;

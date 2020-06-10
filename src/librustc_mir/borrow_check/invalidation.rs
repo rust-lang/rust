@@ -183,7 +183,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::InlineAsm { template: _, ref operands, options: _, destination: _ } => {
+            TerminatorKind::InlineAsm {
+                template: _,
+                ref operands,
+                options: _,
+                line_spans: _,
+                destination: _,
+            } => {
                 for op in operands {
                     match *op {
                         InlineAsmOperand::In { reg: _, ref value }
@@ -209,7 +215,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::Goto { target: _ }
             | TerminatorKind::Abort
             | TerminatorKind::Unreachable
-            | TerminatorKind::FalseEdges { real_target: _, imaginary_target: _ }
+            | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ } => {
                 // no data used, thus irrelevant to borrowck
             }
@@ -294,6 +300,8 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
+
+            Rvalue::ThreadLocalRef(_) => {}
 
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)

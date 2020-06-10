@@ -13,10 +13,24 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
+    /// fn simple_double_parens() -> i32 {
+    ///     ((0))
+    /// }
+    ///
+    /// // Good
+    /// fn simple_no_parens() -> i32 {
+    ///     0
+    /// }
+    ///
+    /// // or
+    ///
     /// # fn foo(bar: usize) {}
-    /// ((0));
+    /// // Bad
     /// foo((0));
-    /// ((1, 2));
+    ///
+    /// // Good
+    /// foo(0);
     /// ```
     pub DOUBLE_PARENS,
     complexity,

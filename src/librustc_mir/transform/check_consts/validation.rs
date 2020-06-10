@@ -244,11 +244,7 @@ impl Validator<'mir, 'tcx> {
             return;
         }
 
-        // If an operation is supported in miri it can be turned on with
-        // `-Zunleash-the-miri-inside-of-you`.
-        let is_unleashable = O::IS_SUPPORTED_IN_MIRI;
-
-        if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.miri_unleashed_feature(span, O::feature_gate());
             return;
         }
@@ -263,11 +259,11 @@ impl Validator<'mir, 'tcx> {
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
-        if self.tcx.is_thread_local_static(def_id) {
-            self.check_op_spanned(ops::ThreadLocalAccess, span)
-        } else {
-            self.check_op_spanned(ops::StaticAccess, span)
-        }
+        assert!(
+            !self.tcx.is_thread_local_static(def_id),
+            "tls access is checked in `Rvalue::ThreadLocalRef"
+        );
+        self.check_op_spanned(ops::StaticAccess, span)
     }
 }
 
@@ -332,6 +328,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         self.super_rvalue(rvalue, location);
 
         match *rvalue {
+            Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
+
             Rvalue::Use(_)
             | Rvalue::Repeat(..)
             | Rvalue::UnaryOp(UnOp::Neg, _)
@@ -432,7 +430,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         &mut self,
         place_local: Local,
         proj_base: &[PlaceElem<'tcx>],
-        elem: &PlaceElem<'tcx>,
+        elem: PlaceElem<'tcx>,
         context: PlaceContext,
         location: Location,
     ) {
@@ -611,7 +609,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             // instead.
             TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }

@@ -37,7 +37,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
 fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
     // We only need to check for the presence of weak lang items if we're
     // emitting something that's not an rlib.
-    let needs_check = tcx.sess.crate_types.borrow().iter().any(|kind| match *kind {
+    let needs_check = tcx.sess.crate_types().iter().any(|kind| match *kind {
         CrateType::Dylib
         | CrateType::ProcMacro
         | CrateType::Cdylib

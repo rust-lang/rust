@@ -8,6 +8,6 @@ fn foo(mut f: Box<dyn FnMut()>) {
 
 fn main() {
     let y = true;
-    foo(Box::new(move || y = false) as Box<_>);
+    foo(Box::new(move || y = !y) as Box<_>);
     //~^ ERROR cannot assign to `y`, as it is not declared as mutable
 }

@@ -409,7 +409,7 @@ impl<T> [T] {
     /// The returned range is half-open, which means that the end pointer
     /// points *one past* the last element of the slice. This way, an empty
     /// slice is represented by two equal pointers, and the difference between
-    /// the two pointers represents the size of the size.
+    /// the two pointers represents the size of the slice.
     ///
     /// See [`as_ptr`] for warnings on using these pointers. The end pointer
     /// requires extra caution, as it does not point to a valid element in the
@@ -464,7 +464,7 @@ impl<T> [T] {
     /// The returned range is half-open, which means that the end pointer
     /// points *one past* the last element of the slice. This way, an empty
     /// slice is represented by two equal pointers, and the difference between
-    /// the two pointers represents the size of the size.
+    /// the two pointers represents the size of the slice.
     ///
     /// See [`as_mut_ptr`] for warnings on using these pointers. The end
     /// pointer requires extra caution, as it does not point to a valid element
@@ -1654,7 +1654,7 @@ impl<T> [T] {
     ///
     /// ```
     /// let mut floats = [5f64, 4.0, 1.0, 3.0, 2.0];
-    /// floats.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    /// floats.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
     /// assert_eq!(floats, [1.0, 2.0, 3.0, 4.0, 5.0]);
     /// ```
     ///
@@ -2173,7 +2173,7 @@ impl<T> [T] {
     ///
     /// The length of `src` must be the same as `self`.
     ///
-    /// If `src` implements `Copy`, it can be more performant to use
+    /// If `T` implements `Copy`, it can be more performant to use
     /// [`copy_from_slice`].
     ///
     /// # Panics
@@ -2244,7 +2244,7 @@ impl<T> [T] {
     ///
     /// The length of `src` must be the same as `self`.
     ///
-    /// If `src` does not implement `Copy`, use [`clone_from_slice`].
+    /// If `T` does not implement `Copy`, use [`clone_from_slice`].
     ///
     /// # Panics
     ///
@@ -5740,7 +5740,8 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!
-///       Slices can never span across multiple allocated objects.
+///       Slices can never span across multiple allocated objects. See [below](#incorrect-usage)
+///       for an example incorrectly not taking this into account.
 ///     * `data` must be non-null and aligned even for zero-length slices. One
 ///       reason for this is that enum layout optimizations may rely on references
 ///       (including slices of any length) being aligned and non-null to distinguish
@@ -5771,6 +5772,34 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 /// let ptr = &x as *const _;
 /// let slice = unsafe { slice::from_raw_parts(ptr, 1) };
 /// assert_eq!(slice[0], 42);
+/// ```
+///
+/// ### Incorrect usage
+///
+/// The following `join_slices` function is **unsound** ⚠️
+///
+/// ```rust,no_run
+/// use std::slice;
+///
+/// fn join_slices<'a, T>(fst: &'a [T], snd: &'a [T]) -> &'a [T] {
+///     let fst_end = fst.as_ptr().wrapping_add(fst.len());
+///     let snd_start = snd.as_ptr();
+///     assert_eq!(fst_end, snd_start, "Slices must be contiguous!");
+///     unsafe {
+///         // The assertion above ensures `fst` and `snd` are contiguous, but they might
+///         // still be contained within _different allocated objects_, in which case
+///         // creating this slice is undefined behavior.
+///         slice::from_raw_parts(fst.as_ptr(), fst.len() + snd.len())
+///     }
+/// }
+///
+/// fn main() {
+///     // `a` and `b` are different allocated objects...
+///     let a = 42;
+///     let b = 27;
+///     // ... which may nevertheless be laid out contiguously in memory: | a | b |
+///     let _ = join_slices(slice::from_ref(&a), slice::from_ref(&b)); // UB
+/// }
 /// ```
 ///
 /// [valid]: ../../std/ptr/index.html#safety

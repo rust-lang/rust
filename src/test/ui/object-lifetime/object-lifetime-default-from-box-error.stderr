@@ -1,11 +1,16 @@
-error[E0621]: explicit lifetime required in the type of `ss`
+error: cannot infer an appropriate lifetime
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
-   |             --------------- help: add explicit lifetime `'static` to the type of `ss`: `&mut SomeStruct<'static>`
+   |             --------------- data with this lifetime...
 ...
 LL |     ss.r
-   |     ^^^^ lifetime `'static` required
+   |     ^^^^ ...is captured and required to be `'static` here
+   |
+help: to permit non-static references in a `dyn Trait` value, you can add an explicit bound for the anonymous lifetime #2 defined on the function body at 14:1
+   |
+LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait + '_> {
+   |                                                   ^^^^
 
 error[E0621]: explicit lifetime required in the type of `ss`
   --> $DIR/object-lifetime-default-from-box-error.rs:31:12

@@ -141,6 +141,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         use rustc_middle::mir::Rvalue::*;
         match *rvalue {
+            ThreadLocalRef(did) => {
+                let id = M::thread_local_alloc_id(self, did)?;
+                let val = Scalar::Ptr(self.tag_global_base_pointer(id.into()));
+                self.write_scalar(val, dest)?;
+            }
+
             Use(ref operand) => {
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
@@ -253,16 +259,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(Scalar::from_machine_usize(layout.size.bytes(), self), dest)?;
             }
 
-            Cast(kind, ref operand, _) => {
+            Cast(cast_kind, ref operand, cast_ty) => {
                 let src = self.eval_operand(operand, None)?;
-                self.cast(src, kind, dest)?;
+                let cast_ty = self.subst_from_current_frame_and_normalize_erasing_regions(cast_ty);
+                self.cast(src, cast_kind, cast_ty, dest)?;
             }
 
             Discriminant(place) => {
                 let op = self.eval_place_to_op(place, None)?;
                 let discr_val = self.read_discriminant(op)?.0;
-                let size = dest.layout.size;
-                self.write_scalar(Scalar::from_uint(discr_val, size), dest)?;
+                self.write_scalar(discr_val, dest)?;
             }
         }
 

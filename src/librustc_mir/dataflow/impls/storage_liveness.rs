@@ -207,7 +207,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }
@@ -241,7 +241,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }

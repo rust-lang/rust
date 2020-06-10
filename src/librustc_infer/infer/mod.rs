@@ -20,7 +20,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
-use rustc_middle::middle::region;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ConstEvalResult;
 use rustc_middle::traits::select;
@@ -218,18 +217,22 @@ impl<'tcx> InferCtxtInner<'tcx> {
         }
     }
 
+    #[inline]
     pub fn region_obligations(&self) -> &[(hir::HirId, RegionObligation<'tcx>)] {
         &self.region_obligations
     }
 
+    #[inline]
     pub fn projection_cache(&mut self) -> traits::ProjectionCache<'_, 'tcx> {
         self.projection_cache.with_log(&mut self.undo_log)
     }
 
+    #[inline]
     fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
         self.type_variable_storage.with_log(&mut self.undo_log)
     }
 
+    #[inline]
     fn int_unification_table(
         &mut self,
     ) -> ut::UnificationTable<
@@ -242,6 +245,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         self.int_unification_storage.with_log(&mut self.undo_log)
     }
 
+    #[inline]
     fn float_unification_table(
         &mut self,
     ) -> ut::UnificationTable<
@@ -254,6 +258,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         self.float_unification_storage.with_log(&mut self.undo_log)
     }
 
+    #[inline]
     fn const_unification_table(
         &mut self,
     ) -> ut::UnificationTable<
@@ -266,6 +271,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         self.const_unification_storage.with_log(&mut self.undo_log)
     }
 
+    #[inline]
     pub fn unwrap_region_constraints(&mut self) -> RegionConstraintCollector<'_, 'tcx> {
         self.region_constraint_storage
             .as_mut()
@@ -378,22 +384,6 @@ pub enum SubregionOrigin<'tcx> {
     /// Arose from a subtyping relation
     Subtype(Box<TypeTrace<'tcx>>),
 
-    /// Stack-allocated closures cannot outlive innermost loop
-    /// or function so as to ensure we only require finite stack
-    InfStackClosure(Span),
-
-    /// Invocation of closure must be within its lifetime
-    InvokeClosure(Span),
-
-    /// Dereference of reference must be within its lifetime
-    DerefPointer(Span),
-
-    /// Closure bound must not outlive captured variables
-    ClosureCapture(Span, hir::HirId),
-
-    /// Index into slice must be within its lifetime
-    IndexSlice(Span),
-
     /// When casting `&'a T` to an `&'b Trait` object,
     /// relating `'a` to `'b`
     RelateObjectBound(Span),
@@ -405,10 +395,6 @@ pub enum SubregionOrigin<'tcx> {
     /// The given region parameter was instantiated with a region
     /// that must outlive some other region.
     RelateRegionParamBound(Span),
-
-    /// A bound placed on type parameters that states that must outlive
-    /// the moment of their instantiation.
-    RelateDefaultParamBound(Span, Ty<'tcx>),
 
     /// Creating a pointer `b` to contents of another reference
     Reborrow(Span),
@@ -422,35 +408,8 @@ pub enum SubregionOrigin<'tcx> {
     /// (&'a &'b T) where a >= b
     ReferenceOutlivesReferent(Ty<'tcx>, Span),
 
-    /// Type or region parameters must be in scope.
-    ParameterInScope(ParameterOrigin, Span),
-
-    /// The type T of an expression E must outlive the lifetime for E.
-    ExprTypeIsNotInScope(Ty<'tcx>, Span),
-
-    /// A `ref b` whose region does not enclose the decl site
-    BindingTypeIsNotValidAtDecl(Span),
-
-    /// Regions appearing in a method receiver must outlive method call
-    CallRcvr(Span),
-
-    /// Regions appearing in a function argument must outlive func call
-    CallArg(Span),
-
     /// Region in return type of invoked fn must enclose call
     CallReturn(Span),
-
-    /// Operands must be in scope
-    Operand(Span),
-
-    /// Region resulting from a `&` expr must enclose the `&` expr
-    AddrOf(Span),
-
-    /// An auto-borrow that does not enclose the expr where it occurs
-    AutoBorrow(Span),
-
-    /// Region constraint arriving from destructor safety
-    SafeDestructor(Span),
 
     /// Comparing the signature and requirements of an impl method against
     /// the containing trait.
@@ -1011,7 +970,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: &ty::PolySubtypePredicate<'tcx>,
+        predicate: ty::PolySubtypePredicate<'tcx>,
     ) -> Option<InferResult<'tcx, ()>> {
         // Subtle: it's ok to skip the binder here and resolve because
         // `shallow_resolve` just ignores anything that is not a type
@@ -1034,7 +993,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         Some(self.commit_if_ok(|snapshot| {
             let (ty::SubtypePredicate { a_is_expected, a, b }, placeholder_map) =
-                self.replace_bound_vars_with_placeholders(predicate);
+                self.replace_bound_vars_with_placeholders(&predicate);
 
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
 
@@ -1047,11 +1006,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn region_outlives_predicate(
         &self,
         cause: &traits::ObligationCause<'tcx>,
-        predicate: &ty::PolyRegionOutlivesPredicate<'tcx>,
+        predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
     ) -> UnitResult<'tcx> {
         self.commit_if_ok(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), placeholder_map) =
-                self.replace_bound_vars_with_placeholders(predicate);
+                self.replace_bound_vars_with_placeholders(&predicate);
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
                 RelateRegionParamBound(cause.span)
             });
@@ -1260,7 +1219,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn resolve_regions_and_report_errors(
         &self,
         region_context: DefId,
-        region_map: &region::ScopeTree,
         outlives_env: &OutlivesEnvironment<'tcx>,
         mode: RegionckMode,
     ) {
@@ -1280,12 +1238,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .into_infos_and_data()
         };
 
-        let region_rels = &RegionRelations::new(
-            self.tcx,
-            region_context,
-            region_map,
-            outlives_env.free_region_map(),
-        );
+        let region_rels =
+            &RegionRelations::new(self.tcx, region_context, outlives_env.free_region_map());
 
         let (lexical_region_resolutions, errors) =
             lexical_region_resolve::resolve(region_rels, var_infos, data, mode);
@@ -1299,7 +1253,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(region_map, &errors);
+            self.report_region_errors(&errors);
         }
     }
 
@@ -1655,14 +1609,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// having to resort to storing full `GenericArg`s in `stalled_on`.
     #[inline(always)]
     pub fn ty_or_const_infer_var_changed(&self, infer_var: TyOrConstInferVar<'tcx>) -> bool {
-        let mut inner = self.inner.borrow_mut();
         match infer_var {
             TyOrConstInferVar::Ty(v) => {
                 use self::type_variable::TypeVariableValue;
 
                 // If `inlined_probe` returns a `Known` value, it never equals
                 // `ty::Infer(ty::TyVar(v))`.
-                match inner.type_variables().inlined_probe(v) {
+                match self.inner.borrow_mut().type_variables().inlined_probe(v) {
                     TypeVariableValue::Unknown { .. } => false,
                     TypeVariableValue::Known { .. } => true,
                 }
@@ -1672,7 +1625,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // If `inlined_probe_value` returns a value it's always a
                 // `ty::Int(_)` or `ty::UInt(_)`, which never matches a
                 // `ty::Infer(_)`.
-                inner.int_unification_table().inlined_probe_value(v).is_some()
+                self.inner.borrow_mut().int_unification_table().inlined_probe_value(v).is_some()
             }
 
             TyOrConstInferVar::TyFloat(v) => {
@@ -1680,7 +1633,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // `ty::Float(_)`, which never matches a `ty::Infer(_)`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                inner.float_unification_table().probe_value(v).is_some()
+                self.inner.borrow_mut().float_unification_table().probe_value(v).is_some()
             }
 
             TyOrConstInferVar::Const(v) => {
@@ -1688,7 +1641,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // `ty::ConstKind::Infer(ty::InferConst::Var(v))`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                match inner.const_unification_table().probe_value(v).val {
+                match self.inner.borrow_mut().const_unification_table().probe_value(v).val {
                     ConstVariableValue::Unknown { .. } => false,
                     ConstVariableValue::Known { .. } => true,
                 }
@@ -1809,29 +1762,14 @@ impl<'tcx> SubregionOrigin<'tcx> {
     pub fn span(&self) -> Span {
         match *self {
             Subtype(ref a) => a.span(),
-            InfStackClosure(a) => a,
-            InvokeClosure(a) => a,
-            DerefPointer(a) => a,
-            ClosureCapture(a, _) => a,
-            IndexSlice(a) => a,
             RelateObjectBound(a) => a,
             RelateParamBound(a, _) => a,
             RelateRegionParamBound(a) => a,
-            RelateDefaultParamBound(a, _) => a,
             Reborrow(a) => a,
             ReborrowUpvar(a, _) => a,
             DataBorrowed(_, a) => a,
             ReferenceOutlivesReferent(_, a) => a,
-            ParameterInScope(_, a) => a,
-            ExprTypeIsNotInScope(_, a) => a,
-            BindingTypeIsNotValidAtDecl(a) => a,
-            CallRcvr(a) => a,
-            CallArg(a) => a,
             CallReturn(a) => a,
-            Operand(a) => a,
-            AddrOf(a) => a,
-            AutoBorrow(a) => a,
-            SafeDestructor(a) => a,
             CompareImplMethodObligation { span, .. } => span,
         }
     }

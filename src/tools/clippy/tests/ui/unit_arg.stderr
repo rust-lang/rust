@@ -1,79 +1,181 @@
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:24:9
+  --> $DIR/unit_arg.rs:23:5
    |
-LL |     foo({});
-   |         ^^
-   |
-   = note: `-D clippy::unit-arg` implied by `-D warnings`
-help: if you intended to pass a unit value, use a unit literal instead
-   |
-LL |     foo(());
-   |         ^^
-
-error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:25:9
-   |
-LL |       foo({
-   |  _________^
+LL | /     foo({
 LL | |         1;
 LL | |     });
-   | |_____^
+   | |______^
    |
-help: if you intended to pass a unit value, use a unit literal instead
+   = note: `-D clippy::unit-arg` implied by `-D warnings`
+help: remove the semicolon from the last statement in the block
+   |
+LL |         1
+   |
+help: or move the expression in front of the call...
+   |
+LL |     {
+LL |         1;
+LL |     };
+   |
+help: ...and use a unit literal instead
    |
 LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:28:9
+  --> $DIR/unit_arg.rs:26:5
    |
 LL |     foo(foo(1));
-   |         ^^^^^^
+   |     ^^^^^^^^^^^
    |
-help: if you intended to pass a unit value, use a unit literal instead
+help: move the expression in front of the call...
+   |
+LL |     foo(1);
+   |
+help: ...and use a unit literal instead
    |
 LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:29:9
+  --> $DIR/unit_arg.rs:27:5
    |
-LL |       foo({
-   |  _________^
+LL | /     foo({
 LL | |         foo(1);
 LL | |         foo(2);
 LL | |     });
-   | |_____^
+   | |______^
    |
-help: if you intended to pass a unit value, use a unit literal instead
+help: remove the semicolon from the last statement in the block
+   |
+LL |         foo(2)
+   |
+help: or move the expression in front of the call...
+   |
+LL |     {
+LL |         foo(1);
+LL |         foo(2);
+LL |     };
+   |
+help: ...and use a unit literal instead
    |
 LL |     foo(());
    |         ^^
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:33:10
+  --> $DIR/unit_arg.rs:32:5
    |
-LL |     foo3({}, 2, 2);
-   |          ^^
-   |
-help: if you intended to pass a unit value, use a unit literal instead
-   |
-LL |     foo3((), 2, 2);
-   |          ^^
-
-error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:35:11
-   |
-LL |       b.bar({
-   |  ___________^
+LL | /     b.bar({
 LL | |         1;
 LL | |     });
-   | |_____^
+   | |______^
    |
-help: if you intended to pass a unit value, use a unit literal instead
+help: remove the semicolon from the last statement in the block
+   |
+LL |         1
+   |
+help: or move the expression in front of the call...
+   |
+LL |     {
+LL |         1;
+LL |     };
+   |
+help: ...and use a unit literal instead
    |
 LL |     b.bar(());
    |           ^^
 
-error: aborting due to 6 previous errors
+error: passing unit values to a function
+  --> $DIR/unit_arg.rs:35:5
+   |
+LL |     taking_multiple_units(foo(0), foo(1));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: move the expressions in front of the call...
+   |
+LL |     foo(0);
+LL |     foo(1);
+   |
+help: ...and use unit literals instead
+   |
+LL |     taking_multiple_units((), ());
+   |                           ^^  ^^
+
+error: passing unit values to a function
+  --> $DIR/unit_arg.rs:36:5
+   |
+LL | /     taking_multiple_units(foo(0), {
+LL | |         foo(1);
+LL | |         foo(2);
+LL | |     });
+   | |______^
+   |
+help: remove the semicolon from the last statement in the block
+   |
+LL |         foo(2)
+   |
+help: or move the expressions in front of the call...
+   |
+LL |     foo(0);
+LL |     {
+LL |         foo(1);
+LL |         foo(2);
+LL |     };
+   |
+help: ...and use unit literals instead
+   |
+LL |     taking_multiple_units((), ());
+   |                           ^^  ^^
+
+error: passing unit values to a function
+  --> $DIR/unit_arg.rs:40:5
+   |
+LL | /     taking_multiple_units(
+LL | |         {
+LL | |             foo(0);
+LL | |             foo(1);
+...  |
+LL | |         },
+LL | |     );
+   | |_____^
+   |
+help: remove the semicolon from the last statement in the block
+   |
+LL |             foo(1)
+   |
+help: remove the semicolon from the last statement in the block
+   |
+LL |             foo(3)
+   |
+help: or move the expressions in front of the call...
+   |
+LL |     {
+LL |         foo(0);
+LL |         foo(1);
+LL |     };
+LL |     {
+LL |         foo(2);
+ ...
+help: ...and use unit literals instead
+   |
+LL |         (),
+LL |         (),
+   |
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:82:5
+   |
+LL |     Some(foo(1))
+   |     ^^^^^^^^^^^^
+   |
+help: move the expression in front of the call...
+   |
+LL |     foo(1);
+   |
+help: ...and use a unit literal instead
+   |
+LL |     Some(())
+   |          ^^
+
+error: aborting due to 8 previous errors
 

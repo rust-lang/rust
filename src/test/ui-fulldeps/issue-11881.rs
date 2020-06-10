@@ -6,7 +6,7 @@
 
 #![feature(rustc_private)]
 
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 
 use std::io::Cursor;
 use std::io::prelude::*;

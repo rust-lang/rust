@@ -17,9 +17,8 @@ if isWindows; then
         msys2.nupkg
     curl -sSL https://packages.chocolatey.org/chocolatey-core.extension.1.3.5.1.nupkg > \
         chocolatey-core.extension.nupkg
-    # FIXME(mati865): remove `/NoUpdate` once chocolatey updates MSYS2
     choco install -s . msys2 \
-        --params="/InstallDir:$(ciCheckoutPath)/msys2 /NoPath /NoUpdate" -y --no-progress
+        --params="/InstallDir:$(ciCheckoutPath)/msys2 /NoPath" -y --no-progress
     rm msys2.nupkg chocolatey-core.extension.nupkg
     mkdir -p "$(ciCheckoutPath)/msys2/home/${USERNAME}"
     ciCommandAddPath "$(ciCheckoutPath)/msys2/usr/bin"

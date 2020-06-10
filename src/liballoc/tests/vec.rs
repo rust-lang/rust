@@ -16,7 +16,7 @@ impl Drop for DropCounter<'_> {
 
 #[test]
 fn test_small_vec_struct() {
-    assert!(size_of::<Vec<u8>>() == size_of::<usize>() * 3);
+    assert_eq!(size_of::<Vec<u8>>(), size_of::<usize>() * 3);
 }
 
 #[test]

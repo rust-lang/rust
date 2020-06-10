@@ -441,6 +441,13 @@ impl Display for Arguments<'_> {
 /// `enum`s, it will use the name of the variant and, if applicable, `(`, then the
 /// `Debug` values of the fields, then `)`.
 ///
+/// # Stability
+///
+/// Derived `Debug` formats are not stable, and so may change with future Rust
+/// versions. Additionally, `Debug` implementations of types provided by the
+/// standard library (`libstd`, `libcore`, `liballoc`, etc.) are not stable, and
+/// may also change with future Rust versions.
+///
 /// # Examples
 ///
 /// Deriving an implementation:
@@ -1611,7 +1618,8 @@ impl<'a> Formatter<'a> {
         self.width
     }
 
-    /// Optionally specified precision for numeric types.
+    /// Optionally specified precision for numeric types. Alternatively, the
+    /// maximum width for string types.
     ///
     /// # Examples
     ///

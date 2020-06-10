@@ -89,7 +89,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
     InterpCx::new(
         tcx.at(span),
         param_env,
-        CompileTimeInterpreter::new(*tcx.sess.const_eval_limit.get()),
+        CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
         MemoryExtra { can_access_statics },
     )
 }
@@ -122,7 +122,7 @@ pub(super) fn op_to_const<'tcx>(
     } else {
         // It is guaranteed that any non-slice scalar pair is actually ByRef here.
         // When we come back from raw const eval, we are always by-ref. The only way our op here is
-        // by-val is if we are in const_field, i.e., if this is (a field of) something that we
+        // by-val is if we are in destructure_const, i.e., if this is (a field of) something that we
         // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
         // structs containing such.
         op.try_as_mplace(ecx)
@@ -303,7 +303,7 @@ pub fn const_eval_raw_provider<'tcx>(
     let mut ecx = InterpCx::new(
         tcx.at(span),
         key.param_env,
-        CompileTimeInterpreter::new(*tcx.sess.const_eval_limit.get()),
+        CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
         MemoryExtra { can_access_statics: is_static },
     );
 

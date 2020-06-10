@@ -23,7 +23,7 @@ use rustc_session::parse::CrateConfig;
 use rustc_session::CrateDisambiguator;
 use rustc_session::{early_error, filesearch, output, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{FileLoader, SourceMap};
+use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::{sym, Symbol};
 use smallvec::SmallVec;
 use std::env;
@@ -65,8 +65,8 @@ pub fn create_session(
     input_path: Option<PathBuf>,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
     descriptions: Registry,
-) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>, Lrc<SourceMap>) {
-    let (mut sess, source_map) = session::build_session_with_source_map(
+) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>) {
+    let mut sess = session::build_session(
         sopts,
         input_path,
         descriptions,
@@ -81,7 +81,7 @@ pub fn create_session(
     add_configuration(&mut cfg, &mut sess, &*codegen_backend);
     sess.parse_sess.config = cfg;
 
-    (Lrc::new(sess), Lrc::new(codegen_backend), source_map)
+    (Lrc::new(sess), Lrc::new(codegen_backend))
 }
 
 const STACK_SIZE: usize = 8 * 1024 * 1024;
@@ -406,7 +406,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
 
     // Also incorporate crate type, so that we don't get symbol conflicts when
     // linking against a library of the same name, if this is an executable.
-    let is_exe = session.crate_types.borrow().contains(&CrateType::Executable);
+    let is_exe = session.crate_types().contains(&CrateType::Executable);
     hasher.write(if is_exe { b"exe" } else { b"lib" });
 
     CrateDisambiguator::from(hasher.finish::<Fingerprint>())
@@ -713,6 +713,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 kind: ast::ExprKind::Block(P(b), None),
                 span: rustc_span::DUMMY_SP,
                 attrs: AttrVec::new(),
+                tokens: None,
             });
 
             ast::Stmt {
@@ -728,6 +729,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             id: self.resolver.next_node_id(),
             span: rustc_span::DUMMY_SP,
             attrs: AttrVec::new(),
+            tokens: None,
         });
 
         let loop_stmt = ast::Stmt {

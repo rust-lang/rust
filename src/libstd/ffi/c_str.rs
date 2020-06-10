@@ -395,6 +395,12 @@ impl CString {
     /// ownership of a string that was allocated by foreign code) is likely to lead
     /// to undefined behavior or allocator corruption.
     ///
+    /// It should be noted that the length isn't just "recomputed," but that
+    /// the recomputed length must match the original length from the
+    /// [`into_raw`] call. This means the [`into_raw`]/`from_raw` methods
+    /// should not be used when passing the string to C functions that can
+    /// modify the string's length.
+    ///
     /// > **Note:** If you need to borrow a string that was allocated by
     /// > foreign code, use [`CStr`]. If you need to take ownership of
     /// > a string that was allocated by foreign code, you will need to
@@ -439,6 +445,11 @@ impl CString {
     /// this string.
     ///
     /// Failure to call [`from_raw`] will lead to a memory leak.
+    ///
+    /// The C side must **not** modify the length of the string (by writing a
+    /// `NULL` somewhere inside the string or removing the final one) before
+    /// it makes it back into Rust using [`from_raw`]. See the safety section
+    /// in [`from_raw`].
     ///
     /// [`from_raw`]: #method.from_raw
     ///

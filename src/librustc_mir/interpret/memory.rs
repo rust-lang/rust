@@ -437,6 +437,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Function(..)) => throw_ub!(DerefFunctionPointer(id)),
             None => throw_ub!(PointerUseAfterFree(id)),
             Some(GlobalAlloc::Static(def_id)) => {
+                assert!(!tcx.is_thread_local_static(def_id));
                 // Notice that every static has two `AllocId` that will resolve to the same
                 // thing here: one maps to `GlobalAlloc::Static`, this is the "lazy" ID,
                 // and the other one is maps to `GlobalAlloc::Memory`, this is returned by
@@ -592,6 +593,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // be held throughout the match.
         match self.tcx.get_global_alloc(id) {
             Some(GlobalAlloc::Static(did)) => {
+                assert!(!self.tcx.is_thread_local_static(did));
                 // Use size and align of the type.
                 let ty = self.tcx.type_of(did);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();

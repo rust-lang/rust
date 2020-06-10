@@ -1,6 +1,5 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![feature(rustc_private)]
-#![feature(str_strip)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -79,7 +78,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
 
             let conf = clippy_lints::read_conf(&[], &sess);
             clippy_lints::register_plugins(&mut lint_store, &sess, &conf);
-            clippy_lints::register_pre_expansion_lints(&mut lint_store, &conf);
+            clippy_lints::register_pre_expansion_lints(&mut lint_store);
             clippy_lints::register_renamed(&mut lint_store);
         }));
 

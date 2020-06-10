@@ -11,12 +11,12 @@
 
 #![feature(rustc_private, libc)]
 
-extern crate arena;
+extern crate rustc_arena;
 extern crate libc;
 
 use TypeStructure::{TypeInt, TypeFunction};
 use AstKind::{ExprInt, ExprVar, ExprLambda};
-use arena::TypedArena;
+use rustc_arena::TypedArena;
 use std::collections::HashMap;
 use std::mem;
 

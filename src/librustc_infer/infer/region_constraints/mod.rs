@@ -68,12 +68,14 @@ pub struct RegionConstraintCollector<'a, 'tcx> {
 
 impl std::ops::Deref for RegionConstraintCollector<'_, 'tcx> {
     type Target = RegionConstraintStorage<'tcx>;
+    #[inline]
     fn deref(&self) -> &RegionConstraintStorage<'tcx> {
         self.storage
     }
 }
 
 impl std::ops::DerefMut for RegionConstraintCollector<'_, 'tcx> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut RegionConstraintStorage<'tcx> {
         self.storage
     }
@@ -345,6 +347,7 @@ impl<'tcx> RegionConstraintStorage<'tcx> {
         Self::default()
     }
 
+    #[inline]
     pub(crate) fn with_log<'a>(
         &'a mut self,
         undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
@@ -758,11 +761,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     pub fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
         match *region {
-            ty::ReScope(..)
-            | ty::ReStatic
-            | ty::ReErased
-            | ty::ReFree(..)
-            | ty::ReEarlyBound(..) => ty::UniverseIndex::ROOT,
+            ty::ReStatic | ty::ReErased | ty::ReFree(..) | ty::ReEarlyBound(..) => {
+                ty::UniverseIndex::ROOT
+            }
             ty::ReEmpty(ui) => ui,
             ty::RePlaceholder(placeholder) => placeholder.universe,
             ty::ReVar(vid) => self.var_universe(vid),
@@ -784,7 +785,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         )
     }
 
-    /// See [`RegionInference::region_constraints_added_in_snapshot`].
+    /// See `InferCtxt::region_constraints_added_in_snapshot`.
     pub fn region_constraints_added_in_snapshot(&self, mark: &Snapshot<'tcx>) -> Option<bool> {
         self.undo_log
             .region_constraints_in_snapshot(mark)
@@ -796,6 +797,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             .unwrap_or(None)
     }
 
+    #[inline]
     fn unification_table(&mut self) -> super::UnificationTable<'_, 'tcx, ty::RegionVid> {
         ut::UnificationTable::with_log(&mut self.storage.unification_table, self.undo_log)
     }

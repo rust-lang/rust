@@ -104,7 +104,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     ) {
         let cx = self.fx.cx;
 
-        if let [proj_base @ .., elem] = place_ref.projection {
+        if let &[ref proj_base @ .., elem] = place_ref.projection {
             let mut base_context = if context.is_mutating_use() {
                 PlaceContext::MutatingUse(MutatingUseContext::Projection)
             } else {
@@ -186,7 +186,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             // now that we have moved to the "slice of projections" representation.
             if let mir::ProjectionElem::Index(local) = elem {
                 self.visit_local(
-                    local,
+                    &local,
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                     location,
                 );
@@ -357,7 +357,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::Unreachable
                 | TerminatorKind::SwitchInt { .. }
                 | TerminatorKind::Yield { .. }
-                | TerminatorKind::FalseEdges { .. }
+                | TerminatorKind::FalseEdge { .. }
                 | TerminatorKind::FalseUnwind { .. }
                 | TerminatorKind::InlineAsm { .. } => { /* nothing to do */ }
                 TerminatorKind::Call { cleanup: unwind, .. }

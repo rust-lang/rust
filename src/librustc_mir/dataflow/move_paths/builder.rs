@@ -176,7 +176,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn add_move_path(
         &mut self,
         base: MovePathIndex,
-        elem: &PlaceElem<'tcx>,
+        elem: PlaceElem<'tcx>,
         mk_place: impl FnOnce(TyCtxt<'tcx>) -> Place<'tcx>,
     ) -> MovePathIndex {
         let MoveDataBuilder {
@@ -324,6 +324,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
     fn gather_rvalue(&mut self, rvalue: &Rvalue<'tcx>) {
         match *rvalue {
+            Rvalue::ThreadLocalRef(_) => {} // not-a-move
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::Cast(_, ref operand, _)
@@ -361,17 +362,16 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_terminator(&mut self, term: &Terminator<'tcx>) {
         match term.kind {
             TerminatorKind::Goto { target: _ }
-            | TerminatorKind::FalseEdges { .. }
-            | TerminatorKind::FalseUnwind { .. }
-            // In some sense returning moves the return place into the current
-            // call's destination, however, since there are no statements after
-            // this that could possibly access the return place, this doesn't
-            // need recording.
-            | TerminatorKind::Return
             | TerminatorKind::Resume
             | TerminatorKind::Abort
             | TerminatorKind::GeneratorDrop
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Unreachable => {}
+
+            TerminatorKind::Return => {
+                self.gather_move(Place::return_place());
+            }
 
             TerminatorKind::Assert { ref cond, .. } => {
                 self.gather_operand(cond);
@@ -411,7 +411,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }
             }
-            TerminatorKind::InlineAsm { template: _, ref operands, options: _, destination: _ } => {
+            TerminatorKind::InlineAsm {
+                template: _,
+                ref operands,
+                options: _,
+                line_spans: _,
+                destination: _,
+            } => {
                 for op in operands {
                     match *op {
                         InlineAsmOperand::In { reg: _, ref value }
@@ -485,7 +491,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 let elem =
                     ProjectionElem::ConstantIndex { offset, min_length: len, from_end: false };
                 let path =
-                    self.add_move_path(base_path, &elem, |tcx| tcx.mk_place_elem(base_place, elem));
+                    self.add_move_path(base_path, elem, |tcx| tcx.mk_place_elem(base_place, elem));
                 self.record_move(place, path);
             }
         } else {

@@ -5,7 +5,7 @@ LL | fn foo<T: Trait<A = T::B>>() { }
    |                     ^^^^
    |
    = note: ...which again requires computing the bounds for type parameter `T`, completing the cycle
-note: cycle used when processing `foo`
+note: cycle used when computing explicit predicates of `foo`
   --> $DIR/issue-21177.rs:6:21
    |
 LL | fn foo<T: Trait<A = T::B>>() { }

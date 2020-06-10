@@ -74,8 +74,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.tables.used_trait_imports = used_trait_imports;
 
-        wbcx.tables.upvar_list =
-            mem::replace(&mut self.tables.borrow_mut().upvar_list, Default::default());
+        wbcx.tables.closure_captures =
+            mem::replace(&mut self.tables.borrow_mut().closure_captures, Default::default());
 
         if self.is_tainted_by_errors() {
             // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.

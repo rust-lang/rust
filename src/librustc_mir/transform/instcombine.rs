@@ -2,6 +2,7 @@
 
 use crate::transform::{MirPass, MirSource};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::Mutability;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::{
@@ -88,7 +89,9 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
             if let PlaceRef { local, projection: &[ref proj_base @ .., ProjectionElem::Deref] } =
                 place.as_ref()
             {
-                if Place::ty_from(local, proj_base, self.body, self.tcx).ty.is_region_ptr() {
+                // The dereferenced place must have type `&_`.
+                let ty = Place::ty_from(local, proj_base, self.body, self.tcx).ty;
+                if let ty::Ref(_, _, Mutability::Not) = ty.kind {
                     self.optimizations.and_stars.insert(location);
                 }
             }

@@ -5,7 +5,6 @@
 
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Lift, Region, TyCtxt};
 
 /// Combines a `region::ScopeTree` (which governs relationships between
@@ -21,21 +20,13 @@ pub struct RegionRelations<'a, 'tcx> {
     /// The context used to fetch the region maps.
     pub context: DefId,
 
-    /// The region maps for the given context.
-    pub region_scope_tree: &'a region::ScopeTree,
-
     /// Free-region relationships.
     pub free_regions: &'a FreeRegionMap<'tcx>,
 }
 
 impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        context: DefId,
-        region_scope_tree: &'a region::ScopeTree,
-        free_regions: &'a FreeRegionMap<'tcx>,
-    ) -> Self {
-        Self { tcx, context, region_scope_tree, free_regions }
+    pub fn new(tcx: TyCtxt<'tcx>, context: DefId, free_regions: &'a FreeRegionMap<'tcx>) -> Self {
+        Self { tcx, context, free_regions }
     }
 
     pub fn lub_free_regions(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> Region<'tcx> {

@@ -447,7 +447,6 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
 
             ty::ReLateBound(..)
             | ty::ReFree(..)
-            | ty::ReScope(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
             | ty::ReEmpty(_)
@@ -481,20 +480,18 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
 
 impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
-        use rustc_middle::ty::Predicate;
+        match self.kind() {
+            ty::PredicateKind::Trait(ref pred, _) => Some(pred.clean(cx)),
+            ty::PredicateKind::Subtype(ref pred) => Some(pred.clean(cx)),
+            ty::PredicateKind::RegionOutlives(ref pred) => pred.clean(cx),
+            ty::PredicateKind::TypeOutlives(ref pred) => pred.clean(cx),
+            ty::PredicateKind::Projection(ref pred) => Some(pred.clean(cx)),
 
-        match *self {
-            Predicate::Trait(ref pred, _) => Some(pred.clean(cx)),
-            Predicate::Subtype(ref pred) => Some(pred.clean(cx)),
-            Predicate::RegionOutlives(ref pred) => pred.clean(cx),
-            Predicate::TypeOutlives(ref pred) => pred.clean(cx),
-            Predicate::Projection(ref pred) => Some(pred.clean(cx)),
-
-            Predicate::WellFormed(..)
-            | Predicate::ObjectSafe(..)
-            | Predicate::ClosureKind(..)
-            | Predicate::ConstEvaluatable(..)
-            | Predicate::ConstEquate(..) => panic!("not user writable"),
+            ty::PredicateKind::WellFormed(..)
+            | ty::PredicateKind::ObjectSafe(..)
+            | ty::PredicateKind::ClosureKind(..)
+            | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::ConstEquate(..) => panic!("not user writable"),
         }
     }
 }
@@ -503,7 +500,7 @@ impl<'a> Clean<WherePredicate> for ty::PolyTraitPredicate<'a> {
     fn clean(&self, cx: &DocContext<'_>) -> WherePredicate {
         let poly_trait_ref = self.map_bound(|pred| pred.trait_ref);
         WherePredicate::BoundPredicate {
-            ty: poly_trait_ref.self_ty().clean(cx),
+            ty: poly_trait_ref.skip_binder().self_ty().clean(cx),
             bounds: vec![poly_trait_ref.clean(cx)],
         }
     }
@@ -758,14 +755,14 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                 let mut projection = None;
                 let param_idx = (|| {
                     if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
-                        if let ty::Param(param) = trait_ref.self_ty().kind {
+                        if let ty::Param(param) = trait_ref.skip_binder().self_ty().kind {
                             return Some(param.index);
                         }
                     } else if let Some(outlives) = p.to_opt_type_outlives() {
                         if let ty::Param(param) = outlives.skip_binder().0.kind {
                             return Some(param.index);
                         }
-                    } else if let ty::Predicate::Projection(p) = p {
+                    } else if let ty::PredicateKind::Projection(p) = p.kind() {
                         if let ty::Param(param) = p.skip_binder().projection_ty.self_ty().kind {
                             projection = Some(p);
                             return Some(param.index);
@@ -1552,11 +1549,11 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::FnDef(..) | ty::FnPtr(_) => {
                 let ty = cx.tcx.lift(self).expect("FnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
-                let local_def_id = cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID);
+                let def_id = DefId::local(CRATE_DEF_INDEX);
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
                     generic_params: Vec::new(),
-                    decl: (local_def_id.to_def_id(), sig).clean(cx),
+                    decl: (def_id, sig).clean(cx),
                     abi: sig.abi(),
                 })
             }
@@ -1663,7 +1660,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     .filter_map(|predicate| {
                         let trait_ref = if let Some(tr) = predicate.to_opt_poly_trait_ref() {
                             tr
-                        } else if let ty::Predicate::TypeOutlives(pred) = *predicate {
+                        } else if let ty::PredicateKind::TypeOutlives(pred) = predicate.kind() {
                             // these should turn up at the end
                             if let Some(r) = pred.skip_binder().1.clean(cx) {
                                 regions.push(GenericBound::Outlives(r));
@@ -1684,7 +1681,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             .predicates
                             .iter()
                             .filter_map(|pred| {
-                                if let ty::Predicate::Projection(proj) = *pred {
+                                if let ty::PredicateKind::Projection(proj) = pred.kind() {
                                     let proj = proj.skip_binder();
                                     if proj.projection_ty.trait_ref(cx.tcx)
                                         == *trait_ref.skip_binder()
@@ -2258,7 +2255,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID).to_def_id(),
+            def_id: DefId::local(CRATE_DEF_INDEX),
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,

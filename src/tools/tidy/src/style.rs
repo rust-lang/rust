@@ -174,6 +174,11 @@ pub fn check(path: &Path, bad: &mut bool) {
 
         let can_contain =
             contents.contains("// ignore-tidy-") || contents.contains("# ignore-tidy-");
+        // Enable testing ICE's that require specific (untidy)
+        // file formats easily eg. `issue-1234-ignore-tidy.rs`
+        if filename.contains("ignore-tidy") {
+            return;
+        }
         let mut skip_cr = contains_ignore_directive(can_contain, &contents, "cr");
         let mut skip_undocumented_unsafe =
             contains_ignore_directive(can_contain, &contents, "undocumented-unsafe");

@@ -4,10 +4,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
-use rustc_hir::{
-    def_id::{DefId, LocalDefId},
-    HirId, Node,
-};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::{HirId, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -142,7 +140,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         infcx.set_tainted_by_errors();
     }
     let upvars: Vec<_> = tables
-        .upvar_list
+        .closure_captures
         .get(&def_id.to_def_id())
         .into_iter()
         .flat_map(|v| v.values())
@@ -174,7 +172,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mut body = input_body.clone();
     let mut promoted = input_promoted.clone();
     let free_regions =
-        nll::replace_regions_in_mir(infcx, def_id.to_def_id(), param_env, &mut body, &mut promoted);
+        nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body, &mut promoted);
     let body = &body; // no further changes
 
     let location_table = &LocationTable::new(&body);
@@ -275,7 +273,7 @@ fn do_mir_borrowck<'a, 'tcx>(
             let mut promoted_mbcx = MirBorrowckCtxt {
                 infcx,
                 body: promoted_body,
-                mir_def_id: def_id.to_def_id(),
+                mir_def_id: def_id,
                 move_data: &move_data,
                 location_table: &LocationTable::new(promoted_body),
                 movable_generator,
@@ -307,7 +305,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mut mbcx = MirBorrowckCtxt {
         infcx,
         body,
-        mir_def_id: def_id.to_def_id(),
+        mir_def_id: def_id,
         move_data: &mdpe.move_data,
         location_table,
         movable_generator,
@@ -459,7 +457,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 crate struct MirBorrowckCtxt<'cx, 'tcx> {
     crate infcx: &'cx InferCtxt<'cx, 'tcx>,
     body: &'cx Body<'tcx>,
-    mir_def_id: DefId,
+    mir_def_id: LocalDefId,
     move_data: &'cx MoveData<'tcx>,
 
     /// Map from MIR `Location` to `LocationIndex`; created
@@ -724,7 +722,13 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 self.mutate_place(loc, (resume_arg, span), Deep, JustWrite, flow_state);
             }
 
-            TerminatorKind::InlineAsm { template: _, ref operands, options: _, destination: _ } => {
+            TerminatorKind::InlineAsm {
+                template: _,
+                ref operands,
+                options: _,
+                line_spans: _,
+                destination: _,
+            } => {
                 for op in operands {
                     match *op {
                         InlineAsmOperand::In { reg: _, ref value }
@@ -766,7 +770,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
             | TerminatorKind::Resume
             | TerminatorKind::Return
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdges { real_target: _, imaginary_target: _ }
+            | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ } => {
                 // no data used, thus irrelevant to borrowck
             }
@@ -810,7 +814,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
             | TerminatorKind::Call { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::FalseEdges { real_target: _, imaginary_target: _ }
+            | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ }
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. }
@@ -1291,6 +1295,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     flow_state,
                 );
             }
+
+            Rvalue::ThreadLocalRef(_) => {}
 
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
