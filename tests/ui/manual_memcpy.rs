@@ -115,6 +115,60 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     }
 }
 
+#[allow(clippy::needless_range_loop, clippy::explicit_counter_loop)]
+pub fn manual_copy_with_counters(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
+    let mut count = 0;
+    for i in 3..src.len() {
+        dst[i] = src[count];
+        count += 1;
+    }
+
+    let mut count = 0;
+    for i in 3..src.len() {
+        dst[count] = src[i];
+        count += 1;
+    }
+
+    let mut count = 3;
+    for i in 0..src.len() {
+        dst[count] = src[i];
+        count += 1;
+    }
+
+    let mut count = 3;
+    for i in 0..src.len() {
+        dst[i] = src[count];
+        count += 1;
+    }
+
+    let mut count = 0;
+    for i in 3..(3 + src.len()) {
+        dst[i] = src[count];
+        count += 1;
+    }
+
+    let mut count = 3;
+    for i in 5..src.len() {
+        dst[i] = src[count - 2];
+        count += 1;
+    }
+
+    let mut count = 5;
+    for i in 3..10 {
+        dst[i] = src[count];
+        count += 1;
+    }
+
+    let mut count = 3;
+    let mut count = 30;
+    for i in 0..src.len() {
+        dst[count] = src[i];
+        dst2[count] = src[i];
+        count += 1;
+        count += 1;
+    }
+}
+
 #[warn(clippy::needless_range_loop, clippy::manual_memcpy)]
 pub fn manual_clone(src: &[String], dst: &mut [String]) {
     for i in 0..src.len() {
