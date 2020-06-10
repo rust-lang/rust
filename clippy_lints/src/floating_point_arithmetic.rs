@@ -350,8 +350,18 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
 
         // check if expression of the form x.powi(2) + y.powi(2)
         if_chain! {
-            if let ExprKind::MethodCall(PathSegment { ident: lmethod_name, .. }, ref _lspan, ref largs, _) = add_lhs.kind;
-            if let ExprKind::MethodCall(PathSegment { ident: rmethod_name, .. }, ref _rspan, ref rargs, _) = add_rhs.kind;
+            if let ExprKind::MethodCall(
+                PathSegment { ident: lmethod_name, .. },
+                ref _lspan,
+                ref largs,
+                _
+            ) = add_lhs.kind;
+            if let ExprKind::MethodCall(
+                PathSegment { ident: rmethod_name, .. },
+                ref _rspan,
+                ref rargs,
+                _
+            ) = add_rhs.kind;
             if lmethod_name.as_str() == "powi" && rmethod_name.as_str() == "powi";
             if let Some((lvalue, _)) = constant(cx, cx.tables(), &largs[1]);
             if let Some((rvalue, _)) = constant(cx, cx.tables(), &rargs[1]);
@@ -617,6 +627,55 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 }
 
+fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if_chain! {
+        if let ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Div, ..
+            },
+            div_lhs,
+            div_rhs,
+        ) = &expr.kind;
+        if let ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Mul, ..
+            },
+            mul_lhs,
+            mul_rhs,
+        ) = &div_lhs.kind;
+        if let Some((rvalue, _)) = constant(cx, cx.tables(), div_rhs);
+        if let Some((lvalue, _)) = constant(cx, cx.tables(), mul_rhs);
+        then {
+            if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue) &&
+               (F32(180_f32) == lvalue || F64(180_f64) == lvalue)
+            {
+                span_lint_and_sugg(
+                    cx,
+                    IMPRECISE_FLOPS,
+                    expr.span,
+                    "conversion to degrees can be done more accurately",
+                    "consider using",
+                    format!("{}.to_degrees()", Sugg::hir(cx, &mul_lhs, "..")),
+                    Applicability::MachineApplicable,
+                );
+            } else if
+                (F32(180_f32) == rvalue || F64(180_f64) == rvalue) &&
+                (F32(f32_consts::PI) == lvalue || F64(f64_consts::PI) == lvalue)
+            {
+                span_lint_and_sugg(
+                    cx,
+                    IMPRECISE_FLOPS,
+                    expr.span,
+                    "conversion to radians can be done more accurately",
+                    "consider using",
+                    format!("{}.to_radians()", Sugg::hir(cx, &mul_lhs, "..")),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, args, _) = &expr.kind {
@@ -637,6 +696,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
             check_mul_add(cx, expr);
             check_custom_abs(cx, expr);
             check_log_division(cx, expr);
+            check_radians(cx, expr);
         }
     }
 }
