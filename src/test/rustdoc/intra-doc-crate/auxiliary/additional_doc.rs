@@ -1,4 +1,4 @@
-#![crate_name = "rand"]
+#![crate_name = "my_rand"]
 #![deny(intra_doc_resolution_failure)]
 
 pub trait RngCore {}
