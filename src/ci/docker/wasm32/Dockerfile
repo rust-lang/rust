@@ -27,6 +27,9 @@ ENV PATH=$PATH:/emsdk-portable
 ENV PATH=$PATH:/emsdk-portable/upstream/emscripten/
 ENV PATH=$PATH:/emsdk-portable/node/12.9.1_64bit/bin/
 ENV BINARYEN_ROOT=/emsdk-portable/upstream/
+ENV EMSDK=/emsdk-portable
+ENV EM_CONFIG=/emsdk-portable/.emscripten
+ENV EM_CACHE=/emsdk-portable/upstream/emscripten/cache
 
 ENV TARGETS=wasm32-unknown-emscripten
 
