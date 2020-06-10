@@ -64,7 +64,7 @@ impl GatherUsedMutsVisitor<'_, '_, '_> {
 }
 
 impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tcx> {
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, _location: Location) {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         debug!("visit_terminator: terminator={:?}", terminator);
         match &terminator.kind {
             TerminatorKind::Call { destination: Some((into, _)), .. } => {
@@ -76,10 +76,10 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
             _ => {}
         }
 
-        // FIXME: no super_terminator?
+        self.super_terminator(terminator, location);
     }
 
-    fn visit_statement(&mut self, statement: &Statement<'tcx>, _location: Location) {
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         if let StatementKind::Assign(box (into, _)) = &statement.kind {
             debug!(
                 "visit_statement: statement={:?} local={:?} \
@@ -89,7 +89,7 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
             self.remove_never_initialized_mut_locals(*into);
         }
 
-        // FIXME: no super_statement?
+        self.super_statement(statement, location);
     }
 
     fn visit_local(&mut self, local: &Local, place_context: PlaceContext, location: Location) {
@@ -107,7 +107,5 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
                 }
             }
         }
-
-        // FIXME: no super_local?
     }
 }
