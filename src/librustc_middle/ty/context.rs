@@ -939,8 +939,9 @@ pub struct GlobalCtxt<'tcx> {
     /// via `extern crate` item and not `--extern` option or compiler built-in.
     pub extern_prelude: FxHashMap<Symbol, bool>,
 
-    // Internal cache for metadata decoding. No need to track deps on this.
-    pub rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
+    // Internal caches for metadata decoding. No need to track deps on this.
+    pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
+    pub pred_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Predicate<'tcx>>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
@@ -1129,7 +1130,8 @@ impl<'tcx> TyCtxt<'tcx> {
             definitions,
             def_path_hash_to_def_id,
             queries: query::Queries::new(providers, extern_providers, on_disk_query_result_cache),
-            rcache: Default::default(),
+            ty_rcache: Default::default(),
+            pred_rcache: Default::default(),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             crate_name: Symbol::intern(crate_name),
