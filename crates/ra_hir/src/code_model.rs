@@ -104,12 +104,16 @@ impl Crate {
         db: &dyn DefDatabase,
         query: &str,
     ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
-        import_map::search_dependencies(db, self.into(), import_map::Query::new(query).anchor_end())
-            .into_iter()
-            .map(|item| match item {
-                ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id.into()),
-                ItemInNs::Macros(mac_id) => Either::Right(mac_id.into()),
-            })
+        import_map::search_dependencies(
+            db,
+            self.into(),
+            import_map::Query::new(query).anchor_end().limit(40),
+        )
+        .into_iter()
+        .map(|item| match item {
+            ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id.into()),
+            ItemInNs::Macros(mac_id) => Either::Right(mac_id.into()),
+        })
     }
 
     pub fn all(db: &dyn HirDatabase) -> Vec<Crate> {

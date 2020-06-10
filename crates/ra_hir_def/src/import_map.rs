@@ -178,17 +178,23 @@ fn cmp((_, lhs): &(&ItemInNs, &ModPath), (_, rhs): &(&ItemInNs, &ModPath)) -> Or
 pub struct Query {
     query: String,
     anchor_end: bool,
+    limit: usize,
 }
 
 impl Query {
     pub fn new(query: &str) -> Self {
-        Self { query: query.to_lowercase(), anchor_end: false }
+        Self { query: query.to_lowercase(), anchor_end: false, limit: usize::max_value() }
     }
 
     /// Only returns items whose paths end with the (case-insensitive) query string as their last
     /// segment.
     pub fn anchor_end(self) -> Self {
         Self { anchor_end: true, ..self }
+    }
+
+    /// Limits the returned number of items to `limit`.
+    pub fn limit(self, limit: usize) -> Self {
+        Self { limit, ..self }
     }
 }
 
@@ -237,6 +243,11 @@ pub fn search_dependencies<'a>(
                 let item_path = &import_map.map[item];
                 fst_path(item_path) == fst_path(path)
             }));
+
+            if res.len() >= query.limit {
+                res.truncate(query.limit);
+                return res;
+            }
         }
     }
 
@@ -568,6 +579,35 @@ mod tests {
         dep::fmt (t)
         dep::Fmt (t)
         dep::Fmt (m)
+        "###);
+    }
+
+    #[test]
+    fn search_limit() {
+        let res = search_dependencies_of(
+            r#"
+        //- /main.rs crate:main deps:dep
+        //- /dep.rs crate:dep
+        pub mod fmt {
+            pub trait Display {
+                fn fmt();
+            }
+        }
+        #[macro_export]
+        macro_rules! Fmt {
+            () => {};
+        }
+        pub struct Fmt;
+
+        pub fn format() {}
+        pub fn no() {}
+    "#,
+            "main",
+            Query::new("").limit(2),
+        );
+        assert_snapshot!(res, @r###"
+        dep::fmt (t)
+        dep::Fmt (t)
         "###);
     }
 }
