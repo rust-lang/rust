@@ -239,6 +239,17 @@ where
     }
 }
 
+impl<'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'tcx> {
+    fn specialized_encode(&mut self, predicate: &ty::Predicate<'b>) -> Result<(), Self::Error> {
+        debug_assert!(self.tcx.lift(predicate).is_some());
+        let predicate =
+            unsafe { std::mem::transmute::<&ty::Predicate<'b>, &ty::Predicate<'tcx>>(predicate) };
+        ty_codec::encode_with_shorthand(self, predicate, |encoder| {
+            &mut encoder.predicate_shorthands
+        })
+    }
+}
+
 impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
         use std::collections::hash_map::Entry;
@@ -253,22 +264,6 @@ impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
         };
 
         index.encode(self)
-    }
-}
-
-impl<'a, 'b, 'tcx> SpecializedEncoder<&'a [(ty::Predicate<'b>, Span)]> for EncodeContext<'tcx> {
-    fn specialized_encode(
-        &mut self,
-        predicates: &&'a [(ty::Predicate<'b>, Span)],
-    ) -> Result<(), Self::Error> {
-        debug_assert!(self.tcx.lift(*predicates).is_some());
-        let predicates = unsafe {
-            std::mem::transmute::<
-                &&'a [(ty::Predicate<'b>, Span)],
-                &&'tcx [(ty::Predicate<'tcx>, Span)],
-            >(predicates)
-        };
-        ty_codec::encode_spanned_predicates(self, &predicates, |ecx| &mut ecx.predicate_shorthands)
     }
 }
 
