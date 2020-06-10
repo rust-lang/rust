@@ -610,6 +610,7 @@ declare_lint_pass! {
         INLINE_NO_SANITIZE,
         ASM_SUB_REGISTER,
         UNSAFE_OP_IN_UNSAFE_FN,
+        UNUSED_ASM_ARGUMENTS,
     ]
 }
 
