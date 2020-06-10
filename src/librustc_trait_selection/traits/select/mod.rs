@@ -1104,6 +1104,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // who might care about this case, like coherence, should use
         // that function).
         if candidates.is_empty() {
+            // If there's an error type, 'downgrade' our result from
+            // `Err(Unimplemented)` to `Ok(None)`. This helps us avoid
+            // emitting additional spurious errors, since we're guaranteed
+            // to have emitted at least one.
+            if stack.obligation.references_error() {
+                debug!("no results for error type, treating as ambiguous");
+                return Ok(None);
+            }
             return Err(Unimplemented);
         }
 
