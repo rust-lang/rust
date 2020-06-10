@@ -235,7 +235,7 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
                 .arg(&format!("file={},format=raw,id=hd0", &rootfs_img.to_string_lossy()));
             t!(cmd.spawn());
         }
-        _ => panic!("cannot start emulator for: {}" < target),
+        _ => panic!("cannot start emulator for: {}", target),
     }
 }
 
