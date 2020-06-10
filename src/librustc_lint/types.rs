@@ -6,7 +6,6 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::{is_range_literal, ExprKind, Node};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{sign_extend, truncate};
@@ -511,10 +510,6 @@ enum FfiResult<'tcx> {
     FfiUnsafe { ty: Ty<'tcx>, reason: &'static str, help: Option<&'static str> },
 }
 
-fn is_zst<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, ty: Ty<'tcx>) -> bool {
-    tcx.layout_of(tcx.param_env(did).and(ty)).map(|layout| layout.is_zst()).unwrap_or(false)
-}
-
 fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.kind {
         ty::FnPtr(_) => true,
@@ -523,7 +518,7 @@ fn ty_is_known_nonnull<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
             for field in field_def.all_fields() {
                 let field_ty =
                     tcx.normalize_erasing_regions(ParamEnv::reveal_all(), field.ty(tcx, substs));
-                if is_zst(tcx, field.did, field_ty) {
+                if field_ty.is_zst(tcx, field.did) {
                     continue;
                 }
 
@@ -653,32 +648,43 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        // We can't completely trust repr(C) and repr(transparent) markings;
-                        // make sure the fields are actually safe.
-                        let mut all_phantom = true;
-                        for field in &def.non_enum_variant().fields {
-                            let field_ty = cx.normalize_erasing_regions(
-                                ParamEnv::reveal_all(),
-                                field.ty(cx, substs),
-                            );
-                            // repr(transparent) types are allowed to have arbitrary ZSTs, not just
-                            // PhantomData -- skip checking all ZST fields
-                            if def.repr.transparent() && is_zst(cx, field.did, field_ty) {
-                                continue;
+                        if def.repr.transparent() {
+                            // Can assume that only one field is not a ZST, so only check
+                            // that field's type for FFI-safety.
+                            if let Some(field) =
+                                def.transparent_newtype_field(cx, self.cx.param_env)
+                            {
+                                let field_ty = cx.normalize_erasing_regions(
+                                    self.cx.param_env,
+                                    field.ty(cx, substs),
+                                );
+                                self.check_type_for_ffi(cache, field_ty)
+                            } else {
+                                FfiSafe
                             }
-                            let r = self.check_type_for_ffi(cache, field_ty);
-                            match r {
-                                FfiSafe => {
-                                    all_phantom = false;
-                                }
-                                FfiPhantom(..) => {}
-                                FfiUnsafe { .. } => {
-                                    return r;
+                        } else {
+                            // We can't completely trust repr(C) markings; make sure the fields are
+                            // actually safe.
+                            let mut all_phantom = true;
+                            for field in &def.non_enum_variant().fields {
+                                let field_ty = cx.normalize_erasing_regions(
+                                    self.cx.param_env,
+                                    field.ty(cx, substs),
+                                );
+                                let r = self.check_type_for_ffi(cache, field_ty);
+                                match r {
+                                    FfiSafe => {
+                                        all_phantom = false;
+                                    }
+                                    FfiPhantom(..) => {}
+                                    FfiUnsafe { .. } => {
+                                        return r;
+                                    }
                                 }
                             }
-                        }
 
-                        if all_phantom { FfiPhantom(ty) } else { FfiSafe }
+                            if all_phantom { FfiPhantom(ty) } else { FfiSafe }
+                        }
                     }
                     AdtKind::Union => {
                         if !def.repr.c() && !def.repr.transparent() {
@@ -708,7 +714,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             );
                             // repr(transparent) types are allowed to have arbitrary ZSTs, not just
                             // PhantomData -- skip checking all ZST fields.
-                            if def.repr.transparent() && is_zst(cx, field.did, field_ty) {
+                            if def.repr.transparent() && field_ty.is_zst(cx, field.did) {
                                 continue;
                             }
                             let r = self.check_type_for_ffi(cache, field_ty);
@@ -774,7 +780,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 );
                                 // repr(transparent) types are allowed to have arbitrary ZSTs, not
                                 // just PhantomData -- skip checking all ZST fields.
-                                if def.repr.transparent() && is_zst(cx, field.did, field_ty) {
+                                if def.repr.transparent() && field_ty.is_zst(cx, field.did) {
                                     continue;
                                 }
                                 let r = self.check_type_for_ffi(cache, field_ty);
@@ -946,7 +952,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>, is_static: bool) {
+    fn check_type_for_ffi_and_report_errors(
+        &mut self,
+        sp: Span,
+        ty: Ty<'tcx>,
+        is_static: bool,
+        is_return_type: bool,
+    ) {
         // We have to check for opaque types before `normalize_erasing_regions`,
         // which will replace opaque types with their underlying concrete type.
         if self.check_for_opaque_ty(sp, ty) {
@@ -957,11 +969,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // it is only OK to use this function because extern fns cannot have
         // any generic types right now:
         let ty = self.cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
-        // C doesn't really support passing arrays by value.
-        // The only way to pass an array by value is through a struct.
-        // So we first test that the top level isn't an array,
-        // and then recursively check the types inside.
+
+        // C doesn't really support passing arrays by value - the only way to pass an array by value
+        // is through a struct. So, first test that the top level isn't an array, and then
+        // recursively check the types inside.
         if !is_static && self.check_for_array_ty(sp, ty) {
+            return;
+        }
+
+        // Don't report FFI errors for unit return types. This check exists here, and not in
+        // `check_foreign_fn` (where it would make more sense) so that normalization has definitely
+        // happened.
+        if is_return_type && ty.is_unit() {
             return;
         }
 
@@ -970,6 +989,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             FfiResult::FfiPhantom(ty) => {
                 self.emit_ffi_unsafe_type_lint(ty, sp, "composed only of `PhantomData`", None);
             }
+            // If `ty` is a `repr(transparent)` newtype, and the non-zero-sized type is a generic
+            // argument, which after substitution, is `()`, then this branch can be hit.
+            FfiResult::FfiUnsafe { ty, .. } if is_return_type && ty.is_unit() => return,
             FfiResult::FfiUnsafe { ty, reason, help } => {
                 self.emit_ffi_unsafe_type_lint(ty, sp, reason, help);
             }
@@ -982,21 +1004,19 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
         for (input_ty, input_hir) in sig.inputs().iter().zip(decl.inputs) {
-            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false);
+            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false, false);
         }
 
         if let hir::FnRetTy::Return(ref ret_hir) = decl.output {
             let ret_ty = sig.output();
-            if !ret_ty.is_unit() {
-                self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty, false);
-            }
+            self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty, false, true);
         }
     }
 
     fn check_foreign_static(&mut self, id: hir::HirId, span: Span) {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let ty = self.cx.tcx.type_of(def_id);
-        self.check_type_for_ffi_and_report_errors(span, ty, true);
+        self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
 }
 

@@ -216,7 +216,11 @@ fn mk_ty_param(
 }
 
 fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {
-    Generics { params, where_clause: ast::WhereClause { predicates: Vec::new(), span }, span }
+    Generics {
+        params,
+        where_clause: ast::WhereClause { has_where_token: false, predicates: Vec::new(), span },
+        span,
+    }
 }
 
 /// Lifetimes and bounds on type parameters
