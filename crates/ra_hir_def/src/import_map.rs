@@ -1,10 +1,8 @@
 //! A map of all publicly exported items in a crate.
 
-use std::cmp::Ordering;
-use std::{collections::hash_map::Entry, fmt, sync::Arc};
+use std::{cmp::Ordering, collections::hash_map::Entry, fmt, sync::Arc};
 
 use fst::{self, Streamer};
-use itertools::Itertools;
 use ra_db::CrateId;
 use rustc_hash::FxHashMap;
 
@@ -118,7 +116,7 @@ impl ImportMap {
             let start = last_batch_start;
             last_batch_start = idx + 1;
 
-            let key: String = fst_path(&importables[start].1).collect();
+            let key = fst_path(&importables[start].1);
 
             builder.insert(key, start as u64).unwrap();
         }
@@ -137,7 +135,8 @@ impl ImportMap {
 
 impl PartialEq for ImportMap {
     fn eq(&self, other: &Self) -> bool {
-        self.importables == other.importables
+        // `fst` and `importables` are built from `map`, so we don't need to compare them.
+        self.map == other.map
     }
 }
 
@@ -163,18 +162,16 @@ impl fmt::Debug for ImportMap {
     }
 }
 
-fn fst_path(path: &ModPath) -> impl Iterator<Item = char> + '_ {
-    path.segments
-        .iter()
-        .map(|name| name.as_text().unwrap())
-        .intersperse("::")
-        .flat_map(|s| s.chars().map(|c| c.to_ascii_lowercase()))
+fn fst_path(path: &ModPath) -> String {
+    let mut s = path.to_string();
+    s.make_ascii_lowercase();
+    s
 }
 
 fn cmp((_, lhs): &(&ItemInNs, &ModPath), (_, rhs): &(&ItemInNs, &ModPath)) -> Ordering {
-    let lhs_chars = fst_path(lhs);
-    let rhs_chars = fst_path(rhs);
-    lhs_chars.cmp(rhs_chars)
+    let lhs_str = fst_path(lhs);
+    let rhs_str = fst_path(rhs);
+    lhs_str.cmp(&rhs_str)
 }
 
 #[derive(Debug)]
@@ -184,8 +181,8 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn new(query: impl AsRef<str>) -> Self {
-        Self { query: query.as_ref().to_lowercase(), anchor_end: false }
+    pub fn new(query: &str) -> Self {
+        Self { query: query.to_lowercase(), anchor_end: false }
     }
 
     /// Only returns items whose paths end with the (case-insensitive) query string as their last
@@ -197,14 +194,13 @@ impl Query {
 
 /// Searches dependencies of `krate` for an importable path matching `query`.
 ///
-/// This returns all items that could be imported from within `krate`, excluding paths inside
-/// `krate` itself.
+/// This returns a list of items that could be imported from dependencies of `krate`.
 pub fn search_dependencies<'a>(
     db: &'a dyn DefDatabase,
     krate: CrateId,
     query: Query,
 ) -> Vec<ItemInNs> {
-    let _p = ra_prof::profile("import_map::global_search").detail(|| format!("{:?}", query));
+    let _p = ra_prof::profile("search_dependencies").detail(|| format!("{:?}", query));
 
     let graph = db.crate_graph();
     let import_maps: Vec<_> =
@@ -239,7 +235,7 @@ pub fn search_dependencies<'a>(
             // `importables` whose paths match `path`.
             res.extend(importables.iter().copied().take_while(|item| {
                 let item_path = &import_map.map[item];
-                fst_path(item_path).eq(fst_path(path))
+                fst_path(item_path) == fst_path(path)
             }));
         }
     }
@@ -252,6 +248,7 @@ mod tests {
     use super::*;
     use crate::test_db::TestDB;
     use insta::assert_snapshot;
+    use itertools::Itertools;
     use ra_db::fixture::WithFixture;
     use ra_db::{SourceDatabase, Upcast};
 
@@ -259,7 +256,7 @@ mod tests {
         let db = TestDB::with_files(ra_fixture);
         let crate_graph = db.crate_graph();
 
-        let import_maps: Vec<_> = crate_graph
+        let s = crate_graph
             .iter()
             .filter_map(|krate| {
                 let cdata = &crate_graph[krate];
@@ -269,9 +266,8 @@ mod tests {
 
                 Some(format!("{}:\n{:?}", name, map))
             })
-            .collect();
-
-        import_maps.join("\n")
+            .join("\n");
+        s
     }
 
     fn search_dependencies_of(ra_fixture: &str, krate_name: &str, query: Query) -> String {
@@ -304,7 +300,6 @@ mod tests {
                     )
                 })
             })
-            .collect::<Vec<_>>()
             .join("\n")
     }
 

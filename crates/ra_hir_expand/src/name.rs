@@ -67,13 +67,6 @@ impl Name {
             _ => None,
         }
     }
-
-    pub fn as_text(&self) -> Option<&str> {
-        match &self.0 {
-            Repr::Text(s) => Some(s.as_str()),
-            _ => None,
-        }
-    }
 }
 
 pub trait AsName {
