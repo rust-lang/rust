@@ -2250,6 +2250,11 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
         // If node is the desired variable, see how it's used
         if var_def_id(self.cx, expr) == Some(self.var_id) {
+            if self.past_loop {
+                self.state = VarState::DontWarn;
+                return;
+            }
+
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 match parent.kind {
                     ExprKind::AssignOp(_, ref lhs, _) if lhs.hir_id == expr.hir_id => {
@@ -2269,10 +2274,6 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                 }
             }
 
-            if self.past_loop {
-                self.state = VarState::DontWarn;
-                return;
-            }
             walk_expr(self, expr);
         } else if !self.past_loop && is_loop(expr) {
             self.state = VarState::DontWarn;
