@@ -337,10 +337,10 @@ impl Query {
                         continue;
                     }
 
+                    res.push(symbol.clone());
                     if res.len() >= self.limit {
                         return res;
                     }
-                    res.push(symbol.clone());
                 }
             }
         }
