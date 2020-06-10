@@ -11,7 +11,11 @@ use intra_link_proc_macro_macro::{DeriveB, attr_b};
 
 // @has - '//a/@href' '../intra_link_proc_macro/derive.DeriveA.html'
 // @has - '//a/@href' '../intra_link_proc_macro/attr.attr_a.html'
+// @has - '//a/@href' '../intra_link_proc_macro/trait.DeriveTrait.html'
 // @has - '//a/@href' '../intra_link_proc_macro_macro/derive.DeriveB.html'
 // @has - '//a/@href' '../intra_link_proc_macro_macro/attr.attr_b.html'
-/// Link to [DeriveA], [attr_a], [DeriveB], [attr_b]
+/// Link to [DeriveA], [attr_a], [DeriveB], [attr_b], [DeriveTrait]
 pub struct Foo;
+
+// this should not cause ambiguity errors
+pub trait DeriveTrait {}

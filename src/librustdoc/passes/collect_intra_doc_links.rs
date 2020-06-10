@@ -12,6 +12,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
+use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
@@ -407,6 +408,22 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     }
 }
 
+/// Check for resolve collisions between a trait and its derive
+///
+/// These are common and we should just resolve to the trait in that case
+fn is_derive_trait_collision<T>(ns: &PerNS<Option<(Res, T)>>) -> bool {
+    if let PerNS {
+        type_ns: Some((Res::Def(DefKind::Trait, _), _)),
+        macro_ns: Some((Res::Def(DefKind::Macro(MacroKind::Derive), _), _)),
+        ..
+    } = *ns
+    {
+        true
+    } else {
+        false
+    }
+}
+
 impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let item_hir_id = if item.is_mod() {
@@ -650,7 +667,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                     None => {
                         // Try everything!
-                        let candidates = PerNS {
+                        let mut candidates = PerNS {
                             macro_ns: self
                                 .macro_resolve(path_str, base_node)
                                 .map(|res| (res, extra_fragment.clone())),
@@ -705,10 +722,16 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             continue;
                         }
 
-                        let is_unambiguous = candidates.clone().present_items().count() == 1;
-                        if is_unambiguous {
+                        let len = candidates.clone().present_items().count();
+
+                        if len == 1 {
                             candidates.present_items().next().unwrap()
+                        } else if len == 2 && is_derive_trait_collision(&candidates) {
+                            candidates.type_ns.unwrap()
                         } else {
+                            if is_derive_trait_collision(&candidates) {
+                                candidates.macro_ns = None;
+                            }
                             ambiguity_error(
                                 cx,
                                 &item,

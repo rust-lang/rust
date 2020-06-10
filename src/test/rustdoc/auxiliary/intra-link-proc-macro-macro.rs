@@ -19,6 +19,11 @@ pub fn b_derive(input: TokenStream) -> TokenStream {
     input
 }
 
+#[proc_macro_derive(DeriveTrait)]
+pub fn trait_derive(input: TokenStream) -> TokenStream {
+    input
+}
+
 #[proc_macro_attribute]
 pub fn attr_a(input: TokenStream, _args: TokenStream) -> TokenStream {
     input
