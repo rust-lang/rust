@@ -318,9 +318,12 @@
                     "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)"
                 },
                 "rust-analyzer.checkOnSave.allFeatures": {
-                    "type": "boolean",
-                    "default": false,
-                    "markdownDescription": "Check with all features (will be passed as `--all-features`)"
+                    "type": [
+                        "null",
+                        "boolean"
+                    ],
+                    "default": null,
+                    "markdownDescription": "Check with all features (will be passed as `--all-features`). Defaults to `rust-analyzer.cargo.allFeatures`."
                 },
                 "rust-analyzer.checkOnSave.features": {
                     "type": "array",
@@ -328,7 +331,7 @@
                         "type": "string"
                     },
                     "default": [],
-                    "description": "List of features to activate. Set to `rust-analyzer.cargo.features` if empty."
+                    "description": "List of features to activate. Defaults to `rust-analyzer.cargo.features`."
                 },
                 "rust-analyzer.inlayHints.enable": {
                     "type": "boolean",
