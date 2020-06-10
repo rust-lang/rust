@@ -78,6 +78,7 @@ impl Definition {
     }
 }
 
+#[derive(Debug)]
 pub enum NameClass {
     Definition(Definition),
     /// `None` in `if let None = Some(82) {}`
@@ -131,9 +132,11 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                 let local = sema.to_def(&it)?;
 
                 if let Some(record_field_pat) = it.syntax().parent().and_then(ast::RecordFieldPat::cast) {
-                    if let Some(field) = sema.resolve_record_field_pat(&record_field_pat) {
-                        let field = Definition::Field(field);
-                        return Some(NameClass::FieldShorthand { local, field });
+                    if record_field_pat.name_ref().is_none() {
+                        if let Some(field) = sema.resolve_record_field_pat(&record_field_pat) {
+                            let field = Definition::Field(field);
+                            return Some(NameClass::FieldShorthand { local, field });
+                        }
                     }
                 }
 

@@ -7,18 +7,6 @@ use crate::{
     FileRange, TextRange,
 };
 
-/// Highlights the code given by the `ra_fixture` argument, renders the
-/// result as HTML, and compares it with the HTML file given as `snapshot`.
-/// Note that the `snapshot` file is overwritten by the rendered HTML.
-fn check_highlighting(ra_fixture: &str, snapshot: &str, rainbow: bool) {
-    let (analysis, file_id) = single_file(ra_fixture);
-    let dst_file = project_dir().join(snapshot);
-    let actual_html = &analysis.highlight_as_html(file_id, rainbow).unwrap();
-    let expected_html = &read_text(&dst_file);
-    fs::write(dst_file, &actual_html).unwrap();
-    assert_eq_text!(expected_html, actual_html);
-}
-
 #[test]
 fn test_highlighting() {
     check_highlighting(
@@ -76,6 +64,8 @@ fn main() {
     let mut x = 42;
     let y = &mut x;
     let z = &y;
+
+    let Foo { x: z, y } = Foo { x: z, y };
 
     y;
 }
@@ -333,4 +323,16 @@ impl Foo {
         "crates/ra_ide/src/snapshots/highlight_doctest.html",
         false,
     )
+}
+
+/// Highlights the code given by the `ra_fixture` argument, renders the
+/// result as HTML, and compares it with the HTML file given as `snapshot`.
+/// Note that the `snapshot` file is overwritten by the rendered HTML.
+fn check_highlighting(ra_fixture: &str, snapshot: &str, rainbow: bool) {
+    let (analysis, file_id) = single_file(ra_fixture);
+    let dst_file = project_dir().join(snapshot);
+    let actual_html = &analysis.highlight_as_html(file_id, rainbow).unwrap();
+    let expected_html = &read_text(&dst_file);
+    fs::write(dst_file, &actual_html).unwrap();
+    assert_eq_text!(expected_html, actual_html);
 }
