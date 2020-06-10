@@ -2186,6 +2186,11 @@ impl<'tcx> TyS<'tcx> {
             }
         }
     }
+
+    /// Is this a zero-sized type?
+    pub fn is_zst(&'tcx self, tcx: TyCtxt<'tcx>, did: DefId) -> bool {
+        tcx.layout_of(tcx.param_env(did).and(self)).map(|layout| layout.is_zst()).unwrap_or(false)
+    }
 }
 
 /// Typed constant value.
