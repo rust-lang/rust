@@ -39,16 +39,18 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-latest-xl
-            env: {}
-          - name: x86_64-gnu-llvm-8
-            os: ubuntu-latest-xl
-            env: {}
-          - name: x86_64-gnu-tools
+          - name: x86_64-msvc-1
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            os: ubuntu-latest-xl
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler --enable-sanitizers"
+              SCRIPT: make ci-subset-1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_LLVM_ASSERTIONS: 1
+            os: windows-latest-xl
+          - name: x86_64-msvc-2
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler --enable-sanitizers"
+              SCRIPT: make ci-subset-2
+            os: windows-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -410,14 +412,14 @@ jobs:
             os: macos-latest
           - name: x86_64-msvc-1
             env:
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler --enable-sanitizers"
               SCRIPT: make ci-subset-1
               NO_DEBUG_ASSERTIONS: 1
               NO_LLVM_ASSERTIONS: 1
             os: windows-latest-xl
           - name: x86_64-msvc-2
             env:
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler --enable-sanitizers"
               SCRIPT: make ci-subset-2
             os: windows-latest-xl
           - name: i686-msvc-1
