@@ -448,6 +448,8 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Option<(Res, T)>>) -> bool {
 
 impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
+        use rustc_middle::ty::DefIdTree;
+
         let item_hir_id = if item.is_mod() {
             if let Some(def_id) = item.def_id.as_local() {
                 Some(self.cx.tcx.hir().as_local_hir_id(def_id))
@@ -459,7 +461,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             None
         };
 
-        use rustc_middle::ty::DefIdTree;
         let parent_node = if item.is_fake() {
             // FIXME: is this correct?
             None
