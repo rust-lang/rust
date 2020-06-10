@@ -913,37 +913,62 @@ fn get_offset<'tcx>(
     }
 }
 
-fn get_assignments<'tcx>(body: &'tcx Expr<'tcx>) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> {
-    fn get_assignment<'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
-        if let ExprKind::Assign(lhs, rhs, _) = e.kind {
-            Some((lhs, rhs))
-        } else {
-            None
-        }
+fn get_assignment<'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
+    if let ExprKind::Assign(lhs, rhs, _) = e.kind {
+        Some((lhs, rhs))
+    } else {
+        None
     }
+}
 
-    // This is one of few ways to return different iterators
-    // derived from: https://stackoverflow.com/questions/29760668/conditionally-iterate-over-one-of-several-possible-iterators/52064434#52064434
-    let mut iter_a = None;
-    let mut iter_b = None;
+fn get_assignments<'a: 'c, 'tcx: 'c, 'c>(
+    cx: &'a LateContext<'a, 'tcx>,
+    stmts: &'tcx [Stmt<'tcx>],
+    expr: Option<&'tcx Expr<'tcx>>,
+    loop_counters: &'c [Start<'tcx>],
+) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> + 'c {
+    stmts
+        .iter()
+        .filter_map(move |stmt| match stmt.kind {
+            StmtKind::Local(..) | StmtKind::Item(..) => None,
+            StmtKind::Expr(e) | StmtKind::Semi(e) => if_chain! {
+                if let ExprKind::AssignOp(_, var, _) = e.kind;
+                // skip StartKind::Range
+                if loop_counters.iter().skip(1).any(|counter| Some(counter.id) == var_def_id(cx, var));
+                then { None } else { Some(e) }
+            },
+        })
+        .chain(expr.into_iter())
+        .map(get_assignment)
+}
 
-    if let ExprKind::Block(b, _) = body.kind {
-        let Block { stmts, expr, .. } = *b;
+fn get_loop_counters<'a, 'tcx>(
+    cx: &'a LateContext<'a, 'tcx>,
+    body: &'tcx Block<'tcx>,
+    expr: &'tcx Expr<'_>,
+) -> Option<impl Iterator<Item = Start<'tcx>> + 'a> {
+    // Look for variables that are incremented once per loop iteration.
+    let mut increment_visitor = IncrementVisitor::new(cx);
+    walk_block(&mut increment_visitor, body);
 
-        iter_a = stmts
-            .iter()
-            .filter_map(|stmt| match stmt.kind {
-                StmtKind::Local(..) | StmtKind::Item(..) => None,
-                StmtKind::Expr(e) | StmtKind::Semi(e) => Some(e),
+    // For each candidate, check the parent block to see if
+    // it's initialized to zero at the start of the loop.
+    if let Some(block) = get_enclosing_block(&cx, expr.hir_id) {
+        increment_visitor
+            .into_results()
+            .filter_map(move |var_id| {
+                let mut initialize_visitor = InitializeVisitor::new(cx, expr, var_id);
+                walk_block(&mut initialize_visitor, block);
+
+                initialize_visitor.get_result().map(|(_, initializer)| Start {
+                    id: var_id,
+                    kind: StartKind::Counter { initializer },
+                })
             })
-            .chain(expr.into_iter())
-            .map(get_assignment)
             .into()
     } else {
-        iter_b = Some(get_assignment(body))
+        None
     }
-
-    iter_a.into_iter().flatten().chain(iter_b.into_iter())
 }
 
 fn build_manual_memcpy_suggestion<'tcx>(
@@ -1047,9 +1072,26 @@ fn detect_manual_memcpy<'tcx>(
                 id: canonical_id,
                 kind: StartKind::Range,
             }];
+
+            // This is one of few ways to return different iterators
+            // derived from: https://stackoverflow.com/questions/29760668/conditionally-iterate-over-one-of-several-possible-iterators/52064434#52064434
+            let mut iter_a = None;
+            let mut iter_b = None;
+
+            if let ExprKind::Block(block, _) = body.kind {
+                if let Some(loop_counters) = get_loop_counters(cx, block, expr) {
+                    starts.extend(loop_counters);
+                }
+                iter_a = Some(get_assignments(cx, block.stmts, block.expr, &starts));
+            } else {
+                iter_b = Some(get_assignment(body));
+            }
+
             // The only statements in the for loops can be indexed assignments from
             // indexed retrievals.
-            let big_sugg = get_assignments(body)
+            let assignments = iter_a.into_iter().flatten().chain(iter_b.into_iter());
+
+            let big_sugg = assignments
                 .map(|o| {
                     o.and_then(|(lhs, rhs)| {
                         let rhs = fetch_cloned_expr(rhs);
