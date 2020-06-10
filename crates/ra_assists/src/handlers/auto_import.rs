@@ -865,6 +865,7 @@ fn main() {
 
     #[test]
     fn whole_segment() {
+        // Tests that only imports whose last segment matches the identifier get suggested.
         check_assist(
             auto_import,
             r"
@@ -883,6 +884,36 @@ fn main() {
 
 struct S;
 impl fmt::Display for S {}
+",
+        );
+    }
+
+    #[test]
+    fn macro_generated() {
+        // Tests that macro-generated items are suggested from external crates.
+        check_assist(
+            auto_import,
+            r"
+                    //- /lib.rs crate:dep
+
+                    macro_rules! mac {
+                        () => {
+                            pub struct Cheese;
+                        };
+                    }
+
+                    mac!();
+
+                    //- /main.rs crate:main deps:dep
+
+                    fn main() {
+                        Cheese<|>;
+                    }",
+            r"use dep::Cheese;
+
+fn main() {
+    Cheese;
+}
 ",
         );
     }
