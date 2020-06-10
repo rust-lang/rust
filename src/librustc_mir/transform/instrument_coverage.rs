@@ -1,20 +1,16 @@
 use crate::transform::{MirPass, MirSource};
 use crate::util::patch::MirPatch;
+use rustc_hir::lang_items;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::ty;
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
-use rustc_target::abi;
 
+/// Inserts call to count_code_region() as a placeholder to be replaced during code generation with
+/// the intrinsic llvm.instrprof.increment.
 pub struct InstrumentCoverage;
-
-/**
- * Inserts call to count_code_region() as a placeholder to be replaced during code generation with
- * the intrinsic llvm.instrprof.increment.
- */
 
 impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
@@ -34,10 +30,17 @@ const INIT_FUNCTION_COUNTER: u32 = 0;
 pub fn instrument_coverage<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let span = body.span.shrink_to_lo();
 
-    let count_code_region_fn =
-        function_handle(tcx, span, tcx.lang_items().count_code_region_fn().unwrap());
-    let counter_index =
-        const_int_operand(tcx, span, tcx.types.u32, Scalar::from_u32(INIT_FUNCTION_COUNTER));
+    let count_code_region_fn = function_handle(
+        tcx,
+        tcx.require_lang_item(lang_items::CountCodeRegionFnLangItem, None),
+        span,
+    );
+    let counter_index = Operand::const_from_scalar(
+        tcx,
+        tcx.types.u32,
+        Scalar::from_u32(INIT_FUNCTION_COUNTER),
+        span,
+    );
 
     let mut patch = MirPatch::new(body);
 
@@ -68,36 +71,11 @@ pub fn instrument_coverage<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     body.basic_blocks_mut().swap(next_block, new_block);
 }
 
-fn function_handle<'tcx>(tcx: TyCtxt<'tcx>, span: Span, fn_def_id: DefId) -> Operand<'tcx> {
+fn function_handle<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: DefId, span: Span) -> Operand<'tcx> {
     let ret_ty = tcx.fn_sig(fn_def_id).output();
     let ret_ty = ret_ty.no_bound_vars().unwrap();
     let substs = tcx.mk_substs(::std::iter::once(ty::subst::GenericArg::from(ret_ty)));
     Operand::function_handle(tcx, fn_def_id, substs, span)
-}
-
-fn const_int_operand<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    span: Span,
-    ty: Ty<'tcx>,
-    val: Scalar,
-) -> Operand<'tcx> {
-    debug_assert!({
-        let param_env_and_ty = ty::ParamEnv::empty().and(ty);
-        let type_size = tcx
-            .layout_of(param_env_and_ty)
-            .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
-            .size;
-        let scalar_size = abi::Size::from_bytes(match val {
-            Scalar::Raw { size, .. } => size,
-            _ => panic!("Invalid scalar type {:?}", val),
-        });
-        scalar_size == type_size
-    });
-    Operand::Constant(box Constant {
-        span,
-        user_ty: None,
-        literal: ty::Const::from_scalar(tcx, val, ty),
-    })
 }
 
 fn placeholder_block<'tcx>(source_info: SourceInfo) -> BasicBlockData<'tcx> {
