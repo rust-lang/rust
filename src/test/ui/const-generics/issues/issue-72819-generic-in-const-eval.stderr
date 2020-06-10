@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-72819-generic-in-const-eval.rs:7:47
+   |
+LL | where Assert::<{N < usize::max_value() / 2}>: IsTrue,
+   |                                               ^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+
