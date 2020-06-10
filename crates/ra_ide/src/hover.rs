@@ -2080,4 +2080,61 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ]
             "###);
     }
+
+    #[test]
+    fn test_hover_associated_type_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            trait Foo {
+                type Item;
+                fn get(self) -> Self::Item {}
+            }
+
+            struct Bar{}
+            struct S{}
+
+            impl Foo for S{
+                type Item = Bar;
+            }
+
+            fn test() -> impl Foo {
+                S{}
+            }
+
+            fn main() {
+                let s<|>t = test().get();
+            }
+            ",
+            &["Foo::Item<impl Foo>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..62,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
 }
