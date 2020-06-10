@@ -35,6 +35,7 @@ ra_ssr = { path = "../ra_ssr" }
 ra_project_model = { path = "../ra_project_model" }
 ra_hir_def = { path = "../ra_hir_def" }
 ra_tt = { path = "../ra_tt" }
+ra_hir_expand = { path = "../ra_hir_expand" }
 
 # ra_ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.

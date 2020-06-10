@@ -16,6 +16,7 @@ use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffs
 use ra_project_model::ProjectWorkspace;
 use ra_hir_def::{item_scope::ItemInNs, db::DefDatabase};
 use ra_tt::{Literal, Ident, Punct, TokenTree, Leaf};
+use ra_hir_expand::name::AsName;
 
 use comrak::{parse_document,format_commonmark, ComrakOptions, Arena};
 use comrak::nodes::NodeValue;
@@ -406,9 +407,9 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition, wor
                 match Url::parse(&String::from_utf8(link.url.clone()).unwrap()) {
                     // If this is a valid absolute URL don't touch it
                     Ok(_) => (),
-                    // If contains .html            file-based link to new page
-                    // If starts with #fragment     file-based link to fragment on current page
-                    // If contains ::               module-based link
+                    // Otherwise there are two main possibilities
+                    // path-based links: `../../module/struct.MyStruct.html`
+                    // module-based links (AKA intra-doc links): `super::super::module::MyStruct`
                     Err(_) => {
                         let link_str = String::from_utf8(link.url.clone()).unwrap();
                         let resolved = try_resolve_path(db, &mut doc_target_dirs.clone(), definition, &link_str, UrlMode::Url)
@@ -429,7 +430,9 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition, wor
     Some(String::from_utf8(out).unwrap())
 }
 
-/// Try to resolve path to local documentation via intra-doc-links (i.e. `super::gateway::Shard`)
+/// Try to resolve path to local documentation via intra-doc-links (i.e. `super::gateway::Shard`).
+///
+/// See [RFC1946](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md).
 fn try_resolve_intra(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link: &str) -> Option<String> {
     None
 }
@@ -439,7 +442,7 @@ enum UrlMode {
     File
 }
 
-/// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`)
+/// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
 fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link: &str, mode: UrlMode) -> Option<String> {
     let ns = if let Definition::ModuleDef(moddef) = definition {
         ItemInNs::Types(moddef.clone().into())
@@ -456,12 +459,12 @@ fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = Pat
 
     match mode {
         UrlMode::Url => {
-            let root = get_doc_url(db, &krate);
             let mut base = base.join("/");
-            if link.starts_with("#") {
-                base = base + "/"
-            };
-            root.and_then(|url| url.join(&base).ok()).and_then(|url| url.join(link).ok()).map(|url| url.into_string())
+            get_doc_url(db, &krate)
+                .and_then(|url| url.join(&base).ok())
+                .and_then(|url| get_symbol_filename(db, definition).as_deref().map(|f| url.join(f).ok()).flatten())
+                .and_then(|url| url.join(link).ok())
+                .map(|url| url.into_string())
         },
         UrlMode::File => {
             let base = base.collect::<PathBuf>();
@@ -500,6 +503,32 @@ fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
     };
 
     doc_url.map(|s| s.trim_matches('"').to_owned() + "/").and_then(|s| Url::parse(&s).ok())
+}
+
+/// Get the filename and extension generated for a symbol by rustdoc.
+///
+/// Example: `struct.Shard.html`
+fn get_symbol_filename(db: &RootDatabase, definition: &Definition) -> Option<String> {
+    Some(match definition {
+        Definition::ModuleDef(def) => match def {
+            ModuleDef::Adt(adt) => match adt {
+                Adt::Struct(s) => format!("struct.{}.html", s.name(db)),
+                Adt::Enum(e) => format!("enum.{}.html", e.name(db)),
+                Adt::Union(u) => format!("union.{}.html", u.name(db))
+            },
+            ModuleDef::Module(_) => "index.html".to_string(),
+            ModuleDef::Trait(t) => format!("trait.{}.html", t.name(db)),
+            ModuleDef::TypeAlias(t) => format!("type.{}.html", t.name(db)),
+            ModuleDef::BuiltinType(t) => format!("primitive.{}.html", t.as_name()),
+            ModuleDef::Function(f) => format!("fn.{}.html", f.name(db)),
+            ModuleDef::EnumVariant(ev) => format!("enum.{}.html#variant.{}", ev.parent_enum(db).name(db), ev.name(db)),
+            ModuleDef::Const(c) => format!("const.{}.html", c.name(db)?),
+            // TODO: Check this is the right prefix
+            ModuleDef::Static(s) => format!("static.{}.html", s.name(db)?)
+        },
+        Definition::Macro(m) => format!("macro.{}.html", m.name(db)?),
+        _ => None?
+    })
 }
 
 fn iter_nodes<'a, F>(node: &'a comrak::nodes::AstNode<'a>, f: &F)
