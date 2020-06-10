@@ -1,0 +1,88 @@
+SOURCE_FILE@0..79
+  TYPE_ALIAS_DEF@0..25
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "A"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    FOR_TYPE@9..24
+      FOR_KW@9..12 "for"
+      TYPE_PARAM_LIST@12..16
+        L_ANGLE@12..13 "<"
+        LIFETIME_PARAM@13..15
+          LIFETIME@13..15 "\'a"
+        R_ANGLE@15..16 ">"
+      WHITESPACE@16..17 " "
+      REFERENCE_TYPE@17..24
+        AMP@17..18 "&"
+        LIFETIME@18..20 "\'a"
+        WHITESPACE@20..21 " "
+        PATH_TYPE@21..24
+          PATH@21..24
+            PATH_SEGMENT@21..24
+              NAME_REF@21..24
+                IDENT@21..24 "u32"
+    SEMICOLON@24..25 ";"
+  WHITESPACE@25..26 "\n"
+  TYPE_ALIAS_DEF@26..54
+    TYPE_KW@26..30 "type"
+    WHITESPACE@30..31 " "
+    NAME@31..32
+      IDENT@31..32 "B"
+    WHITESPACE@32..33 " "
+    EQ@33..34 "="
+    WHITESPACE@34..35 " "
+    FOR_TYPE@35..53
+      FOR_KW@35..38 "for"
+      TYPE_PARAM_LIST@38..42
+        L_ANGLE@38..39 "<"
+        LIFETIME_PARAM@39..41
+          LIFETIME@39..41 "\'a"
+        R_ANGLE@41..42 ">"
+      WHITESPACE@42..43 " "
+      TUPLE_TYPE@43..53
+        L_PAREN@43..44 "("
+        REFERENCE_TYPE@44..51
+          AMP@44..45 "&"
+          LIFETIME@45..47 "\'a"
+          WHITESPACE@47..48 " "
+          PATH_TYPE@48..51
+            PATH@48..51
+              PATH_SEGMENT@48..51
+                NAME_REF@48..51
+                  IDENT@48..51 "u32"
+        COMMA@51..52 ","
+        R_PAREN@52..53 ")"
+    SEMICOLON@53..54 ";"
+  WHITESPACE@54..55 "\n"
+  TYPE_ALIAS_DEF@55..78
+    TYPE_KW@55..59 "type"
+    WHITESPACE@59..60 " "
+    NAME@60..61
+      IDENT@60..61 "B"
+    WHITESPACE@61..62 " "
+    EQ@62..63 "="
+    WHITESPACE@63..64 " "
+    FOR_TYPE@64..77
+      FOR_KW@64..67 "for"
+      TYPE_PARAM_LIST@67..71
+        L_ANGLE@67..68 "<"
+        LIFETIME_PARAM@68..70
+          LIFETIME@68..70 "\'a"
+        R_ANGLE@70..71 ">"
+      WHITESPACE@71..72 " "
+      SLICE_TYPE@72..77
+        L_BRACK@72..73 "["
+        PATH_TYPE@73..76
+          PATH@73..76
+            PATH_SEGMENT@73..76
+              NAME_REF@73..76
+                IDENT@73..76 "u32"
+        R_BRACK@76..77 "]"
+    SEMICOLON@77..78 ";"
+  WHITESPACE@78..79 "\n"
+error 16..16: expected a function pointer or path
+error 42..42: expected a function pointer or path
+error 71..71: expected a function pointer or path

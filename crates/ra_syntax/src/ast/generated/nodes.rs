@@ -2052,6 +2052,8 @@ pub struct WherePred {
 }
 impl ast::TypeBoundsOwner for WherePred {}
 impl WherePred {
+    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
+    pub fn type_param_list(&self) -> Option<TypeParamList> { support::child(&self.syntax) }
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![lifetime])
     }

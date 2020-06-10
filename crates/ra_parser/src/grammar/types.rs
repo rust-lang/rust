@@ -216,19 +216,20 @@ pub(super) fn for_binder(p: &mut Parser) {
 
 // test for_type
 // type A = for<'a> fn() -> ();
-// fn foo<T>(_t: &T) where for<'a> &'a T: Iterator {}
-// fn bar<T>(_t: &T) where for<'a> &'a mut T: Iterator {}
-// fn baz<T>(_t: &T) where for<'a> <&'a T as Baz>::Foo: Iterator {}
+// type B = for<'a> unsafe extern "C" fn(&'a ()) -> ();
 pub(super) fn for_type(p: &mut Parser) {
     assert!(p.at(T![for]));
     let m = p.start();
     for_binder(p);
     match p.current() {
-        T![fn] | T![unsafe] | T![extern] => fn_pointer_type(p),
-        T![&] => reference_type(p),
-        _ if paths::is_path_start(p) => path_type_(p, false),
-        _ => p.error("expected a path"),
+        T![fn] | T![unsafe] | T![extern] => {}
+        // OK: legacy trait object format
+        _ if paths::is_use_path_start(p) => {}
+        _ => {
+            p.error("expected a function pointer or path");
+        }
     }
+    type_no_bounds(p);
     m.complete(p, FOR_TYPE);
 }
 
