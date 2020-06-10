@@ -987,12 +987,34 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let new = ty::PredicateKind::super_fold_with(self.kind, folder);
-        if new != *self.kind { folder.tcx().mk_predicate(new) } else { *self }
+        let new = ty::PredicateKind::super_fold_with(&self.inner.kind, folder);
+        if new != self.inner.kind { folder.tcx().mk_predicate(new) } else { *self }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        ty::PredicateKind::super_visit_with(self.kind, visitor)
+        ty::PredicateKind::super_visit_with(&self.inner.kind, visitor)
+    }
+
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        visitor.visit_predicate(*self)
+    }
+
+    fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
+        self.inner.outer_exclusive_binder > binder
+    }
+
+    fn has_type_flags(&self, flags: ty::TypeFlags) -> bool {
+        self.inner.flags.intersects(flags)
+    }
+}
+
+pub(super) trait PredicateVisitor<'tcx>: TypeVisitor<'tcx> {
+    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool;
+}
+
+impl<T: TypeVisitor<'tcx>> PredicateVisitor<'tcx> for T {
+    default fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool {
+        predicate.super_visit_with(self)
     }
 }
 

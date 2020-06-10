@@ -100,6 +100,7 @@ macro_rules! arena_types {
 
             // Interned types
             [] tys: rustc_middle::ty::TyS<$tcx>, rustc_middle::ty::TyS<'_x>;
+            [] predicates: rustc_middle::ty::PredicateInner<$tcx>, rustc_middle::ty::PredicateInner<'_x>;
 
             // HIR query types
             [few] indexed_hir: rustc_middle::hir::map::IndexedHir<$tcx>, rustc_middle::hir::map::IndexedHir<'_x>;
