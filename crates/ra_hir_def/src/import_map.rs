@@ -1,10 +1,11 @@
 //! A map of all publicly exported items in a crate.
 
-use std::{cmp::Ordering, collections::hash_map::Entry, fmt, sync::Arc};
+use std::{cmp::Ordering, fmt, hash::BuildHasherDefault, sync::Arc};
 
 use fst::{self, Streamer};
+use indexmap::{map::Entry, IndexMap};
 use ra_db::CrateId;
-use rustc_hash::FxHashMap;
+use rustc_hash::FxHasher;
 
 use crate::{
     db::DefDatabase,
@@ -13,6 +14,8 @@ use crate::{
     visibility::Visibility,
     ModuleDefId, ModuleId,
 };
+
+type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 
 /// A map from publicly exported items to the path needed to import/name them from a downstream
 /// crate.
@@ -23,7 +26,7 @@ use crate::{
 /// Note that all paths are relative to the containing crate's root, so the crate name still needs
 /// to be prepended to the `ModPath` before the path is valid.
 pub struct ImportMap {
-    map: FxHashMap<ItemInNs, ModPath>,
+    map: FxIndexMap<ItemInNs, ModPath>,
 
     /// List of keys stored in `map`, sorted lexicographically by their `ModPath`. Indexed by the
     /// values returned by running `fst`.
@@ -39,7 +42,7 @@ impl ImportMap {
     pub fn import_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<Self> {
         let _p = ra_prof::profile("import_map_query");
         let def_map = db.crate_def_map(krate);
-        let mut import_map = FxHashMap::with_capacity_and_hasher(64, Default::default());
+        let mut import_map = FxIndexMap::with_capacity_and_hasher(64, Default::default());
 
         // We look only into modules that are public(ly reexported), starting with the crate root.
         let empty = ModPath { kind: PathKind::Plain, segments: vec![] };
@@ -588,9 +591,9 @@ mod tests {
 
         let res = search_dependencies_of(ra_fixture, "main", Query::new("fmt"));
         assert_snapshot!(res, @r###"
-        dep::Fmt (v)
         dep::fmt (t)
         dep::Fmt (t)
+        dep::Fmt (v)
         dep::Fmt (m)
         dep::fmt::Display (t)
         dep::format (v)
@@ -598,9 +601,9 @@ mod tests {
 
         let res = search_dependencies_of(ra_fixture, "main", Query::new("fmt").anchor_end());
         assert_snapshot!(res, @r###"
-        dep::Fmt (v)
         dep::fmt (t)
         dep::Fmt (t)
+        dep::Fmt (v)
         dep::Fmt (m)
         "###);
     }
@@ -618,17 +621,17 @@ mod tests {
         let res = search_dependencies_of(ra_fixture, "main", Query::new("FMT"));
 
         assert_snapshot!(res, @r###"
-        dep::FMT (v)
-        dep::FMT (t)
         dep::fmt (t)
         dep::fmt (v)
+        dep::FMT (t)
+        dep::FMT (v)
         "###);
 
         let res = search_dependencies_of(ra_fixture, "main", Query::new("FMT").case_sensitive());
 
         assert_snapshot!(res, @r###"
-        dep::FMT (v)
         dep::FMT (t)
+        dep::FMT (v)
         "###);
     }
 

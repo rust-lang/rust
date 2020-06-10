@@ -16,6 +16,7 @@ anymap = "0.12.1"
 drop_bomb = "0.1.4"
 fst = { version = "0.4", default-features = false }
 itertools = "0.9.0"
+indexmap = "1.4.0"
 
 stdx = { path = "../stdx" }
 

@@ -982,6 +982,7 @@ dependencies = [
  "drop_bomb",
  "either",
  "fst",
+ "indexmap",
  "insta",
  "itertools",
  "log",
