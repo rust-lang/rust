@@ -1,6 +1,6 @@
 The MIT License (MIT)
 
-Copyright &copy; 2020 Anonymous Author(s)
+Copyright &copy; 2020 William Moses, Valentin Churavy, and other contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

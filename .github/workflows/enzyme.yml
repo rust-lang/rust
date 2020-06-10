@@ -31,5 +31,7 @@ jobs:
           cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/llvm-${{ matrix.llvm }}/build/utils/lit/lit.py -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
     - name: make
       run: cd enzyme/build && make -j
+    - name: make check-typeanalysis
+      run: cd enzyme/build && make check-typeanalysis -j
     - name: make check-enzyme
       run: cd enzyme/build && make check-enzyme -j

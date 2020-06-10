@@ -1,7 +1,7 @@
 /*
  * TypeAnalysis.h - Type Analysis Detection Utilities
  *
- * Copyright (C) 2020 Anonymous Author(s) - All Rights Reserved
+ * Copyright (C) 2020 William S. Moses (enzyme@wsmoses.com) - All Rights Reserved
  *
  * For commercial use of this code please contact the author(s) above.
  */

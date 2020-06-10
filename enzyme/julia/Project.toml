@@ -1,6 +1,6 @@
 name = "Enzyme"
 uuid = "7da242da-08ed-463a-9acd-ee780be4f1d9"
-authors = ["Anonymous Author(s)"]
+authors = ["William Moses <wmoses@mit.edu>", "Valentin Churavy <vchuravy@mit.edu>"]
 version = "0.1.0"
 
 [deps]
