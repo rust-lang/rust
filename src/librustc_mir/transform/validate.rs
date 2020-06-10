@@ -1,8 +1,8 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use super::{MirPass, MirSource};
+use rustc_hir::lang_items::FnOnceTraitLangItem;
 use rustc_hir::Constness;
-use rustc_hir::lang_items::FnOnceTrait;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::{
@@ -97,7 +97,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // this case should be removed.
             // We haven't got a `FnPtr` or `FnDef` but we are still safe to call it if it
             // implements `FnOnce` (as `Fn: FnMut` and `FnMut: FnOnce`).
-            let fn_once_trait = self.tcx.require_lang_item(FnOnceTrait, None);
+            let fn_once_trait = self.tcx.require_lang_item(FnOnceTraitLangItem, None);
             let item_def_id = self
                 .tcx
                 .associated_items(fn_once_trait)
