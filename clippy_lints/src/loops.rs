@@ -2107,23 +2107,18 @@ fn is_simple_break_expr(expr: &Expr<'_>) -> bool {
     }
 }
 
-// To trigger the EXPLICIT_COUNTER_LOOP lint, a variable must be
-// incremented exactly once in the loop body, and initialized to zero
-// at the start of the loop.
 #[derive(Debug, PartialEq)]
-enum VarState {
+enum IncrementVisitorVarState {
     Initial,  // Not examined yet
     IncrOnce, // Incremented exactly once, may be a loop counter
-    Declared, // Declared but not (yet) initialized to zero
-    Warn,
     DontWarn,
 }
 
 /// Scan a for loop for variables that are incremented exactly once and not used after that.
 struct IncrementVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,          // context reference
-    states: FxHashMap<HirId, VarState>, // incremented variables
-    depth: u32,                         // depth of conditional expressions
+    cx: &'a LateContext<'tcx>,                          // context reference
+    states: FxHashMap<HirId, IncrementVisitorVarState>, // incremented variables
+    depth: u32,                                         // depth of conditional expressions
     done: bool,
 }
 
@@ -2140,7 +2135,7 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
     fn into_results(self) -> impl Iterator<Item = HirId> {
         self.states
             .into_iter()
-            .filter(|(_, state)| *state == VarState::IncrOnce)
+            .filter(|(_, state)| *state == IncrementVisitorVarState::IncrOnce)
             .map(|(id, _)| id)
     }
 }
@@ -2156,9 +2151,9 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
         // If node is a variable
         if let Some(def_id) = var_def_id(self.cx, expr) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
-                let state = self.states.entry(def_id).or_insert(VarState::Initial);
-                if *state == VarState::IncrOnce {
-                    *state = VarState::DontWarn;
+                let state = self.states.entry(def_id).or_insert(IncrementVisitorVarState::Initial);
+                if *state == IncrementVisitorVarState::IncrOnce {
+                    *state = IncrementVisitorVarState::DontWarn;
                     return;
                 }
 
@@ -2167,19 +2162,21 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                         if lhs.hir_id == expr.hir_id {
                             *state = if op.node == BinOpKind::Add
                                 && is_integer_const(self.cx, rhs, 1)
-                                && *state == VarState::Initial
+                                && *state == IncrementVisitorVarState::Initial
                                 && self.depth == 0
                             {
-                                VarState::IncrOnce
+                                IncrementVisitorVarState::IncrOnce
                             } else {
                                 // Assigned some other value or assigned multiple times
-                                VarState::DontWarn
+                                IncrementVisitorVarState::DontWarn
                             };
                         }
                     },
-                    ExprKind::Assign(ref lhs, _, _) if lhs.hir_id == expr.hir_id => *state = VarState::DontWarn,
+                    ExprKind::Assign(ref lhs, _, _) if lhs.hir_id == expr.hir_id => {
+                        *state = IncrementVisitorVarState::DontWarn
+                    },
                     ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
-                        *state = VarState::DontWarn
+                        *state = IncrementVisitorVarState::DontWarn
                     },
                     _ => (),
                 }
@@ -2201,13 +2198,20 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
     }
 }
 
-/// Checks whether a variable is initialized to zero at the start of a loop.
+enum InitializeVisitorState {
+    Initial,          // Not examined yet
+    Declared(Symbol), // Declared but not (yet) initialized
+    Initialized { name: Symbol },
+    DontWarn,
+}
+
+/// Checks whether a variable is initialized to zero at the start of a loop and not modified
+/// and used after the loop.
 struct InitializeVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,  // context reference
     end_expr: &'tcx Expr<'tcx>, // the for loop. Stop scanning here.
     var_id: HirId,
-    state: VarState,
-    name: Option<Symbol>,
+    state: InitializeVisitorState,
     depth: u32, // depth of conditional expressions
     past_loop: bool,
 }
@@ -2218,16 +2222,15 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
             cx,
             end_expr,
             var_id,
-            state: VarState::IncrOnce,
-            name: None,
+            state: InitializeVisitorState::Initial,
             depth: 0,
             past_loop: false,
         }
     }
 
     fn get_result(&self) -> Option<Name> {
-        if self.state == VarState::Warn {
-            self.name
+        if let InitializeVisitorState::Initialized { name } = self.state {
+            Some(name)
         } else {
             None
         }
@@ -2244,23 +2247,24 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
             if local.pat.hir_id == self.var_id;
             if let PatKind::Binding(.., ident, _) = local.pat.kind;
             then {
-                self.name = Some(ident.name);
                 self.state = if_chain! {
                     if let Some(ref init) = local.init;
                     if is_integer_const(&self.cx, init, 0);
                     then {
-                        VarState::Warn
-                    } else {
-                        VarState::Declared
+                    InitializeVisitorState::Initialized {
+                        name: ident.name
                     }
+                } else {
+                    InitializeVisitorState::Declared(ident.name)
                 }
             }
+        }
         }
         walk_stmt(self, stmt);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.state == VarState::DontWarn {
+        if matches!(self.state, InitializeVisitorState::DontWarn) {
             return;
         }
         if expr.hir_id == self.end_expr.hir_id {
@@ -2269,31 +2273,36 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         }
         // No need to visit expressions before the variable is
         // declared
-        if self.state == VarState::IncrOnce {
+        if matches!(self.state, InitializeVisitorState::Initial) {
             return;
         }
 
         // If node is the desired variable, see how it's used
         if var_def_id(self.cx, expr) == Some(self.var_id) {
             if self.past_loop {
-                self.state = VarState::DontWarn;
+                self.state = InitializeVisitorState::DontWarn;
                 return;
             }
 
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 match parent.kind {
                     ExprKind::AssignOp(_, ref lhs, _) if lhs.hir_id == expr.hir_id => {
-                        self.state = VarState::DontWarn;
+                        self.state = InitializeVisitorState::DontWarn;
                     },
                     ExprKind::Assign(ref lhs, ref rhs, _) if lhs.hir_id == expr.hir_id => {
-                        self.state = if is_integer_const(&self.cx, rhs, 0) && self.depth == 0 {
-                            VarState::Warn
-                        } else {
-                            VarState::DontWarn
+                        self.state = if_chain! {
+                            if is_integer_const(&self.cx, rhs, 0) && self.depth == 0;
+                            if let InitializeVisitorState::Declared(name)
+                                | InitializeVisitorState::Initialized { name, ..} = self.state;
+                            then {
+                                InitializeVisitorState::Initialized { name }
+                            } else {
+                                InitializeVisitorState::DontWarn
+                            }
                         }
                     },
                     ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
-                        self.state = VarState::DontWarn
+                        self.state = InitializeVisitorState::DontWarn
                     },
                     _ => (),
                 }
@@ -2301,7 +2310,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
             walk_expr(self, expr);
         } else if !self.past_loop && is_loop(expr) {
-            self.state = VarState::DontWarn;
+            self.state = InitializeVisitorState::DontWarn;
         } else if is_conditional(expr) {
             self.depth += 1;
             walk_expr(self, expr);
