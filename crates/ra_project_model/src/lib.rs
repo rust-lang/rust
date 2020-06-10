@@ -594,7 +594,7 @@ fn get_rustc_cfg_options(target: Option<&str>) -> CfgOptions {
         Err(e) => log::error!("failed to get rustc cfgs: {:#}", e),
     }
 
-    cfg_options.insert_atom("debug_assertion".into());
+    cfg_options.insert_atom("debug_assertions".into());
 
     cfg_options
 }
