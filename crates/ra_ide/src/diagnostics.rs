@@ -321,29 +321,26 @@ mod tests {
     fn test_wrap_return_type() {
         let before = r#"
             //- /main.rs
-            use core::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
-            fn div(x: i32, y: i32) -> Result<i32, String> {
+            fn div(x: i32, y: i32) -> Result<i32, ()> {
                 if y == 0 {
-                    return Err("div by zero".into());
+                    return Err(());
                 }
                 x / y<|>
             }
 
             //- /core/lib.rs
-            pub mod string {
-                pub struct String { }
-            }
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
         let after = r#"
-            use core::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
-            fn div(x: i32, y: i32) -> Result<i32, String> {
+            fn div(x: i32, y: i32) -> Result<i32, ()> {
                 if y == 0 {
-                    return Err("div by zero".into());
+                    return Err(());
                 }
                 Ok(x / y)
             }
@@ -386,32 +383,29 @@ mod tests {
     fn test_wrap_return_type_handles_type_aliases() {
         let before = r#"
             //- /main.rs
-            use core::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
-            type MyResult<T> = Result<T, String>;
+            type MyResult<T> = Result<T, ()>;
 
             fn div(x: i32, y: i32) -> MyResult<i32> {
                 if y == 0 {
-                    return Err("div by zero".into());
+                    return Err(());
                 }
                 x <|>/ y
             }
 
             //- /core/lib.rs
-            pub mod string {
-                pub struct String { }
-            }
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
         let after = r#"
-            use core::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
-            type MyResult<T> = Result<T, String>;
+            type MyResult<T> = Result<T, ()>;
             fn div(x: i32, y: i32) -> MyResult<i32> {
                 if y == 0 {
-                    return Err("div by zero".into());
+                    return Err(());
                 }
                 Ok(x / y)
             }
@@ -423,16 +417,13 @@ mod tests {
     fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
         let content = r#"
             //- /main.rs
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
-            fn foo() -> Result<String, i32> {
+            fn foo() -> Result<(), i32> {
                 0<|>
             }
 
-            //- /std/lib.rs
-            pub mod string {
-                pub struct String { }
-            }
+            //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
@@ -444,7 +435,7 @@ mod tests {
     fn test_wrap_return_type_not_applicable_when_return_type_is_not_result() {
         let content = r#"
             //- /main.rs
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
             enum SomeOtherEnum {
                 Ok(i32),
@@ -455,10 +446,7 @@ mod tests {
                 0<|>
             }
 
-            //- /std/lib.rs
-            pub mod string {
-                pub struct String { }
-            }
+            //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
