@@ -11,7 +11,7 @@ use rustc_span::def_id::DefId;
 use rustc_target::abi::{Align, Size};
 use std::{any::Any, backtrace::Backtrace, fmt, mem};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum ErrorHandled {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
@@ -137,7 +137,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
 }
 
 /// Details of why a pointer had to be in-bounds.
-#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub enum CheckInAllocMsg {
     MemoryAccessTest,
     NullPointerTest,

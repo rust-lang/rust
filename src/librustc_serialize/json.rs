@@ -292,7 +292,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
 }
 
 /// Shortcut function to decode a JSON `&str` into an object
-pub fn decode<T: crate::Decodable>(s: &str) -> DecodeResult<T> {
+pub fn decode<T: crate::Decodable<Decoder>>(s: &str) -> DecodeResult<T> {
     let json = match from_str(s) {
         Ok(x) => x,
         Err(e) => return Err(ParseError(e)),
@@ -303,7 +303,9 @@ pub fn decode<T: crate::Decodable>(s: &str) -> DecodeResult<T> {
 }
 
 /// Shortcut function to encode a `T` into a JSON `String`
-pub fn encode<T: crate::Encodable>(object: &T) -> Result<string::String, EncoderError> {
+pub fn encode<T: for<'r> crate::Encodable<Encoder<'r>>>(
+    object: &T,
+) -> Result<string::String, EncoderError> {
     let mut s = String::new();
     {
         let mut encoder = Encoder::new(&mut s);
@@ -1144,8 +1146,8 @@ impl<'a> crate::Encoder for PrettyEncoder<'a> {
     }
 }
 
-impl Encodable for Json {
-    fn encode<E: crate::Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+impl<E: crate::Encoder> Encodable<E> for Json {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         match *self {
             Json::I64(v) => v.encode(e),
             Json::U64(v) => v.encode(e),
@@ -2727,7 +2729,7 @@ impl<'a> fmt::Display for PrettyJson<'a> {
     }
 }
 
-impl<'a, T: Encodable> fmt::Display for AsJson<'a, T> {
+impl<'a, T: for<'r> Encodable<Encoder<'r>>> fmt::Display for AsJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2747,7 +2749,7 @@ impl<'a, T> AsPrettyJson<'a, T> {
     }
 }
 
-impl<'a, T: Encodable> fmt::Display for AsPrettyJson<'a, T> {
+impl<'a, T: for<'x> Encodable<PrettyEncoder<'x>>> fmt::Display for AsPrettyJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut shim = FormatShim { inner: f };

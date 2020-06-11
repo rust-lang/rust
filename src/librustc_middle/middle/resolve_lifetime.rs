@@ -11,7 +11,7 @@ use rustc_macros::HashStable;
 /// The origin of a named lifetime definition.
 ///
 /// This is used to prevent the usage of in-band lifetimes in `Fn`/`fn` syntax.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum LifetimeDefOrigin {
     // Explicit binders like `fn foo<'a>(x: &'a u8)` or elided like `impl Foo<&u32>`
     ExplicitOrElided,
@@ -35,7 +35,7 @@ impl LifetimeDefOrigin {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum Region {
     Static,
     EarlyBound(/* index */ u32, /* lifetime decl */ DefId, LifetimeDefOrigin),
@@ -47,7 +47,7 @@ pub enum Region {
 /// A set containing, at most, one known element.
 /// If two distinct values are inserted into a set, then it
 /// becomes `Many`, which can be used to detect ambiguities.
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum Set1<T> {
     Empty,
     One(T),

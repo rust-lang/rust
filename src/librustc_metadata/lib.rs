@@ -16,6 +16,8 @@
 extern crate proc_macro;
 
 #[macro_use]
+extern crate rustc_macros;
+#[macro_use]
 extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_data_structures;

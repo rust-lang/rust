@@ -145,7 +145,7 @@ impl Emitter for JsonEmitter {
 
 // The following data types are provided just for serialisation.
 
-#[derive(RustcEncodable)]
+#[derive(Encodable)]
 struct Diagnostic {
     /// The primary error message.
     message: String,
@@ -159,7 +159,7 @@ struct Diagnostic {
     rendered: Option<String>,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Encodable)]
 struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,
@@ -186,7 +186,7 @@ struct DiagnosticSpan {
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Encodable)]
 struct DiagnosticSpanLine {
     text: String,
 
@@ -196,7 +196,7 @@ struct DiagnosticSpanLine {
     highlight_end: usize,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Encodable)]
 struct DiagnosticSpanMacroExpansion {
     /// span where macro was applied to generate this code; note that
     /// this may itself derive from a macro (if
@@ -210,7 +210,7 @@ struct DiagnosticSpanMacroExpansion {
     def_site_span: DiagnosticSpan,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Encodable)]
 struct DiagnosticCode {
     /// The code itself.
     code: String,
@@ -218,7 +218,7 @@ struct DiagnosticCode {
     explanation: Option<&'static str>,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Encodable)]
 struct ArtifactNotification<'a> {
     /// The path of the artifact.
     artifact: &'a Path,

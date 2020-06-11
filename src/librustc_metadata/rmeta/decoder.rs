@@ -7,7 +7,7 @@ use crate::rmeta::*;
 use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, OnceCell};
@@ -15,7 +15,7 @@ use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathTable;
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::lang_items;
@@ -26,11 +26,11 @@ use rustc_middle::middle::cstore::{CrateSource, ExternCrate};
 use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::mir::{self, interpret, Body, Promoted};
+use rustc_middle::mir::{self, Body, Promoted};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::common::record_time;
-use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder, UseSpecializedDecodable};
+use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnDataDecodeMode;
 use rustc_span::source_map::{respan, Spanned};
@@ -229,7 +229,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     }
 }
 
-impl<'a, 'tcx, T: Decodable> Lazy<T, ()> {
+impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Lazy<T> {
     fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
@@ -237,7 +237,7 @@ impl<'a, 'tcx, T: Decodable> Lazy<T, ()> {
     }
 }
 
-impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable> Lazy<[T], usize> {
+impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable<DecodeContext<'a, 'tcx>>> Lazy<[T]> {
     fn decode<M: Metadata<'a, 'tcx>>(
         self,
         metadata: M,
@@ -278,6 +278,8 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
+    const CLEAR_CROSS_CRATE: bool = true;
+
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx.expect("missing TyCtxt in DecodeContext")
@@ -351,57 +353,8 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
         if cnum == LOCAL_CRATE { self.cdata().cnum } else { self.cdata().cnum_map[cnum] }
     }
-}
 
-impl<'a, 'tcx, T> SpecializedDecoder<Lazy<T, ()>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<Lazy<T>, Self::Error> {
-        self.read_lazy_with_meta(())
-    }
-}
-
-impl<'a, 'tcx, T> SpecializedDecoder<Lazy<[T], usize>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<Lazy<[T]>, Self::Error> {
-        let len = self.read_usize()?;
-        if len == 0 { Ok(Lazy::empty()) } else { self.read_lazy_with_meta(len) }
-    }
-}
-
-impl<'a, 'tcx, I: Idx, T> SpecializedDecoder<Lazy<Table<I, T>, usize>> for DecodeContext<'a, 'tcx>
-where
-    Option<T>: FixedSizeEncoding,
-{
-    fn specialized_decode(&mut self) -> Result<Lazy<Table<I, T>>, Self::Error> {
-        let len = self.read_usize()?;
-        self.read_lazy_with_meta(len)
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<DefId> for DecodeContext<'a, 'tcx> {
-    #[inline]
-    fn specialized_decode(&mut self) -> Result<DefId, Self::Error> {
-        let krate = CrateNum::decode(self)?;
-        let index = DefIndex::decode(self)?;
-
-        Ok(DefId { krate, index })
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
-    #[inline]
-    fn specialized_decode(&mut self) -> Result<DefIndex, Self::Error> {
-        Ok(DefIndex::from_u32(self.read_u32()?))
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for DecodeContext<'a, 'tcx> {
-    #[inline]
-    fn specialized_decode(&mut self) -> Result<LocalDefId, Self::Error> {
-        Ok(DefId::decode(self)?.expect_local())
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
+    fn decode_alloc_id(&mut self) -> Result<rustc_middle::mir::interpret::AllocId, Self::Error> {
         if let Some(alloc_decoding_session) = self.alloc_decoding_session {
             alloc_decoding_session.decode_alloc_id(self)
         } else {
@@ -410,9 +363,82 @@ impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx
     }
 }
 
-impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
-        let tag = u8::decode(self)?;
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for CrateNum {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<CrateNum, String> {
+        let cnum = CrateNum::from_u32(d.read_u32()?);
+        Ok(d.map_encoded_cnum_to_current(cnum))
+    }
+}
+
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefIndex {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<DefIndex, String> {
+        Ok(DefIndex::from_u32(d.read_u32()?))
+    }
+}
+
+impl<'a, 'tcx> FingerprintDecoder for DecodeContext<'a, 'tcx> {
+    fn decode_fingerprint(&mut self) -> Result<Fingerprint, String> {
+        Fingerprint::decode_opaque(&mut self.opaque)
+    }
+}
+
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<SyntaxContext, String> {
+        let cdata = decoder.cdata();
+        let sess = decoder.sess.unwrap();
+        let cname = cdata.root.name;
+        rustc_span::hygiene::decode_syntax_context(decoder, &cdata.hygiene_context, |_, id| {
+            debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
+            Ok(cdata
+                .root
+                .syntax_contexts
+                .get(&cdata, id)
+                .unwrap_or_else(|| panic!("Missing SyntaxContext {:?} for crate {:?}", id, cname))
+                .decode((&cdata, sess)))
+        })
+    }
+}
+
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<ExpnId, String> {
+        let local_cdata = decoder.cdata();
+        let sess = decoder.sess.unwrap();
+        let expn_cnum = Cell::new(None);
+        let get_ctxt = |cnum| {
+            expn_cnum.set(Some(cnum));
+            if cnum == LOCAL_CRATE {
+                &local_cdata.hygiene_context
+            } else {
+                &local_cdata.cstore.get_crate_data(cnum).cdata.hygiene_context
+            }
+        };
+
+        rustc_span::hygiene::decode_expn_id(
+            decoder,
+            ExpnDataDecodeMode::Metadata(get_ctxt),
+            |_this, index| {
+                let cnum = expn_cnum.get().unwrap();
+                // Lookup local `ExpnData`s in our own crate data. Foreign `ExpnData`s
+                // are stored in the owning crate, to avoid duplication.
+                let crate_data = if cnum == LOCAL_CRATE {
+                    local_cdata
+                } else {
+                    local_cdata.cstore.get_crate_data(cnum)
+                };
+                Ok(crate_data
+                    .root
+                    .expn_data
+                    .get(&crate_data, index)
+                    .unwrap()
+                    .decode((&crate_data, sess)))
+            },
+        )
+    }
+}
+
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<Span, String> {
+        let tag = u8::decode(decoder)?;
 
         if tag == TAG_INVALID_SPAN {
             return Ok(DUMMY_SP);
@@ -420,12 +446,12 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
 
         debug_assert!(tag == TAG_VALID_SPAN_LOCAL || tag == TAG_VALID_SPAN_FOREIGN);
 
-        let lo = BytePos::decode(self)?;
-        let len = BytePos::decode(self)?;
-        let ctxt = SyntaxContext::decode(self)?;
+        let lo = BytePos::decode(decoder)?;
+        let len = BytePos::decode(decoder)?;
+        let ctxt = SyntaxContext::decode(decoder)?;
         let hi = lo + len;
 
-        let sess = if let Some(sess) = self.sess {
+        let sess = if let Some(sess) = decoder.sess {
             sess
         } else {
             bug!("Cannot decode Span without Session.")
@@ -460,22 +486,22 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         // we can call `imported_source_files` for the proper crate, and binary search
         // through the returned slice using our span.
         let imported_source_files = if tag == TAG_VALID_SPAN_LOCAL {
-            self.cdata().imported_source_files(sess)
+            decoder.cdata().imported_source_files(sess)
         } else {
             // When we encode a proc-macro crate, all `Span`s should be encoded
             // with `TAG_VALID_SPAN_LOCAL`
-            if self.cdata().root.is_proc_macro_crate() {
+            if decoder.cdata().root.is_proc_macro_crate() {
                 // Decode `CrateNum` as u32 - using `CrateNum::decode` will ICE
                 // since we don't have `cnum_map` populated.
-                let cnum = u32::decode(self)?;
+                let cnum = u32::decode(decoder)?;
                 panic!(
                     "Decoding of crate {:?} tried to access proc-macro dep {:?}",
-                    self.cdata().root.name,
+                    decoder.cdata().root.name,
                     cnum
                 );
             }
             // tag is TAG_VALID_SPAN_FOREIGN, checked by `debug_assert` above
-            let cnum = CrateNum::decode(self)?;
+            let cnum = CrateNum::decode(decoder)?;
             debug!(
                 "SpecializedDecoder<Span>::specialized_decode: loading source files from cnum {:?}",
                 cnum
@@ -485,16 +511,16 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             // not worth it to maintain a per-CrateNum cache for `last_source_file_index`.
             // We just set it to 0, to ensure that we don't try to access something out
             // of bounds for our initial 'guess'
-            self.last_source_file_index = 0;
+            decoder.last_source_file_index = 0;
 
-            let foreign_data = self.cdata().cstore.get_crate_data(cnum);
+            let foreign_data = decoder.cdata().cstore.get_crate_data(cnum);
             foreign_data.imported_source_files(sess)
         };
 
         let source_file = {
             // Optimize for the case that most spans within a translated item
             // originate from the same source_file.
-            let last_source_file = &imported_source_files[self.last_source_file_index];
+            let last_source_file = &imported_source_files[decoder.last_source_file_index];
 
             if lo >= last_source_file.original_start_pos && lo <= last_source_file.original_end_pos
             {
@@ -507,7 +533,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
                 // Don't try to cache the index for foreign spans,
                 // as this would require a map from CrateNums to indices
                 if tag == TAG_VALID_SPAN_LOCAL {
-                    self.last_source_file_index = index;
+                    decoder.last_source_file_index = index;
                 }
                 &imported_source_files[index]
             }
@@ -540,19 +566,37 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
-        Fingerprint::decode_opaque(&mut self.opaque)
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
+        ty::codec::RefDecodable::decode(d)
     }
 }
 
-impl<'a, 'tcx, T> SpecializedDecoder<mir::ClearCrossCrate<T>> for DecodeContext<'a, 'tcx>
-where
-    mir::ClearCrossCrate<T>: UseSpecializedDecodable,
+impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a, 'tcx>>
+    for Lazy<T>
 {
-    #[inline]
-    fn specialized_decode(&mut self) -> Result<mir::ClearCrossCrate<T>, Self::Error> {
-        Ok(mir::ClearCrossCrate::Clear)
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
+        decoder.read_lazy_with_meta(())
+    }
+}
+
+impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a, 'tcx>>
+    for Lazy<[T]>
+{
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
+        let len = decoder.read_usize()?;
+        if len == 0 { Ok(Lazy::empty()) } else { decoder.read_lazy_with_meta(len) }
+    }
+}
+
+impl<'a, 'tcx, I: Idx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a, 'tcx>>
+    for Lazy<Table<I, T>>
+where
+    Option<T>: FixedSizeEncoding,
+{
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
+        let len = decoder.read_usize()?;
+        decoder.read_lazy_with_meta(len)
     }
 }
 
@@ -1838,59 +1882,5 @@ fn macro_kind(raw: &ProcMacro) -> MacroKind {
         ProcMacro::CustomDerive { .. } => MacroKind::Derive,
         ProcMacro::Attr { .. } => MacroKind::Attr,
         ProcMacro::Bang { .. } => MacroKind::Bang,
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<SyntaxContext> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<SyntaxContext, Self::Error> {
-        let cdata = self.cdata();
-        let sess = self.sess.unwrap();
-        let cname = cdata.root.name;
-        rustc_span::hygiene::decode_syntax_context(self, &cdata.hygiene_context, |_, id| {
-            debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
-            Ok(cdata
-                .root
-                .syntax_contexts
-                .get(&cdata, id)
-                .unwrap_or_else(|| panic!("Missing SyntaxContext {:?} for crate {:?}", id, cname))
-                .decode((&cdata, sess)))
-        })
-    }
-}
-
-impl<'a, 'tcx> SpecializedDecoder<ExpnId> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<ExpnId, Self::Error> {
-        let local_cdata = self.cdata();
-        let sess = self.sess.unwrap();
-        let expn_cnum = Cell::new(None);
-        let get_ctxt = |cnum| {
-            expn_cnum.set(Some(cnum));
-            if cnum == LOCAL_CRATE {
-                &local_cdata.hygiene_context
-            } else {
-                &local_cdata.cstore.get_crate_data(cnum).cdata.hygiene_context
-            }
-        };
-
-        rustc_span::hygiene::decode_expn_id(
-            self,
-            ExpnDataDecodeMode::Metadata(get_ctxt),
-            |_this, index| {
-                let cnum = expn_cnum.get().unwrap();
-                // Lookup local `ExpnData`s in our own crate data. Foreign `ExpnData`s
-                // are stored in the owning crate, to avoid duplication.
-                let crate_data = if cnum == LOCAL_CRATE {
-                    local_cdata
-                } else {
-                    local_cdata.cstore.get_crate_data(cnum)
-                };
-                Ok(crate_data
-                    .root
-                    .expn_data
-                    .get(&crate_data, index)
-                    .unwrap()
-                    .decode((&crate_data, sess)))
-            },
-        )
     }
 }

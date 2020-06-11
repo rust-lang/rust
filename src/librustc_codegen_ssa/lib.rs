@@ -17,6 +17,8 @@
 //! have to be implemented by each backends.
 
 #[macro_use]
+extern crate rustc_macros;
+#[macro_use]
 extern crate log;
 #[macro_use]
 extern crate rustc_middle;
@@ -74,7 +76,7 @@ impl<M> ModuleCodegen<M> {
     }
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Encodable, Decodable)]
 pub struct CompiledModule {
     pub name: String,
     pub kind: ModuleKind,
@@ -87,7 +89,7 @@ pub struct CachedModuleCodegen {
     pub source: WorkProduct,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Encodable, Decodable)]
 pub enum ModuleKind {
     Regular,
     Metadata,
@@ -110,7 +112,7 @@ bitflags::bitflags! {
 /// identifiers (`CrateNum`) to `CrateSource`. The other fields map `CrateNum` to the crate's own
 /// additional properties, so that effectively we can retrieve each dependent crate's `CrateSource`
 /// and the corresponding properties without referencing information outside of a `CrateInfo`.
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Encodable, Decodable)]
 pub struct CrateInfo {
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,
@@ -128,7 +130,7 @@ pub struct CrateInfo {
     pub dependency_formats: Lrc<Dependencies>,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Encodable, Decodable)]
 pub struct CodegenResults {
     pub crate_name: Symbol,
     pub modules: Vec<CompiledModule>,

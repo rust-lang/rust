@@ -10,12 +10,12 @@ use rustc_span::{BytePos, Span};
 
 use std::str;
 
-#[derive(RustcDecodable, Debug, PartialEq, Eq)]
+#[derive(Decodable, Debug, PartialEq, Eq)]
 struct TestData {
     spans: Vec<SpanTestData>,
 }
 
-#[derive(RustcDecodable, Debug, PartialEq, Eq)]
+#[derive(Decodable, Debug, PartialEq, Eq)]
 struct SpanTestData {
     pub byte_start: u32,
     pub byte_end: u32,

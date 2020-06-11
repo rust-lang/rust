@@ -161,7 +161,7 @@ flavor_mappings! {
     ((LinkerFlavor::Lld(LldFlavor::Link)), "lld-link"),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
 pub enum PanicStrategy {
     Unwind,
     Abort,
@@ -185,7 +185,7 @@ impl ToJson for PanicStrategy {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub enum RelroLevel {
     Full,
     Partial,
@@ -229,7 +229,7 @@ impl ToJson for RelroLevel {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub enum MergeFunctions {
     Disabled,
     Trampolines,
@@ -1734,7 +1734,7 @@ impl ToJson for Target {
 }
 
 /// Either a target triple string or a path to a JSON file.
-#[derive(PartialEq, Clone, Debug, Hash, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Clone, Debug, Hash, Encodable, Decodable)]
 pub enum TargetTriple {
     TargetTriple(String),
     TargetPath(PathBuf),

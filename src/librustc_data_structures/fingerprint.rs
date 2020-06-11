@@ -1,5 +1,8 @@
 use crate::stable_hasher;
-use rustc_serialize::opaque::{Decoder, EncodeResult, Encoder};
+use rustc_serialize::{
+    opaque::{self, EncodeResult},
+    Decodable, Encodable,
+};
 use std::mem;
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy)]
@@ -49,14 +52,14 @@ impl Fingerprint {
         format!("{:x}{:x}", self.0, self.1)
     }
 
-    pub fn encode_opaque(&self, encoder: &mut Encoder) -> EncodeResult {
+    pub fn encode_opaque(&self, encoder: &mut opaque::Encoder) -> EncodeResult {
         let bytes: [u8; 16] = unsafe { mem::transmute([self.0.to_le(), self.1.to_le()]) };
 
         encoder.emit_raw_bytes(&bytes);
         Ok(())
     }
 
-    pub fn decode_opaque(decoder: &mut Decoder<'_>) -> Result<Fingerprint, String> {
+    pub fn decode_opaque(decoder: &mut opaque::Decoder<'_>) -> Result<Fingerprint, String> {
         let mut bytes = [0; 16];
 
         decoder.read_raw_bytes(&mut bytes)?;
@@ -83,18 +86,45 @@ impl stable_hasher::StableHasherResult for Fingerprint {
 
 impl_stable_hash_via_hash!(Fingerprint);
 
-impl rustc_serialize::UseSpecializedEncodable for Fingerprint {}
+impl<E: rustc_serialize::Encoder> Encodable<E> for Fingerprint {
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+        s.encode_fingerprint(self)
+    }
+}
 
-impl rustc_serialize::UseSpecializedDecodable for Fingerprint {}
+impl<D: rustc_serialize::Decoder> Decodable<D> for Fingerprint {
+    fn decode(d: &mut D) -> Result<Self, D::Error> {
+        d.decode_fingerprint()
+    }
+}
 
-impl rustc_serialize::SpecializedEncoder<Fingerprint> for Encoder {
-    fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
+pub trait FingerprintEncoder: rustc_serialize::Encoder {
+    fn encode_fingerprint(&mut self, f: &Fingerprint) -> Result<(), Self::Error>;
+}
+
+pub trait FingerprintDecoder: rustc_serialize::Decoder {
+    fn decode_fingerprint(&mut self) -> Result<Fingerprint, Self::Error>;
+}
+
+impl<E: rustc_serialize::Encoder> FingerprintEncoder for E {
+    default fn encode_fingerprint(&mut self, _: &Fingerprint) -> Result<(), E::Error> {
+        panic!("Cannot encode `Fingerprint` with `{}`", std::any::type_name::<E>());
+    }
+}
+
+impl FingerprintEncoder for opaque::Encoder {
+    fn encode_fingerprint(&mut self, f: &Fingerprint) -> EncodeResult {
         f.encode_opaque(self)
     }
 }
 
-impl<'a> rustc_serialize::SpecializedDecoder<Fingerprint> for Decoder<'a> {
-    fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
+impl<D: rustc_serialize::Decoder> FingerprintDecoder for D {
+    default fn decode_fingerprint(&mut self) -> Result<Fingerprint, D::Error> {
+        panic!("Cannot decode `Fingerprint` with `{}`", std::any::type_name::<D>());
+    }
+}
+impl FingerprintDecoder for opaque::Decoder<'_> {
+    fn decode_fingerprint(&mut self) -> Result<Fingerprint, String> {
         Fingerprint::decode_opaque(self)
     }
 }

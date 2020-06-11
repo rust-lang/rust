@@ -6,6 +6,9 @@
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
 
+#[macro_use]
+extern crate rustc_macros;
+
 pub use emitter::ColorConfig;
 
 use log::debug;
@@ -50,7 +53,7 @@ rustc_data_structures::static_assert_size!(PResult<'_, bool>, 16);
 /// All suggestions are marked with an `Applicability`. Tools use the applicability of a suggestion
 /// to determine whether it should be automatically applied or if the user should be consulted
 /// before applying the suggestion.
-#[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub enum Applicability {
     /// The suggestion is definitely what the user intended. This suggestion should be
     /// automatically applied.
@@ -69,7 +72,7 @@ pub enum Applicability {
     Unspecified,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]
 pub enum SuggestionStyle {
     /// Hide the suggested code when displaying this suggestion inline.
     HideCodeInline,
@@ -94,7 +97,7 @@ impl SuggestionStyle {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub struct CodeSuggestion {
     /// Each substitute can have multiple variants due to multiple
     /// applicable suggestions
@@ -129,13 +132,13 @@ pub struct CodeSuggestion {
     pub applicability: Applicability,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 /// See the docs on `CodeSuggestion::substitutions`
 pub struct Substitution {
     pub parts: Vec<SubstitutionPart>,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub struct SubstitutionPart {
     pub span: Span,
     pub snippet: String,
@@ -943,7 +946,7 @@ impl HandlerInner {
     }
 }
 
-#[derive(Copy, PartialEq, Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, PartialEq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {
     Bug,
     Fatal,
@@ -1012,7 +1015,7 @@ macro_rules! pluralize {
 
 // Useful type to use with `Result<>` indicate that an error has already
 // been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq)]
 pub struct ErrorReported;
 
 rustc_data_structures::impl_stable_hash_via_hash!(ErrorReported);

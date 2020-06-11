@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 use smallvec::{Array, SmallVec};
 
-impl<A: Array<Item: Encodable>> Encodable for SmallVec<A> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl<S: Encoder, A: Array<Item: Encodable<S>>> Encodable<S> for SmallVec<A> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?;
@@ -20,8 +20,8 @@ impl<A: Array<Item: Encodable>> Encodable for SmallVec<A> {
     }
 }
 
-impl<A: Array<Item: Decodable>> Decodable for SmallVec<A> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<SmallVec<A>, D::Error> {
+impl<D: Decoder, A: Array<Item: Decodable<D>>> Decodable<D> for SmallVec<A> {
+    fn decode(d: &mut D) -> Result<SmallVec<A>, D::Error> {
         d.read_seq(|d, len| {
             let mut vec = SmallVec::with_capacity(len);
             // FIXME(#48994) - could just be collected into a Result<SmallVec, D::Error>
@@ -33,8 +33,8 @@ impl<A: Array<Item: Decodable>> Decodable for SmallVec<A> {
     }
 }
 
-impl<T: Encodable> Encodable for LinkedList<T> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for LinkedList<T> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?;
@@ -44,8 +44,8 @@ impl<T: Encodable> Encodable for LinkedList<T> {
     }
 }
 
-impl<T: Decodable> Decodable for LinkedList<T> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<LinkedList<T>, D::Error> {
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for LinkedList<T> {
+    fn decode(d: &mut D) -> Result<LinkedList<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut list = LinkedList::new();
             for i in 0..len {
@@ -56,8 +56,8 @@ impl<T: Decodable> Decodable for LinkedList<T> {
     }
 }
 
-impl<T: Encodable> Encodable for VecDeque<T> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for VecDeque<T> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?;
@@ -67,8 +67,8 @@ impl<T: Encodable> Encodable for VecDeque<T> {
     }
 }
 
-impl<T: Decodable> Decodable for VecDeque<T> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<VecDeque<T>, D::Error> {
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for VecDeque<T> {
+    fn decode(d: &mut D) -> Result<VecDeque<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut deque: VecDeque<T> = VecDeque::with_capacity(len);
             for i in 0..len {
@@ -79,12 +79,12 @@ impl<T: Decodable> Decodable for VecDeque<T> {
     }
 }
 
-impl<K, V> Encodable for BTreeMap<K, V>
+impl<S: Encoder, K, V> Encodable<S> for BTreeMap<K, V>
 where
-    K: Encodable + PartialEq + Ord,
-    V: Encodable,
+    K: Encodable<S> + PartialEq + Ord,
+    V: Encodable<S>,
 {
-    fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, e: &mut S) -> Result<(), S::Error> {
         e.emit_map(self.len(), |e| {
             for (i, (key, val)) in self.iter().enumerate() {
                 e.emit_map_elt_key(i, |e| key.encode(e))?;
@@ -95,12 +95,12 @@ where
     }
 }
 
-impl<K, V> Decodable for BTreeMap<K, V>
+impl<D: Decoder, K, V> Decodable<D> for BTreeMap<K, V>
 where
-    K: Decodable + PartialEq + Ord,
-    V: Decodable,
+    K: Decodable<D> + PartialEq + Ord,
+    V: Decodable<D>,
 {
-    fn decode<D: Decoder>(d: &mut D) -> Result<BTreeMap<K, V>, D::Error> {
+    fn decode(d: &mut D) -> Result<BTreeMap<K, V>, D::Error> {
         d.read_map(|d, len| {
             let mut map = BTreeMap::new();
             for i in 0..len {
@@ -113,11 +113,11 @@ where
     }
 }
 
-impl<T> Encodable for BTreeSet<T>
+impl<S: Encoder, T> Encodable<S> for BTreeSet<T>
 where
-    T: Encodable + PartialEq + Ord,
+    T: Encodable<S> + PartialEq + Ord,
 {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?;
@@ -127,11 +127,11 @@ where
     }
 }
 
-impl<T> Decodable for BTreeSet<T>
+impl<D: Decoder, T> Decodable<D> for BTreeSet<T>
 where
-    T: Decodable + PartialEq + Ord,
+    T: Decodable<D> + PartialEq + Ord,
 {
-    fn decode<D: Decoder>(d: &mut D) -> Result<BTreeSet<T>, D::Error> {
+    fn decode(d: &mut D) -> Result<BTreeSet<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut set = BTreeSet::new();
             for i in 0..len {
@@ -142,13 +142,13 @@ where
     }
 }
 
-impl<K, V, S> Encodable for HashMap<K, V, S>
+impl<E: Encoder, K, V, S> Encodable<E> for HashMap<K, V, S>
 where
-    K: Encodable + Eq,
-    V: Encodable,
+    K: Encodable<E> + Eq,
+    V: Encodable<E>,
     S: BuildHasher,
 {
-    fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         e.emit_map(self.len(), |e| {
             for (i, (key, val)) in self.iter().enumerate() {
                 e.emit_map_elt_key(i, |e| key.encode(e))?;
@@ -159,13 +159,13 @@ where
     }
 }
 
-impl<K, V, S> Decodable for HashMap<K, V, S>
+impl<D: Decoder, K, V, S> Decodable<D> for HashMap<K, V, S>
 where
-    K: Decodable + Hash + Eq,
-    V: Decodable,
+    K: Decodable<D> + Hash + Eq,
+    V: Decodable<D>,
     S: BuildHasher + Default,
 {
-    fn decode<D: Decoder>(d: &mut D) -> Result<HashMap<K, V, S>, D::Error> {
+    fn decode(d: &mut D) -> Result<HashMap<K, V, S>, D::Error> {
         d.read_map(|d, len| {
             let state = Default::default();
             let mut map = HashMap::with_capacity_and_hasher(len, state);
@@ -179,12 +179,12 @@ where
     }
 }
 
-impl<T, S> Encodable for HashSet<T, S>
+impl<E: Encoder, T, S> Encodable<E> for HashSet<T, S>
 where
-    T: Encodable + Eq,
+    T: Encodable<E> + Eq,
     S: BuildHasher,
 {
-    fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?;
@@ -194,12 +194,22 @@ where
     }
 }
 
-impl<T, S> Decodable for HashSet<T, S>
+impl<E: Encoder, T, S> Encodable<E> for &HashSet<T, S>
 where
-    T: Decodable + Hash + Eq,
+    T: Encodable<E> + Eq,
+    S: BuildHasher,
+{
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+        (**self).encode(s)
+    }
+}
+
+impl<D: Decoder, T, S> Decodable<D> for HashSet<T, S>
+where
+    T: Decodable<D> + Hash + Eq,
     S: BuildHasher + Default,
 {
-    fn decode<D: Decoder>(d: &mut D) -> Result<HashSet<T, S>, D::Error> {
+    fn decode(d: &mut D) -> Result<HashSet<T, S>, D::Error> {
         d.read_seq(|d, len| {
             let state = Default::default();
             let mut set = HashSet::with_capacity_and_hasher(len, state);
@@ -211,13 +221,13 @@ where
     }
 }
 
-impl<K, V, S> Encodable for indexmap::IndexMap<K, V, S>
+impl<E: Encoder, K, V, S> Encodable<E> for indexmap::IndexMap<K, V, S>
 where
-    K: Encodable + Hash + Eq,
-    V: Encodable,
+    K: Encodable<E> + Hash + Eq,
+    V: Encodable<E>,
     S: BuildHasher,
 {
-    fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         e.emit_map(self.len(), |e| {
             for (i, (key, val)) in self.iter().enumerate() {
                 e.emit_map_elt_key(i, |e| key.encode(e))?;
@@ -228,13 +238,13 @@ where
     }
 }
 
-impl<K, V, S> Decodable for indexmap::IndexMap<K, V, S>
+impl<D: Decoder, K, V, S> Decodable<D> for indexmap::IndexMap<K, V, S>
 where
-    K: Decodable + Hash + Eq,
-    V: Decodable,
+    K: Decodable<D> + Hash + Eq,
+    V: Decodable<D>,
     S: BuildHasher + Default,
 {
-    fn decode<D: Decoder>(d: &mut D) -> Result<indexmap::IndexMap<K, V, S>, D::Error> {
+    fn decode(d: &mut D) -> Result<indexmap::IndexMap<K, V, S>, D::Error> {
         d.read_map(|d, len| {
             let state = Default::default();
             let mut map = indexmap::IndexMap::with_capacity_and_hasher(len, state);
@@ -248,12 +258,12 @@ where
     }
 }
 
-impl<T, S> Encodable for indexmap::IndexSet<T, S>
+impl<E: Encoder, T, S> Encodable<E> for indexmap::IndexSet<T, S>
 where
-    T: Encodable + Hash + Eq,
+    T: Encodable<E> + Hash + Eq,
     S: BuildHasher,
 {
-    fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?;
@@ -263,12 +273,12 @@ where
     }
 }
 
-impl<T, S> Decodable for indexmap::IndexSet<T, S>
+impl<D: Decoder, T, S> Decodable<D> for indexmap::IndexSet<T, S>
 where
-    T: Decodable + Hash + Eq,
+    T: Decodable<D> + Hash + Eq,
     S: BuildHasher + Default,
 {
-    fn decode<D: Decoder>(d: &mut D) -> Result<indexmap::IndexSet<T, S>, D::Error> {
+    fn decode(d: &mut D) -> Result<indexmap::IndexSet<T, S>, D::Error> {
         d.read_seq(|d, len| {
             let state = Default::default();
             let mut set = indexmap::IndexSet::with_capacity_and_hasher(len, state);
@@ -280,8 +290,8 @@ where
     }
 }
 
-impl<T: Encodable> Encodable for Rc<[T]> {
-    fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
+impl<E: Encoder, T: Encodable<E>> Encodable<E> for Rc<[T]> {
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {
             for (index, e) in self.iter().enumerate() {
                 s.emit_seq_elt(index, |s| e.encode(s))?;
@@ -291,8 +301,8 @@ impl<T: Encodable> Encodable for Rc<[T]> {
     }
 }
 
-impl<T: Decodable> Decodable for Rc<[T]> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Rc<[T]>, D::Error> {
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<[T]> {
+    fn decode(d: &mut D) -> Result<Rc<[T]>, D::Error> {
         d.read_seq(|d, len| {
             let mut vec = Vec::with_capacity(len);
             for index in 0..len {
@@ -303,8 +313,8 @@ impl<T: Decodable> Decodable for Rc<[T]> {
     }
 }
 
-impl<T: Encodable> Encodable for Arc<[T]> {
-    fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
+impl<E: Encoder, T: Encodable<E>> Encodable<E> for Arc<[T]> {
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {
             for (index, e) in self.iter().enumerate() {
                 s.emit_seq_elt(index, |s| e.encode(s))?;
@@ -314,8 +324,8 @@ impl<T: Encodable> Encodable for Arc<[T]> {
     }
 }
 
-impl<T: Decodable> Decodable for Arc<[T]> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Arc<[T]>, D::Error> {
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<[T]> {
+    fn decode(d: &mut D) -> Result<Arc<[T]>, D::Error> {
         d.read_seq(|d, len| {
             let mut vec = Vec::with_capacity(len);
             for index in 0..len {

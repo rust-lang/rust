@@ -54,16 +54,16 @@ impl PredecessorCache {
     }
 }
 
-impl serialize::Encodable for PredecessorCache {
+impl<S: serialize::Encoder> serialize::Encodable<S> for PredecessorCache {
     #[inline]
-    fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         serialize::Encodable::encode(&(), s)
     }
 }
 
-impl serialize::Decodable for PredecessorCache {
+impl<D: serialize::Decoder> serialize::Decodable<D> for PredecessorCache {
     #[inline]
-    fn decode<D: serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
+    fn decode(d: &mut D) -> Result<Self, D::Error> {
         serialize::Decodable::decode(d).map(|_v: ()| Self::new())
     }
 }

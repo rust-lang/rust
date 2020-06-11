@@ -167,7 +167,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             }
         }
 
-        macro_rules! symbols {
+        macro_rules! define_symbols {
             () => {
                 #symbols_stream
 

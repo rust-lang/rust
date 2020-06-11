@@ -14,7 +14,7 @@ use super::{
     UninitBytesAccess,
 };
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct Allocation<Tag = (), Extra = ()> {
     /// The actual bytes of the allocation.
@@ -171,8 +171,6 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         &self.relocations
     }
 }
-
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Allocation {}
 
 /// Byte accessors.
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
@@ -666,7 +664,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
 }
 
 /// Relocations.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 pub struct Relocations<Tag = (), Id = AllocId>(SortedMap<Size, (Tag, Id)>);
 
 impl<Tag, Id> Relocations<Tag, Id> {
@@ -747,7 +745,7 @@ type Block = u64;
 
 /// A bitmask where each bit refers to the byte with the same index. If the bit is `true`, the byte
 /// is initialized. If it is `false` the byte is uninitialized.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct InitMask {
     blocks: Vec<Block>,

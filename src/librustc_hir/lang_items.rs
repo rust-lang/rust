@@ -45,7 +45,7 @@ macro_rules! language_item_table {
 
         enum_from_u32! {
             /// A representation of all the valid language items in Rust.
-            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
             pub enum LangItem {
                 $($variant,)*
             }

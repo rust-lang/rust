@@ -8,6 +8,9 @@
 #![feature(proc_macro_span)]
 #![feature(try_blocks)]
 
+#[macro_use]
+extern crate rustc_macros;
+
 extern crate proc_macro as pm;
 
 mod placeholders;

@@ -110,8 +110,7 @@ macro_rules! define_dep_nodes {
         $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
       ,)*
     ) => (
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
-                 RustcEncodable, RustcDecodable)]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
         #[allow(non_camel_case_types)]
         pub enum DepKind {
             $($variant),*

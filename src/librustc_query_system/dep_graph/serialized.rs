@@ -9,7 +9,7 @@ rustc_index::newtype_index! {
 }
 
 /// Data for use when recompiling the **current crate**.
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Encodable, Decodable)]
 pub struct SerializedDepGraph<K: DepKind> {
     /// The set of all DepNodes in the graph
     pub nodes: IndexVec<SerializedDepNodeIndex, DepNode<K>>,

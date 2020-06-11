@@ -20,6 +20,7 @@ rustc_attr = { path = "../librustc_attr" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_feature = { path = "../librustc_feature" }
+rustc_macros = { path = "../librustc_macros" }
 rustc_lexer = { path = "../librustc_lexer" }
 rustc_parse = { path = "../librustc_parse" }
 rustc_session = { path = "../librustc_session" }

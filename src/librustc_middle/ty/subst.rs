@@ -1,13 +1,14 @@
 // Type substitutions.
 
 use crate::infer::canonical::Canonical;
+use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
-use rustc_serialize::{self, Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{self, Decodable, Encodable};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
 
@@ -34,7 +35,7 @@ const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
 
-#[derive(Debug, RustcEncodable, RustcDecodable, PartialEq, Eq, PartialOrd, Ord, HashStable)]
+#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord, HashStable)]
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
@@ -168,14 +169,14 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx> Encodable for GenericArg<'tcx> {
-    fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for GenericArg<'tcx> {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         self.unpack().encode(e)
     }
 }
 
-impl<'tcx> Decodable for GenericArg<'tcx> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<GenericArg<'tcx>, D::Error> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArg<'tcx> {
+    fn decode(d: &mut D) -> Result<GenericArg<'tcx>, D::Error> {
         Ok(GenericArgKind::decode(d)?.pack())
     }
 }
@@ -395,8 +396,6 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
         self.iter().any(|t| t.visit_with(visitor))
     }
 }
-
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for SubstsRef<'tcx> {}
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`
@@ -653,7 +652,7 @@ pub type CanonicalUserSubsts<'tcx> = Canonical<'tcx, UserSubsts<'tcx>>;
 
 /// Stores the user-given substs to reach some fully qualified path
 /// (e.g., `<T>::Item` or `<T as Trait>::Item`).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
 pub struct UserSubsts<'tcx> {
     /// The substitutions for the item as given by the user.
@@ -680,7 +679,7 @@ pub struct UserSubsts<'tcx> {
 /// the impl (with the substs from `UserSubsts`) and apply those to
 /// the self type, giving `Foo<?A>`. Finally, we unify that with
 /// the self type here, which contains `?A` to be `&'static u32`
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, Lift)]
 pub struct UserSelfTy<'tcx> {
     pub impl_def_id: DefId,

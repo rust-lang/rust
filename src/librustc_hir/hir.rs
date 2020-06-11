@@ -23,7 +23,7 @@ use smallvec::SmallVec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, HashStable_Generic)]
 pub struct Lifetime {
     pub hir_id: HirId,
     pub span: Span,
@@ -37,7 +37,7 @@ pub struct Lifetime {
     pub name: LifetimeName,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Encodable, Hash, Copy)]
 #[derive(HashStable_Generic)]
 pub enum ParamName {
     /// Some user-given name like `T` or `'x`.
@@ -83,7 +83,7 @@ impl ParamName {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Encodable, Hash, Copy)]
 #[derive(HashStable_Generic)]
 pub enum LifetimeName {
     /// User-given names or fresh (synthetic) names.
@@ -182,7 +182,7 @@ impl Lifetime {
 /// A `Path` is essentially Rust's notion of a name; for instance,
 /// `std::cmp::PartialEq`. It's represented as a sequence of identifiers,
 /// along with a bunch of supporting information.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Path<'hir> {
     pub span: Span,
     /// The resolution for the path.
@@ -199,7 +199,7 @@ impl Path<'_> {
 
 /// A segment of a path: an identifier, an optional lifetime, and a set of
 /// types.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct PathSegment<'hir> {
     /// The identifier portion of this path segment.
     #[stable_hasher(project(name))]
@@ -242,13 +242,13 @@ impl<'hir> PathSegment<'hir> {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Encodable, Debug, HashStable_Generic)]
 pub struct ConstArg {
     pub value: AnonConst,
     pub span: Span,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum GenericArg<'hir> {
     Lifetime(Lifetime),
     Type(Ty<'hir>),
@@ -288,7 +288,7 @@ impl GenericArg<'_> {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct GenericArgs<'hir> {
     /// The generic arguments for this path segment.
     pub args: &'hir [GenericArg<'hir>],
@@ -348,7 +348,7 @@ impl GenericArgs<'_> {
 
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
 /// modifier is `Maybe`. Negative bounds should also be handled here.
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum TraitBoundModifier {
     None,
@@ -360,7 +360,7 @@ pub enum TraitBoundModifier {
 /// `typeck::collect::compute_bounds` matches these against
 /// the "special" built-in traits (see `middle::lang_items`) and
 /// detects `Copy`, `Send` and `Sync`.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
     Outlives(Lifetime),
@@ -384,7 +384,7 @@ impl GenericBound<'_> {
 
 pub type GenericBounds<'hir> = &'hir [GenericBound<'hir>];
 
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
 pub enum LifetimeParamKind {
     // Indicates that the lifetime definition was explicitly declared (e.g., in
     // `fn foo<'a>(x: &'a u8) -> &'a u8 { x }`).
@@ -403,7 +403,7 @@ pub enum LifetimeParamKind {
     Error,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum GenericParamKind<'hir> {
     /// A lifetime definition (e.g., `'a: 'b + 'c + 'd`).
     Lifetime {
@@ -418,7 +418,7 @@ pub enum GenericParamKind<'hir> {
     },
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct GenericParam<'hir> {
     pub hir_id: HirId,
     pub name: ParamName,
@@ -448,7 +448,7 @@ pub struct GenericParamCount {
 
 /// Represents lifetimes and type parameters attached to a declaration
 /// of a function, enum, trait, etc.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Generics<'hir> {
     pub params: &'hir [GenericParam<'hir>],
     pub where_clause: WhereClause<'hir>,
@@ -501,14 +501,14 @@ impl Generics<'hir> {
 
 /// Synthetic type parameters are converted to another form during lowering; this allows
 /// us to track the original form they had, and is useful for error messages.
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum SyntheticTyParamKind {
     ImplTrait,
 }
 
 /// A where-clause in a definition.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct WhereClause<'hir> {
     pub predicates: &'hir [WherePredicate<'hir>],
     // Only valid if predicates aren't empty.
@@ -535,7 +535,7 @@ impl WhereClause<'_> {
 }
 
 /// A single predicate in a where-clause.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum WherePredicate<'hir> {
     /// A type binding (e.g., `for<'c> Foo: Send + Clone + 'c`).
     BoundPredicate(WhereBoundPredicate<'hir>),
@@ -556,7 +556,7 @@ impl WherePredicate<'_> {
 }
 
 /// A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct WhereBoundPredicate<'hir> {
     pub span: Span,
     /// Any generics from a `for` binding.
@@ -568,7 +568,7 @@ pub struct WhereBoundPredicate<'hir> {
 }
 
 /// A lifetime predicate (e.g., `'a: 'b + 'c`).
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct WhereRegionPredicate<'hir> {
     pub span: Span,
     pub lifetime: Lifetime,
@@ -576,7 +576,7 @@ pub struct WhereRegionPredicate<'hir> {
 }
 
 /// An equality predicate (e.g., `T = int`); currently unsupported.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct WhereEqPredicate<'hir> {
     pub hir_id: HirId,
     pub span: Span,
@@ -584,7 +584,7 @@ pub struct WhereEqPredicate<'hir> {
     pub rhs_ty: &'hir Ty<'hir>,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Encodable, Debug, HashStable_Generic)]
 pub struct ModuleItems {
     // Use BTreeSets here so items are in the same order as in the
     // list of all items in Crate
@@ -594,7 +594,7 @@ pub struct ModuleItems {
 }
 
 /// A type representing only the top-level module.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Encodable, Debug, HashStable_Generic)]
 pub struct CrateItem<'hir> {
     pub module: Mod<'hir>,
     pub attrs: &'hir [Attribute],
@@ -607,7 +607,7 @@ pub struct CrateItem<'hir> {
 /// For more details, see the [rustc dev guide].
 ///
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(Debug)]
 pub struct Crate<'hir> {
     pub item: CrateItem<'hir>,
     pub exported_macros: &'hir [MacroDef<'hir>],
@@ -715,7 +715,7 @@ impl Crate<'_> {
 /// A macro definition, in this crate or imported from another.
 ///
 /// Not parsed directly, but created on macro import or `macro_rules!` expansion.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct MacroDef<'hir> {
     pub ident: Ident,
     pub vis: Visibility<'hir>,
@@ -728,7 +728,7 @@ pub struct MacroDef<'hir> {
 /// A block of statements `{ .. }`, which may have a label (in this case the
 /// `targeted_by_break` field will be `true`) and may be `unsafe` by means of
 /// the `rules` being anything but `DefaultBlock`.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Block<'hir> {
     /// Statements in a block.
     pub stmts: &'hir [Stmt<'hir>],
@@ -746,7 +746,7 @@ pub struct Block<'hir> {
     pub targeted_by_break: bool,
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Pat<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
@@ -824,7 +824,7 @@ impl Pat<'_> {
 /// Patterns like the fields of Foo `{ x, ref y, ref mut z }`
 /// are treated the same as` x: x, y: ref y, z: ref mut z`,
 /// except `is_shorthand` is true.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct FieldPat<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
@@ -840,7 +840,7 @@ pub struct FieldPat<'hir> {
 /// Explicit binding annotations given in the HIR for a binding. Note
 /// that this is not the final binding *mode* that we infer after type
 /// inference.
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum BindingAnnotation {
     /// No binding annotation given: this means that the final binding mode
     /// will depend on whether we have skipped through a `&` reference
@@ -861,7 +861,7 @@ pub enum BindingAnnotation {
     RefMut,
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum RangeEnd {
     Included,
     Excluded,
@@ -876,7 +876,7 @@ impl fmt::Display for RangeEnd {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum PatKind<'hir> {
     /// Represents a wildcard pattern (i.e., `_`).
     Wild,
@@ -932,7 +932,7 @@ pub enum PatKind<'hir> {
     Slice(&'hir [&'hir Pat<'hir>], Option<&'hir Pat<'hir>>, &'hir [&'hir Pat<'hir>]),
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum BinOpKind {
     /// The `+` operator (addition).
     Add,
@@ -1066,7 +1066,7 @@ impl Into<ast::BinOpKind> for BinOpKind {
 
 pub type BinOp = Spanned<BinOpKind>;
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum UnOp {
     /// The `*` operator (deferencing).
     UnDeref,
@@ -1095,7 +1095,7 @@ impl UnOp {
 }
 
 /// A statement.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Stmt<'hir> {
     pub hir_id: HirId,
     pub kind: StmtKind<'hir>,
@@ -1103,7 +1103,7 @@ pub struct Stmt<'hir> {
 }
 
 /// The contents of a statement.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum StmtKind<'hir> {
     /// A local (`let`) binding.
     Local(&'hir Local<'hir>),
@@ -1129,7 +1129,7 @@ impl StmtKind<'hir> {
 }
 
 /// Represents a `let` statement (i.e., `let <pat>:<ty> = <expr>;`).
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Local<'hir> {
     pub pat: &'hir Pat<'hir>,
     /// Type annotation, if any (otherwise the type will be inferred).
@@ -1146,7 +1146,7 @@ pub struct Local<'hir> {
 
 /// Represents a single arm of a `match` expression, e.g.
 /// `<pat> (if <guard>) => <body>`.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Arm<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
@@ -1160,12 +1160,12 @@ pub struct Arm<'hir> {
     pub body: &'hir Expr<'hir>,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum Guard<'hir> {
     If(&'hir Expr<'hir>),
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Field<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
@@ -1175,7 +1175,7 @@ pub struct Field<'hir> {
     pub is_shorthand: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum BlockCheckMode {
     DefaultBlock,
     UnsafeBlock(UnsafeSource),
@@ -1183,13 +1183,13 @@ pub enum BlockCheckMode {
     PopUnsafeBlock(UnsafeSource),
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum UnsafeSource {
     CompilerGenerated,
     UserProvided,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Hash, Debug)]
 pub struct BodyId {
     pub hir_id: HirId,
 }
@@ -1215,7 +1215,7 @@ pub struct BodyId {
 ///
 /// All bodies have an **owner**, which can be accessed via the HIR
 /// map using `body_owner_def_id()`.
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(Debug)]
 pub struct Body<'hir> {
     pub params: &'hir [Param<'hir>],
     pub value: Expr<'hir>,
@@ -1233,7 +1233,7 @@ impl Body<'hir> {
 }
 
 /// The type of source expression that caused this generator to be created.
-#[derive(Clone, PartialEq, Eq, HashStable_Generic, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, HashStable_Generic, Encodable, Decodable, Debug, Copy)]
 pub enum GeneratorKind {
     /// An explicit `async` block or the body of an async function.
     Async(AsyncGeneratorKind),
@@ -1256,7 +1256,7 @@ impl fmt::Display for GeneratorKind {
 ///
 /// This helps error messages but is also used to drive coercions in
 /// type-checking (see #60424).
-#[derive(Clone, PartialEq, Eq, HashStable_Generic, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, HashStable_Generic, Encodable, Decodable, Debug, Copy)]
 pub enum AsyncGeneratorKind {
     /// An explicit `async` block written by the user.
     Block,
@@ -1357,14 +1357,14 @@ pub type Lit = Spanned<LitKind>;
 /// These are usually found nested inside types (e.g., array lengths)
 /// or expressions (e.g., repeat counts), and also used to define
 /// explicit discriminant values for enum variants.
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
 pub struct AnonConst {
     pub hir_id: HirId,
     pub body: BodyId,
 }
 
 /// An expression.
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug)]
 pub struct Expr<'hir> {
     pub hir_id: HirId,
     pub kind: ExprKind<'hir>,
@@ -1543,7 +1543,7 @@ pub fn is_range_literal(sm: &SourceMap, expr: &Expr<'_>) -> bool {
     false
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum ExprKind<'hir> {
     /// A `box x` expression.
     Box(&'hir Expr<'hir>),
@@ -1660,7 +1660,7 @@ pub enum ExprKind<'hir> {
 /// To resolve the path to a `DefId`, call [`qpath_res`].
 ///
 /// [`qpath_res`]: ../rustc_middle/ty/struct.TypeckResults.html#method.qpath_res
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum QPath<'hir> {
     /// Path to a definition, optionally "fully-qualified" with a `Self`
     /// type, if the path points to an associated item in a trait.
@@ -1680,7 +1680,7 @@ pub enum QPath<'hir> {
 }
 
 /// Hints at the original code for a let statement.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
 pub enum LocalSource {
     /// A `match _ { .. }`.
     Normal,
@@ -1702,7 +1702,7 @@ pub enum LocalSource {
 }
 
 /// Hints at the original code for a `match _ { .. }`.
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum MatchSource {
     /// A `match _ { .. }`.
@@ -1739,7 +1739,7 @@ impl MatchSource {
 }
 
 /// The loop type that yielded an `ExprKind::Loop`.
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum LoopSource {
     /// A `loop { .. }` loop.
     Loop,
@@ -1761,7 +1761,7 @@ impl LoopSource {
     }
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
 pub enum LoopIdError {
     OutsideLoopScope,
     UnlabeledCfInWhileCondition,
@@ -1780,7 +1780,7 @@ impl fmt::Display for LoopIdError {
     }
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
 pub struct Destination {
     // This is `Some(_)` iff there is an explicit user-specified `label
     pub label: Option<Label>,
@@ -1791,7 +1791,7 @@ pub struct Destination {
 }
 
 /// The yield kind that caused an `ExprKind::Yield`.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum YieldSource {
     /// An `<expr>.await`.
     Await { expr: Option<HirId> },
@@ -1829,7 +1829,7 @@ impl From<GeneratorKind> for YieldSource {
 
 // N.B., if you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct MutTy<'hir> {
     pub ty: &'hir Ty<'hir>,
     pub mutbl: Mutability,
@@ -1837,7 +1837,7 @@ pub struct MutTy<'hir> {
 
 /// Represents a function's signature in a trait declaration,
 /// trait implementation, or a free function.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct FnSig<'hir> {
     pub header: FnHeader,
     pub decl: &'hir FnDecl<'hir>,
@@ -1846,7 +1846,7 @@ pub struct FnSig<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the node-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct TraitItemId {
     pub hir_id: HirId,
 }
@@ -1855,7 +1855,7 @@ pub struct TraitItemId {
 /// possibly including a default implementation. A trait item is
 /// either required (meaning it doesn't have an implementation, just a
 /// signature) or provided (meaning it has a default implementation).
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(Debug)]
 pub struct TraitItem<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
@@ -1866,7 +1866,7 @@ pub struct TraitItem<'hir> {
 }
 
 /// Represents a trait method's body (or just argument names).
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Encodable, Debug, HashStable_Generic)]
 pub enum TraitFn<'hir> {
     /// No default body in the trait, just a signature.
     Required(&'hir [Ident]),
@@ -1876,7 +1876,7 @@ pub enum TraitFn<'hir> {
 }
 
 /// Represents a trait method or associated constant or type
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(&'hir Ty<'hir>, Option<BodyId>),
@@ -1890,13 +1890,13 @@ pub enum TraitItemKind<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the node-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ImplItemId {
     pub hir_id: HirId,
 }
 
 /// Represents anything within an `impl` block.
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(Debug)]
 pub struct ImplItem<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
@@ -1909,7 +1909,7 @@ pub struct ImplItem<'hir> {
 }
 
 /// Represents various kinds of content within an `impl`.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum ImplItemKind<'hir> {
     /// An associated constant of the given type, set to the constant result
     /// of the expression.
@@ -1947,7 +1947,7 @@ pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 ///    Binding(...),
 /// }
 /// ```
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct TypeBinding<'hir> {
     pub hir_id: HirId,
     #[stable_hasher(project(name))]
@@ -1957,7 +1957,7 @@ pub struct TypeBinding<'hir> {
 }
 
 // Represents the two kinds of type bindings.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum TypeBindingKind<'hir> {
     /// E.g., `Foo<Bar: Send>`.
     Constraint { bounds: &'hir [GenericBound<'hir>] },
@@ -1974,7 +1974,7 @@ impl TypeBinding<'_> {
     }
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug)]
 pub struct Ty<'hir> {
     pub hir_id: HirId,
     pub kind: TyKind<'hir>,
@@ -1982,7 +1982,7 @@ pub struct Ty<'hir> {
 }
 
 /// Not represented directly in the AST; referred to by name through a `ty_path`.
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum PrimTy {
     Int(IntTy),
@@ -1993,7 +1993,7 @@ pub enum PrimTy {
     Char,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct BareFnTy<'hir> {
     pub unsafety: Unsafety,
     pub abi: Abi,
@@ -2002,7 +2002,7 @@ pub struct BareFnTy<'hir> {
     pub param_names: &'hir [Ident],
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct OpaqueTy<'hir> {
     pub generics: Generics<'hir>,
     pub bounds: GenericBounds<'hir>,
@@ -2011,7 +2011,7 @@ pub struct OpaqueTy<'hir> {
 }
 
 /// From whence the opaque type came.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum OpaqueTyOrigin {
     /// `-> impl Trait`
     FnReturn,
@@ -2024,7 +2024,7 @@ pub enum OpaqueTyOrigin {
 }
 
 /// The various kinds of types recognized by the compiler.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum TyKind<'hir> {
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
@@ -2063,7 +2063,7 @@ pub enum TyKind<'hir> {
     Err,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum InlineAsmOperand<'hir> {
     In {
         reg: InlineAsmRegOrRegClass,
@@ -2105,7 +2105,7 @@ impl<'hir> InlineAsmOperand<'hir> {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct InlineAsm<'hir> {
     pub template: &'hir [InlineAsmTemplatePiece],
     pub operands: &'hir [InlineAsmOperand<'hir>],
@@ -2113,7 +2113,7 @@ pub struct InlineAsm<'hir> {
     pub line_spans: &'hir [Span],
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic, PartialEq)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic, PartialEq)]
 pub struct LlvmInlineAsmOutput {
     pub constraint: Symbol,
     pub is_rw: bool,
@@ -2122,8 +2122,9 @@ pub struct LlvmInlineAsmOutput {
 }
 
 // NOTE(eddyb) This is used within MIR as well, so unlike the rest of the HIR,
-// it needs to be `Clone` and use plain `Vec<T>` instead of arena-allocated slice.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic, PartialEq)]
+// it needs to be `Clone` and `Decodable` and use plain `Vec<T>` instead of
+// arena-allocated slice.
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, PartialEq)]
 pub struct LlvmInlineAsmInner {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,
@@ -2135,7 +2136,7 @@ pub struct LlvmInlineAsmInner {
     pub dialect: LlvmAsmDialect,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct LlvmInlineAsm<'hir> {
     pub inner: LlvmInlineAsmInner,
     pub outputs_exprs: &'hir [Expr<'hir>],
@@ -2143,7 +2144,7 @@ pub struct LlvmInlineAsm<'hir> {
 }
 
 /// Represents a parameter in a function header.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Param<'hir> {
     pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
@@ -2153,7 +2154,7 @@ pub struct Param<'hir> {
 }
 
 /// Represents the header (not the body) of a function declaration.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct FnDecl<'hir> {
     /// The types of the function's parameters.
     ///
@@ -2166,7 +2167,7 @@ pub struct FnDecl<'hir> {
 }
 
 /// Represents what type of implicit self a function has, if any.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum ImplicitSelfKind {
     /// Represents a `fn x(self);`.
     Imm,
@@ -2191,24 +2192,14 @@ impl ImplicitSelfKind {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Debug)]
 #[derive(HashStable_Generic)]
 pub enum IsAsync {
     Async,
     NotAsync,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    HashStable_Generic,
-    Eq,
-    Hash
-)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Defaultness {
     Default { has_value: bool },
     Final,
@@ -2234,7 +2225,7 @@ impl Defaultness {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum FnRetTy<'hir> {
     /// Return type is not specified.
     ///
@@ -2255,7 +2246,7 @@ impl FnRetTy<'_> {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(Encodable, Debug)]
 pub struct Mod<'hir> {
     /// A span from the first token past `{` to the last token until `}`.
     /// For `mod foo;`, the inner span ranges from the first token
@@ -2264,23 +2255,23 @@ pub struct Mod<'hir> {
     pub item_ids: &'hir [ItemId],
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct ForeignMod<'hir> {
     pub abi: Abi,
     pub items: &'hir [ForeignItem<'hir>],
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Encodable, Debug, HashStable_Generic)]
 pub struct GlobalAsm {
     pub asm: Symbol,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct EnumDef<'hir> {
     pub variants: &'hir [Variant<'hir>],
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Variant<'hir> {
     /// Name of the variant.
     #[stable_hasher(project(name))]
@@ -2297,7 +2288,7 @@ pub struct Variant<'hir> {
     pub span: Span,
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum UseKind {
     /// One import, e.g., `use foo::bar` or `use foo::bar as baz`.
     /// Also produced for each element of a list `use`, e.g.
@@ -2319,7 +2310,7 @@ pub enum UseKind {
 /// that the `ref_id` is for. Note that `ref_id`'s value is not the `HirId` of the
 /// trait being referred to but just a unique `HirId` that serves as a key
 /// within the resolution map.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct TraitRef<'hir> {
     pub path: &'hir Path<'hir>,
     // Don't hash the `ref_id`. It is tracked via the thing it is used to access.
@@ -2338,7 +2329,7 @@ impl TraitRef<'_> {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct PolyTraitRef<'hir> {
     /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: &'hir [GenericParam<'hir>],
@@ -2351,7 +2342,7 @@ pub struct PolyTraitRef<'hir> {
 
 pub type Visibility<'hir> = Spanned<VisibilityKind<'hir>>;
 
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(Debug)]
 pub enum VisibilityKind<'hir> {
     Public,
     Crate(CrateSugar),
@@ -2384,7 +2375,7 @@ impl VisibilityKind<'_> {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct StructField<'hir> {
     pub span: Span,
     #[stable_hasher(project(name))]
@@ -2404,7 +2395,7 @@ impl StructField<'_> {
 }
 
 /// Fields and constructor IDs of enum variants and structs.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum VariantData<'hir> {
     /// A struct variant.
     ///
@@ -2441,7 +2432,7 @@ impl VariantData<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the node-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, Encodable, Debug)]
 pub struct ItemId {
     pub id: HirId,
 }
@@ -2449,7 +2440,7 @@ pub struct ItemId {
 /// An item
 ///
 /// The name might be a dummy name in case of anonymous items
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(Debug)]
 pub struct Item<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
@@ -2460,7 +2451,7 @@ pub struct Item<'hir> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum Unsafety {
     Unsafe,
     Normal,
@@ -2485,13 +2476,13 @@ impl fmt::Display for Unsafety {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum Constness {
     Const,
     NotConst,
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
 pub struct FnHeader {
     pub unsafety: Unsafety,
     pub constness: Constness,
@@ -2508,7 +2499,7 @@ impl FnHeader {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum ItemKind<'hir> {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
@@ -2590,7 +2581,7 @@ impl ItemKind<'_> {
 /// type or method, and whether it is public). This allows other
 /// passes to find the impl they want without loading the ID (which
 /// means fewer edges in the incremental compilation graph).
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Encodable, Debug, HashStable_Generic)]
 pub struct TraitItemRef {
     pub id: TraitItemId,
     #[stable_hasher(project(name))]
@@ -2606,7 +2597,7 @@ pub struct TraitItemRef {
 /// type or method, and whether it is public). This allows other
 /// passes to find the impl they want without loading the ID (which
 /// means fewer edges in the incremental compilation graph).
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct ImplItemRef<'hir> {
     pub id: ImplItemId,
     #[stable_hasher(project(name))]
@@ -2617,14 +2608,14 @@ pub struct ImplItemRef<'hir> {
     pub defaultness: Defaultness,
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum AssocItemKind {
     Const,
     Fn { has_self: bool },
     Type,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct ForeignItem<'hir> {
     #[stable_hasher(project(name))]
     pub ident: Ident,
@@ -2636,7 +2627,7 @@ pub struct ForeignItem<'hir> {
 }
 
 /// An item within an `extern` block.
-#[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum ForeignItemKind<'hir> {
     /// A foreign function.
     Fn(&'hir FnDecl<'hir>, &'hir [Ident], Generics<'hir>),
@@ -2647,7 +2638,7 @@ pub enum ForeignItemKind<'hir> {
 }
 
 /// A variable captured by a closure.
-#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, Encodable, HashStable_Generic)]
 pub struct Upvar {
     // First span where it is accessed (there can be multiple).
     pub span: Span,
@@ -2658,7 +2649,7 @@ pub type CaptureModeMap = NodeMap<CaptureBy>;
 // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
 // has length > 0 if the trait is found through an chain of imports, starting with the
 // import/use statement in the scope where the trait is used.
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
+#[derive(Encodable, Decodable, Clone, Debug)]
 pub struct TraitCandidate {
     pub def_id: DefId,
     pub import_ids: SmallVec<[LocalDefId; 1]>,

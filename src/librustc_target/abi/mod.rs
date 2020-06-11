@@ -235,7 +235,7 @@ pub enum Endian {
 }
 
 /// Size of a type in bytes.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct Size {
     raw: u64,
@@ -358,7 +358,7 @@ impl AddAssign for Size {
 }
 
 /// Alignment of a type in bytes (always a power of two).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct Align {
     pow2: u8,
@@ -415,7 +415,7 @@ impl Align {
 }
 
 /// A pair of alignments, ABI-mandated and preferred.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable)]
 #[derive(HashStable_Generic)]
 pub struct AbiAndPrefAlign {
     pub abi: Align,

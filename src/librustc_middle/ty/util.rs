@@ -1143,7 +1143,7 @@ pub fn needs_drop_components(
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub struct AlwaysRequiresDrop;
 
 /// Normalizes all opaque types in the given value, replacing them

@@ -80,7 +80,7 @@ use std::fmt;
 // placate the same deriving in `ty::FreeRegion`, but we may want to
 // actually attach a more meaningful ordering to scopes than the one
 // generated via deriving here.
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct Scope {
     pub id: hir::ItemLocalId,
@@ -104,7 +104,7 @@ impl fmt::Debug for Scope {
     }
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Debug, Copy, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum ScopeData {
     Node,
@@ -324,7 +324,7 @@ pub struct ScopeTree {
     pub body_expr_count: FxHashMap<hir::BodyId, usize>,
 }
 
-#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub struct YieldData {
     /// The `Span` of the yield.
     pub span: Span,

@@ -7,17 +7,14 @@ use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Lift, Region, TyCtxt};
 
-/// Combines a `region::ScopeTree` (which governs relationships between
-/// scopes) and a `FreeRegionMap` (which governs relationships between
-/// free regions) to yield a complete relation between concrete
-/// regions.
+/// Combines a `FreeRegionMap` and a `TyCtxt`.
 ///
 /// This stuff is a bit convoluted and should be refactored, but as we
 /// transition to NLL, it'll all go away anyhow.
 pub struct RegionRelations<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
-    /// The context used to fetch the region maps.
+    /// The context used for debug messages
     pub context: DefId,
 
     /// Free-region relationships.
@@ -34,7 +31,7 @@ impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default, HashStable)]
+#[derive(Clone, Debug, Default)]
 pub struct FreeRegionMap<'tcx> {
     // Stores the relation `a < b`, where `a` and `b` are regions.
     //
