@@ -571,16 +571,18 @@ impl DefCollector<'_> {
                 return false;
             }
 
-            if let Some(call_id) = directive.ast_id.as_call_id(self.db, |path| {
-                let resolved_res = self.def_map.resolve_path_fp_with_macro(
-                    self.db,
-                    ResolveMode::Other,
-                    directive.module_id,
-                    &path,
-                    BuiltinShadowMode::Module,
-                );
-                resolved_res.resolved_def.take_macros()
-            }) {
+            if let Some(call_id) =
+                directive.ast_id.as_call_id(self.db, self.def_map.krate, |path| {
+                    let resolved_res = self.def_map.resolve_path_fp_with_macro(
+                        self.db,
+                        ResolveMode::Other,
+                        directive.module_id,
+                        &path,
+                        BuiltinShadowMode::Module,
+                    );
+                    resolved_res.resolved_def.take_macros()
+                })
+            {
                 resolved.push((directive.module_id, call_id, directive.depth));
                 res = ReachedFixedPoint::No;
                 return false;
@@ -589,9 +591,10 @@ impl DefCollector<'_> {
             true
         });
         attribute_macros.retain(|directive| {
-            if let Some(call_id) = directive
-                .ast_id
-                .as_call_id(self.db, |path| self.resolve_attribute_macro(&directive, &path))
+            if let Some(call_id) =
+                directive.ast_id.as_call_id(self.db, self.def_map.krate, |path| {
+                    self.resolve_attribute_macro(&directive, &path)
+                })
             {
                 resolved.push((directive.module_id, call_id, 0));
                 res = ReachedFixedPoint::No;
@@ -957,11 +960,13 @@ impl ModCollector<'_, '_> {
         }
 
         // Case 2: try to resolve in legacy scope and expand macro_rules
-        if let Some(macro_call_id) = ast_id.as_call_id(self.def_collector.db, |path| {
-            path.as_ident().and_then(|name| {
-                self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
+        if let Some(macro_call_id) =
+            ast_id.as_call_id(self.def_collector.db, self.def_collector.def_map.krate, |path| {
+                path.as_ident().and_then(|name| {
+                    self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
+                })
             })
-        }) {
+        {
             self.def_collector.unexpanded_macros.push(MacroDirective {
                 module_id: self.module_id,
                 ast_id,

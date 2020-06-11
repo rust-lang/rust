@@ -19,7 +19,7 @@ use ra_db::{
     Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase,
     SourceRootId, Upcast,
 };
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 
@@ -60,7 +60,7 @@ impl FileLoader for RootDatabase {
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(anchor, path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }

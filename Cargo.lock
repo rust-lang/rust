@@ -1013,6 +1013,7 @@ dependencies = [
  "ra_prof",
  "ra_syntax",
  "ra_tt",
+ "rustc-hash",
  "test_utils",
 ]
 

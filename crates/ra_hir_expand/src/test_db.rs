@@ -6,6 +6,7 @@ use std::{
 };
 
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate};
+use rustc_hash::FxHashSet;
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
@@ -44,7 +45,7 @@ impl FileLoader for TestDB {
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(anchor, path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }

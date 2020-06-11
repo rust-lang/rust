@@ -417,6 +417,7 @@ pub trait AsMacroCall {
     fn as_call_id(
         &self,
         db: &dyn db::DefDatabase,
+        krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId>;
 }
@@ -425,13 +426,14 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
     fn as_call_id(
         &self,
         db: &dyn db::DefDatabase,
+        krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let h = Hygiene::new(db.upcast(), self.file_id);
         let path = path::ModPath::from_src(self.value.path()?, &h)?;
 
-        AstIdWithPath::new(ast_id.file_id, ast_id.value, path).as_call_id(db, resolver)
+        AstIdWithPath::new(ast_id.file_id, ast_id.value, path).as_call_id(db, krate, resolver)
     }
 }
 
@@ -452,6 +454,7 @@ impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
     fn as_call_id(
         &self,
         db: &dyn db::DefDatabase,
+        krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
         let def: MacroDefId = resolver(self.path.clone())?;
@@ -461,13 +464,13 @@ impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
             let hygiene = Hygiene::new(db.upcast(), self.ast_id.file_id);
 
             Some(
-                expand_eager_macro(db.upcast(), macro_call, def, &|path: ast::Path| {
+                expand_eager_macro(db.upcast(), krate, macro_call, def, &|path: ast::Path| {
                     resolver(path::ModPath::from_src(path, &hygiene)?)
                 })?
                 .into(),
             )
         } else {
-            Some(def.as_lazy_macro(db.upcast(), MacroCallKind::FnLike(self.ast_id)).into())
+            Some(def.as_lazy_macro(db.upcast(), krate, MacroCallKind::FnLike(self.ast_id)).into())
         }
     }
 }
@@ -476,12 +479,14 @@ impl AsMacroCall for AstIdWithPath<ast::ModuleItem> {
     fn as_call_id(
         &self,
         db: &dyn db::DefDatabase,
+        krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
         let def = resolver(self.path.clone())?;
         Some(
             def.as_lazy_macro(
                 db.upcast(),
+                krate,
                 MacroCallKind::Attr(self.ast_id, self.path.segments.last()?.to_string()),
             )
             .into(),

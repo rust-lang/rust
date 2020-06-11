@@ -97,7 +97,7 @@ impl Expander {
 
         let macro_call = InFile::new(self.current_file_id, &macro_call);
 
-        if let Some(call_id) = macro_call.as_call_id(db, |path| {
+        if let Some(call_id) = macro_call.as_call_id(db, self.crate_def_map.krate, |path| {
             if let Some(local_scope) = local_scope {
                 if let Some(def) = path.as_ident().and_then(|n| local_scope.get_legacy_macro(n)) {
                     return Some(def);

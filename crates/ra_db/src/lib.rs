@@ -7,6 +7,7 @@ use std::{panic, sync::Arc};
 
 use ra_prof::profile;
 use ra_syntax::{ast, Parse, SourceFile, TextRange, TextSize};
+use rustc_hash::FxHashSet;
 
 pub use crate::{
     cancellation::Canceled,
@@ -95,7 +96,7 @@ pub trait FileLoader {
     /// `struct StrPath(str)` for clarity some day, but it's a bit messy, so we
     /// get by with a `&str` for the time being.
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId>;
-    fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>>;
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -133,16 +134,21 @@ pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
 
-    fn source_root_crates(&self, id: SourceRootId) -> Arc<Vec<CrateId>>;
+    fn source_root_crates(&self, id: SourceRootId) -> Arc<FxHashSet<CrateId>>;
 }
 
 fn source_root_crates(
     db: &(impl SourceDatabaseExt + SourceDatabase),
     id: SourceRootId,
-) -> Arc<Vec<CrateId>> {
-    let root = db.source_root(id);
+) -> Arc<FxHashSet<CrateId>> {
     let graph = db.crate_graph();
-    let res = root.walk().filter_map(|it| graph.crate_id_for_crate_root(it)).collect::<Vec<_>>();
+    let res = graph
+        .iter()
+        .filter(|&krate| {
+            let root_file = graph[krate].root_file_id;
+            db.file_source_root(root_file) == id
+        })
+        .collect::<FxHashSet<_>>();
     Arc::new(res)
 }
 
@@ -156,7 +162,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         // FIXME: this *somehow* should be platform agnostic...
         if std::path::Path::new(path).is_absolute() {
-            let krate = *self.relevant_crates(anchor).get(0)?;
+            let krate = *self.relevant_crates(anchor).iter().next()?;
             let (extern_source_id, relative_file) =
                 self.0.crate_graph()[krate].extern_source.extern_path(path.as_ref())?;
 
@@ -175,7 +181,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
         }
     }
 
-    fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)
     }

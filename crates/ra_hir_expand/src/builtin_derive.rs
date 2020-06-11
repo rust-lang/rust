@@ -8,8 +8,7 @@ use ra_syntax::{
     match_ast,
 };
 
-use crate::db::AstDatabase;
-use crate::{name, quote, LazyMacroId, MacroCallId, MacroDefId, MacroDefKind};
+use crate::{db::AstDatabase, name, quote, LazyMacroId, MacroDefId, MacroDefKind};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {
@@ -156,23 +155,13 @@ fn expand_simple_derive(
 fn find_builtin_crate(db: &dyn AstDatabase, id: LazyMacroId) -> tt::TokenTree {
     // FIXME: make hygiene works for builtin derive macro
     // such that $crate can be used here.
-
-    let m: MacroCallId = id.into();
-    let file_id = m.as_file().original_file(db);
     let cg = db.crate_graph();
-    let krates = db.relevant_crates(file_id);
-    let krate = match krates.get(0) {
-        Some(krate) => krate,
-        None => {
-            let tt = quote! { core };
-            return tt.token_trees[0].clone();
-        }
-    };
+    let krate = db.lookup_intern_macro(id).krate;
 
     // XXX
     //  All crates except core itself should have a dependency on core,
     //  We detect `core` by seeing whether it doesn't have such a dependency.
-    let tt = if cg[*krate].dependencies.iter().any(|dep| dep.name == "core") {
+    let tt = if cg[krate].dependencies.iter().any(|dep| dep.name == "core") {
         quote! { core }
     } else {
         quote! { crate }
@@ -264,10 +253,12 @@ fn partial_ord_expand(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{test_db::TestDB, AstId, MacroCallId, MacroCallKind, MacroCallLoc};
     use name::{known, Name};
-    use ra_db::{fixture::WithFixture, SourceDatabase};
+    use ra_db::{fixture::WithFixture, CrateId, SourceDatabase};
+
+    use crate::{test_db::TestDB, AstId, MacroCallId, MacroCallKind, MacroCallLoc};
+
+    use super::*;
 
     fn expand_builtin_derive(s: &str, name: Name) -> String {
         let def = find_builtin_derive(&name).unwrap();
@@ -291,7 +282,11 @@ mod tests {
 
         let attr_id = AstId::new(file_id.into(), ast_id_map.ast_id(&items[0]));
 
-        let loc = MacroCallLoc { def, kind: MacroCallKind::Attr(attr_id, name.to_string()) };
+        let loc = MacroCallLoc {
+            def,
+            krate: CrateId(0),
+            kind: MacroCallKind::Attr(attr_id, name.to_string()),
+        };
 
         let id: MacroCallId = db.intern_macro(loc).into();
         let parsed = db.parse_or_expand(id.as_file()).unwrap();

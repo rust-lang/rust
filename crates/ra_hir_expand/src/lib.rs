@@ -209,8 +209,13 @@ pub struct MacroDefId {
 }
 
 impl MacroDefId {
-    pub fn as_lazy_macro(self, db: &dyn db::AstDatabase, kind: MacroCallKind) -> LazyMacroId {
-        db.intern_macro(MacroCallLoc { def: self, kind })
+    pub fn as_lazy_macro(
+        self,
+        db: &dyn db::AstDatabase,
+        krate: CrateId,
+        kind: MacroCallKind,
+    ) -> LazyMacroId {
+        db.intern_macro(MacroCallLoc { def: self, krate, kind })
     }
 }
 
@@ -227,6 +232,7 @@ pub enum MacroDefKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
     pub(crate) def: MacroDefId,
+    pub(crate) krate: CrateId,
     pub(crate) kind: MacroCallKind,
 }
 
@@ -274,6 +280,7 @@ pub struct EagerCallLoc {
     pub(crate) def: MacroDefId,
     pub(crate) fragment: FragmentKind,
     pub(crate) subtree: Arc<tt::Subtree>,
+    pub(crate) krate: CrateId,
     pub(crate) file_id: HirFileId,
 }
 
