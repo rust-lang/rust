@@ -1063,6 +1063,113 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
 
         kind.hash_stable(hcx, hasher);
     }
+
+    pub fn kint(self, tcx: TyCtxt<'tcx>) -> &'tcx PredicateKint<'tcx> {
+        // I am efficient
+        tcx.intern_predicate_kint(match *self.kind() {
+            PredicateKind::Trait(binder, data) => {
+                if let Some(simpl) = binder.no_bound_vars() {
+                    PredicateKint::Trait(simpl, data)
+                } else {
+                    let inner = tcx
+                        .intern_predicate_kint(PredicateKint::Trait(*binder.skip_binder(), data));
+                    PredicateKint::ForAll(Binder::bind(inner))
+                }
+            }
+            PredicateKind::RegionOutlives(binder) => {
+                if let Some(simpl) = binder.no_bound_vars() {
+                    PredicateKint::RegionOutlives(simpl)
+                } else {
+                    let inner = tcx.intern_predicate_kint(PredicateKint::RegionOutlives(
+                        *binder.skip_binder(),
+                    ));
+                    PredicateKint::ForAll(Binder::bind(inner))
+                }
+            }
+            PredicateKind::TypeOutlives(binder) => {
+                if let Some(simpl) = binder.no_bound_vars() {
+                    PredicateKint::TypeOutlives(simpl)
+                } else {
+                    let inner = tcx
+                        .intern_predicate_kint(PredicateKint::TypeOutlives(*binder.skip_binder()));
+                    PredicateKint::ForAll(Binder::bind(inner))
+                }
+            }
+            PredicateKind::Projection(binder) => {
+                if let Some(simpl) = binder.no_bound_vars() {
+                    PredicateKint::Projection(simpl)
+                } else {
+                    let inner =
+                        tcx.intern_predicate_kint(PredicateKint::Projection(*binder.skip_binder()));
+                    PredicateKint::ForAll(Binder::bind(inner))
+                }
+            }
+            PredicateKind::WellFormed(arg) => PredicateKint::WellFormed(arg),
+            PredicateKind::ObjectSafe(def_id) => PredicateKint::ObjectSafe(def_id),
+            PredicateKind::ClosureKind(def_id, substs, kind) => {
+                PredicateKint::ClosureKind(def_id, substs, kind)
+            }
+            PredicateKind::Subtype(binder) => {
+                if let Some(simpl) = binder.no_bound_vars() {
+                    PredicateKint::Subtype(simpl)
+                } else {
+                    let inner =
+                        tcx.intern_predicate_kint(PredicateKint::Subtype(*binder.skip_binder()));
+                    PredicateKint::ForAll(Binder::bind(inner))
+                }
+            }
+            PredicateKind::ConstEvaluatable(def, substs) => {
+                PredicateKint::ConstEvaluatable(def, substs)
+            }
+            PredicateKind::ConstEquate(l, r) => PredicateKint::ConstEquate(l, r),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(TypeFoldable)]
+pub enum PredicateKint<'tcx> {
+    /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
+    /// the `Self` type of the trait reference and `A`, `B`, and `C`
+    /// would be the type parameters.
+    ///
+    /// A trait predicate will have `Constness::Const` if it originates
+    /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
+    /// `const fn foobar<Foo: Bar>() {}`).
+    Trait(TraitPredicate<'tcx>, Constness),
+
+    /// `where 'a: 'b`
+    RegionOutlives(RegionOutlivesPredicate<'tcx>),
+
+    /// `where T: 'a`
+    TypeOutlives(TypeOutlivesPredicate<'tcx>),
+
+    /// `where <T as TraitRef>::Name == X`, approximately.
+    /// See the `ProjectionPredicate` struct for details.
+    Projection(ProjectionPredicate<'tcx>),
+
+    /// No syntax: `T` well-formed.
+    WellFormed(GenericArg<'tcx>),
+
+    /// Trait must be object-safe.
+    ObjectSafe(DefId),
+
+    /// No direct syntax. May be thought of as `where T: FnFoo<...>`
+    /// for some substitutions `...` and `T` being a closure type.
+    /// Satisfied (or refuted) once we know the closure's kind.
+    ClosureKind(DefId, SubstsRef<'tcx>, ClosureKind),
+
+    /// `T1 <: T2`
+    Subtype(SubtypePredicate<'tcx>),
+
+    /// Constant initializer must evaluate successfully.
+    ConstEvaluatable(DefId, SubstsRef<'tcx>),
+
+    /// Constants must be equal. The first component is the const that is expected.
+    ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
+
+    /// `for<'a>: ...`
+    ForAll(Binder<&'tcx PredicateKint<'tcx>>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -1346,6 +1453,76 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(self)
+    }
+}
+
+impl ToPredicate<'tcx> for PredicateKint<'tcx> {
+    #[inline(always)]
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        let (predicate, in_binder) = if let PredicateKint::ForAll(binder) = self {
+            (*binder.skip_binder(), true)
+        } else {
+            (self, false)
+        };
+
+        macro_rules! bind {
+            ($expr:expr) => {
+                match $expr {
+                    expr => {
+                        if in_binder {
+                            Binder::bind(expr)
+                        } else {
+                            Binder::dummy(expr)
+                        }
+                    }
+                }
+            };
+        }
+
+        match *predicate {
+            PredicateKint::ForAll(_) => bug!("unexpected PredicateKint: {:?}", self),
+            PredicateKint::Trait(data, ct) => PredicateKind::Trait(bind!(data), ct),
+            PredicateKint::RegionOutlives(data) => PredicateKind::RegionOutlives(bind!(data)),
+            PredicateKint::TypeOutlives(data) => PredicateKind::TypeOutlives(bind!(data)),
+            PredicateKint::Projection(data) => PredicateKind::Projection(bind!(data)),
+            PredicateKint::WellFormed(arg) => {
+                if in_binder {
+                    bug!("unexpected ForAll: {:?}", self)
+                } else {
+                    PredicateKind::WellFormed(arg)
+                }
+            }
+            PredicateKint::ObjectSafe(def_id) => {
+                if in_binder {
+                    bug!("unexpected ForAll: {:?}", self)
+                } else {
+                    PredicateKind::ObjectSafe(def_id)
+                }
+            }
+            PredicateKint::ClosureKind(def_id, substs, kind) => {
+                if in_binder {
+                    bug!("unexpected ForAll: {:?}", self)
+                } else {
+                    PredicateKind::ClosureKind(def_id, substs, kind)
+                }
+            }
+            PredicateKint::Subtype(data) => PredicateKind::Subtype(bind!(data)),
+            PredicateKint::ConstEvaluatable(def_id, substs) => {
+                if in_binder {
+                    bug!("unexpected ForAll: {:?}", self)
+                } else {
+                    PredicateKind::ConstEvaluatable(def_id, substs)
+                }
+            }
+            PredicateKint::ConstEquate(l, r) => {
+                if in_binder {
+                    bug!("unexpected ForAll: {:?}", self)
+                } else {
+                    PredicateKind::ConstEquate(l, r)
+                }
+            }
+        }
+        .to_predicate(tcx)
     }
 }
 
