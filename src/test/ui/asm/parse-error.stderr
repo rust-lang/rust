@@ -82,32 +82,8 @@ error: expected one of `)`, `att_syntax`, `nomem`, `noreturn`, `nostack`, `prese
 LL |         asm!("", options(nomem, foo));
    |                                 ^^^ expected one of 8 possible tokens
 
-error: asm options cannot be specified multiple times
-  --> $DIR/parse-error.rs:37:29
-   |
-LL |         asm!("", options(), options());
-   |                  ---------  ^^^^^^^^^ duplicate options
-   |                  |
-   |                  previously here
-
-error: asm options cannot be specified multiple times
-  --> $DIR/parse-error.rs:39:29
-   |
-LL |         asm!("", options(), options(), options());
-   |                  ---------  ^^^^^^^^^ duplicate options
-   |                  |
-   |                  previously here
-
-error: asm options cannot be specified multiple times
-  --> $DIR/parse-error.rs:39:40
-   |
-LL |         asm!("", options(), options(), options());
-   |                  ---------             ^^^^^^^^^ duplicate options
-   |                  |
-   |                  previously here
-
 error: arguments are not allowed after options
-  --> $DIR/parse-error.rs:42:31
+  --> $DIR/parse-error.rs:37:31
    |
 LL |         asm!("{}", options(), const foo);
    |                    ---------  ^^^^^^^^^ argument
@@ -115,7 +91,7 @@ LL |         asm!("{}", options(), const foo);
    |                    previous options
 
 error: duplicate argument named `a`
-  --> $DIR/parse-error.rs:44:36
+  --> $DIR/parse-error.rs:39:36
    |
 LL |         asm!("{a}", a = const foo, a = const bar);
    |                     -------------  ^^^^^^^^^^^^^ duplicate argument
@@ -123,7 +99,7 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    |                     previously here
 
 error: argument never used
-  --> $DIR/parse-error.rs:44:36
+  --> $DIR/parse-error.rs:39:36
    |
 LL |         asm!("{a}", a = const foo, a = const bar);
    |                                    ^^^^^^^^^^^^^ argument never used
@@ -131,13 +107,13 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {1} */"`
 
 error: explicit register arguments cannot have names
-  --> $DIR/parse-error.rs:47:18
+  --> $DIR/parse-error.rs:42:18
    |
 LL |         asm!("", a = in("eax") foo);
    |                  ^^^^^^^^^^^^^^^^^
 
 error: named arguments cannot follow explicit register arguments
-  --> $DIR/parse-error.rs:49:36
+  --> $DIR/parse-error.rs:44:36
    |
 LL |         asm!("{a}", in("eax") foo, a = const bar);
    |                     -------------  ^^^^^^^^^^^^^ named argument
@@ -145,7 +121,7 @@ LL |         asm!("{a}", in("eax") foo, a = const bar);
    |                     explicit register argument
 
 error: named arguments cannot follow explicit register arguments
-  --> $DIR/parse-error.rs:51:36
+  --> $DIR/parse-error.rs:46:36
    |
 LL |         asm!("{a}", in("eax") foo, a = const bar);
    |                     -------------  ^^^^^^^^^^^^^ named argument
@@ -153,7 +129,7 @@ LL |         asm!("{a}", in("eax") foo, a = const bar);
    |                     explicit register argument
 
 error: positional arguments cannot follow named arguments or explicit register arguments
-  --> $DIR/parse-error.rs:53:36
+  --> $DIR/parse-error.rs:48:36
    |
 LL |         asm!("{1}", in("eax") foo, const bar);
    |                     -------------  ^^^^^^^^^ positional argument
@@ -161,19 +137,19 @@ LL |         asm!("{1}", in("eax") foo, const bar);
    |                     explicit register argument
 
 error: expected one of `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `""`
-  --> $DIR/parse-error.rs:55:29
+  --> $DIR/parse-error.rs:50:29
    |
 LL |         asm!("", options(), "");
    |                             ^^ expected one of 8 possible tokens
 
 error: expected one of `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
-  --> $DIR/parse-error.rs:57:33
+  --> $DIR/parse-error.rs:52:33
    |
 LL |         asm!("{}", in(reg) foo, "{}", out(reg) foo);
    |                                 ^^^^ expected one of 8 possible tokens
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:59:14
+  --> $DIR/parse-error.rs:54:14
    |
 LL |         asm!(format!("{{{}}}", 0), in(reg) foo);
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -181,12 +157,12 @@ LL |         asm!(format!("{{{}}}", 0), in(reg) foo);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:61:21
+  --> $DIR/parse-error.rs:56:21
    |
 LL |         asm!("{1}", format!("{{{}}}", 0), in(reg) foo, out(reg) bar);
    |                     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 28 previous errors
+error: aborting due to 25 previous errors
 
