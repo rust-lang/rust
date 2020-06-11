@@ -236,9 +236,26 @@ fn runnable_action(
 fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     match def {
         Definition::Local(it) => {
-            let targets = it
-                .ty(db)
-                .flattened_type_items(db)
+            let mut targets: Vec<ModuleDef> = Vec::new();
+            let mut push_new_def = |item: ModuleDef| {
+                if !targets.contains(&item) {
+                    targets.push(item);
+                }
+            };
+
+            it.ty(db).walk(db, |t| {
+                if let Some(adt) = t.as_adt() {
+                    push_new_def(adt.into());
+                } else if let Some(trait_) = t.as_dyn_trait() {
+                    push_new_def(trait_.into());
+                } else if let Some(trait_) = t.as_impl_trait(db) {
+                    push_new_def(trait_.into());
+                } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
+                    push_new_def(trait_.into());
+                }
+            });
+
+            let targets = targets
                 .into_iter()
                 .filter_map(|it| {
                     Some(HoverGotoTypeData {
@@ -246,7 +263,7 @@ fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
                         nav: it.try_to_nav(db)?,
                     })
                 })
-                .collect_vec();
+                .collect();
 
             Some(HoverAction::GoToType(targets))
         }

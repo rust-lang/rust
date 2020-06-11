@@ -26,8 +26,8 @@ use hir_ty::{
     autoderef,
     display::{HirDisplayError, HirFormatter},
     expr::ExprValidator,
-    method_resolution, ApplicationTy, Canonical, GenericPredicate, InEnvironment, OpaqueTyId,
-    Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
+    method_resolution, ApplicationTy, Canonical, InEnvironment, Substs, TraitEnvironment, TraitRef,
+    Ty, TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, CrateName, Edition, FileId};
 use ra_prof::profile;
@@ -1375,6 +1375,18 @@ impl Type {
         Some(adt.into())
     }
 
+    pub fn as_dyn_trait(&self) -> Option<Trait> {
+        self.ty.value.dyn_trait().map(Into::into)
+    }
+
+    pub fn as_impl_trait(&self, db: &dyn HirDatabase) -> Option<Trait> {
+        self.ty.value.impl_trait_ref(db).map(|it| it.trait_.into())
+    }
+
+    pub fn as_associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<Trait> {
+        self.ty.value.associated_type_parent_trait(db).map(Into::into)
+    }
+
     // FIXME: provide required accessors such that it becomes implementable from outside.
     pub fn is_equal_for_find_impls(&self, other: &Type) -> bool {
         match (&self.ty.value, &other.ty.value) {
@@ -1397,96 +1409,72 @@ impl Type {
         }
     }
 
-    /// Returns a flattened list of all ADTs and Traits mentioned in the type
-    pub fn flattened_type_items(&self, db: &dyn HirDatabase) -> Vec<ModuleDef> {
-        fn push_new_item(item: ModuleDef, acc: &mut Vec<ModuleDef>) {
-            if !acc.contains(&item) {
-                acc.push(item);
-            }
-        }
-
-        fn push_bounds(
-            db: &dyn HirDatabase,
-            predicates: &[GenericPredicate],
-            acc: &mut Vec<ModuleDef>,
-        ) {
-            for p in predicates.iter() {
-                match p {
-                    GenericPredicate::Implemented(trait_ref) => {
-                        push_new_item(Trait::from(trait_ref.trait_).into(), acc);
-                        walk_substs(db, &trait_ref.substs, acc);
-                    }
-                    GenericPredicate::Projection(_) => {}
-                    GenericPredicate::Error => (),
-                }
-            }
-        }
-
+    pub fn walk(&self, db: &dyn HirDatabase, mut cb: impl FnMut(Type)) {
         // TypeWalk::walk does not preserve items order!
-        fn walk_substs(db: &dyn HirDatabase, substs: &Substs, acc: &mut Vec<ModuleDef>) {
+        fn walk_substs(db: &dyn HirDatabase, substs: &Substs, cb: &mut impl FnMut(Type)) {
             for ty in substs.iter() {
-                walk_type(db, ty, acc);
+                walk_ty(db, ty, cb);
             }
         }
 
-        fn walk_type(db: &dyn HirDatabase, ty: &Ty, acc: &mut Vec<ModuleDef>) {
-            match ty.strip_references() {
-                Ty::Apply(ApplicationTy { ctor, parameters, .. }) => {
-                    match ctor {
-                        TypeCtor::Adt(adt_id) => push_new_item(Adt::from(*adt_id).into(), acc),
-                        TypeCtor::AssociatedType(type_alias_id) => {
-                            let trait_id = match type_alias_id.lookup(db.upcast()).container {
-                                AssocContainerId::TraitId(it) => it,
-                                _ => panic!("not an associated type"),
-                            };
+        fn walk_trait(
+            db: &dyn HirDatabase,
+            ty: Ty,
+            trait_ref: &TraitRef,
+            cb: &mut impl FnMut(Type),
+        ) {
+            let def_db: &dyn DefDatabase = db.upcast();
+            let resolver = trait_ref.trait_.resolver(def_db);
+            let krate = trait_ref.trait_.lookup(def_db).container.module(def_db).krate;
+            cb(Type::new_with_resolver_inner(db, krate, &resolver, ty));
+            walk_substs(db, &trait_ref.substs, cb);
+        }
 
-                            push_new_item(Trait::from(trait_id).into(), acc);
+        fn walk_ty(db: &dyn HirDatabase, ty: &Ty, cb: &mut impl FnMut(Type)) {
+            let def_db: &dyn DefDatabase = db.upcast();
+            let ty = ty.strip_references();
+            match ty {
+                Ty::Apply(ApplicationTy { ctor, parameters }) => {
+                    match ctor {
+                        TypeCtor::Adt(adt) => {
+                            cb(Type::from_def(db, adt.module(def_db).krate, *adt));
+                        }
+                        TypeCtor::AssociatedType(_) => {
+                            if let Some(trait_id) = ty.associated_type_parent_trait(db) {
+                                let resolver = trait_id.resolver(def_db);
+                                let krate = trait_id.lookup(def_db).container.module(def_db).krate;
+                                cb(Type::new_with_resolver_inner(db, krate, &resolver, ty.clone()));
+                            }
                         }
                         _ => (),
                     }
+
                     // adt params, tuples, etc...
-                    walk_substs(db, parameters, acc);
-                }
-                Ty::Dyn(predicates) => {
-                    push_bounds(db, predicates, acc);
-                }
-                Ty::Placeholder(id) => {
-                    let generic_params = db.generic_params(id.parent);
-                    let param_data = &generic_params.types[id.local_id];
-                    match param_data.provenance {
-                        hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
-                            let predicates: Vec<_> = db
-                                .generic_predicates_for_param(*id)
-                                .into_iter()
-                                .map(|pred| pred.value.clone())
-                                .collect();
-                            push_bounds(db, &predicates, acc);
-                        }
-                        _ => (),
-                    }
+                    walk_substs(db, parameters, cb);
                 }
                 Ty::Opaque(opaque_ty) => {
-                    let bounds = match opaque_ty.opaque_ty_id {
-                        OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
-                            let datas = db
-                                .return_type_impl_traits(func)
-                                .expect("impl trait id without data");
-                            let data = (*datas)
-                                .as_ref()
-                                .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                            data.clone().subst(&opaque_ty.parameters)
-                        }
-                    };
-                    push_bounds(db, &bounds.value, acc);
-                    walk_substs(db, &opaque_ty.parameters, acc);
+                    if let Some(trait_ref) = ty.impl_trait_ref(db) {
+                        walk_trait(db, ty.clone(), &trait_ref, cb);
+                    }
+
+                    walk_substs(db, &opaque_ty.parameters, cb);
                 }
+                Ty::Placeholder(_) => {
+                    if let Some(trait_ref) = ty.impl_trait_ref(db) {
+                        walk_trait(db, ty.clone(), &trait_ref, cb);
+                    }
+                }
+                Ty::Dyn(_) => {
+                    if let Some(trait_ref) = ty.dyn_trait_ref() {
+                        walk_trait(db, ty.clone(), trait_ref, cb);
+                    }
+                }
+
                 _ => (),
             }
         }
 
-        let mut res: Vec<ModuleDef> = Vec::new(); // not a Set to preserve the order
-        walk_type(db, &self.ty.value, &mut res);
-        res
+        walk_ty(db, &self.ty.value, &mut cb);
     }
 }
 

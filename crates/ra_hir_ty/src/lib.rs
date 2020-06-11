@@ -877,6 +877,58 @@ impl Ty {
             _ => None,
         }
     }
+
+    pub fn impl_trait_ref(&self, db: &dyn HirDatabase) -> Option<TraitRef> {
+        match self {
+            Ty::Opaque(opaque_ty) => {
+                let predicates = match opaque_ty.opaque_ty_id {
+                    OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                        db.return_type_impl_traits(func).map(|it| {
+                            let data = (*it)
+                                .as_ref()
+                                .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                            data.clone().subst(&opaque_ty.parameters)
+                        })
+                    }
+                };
+
+                predicates.and_then(|it| {
+                    it.value.iter().find_map(|pred| match pred {
+                        GenericPredicate::Implemented(tr) => Some(tr.clone()),
+                        _ => None,
+                    })
+                })
+            }
+            Ty::Placeholder(id) => {
+                let generic_params = db.generic_params(id.parent);
+                let param_data = &generic_params.types[id.local_id];
+                match param_data.provenance {
+                    hir_def::generics::TypeParamProvenance::ArgumentImplTrait => db
+                        .generic_predicates_for_param(*id)
+                        .into_iter()
+                        .map(|pred| pred.value.clone())
+                        .find_map(|pred| match pred {
+                            GenericPredicate::Implemented(tr) => Some(tr.clone()),
+                            _ => None,
+                        }),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId> {
+        match self {
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::AssociatedType(type_alias_id), .. }) => {
+                match type_alias_id.lookup(db.upcast()).container {
+                    AssocContainerId::TraitId(trait_id) => Some(trait_id),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
 }
 
 /// This allows walking structures that contain types to do something with those
