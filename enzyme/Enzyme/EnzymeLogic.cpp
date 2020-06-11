@@ -2090,6 +2090,169 @@ public:
 
     llvm::InstVisitor<DerivativeMaker<AugmentedReturnType>>::visitIntrinsicInst(II);
   }
+
+  // Return
+  bool visitCommonCallInst(llvm::CallInst &call) {
+    CallInst* const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
+
+    if(uncacheable_args_map.find(&call) == uncacheable_args_map.end()) {
+      llvm::errs() << " call: " << call << "\n";
+      llvm::errs() << " op: " << *op << "\n";
+      for(auto & pair: uncacheable_args_map) {
+        llvm::errs() << " + " << *pair.first << "\n";
+      }
+    }
+
+    assert(uncacheable_args_map.find(&call) != uncacheable_args_map.end());
+    const std::map<Argument*, bool> &uncacheable_args = uncacheable_args_map.find(&call)->second;
+
+    //assert(augmentedReturn);
+    //std::map<const llvm::CallInst*, const AugmentedReturn*> & subaugmentations = augmentedReturn->subaugmentations;
+    CallInst* orig = &call;
+
+    Function *called = orig->getCalledFunction();
+
+    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledValue())) {
+        if (castinst->isCast())
+        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+            if (isAllocationFunction(*called, gutils->TLI) || isDeallocationFunction(*called, gutils->TLI)) {
+                called = fn;
+            }
+        }
+    }
+
+    if (called && (called->getName() == "printf" || called->getName() == "puts"))
+        return true;
+
+    // Handle lgamma, safe to recompute so no store/change to forward
+    if (called) {
+      auto n = called->getName();
+
+      if (called && (called->getName() == "tanhf" || called->getName() == "tanh")) {
+        if (mode == DerivativeMode::Forward || gutils->isConstantValue(orig)) return true;
+
+        IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+        Value* x  = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)), Builder2);
+
+        SmallVector<Value*, 1> args = { x };
+        auto coshf = gutils->oldFunc->getParent()->getOrInsertFunction( (called->getName() == "tanh") ? "cosh" : "coshf", called->getFunctionType(), called->getAttributes());
+        auto cal = cast<CallInst>(Builder2.CreateCall(coshf, args));
+        Value* dif0 = Builder2.CreateFDiv(diffe(orig, Builder2), Builder2.CreateFMul(cal, cal));
+        setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+        addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
+        return true;
+      }
+
+      if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
+        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite") {
+        if (mode == DerivativeMode::Forward || gutils->isConstantValue(orig)) {
+          return true;
+        }
+      }
+    }
+
+    if (called && isAllocationFunction(*called, gutils->TLI)) {
+
+      bool constval = gutils->isConstantValue(orig);
+
+      if (!constval) {
+        auto anti = gutils->createAntiMalloc(orig, getIndex(orig, CacheType::Shadow));
+        if (mode == DerivativeMode::Both || mode == DerivativeMode::Reverse) {
+          IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+          Value* tofree = lookup(anti, Builder2);
+          assert(tofree);
+          assert(tofree->getType());
+          assert(Type::getInt8Ty(tofree->getContext()));
+          assert(PointerType::getUnqual(Type::getInt8Ty(tofree->getContext())));
+          assert(Type::getInt8PtrTy(tofree->getContext()));
+          freeKnownAllocation(Builder2, tofree, *called, gutils->TLI)->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+        }
+      }
+      
+      //TODO enable this if we need to free the memory
+      // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE TO FREE'ing
+      if (mode != DerivativeMode::Both) {
+        if (is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/mode == DerivativeMode::Both)) {
+          IRBuilder<> BuilderZ(op);
+          gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
+        } else if (mode != DerivativeMode::Forward) {
+          //Note that here we cannot simply replace with null as users who try to find the shadow pointer will use the shadow of null rather than the true shadow of this
+          IRBuilder<> BuilderZ(op);
+          auto pn = BuilderZ.CreatePHI(op->getType(), 1, (orig->getName()+"_replacementB").str());
+          gutils->fictiousPHIs.push_back(pn);
+          gutils->replaceAWithB(op, pn);
+          gutils->erase(op);
+        }
+      } else {
+        IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
+        freeKnownAllocation(Builder2, lookup(op, Builder2), *called, gutils->TLI);
+      }
+
+      return true;
+    }
+
+
+
+    //Remove free's in forward pass so the memory can be used in the reverse pass
+    if (called && isDeallocationFunction(*called, gutils->TLI)) {
+      if( gutils->invertedPointers.count(orig) ) {
+          auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+          gutils->invertedPointers.erase(orig);
+          gutils->erase(placeholder);
+      }
+
+      llvm::Value* val = orig->getArgOperand(0);
+      while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
+
+      if (auto dc = dyn_cast<CallInst>(val)) {
+        if (dc->getCalledFunction() && isAllocationFunction(*dc->getCalledFunction(), gutils->TLI)) {
+          //llvm::errs() << "erasing free(orig): " << *orig << "\n";
+          eraseIfUnused(*orig, /*erase*/true, /*check*/false);
+          return true;
+        }
+      }
+
+      if (isa<ConstantPointerNull>(val)) {
+        llvm::errs() << "removing free of null pointer\n";
+        eraseIfUnused(*orig, /*erase*/true, /*check*/false);
+        return true;
+      }
+
+      //TODO HANDLE FREE
+      llvm::errs() << "freeing without malloc " << *val << "\n";
+      eraseIfUnused(*orig, /*erase*/true, /*check*/false);
+      return true;
+    }
+
+    bool subretused = unnecessaryValues.find(orig) == unnecessaryValues.end();
+
+    if (gutils->isConstantInstruction(orig)) {
+      // If we need this value and it is illegal to recompute it (it writes or may load uncacheable data)
+      //    Store and reload it
+      if (mode != DerivativeMode::Both && subretused && !op->doesNotAccessMemory()) {
+        IRBuilder<> BuilderZ(op);
+        gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self));
+        return true;
+      }
+
+      // If this call may write to memory and is a copy (in the just reverse pass), erase it
+      //  Any uses of it should be handled by the case above so it is safe to RAUW
+      if (op->mayWriteToMemory() && mode == DerivativeMode::Reverse) {
+        eraseIfUnused(*orig, /*erase*/true, /*check*/false);
+        return true;
+      }
+
+      // if call does not write memory and isn't used, we can erase it
+      if (!op->mayWriteToMemory() && !subretused) {
+        eraseIfUnused(*orig, /*erase*/true, /*check*/false);
+        return true;
+      }
+
+      return true;
+    }
+
+    return false;
+  }
 };
 
 template <>
@@ -2123,50 +2286,7 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
       }
   }
 
-  if (called && (called->getName() == "printf" || called->getName() == "puts"))
-      return;
-
-  // Handle lgamma, safe to recompute so no store/change to forward
-  if (called) {
-    auto n = called->getName();
-    if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
-      || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite"
-      || n == "tanh" || n == "tanhf") {
-      return;
-    }
-  }
-
-  if (called && isAllocationFunction(*called, gutils->TLI)) {
-      if (is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false)) {
-          IRBuilder<> BuilderZ(op);
-          gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
-      }
-      if (!gutils->isConstantValue(orig)) {
-          gutils->createAntiMalloc(op, getIndex(orig, CacheType::Shadow));
-      }
-      return;
-  }
-
-  //Remove free's in forward pass so the memory can be used in the reverse pass
-  if (called && isDeallocationFunction(*called, gutils->TLI)) {
-    eraseIfUnused(*orig, /*erase*/true, /*check*/false);
-    return;
-  }
-
-  bool subretused = unnecessaryValues.find(orig) == unnecessaryValues.end();
-
-  if (gutils->isConstantInstruction(orig)) {
-
-      // If we need this value and it is illegal to recompute it (it writes or may load uncacheable data)
-      //    Store and reload it
-      if (/*!topLevel*/true && subretused && !op->doesNotAccessMemory()) {
-        IRBuilder<> BuilderZ(op);
-        gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self));
-        return;
-      }
-      return;
-  }
-  //llvm::errs() << "creating augmented func call for " << *op << "\n";
+  if (visitCommonCallInst(call)) return;
 
 
   SmallVector<Value*, 8> args;
@@ -2210,6 +2330,7 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
     }
   }
 
+  bool subretused = unnecessaryValues.find(orig) == unnecessaryValues.end();
   //llvm::errs() << "aug subretused: " << subretused << " op: " << *op << "\n";
 
   DIFFE_TYPE subretType;
@@ -2399,130 +2520,9 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
     }
   }
 
-  if (called && (called->getName() == "tanhf" || called->getName() == "tanh")) {
-    if (gutils->isConstantValue(orig)) return;
-
-    Value* x  = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)), Builder2);
-
-    SmallVector<Value*, 1> args = { x };
-    auto coshf = gutils->oldFunc->getParent()->getOrInsertFunction( (called->getName() == "tanh") ? "cosh" : "coshf", called->getFunctionType(), called->getAttributes());
-    auto cal = cast<CallInst>(Builder2.CreateCall(coshf, args));
-    Value* dif0 = Builder2.CreateFDiv(diffe(orig, Builder2), Builder2.CreateFMul(cal, cal));
-    setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
-    addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
-    return;
-  }
 
   bool subretused = unnecessaryValues.find(orig) == unnecessaryValues.end();
-
-  //llvm::errs() << "newFunc:" << *gutils->oldFunc << "\n";
-  //llvm::errs() << "grad subretused: " << subretused << " op: " << *op << " uses: " << op->getNumUses() << " reverse_needed: " << is_value_needed_in_reverse(TR, gutils, orig, topLevel) << "\n";
-
-  if (called && isAllocationFunction(*called, gutils->TLI)) {
-    bool constval = gutils->isConstantValue(orig);
-    if (!constval) {
-      auto anti = gutils->createAntiMalloc(op, getIndex(orig, CacheType::Shadow));
-      Value* tofree = gutils->lookupM(anti, Builder2);
-      assert(tofree);
-      assert(tofree->getType());
-      assert(Type::getInt8Ty(tofree->getContext()));
-      assert(PointerType::getUnqual(Type::getInt8Ty(tofree->getContext())));
-      assert(Type::getInt8PtrTy(tofree->getContext()));
-      freeKnownAllocation(Builder2, tofree, *called, gutils->TLI)->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-    }
-
-    //TODO enable this if we need to free the memory
-    // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE TO FREE'ing
-    Value* inst = op;
-    if (!topLevel) {
-      if (is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/topLevel)) {
-          IRBuilder<> BuilderZ(op);
-          inst = gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
-      } else {
-          //Note that here we cannot simply replace with null as users who try to find the shadow pointer will use the shadow of null rather than the true shadow of this
-          IRBuilder<> BuilderZ(op);
-          auto pn = BuilderZ.CreatePHI(op->getType(), 1, (orig->getName()+"_replacementB").str());
-          gutils->fictiousPHIs.push_back(pn);
-          gutils->replaceAWithB(op, pn);
-          gutils->erase(op);
-          inst = nullptr;
-      }
-    }
-
-    if (topLevel) {
-      freeKnownAllocation(Builder2, gutils->lookupM(inst, Builder2), *called, gutils->TLI);
-    }
-    return;
-  }
-
-  if (called && isDeallocationFunction(*called, gutils->TLI)) {
-    if( gutils->invertedPointers.count(orig) ) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
-        gutils->invertedPointers.erase(orig);
-        gutils->erase(placeholder);
-    }
-
-    llvm::Value* val = orig->getArgOperand(0);
-    while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
-
-    if (auto dc = dyn_cast<CallInst>(val)) {
-      if (dc->getCalledFunction() && isAllocationFunction(*dc->getCalledFunction(), gutils->TLI)) {
-        //llvm::errs() << "erasing free(orig): " << *orig << "\n";
-        eraseIfUnused(*orig, /*erase*/true, /*check*/false);
-        return;
-      }
-    }
-
-    if (isa<ConstantPointerNull>(val)) {
-      llvm::errs() << "removing free of null pointer\n";
-      eraseIfUnused(*orig, /*erase*/true, /*check*/false);
-      return;
-    }
-
-    //TODO HANDLE FREE
-    llvm::errs() << "freeing without malloc " << *val << "\n";
-    eraseIfUnused(*orig, /*erase*/true, /*check*/false);
-    return;
-  }
-
-  // Handle lgamma, safe to recompute so no store/change to forward
-  if (called && gutils->isConstantInstruction(orig)) {
-    //TODO use doing a different location for the r variants
-      auto n = called->getName();
-      if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
-        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite"
-        || n == "tanh" || n == "tanhf") {
-        return;
-      }
-  }
-
-
-
-  //llvm::errs() << " considering op: " << *op << " isConstantInstruction:" << gutils->isConstantInstruction(orig) << " subretused: " << subretused << " !op->doesNotAccessMemory: " << !op->doesNotAccessMemory() << "\n";
-  if (gutils->isConstantInstruction(orig)) {
-
-    // If we need this value and it is illegal to recompute it (it writes or may load uncacheable data)
-    //    Store and reload it
-    if (!topLevel && subretused && !op->doesNotAccessMemory()) {
-      IRBuilder<> BuilderZ(op);
-      gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self));
-      return;
-    }
-
-    // If this call may write to memory and is a copy (in the just reverse pass), erase it
-    //  Any uses of it should be handled by the case above so it is safe to RAUW
-    if (op->mayWriteToMemory() && !topLevel) {
-      eraseIfUnused(*orig, /*erase*/true, /*check*/false);
-      return;
-    }
-
-    // if call does not write memory and isn't used, we can erase it
-    if (!op->mayWriteToMemory() && !subretused) {
-      eraseIfUnused(*orig, /*erase*/true, /*check*/false);
-      return;
-    }
-    return;
-  }
+  if (visitCommonCallInst(call)) return;
 
   bool modifyPrimal = shouldAugmentCall(orig, gutils, TR);
 

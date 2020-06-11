@@ -526,15 +526,15 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %.fca.2.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.1.insert, double %B1, 2
 ; CHECK-NEXT:   %.fca.3.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.2.insert, <2 x double> %W12, 3
 ; CHECK-NEXT:   %.fca.4.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.3.insert, <2 x double>* %antiptr_subcast, 4
-; CHECK-NEXT:   %.fca.5.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.4.insert, i8* %malloccall, 5
-; CHECK-NEXT:   %.fca.6.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.5.insert, i8* %"malloccall'mi", 6
+; CHECK-NEXT:   %.fca.5.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.4.insert, i8* %"malloccall'mi", 5
+; CHECK-NEXT:   %.fca.6.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.5.insert, i8* %malloccall, 6
 ; CHECK-NEXT:   ret { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.6.insert
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @diffesubfn(<2 x double>* %dst, <2 x double>* %"dst'", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %B, double* %"B'", { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 5
-; CHECK-NEXT:   %[[malloccallmi:.+]] = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 6
+; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 6
+; CHECK-NEXT:   %[[malloccallmi:.+]] = extractvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %tapeArg, 5
 ; CHECK-NEXT:   %[[tmpiipc:.+]] = bitcast i8* %[[malloccallmi]] to <2 x double>*
 ; CHECK-NEXT:   %[[tmpi:.+]] = bitcast i8* %[[malloccall]] to <2 x double>*
 

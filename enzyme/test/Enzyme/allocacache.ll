@@ -502,16 +502,16 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %add = fadd <2 x double> %mul, %call
 ; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } undef, <2 x double> %subcache, 0, 0
 ; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.0.insert, <2 x double> %W34, 0, 1
-; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.1.insert, i8* %malloccall, 0, 2
-; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.2.insert, i8* %"malloccall'mi", 0, 3
+; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.1.insert, i8* %"malloccall'mi", 0, 2
+; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.2.insert, i8* %malloccall, 0, 3
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.0.3.insert, <2 x double> %add, 1
 ; CHECK-NEXT:   ret { { <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } %.fca.1.insert
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { double, double } @diffesubfn(<2 x double>* %W, <2 x double>* %"W'", double %B1, double %B2, i64 %row, <2 x double> %differeturn, { <2 x double>, <2 x double>, i8*, i8* } %tapeArg) #8 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 2
-; CHECK-NEXT:   %[[malloccallmi:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 3
+; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 3
+; CHECK-NEXT:   %[[malloccallmi:.+]] = extractvalue { <2 x double>, <2 x double>, i8*, i8* } %tapeArg, 2
 ; CHECK-NEXT:   %[[Brefipc:.+]] = bitcast i8* %[[malloccallmi]] to <2 x double>*
 ; CHECK-NEXT:   %[[Bref:.+]] = bitcast i8* %[[malloccall]] to <2 x double>*
 ; CHECK-NEXT:   %[[W34pipge:.+]] = getelementptr inbounds <2 x double>, <2 x double>* %"W'", i64 1

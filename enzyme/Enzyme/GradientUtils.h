@@ -402,43 +402,43 @@ public:
     llvm::errs() << "end scope\n";
   }
 
-  Value* createAntiMalloc(CallInst *call, unsigned idx) {
-    assert(call->getParent()->getParent() == newFunc);
-    PHINode* placeholder = cast<PHINode>(invertedPointers[getOriginal(call)]);
+  Value* createAntiMalloc(CallInst *orig, unsigned idx) {
+    assert(orig->getParent()->getParent() == oldFunc);
+    PHINode* placeholder = cast<PHINode>(invertedPointers[orig]);
 
     assert(placeholder->getParent()->getParent() == newFunc);
-	placeholder->setName("");
+	  placeholder->setName("");
     IRBuilder<> bb(placeholder);
 
-	SmallVector<Value*, 8> args;
-	for(unsigned i=0;i < call->getNumArgOperands(); i++) {
-		args.push_back(call->getArgOperand(i));
-	}
-    Value* anti = bb.CreateCall(call->getCalledFunction(), args, call->getName()+"'mi");
-    cast<CallInst>(anti)->setAttributes(call->getAttributes());
-    cast<CallInst>(anti)->setCallingConv(call->getCallingConv());
-    cast<CallInst>(anti)->setTailCallKind(call->getTailCallKind());
-    cast<CallInst>(anti)->setDebugLoc(call->getDebugLoc());
+    SmallVector<Value*, 8> args;
+    for(unsigned i=0;i < orig->getNumArgOperands(); i++) {
+      args.push_back(getNewFromOriginal(orig->getArgOperand(i)));
+    }
+    Value* anti = bb.CreateCall(orig->getCalledFunction(), args, orig->getName()+"'mi");
+    cast<CallInst>(anti)->setAttributes(orig->getAttributes());
+    cast<CallInst>(anti)->setCallingConv(orig->getCallingConv());
+    cast<CallInst>(anti)->setTailCallKind(orig->getTailCallKind());
+    cast<CallInst>(anti)->setDebugLoc(orig->getDebugLoc());
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
 
-    invertedPointers[getOriginal(call)] = anti;
+    invertedPointers[orig] = anti;
     assert(placeholder != anti);
     bb.SetInsertPoint(placeholder->getNextNode());
     replaceAWithB(placeholder, anti);
     erase(placeholder);
 
     anti = addMalloc(bb, anti, idx);
-    invertedPointers[getOriginal(call)] = anti;
+    invertedPointers[orig] = anti;
 
     if (tape == nullptr) {
-        auto dst_arg = bb.CreateBitCast(anti,Type::getInt8PtrTy(call->getContext()));
-        auto val_arg = ConstantInt::get(Type::getInt8Ty(call->getContext()), 0);
-        auto len_arg = bb.CreateZExtOrTrunc(call->getArgOperand(0), Type::getInt64Ty(call->getContext()));
-        auto volatile_arg = ConstantInt::getFalse(call->getContext());
+        auto dst_arg = bb.CreateBitCast(anti,Type::getInt8PtrTy(orig->getContext()));
+        auto val_arg = ConstantInt::get(Type::getInt8Ty(orig->getContext()), 0);
+        auto len_arg = bb.CreateZExtOrTrunc(args[0], Type::getInt64Ty(orig->getContext()));
+        auto volatile_arg = ConstantInt::getFalse(orig->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
-        auto align_arg = ConstantInt::get(Type::getInt32Ty(call->getContext()), 0);
+        auto align_arg = ConstantInt::get(Type::getInt32Ty(orig->getContext()), 0);
         Value *nargs[] = { dst_arg, val_arg, len_arg, align_arg, volatile_arg };
 #else
         Value *nargs[] = { dst_arg, val_arg, len_arg, volatile_arg };
