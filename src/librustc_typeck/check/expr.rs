@@ -86,7 +86,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
             let expr = expr.peel_drop_temps();
-            self.suggest_deref_ref_or_into(&mut err, expr, expected_ty, ty);
+            self.suggest_deref_ref_or_into(&mut err, expr, expected_ty, ty, None);
             extend_err(&mut err);
             // Error possibly reported in `check_assign` so avoid emitting error again.
             err.emit_unless(self.is_assign_to_bool(expr, expected_ty));
@@ -98,10 +98,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
+        expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
         let ty = self.check_expr_with_hint(expr, expected);
         // checks don't need two phase
-        self.demand_coerce(expr, ty, expected, AllowTwoPhase::No)
+        self.demand_coerce(expr, ty, expected, expected_ty_expr, AllowTwoPhase::No)
     }
 
     pub(super) fn check_expr_with_hint(
@@ -776,7 +777,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: &Span,
     ) -> Ty<'tcx> {
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
-        let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
+        let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
 
         let expected_ty = expected.coercion_target_type(self, expr.span);
         if expected_ty == self.tcx.types.bool {
@@ -1026,7 +1027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (element_ty, t) = match uty {
             Some(uty) => {
-                self.check_expr_coercable_to_type(&element, uty);
+                self.check_expr_coercable_to_type(&element, uty, None);
                 (uty, uty)
             }
             None => {
@@ -1063,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| match flds {
             Some(ref fs) if i < fs.len() => {
                 let ety = fs[i].expect_ty();
-                self.check_expr_coercable_to_type(&e, ety);
+                self.check_expr_coercable_to_type(&e, ety, None);
                 ety
             }
             _ => self.check_expr_with_expectation(&e, NoExpectation),
@@ -1237,7 +1238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Make sure to give a type to the field even if there's
             // an error, so we can continue type-checking.
-            self.check_expr_coercable_to_type(&field.expr, field_type);
+            self.check_expr_coercable_to_type(&field.expr, field_type, None);
         }
 
         // Make sure the programmer specified correct number of fields.
@@ -1735,7 +1736,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
                 Some((index_ty, element_ty)) => {
                     // two-phase not needed because index_ty is never mutable
-                    self.demand_coerce(idx, idx_t, index_ty, AllowTwoPhase::No);
+                    self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);
                     element_ty
                 }
                 None => {
@@ -1788,7 +1789,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         match self.resume_yield_tys {
             Some((resume_ty, yield_ty)) => {
-                self.check_expr_coercable_to_type(&value, yield_ty);
+                self.check_expr_coercable_to_type(&value, yield_ty, None);
 
                 resume_ty
             }
@@ -1797,7 +1798,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // information. Hence, we check the source of the yield expression here and check its
             // value's type against `()` (this check should always hold).
             None if src.is_await() => {
-                self.check_expr_coercable_to_type(&value, self.tcx.mk_unit());
+                self.check_expr_coercable_to_type(&value, self.tcx.mk_unit(), None);
                 self.tcx.mk_unit()
             }
             _ => {
@@ -1836,11 +1837,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match ty.kind {
                 ty::FnDef(..) => {
                     let fnptr_ty = self.tcx.mk_fn_ptr(ty.fn_sig(self.tcx));
-                    self.demand_coerce(expr, ty, fnptr_ty, AllowTwoPhase::No);
+                    self.demand_coerce(expr, ty, fnptr_ty, None, AllowTwoPhase::No);
                 }
                 ty::Ref(_, base_ty, mutbl) => {
                     let ptr_ty = self.tcx.mk_ptr(ty::TypeAndMut { ty: base_ty, mutbl });
-                    self.demand_coerce(expr, ty, ptr_ty, AllowTwoPhase::No);
+                    self.demand_coerce(expr, ty, ptr_ty, None, AllowTwoPhase::No);
                 }
                 _ => {}
             }

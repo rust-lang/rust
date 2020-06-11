@@ -1046,7 +1046,7 @@ fn typeck_tables_of_with_fallback<'tcx>(
             // Gather locals in statics (because of block expressions).
             GatherLocalsVisitor { fcx: &fcx, parent_id: id }.visit_body(body);
 
-            fcx.check_expr_coercable_to_type(&body.value, revealed_ty);
+            fcx.check_expr_coercable_to_type(&body.value, revealed_ty, None);
 
             fcx.write_ty(id, revealed_ty);
 
@@ -4123,7 +4123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let coerce_ty = expected.only_has_type(self).unwrap_or(formal_ty);
                 // We're processing function arguments so we definitely want to use
                 // two-phase borrows.
-                self.demand_coerce(&arg, checked_ty, coerce_ty, AllowTwoPhase::Yes);
+                self.demand_coerce(&arg, checked_ty, coerce_ty, None, AllowTwoPhase::Yes);
                 final_arg_types.push((i, checked_ty, coerce_ty));
 
                 // 3. Relate the expected type and the formal one,
@@ -4541,7 +4541,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype(init.span, local_ty, init_ty);
             init_ty
         } else {
-            self.check_expr_coercable_to_type(init, local_ty)
+            self.check_expr_coercable_to_type(init, local_ty, None)
         }
     }
 
@@ -5027,6 +5027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
+        expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) {
         if let Some((sp, msg, suggestion, applicability)) = self.check_ref(expr, found, expected) {
             err.span_suggestion(sp, msg, suggestion, applicability);
@@ -5037,7 +5038,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let sp = self.sess().source_map().guess_head_span(sp);
                 err.span_label(sp, &format!("{} defined here", found));
             }
-        } else if !self.check_for_cast(err, expr, found, expected) {
+        } else if !self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
             let is_struct_pat_shorthand_field =
                 self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, expr.span);
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
