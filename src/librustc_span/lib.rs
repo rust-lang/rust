@@ -726,10 +726,18 @@ pub fn with_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) ->
     f()
 }
 
+pub fn debug_with_source_map(
+    span: Span,
+    f: &mut fmt::Formatter<'_>,
+    source_map: &SourceMap,
+) -> fmt::Result {
+    write!(f, "{} ({:?})", source_map.span_to_string(span), span.ctxt())
+}
+
 pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     GLOBALS.with(|globals| {
         if let Some(source_map) = &*globals.source_map.borrow() {
-            write!(f, "{}", source_map.span_to_string(span))
+            debug_with_source_map(span, f, source_map)
         } else {
             f.debug_struct("Span")
                 .field("lo", &span.lo())

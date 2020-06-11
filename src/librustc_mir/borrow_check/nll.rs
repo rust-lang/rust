@@ -314,7 +314,7 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     source: MirSource<'tcx>,
     body: &Body<'tcx>,
-    regioncx: &RegionInferenceContext<'_>,
+    regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
 ) {
     if !mir_util::dump_enabled(infcx.tcx, "nll", source.def_id()) {
@@ -325,7 +325,7 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
             PassWhere::BeforeCFG => {
-                regioncx.dump_mir(out)?;
+                regioncx.dump_mir(infcx.tcx, out)?;
                 writeln!(out, "|")?;
 
                 if let Some(closure_region_requirements) = closure_region_requirements {

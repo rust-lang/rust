@@ -605,7 +605,8 @@ pub trait PrettyPrinter<'tcx>:
                 // FIXME(eddyb) should use `def_span`.
                 if let Some(did) = did.as_local() {
                     let hir_id = self.tcx().hir().as_local_hir_id(did);
-                    p!(write("@{:?}", self.tcx().hir().span(hir_id)));
+                    let span = self.tcx().hir().span(hir_id);
+                    p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
 
                     if substs.as_generator().is_valid() {
                         let upvar_tys = substs.as_generator().upvar_tys();
@@ -653,7 +654,8 @@ pub trait PrettyPrinter<'tcx>:
                     if self.tcx().sess.opts.debugging_opts.span_free_formats {
                         p!(write("@"), print_def_path(did.to_def_id(), substs));
                     } else {
-                        p!(write("@{:?}", self.tcx().hir().span(hir_id)));
+                        let span = self.tcx().hir().span(hir_id);
+                        p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
                     }
 
                     if substs.as_closure().is_valid() {
@@ -1362,7 +1364,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 if !self.empty_path {
                     write!(self, "::")?;
                 }
-                write!(self, "<impl at {:?}>", span)?;
+                write!(self, "<impl at {}>", self.tcx.sess.source_map().span_to_string(span))?;
                 self.empty_path = false;
 
                 return Ok(self);
