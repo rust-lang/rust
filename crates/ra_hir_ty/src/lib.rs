@@ -73,6 +73,7 @@ pub use lower::{
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
 pub use chalk_ir::{BoundVar, DebruijnIndex};
+use itertools::Itertools;
 
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or
@@ -815,6 +816,11 @@ impl Ty {
         }
     }
 
+    /// If this is a `dyn Trait`, returns that trait.
+    pub fn dyn_trait(&self) -> Option<TraitId> {
+        self.dyn_trait_ref().map(|it| it.trait_)
+    }
+
     fn builtin_deref(&self) -> Option<Ty> {
         match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
@@ -867,18 +873,7 @@ impl Ty {
         }
     }
 
-    /// If this is a `dyn Trait`, returns that trait.
-    pub fn dyn_trait(&self) -> Option<TraitId> {
-        match self {
-            Ty::Dyn(predicates) => predicates.iter().find_map(|pred| match pred {
-                GenericPredicate::Implemented(tr) => Some(tr.trait_),
-                _ => None,
-            }),
-            _ => None,
-        }
-    }
-
-    pub fn impl_trait_ref(&self, db: &dyn HirDatabase) -> Option<TraitRef> {
+    pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<GenericPredicate>> {
         match self {
             Ty::Opaque(opaque_ty) => {
                 let predicates = match opaque_ty.opaque_ty_id {
@@ -892,25 +887,21 @@ impl Ty {
                     }
                 };
 
-                predicates.and_then(|it| {
-                    it.value.iter().find_map(|pred| match pred {
-                        GenericPredicate::Implemented(tr) => Some(tr.clone()),
-                        _ => None,
-                    })
-                })
+                predicates.map(|it| it.value)
             }
             Ty::Placeholder(id) => {
                 let generic_params = db.generic_params(id.parent);
                 let param_data = &generic_params.types[id.local_id];
                 match param_data.provenance {
-                    hir_def::generics::TypeParamProvenance::ArgumentImplTrait => db
-                        .generic_predicates_for_param(*id)
-                        .into_iter()
-                        .map(|pred| pred.value.clone())
-                        .find_map(|pred| match pred {
-                            GenericPredicate::Implemented(tr) => Some(tr.clone()),
-                            _ => None,
-                        }),
+                    hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
+                        let predicates = db
+                            .generic_predicates_for_param(*id)
+                            .into_iter()
+                            .map(|pred| pred.value.clone())
+                            .collect_vec();
+
+                        Some(predicates)
+                    }
                     _ => None,
                 }
             }
@@ -922,6 +913,12 @@ impl Ty {
         match self {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::AssociatedType(type_alias_id), .. }) => {
                 match type_alias_id.lookup(db.upcast()).container {
+                    AssocContainerId::TraitId(trait_id) => Some(trait_id),
+                    _ => None,
+                }
+            }
+            Ty::Projection(projection_ty) => {
+                match projection_ty.associated_ty.lookup(db.upcast()).container {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
                 }
@@ -1104,10 +1101,10 @@ pub enum OpaqueTyId {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ReturnTypeImplTraits {
-    pub impl_traits: Vec<ReturnTypeImplTrait>,
+    pub(crate) impl_traits: Vec<ReturnTypeImplTrait>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct ReturnTypeImplTrait {
+pub(crate) struct ReturnTypeImplTrait {
     pub bounds: Binders<Vec<GenericPredicate>>,
 }
