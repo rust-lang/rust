@@ -323,7 +323,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn tcx_at(&self) -> TyCtxtAt<'tcx> {
-        self.tcx.at(self.cur_span())
+        // Computing the current span has a non-trivial cost, and for cycle errors
+        // the "root span" is good enough.
+        self.tcx.at(self.root_span)
     }
 
     #[inline(always)]
@@ -406,7 +408,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, self.param_env, self.cur_span())
+        ty.is_freeze(self.tcx, self.param_env, self.root_span)
     }
 
     pub fn load_mir(
@@ -889,7 +891,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // FIXME: We can hit delay_span_bug if this is an invalid const, interning finds
         // that problem, but we never run validation to show an error. Can we ensure
         // this does not happen?
-        let val = self.tcx_at().const_eval_raw(param_env.and(gid))?;
+        let val = self.tcx.at(self.cur_span()).const_eval_raw(param_env.and(gid))?;
         self.raw_const_to_mplace(val)
     }
 

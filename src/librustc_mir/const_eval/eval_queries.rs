@@ -317,7 +317,10 @@ pub fn const_eval_raw_provider<'tcx>(
             if is_static {
                 // Ensure that if the above error was either `TooGeneric` or `Reported`
                 // an error must be reported.
-                let v = err.report_as_error(ecx.tcx_at(), "could not evaluate static initializer");
+                let v = err.report_as_error(
+                    ecx.tcx.at(ecx.cur_span()),
+                    "could not evaluate static initializer",
+                );
 
                 // If this is `Reveal:All`, then we need to make sure an error is reported but if
                 // this is `Reveal::UserFacing`, then it's expected that we could get a
@@ -373,13 +376,16 @@ pub fn const_eval_raw_provider<'tcx>(
                         // anything else (array lengths, enum initializers, constant patterns) are
                         // reported as hard errors
                         } else {
-                            err.report_as_error(ecx.tcx_at(), "evaluation of constant value failed")
+                            err.report_as_error(
+                                ecx.tcx.at(ecx.cur_span()),
+                                "evaluation of constant value failed",
+                            )
                         }
                     }
                 }
             } else {
                 // use of broken constant from other crate
-                err.report_as_error(ecx.tcx_at(), "could not evaluate constant")
+                err.report_as_error(ecx.tcx.at(ecx.cur_span()), "could not evaluate constant")
             }
         })
 }
