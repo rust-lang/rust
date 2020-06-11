@@ -12,12 +12,13 @@ use rustc_hash::FxHashSet;
 pub use crate::{
     cancellation::Canceled,
     input::{
-        CrateData, CrateGraph, CrateId, CrateName, Dependency, Edition, Env, ExternSource,
-        ExternSourceId, FileId, ProcMacroId, SourceRoot, SourceRootId,
+        CrateData, CrateGraph, CrateId, CrateName, Dependency, Edition, Env, FileId, ProcMacroId,
+        SourceRoot, SourceRootId,
     },
 };
 pub use relative_path::{RelativePath, RelativePathBuf};
 pub use salsa;
+pub use vfs::{file_set::FileSet, AbsPathBuf, VfsPath};
 
 #[macro_export]
 macro_rules! impl_intern_key {
@@ -125,8 +126,6 @@ pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
     fn file_text(&self, file_id: FileId) -> Arc<String>;
     /// Path to a file, relative to the root of its source root.
-    #[salsa::input]
-    fn file_relative_path(&self, file_id: FileId) -> RelativePathBuf;
     /// Source root of the file.
     #[salsa::input]
     fn file_source_root(&self, file_id: FileId) -> SourceRootId;
@@ -161,24 +160,9 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     }
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         // FIXME: this *somehow* should be platform agnostic...
-        if std::path::Path::new(path).is_absolute() {
-            let krate = *self.relevant_crates(anchor).iter().next()?;
-            let (extern_source_id, relative_file) =
-                self.0.crate_graph()[krate].extern_source.extern_path(path.as_ref())?;
-
-            let source_root = self.0.source_root(SourceRootId(extern_source_id.0));
-            source_root.file_by_relative_path(&relative_file)
-        } else {
-            let rel_path = {
-                let mut rel_path = self.0.file_relative_path(anchor);
-                assert!(rel_path.pop());
-                rel_path.push(path);
-                rel_path.normalize()
-            };
-            let source_root = self.0.file_source_root(anchor);
-            let source_root = self.0.source_root(source_root);
-            source_root.file_by_relative_path(&rel_path)
-        }
+        let source_root = self.0.file_source_root(anchor);
+        let source_root = self.0.source_root(source_root);
+        source_root.file_set.resolve_path(anchor, path)
     }
 
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {

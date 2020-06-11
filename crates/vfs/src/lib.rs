@@ -38,7 +38,6 @@ mod vfs_path;
 mod path_interner;
 pub mod file_set;
 pub mod loader;
-pub mod walkdir_loader;
 
 use std::{fmt, mem};
 

@@ -41,7 +41,7 @@ pub fn parse_search_replace(
     match_finder.add_rule(rule);
     for &root in db.local_roots().iter() {
         let sr = db.source_root(root);
-        for file_id in sr.walk() {
+        for file_id in sr.iter() {
             if let Some(edit) = match_finder.edits_for_file(file_id) {
                 edits.push(SourceFileEdit { file_id, edit });
             }

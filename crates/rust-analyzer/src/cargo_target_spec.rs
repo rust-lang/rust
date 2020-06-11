@@ -1,5 +1,7 @@
 //! See `CargoTargetSpec`
 
+use std::path::PathBuf;
+
 use ra_cfg::CfgExpr;
 use ra_ide::{FileId, RunnableKind, TestId};
 use ra_project_model::{self, TargetKind};
@@ -12,6 +14,7 @@ use crate::{global_state::GlobalStateSnapshot, Result};
 /// build/test/run the target.
 #[derive(Clone)]
 pub(crate) struct CargoTargetSpec {
+    pub(crate) workspace_root: PathBuf,
     pub(crate) package: String,
     pub(crate) target: String,
     pub(crate) target_kind: TargetKind,
@@ -101,6 +104,7 @@ impl CargoTargetSpec {
             None => return Ok(None),
         };
         let res = CargoTargetSpec {
+            workspace_root: cargo_ws.workspace_root().to_path_buf(),
             package: cargo_ws.package_flag(&cargo_ws[cargo_ws[target].package]),
             target: cargo_ws[target].name.clone(),
             target_kind: cargo_ws[target].kind,

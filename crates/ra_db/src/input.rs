@@ -6,27 +6,15 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{
-    fmt, ops,
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Arc,
-};
+use std::{fmt, ops, str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
 use ra_tt::TokenExpander;
 use rustc_hash::{FxHashMap, FxHashSet};
+use vfs::file_set::FileSet;
 
-use crate::{RelativePath, RelativePathBuf};
-
-/// `FileId` is an integer which uniquely identifies a file. File paths are
-/// messy and system-dependent, so most of the code should work directly with
-/// `FileId`, without inspecting the path. The mapping between `FileId` and path
-/// and `SourceRoot` is constant. A file rename is represented as a pair of
-/// deletion/creation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FileId(pub u32);
+pub use vfs::FileId;
 
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to a
@@ -45,27 +33,18 @@ pub struct SourceRoot {
     /// Libraries are considered mostly immutable, this assumption is used to
     /// optimize salsa's query structure
     pub is_library: bool,
-    files: FxHashMap<RelativePathBuf, FileId>,
+    pub(crate) file_set: FileSet,
 }
 
 impl SourceRoot {
-    pub fn new_local() -> SourceRoot {
-        SourceRoot { is_library: false, files: Default::default() }
+    pub fn new_local(file_set: FileSet) -> SourceRoot {
+        SourceRoot { is_library: false, file_set }
     }
-    pub fn new_library() -> SourceRoot {
-        SourceRoot { is_library: true, files: Default::default() }
+    pub fn new_library(file_set: FileSet) -> SourceRoot {
+        SourceRoot { is_library: true, file_set }
     }
-    pub fn insert_file(&mut self, path: RelativePathBuf, file_id: FileId) {
-        self.files.insert(path, file_id);
-    }
-    pub fn remove_file(&mut self, path: &RelativePath) {
-        self.files.remove(path);
-    }
-    pub fn walk(&self) -> impl Iterator<Item = FileId> + '_ {
-        self.files.values().copied()
-    }
-    pub fn file_by_relative_path(&self, path: &RelativePath) -> Option<FileId> {
-        self.files.get(path).copied()
+    pub fn iter(&self) -> impl Iterator<Item = FileId> + '_ {
+        self.file_set.iter()
     }
 }
 
@@ -141,7 +120,6 @@ pub struct CrateData {
     pub display_name: Option<CrateName>,
     pub cfg_options: CfgOptions,
     pub env: Env,
-    pub extern_source: ExternSource,
     pub dependencies: Vec<Dependency>,
     pub proc_macro: Vec<ProcMacro>,
 }
@@ -152,20 +130,9 @@ pub enum Edition {
     Edition2015,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ExternSourceId(pub u32);
-
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Env {
     entries: FxHashMap<String, String>,
-}
-
-// FIXME: Redesign vfs for solve the following limitation ?
-// Note: Some env variables (e.g. OUT_DIR) are located outside of the
-// crate. We store a map to allow remap it to ExternSourceId
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct ExternSource {
-    extern_paths: FxHashMap<PathBuf, ExternSourceId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -182,7 +149,6 @@ impl CrateGraph {
         display_name: Option<CrateName>,
         cfg_options: CfgOptions,
         env: Env,
-        extern_source: ExternSource,
         proc_macro: Vec<(SmolStr, Arc<dyn ra_tt::TokenExpander>)>,
     ) -> CrateId {
         let proc_macro =
@@ -194,7 +160,6 @@ impl CrateGraph {
             display_name,
             cfg_options,
             env,
-            extern_source,
             proc_macro,
             dependencies: Vec::new(),
         };
@@ -334,20 +299,6 @@ impl Env {
     }
 }
 
-impl ExternSource {
-    pub fn extern_path(&self, path: &Path) -> Option<(ExternSourceId, RelativePathBuf)> {
-        self.extern_paths.iter().find_map(|(root_path, id)| {
-            let rel_path = path.strip_prefix(root_path).ok()?;
-            let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
-            Some((*id, rel_path))
-        })
-    }
-
-    pub fn set_extern_path(&mut self, root_path: &Path, root: ExternSourceId) {
-        self.extern_paths.insert(root_path.to_path_buf(), root);
-    }
-}
-
 #[derive(Debug)]
 pub struct ParseEditionError {
     invalid_input: String,
@@ -378,7 +329,6 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
-            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -387,7 +337,6 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
-            Default::default(),
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -395,7 +344,6 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
@@ -413,7 +361,6 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
-            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -421,7 +368,6 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
@@ -438,7 +384,6 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
-            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -447,7 +392,6 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
-            Default::default(),
         );
         let crate3 = graph.add_crate_root(
             FileId(3u32),
@@ -455,7 +399,6 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
@@ -472,7 +415,6 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
-            Default::default(),
         );
         let crate2 = graph.add_crate_root(
             FileId(2u32),
@@ -480,7 +422,6 @@ mod tests {
             None,
             CfgOptions::default(),
             Env::default(),
-            Default::default(),
             Default::default(),
         );
         assert!(graph

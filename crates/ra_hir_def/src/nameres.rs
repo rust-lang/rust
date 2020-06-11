@@ -104,6 +104,7 @@ pub enum ModuleOrigin {
     },
     /// Note that non-inline modules, by definition, live inside non-macro file.
     File {
+        is_mod_rs: bool,
         declaration: AstId<ast::Module>,
         definition: FileId,
     },

@@ -1,32 +1,21 @@
 //! Loads a Cargo project into a static instance of analysis, without support
 //! for incorporating changes.
-
-use std::path::{Path, PathBuf};
+use std::{convert::TryFrom, path::Path, sync::Arc};
 
 use anyhow::Result;
 use crossbeam_channel::{unbounded, Receiver};
-use ra_db::{ExternSourceId, FileId, SourceRootId};
+use ra_db::{AbsPathBuf, CrateGraph};
 use ra_ide::{AnalysisChange, AnalysisHost};
-use ra_project_model::{
-    CargoConfig, PackageRoot, ProcMacroClient, ProjectManifest, ProjectWorkspace,
-};
-use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
-use rustc_hash::{FxHashMap, FxHashSet};
+use ra_project_model::{CargoConfig, ProcMacroClient, ProjectManifest, ProjectWorkspace};
+use vfs::loader::Handle;
 
-use crate::vfs_glob::RustPackageFilterBuilder;
-
-fn vfs_file_to_id(f: ra_vfs::VfsFile) -> FileId {
-    FileId(f.0)
-}
-fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
-    SourceRootId(r.0)
-}
+use crate::global_state::{ProjectFolders, SourceRootConfig};
 
 pub fn load_cargo(
     root: &Path,
     load_out_dirs_from_check: bool,
     with_proc_macro: bool,
-) -> Result<(AnalysisHost, FxHashMap<SourceRootId, PackageRoot>)> {
+) -> Result<(AnalysisHost, vfs::Vfs)> {
     let root = std::env::current_dir()?.join(root);
     let root = ProjectManifest::discover_single(&root)?;
     let ws = ProjectWorkspace::load(
@@ -35,123 +24,74 @@ pub fn load_cargo(
         true,
     )?;
 
-    let mut extern_dirs = FxHashSet::default();
-
     let (sender, receiver) = unbounded();
-    let sender = Box::new(move |t| sender.send(t).unwrap());
+    let mut vfs = vfs::Vfs::default();
+    let mut loader = {
+        let loader =
+            vfs_notify::LoaderHandle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+        Box::new(loader)
+    };
 
-    let mut roots = Vec::new();
-    let project_roots = ws.to_roots();
-    for root in &project_roots {
-        roots.push(RootEntry::new(
-            root.path().to_owned(),
-            RustPackageFilterBuilder::default().set_member(root.is_member()).into_vfs_filter(),
-        ));
-
-        if let Some(out_dir) = root.out_dir() {
-            extern_dirs.insert(out_dir.to_path_buf());
-            roots.push(RootEntry::new(
-                out_dir.to_owned(),
-                RustPackageFilterBuilder::default().set_member(root.is_member()).into_vfs_filter(),
-            ))
-        }
-    }
-
-    let (mut vfs, roots) = Vfs::new(roots, sender, Watch(false));
-
-    let source_roots = roots
-        .into_iter()
-        .map(|vfs_root| {
-            let source_root_id = vfs_root_to_id(vfs_root);
-            let project_root = project_roots
-                .iter()
-                .find(|it| it.path() == vfs.root2path(vfs_root))
-                .unwrap()
-                .clone();
-            (source_root_id, project_root)
-        })
-        .collect::<FxHashMap<_, _>>();
-
-    let proc_macro_client = if !with_proc_macro {
-        ProcMacroClient::dummy()
-    } else {
+    let proc_macro_client = if with_proc_macro {
         let path = std::env::current_exe()?;
         ProcMacroClient::extern_process(path, &["proc-macro"]).unwrap()
+    } else {
+        ProcMacroClient::dummy()
     };
-    let host = load(&source_roots, ws, &mut vfs, receiver, extern_dirs, &proc_macro_client);
-    Ok((host, source_roots))
+
+    let crate_graph = ws.to_crate_graph(None, &proc_macro_client, &mut |path: &Path| {
+        let path = AbsPathBuf::try_from(path.to_path_buf()).unwrap();
+        let contents = loader.load_sync(&path);
+        let path = vfs::VfsPath::from(path);
+        vfs.set_file_contents(path.clone(), contents);
+        vfs.file_id(&path)
+    });
+
+    let project_folders = ProjectFolders::new(&[ws]);
+    loader.set_config(vfs::loader::Config { load: project_folders.load, watch: vec![] });
+
+    log::debug!("crate graph: {:?}", crate_graph);
+    let host = load(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
+    Ok((host, vfs))
 }
 
 pub(crate) fn load(
-    source_roots: &FxHashMap<SourceRootId, PackageRoot>,
-    ws: ProjectWorkspace,
-    vfs: &mut Vfs,
-    receiver: Receiver<VfsTask>,
-    extern_dirs: FxHashSet<PathBuf>,
-    proc_macro_client: &ProcMacroClient,
+    crate_graph: CrateGraph,
+    source_root_config: SourceRootConfig,
+    vfs: &mut vfs::Vfs,
+    receiver: &Receiver<vfs::loader::Message>,
 ) -> AnalysisHost {
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
     let mut host = AnalysisHost::new(lru_cap);
     let mut analysis_change = AnalysisChange::new();
 
     // wait until Vfs has loaded all roots
-    let mut roots_loaded = FxHashSet::default();
-    let mut extern_source_roots = FxHashMap::default();
     for task in receiver {
-        vfs.handle_task(task);
-        let mut done = false;
-        for change in vfs.commit_changes() {
-            match change {
-                VfsChange::AddRoot { root, files } => {
-                    let source_root_id = vfs_root_to_id(root);
-                    let is_local = source_roots[&source_root_id].is_member();
-                    log::debug!(
-                        "loaded source root {:?} with path {:?}",
-                        source_root_id,
-                        vfs.root2path(root)
-                    );
-                    analysis_change.add_root(source_root_id, is_local);
-
-                    let vfs_root_path = vfs.root2path(root);
-                    if extern_dirs.contains(&vfs_root_path) {
-                        extern_source_roots.insert(vfs_root_path, ExternSourceId(root.0));
-                    }
-
-                    let mut file_map = FxHashMap::default();
-                    for (vfs_file, path, text) in files {
-                        let file_id = vfs_file_to_id(vfs_file);
-                        analysis_change.add_file(source_root_id, file_id, path.clone(), text);
-                        file_map.insert(path, file_id);
-                    }
-                    roots_loaded.insert(source_root_id);
-                    if roots_loaded.len() == vfs.n_roots() {
-                        done = true;
-                    }
+        match task {
+            vfs::loader::Message::Progress { n_entries_done, n_entries_total } => {
+                if n_entries_done == n_entries_total {
+                    break;
                 }
-                VfsChange::AddFile { root, file, path, text } => {
-                    let source_root_id = vfs_root_to_id(root);
-                    let file_id = vfs_file_to_id(file);
-                    analysis_change.add_file(source_root_id, file_id, path, text);
-                }
-                VfsChange::RemoveFile { .. } | VfsChange::ChangeFile { .. } => {
-                    // We just need the first scan, so just ignore these
+            }
+            vfs::loader::Message::Loaded { files } => {
+                for (path, contents) in files {
+                    vfs.set_file_contents(path.into(), contents)
                 }
             }
         }
-        if done {
-            break;
+    }
+    let changes = vfs.take_changes();
+    for file in changes {
+        if file.exists() {
+            let contents = vfs.file_contents(file.file_id).to_vec();
+            if let Ok(text) = String::from_utf8(contents) {
+                analysis_change.change_file(file.file_id, Some(Arc::new(text)))
+            }
         }
     }
+    let source_roots = source_root_config.partition(&vfs);
+    analysis_change.set_roots(source_roots);
 
-    let crate_graph =
-        ws.to_crate_graph(None, &extern_source_roots, proc_macro_client, &mut |path: &Path| {
-            // Some path from metadata will be non canonicalized, e.g. /foo/../bar/lib.rs
-            let path = path.canonicalize().ok()?;
-            let vfs_file = vfs.load(&path);
-            log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
-            vfs_file.map(vfs_file_to_id)
-        });
-    log::debug!("crate graph: {:?}", crate_graph);
     analysis_change.set_crate_graph(crate_graph);
 
     host.apply_change(analysis_change);
@@ -167,7 +107,7 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let (host, _roots) = load_cargo(path, false, false).unwrap();
+        let (host, _vfs) = load_cargo(path, false, false).unwrap();
         let n_crates = Crate::all(host.raw_database()).len();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);

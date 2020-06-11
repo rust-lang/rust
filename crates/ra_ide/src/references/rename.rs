@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
-use ra_db::{RelativePathBuf, SourceDatabaseExt};
+use ra_db::SourceDatabaseExt;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -109,9 +109,8 @@ fn rename_mod(
     let file_id = src.file_id.original_file(db);
     match src.value {
         ModuleSource::SourceFile(..) => {
-            let mod_path: RelativePathBuf = db.file_relative_path(file_id);
             // mod is defined in path/to/dir/mod.rs
-            let dst = if mod_path.file_stem() == Some("mod") {
+            let dst = if module.is_mod_rs(db) {
                 format!("../{}/mod.rs", new_name)
             } else {
                 format!("{}.rs", new_name)

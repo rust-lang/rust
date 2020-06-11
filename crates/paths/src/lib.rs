@@ -2,7 +2,7 @@
 //! relative paths.
 use std::{
     convert::{TryFrom, TryInto},
-    io, ops,
+    ops,
     path::{Component, Path, PathBuf},
 };
 
@@ -46,9 +46,6 @@ impl TryFrom<&str> for AbsPathBuf {
 }
 
 impl AbsPathBuf {
-    pub fn canonicalized(path: &Path) -> io::Result<AbsPathBuf> {
-        path.canonicalize().map(|it| AbsPathBuf::try_from(it).unwrap())
-    }
     pub fn as_path(&self) -> &AbsPath {
         AbsPath::new_unchecked(self.0.as_path())
     }

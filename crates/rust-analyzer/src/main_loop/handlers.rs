@@ -396,7 +396,6 @@ pub fn handle_runnables(
     let line_index = snap.analysis().file_line_index(file_id)?;
     let offset = params.position.map(|it| from_proto::offset(&line_index, it));
     let mut res = Vec::new();
-    let workspace_root = snap.workspace_root_for(file_id);
     let cargo_spec = CargoTargetSpec::for_file(&snap, file_id)?;
     for runnable in snap.analysis().runnables(file_id)? {
         if let Some(offset) = offset {
@@ -420,7 +419,7 @@ pub fn handle_runnables(
                     location: None,
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
-                        workspace_root: workspace_root.map(|root| root.to_owned()),
+                        workspace_root: Some(spec.workspace_root.clone()),
                         cargo_args: vec![
                             cmd.to_string(),
                             "--package".to_string(),
@@ -437,7 +436,7 @@ pub fn handle_runnables(
                 location: None,
                 kind: lsp_ext::RunnableKind::Cargo,
                 args: lsp_ext::CargoRunnable {
-                    workspace_root: workspace_root.map(|root| root.to_owned()),
+                    workspace_root: None,
                     cargo_args: vec!["check".to_string(), "--workspace".to_string()],
                     executable_args: Vec::new(),
                 },

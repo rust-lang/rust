@@ -52,7 +52,7 @@ use std::collections::Spam;
         partial_result_params: PartialResultParams::default(),
         work_done_progress_params: WorkDoneProgressParams::default(),
     });
-    assert!(format!("{}", res).contains("HashMap"));
+    assert!(res.to_string().contains("HashMap"));
     eprintln!("completion took {:?}", completion_start.elapsed());
 }
 

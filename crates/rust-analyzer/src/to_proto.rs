@@ -10,11 +10,10 @@ use ra_ide::{
     ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
-use ra_vfs::LineEndings;
 
 use crate::{
-    cargo_target_spec::CargoTargetSpec, global_state::GlobalStateSnapshot, lsp_ext,
-    semantic_tokens, Result,
+    cargo_target_spec::CargoTargetSpec, global_state::GlobalStateSnapshot,
+    line_endings::LineEndings, lsp_ext, semantic_tokens, Result,
 };
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
@@ -650,6 +649,7 @@ pub(crate) fn runnable(
     runnable: Runnable,
 ) -> Result<lsp_ext::Runnable> {
     let spec = CargoTargetSpec::for_file(snap, file_id)?;
+    let workspace_root = spec.as_ref().map(|it| it.workspace_root.clone());
     let target = spec.as_ref().map(|s| s.target.clone());
     let (cargo_args, executable_args) =
         CargoTargetSpec::runnable_args(spec, &runnable.kind, &runnable.cfg_exprs)?;
@@ -661,7 +661,7 @@ pub(crate) fn runnable(
         location: Some(location),
         kind: lsp_ext::RunnableKind::Cargo,
         args: lsp_ext::CargoRunnable {
-            workspace_root: snap.workspace_root_for(file_id).map(|root| root.to_owned()),
+            workspace_root: workspace_root,
             cargo_args,
             executable_args,
         },
