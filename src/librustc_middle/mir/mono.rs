@@ -91,9 +91,9 @@ impl<'tcx> MonoItem<'tcx> {
         match *self {
             MonoItem::Fn(ref instance) => {
                 let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
-                // If this function isn't inlined or otherwise has explicit
-                // linkage, then we'll be creating a globally shared version.
-                if self.explicit_linkage(tcx).is_some()
+                // If this function isn't inlined or otherwise has an extern
+                // indicator, then we'll be creating a globally shared version.
+                if tcx.codegen_fn_attrs(instance.def_id()).contains_extern_indicator()
                     || !instance.def.generates_cgu_internal_copy(tcx)
                     || Some(instance.def_id()) == entry_def_id.map(LocalDefId::to_def_id)
                 {
@@ -102,7 +102,7 @@ impl<'tcx> MonoItem<'tcx> {
 
                 // At this point we don't have explicit linkage and we're an
                 // inlined function. If we're inlining into all CGUs then we'll
-                // be creating a local copy per CGU
+                // be creating a local copy per CGU.
                 if generate_cgu_internal_copies {
                     return InstantiationMode::LocalCopy;
                 }
