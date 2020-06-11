@@ -237,6 +237,10 @@ public:
                 case BinaryOperator::Shl:
                 case BinaryOperator::AShr:
                 case BinaryOperator::LShr:
+                    //! Anything << 16   ==> Anything
+                    if (typeEnum == IntType::Anything) {
+                        break;
+                    }
                     if (typeEnum != IntType::Integer) {
                         typeEnum = IntType::Integer;
                         changed = true;
@@ -469,7 +473,7 @@ public:
         mapping.erase(v);
     }
 
-    void insert(const std::vector<int> v, DataType d) {
+    void insert(const std::vector<int> v, DataType d, bool intsAreLegalSubPointer=false) {
         if (v.size() > 0) {
             //check pointer abilities from before
             {
@@ -489,9 +493,15 @@ public:
             tmp.push_back(-1);
             auto found = mapping.find(tmp);
             if (found != mapping.end()) {
+
                 if (found->second != d) {
-                    llvm::errs() << "FAILED dt: " << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+                    if (d == IntType::Anything) {
+                        found->second = d;
+                    } else {
+                        llvm::errs() << "FAILED dt: " << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+                    }
                 }
+                assert(found->second == d);
                 return;
             }
             }
@@ -503,8 +513,13 @@ public:
             auto found = mapping.find(tmp);
             if (found != mapping.end()) {
                 if (found->second != d) {
-                    llvm::errs() << "FAILED dt: " << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+                    if (d == IntType::Anything) {
+                        found->second = d;
+                    } else {
+                        llvm::errs() << "FAILED dt: " << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+                    }
                 }
+                assert(found->second == d);
                 return;
             }
             }
@@ -522,7 +537,15 @@ public:
                             }
                         }
                         if (!matches) continue;
-                        assert(pair.second == d);
+
+                        if (intsAreLegalSubPointer && pair.second.typeEnum == IntType::Integer && d.typeEnum == IntType::Pointer) {
+
+                        } else {
+                            if (pair.second != d) {
+                                llvm::errs() << "inserting into : " << str() << " with " << to_string(v) << " of " << d.str() << "\n";
+                            }
+                            assert(pair.second == d);
+                        }
                         toremove.insert(pair.first);
                     }
                 }
@@ -707,7 +730,7 @@ public:
         return dat; 
     }
 
-    ValueData Lookup(size_t len) const {
+    ValueData Lookup(size_t len, const llvm::DataLayout &dl) const {
 
         // Map of indices[1:] => ( End => possible Index[0] )
         std::map<std::vector<int>, std::map<DataType, std::set<int> >> staging;
@@ -719,7 +742,7 @@ public:
             if (pair.first[0] != 0 && pair.first[0] != -1) continue;
 
             if (pair.first.size() == 1) {
-                assert(pair.second == DataType(IntType::Pointer));
+                assert(pair.second == DataType(IntType::Pointer) || pair.second == DataType(IntType::Anything));
                 continue;
             }
             
@@ -759,6 +782,8 @@ public:
                             llvm::errs() << *flt << "\n";
                             assert(0 && "unhandled float type");
                         }
+                    } else if (dt.typeEnum == IntType::Pointer) {
+                        chunk = dl.getPointerSizeInBits() / 8;
                     }
 
                     legalCombine = true;
@@ -775,7 +800,7 @@ public:
                 for(auto v : pnext) next.push_back(v);
 
                 if (legalCombine) {
-                    dat.insert(next, dt);
+                    dat.insert(next, dt, /*intsAreLegalPointerSub*/true);
                 } else {
                     for(auto e : set) {
                         next[0] = e;
@@ -789,7 +814,7 @@ public:
         return dat;
     }
 
-    ValueData CanonicalizeValue(size_t len) const {
+    ValueData CanonicalizeValue(size_t len, const llvm::DataLayout& dl) const {
 
         // Map of indices[1:] => ( End => possible Index[0] )
         std::map<std::vector<int>, std::map<DataType, std::set<int> >> staging;
@@ -828,6 +853,8 @@ public:
                             llvm::errs() << *flt << "\n";
                             assert(0 && "unhandled float type");
                         }
+                    } else if (dt.typeEnum == IntType::Pointer) {
+                        chunk = dl.getPointerSizeInBits() / 8;
                     }
 
                     legalCombine = true;
@@ -844,7 +871,7 @@ public:
                 for(auto v : pnext) next.push_back(v);
 
                 if (legalCombine) {
-                    dat.insert(next, dt);
+                    dat.insert(next, dt, /*intsAreLegalPointerSub*/true);
                 } else {
                     for(auto e : set) {
                         next[0] = e;
@@ -885,7 +912,7 @@ public:
     }
 
     //! Replace offsets in [offset, offset+maxSize] with [addOffset, addOffset + maxSize]
-    ValueData ShiftIndices(int offset, int maxSize, size_t addOffset=0) const {
+    ValueData ShiftIndices(const llvm::DataLayout& dl, int offset, int maxSize, size_t addOffset=0) const {
         ValueData dat;
 
         for(const auto &pair : mapping) {
@@ -931,8 +958,8 @@ public:
             //llvm::errs() << "next: " << to_string(next) << " indices: " << to_string(indices) << " pair.first: " << to_string(pair.first) << "\n";
             if (next[0] == -1 && maxSize != -1) {
                 size_t chunk = 1;
-
-                if (auto flt = operator[]({ pair.first[0] }).isFloat()) {
+                auto op = operator[]({ pair.first[0] });
+                if (auto flt = op.isFloat()) {
                     if (flt->isFloatTy()) {
                         chunk = 4;
                     } else if(flt->isDoubleTy()) {
@@ -943,6 +970,8 @@ public:
                         llvm::errs() << *flt << "\n";
                         assert(0 && "unhandled float type");
                     }
+                } else if (op.typeEnum == IntType::Pointer) {
+                    chunk = dl.getPointerSizeInBits() / 8;
                 }
 
                 for(int i=0; i<maxSize; i+= chunk) {

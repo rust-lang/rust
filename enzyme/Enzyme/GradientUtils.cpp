@@ -423,7 +423,7 @@ Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
       std::vector<DIFFE_TYPE> types;
       for(auto &a : fn->args()) {
           uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
-          type_args.first.insert(std::pair<Argument*, ValueData>(&a, DataType(IntType::Unknown)));
+          type_args.first.insert(std::pair<Argument*, ValueData>(&a, {}));
           type_args.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&a, {}));
           DIFFE_TYPE typ;
           if (a.getType()->isFPOrFPVectorTy()) {

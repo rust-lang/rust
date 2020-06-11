@@ -340,7 +340,7 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, co
 
     // A pointer is only needed in the reverse pass if its non-store uses are needed in the reverse pass
     //   Moreover, we only need this pointer in the reverse pass if all of its non-store users are not already cached for the reverse pass
-    if (!inst->getType()->isFPOrFPVectorTy() && TR.query(const_cast<Value*>(inst))[{}].isPossiblePointer()) {
+    if (!inst->getType()->isFPOrFPVectorTy() && TR.query(const_cast<Value*>(inst)).Data0()[{}].isPossiblePointer()) {
         //continue;
         bool unknown = true;
         for (auto zu : inst->users()) {
@@ -554,7 +554,7 @@ static inline bool shouldAugmentCall(CallInst* op, const GradientUtils* gutils, 
      #endif
   }
 
-  if ( !op->getType()->isFPOrFPVectorTy() && !gutils->isConstantValue(op) && TR.query(op)[{}].isPossiblePointer()) {
+  if ( !op->getType()->isFPOrFPVectorTy() && !gutils->isConstantValue(op) && TR.query(op).Data0()[{}].isPossiblePointer()) {
      modifyPrimal = true;
 
      #ifdef PRINT_AUGCALL
@@ -574,7 +574,7 @@ static inline bool shouldAugmentCall(CallInst* op, const GradientUtils* gutils, 
 
     auto argType = op->getArgOperand(i)->getType();
 
-    if (!argType->isFPOrFPVectorTy() && !gutils->isConstantValue(op->getArgOperand(i)) && TR.query(op->getArgOperand(i))[{}].isPossiblePointer()) {
+    if (!argType->isFPOrFPVectorTy() && !gutils->isConstantValue(op->getArgOperand(i)) && TR.query(op->getArgOperand(i)).Data0()[{}].isPossiblePointer()) {
         if (called && ! ( called->hasParamAttribute(i, Attribute::ReadOnly) || called->hasParamAttribute(i, Attribute::ReadNone)) ) {
             modifyPrimal = true;
             #ifdef PRINT_AUGCALL
@@ -964,7 +964,7 @@ public:
     LoadInst* newi = dyn_cast<LoadInst>(gutils->getNewFromOriginal(&LI));
 
     //! Store inverted pointer loads that need to be cached for use in reverse pass
-    if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() && TR.query(&LI)[{}].isPossiblePointer()) {
+    if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() && TR.query(&LI).Data0()[{}].isPossiblePointer()) {
       PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[&LI]);
       assert(placeholder->getType() == type);
       gutils->invertedPointers.erase(&LI);
@@ -1678,7 +1678,7 @@ public:
     Value* op3 = gutils->getNewFromOriginal(MTI.getOperand(3));
 
     // copying into nullptr is invalid (not sure why it exists here), but we shouldn't do it in reverse pass or shadow
-    if (isa<ConstantPointerNull>(orig_op0) || TR.query(orig_op0)[{}] == IntType::Anything) {
+    if (isa<ConstantPointerNull>(orig_op0) || TR.query(orig_op0).Data0()[{}] == IntType::Anything) {
       eraseIfUnused(MTI);
       return;
     }
@@ -1694,8 +1694,8 @@ public:
     //TR.dump();
 
 
-    auto vd = TR.query(orig_op0).AtMost(size);
-    vd |= TR.query(orig_op1).AtMost(size);
+    auto vd = TR.query(orig_op0).Data0().AtMost(size);
+    vd |= TR.query(orig_op1).Data0().AtMost(size);
 
     //llvm::errs() << "MIT: " << MTI << "|size: " << size << " vd: " << vd.str() << "\n";
 
@@ -1711,7 +1711,6 @@ public:
       assert(0 && "bad mti");
     }
     known:;
-
 
     unsigned dstalign = 0;
     if (MTI.paramHasAttr(0, Attribute::Alignment)) {
@@ -2190,7 +2189,7 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
 
     auto argType = orig->getArgOperand(i)->getType();
 
-    if (!argType->isFPOrFPVectorTy() && TR.query(orig->getArgOperand(i))[{}].isPossiblePointer()) {
+    if (!argType->isFPOrFPVectorTy() && TR.query(orig->getArgOperand(i)).Data0()[{}].isPossiblePointer()) {
       DIFFE_TYPE ty = DIFFE_TYPE::DUP_ARG;
       if (argType->isPointerTy()) {
         auto at = GetUnderlyingObject(orig->getArgOperand(i), gutils->oldFunc->getParent()->getDataLayout(), 100);
@@ -2216,7 +2215,7 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
   DIFFE_TYPE subretType;
   if (gutils->isConstantValue(orig)) {
     subretType = DIFFE_TYPE::CONSTANT;
-  } else if (!orig->getType()->isFPOrFPVectorTy() && TR.query(orig)[{}].isPossiblePointer()) {
+  } else if (!orig->getType()->isFPOrFPVectorTy() && TR.query(orig).Data0()[{}].isPossiblePointer()) {
     subretType = DIFFE_TYPE::DUP_ARG;
     // TODO interprocedural dup_noneed
   } else {
@@ -2549,7 +2548,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
     auto argType = argops[i]->getType();
 
 
-    if (!argType->isFPOrFPVectorTy() && TR.query(orig->getArgOperand(i))[{}].isPossiblePointer()) {
+    if (!argType->isFPOrFPVectorTy() && TR.query(orig->getArgOperand(i)).Data0()[{}].isPossiblePointer()) {
       DIFFE_TYPE ty = DIFFE_TYPE::DUP_ARG;
       if (argType->isPointerTy()) {
         auto at = GetUnderlyingObject(orig->getArgOperand(i), gutils->oldFunc->getParent()->getDataLayout(), 100);
@@ -2575,7 +2574,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
   DIFFE_TYPE subretType;
   if (gutils->isConstantValue(orig)) {
     subretType = DIFFE_TYPE::CONSTANT;
-  } else if (!orig->getType()->isFPOrFPVectorTy() && TR.query(orig)[{}].isPossiblePointer()) {
+  } else if (!orig->getType()->isFPOrFPVectorTy() && TR.query(orig).Data0()[{}].isPossiblePointer()) {
     subretType = DIFFE_TYPE::DUP_ARG;
     // TODO interprocedural dup_noneed
   } else {
@@ -3011,7 +3010,7 @@ badfn:;
 
       if (!gutils->isConstantValue(orig)) {
         gutils->originalToNewFn[orig] = dcall;
-        if (!orig->getType()->isFPOrFPVectorTy() && TR.query(orig)[{}].isPossiblePointer()) {
+        if (!orig->getType()->isFPOrFPVectorTy() && TR.query(orig).Data0()[{}].isPossiblePointer()) {
         } else {
           ((DiffeGradientUtils*)gutils)->differentials[dcall] = ((DiffeGradientUtils*)gutils)->differentials[op];
           ((DiffeGradientUtils*)gutils)->differentials.erase(op);

@@ -362,8 +362,22 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
 
 	if (auto storeinst = dyn_cast<StoreInst>(inst)) {
         auto storeSize = storeinst->getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(storeinst->getValueOperand()->getType()) / 8;
-		if (TR.firstPointer(storeSize, storeinst->getPointerOperand(), /*errifnotfound*/false, /*pointerIntSame*/false).isIntegral()) {
-			if (printconst)
+
+        bool allIntegral = true;
+        bool anIntegral = false;
+    	auto q = TR.query(storeinst->getPointerOperand()).Data0();
+        for(int i=-1; i<(int)storeSize; i++) {
+            auto dt = q[{i}];
+            if (dt.isIntegral() || dt.typeEnum == IntType::Anything) {
+                anIntegral = true;
+            } else if (dt.isKnown()) {
+                allIntegral = false;
+                break;
+            }
+        }
+
+		if (allIntegral && anIntegral) {
+            if (printconst)
 				llvm::errs() << " constant instruction from TBAA " << *inst << "\n";
 			constants.insert(inst);
 			return true;
@@ -863,14 +877,14 @@ bool isconstantValueM(TypeResults &TR, Value* val, SmallPtrSetImpl<Value*> &cons
               llvm::errs() << " VALUE const global " << *val << "\n";
             return true;
         }
-        auto res = TR.query(gi);
+        auto res = TR.query(gi).Data0();
         if (res[{-1}].isIntegral()) {
             if (printconst)
                 llvm::errs() << " VALUE const as global int pointer " << *val << " type - " << res.str() << "\n";
             return true;
         }
         if (printconst)
-            llvm::errs() << " VALUE nonconst unknown global " << *val << " type - " << TR.query(val).str() << "\n";
+            llvm::errs() << " VALUE nonconst unknown global " << *val << " type - " << res.str() << "\n";
         return false;
     }
 

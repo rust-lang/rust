@@ -1045,7 +1045,7 @@ public:
 
         if (inst->getType()->isFPOrFPVectorTy()) continue; //!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
 
-        if (!TR.query(inst)[{}].isPossiblePointer()) continue;
+        if (!TR.query(inst).Data0()[{}].isPossiblePointer()) continue;
 
         Instruction* newi = getNewFromOriginal(inst);
 

@@ -73,7 +73,7 @@ public:
                 dt = ValueData(DataType(IntType::Pointer)).Only({-1});
             }
         }
-        type_args.first.insert(std::pair<Argument*, ValueData>(&a, dt));
+        type_args.first.insert(std::pair<Argument*, ValueData>(&a, dt.Only(-1)));
         //TODO note that here we do NOT propagate constants in type info (and should consider whether we should)
         type_args.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&a, {}));
     }
