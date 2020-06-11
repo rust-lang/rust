@@ -377,7 +377,7 @@ crate enum InlineAsmOperand<'tcx> {
         expr: ExprRef<'tcx>,
     },
     SymStatic {
-        expr: ExprRef<'tcx>,
+        def_id: DefId,
     },
 }
 

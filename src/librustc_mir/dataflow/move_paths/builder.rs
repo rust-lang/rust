@@ -439,7 +439,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                             }
                         }
                         InlineAsmOperand::SymFn { value: _ }
-                        | InlineAsmOperand::SymStatic { value: _ } => {}
+                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }
                 }
             }

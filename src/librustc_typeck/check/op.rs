@@ -57,9 +57,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
                 // && and || are a simple case.
-                self.check_expr_coercable_to_type(lhs_expr, tcx.types.bool);
+                self.check_expr_coercable_to_type(lhs_expr, tcx.types.bool, None);
                 let lhs_diverges = self.diverges.get();
-                self.check_expr_coercable_to_type(rhs_expr, tcx.types.bool);
+                self.check_expr_coercable_to_type(rhs_expr, tcx.types.bool, None);
 
                 // Depending on the LHS' value, the RHS can never execute.
                 self.diverges.set(lhs_diverges);
@@ -170,7 +170,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: lhs_expr.span,
                 });
-                self.demand_coerce(lhs_expr, lhs_ty, fresh_var, AllowTwoPhase::No)
+                self.demand_coerce(lhs_expr, lhs_ty, fresh_var, Some(rhs_expr), AllowTwoPhase::No)
             }
             IsAssign::Yes => {
                 // rust-lang/rust#52126: We have to use strict
@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
 
         // see `NB` above
-        let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var);
+        let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
         let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {

@@ -1377,7 +1377,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 }
 
                 if let Some(expr) = expression {
-                    fcx.emit_coerce_suggestions(&mut err, expr, found, expected);
+                    fcx.emit_coerce_suggestions(&mut err, expr, found, expected, None);
                 }
 
                 // Error possibly reported in `check_assign` so avoid emitting error again.

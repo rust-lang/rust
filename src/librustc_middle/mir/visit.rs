@@ -564,10 +564,10 @@ macro_rules! make_mir_visitor {
                                         );
                                     }
                                 }
-                                InlineAsmOperand::SymFn { value }
-                                | InlineAsmOperand::SymStatic { value } => {
+                                InlineAsmOperand::SymFn { value } => {
                                     self.visit_constant(value, source_location);
                                 }
+                                InlineAsmOperand::SymStatic { def_id: _ } => {}
                             }
                         }
                     }

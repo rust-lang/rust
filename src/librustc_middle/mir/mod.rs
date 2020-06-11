@@ -1243,7 +1243,7 @@ pub enum InlineAsmOperand<'tcx> {
         value: Box<Constant<'tcx>>,
     },
     SymStatic {
-        value: Box<Constant<'tcx>>,
+        def_id: DefId,
     },
 }
 
@@ -1639,9 +1639,11 @@ impl<'tcx> TerminatorKind<'tcx> {
                         InlineAsmOperand::Const { value } => {
                             write!(fmt, "const {:?}", value)?;
                         }
-                        InlineAsmOperand::SymFn { value }
-                        | InlineAsmOperand::SymStatic { value } => {
-                            write!(fmt, "sym {:?}", value)?;
+                        InlineAsmOperand::SymFn { value } => {
+                            write!(fmt, "sym_fn {:?}", value)?;
+                        }
+                        InlineAsmOperand::SymStatic { def_id } => {
+                            write!(fmt, "sym_static {:?}", def_id)?;
                         }
                     }
                 }
