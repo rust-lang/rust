@@ -5,12 +5,16 @@ use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{find_covering_element, find_node_at_offset},
-    ast, match_ast, AstNode,
+    ast, match_ast, AstNode, NodeOrToken,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 use ra_text_edit::Indel;
 
+use super::patterns::{
+    goes_after_unsafe, has_bind_pat_parent, has_block_expr_parent, has_ref_pat_parent,
+    is_in_loop_body,
+};
 use crate::{call_info::ActiveParameter, completion::CompletionConfig, FilePosition};
 use test_utils::mark;
 
@@ -60,6 +64,11 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
     pub(super) attribute_under_caret: Option<ast::Attr>,
+    pub(super) after_unsafe: bool,
+    pub(super) block_expr_parent: bool,
+    pub(super) bind_pat_parent: bool,
+    pub(super) ref_pat_parent: bool,
+    pub(super) in_loop_body: bool,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -118,6 +127,11 @@ impl<'a> CompletionContext<'a> {
             has_type_args: false,
             dot_receiver_is_ambiguous_float_literal: false,
             attribute_under_caret: None,
+            after_unsafe: false,
+            in_loop_body: false,
+            ref_pat_parent: false,
+            bind_pat_parent: false,
+            block_expr_parent: false,
         };
 
         let mut original_file = original_file.syntax().clone();
@@ -159,7 +173,7 @@ impl<'a> CompletionContext<'a> {
                 break;
             }
         }
-
+        ctx.fill_keyword_patterns(&hypothetical_file, offset);
         ctx.fill(&original_file, hypothetical_file, offset);
         Some(ctx)
     }
@@ -186,6 +200,16 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn scope(&self) -> SemanticsScope<'_, RootDatabase> {
         self.sema.scope_at_offset(&self.token.parent(), self.offset)
+    }
+
+    fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {
+        let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
+        let syntax_element = NodeOrToken::Token(fake_ident_token.clone());
+        self.block_expr_parent = has_block_expr_parent(syntax_element.clone());
+        self.after_unsafe = goes_after_unsafe(syntax_element.clone());
+        self.bind_pat_parent = has_bind_pat_parent(syntax_element.clone());
+        self.ref_pat_parent = has_ref_pat_parent(syntax_element.clone());
+        self.in_loop_body = is_in_loop_body(syntax_element.clone());
     }
 
     fn fill(

@@ -1,12 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_syntax::{
-    algo::non_trivia_sibling,
-    ast::{self, LoopBodyOwner},
-    match_ast, AstNode, Direction, NodeOrToken, SyntaxElement,
-    SyntaxKind::*,
-    SyntaxToken,
-};
+use ra_syntax::ast;
 
 use crate::completion::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
@@ -53,108 +47,54 @@ fn keyword(ctx: &CompletionContext, kw: &str, snippet: &str) -> CompletionItem {
     .build()
 }
 
-fn add_top_level_keywords(acc: &mut Completions, ctx: &CompletionContext) {
-    if let Some(token) = previous_non_triva_element(&ctx.token).and_then(|it| it.into_token()) {
-        if token.kind() == UNSAFE_KW {
-            acc.add(keyword(ctx, "impl", "impl $0 {}"));
-            acc.add(keyword(ctx, "trait", "trait $0 {}"));
-            acc.add(keyword(ctx, "fn", "fn $0() {}"));
-            return;
-        }
+fn add_keyword(
+    ctx: &CompletionContext,
+    acc: &mut Completions,
+    kw: &str,
+    snippet: &str,
+    should_add: bool,
+) {
+    if should_add {
+        acc.add(keyword(ctx, kw, snippet));
     }
-    acc.add(keyword(ctx, "impl", "impl $0 {}"));
-    acc.add(keyword(ctx, "enum", "enum $0 {}"));
-    acc.add(keyword(ctx, "struct", "struct $0 {}"));
-    acc.add(keyword(ctx, "trait", "trait $0 {}"));
-    acc.add(keyword(ctx, "fn", "fn $0() {}"));
-    acc.add(keyword(ctx, "unsafe", "unsafe "));
 }
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.is_new_item {
-        add_top_level_keywords(acc, ctx);
-        return;
-    }
-    if !ctx.is_trivial_path {
-        return;
-    }
+    add_keyword(ctx, acc, "fn", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "type", "type ", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "fn", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "impl", "impl $0 {}", ctx.is_new_item);
+    add_keyword(ctx, acc, "trait", "impl $0 {}", ctx.is_new_item);
+    add_keyword(ctx, acc, "enum", "enum $0 {}", ctx.is_new_item && !ctx.after_unsafe);
+    add_keyword(ctx, acc, "struct", "struct $0 {}", ctx.is_new_item && !ctx.after_unsafe);
+    add_keyword(ctx, acc, "union", "union $0 {}", ctx.is_new_item && !ctx.after_unsafe);
+    add_keyword(ctx, acc, "match", "match $0 {}", ctx.block_expr_parent);
+    add_keyword(ctx, acc, "loop", "loop {$0}", ctx.block_expr_parent);
+    add_keyword(ctx, acc, "while", "while $0 {}", ctx.block_expr_parent);
+    add_keyword(ctx, acc, "let", "let ", ctx.after_if || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "let", "let ", ctx.after_if || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "else", "else {$0}", ctx.after_if);
+    add_keyword(ctx, acc, "else if", "else if $0 {}", ctx.after_if);
+    add_keyword(ctx, acc, "mod", "mod $0 {}", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "mut", "mut ", ctx.bind_pat_parent || ctx.ref_pat_parent);
+    add_keyword(ctx, acc, "true", "true", !ctx.is_new_item); // this should be defined properly
+    add_keyword(ctx, acc, "false", "false", !ctx.is_new_item); // this should be defined properly
+    add_keyword(ctx, acc, "const", "const ", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "type", "type ", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "static", "static ", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "extern", "extern ", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "unsafe", "unsafe ", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "continue", "continue;", ctx.in_loop_body && ctx.can_be_stmt);
+    add_keyword(ctx, acc, "break", "break;", ctx.in_loop_body && ctx.can_be_stmt);
+    add_keyword(ctx, acc, "continue", "continue", ctx.in_loop_body && !ctx.can_be_stmt);
+    add_keyword(ctx, acc, "break", "break", ctx.in_loop_body && !ctx.can_be_stmt);
+    complete_use_tree_keyword(acc, ctx);
 
     let fn_def = match &ctx.function_syntax {
         Some(it) => it,
         None => return,
     };
-    acc.add(keyword(ctx, "if", "if $0 {}"));
-    acc.add(keyword(ctx, "match", "match $0 {}"));
-    acc.add(keyword(ctx, "while", "while $0 {}"));
-    acc.add(keyword(ctx, "loop", "loop {$0}"));
-
-    if ctx.after_if {
-        acc.add(keyword(ctx, "else", "else {$0}"));
-        acc.add(keyword(ctx, "else if", "else if $0 {}"));
-    }
-    if is_in_loop_body(&ctx.token) {
-        if ctx.can_be_stmt {
-            acc.add(keyword(ctx, "continue", "continue;"));
-            acc.add(keyword(ctx, "break", "break;"));
-        } else {
-            acc.add(keyword(ctx, "continue", "continue"));
-            acc.add(keyword(ctx, "break", "break"));
-        }
-    }
     acc.add_all(complete_return(ctx, &fn_def, ctx.can_be_stmt));
-}
-
-fn previous_non_triva_element(token: &SyntaxToken) -> Option<SyntaxElement> {
-    // trying to get first non triva sibling if we have one
-    let token_sibling = non_trivia_sibling(NodeOrToken::Token(token.to_owned()), Direction::Prev);
-    let mut wrapped = if let Some(sibling) = token_sibling {
-        sibling
-    } else {
-        // if not trying to find first ancestor which has such a sibling
-        let node = token.parent();
-        let range = node.text_range();
-        let top_node = node.ancestors().take_while(|it| it.text_range() == range).last()?;
-        let prev_sibling_node = top_node.ancestors().find(|it| {
-            non_trivia_sibling(NodeOrToken::Node(it.to_owned()), Direction::Prev).is_some()
-        })?;
-        non_trivia_sibling(NodeOrToken::Node(prev_sibling_node), Direction::Prev)?
-    };
-    // traversing the tree down to get the last token or node, i.e. the closest one
-    loop {
-        if let Some(token) = wrapped.as_token() {
-            return Some(NodeOrToken::Token(token.clone()));
-        } else {
-            let new = wrapped.as_node().and_then(|n| n.last_child_or_token());
-            if new.is_some() {
-                wrapped = new.unwrap().clone();
-            } else {
-                return Some(wrapped);
-            }
-        }
-    }
-}
-
-fn is_in_loop_body(leaf: &SyntaxToken) -> bool {
-    // FIXME move this to CompletionContext and make it handle macros
-    for node in leaf.parent().ancestors() {
-        if node.kind() == FN_DEF || node.kind() == LAMBDA_EXPR {
-            break;
-        }
-        let loop_body = match_ast! {
-            match node {
-                ast::ForExpr(it) => it.loop_body(),
-                ast::WhileExpr(it) => it.loop_body(),
-                ast::LoopExpr(it) => it.loop_body(),
-                _ => None,
-            }
-        };
-        if let Some(body) = loop_body {
-            if body.syntax().text_range().contains_range(leaf.text_range()) {
-                return true;
-            }
-        }
-    }
-    false
 }
 
 fn complete_return(
@@ -316,139 +256,6 @@ mod tests {
                 kind: Keyword,
             },
         ]
-        "###
-        );
-    }
-
-    #[test]
-    fn completes_unsafe_context_in_item_position_with_non_empty_token() {
-        assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                mod my_mod {
-                    unsafe i<|>
-                }
-                ",
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "fn",
-                source_range: 57..58,
-                delete: 57..58,
-                insert: "fn $0() {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "impl",
-                source_range: 57..58,
-                delete: 57..58,
-                insert: "impl $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "trait",
-                source_range: 57..58,
-                delete: 57..58,
-                insert: "trait $0 {}",
-                kind: Keyword,
-            },
-        ]
-        "###
-        );
-    }
-
-    #[test]
-    fn completes_unsafe_context_in_item_position_with_empty_token() {
-        assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                mod my_mod {
-                    unsafe <|>
-                }
-                ",
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "fn",
-                source_range: 57..57,
-                delete: 57..57,
-                insert: "fn $0() {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "impl",
-                source_range: 57..57,
-                delete: 57..57,
-                insert: "impl $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "trait",
-                source_range: 57..57,
-                delete: 57..57,
-                insert: "trait $0 {}",
-                kind: Keyword,
-            },
-        ]
-        "###
-        );
-    }
-
-    #[test]
-    fn completes_keywords_in_item_position_with_empty_token() {
-        assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                <|>
-                ",
-            ),
-            @r###"
-            [
-                CompletionItem {
-                    label: "enum",
-                    source_range: 17..17,
-                    delete: 17..17,
-                    insert: "enum $0 {}",
-                    kind: Keyword,
-                },
-                CompletionItem {
-                    label: "fn",
-                    source_range: 17..17,
-                    delete: 17..17,
-                    insert: "fn $0() {}",
-                    kind: Keyword,
-                },
-                CompletionItem {
-                    label: "impl",
-                    source_range: 17..17,
-                    delete: 17..17,
-                    insert: "impl $0 {}",
-                    kind: Keyword,
-                },
-                CompletionItem {
-                    label: "struct",
-                    source_range: 17..17,
-                    delete: 17..17,
-                    insert: "struct $0 {}",
-                    kind: Keyword,
-                },
-                CompletionItem {
-                    label: "trait",
-                    source_range: 17..17,
-                    delete: 17..17,
-                    insert: "trait $0 {}",
-                    kind: Keyword,
-                },
-                CompletionItem {
-                    label: "unsafe",
-                    source_range: 17..17,
-                    delete: 17..17,
-                    insert: "unsafe ",
-                    kind: Keyword,
-                },
-            ]
         "###
         );
     }
