@@ -334,7 +334,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 trap_unreachable(fx, "[corruption] Hit unreachable code.");
             }
             TerminatorKind::Yield { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::GeneratorDrop => {
