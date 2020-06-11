@@ -2503,11 +2503,15 @@ impl Path {
     /// # See Also
     ///
     /// This is a convenience function that coerces errors to false. If you want to
-    /// check errors, call [fs::metadata] and handle its Result. Then call
-    /// [fs::Metadata::is_file] if it was Ok.
+    /// check errors, call [`fs::metadata`] and handle its Result. Then call
+    /// [`fs::Metadata::is_file`] if it was Ok.
     ///
-    /// [fs::metadata]: ../../std/fs/fn.metadata.html
-    /// [fs::Metadata::is_file]: ../../std/fs/struct.Metadata.html#method.is_file
+    /// Note that the explanation about using `!is_dir` instead of `is_file`
+    /// that is present in the [`fs::Metadata`] documentation also applies here.
+    ///
+    /// [`fs::metadata`]: ../../std/fs/fn.metadata.html
+    /// [`fs::Metadata`]: ../../std/fs/struct.Metadata.html
+    /// [`fs::Metadata::is_file`]: ../../std/fs/struct.Metadata.html#method.is_file
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_file(&self) -> bool {
         fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)
