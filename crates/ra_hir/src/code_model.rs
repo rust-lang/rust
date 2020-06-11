@@ -186,6 +186,22 @@ impl ModuleDef {
 
         module.visibility_of(db, self)
     }
+
+    pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
+        match self {
+            ModuleDef::Adt(it) => Some(it.name(db)),
+            ModuleDef::Trait(it) => Some(it.name(db)),
+            ModuleDef::Function(it) => Some(it.name(db)),
+            ModuleDef::EnumVariant(it) => Some(it.name(db)),
+            ModuleDef::TypeAlias(it) => Some(it.name(db)),
+
+            ModuleDef::Module(it) => it.name(db),
+            ModuleDef::Const(it) => it.name(db),
+            ModuleDef::Static(it) => it.name(db),
+
+            ModuleDef::BuiltinType(it) => Some(it.as_name()),
+        }
+    }
 }
 
 pub use hir_def::{
@@ -1382,8 +1398,8 @@ impl Type {
     }
 
     /// Returns a flattened list of all ADTs and Traits mentioned in the type
-    pub fn flattened_type_items(&self, db: &dyn HirDatabase) -> Vec<AdtOrTrait> {
-        fn push_new_item(item: AdtOrTrait, acc: &mut Vec<AdtOrTrait>) {
+    pub fn flattened_type_items(&self, db: &dyn HirDatabase) -> Vec<ModuleDef> {
+        fn push_new_item(item: ModuleDef, acc: &mut Vec<ModuleDef>) {
             if !acc.contains(&item) {
                 acc.push(item);
             }
@@ -1392,7 +1408,7 @@ impl Type {
         fn push_bounds(
             db: &dyn HirDatabase,
             predicates: &[GenericPredicate],
-            acc: &mut Vec<AdtOrTrait>,
+            acc: &mut Vec<ModuleDef>,
         ) {
             for p in predicates.iter() {
                 match p {
@@ -1407,13 +1423,13 @@ impl Type {
         }
 
         // TypeWalk::walk does not preserve items order!
-        fn walk_substs(db: &dyn HirDatabase, substs: &Substs, acc: &mut Vec<AdtOrTrait>) {
+        fn walk_substs(db: &dyn HirDatabase, substs: &Substs, acc: &mut Vec<ModuleDef>) {
             for ty in substs.iter() {
                 walk_type(db, ty, acc);
             }
         }
 
-        fn walk_type(db: &dyn HirDatabase, ty: &Ty, acc: &mut Vec<AdtOrTrait>) {
+        fn walk_type(db: &dyn HirDatabase, ty: &Ty, acc: &mut Vec<ModuleDef>) {
             match ty.strip_references() {
                 Ty::Apply(ApplicationTy { ctor, parameters, .. }) => {
                     match ctor {
@@ -1468,7 +1484,7 @@ impl Type {
             }
         }
 
-        let mut res: Vec<AdtOrTrait> = Vec::new(); // not a Set to preserve the order
+        let mut res: Vec<ModuleDef> = Vec::new(); // not a Set to preserve the order
         walk_type(db, &self.ty.value, &mut res);
         res
     }
@@ -1578,28 +1594,5 @@ pub trait HasVisibility {
     fn is_visible_from(&self, db: &dyn HirDatabase, module: Module) -> bool {
         let vis = self.visibility(db);
         vis.is_visible_from(db.upcast(), module.id)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum AdtOrTrait {
-    Adt(Adt),
-    Trait(Trait),
-}
-impl_froms!(AdtOrTrait: Adt, Trait);
-
-impl AdtOrTrait {
-    pub fn module(self, db: &dyn HirDatabase) -> Module {
-        match self {
-            AdtOrTrait::Adt(adt) => adt.module(db),
-            AdtOrTrait::Trait(trait_) => trait_.module(db),
-        }
-    }
-
-    pub fn name(self, db: &dyn HirDatabase) -> Name {
-        match self {
-            AdtOrTrait::Adt(adt) => adt.name(db),
-            AdtOrTrait::Trait(trait_) => trait_.name(db),
-        }
     }
 }

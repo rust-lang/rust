@@ -1,8 +1,8 @@
 use std::iter::once;
 
 use hir::{
-    Adt, AdtOrTrait, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource,
-    HirDisplay, Module, ModuleDef, ModuleSource, Semantics,
+    Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
+    Module, ModuleDef, ModuleSource, Semantics,
 };
 use itertools::Itertools;
 use ra_db::SourceDatabase;
@@ -13,7 +13,9 @@ use ra_ide_db::{
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 
 use crate::{
-    display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel, ToNav},
+    display::{
+        macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel, ToNav, TryToNav,
+    },
     runnables::runnable,
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
 };
@@ -238,9 +240,11 @@ fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
                 .ty(db)
                 .flattened_type_items(db)
                 .into_iter()
-                .map(|it| HoverGotoTypeData {
-                    mod_path: adt_or_trait_mod_path(db, &it),
-                    nav: it.to_nav(db),
+                .filter_map(|it| {
+                    Some(HoverGotoTypeData {
+                        mod_path: mod_path(db, &it)?,
+                        nav: it.try_to_nav(db)?,
+                    })
                 })
                 .collect_vec();
 
@@ -294,8 +298,9 @@ fn determine_mod_path(db: &RootDatabase, module: Module, name: Option<String>) -
         .join("::")
 }
 
-fn adt_or_trait_mod_path(db: &RootDatabase, item: &AdtOrTrait) -> String {
-    determine_mod_path(db, item.module(db), Some(item.name(db).to_string()))
+// returns None only for ModuleDef::BuiltinType
+fn mod_path(db: &RootDatabase, item: &ModuleDef) -> Option<String> {
+    Some(determine_mod_path(db, item.module(db)?, item.name(db).map(|name| name.to_string())))
 }
 
 fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
