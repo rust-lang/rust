@@ -335,6 +335,16 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn enclosing_body_owner(&self, hir_id: HirId) -> HirId {
+        for (parent, _) in self.parent_iter(hir_id) {
+            if let Some(body) = self.maybe_body_owned_by(parent) {
+                return self.body_owner(body);
+            }
+        }
+
+        bug!("no `enclosing_body_owner` for hir_id `{}`", hir_id);
+    }
+
     /// Returns the `HirId` that corresponds to the definition of
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
@@ -537,18 +547,8 @@ impl<'hir> Map<'hir> {
 
     /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
-    pub fn is_const_context(&self, hir_id: HirId) -> bool {
-        let parent_id = self.get_parent_item(hir_id);
-        match self.get(parent_id) {
-            Node::Item(&Item { kind: ItemKind::Const(..) | ItemKind::Static(..), .. })
-            | Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. })
-            | Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. })
-            | Node::AnonConst(_) => true,
-            Node::Item(&Item { kind: ItemKind::Fn(ref sig, ..), .. }) => {
-                sig.header.constness == Constness::Const
-            }
-            _ => false,
-        }
+    pub fn is_inside_const_context(&self, hir_id: HirId) -> bool {
+        self.body_const_context(self.local_def_id(self.enclosing_body_owner(hir_id))).is_some()
     }
 
     /// Whether `hir_id` corresponds to a `mod` or a crate.

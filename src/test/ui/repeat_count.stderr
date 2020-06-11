@@ -29,7 +29,7 @@ LL |     let e = [0; "foo"];
    |                 ^^^^^ expected `usize`, found `&str`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:28:17
+  --> $DIR/repeat_count.rs:31:17
    |
 LL |     let g = [0; G { g: () }];
    |                 ^^^^^^^^^^^ expected `usize`, found struct `main::G`
@@ -39,24 +39,25 @@ error[E0308]: mismatched types
    |
 LL |     let f = [0; -4_isize];
    |                 ^^^^^^^^ expected `usize`, found `isize`
-   |
-help: you can convert an `isize` to `usize` and panic if the converted value wouldn't fit
-   |
-LL |     let f = [0; (-4_isize).try_into().unwrap()];
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:22:23
    |
 LL |     let f = [0_usize; -1_isize];
    |                       ^^^^^^^^ expected `usize`, found `isize`
-   |
-help: you can convert an `isize` to `usize` and panic if the converted value wouldn't fit
-   |
-LL |     let f = [0_usize; (-1_isize).try_into().unwrap()];
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:25:17
+   |
+LL |     let f = [0; 4u8];
+   |                 ^^^ expected `usize`, found `u8`
+   |
+help: change the type of the numeric literal from `u8` to `usize`
+   |
+LL |     let f = [0; 4usize];
+   |                 ^^^^^^
+
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0308, E0435.
 For more information about an error, try `rustc --explain E0308`.

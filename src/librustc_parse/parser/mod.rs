@@ -193,7 +193,7 @@ impl TokenCursor {
                         tree,
                         self.stack.len()
                     );
-                    collecting.buf.push(tree.clone().into())
+                    collecting.buf.push(tree.clone())
                 }
             }
 
@@ -675,7 +675,7 @@ impl<'a> Parser<'a> {
                             // If this was a missing `@` in a binding pattern
                             // bail with a suggestion
                             // https://github.com/rust-lang/rust/issues/72373
-                            if self.prev_token.is_ident() && &self.token.kind == &token::DotDot {
+                            if self.prev_token.is_ident() && self.token.kind == token::DotDot {
                                 let msg = format!(
                                     "if you meant to bind the contents of \
                                     the rest of the array pattern into `{}`, use `@`",
@@ -1193,7 +1193,7 @@ impl<'a> Parser<'a> {
         let mut collected_tokens = if let Some(collecting) = self.token_cursor.collecting.take() {
             collecting.buf
         } else {
-            let msg = format!("our vector went away?");
+            let msg = "our vector went away?";
             debug!("collect_tokens: {}", msg);
             self.sess.span_diagnostic.delay_span_bug(self.token.span, &msg);
             // This can happen due to a bad interaction of two unrelated recovery mechanisms

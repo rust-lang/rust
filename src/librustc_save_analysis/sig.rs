@@ -281,6 +281,22 @@ impl<'hir> Sig for hir::Ty<'hir> {
                     })
                 }
             }
+            hir::TyKind::Path(hir::QPath::TypeRelative(ty, segment)) => {
+                let nested_ty = ty.make(offset + 1, id, scx)?;
+                let prefix = format!("<{}>::", nested_ty.text,);
+
+                let name = path_segment_to_string(segment);
+                let res = scx.get_path_res(id.ok_or("Missing id for Path")?);
+                let id = id_from_def_id(res.def_id());
+
+                let start = offset + prefix.len();
+                let end = start + name.len();
+                Ok(Signature {
+                    text: prefix + &name,
+                    defs: vec![],
+                    refs: vec![SigElement { id, start, end }],
+                })
+            }
             hir::TyKind::TraitObject(bounds, ..) => {
                 // FIXME recurse into bounds
                 let bounds: Vec<hir::GenericBound<'_>> = bounds
@@ -308,11 +324,11 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 let text = format!("[{}; {}]", nested_ty.text, expr);
                 Ok(replace_text(nested_ty, text))
             }
-            hir::TyKind::Typeof(_)
-            | hir::TyKind::Infer
-            | hir::TyKind::Def(..)
-            | hir::TyKind::Path(..)
-            | hir::TyKind::Err => Err("Ty"),
+            hir::TyKind::Def(item_id, _) => {
+                let item = scx.tcx.hir().item(item_id.id);
+                item.make(offset, Some(item_id.id), scx)
+            }
+            hir::TyKind::Typeof(_) | hir::TyKind::Infer | hir::TyKind::Err => Err("Ty"),
         }
     }
 }
