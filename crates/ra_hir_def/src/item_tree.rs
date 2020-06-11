@@ -4,25 +4,28 @@ use hir_expand::{
     ast_id_map::{AstIdMap, FileAstId},
     hygiene::Hygiene,
     name::{name, AsName, Name},
+    HirFileId,
 };
 use ra_arena::{Arena, Idx, RawId};
-use ra_syntax::ast;
+use ra_syntax::{ast, match_ast};
 
 use crate::{
     attr::Attrs,
+    db::DefDatabase,
     generics::GenericParams,
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path},
     type_ref::{Mutability, TypeBound, TypeRef},
     visibility::RawVisibility,
 };
-use ast::{NameOwner, StructKind, TypeAscriptionOwner};
+use ast::{AstNode, ModuleItemOwner, NameOwner, StructKind, TypeAscriptionOwner};
 use std::{
     ops::{Index, Range},
     sync::Arc,
 };
 
-#[derive(Default)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
+    top_level: Vec<ModItem>,
     imports: Arena<Import>,
     functions: Arena<Function>,
     structs: Arena<Struct>,
@@ -41,8 +44,42 @@ pub struct ItemTree {
 }
 
 impl ItemTree {
-    pub fn query(syntax: &ast::SourceFile) -> ItemTree {
-        todo!()
+    pub fn item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
+        let syntax = if let Some(node) = db.parse_or_expand(file_id) {
+            node
+        } else {
+            return Default::default();
+        };
+
+        let (macro_storage, file_storage);
+        let item_owner = match_ast! {
+            match syntax {
+                ast::MacroItems(items) => {
+                    macro_storage = items;
+                    &macro_storage as &dyn ModuleItemOwner
+                },
+                ast::SourceFile(file) => {
+                    file_storage = file;
+                    &file_storage
+                },
+                _ => return Default::default(),
+            }
+        };
+
+        let map = db.ast_id_map(file_id);
+        let ctx = Ctx {
+            tree: ItemTree::default(),
+            hygiene: Hygiene::new(db.upcast(), file_id),
+            source_ast_id_map: map,
+            body_ctx: crate::body::LowerCtx::new(db, file_id),
+        };
+        Arc::new(ctx.lower(item_owner))
+    }
+
+    /// Returns an iterator over all items located at the top level of the `HirFileId` this
+    /// `ItemTree` was created from.
+    pub fn top_level_items(&self) -> impl Iterator<Item = ModItem> + '_ {
+        self.top_level.iter().copied()
     }
 }
 
@@ -78,6 +115,7 @@ impl_index!(
     exprs: Expr,
 );
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Import {
     pub path: ModPath,
     pub alias: Option<ImportAlias>,
@@ -88,6 +126,7 @@ pub struct Import {
     pub is_macro_use: bool,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Function {
     pub name: Name,
     pub attrs: Attrs,
@@ -99,6 +138,7 @@ pub struct Function {
     pub ast: FileAstId<ast::FnDef>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Struct {
     pub name: Name,
     pub attrs: Attrs,
@@ -108,6 +148,7 @@ pub struct Struct {
     pub ast: FileAstId<ast::StructDef>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Union {
     pub name: Name,
     pub attrs: Attrs,
@@ -116,6 +157,7 @@ pub struct Union {
     pub fields: Fields,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Enum {
     pub name: Name,
     pub attrs: Attrs,
@@ -124,6 +166,7 @@ pub struct Enum {
     pub variants: Range<Idx<Variant>>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Const {
     /// const _: () = ();
     pub name: Option<Name>,
@@ -131,12 +174,14 @@ pub struct Const {
     pub type_ref: TypeRef,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Static {
     pub name: Name,
     pub visibility: RawVisibility,
     pub type_ref: TypeRef,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibility,
@@ -145,6 +190,7 @@ pub struct Trait {
     pub items: Vec<AssocItem>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Impl {
     pub generic_params: GenericParams,
     pub target_trait: Option<TypeRef>,
@@ -161,12 +207,14 @@ pub struct TypeAlias {
     pub type_ref: Option<TypeRef>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Mod {
     pub name: Name,
     pub visibility: RawVisibility,
     pub items: Vec<ModItem>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct MacroCall {
     pub name: Option<Name>,
     pub path: ModPath,
@@ -177,8 +225,22 @@ pub struct MacroCall {
 
 // NB: There's no `FileAstId` for `Expr`. The only case where this would be useful is for array
 // lengths, but we don't do much with them yet.
+#[derive(Debug, Eq, PartialEq)]
 pub struct Expr;
 
+macro_rules! impl_froms {
+    ($e:ident { $($v:ident ($t:ty)),* $(,)? }) => {
+        $(
+            impl From<$t> for $e {
+                fn from(it: $t) -> $e {
+                    $e::$v(it)
+                }
+            }
+        )*
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ModItem {
     Import(Idx<Import>),
     Function(Idx<Function>),
@@ -194,6 +256,22 @@ pub enum ModItem {
     MacroCall(Idx<MacroCall>),
 }
 
+impl_froms!(ModItem {
+    Import(Idx<Import>),
+    Function(Idx<Function>),
+    Struct(Idx<Struct>),
+    Union(Idx<Union>),
+    Enum(Idx<Enum>),
+    Const(Idx<Const>),
+    Static(Idx<Static>),
+    Trait(Idx<Trait>),
+    Impl(Idx<Impl>),
+    TypeAlias(Idx<TypeAlias>),
+    Mod(Idx<Mod>),
+    MacroCall(Idx<MacroCall>),
+});
+
+#[derive(Debug, Eq, PartialEq)]
 pub enum AssocItem {
     Function(Idx<Function>),
     TypeAlias(Idx<TypeAlias>),
@@ -201,6 +279,14 @@ pub enum AssocItem {
     MacroCall(Idx<MacroCall>),
 }
 
+impl_froms!(AssocItem {
+    Function(Idx<Function>),
+    TypeAlias(Idx<TypeAlias>),
+    Const(Idx<Const>),
+    MacroCall(Idx<MacroCall>),
+});
+
+#[derive(Debug, Eq, PartialEq)]
 pub struct Variant {
     pub name: Name,
     pub fields: Fields,
@@ -229,55 +315,44 @@ struct Ctx {
 }
 
 impl Ctx {
-    fn lower(&mut self, item_owner: &dyn ast::ModuleItemOwner) {
-        for item in item_owner.items() {
-            self.lower_item(&item)
-        }
+    fn lower(mut self, item_owner: &dyn ModuleItemOwner) -> ItemTree {
+        self.tree.top_level = item_owner.items().flat_map(|item| self.lower_item(&item)).collect();
+        self.tree
     }
 
-    fn lower_item(&mut self, item: &ast::ModuleItem) {
+    fn lower_item(&mut self, item: &ast::ModuleItem) -> Option<ModItem> {
         match item {
             ast::ModuleItem::StructDef(ast) => {
-                if let Some(data) = self.lower_struct(ast) {
-                    let idx = self.tree.structs.alloc(data);
-                }
+                self.lower_struct(ast).map(|data| self.tree.structs.alloc(data).into())
             }
             ast::ModuleItem::UnionDef(ast) => {
-                if let Some(data) = self.lower_union(ast) {
-                    let idx = self.tree.unions.alloc(data);
-                }
+                self.lower_union(ast).map(|data| self.tree.unions.alloc(data).into())
             }
             ast::ModuleItem::EnumDef(ast) => {
-                if let Some(data) = self.lower_enum(ast) {
-                    let idx = self.tree.enums.alloc(data);
-                }
+                self.lower_enum(ast).map(|data| self.tree.enums.alloc(data).into())
             }
             ast::ModuleItem::FnDef(ast) => {
-                if let Some(data) = self.lower_function(ast) {
-                    let idx = self.tree.functions.alloc(data);
-                }
+                self.lower_function(ast).map(|data| self.tree.functions.alloc(data).into())
             }
             ast::ModuleItem::TypeAliasDef(ast) => {
-                if let Some(data) = self.lower_type_alias(ast) {
-                    let idx = self.tree.type_aliases.alloc(data);
-                }
+                self.lower_type_alias(ast).map(|data| self.tree.type_aliases.alloc(data).into())
             }
             ast::ModuleItem::StaticDef(ast) => {
-                if let Some(data) = self.lower_static(ast) {
-                    let idx = self.tree.statics.alloc(data);
-                }
+                self.lower_static(ast).map(|data| self.tree.statics.alloc(data).into())
             }
             ast::ModuleItem::ConstDef(ast) => {
                 let data = self.lower_const(ast);
-                let idx = self.tree.consts.alloc(data);
+                Some(self.tree.consts.alloc(data).into())
             }
-            ast::ModuleItem::Module(_) => {}
-            ast::ModuleItem::TraitDef(_) => {}
-            ast::ModuleItem::ImplDef(_) => {}
-            ast::ModuleItem::UseItem(_) => {}
-            ast::ModuleItem::ExternCrateItem(_) => {}
-            ast::ModuleItem::MacroCall(_) => {}
-            ast::ModuleItem::ExternBlock(_) => {}
+            ast::ModuleItem::Module(ast) => {
+                self.lower_module(ast).map(|data| self.tree.mods.alloc(data).into())
+            }
+            ast::ModuleItem::TraitDef(_) => todo!(),
+            ast::ModuleItem::ImplDef(_) => todo!(),
+            ast::ModuleItem::UseItem(_) => todo!(),
+            ast::ModuleItem::ExternCrateItem(_) => todo!(),
+            ast::ModuleItem::MacroCall(_) => todo!(),
+            ast::ModuleItem::ExternBlock(_) => todo!(),
         }
     }
 
@@ -473,7 +548,16 @@ impl Ctx {
         Const { name, visibility, type_ref }
     }
 
-    fn lower_generic_params(&mut self, item: &impl ast::TypeParamsOwner) -> GenericParams {
+    fn lower_module(&mut self, module: &ast::Module) -> Option<Mod> {
+        let name = module.name()?.as_name();
+        let visibility = self.lower_visibility(module);
+        let items = module
+            .item_list()
+            .map(move |list| list.items().flat_map(move |item| self.lower_item(&item)).collect());
+        Some(Mod { name, visibility, items: items.unwrap_or_default() })
+    }
+
+    fn lower_generic_params(&mut self, _item: &impl ast::TypeParamsOwner) -> GenericParams {
         None.unwrap()
     }
 

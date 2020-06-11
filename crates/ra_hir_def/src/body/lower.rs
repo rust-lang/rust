@@ -3,7 +3,6 @@
 
 use either::Either;
 use hir_expand::{
-    db::AstDatabase,
     hygiene::Hygiene,
     name::{name, AsName, Name},
     HirFileId, MacroDefId, MacroDefKind,
@@ -42,8 +41,8 @@ pub(crate) struct LowerCtx {
 }
 
 impl LowerCtx {
-    pub fn new(db: &dyn AstDatabase, file_id: HirFileId) -> Self {
-        LowerCtx { hygiene: Hygiene::new(db, file_id) }
+    pub fn new(db: &dyn DefDatabase, file_id: HirFileId) -> Self {
+        LowerCtx { hygiene: Hygiene::new(db.upcast(), file_id) }
     }
     pub fn with_hygiene(hygiene: &Hygiene) -> Self {
         LowerCtx { hygiene: hygiene.clone() }
@@ -120,7 +119,7 @@ impl ExprCollector<'_> {
     }
 
     fn ctx(&self) -> LowerCtx {
-        LowerCtx::new(self.db.upcast(), self.expander.current_file_id)
+        LowerCtx::new(self.db, self.expander.current_file_id)
     }
 
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
