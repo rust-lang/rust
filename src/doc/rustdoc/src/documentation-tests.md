@@ -416,7 +416,7 @@ without including it in your main documentation. For example, you could write th
 `lib.rs` to test your README as part of your doctests:
 
 ```rust,ignore
-#![feature(extern_doc)]
+#![feature(external_doc)]
 
 #[doc(include="../README.md")]
 #[cfg(doctest)]
