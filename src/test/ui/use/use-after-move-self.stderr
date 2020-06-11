@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `self`
 LL |     pub fn foo(self) -> isize {
    |                ---- move occurs because `self` has type `S`, which does not implement the `Copy` trait
 LL |         self.bar();
-   |         ---------- `self` moved due to this method call
+   |              ----- `self` moved due to this method call
 LL |         return *self.x;
    |                ^^^^^^^ value used here after move
    |

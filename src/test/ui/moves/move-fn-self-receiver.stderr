@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `val.0`
   --> $DIR/move-fn-self-receiver.rs:30:5
    |
 LL |     val.0.into_iter().next();
-   |     ----------------- `val.0` moved due to this method call
+   |           ----------- `val.0` moved due to this method call
 LL |     val.0;
    |     ^^^^^ value used here after move
    |
@@ -19,7 +19,7 @@ error[E0382]: use of moved value: `foo`
 LL |     let foo = Foo;
    |         --- move occurs because `foo` has type `Foo`, which does not implement the `Copy` trait
 LL |     foo.use_self();
-   |     -------------- `foo` moved due to this method call
+   |         ---------- `foo` moved due to this method call
 LL |     foo;
    |     ^^^ value used here after move
    |
@@ -35,7 +35,7 @@ error[E0382]: use of moved value: `second_foo`
 LL |     let second_foo = Foo;
    |         ---------- move occurs because `second_foo` has type `Foo`, which does not implement the `Copy` trait
 LL |     second_foo.use_self();
-   |     --------------------- `second_foo` moved due to this method call
+   |                ---------- `second_foo` moved due to this method call
 LL |     second_foo;
    |     ^^^^^^^^^^ value used here after move
 
@@ -45,7 +45,7 @@ error[E0382]: use of moved value: `boxed_foo`
 LL |     let boxed_foo = Box::new(Foo);
    |         --------- move occurs because `boxed_foo` has type `std::boxed::Box<Foo>`, which does not implement the `Copy` trait
 LL |     boxed_foo.use_box_self();
-   |     ------------------------ `boxed_foo` moved due to this method call
+   |               -------------- `boxed_foo` moved due to this method call
 LL |     boxed_foo;
    |     ^^^^^^^^^ value used here after move
    |
@@ -61,7 +61,7 @@ error[E0382]: use of moved value: `pin_box_foo`
 LL |     let pin_box_foo = Box::pin(Foo);
    |         ----------- move occurs because `pin_box_foo` has type `std::pin::Pin<std::boxed::Box<Foo>>`, which does not implement the `Copy` trait
 LL |     pin_box_foo.use_pin_box_self();
-   |     ------------------------------ `pin_box_foo` moved due to this method call
+   |                 ------------------ `pin_box_foo` moved due to this method call
 LL |     pin_box_foo;
    |     ^^^^^^^^^^^ value used here after move
    |
@@ -87,7 +87,7 @@ error[E0382]: use of moved value: `rc_foo`
 LL |     let rc_foo = Rc::new(Foo);
    |         ------ move occurs because `rc_foo` has type `std::rc::Rc<Foo>`, which does not implement the `Copy` trait
 LL |     rc_foo.use_rc_self();
-   |     -------------------- `rc_foo` moved due to this method call
+   |            ------------- `rc_foo` moved due to this method call
 LL |     rc_foo;
    |     ^^^^^^ value used here after move
    |
@@ -132,7 +132,7 @@ error[E0382]: use of moved value: `explicit_into_iter`
 LL |     let explicit_into_iter = vec![true];
    |         ------------------ move occurs because `explicit_into_iter` has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 LL |     for _val in explicit_into_iter.into_iter() {}
-   |                 ------------------------------ `explicit_into_iter` moved due to this method call
+   |                                    ----------- `explicit_into_iter` moved due to this method call
 LL |     explicit_into_iter;
    |     ^^^^^^^^^^^^^^^^^^ value used here after move
 
@@ -142,7 +142,7 @@ error[E0382]: use of moved value: `container`
 LL |     let container = Container(vec![]);
    |         --------- move occurs because `container` has type `Container`, which does not implement the `Copy` trait
 LL |     for _val in container.custom_into_iter() {}
-   |                 ---------------------------- `container` moved due to this method call
+   |                           ------------------ `container` moved due to this method call
 LL |     container;
    |     ^^^^^^^^^ value used here after move
    |

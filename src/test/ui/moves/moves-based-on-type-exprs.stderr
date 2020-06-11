@@ -104,7 +104,7 @@ error[E0382]: borrow of moved value: `x`
 LL |     let x = vec!["hi".to_string()];
    |         - move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
 LL |     let _y = x.into_iter().next().unwrap();
-   |              ------------- `x` moved due to this method call
+   |                ----------- `x` moved due to this method call
 LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
@@ -120,7 +120,7 @@ error[E0382]: borrow of moved value: `x`
 LL |     let x = vec!["hi".to_string()];
    |         - move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
 LL |     let _y = [x.into_iter().next().unwrap(); 1];
-   |               ------------- `x` moved due to this method call
+   |                 ----------- `x` moved due to this method call
 LL |     touch(&x);
    |           ^^ value borrowed here after move
    |

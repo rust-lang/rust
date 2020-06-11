@@ -34,7 +34,7 @@ error[E0382]: use of moved value: `y`
 LL |         let y = *x;
    |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
 LL |         y.foo();
-   |         ------- `y` moved due to this method call
+   |           ----- `y` moved due to this method call
 LL |         y.foo();
    |         ^ value used here after move
    |

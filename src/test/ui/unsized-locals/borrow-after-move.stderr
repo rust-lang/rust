@@ -37,7 +37,7 @@ error[E0382]: borrow of moved value: `y`
 LL |         let y = *x;
    |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
 LL |         y.foo();
-   |         ------- `y` moved due to this method call
+   |           ----- `y` moved due to this method call
 ...
 LL |         println!("{}", &y);
    |                        ^^ value borrowed here after move

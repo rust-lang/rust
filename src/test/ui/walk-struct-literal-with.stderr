@@ -4,7 +4,7 @@ error[E0382]: borrow of moved value: `start`
 LL |     let start = Mine{test:"Foo".to_string(), other_val:0};
    |         ----- move occurs because `start` has type `Mine`, which does not implement the `Copy` trait
 LL |     let end = Mine{other_val:1, ..start.make_string_bar()};
-   |                                   ----------------------- `start` moved due to this method call
+   |                                         ----------------- `start` moved due to this method call
 LL |     println!("{}", start.test);
    |                    ^^^^^^^^^^ value borrowed here after move
    |

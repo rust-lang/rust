@@ -795,8 +795,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("move_spans: target_temp = {:?}", target_temp);
 
         if let Some(Terminator {
-            kind: TerminatorKind::Call { func, args, .. },
-            source_info: term_source_info,
+            kind: TerminatorKind::Call { func, args, fn_span, .. },
+            ..
         }) = &self.body[location.block].terminator
         {
             let mut method_did = None;
@@ -819,7 +819,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let [Operand::Move(self_place), ..] = **args {
                 if self_place.as_local() == Some(target_temp) {
                     let is_fn_once = tcx.parent(method_did) == tcx.lang_items().fn_once_trait();
-                    let fn_call_span = term_source_info.span;
+                    let fn_call_span = *fn_span;
 
                     let self_arg = tcx.fn_arg_names(method_did)[0];
 
