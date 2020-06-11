@@ -553,7 +553,7 @@ impl Step for Clippy {
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        try_run(builder, &mut cargo.into());
+        builder.run(&mut cargo.into());
     }
 }
 
