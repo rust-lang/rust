@@ -1747,24 +1747,41 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 pub fn recursive_type_with_infinite_size_error(
     tcx: TyCtxt<'tcx>,
     type_def_id: DefId,
-) -> DiagnosticBuilder<'tcx> {
+    spans: Vec<Span>,
+) {
     assert!(type_def_id.is_local());
     let span = tcx.hir().span_if_local(type_def_id).unwrap();
     let span = tcx.sess.source_map().guess_head_span(span);
-    let mut err = struct_span_err!(
-        tcx.sess,
-        span,
-        E0072,
-        "recursive type `{}` has infinite size",
-        tcx.def_path_str(type_def_id)
-    );
+    let path = tcx.def_path_str(type_def_id);
+    let mut err =
+        struct_span_err!(tcx.sess, span, E0072, "recursive type `{}` has infinite size", path);
     err.span_label(span, "recursive type has infinite size");
-    err.help(&format!(
-        "insert indirection (e.g., a `Box`, `Rc`, or `&`) \
-                           at some point to make `{}` representable",
-        tcx.def_path_str(type_def_id)
-    ));
-    err
+    for &span in &spans {
+        err.span_label(span, "recursive without indirection");
+    }
+    let msg = format!(
+        "insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `{}` representable",
+        path,
+    );
+    if spans.len() <= 4 {
+        err.multipart_suggestion(
+            &msg,
+            spans
+                .iter()
+                .flat_map(|&span| {
+                    vec![
+                        (span.shrink_to_lo(), "Box<".to_string()),
+                        (span.shrink_to_hi(), ">".to_string()),
+                    ]
+                    .into_iter()
+                })
+                .collect(),
+            Applicability::HasPlaceholders,
+        );
+    } else {
+        err.help(&msg);
+    }
+    err.emit();
 }
 
 /// Summarizes information

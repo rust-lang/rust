@@ -2387,11 +2387,7 @@ fn check_representable(tcx: TyCtxt<'_>, sp: Span, item_def_id: LocalDefId) -> bo
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive(spans) => {
-            let mut err = recursive_type_with_infinite_size_error(tcx, item_def_id.to_def_id());
-            for span in spans {
-                err.span_label(span, "recursive without indirection");
-            }
-            err.emit();
+            recursive_type_with_infinite_size_error(tcx, item_def_id.to_def_id(), spans);
             return false;
         }
         Representability::Representable | Representability::ContainsRecursive => (),
