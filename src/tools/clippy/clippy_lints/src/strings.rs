@@ -164,7 +164,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
         use rustc_ast::ast::LitKind;
 
         if_chain! {
-            if let ExprKind::MethodCall(path, _, args) = &e.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = &e.kind;
             if path.ident.name == sym!(as_bytes);
             if let ExprKind::Lit(lit) = &args[0].kind;
             if let LitKind::Str(lit_content, _) = &lit.node;

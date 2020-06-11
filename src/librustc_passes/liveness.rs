@@ -1198,7 +1198,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_expr(&f, succ)
             }
 
-            hir::ExprKind::MethodCall(.., ref args) => {
+            hir::ExprKind::MethodCall(.., ref args, _) => {
                 let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
                 let succ = if self.ir.tcx.is_ty_uninhabited_from(
                     m,

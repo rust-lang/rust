@@ -556,7 +556,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprKind::MethodCall(_, _, args) => {
+            hir::ExprKind::MethodCall(_, _, args, _) => {
                 let def_id = self.tables.type_dependent_def_id(expr.hir_id).unwrap();
                 let base_type = self.cx.tcx.type_of(def_id);
 
@@ -610,7 +610,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
             return;
         }
         match expr.kind {
-            Call(_, args) | MethodCall(_, _, args) => {
+            Call(_, args) | MethodCall(_, _, args, _) => {
                 let mut tys = FxHashSet::default();
                 for arg in args {
                     let def_id = arg.hir_id.owner.to_def_id();

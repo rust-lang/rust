@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 
 use rustc_hir::lang_items::PanicLocationLangItem;
+use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::subst::Subst;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::LayoutOf;
@@ -14,19 +15,32 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
     /// frame which is not `#[track_caller]`.
     crate fn find_closest_untracked_caller_location(&self) -> Span {
-        self.stack()
+        let frame = self
+            .stack()
             .iter()
             .rev()
             // Find first non-`#[track_caller]` frame.
-            .find(|frame| !frame.instance.def.requires_caller_location(*self.tcx))
+            .find(|frame| {
+                debug!(
+                    "find_closest_untracked_caller_location: checking frame {:?}",
+                    frame.instance
+                );
+                !frame.instance.def.requires_caller_location(*self.tcx)
+            })
             // Assert that there is always such a frame.
-            .unwrap()
-            .current_source_info()
-            // Assert that the frame we look at is actually executing code currently
-            // (`current_source_info` is None when we are unwinding and the frame does
-            // not require cleanup).
-            .unwrap()
-            .span
+            .unwrap();
+        let loc = frame.loc.unwrap();
+        let block = &frame.body.basic_blocks()[loc.block];
+        assert_eq!(block.statements.len(), loc.statement_index);
+        debug!(
+            "find_closest_untracked_caller_location:: got terminator {:?} ({:?})",
+            block.terminator(),
+            block.terminator().kind
+        );
+        if let TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
+            return fn_span;
+        }
+        unreachable!();
     }
 
     /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.

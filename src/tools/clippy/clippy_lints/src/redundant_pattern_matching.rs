@@ -89,7 +89,7 @@ fn find_sugg_for_if_let<'a, 'tcx>(
     // check that `while_let_on_iterator` lint does not trigger
     if_chain! {
         if keyword == "while";
-        if let ExprKind::MethodCall(method_path, _, _) = op.kind;
+        if let ExprKind::MethodCall(method_path, _, _, _) = op.kind;
         if method_path.ident.name == sym!(next);
         if match_trait_method(cx, op, &paths::ITERATOR);
         then {

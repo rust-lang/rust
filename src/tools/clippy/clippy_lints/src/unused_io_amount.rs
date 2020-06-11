@@ -52,7 +52,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
                 }
             },
 
-            hir::ExprKind::MethodCall(ref path, _, ref args) => match &*path.ident.as_str() {
+            hir::ExprKind::MethodCall(ref path, _, ref args, _) => match &*path.ident.as_str() {
                 "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
                     check_method_call(cx, &args[0], expr);
                 },
@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
 }
 
 fn check_method_call(cx: &LateContext<'_, '_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
-    if let hir::ExprKind::MethodCall(ref path, _, _) = call.kind {
+    if let hir::ExprKind::MethodCall(ref path, _, _, _) = call.kind {
         let symbol = &*path.ident.as_str();
         let read_trait = match_trait_method(cx, call, &paths::IO_READ);
         let write_trait = match_trait_method(cx, call, &paths::IO_WRITE);

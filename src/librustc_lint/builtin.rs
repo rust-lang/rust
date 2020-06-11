@@ -1899,7 +1899,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                         }
                     }
                 }
-            } else if let hir::ExprKind::MethodCall(_, _, ref args) = expr.kind {
+            } else if let hir::ExprKind::MethodCall(_, _, ref args, _) = expr.kind {
                 // Find problematic calls to `MaybeUninit::assume_init`.
                 let def_id = cx.tables.type_dependent_def_id(expr.hir_id)?;
                 if cx.tcx.is_diagnostic_item(sym::assume_init, def_id) {

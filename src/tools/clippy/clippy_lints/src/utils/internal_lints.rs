@@ -402,7 +402,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
+            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(&*fn_name.as_str());
             let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
@@ -491,7 +491,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CollapsibleCalls {
             let stmts = &block.stmts;
             if stmts.len() == 1 && block.expr.is_none();
             if let StmtKind::Semi(only_expr) = &stmts[0].kind;
-            if let ExprKind::MethodCall(ref ps, _, ref span_call_args) = &only_expr.kind;
+            if let ExprKind::MethodCall(ref ps, _, ref span_call_args, _) = &only_expr.kind;
             let and_then_snippets = get_and_then_snippets(cx, and_then_args);
             let mut sle = SpanlessEq::new(cx).ignore_fn();
             then {

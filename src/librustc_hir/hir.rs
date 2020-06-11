@@ -1371,7 +1371,7 @@ pub struct Expr<'hir> {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr<'static>, 64);
+rustc_data_structures::static_assert_size!(Expr<'static>, 72);
 
 impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1568,12 +1568,14 @@ pub enum ExprKind<'hir> {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
+    /// The final `Span` represents the span of the function and arguments
+    /// (e.g. `foo::<Bar, Baz>(a, b, c, d)` in `x.foo::<Bar, Baz>(a, b, c, d)`
     ///
     /// To resolve the called method to a `DefId`, call [`type_dependent_def_id`] with
     /// the `hir_id` of the `MethodCall` node itself.
     ///
     /// [`type_dependent_def_id`]: ../ty/struct.TypeckTables.html#method.type_dependent_def_id
-    MethodCall(&'hir PathSegment<'hir>, Span, &'hir [Expr<'hir>]),
+    MethodCall(&'hir PathSegment<'hir>, Span, &'hir [Expr<'hir>], Span),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(&'hir [Expr<'hir>]),
     /// A binary operation (e.g., `a + b`, `a * b`).

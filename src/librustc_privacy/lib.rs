@@ -1302,7 +1302,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                     return;
                 }
             }
-            hir::ExprKind::MethodCall(_, span, _) => {
+            hir::ExprKind::MethodCall(_, span, _, _) => {
                 // Method calls have to be checked specially.
                 self.span = span;
                 if let Some(def_id) = self.tables.type_dependent_def_id(expr.hir_id) {

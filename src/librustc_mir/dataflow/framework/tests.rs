@@ -41,6 +41,7 @@ fn mock_body() -> mir::Body<'static> {
             destination: Some((dummy_place.clone(), mir::START_BLOCK)),
             cleanup: None,
             from_hir_call: false,
+            fn_span: DUMMY_SP,
         },
     );
     block(3, mir::TerminatorKind::Return);
@@ -53,6 +54,7 @@ fn mock_body() -> mir::Body<'static> {
             destination: Some((dummy_place.clone(), mir::START_BLOCK)),
             cleanup: None,
             from_hir_call: false,
+            fn_span: DUMMY_SP,
         },
     );
 

@@ -107,7 +107,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::MethodCall(_, call_span, exprs) = expr.kind {
+        if let ExprKind::MethodCall(_, call_span, exprs, _) = expr.kind {
             if call_span == self.target_span
                 && Some(self.target)
                     == self.infcx.in_progress_tables.and_then(|tables| {
@@ -294,7 +294,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // 3 |     let _ = x.sum() as f64;
             //   |               ^^^ cannot infer type for `S`
             span
-        } else if let Some(ExprKind::MethodCall(_, call_span, _)) =
+        } else if let Some(ExprKind::MethodCall(_, call_span, _, _)) =
             local_visitor.found_method_call.map(|e| &e.kind)
         {
             // Point at the call instead of the whole expression:

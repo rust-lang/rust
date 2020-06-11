@@ -70,7 +70,7 @@ fn match_ordering_def_path(cx: &LateContext<'_, '_>, did: DefId, orderings: &[&s
 
 fn check_atomic_load_store(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     if_chain! {
-        if let ExprKind::MethodCall(ref method_path, _, args) = &expr.kind;
+        if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind;
         let method = method_path.ident.name.as_str();
         if type_is_atomic(cx, &args[0]);
         if method == "load" || method == "store";

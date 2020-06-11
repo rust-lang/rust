@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                 }
             },
 
-            ExprKind::MethodCall(ref name, .., ref args) => {
+            ExprKind::MethodCall(ref name, .., ref args, _) => {
                 if match_trait_method(cx, e, &paths::INTO) && &*name.ident.as_str() == "into" {
                     let a = cx.tables.expr_ty(e);
                     let b = cx.tables.expr_ty(&args[0]);

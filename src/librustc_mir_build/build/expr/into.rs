@@ -162,7 +162,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 });
                 exit_block.unit()
             }
-            ExprKind::Call { ty, fun, args, from_hir_call } => {
+            ExprKind::Call { ty, fun, args, from_hir_call, fn_span } => {
                 let intrinsic = match ty.kind {
                     ty::FnDef(def_id, _) => {
                         let f = ty.fn_sig(this.hir.tcx());
@@ -206,6 +206,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     this.record_operands_moved(&args);
 
+                    debug!("into_expr: fn_span={:?}", fn_span);
+
                     this.cfg.terminate(
                         block,
                         source_info,
@@ -222,6 +224,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 Some((destination, success))
                             },
                             from_hir_call,
+                            fn_span
                         },
                     );
                     success.unit()
