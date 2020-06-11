@@ -333,13 +333,6 @@ impl Default for DroplessArena {
 }
 
 impl DroplessArena {
-    #[inline]
-    fn align(&self, align: usize) {
-        let final_address = ((self.ptr.get() as usize) + align - 1) & !(align - 1);
-        self.ptr.set(final_address as *mut u8);
-        assert!(self.ptr <= self.end);
-    }
-
     #[inline(never)]
     #[cold]
     fn grow(&self, additional: usize) {
@@ -370,22 +363,42 @@ impl DroplessArena {
         }
     }
 
+    /// Allocates a byte slice with specified size and alignment from the
+    /// current memory chunk. Returns `None` if there is no free space left to
+    /// satisfy the request.
+    #[inline]
+    fn alloc_raw_without_grow(&self, bytes: usize, align: usize) -> Option<&mut [u8]> {
+        let ptr = self.ptr.get() as usize;
+        let end = self.end.get() as usize;
+        // The allocation request fits into the current chunk iff:
+        //
+        // let aligned = align_to(ptr, align);
+        // ptr <= aligned && aligned + bytes <= end
+        //
+        // Except that we work with fixed width integers and need to be careful
+        // about potential overflow in the calcuation. If the overflow does
+        // happen, then we definitely don't have enough free and need to grow
+        // the arena.
+        let aligned = ptr.checked_add(align - 1)? & !(align - 1);
+        let new_ptr = aligned.checked_add(bytes)?;
+        if new_ptr <= end {
+            self.ptr.set(new_ptr as *mut u8);
+            unsafe { Some(slice::from_raw_parts_mut(aligned as *mut u8, bytes)) }
+        } else {
+            None
+        }
+    }
+
     #[inline]
     pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
-        unsafe {
-            assert!(bytes != 0);
-
-            self.align(align);
-
-            let future_end = intrinsics::arith_offset(self.ptr.get(), bytes as isize);
-            if (future_end as *mut u8) > self.end.get() {
-                self.grow(bytes);
+        assert!(bytes != 0);
+        loop {
+            if let Some(a) = self.alloc_raw_without_grow(bytes, align) {
+                break a;
             }
-
-            let ptr = self.ptr.get();
-            // Set the pointer past ourselves
-            self.ptr.set(intrinsics::arith_offset(self.ptr.get(), bytes as isize) as *mut u8);
-            slice::from_raw_parts_mut(ptr, bytes)
+            // No free space left. Allocate a new chunk to satisfy the request.
+            // On failure the grow will panic or abort.
+            self.grow(bytes);
         }
     }
 
