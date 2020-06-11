@@ -934,7 +934,7 @@ impl<'a> CrateLoader<'a> {
                 src: ExternCrateSource::Path,
                 span,
                 // to have the least priority in `update_extern_crate`
-                path_len: usize::max_value(),
+                path_len: usize::MAX,
                 dependency_of: LOCAL_CRATE,
             },
         );

@@ -95,7 +95,7 @@ pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
         match ftruncate64.get() {
             Some(f) => cvt_r(|| f(fd, size as i64)).map(drop),
             None => {
-                if size > i32::max_value() as u64 {
+                if size > i32::MAX as u64 {
                     Err(io::Error::new(io::ErrorKind::InvalidInput, "cannot truncate >2GB"))
                 } else {
                     cvt_r(|| ftruncate(fd, size as i32)).map(drop)

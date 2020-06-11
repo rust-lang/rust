@@ -75,7 +75,7 @@ LL | |     }
 error: Implicitly performing saturating subtraction
   --> $DIR/implicit_saturating_sub.rs:113:5
    |
-LL | /     if i_8 > i8::min_value() {
+LL | /     if i_8 > i8::MIN {
 LL | |         i_8 -= 1;
 LL | |     }
    | |_____^ help: try: `i_8 = i_8.saturating_sub(1);`
@@ -91,7 +91,7 @@ LL | |     }
 error: Implicitly performing saturating subtraction
   --> $DIR/implicit_saturating_sub.rs:123:5
    |
-LL | /     if i_8 != i8::min_value() {
+LL | /     if i_8 != i8::MIN {
 LL | |         i_8 -= 1;
 LL | |     }
    | |_____^ help: try: `i_8 = i_8.saturating_sub(1);`
@@ -107,7 +107,7 @@ LL | |     }
 error: Implicitly performing saturating subtraction
   --> $DIR/implicit_saturating_sub.rs:138:5
    |
-LL | /     if i_16 > i16::min_value() {
+LL | /     if i_16 > i16::MIN {
 LL | |         i_16 -= 1;
 LL | |     }
    | |_____^ help: try: `i_16 = i_16.saturating_sub(1);`
@@ -123,7 +123,7 @@ LL | |     }
 error: Implicitly performing saturating subtraction
   --> $DIR/implicit_saturating_sub.rs:148:5
    |
-LL | /     if i_16 != i16::min_value() {
+LL | /     if i_16 != i16::MIN {
 LL | |         i_16 -= 1;
 LL | |     }
    | |_____^ help: try: `i_16 = i_16.saturating_sub(1);`
@@ -139,7 +139,7 @@ LL | |     }
 error: Implicitly performing saturating subtraction
   --> $DIR/implicit_saturating_sub.rs:163:5
    |
-LL | /     if i_32 > i32::min_value() {
+LL | /     if i_32 > i32::MIN {
 LL | |         i_32 -= 1;
 LL | |     }
    | |_____^ help: try: `i_32 = i_32.saturating_sub(1);`
@@ -155,7 +155,7 @@ LL | |     }
 error: Implicitly performing saturating subtraction
   --> $DIR/implicit_saturating_sub.rs:173:5
    |
-LL | /     if i_32 != i32::min_value() {
+LL | /     if i_32 != i32::MIN {
 LL | |         i_32 -= 1;
 LL | |     }
    | |_____^ help: try: `i_32 = i_32.saturating_sub(1);`
@@ -163,7 +163,7 @@ LL | |     }
 error: Implicitly performing saturating subtraction
   --> $DIR/implicit_saturating_sub.rs:183:5
    |
-LL | /     if i64::min_value() < i_64 {
+LL | /     if i64::MIN < i_64 {
 LL | |         i_64 -= 1;
 LL | |     }
    | |_____^ help: try: `i_64 = i_64.saturating_sub(1);`

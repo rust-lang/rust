@@ -107,23 +107,23 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
 // warnings are consistent between 32- and 64-bit platforms.
 fn int_ty_range(int_ty: ast::IntTy) -> (i128, i128) {
     match int_ty {
-        ast::IntTy::Isize => (i64::min_value() as i128, i64::max_value() as i128),
-        ast::IntTy::I8 => (i8::min_value() as i64 as i128, i8::max_value() as i128),
-        ast::IntTy::I16 => (i16::min_value() as i64 as i128, i16::max_value() as i128),
-        ast::IntTy::I32 => (i32::min_value() as i64 as i128, i32::max_value() as i128),
-        ast::IntTy::I64 => (i64::min_value() as i128, i64::max_value() as i128),
-        ast::IntTy::I128 => (i128::min_value() as i128, i128::max_value()),
+        ast::IntTy::Isize => (i64::MIN as i128, i64::MAX as i128),
+        ast::IntTy::I8 => (i8::MIN as i64 as i128, i8::MAX as i128),
+        ast::IntTy::I16 => (i16::MIN as i64 as i128, i16::MAX as i128),
+        ast::IntTy::I32 => (i32::MIN as i64 as i128, i32::MAX as i128),
+        ast::IntTy::I64 => (i64::MIN as i128, i64::MAX as i128),
+        ast::IntTy::I128 => (i128::MIN as i128, i128::MAX),
     }
 }
 
 fn uint_ty_range(uint_ty: ast::UintTy) -> (u128, u128) {
     match uint_ty {
-        ast::UintTy::Usize => (u64::min_value() as u128, u64::max_value() as u128),
-        ast::UintTy::U8 => (u8::min_value() as u128, u8::max_value() as u128),
-        ast::UintTy::U16 => (u16::min_value() as u128, u16::max_value() as u128),
-        ast::UintTy::U32 => (u32::min_value() as u128, u32::max_value() as u128),
-        ast::UintTy::U64 => (u64::min_value() as u128, u64::max_value() as u128),
-        ast::UintTy::U128 => (u128::min_value(), u128::max_value()),
+        ast::UintTy::Usize => (u64::MIN as u128, u64::MAX as u128),
+        ast::UintTy::U8 => (u8::MIN as u128, u8::MAX as u128),
+        ast::UintTy::U16 => (u16::MIN as u128, u16::MAX as u128),
+        ast::UintTy::U32 => (u32::MIN as u128, u32::MAX as u128),
+        ast::UintTy::U64 => (u64::MIN as u128, u64::MAX as u128),
+        ast::UintTy::U128 => (u128::MIN, u128::MAX),
     }
 }
 

@@ -20,10 +20,10 @@ const NEXT_POWER_OF_TWO: u32 = 3u32.next_power_of_two();
 
 const CHECKED_NEXT_POWER_OF_TWO_OK: Option<u32> = 3u32.checked_next_power_of_two();
 const CHECKED_NEXT_POWER_OF_TWO_OVERFLOW: Option<u32> =
-    u32::max_value().checked_next_power_of_two();
+    u32::MAX.checked_next_power_of_two();
 
 const WRAPPING_NEXT_POWER_OF_TWO: u32 =
-    u32::max_value().wrapping_next_power_of_two();
+    u32::MAX.wrapping_next_power_of_two();
 
 fn main() {
     assert!(!IS_POWER_OF_TWO_A);
@@ -37,7 +37,7 @@ fn main() {
 
     assert_eq!(WRAPPING_POW, 217);
     assert_eq!(OVERFLOWING_POW, (217, true));
-    assert_eq!(SATURATING_POW, u8::max_value());
+    assert_eq!(SATURATING_POW, u8::MAX);
 
     assert_eq!(NEXT_POWER_OF_TWO, 4);
 

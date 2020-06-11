@@ -64,7 +64,7 @@ pub fn unsupported_err() -> std_io::Error {
 
 pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
     use std_io::ErrorKind::*;
-    if errno > u16::max_value() as i32 || errno < 0 {
+    if errno > u16::MAX as i32 || errno < 0 {
         return Other;
     }
     match errno as u16 {

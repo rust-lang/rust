@@ -68,7 +68,7 @@ fn test_reserve() {
 
 #[test]
 fn test_zst_capacity() {
-    assert_eq!(Vec::<()>::new().capacity(), usize::max_value());
+    assert_eq!(Vec::<()>::new().capacity(), usize::MAX);
 }
 
 #[test]
@@ -563,19 +563,19 @@ fn test_drain_inclusive_range() {
 
 #[test]
 fn test_drain_max_vec_size() {
-    let mut v = Vec::<()>::with_capacity(usize::max_value());
+    let mut v = Vec::<()>::with_capacity(usize::MAX);
     unsafe {
-        v.set_len(usize::max_value());
+        v.set_len(usize::MAX);
     }
-    for _ in v.drain(usize::max_value() - 1..) {}
-    assert_eq!(v.len(), usize::max_value() - 1);
+    for _ in v.drain(usize::MAX - 1..) {}
+    assert_eq!(v.len(), usize::MAX - 1);
 
-    let mut v = Vec::<()>::with_capacity(usize::max_value());
+    let mut v = Vec::<()>::with_capacity(usize::MAX);
     unsafe {
-        v.set_len(usize::max_value());
+        v.set_len(usize::MAX);
     }
-    for _ in v.drain(usize::max_value() - 1..=usize::max_value() - 1) {}
-    assert_eq!(v.len(), usize::max_value() - 1);
+    for _ in v.drain(usize::MAX - 1..=usize::MAX - 1) {}
+    assert_eq!(v.len(), usize::MAX - 1);
 }
 
 #[test]

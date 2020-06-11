@@ -70,7 +70,7 @@ impl RawHandle {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut read = 0;
-        let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
+        let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let res = cvt(unsafe {
             c::ReadFile(self.0, buf.as_mut_ptr() as c::LPVOID, len, &mut read, ptr::null_mut())
         });
@@ -99,7 +99,7 @@ impl RawHandle {
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         let mut read = 0;
-        let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
+        let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let res = unsafe {
             let mut overlapped: c::OVERLAPPED = mem::zeroed();
             overlapped.Offset = offset as u32;
@@ -118,7 +118,7 @@ impl RawHandle {
         buf: &mut [u8],
         overlapped: *mut c::OVERLAPPED,
     ) -> io::Result<Option<usize>> {
-        let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
+        let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let mut amt = 0;
         let res = cvt(c::ReadFile(self.0, buf.as_ptr() as c::LPVOID, len, &mut amt, overlapped));
         match res {
@@ -165,7 +165,7 @@ impl RawHandle {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let mut amt = 0;
-        let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
+        let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         cvt(unsafe {
             c::WriteFile(self.0, buf.as_ptr() as c::LPVOID, len, &mut amt, ptr::null_mut())
         })?;
@@ -183,7 +183,7 @@ impl RawHandle {
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         let mut written = 0;
-        let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
+        let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         unsafe {
             let mut overlapped: c::OVERLAPPED = mem::zeroed();
             overlapped.Offset = offset as u32;
