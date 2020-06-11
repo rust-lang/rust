@@ -489,6 +489,17 @@ pub enum DiagnosticKind {
     Linker,
 }
 
+/// LLVMRustDiagnosticLevel
+#[derive(Copy, Clone)]
+#[repr(C)]
+#[allow(dead_code)] // Variants constructed by C++.
+pub enum DiagnosticLevel {
+    Error,
+    Warning,
+    Note,
+    Remark,
+}
+
 /// LLVMRustArchiveKind
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -2054,6 +2065,7 @@ extern "C" {
 
     pub fn LLVMRustUnpackInlineAsmDiagnostic(
         DI: &'a DiagnosticInfo,
+        level_out: &mut DiagnosticLevel,
         cookie_out: &mut c_uint,
         message_out: &mut Option<&'a Twine>,
         instruction_out: &mut Option<&'a Value>,
@@ -2074,6 +2086,7 @@ extern "C" {
         d: &SMDiagnostic,
         message_out: &RustString,
         buffer_out: &RustString,
+        level_out: &mut DiagnosticLevel,
         loc_out: &mut c_uint,
         ranges_out: *mut c_uint,
         num_ranges: &mut usize,

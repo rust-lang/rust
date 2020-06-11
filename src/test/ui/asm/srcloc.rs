@@ -37,5 +37,8 @@ fn main() {
 
         asm!(concat!("invalid", "_", "instruction"));
         //~^ ERROR: invalid instruction mnemonic 'invalid_instruction'
+
+        asm!("movaps %xmm3, (%esi, 2)", options(att_syntax));
+        //~^ WARN: scale factor without index register is ignored
     }
 }
