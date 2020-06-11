@@ -1189,8 +1189,8 @@ fn compare_projection_bounds<'tcx>(
     impl_ty_span: Span,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorReported> {
-    let is_gat = !tcx.generics_of(impl_ty.def_id).params.is_empty();
-    if impl_ty.defaultness.is_final() && !is_gat {
+    let have_gats = tcx.features().generic_associated_types;
+    if impl_ty.defaultness.is_final() && !have_gats {
         // For "final", non-generic associate type implementations, we
         // don't need this as described above.
         return Ok(());
@@ -1198,7 +1198,9 @@ fn compare_projection_bounds<'tcx>(
 
     let param_env = tcx.param_env(impl_ty.def_id);
 
-    let impl_substs = InternalSubsts::identity_for_item(tcx, impl_ty.container.id());
+    let impl_ty_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
+    let rebased_substs =
+        impl_ty_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
     let impl_ty_value = tcx.type_of(impl_ty.def_id);
 
     // Map the predicate from the trait to the corresponding one for the impl.
@@ -1211,32 +1213,9 @@ fn compare_projection_bounds<'tcx>(
     // function would translate and partially normalize
     // `[<Self as X<A>>::Y<'a>, A]` to `[&'a u32, &'x u32]`.
     let translate_predicate_substs = move |predicate_substs: SubstsRef<'tcx>| {
-        let normalized_self = if !is_gat {
-            // projection_predicates only includes projections where the
-            // substs of the trait ref are exactly the trait's identity
-            // substs, so we can simply return the value from the impl.
-            impl_ty_value
-        } else {
-            let predicate_self_ty = predicate_substs.type_at(0);
-            let impl_ty_substs = if let ty::Projection(p) = predicate_self_ty.kind {
-                assert!(
-                    p.item_def_id == trait_ty.def_id,
-                    "projection_predicates returned predicate for the wrong type: {}",
-                    predicate_self_ty,
-                );
-                p.substs.rebase_onto(tcx, impl_trait_ref.def_id, impl_substs)
-            } else {
-                bug!(
-                    "projection_predicates returned predicate for the wrong type `{}`",
-                    predicate_self_ty,
-                );
-            };
-            impl_ty_value.subst(tcx, impl_ty_substs)
-        };
-
         tcx.mk_substs(
-            iter::once(normalized_self.into())
-                .chain(predicate_substs[1..].iter().map(|s| s.subst(tcx, impl_trait_ref.substs))),
+            iter::once(impl_ty_value.into())
+                .chain(predicate_substs[1..].iter().map(|s| s.subst(tcx, rebased_substs))),
         )
     };
 
@@ -1275,8 +1254,13 @@ fn compare_projection_bounds<'tcx>(
                                 substs: projection_substs,
                                 item_def_id: projection.projection_ty.item_def_id,
                             },
-                            ty: projection.ty.subst(tcx, impl_trait_ref.substs),
+                            ty: projection.ty.subst(tcx, rebased_substs),
                         }
+                    })
+                    .to_predicate(tcx),
+                ty::PredicateKind::TypeOutlives(poly_outlives) => poly_outlives
+                    .map_bound(|outlives| {
+                        ty::OutlivesPredicate(impl_ty_value, outlives.1.subst(tcx, rebased_substs))
                     })
                     .to_predicate(tcx),
                 _ => bug!("unexepected projection predicate kind: `{:?}`", predicate),

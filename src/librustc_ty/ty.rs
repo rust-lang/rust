@@ -371,34 +371,45 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
 /// (`type X: Trait`) to be used as candidates. We also allow the same bounds
 /// when desugared as bounds on the trait `where Self::X: Trait`.
 ///
-/// Note that this filtering is done with the trait's identity substs to
+/// Note that this filtering is done with the items identity substs to
 /// simplify checking that these bounds are met in impls. This means that
 /// a bound such as `for<'b> <Self as X<'b>>::U: Clone` can't be used, as in
 /// `hr-associated-type-bound-1.rs`.
 fn associated_type_projection_predicates(
     tcx: TyCtxt<'_>,
-    def_id: DefId,
+    assoc_item_def_id: DefId,
 ) -> &'_ ty::List<ty::Predicate<'_>> {
-    let trait_id = tcx.associated_item(def_id).container.id();
-    let trait_substs = InternalSubsts::identity_for_item(tcx, trait_id);
+    let generic_trait_bounds = tcx.predicates_of(assoc_item_def_id);
+    // We include predicates from the trait as well to handle
+    // `where Self::X: Trait`.
+    let item_bounds = generic_trait_bounds.instantiate_identity(tcx);
+    let item_predicates = util::elaborate_predicates(tcx, item_bounds.predicates.into_iter());
 
-    let generic_trait_bounds = tcx.predicates_of(trait_id);
-    let trait_bounds = generic_trait_bounds.instantiate_identity(tcx);
-    let trait_predicates = util::elaborate_predicates(tcx, trait_bounds.predicates.into_iter());
+    let assoc_item_ty = ty::ProjectionTy {
+        item_def_id: assoc_item_def_id,
+        substs: InternalSubsts::identity_for_item(tcx, assoc_item_def_id),
+    };
 
-    let predicates = trait_predicates.filter_map(|obligation| {
+    let predicates = item_predicates.filter_map(|obligation| {
         let pred = obligation.predicate;
         match pred.kind() {
             ty::PredicateKind::Trait(tr, _) => {
                 if let ty::Projection(p) = tr.skip_binder().self_ty().kind {
-                    if p.item_def_id == def_id && p.substs.starts_with(trait_substs) {
+                    if p == assoc_item_ty {
                         return Some(pred);
                     }
                 }
             }
             ty::PredicateKind::Projection(proj) => {
                 if let ty::Projection(p) = proj.skip_binder().projection_ty.self_ty().kind {
-                    if p.item_def_id == def_id && p.substs.starts_with(trait_substs) {
+                    if p == assoc_item_ty {
+                        return Some(pred);
+                    }
+                }
+            }
+            ty::PredicateKind::TypeOutlives(outlives) => {
+                if let ty::Projection(p) = outlives.skip_binder().0.kind {
+                    if p == assoc_item_ty {
                         return Some(pred);
                     }
                 }
@@ -409,7 +420,11 @@ fn associated_type_projection_predicates(
     });
 
     let result = tcx.mk_predicates(predicates);
-    debug!("associated_type_projection_predicates({}) = {:?}", tcx.def_path_str(def_id), result);
+    debug!(
+        "associated_type_projection_predicates({}) = {:?}",
+        tcx.def_path_str(assoc_item_def_id),
+        result
+    );
     result
 }
 
@@ -422,9 +437,9 @@ fn opaque_type_projection_predicates(
 ) -> &'_ ty::List<ty::Predicate<'_>> {
     let substs = InternalSubsts::identity_for_item(tcx, def_id);
 
-    let generics_bounds = tcx.predicates_of(def_id);
-    let bounds = generics_bounds.instantiate_identity(tcx);
-    let predicates = util::elaborate_predicates(tcx, bounds.predicates.into_iter());
+    let bounds = tcx.predicates_of(def_id);
+    let predicates =
+        util::elaborate_predicates(tcx, bounds.predicates.into_iter().map(|&(pred, _)| pred));
 
     let filtered_predicates = predicates.filter_map(|obligation| {
         let pred = obligation.predicate;
@@ -445,6 +460,18 @@ fn opaque_type_projection_predicates(
                     }
                 }
             }
+            ty::PredicateKind::TypeOutlives(outlives) => {
+                if let ty::Opaque(opaque_def_id, opaque_substs) = outlives.skip_binder().0.kind {
+                    if opaque_def_id == def_id && opaque_substs == substs {
+                        return Some(pred);
+                    }
+                } else {
+                    // These can come from elaborating other predicates
+                    return None;
+                }
+            }
+            // These can come from elaborating other predicates
+            ty::PredicateKind::RegionOutlives(_) => return None,
             _ => {}
         }
         tcx.sess.delay_span_bug(

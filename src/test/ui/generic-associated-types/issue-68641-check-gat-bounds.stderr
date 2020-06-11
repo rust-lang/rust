@@ -10,8 +10,8 @@ LL | #![feature(generic_associated_types)]
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
   --> $DIR/issue-68641-check-gat-bounds.rs:15:5
    |
-LL | trait UnsafeCopy {
-   | ---------------- required by `UnsafeCopy`
+LL |     type Item<'a>: Copy;
+   |     -------------------- required by `UnsafeCopy::Item`
 ...
 LL |     type Item<'a> = T;
    |     ^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`

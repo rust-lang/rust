@@ -10,8 +10,8 @@ LL | #![feature(specialization)]
 error[E0277]: the trait bound `str: std::clone::Clone` is not satisfied
   --> $DIR/deafult-associated-type-bound-1.rs:18:5
    |
-LL | trait X {
-   | ------- required by `X`
+LL |     type U: Clone;
+   |     -------------- required by `X::U`
 ...
 LL |     default type U = str;
    |     ^^^^^^^^^^^^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `str`

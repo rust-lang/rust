@@ -10,8 +10,8 @@ LL | #![feature(specialization)]
 error[E0277]: can't compare `&'static B` with `B`
   --> $DIR/deafult-associated-type-bound-2.rs:16:5
    |
-LL | trait X<T> {
-   | ---------- required by `X`
+LL |     type U: PartialEq<T>;
+   |     --------------------- required by `X::U`
 ...
 LL |     default type U = &'static B;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `&'static B == B`

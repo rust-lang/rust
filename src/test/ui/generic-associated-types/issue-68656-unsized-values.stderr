@@ -10,8 +10,8 @@ LL | #![feature(generic_associated_types)]
 error[E0271]: type mismatch resolving `<T as std::ops::Deref>::Target == T`
   --> $DIR/issue-68656-unsized-values.rs:16:5
    |
-LL | trait UnsafeCopy<T: Copy> {
-   | ------------------------- required by `UnsafeCopy`
+LL |     type Item<'a>: std::ops::Deref<Target = T>;
+   |     ------------------------------------------- required by `UnsafeCopy::Item`
 ...
 LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<T> for T {
    |      - this type parameter
