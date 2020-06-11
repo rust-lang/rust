@@ -58,10 +58,16 @@ label = "O-ARM"
 
 [prioritize]
 label = "I-prioritize"
-prioritize_on = ["regression-from-stable-to-stable", "regression-from-stable-to-beta", "regression-from-stable-to-nightly"]
+prioritize_on = [
+    "regression-from-stable-to-stable",
+    "regression-from-stable-to-beta",
+    "regression-from-stable-to-nightly",
+    "I-unsound 💥",
+]
 exclude_labels = [
     "P-*",
     "T-infra",
     "T-release",
+    "requires-nightly",
 ]
 zulip_stream = 227806
