@@ -68,7 +68,9 @@ where
     impl From<&FileName> for rustc_span::FileName {
         fn from(filename: &FileName) -> rustc_span::FileName {
             match filename {
-                FileName::Real(path) => rustc_span::FileName::Real(path.to_owned()),
+                FileName::Real(path) => {
+                    rustc_span::FileName::Real(rustc_span::RealFileName::Named(path.to_owned()))
+                }
                 FileName::Stdin => rustc_span::FileName::Custom("stdin".to_owned()),
             }
         }
