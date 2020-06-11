@@ -138,6 +138,7 @@ bool GradientUtils::legalRecompute(const Value* val, const ValueToValueMapTy& av
       orig = li;
     } else {
       orig = isOriginal(li);
+      //assert(0 && "why are we passing non original queries");
     }
 
     if (orig) {
@@ -148,7 +149,7 @@ bool GradientUtils::legalRecompute(const Value* val, const ValueToValueMapTy& av
           for(auto& pair : *can_modref_map) {
               llvm::errs() << " + " << *pair.first << ": " << pair.second << " of func " << pair.first->getParent()->getParent()->getName() << "\n";
           }
-          llvm::errs() << "couldn't find in can_modref_map: " << *getOriginal(li) << " in fn: " << orig->getParent()->getParent()->getName();
+          llvm::errs() << "couldn't find in can_modref_map: " << *li << " in fn: " << orig->getParent()->getParent()->getName();
       }
       assert(found != can_modref_map->end());
       //llvm::errs() << " legal [ " << legalRecompute << " ] recompute of " << *inst << "\n";
@@ -361,6 +362,7 @@ DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(bool topLevel, Function 
 }
 
 Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
+  assert(oval);
     if (auto inst = dyn_cast<Instruction>(oval)) {
       assert(inst->getParent()->getParent() == oldFunc);
     }
@@ -374,8 +376,7 @@ Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
     } else if (isa<UndefValue>(oval)) {
         return oval;
     } else if (auto cint = dyn_cast<ConstantInt>(oval)) {
-        if (cint->isZero()) return cint;
-        if (cint->isOne()) return cint;
+        return cint;
     }
 
     if(isConstantValue(oval)) {
@@ -513,6 +514,7 @@ Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
       invertedPointers[arg] = li;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<GetElementPtrInst>(oval)) {
+      llvm::errs() << *arg << " nv: " << *getNewFromOriginal(oval) << "\n";
       IRBuilder<> bb(getNewFromOriginal(arg));
       SmallVector<Value*,4> invertargs;
       for(unsigned i=0; i<arg->getNumIndices(); i++) {
@@ -1582,19 +1584,21 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
 
       for(auto pair : scopeMap) {
         if (auto li2 = dyn_cast<LoadInst>(const_cast<Value*>(pair.first))) {
-          if (!isOriginal(li2)) continue;
+
+          auto orig2 = isOriginal(li2);
+          if (!orig2) continue;
 
           auto li2obj = GetUnderlyingObject(li2->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
 
           if (liobj == li2obj && DT.dominates(li2, li)) {
             bool failed = false;
 
-            llvm::errs() << "found potential candidate loads: oli:" << *origInst << " oli2: " << *getOriginal(li2) << "\n";
+            llvm::errs() << "found potential candidate loads: oli:" << *origInst << " oli2: " << *orig2 << "\n";
             auto scev1 = SE.getSCEV(li->getPointerOperand());
             auto scev2 = SE.getSCEV(li2->getPointerOperand());
             llvm::errs() << " scev1: " << *scev1 << " scev2: " << *scev2 << "\n";
 
-            allInstructionsBetween(OrigLI, getOriginal(li2), origInst, [&](Instruction* I) -> bool {
+            allInstructionsBetween(OrigLI, orig2, origInst, [&](Instruction* I) -> bool {
               //llvm::errs() << "examining instruction: " << *I << " between: " << *li2 << " and " << *li << "\n";
               if ( I->mayWriteToMemory() && writesToMemoryReadBy(AA, /*maybeReader*/origInst, /*maybeWriter*/I) ) {
                 failed = true;

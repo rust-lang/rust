@@ -39,12 +39,12 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK: define internal void @diffecallee(i64* %ptr, i64* %"ptr'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %ptr2_augmented = call { i64*, i64* } @augmented_gep.1(i64* %ptr, i64* %"ptr'", i64 2)
-; CHECK-NEXT:   %"ptr2'ac" = extractvalue { i64*, i64* } %ptr2_augmented, 1
 ; CHECK-NEXT:   %ptr2 = extractvalue { i64*, i64* } %ptr2_augmented, 0
+; CHECK-NEXT:   %"ptr2'ac" = extractvalue { i64*, i64* } %ptr2_augmented, 1
 ; CHECK-NEXT:   %loadnotype = load i64, i64* %ptr2, align 4
 ; CHECK-NEXT:   %ptr3_augmented = call { i64*, i64* } @augmented_gep(i64* %ptr, i64* %"ptr'", i64 3)
-; CHECK-NEXT:   %"ptr3'ac" = extractvalue { i64*, i64* } %ptr3_augmented, 1
 ; CHECK-NEXT:   %ptr3 = extractvalue { i64*, i64* } %ptr3_augmented, 0
+; CHECK-NEXT:   %"ptr3'ac" = extractvalue { i64*, i64* } %ptr3_augmented, 1
 ; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr3, align 4
 ; CHECK-NEXT:   %[[cptr2ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 2
 ; CHECK-NEXT:   %cptr2 = getelementptr inbounds i64, i64* %ptr, i64 2

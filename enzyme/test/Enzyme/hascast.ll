@@ -121,10 +121,10 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %mul = fmul fast double %z, %y
 ; CHECK-NEXT:   %[[augcast:.+]] = call { double*, double* } @augmented_cast(double* %x, double* %"x'")
-; CHECK-NEXT:   %antiptr_call = extractvalue { double*, double* } %[[augcast]], 1
 ; CHECK-NEXT:   %call = extractvalue { double*, double* } %[[augcast]], 0
+; CHECK-NEXT:   %[[dcall:.+]] = extractvalue { double*, double* } %[[augcast]], 1
 ; CHECK-NEXT:   store double %mul, double* %call, align 8, !tbaa !2
-; CHECK-NEXT:   ret double* %antiptr_call
+; CHECK-NEXT:   ret double* %[[dcall]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", double* %[[callp:.+]])

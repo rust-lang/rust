@@ -580,7 +580,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %false = call i1 @falser()
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 128)
-; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to double**
+; CHECK-NEXT:   %[[_malloccache:.+]] = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   br label %for.cond1.preheader
 
 ; CHECK: for.cond1.preheader:                              ; preds = %for.cond.cleanup4, %entry
@@ -603,7 +603,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %[[exttape:.+]] = extractvalue { double*, double } %call2.i.i.i_augmented, 0
 ; CHECK-NEXT:   %[[muliv:.+]] = mul nuw nsw i64 %iv1, 4
 ; CHECK-NEXT:   %[[addiv:.+]] = add nuw nsw i64 %iv, %[[muliv]]
-; CHECK-NEXT:   %[[ge:.+]] = getelementptr inbounds double*, double** %_malloccache, i64 %[[addiv]]
+; CHECK-NEXT:   %[[ge:.+]] = getelementptr inbounds double*, double** %[[_malloccache]], i64 %[[addiv]]
 ; CHECK-NEXT:   store double* %[[exttape]], double** %[[ge]]
 ; CHECK-NEXT:   %call2.i.i.i = extractvalue { double*, double } %call2.i.i.i_augmented, 1
 ; CHECK-NEXT:   br label %if.exit
@@ -644,7 +644,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %"add.ptr'ipg_unwrap" = getelementptr inbounds double, double* %"w9'", i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %[[mulniv:.+]] = mul nuw nsw i64 %"iv1'ac.0", 4
 ; CHECK-NEXT:   %[[addniv:.+]] = add nuw nsw i64 %"iv'ac.0", %[[mulniv]]
-; CHECK-NEXT:   %[[ngep:.+]] = getelementptr inbounds double*, double** %_malloccache, i64 %[[addniv]]
+; CHECK-NEXT:   %[[ngep:.+]] = getelementptr inbounds double*, double** %[[_malloccache]], i64 %[[addniv]]
 ; CHECK-NEXT:   %[[loadtape:.+]] = load double*, double** %[[ngep]]
 ; CHECK-NEXT:   call void @diffesumsq(double* %add.ptr_unwrap, double* %"add.ptr'ipg_unwrap", double %[[nv:.+]], double* %[[loadtape]])
 ; CHECK-NEXT:   br label %invertfor.body5

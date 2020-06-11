@@ -59,9 +59,9 @@ entry:
 ; CHECK-NEXT:   %tapemem = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   %a1 = load double, double* %x, align 8
 ; CHECK-NEXT:   %call1_augmented = call { double*, double* } @augmented_bad(double* %dxdt, double* %"dxdt'")
-; CHECK-NEXT:   %antiptr_call1 = extractvalue { double*, double* } %call1_augmented, 1
-; CHECK-NEXT:   store double* %antiptr_call1, double** %tapemem
 ; CHECK-NEXT:   %call1 = extractvalue { double*, double* } %call1_augmented, 0
+; CHECK-NEXT:   %[[dcall:.+]] = extractvalue { double*, double* } %call1_augmented, 1
+; CHECK-NEXT:   store double* %[[dcall]], double** %tapemem
 ; CHECK-NEXT:   store double %a1, double* %call1, align 8
 ; CHECK-NEXT:   ret i8* %malloccall
 ; CHECK-NEXT: }

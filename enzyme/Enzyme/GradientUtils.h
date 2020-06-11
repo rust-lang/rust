@@ -182,6 +182,13 @@ public:
   }
 
   Value* isOriginal(const Value* newinst) const {
+    if (isa<Constant>(newinst) || isa<UndefValue>(newinst)) return const_cast<Value*>(newinst);
+    if (auto arg = dyn_cast<Argument>(newinst)) {
+      assert(arg->getParent() == newFunc);
+    }
+    if (auto inst = dyn_cast<Instruction>(newinst)) {
+      assert(inst->getParent()->getParent() == newFunc);
+    }
     for(auto v: originalToNewFn) {
         if (v.second == newinst) return const_cast<Value*>(v.first);
     }
@@ -189,41 +196,12 @@ public:
   }
 
   Instruction* isOriginal(const Instruction* newinst) const {
-    return dyn_cast_or_null<Instruction>(isOriginal((const Value*)newinst));
+    return cast_or_null<Instruction>(isOriginal((const Value*)newinst));
   }
 
   template<typename T>
   T* isOriginalT(T* newinst) const {
-    return dyn_cast_or_null<T>(isOriginal((const Value*)newinst));
-  }
-
-  Value* getOriginal(const Value* newinst) const {
-    if (auto inst = dyn_cast<Instruction>(newinst)) {
-      assert(inst->getParent()->getParent() == newFunc);
-    }
-    for(auto v: originalToNewFn) {
-        if (v.second == newinst) return const_cast<Value*>(v.first);
-    }
-    dumpMap(originalToNewFn, [&](const Value* const& v) -> bool {
-          if (isa<Instruction>(newinst)) return isa<Instruction>(v);
-          if (isa<BasicBlock>(newinst)) return isa<BasicBlock>(v);
-          if (isa<Function>(newinst)) return isa<Function>(v);
-          if (isa<Argument>(newinst)) return isa<Argument>(v);
-          if (isa<Constant>(newinst)) return isa<Constant>(v);
-          return true;
-    });
-    llvm::errs() << *newinst << "\n";
-    assert(0 && "could not invert new inst");
-    report_fatal_error("could not invert new inst");
-  }
-  Instruction* getOriginal(Instruction* newinst) const {
-    return cast<Instruction>(getOriginal((Value*)newinst));
-  }
-  CallInst* getOriginal(CallInst* newinst) const {
-    return cast<CallInst>(getOriginal((Value*)newinst));
-  }
-  BasicBlock* getOriginal(BasicBlock* newinst) const {
-    return cast<BasicBlock>(getOriginal((Value*)newinst));
+    return cast_or_null<T>(isOriginal((const Value*)newinst));
   }
 
 private:
@@ -1155,10 +1133,7 @@ public:
     }
 
     #define SAFE(a, b) ({\
-      Value* res = nullptr;\
-      if (auto v = isOriginalT<typeof(*a)>(a)) res = cast<typeof(*a)>(getNewFromOriginal(v))->b;\
-      res = a->b;\
-      assert(res->getType());\
+      Value* res = a->b;\
       res;\
     })
 

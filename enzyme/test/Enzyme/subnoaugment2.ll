@@ -87,8 +87,8 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %arr = alloca double
 ; CHECK-NEXT:   store double %inp, double* %arr
 ; CHECK-NEXT:   %call.i_augmented = call { double*, double* } @augmented_sub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa")
-; CHECK-NEXT:   %[[olddptr:.+]] = extractvalue { double*, double* } %call.i_augmented, 1
 ; CHECK-NEXT:   %[[oldptr:.+]] = extractvalue { double*, double* } %call.i_augmented, 0
+; CHECK-NEXT:   %[[olddptr:.+]] = extractvalue { double*, double* } %call.i_augmented, 1
 ; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[oldptr]]
 ; CHECK-NEXT:   %[[mul:.+]] = fmul fast double %differeturn, %[[load]]
 ; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[mul]], %[[mul]]

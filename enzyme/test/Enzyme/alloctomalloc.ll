@@ -500,8 +500,8 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %"tmp.i'ipc" = bitcast i8* %"malloccall'mi" to <2 x double>*
 ; CHECK-NEXT:   %tmp.i = bitcast i8* %malloccall to <2 x double>*
 ; CHECK-NEXT:   %subcast_augmented = call { <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>*{{( nonnull)?}} %"tmp.i'ipc")
-; CHECK-NEXT:   %antiptr_subcast = extractvalue { <2 x double>*, <2 x double>* } %subcast_augmented, 1
 ; CHECK-NEXT:   %subcast = extractvalue { <2 x double>*, <2 x double>* } %subcast_augmented, 0
+; CHECK-NEXT:   %[[antisubcast:.+]] = extractvalue { <2 x double>*, <2 x double>* } %subcast_augmented, 1
 ; CHECK-NEXT:   call void @augmented_get2(%"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'")
 ; CHECK-NEXT:   %W12p = bitcast %"class.Eigen::Matrix"* %W to <2 x double>*
 ; CHECK-NEXT:   %W12 = load <2 x double>, <2 x double>* %W12p, align 16
@@ -525,7 +525,7 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.0.insert, <2 x double> %W34, 1
 ; CHECK-NEXT:   %.fca.2.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.1.insert, double %B1, 2
 ; CHECK-NEXT:   %.fca.3.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.2.insert, <2 x double> %W12, 3
-; CHECK-NEXT:   %.fca.4.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.3.insert, <2 x double>* %antiptr_subcast, 4
+; CHECK-NEXT:   %.fca.4.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.3.insert, <2 x double>* %[[antisubcast]], 4
 ; CHECK-NEXT:   %.fca.5.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.4.insert, i8* %"malloccall'mi", 5
 ; CHECK-NEXT:   %.fca.6.insert = insertvalue { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.5.insert, i8* %malloccall, 6
 ; CHECK-NEXT:   ret { double, <2 x double>, double, <2 x double>, <2 x double>*, i8*, i8* } %.fca.6.insert
