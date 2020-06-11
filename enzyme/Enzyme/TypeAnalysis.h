@@ -465,6 +465,10 @@ public:
         return IntType::Unknown;
     }
 
+    void erase(const std::vector<int> v) {
+        mapping.erase(v);
+    }
+
     void insert(const std::vector<int> v, DataType d) {
         if (v.size() > 0) {
             //check pointer abilities from before
@@ -479,7 +483,7 @@ public:
             }
             }
 
-            //don't insert if there's an existing -1
+            //don't insert if there's an existing ending -1
             {
             std::vector<int> tmp(v.begin(), v.end()-1);
             tmp.push_back(-1);
@@ -492,7 +496,20 @@ public:
             }
             }
 
-            //if this is a -1, remove other -1's
+            //don't insert if there's an existing starting -1
+            {
+            std::vector<int> tmp(v.begin(), v.end());
+            tmp[0] = -1;
+            auto found = mapping.find(tmp);
+            if (found != mapping.end()) {
+                if (found->second != d) {
+                    llvm::errs() << "FAILED dt: " << str() << " adding v: " << to_string(v) << ": " << d.str() << "\n";
+                }
+                return;
+            }
+            }
+
+            //if this is a ending -1, remove other -1's
             if (v.back() == -1){
                 std::set<std::vector<int>> toremove;
                 for(const auto& pair : mapping) {
@@ -500,7 +517,31 @@ public:
                         bool matches = true;
                         for(unsigned i=0; i<pair.first.size()-1; i++) {
                             if (pair.first[i] != v[i]) {
-                                matches = true;
+                                matches = false;
+                                break;
+                            }
+                        }
+                        if (!matches) continue;
+                        assert(pair.second == d);
+                        toremove.insert(pair.first);
+                    }
+                }
+
+                for(const auto & val : toremove) {
+                    mapping.erase(val);
+                }
+
+            }
+
+            //if this is a starting -1, remove other -1's
+            if (v[0] == -1){
+                std::set<std::vector<int>> toremove;
+                for(const auto& pair : mapping) {
+                    if (pair.first.size() == v.size()) {
+                        bool matches = true;
+                        for(unsigned i=1; i<pair.first.size(); i++) {
+                            if (pair.first[i] != v[i]) {
+                                matches = false;
                                 break;
                             }
                         }
@@ -581,50 +622,237 @@ public:
     // After a depth len into the index tree, prune any lookups that are not {0} or {-1}
     ValueData KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, llvm::Type* to) const;
 
-    static std::vector<int> appendIndices(std::vector<int> first, const std::vector<int> &second) {
-        for(unsigned i=0; i<second.size(); i++)
-            first.push_back(second[i]);
-        return first;
+    static std::vector<int> appendIndex(int off, const std::vector<int> &first) {
+        std::vector<int> out;
+        out.push_back(off);
+        for(auto a : first) out.push_back(a);
+        return out;
     }
 
-    ValueData Only(std::vector<int> indices) const {
+    ValueData Only(int off) const {
         ValueData dat;
 
         for(const auto &pair : mapping) {
-            dat.insert(appendIndices(indices, pair.first), pair.second);
-            if (pair.first.size() > 0) {
-                dat.insert(indices, DataType(IntType::Pointer));
+            dat.insert(appendIndex(off, pair.first), pair.second);
+            //if (pair.first.size() > 0) {
+            //    dat.insert(indices, DataType(IntType::Pointer));
+            //}
+        }
+
+        return dat;
+    }
+
+    static bool lookupIndices(std::vector<int> &first, int idx, const std::vector<int> &second) {
+        if (second.size() == 0) return false;
+
+        assert(first.size() == 0);
+        
+        if (idx == -1) {
+        } else if (second[0] == -1) {
+        } else if(idx != second[0]) {
+            return false;
+        }
+
+        for(size_t i=1; i<second.size(); i++) {
+            first.push_back(second[i]);
+        }
+		return true;
+    }
+
+    ValueData Data0() const {
+        ValueData dat;
+
+        for(const auto &pair : mapping) {
+            assert(pair.first.size() != 0);
+
+            if (pair.first[0] == 0 || pair.first[0] == -1) {
+                std::vector<int> next;
+                for(size_t i=1; i<pair.first.size(); i++)
+                    next.push_back(pair.first[i]);
+                ValueData dat2;
+                dat2.insert(next, pair.second);
+                dat |= dat2;
             }
         }
 
         return dat;
     }
 
-    static bool lookupIndices(std::vector<int> &first, const std::vector<int> &second) {
-        if (first.size() > second.size()) return false;
-
-        auto fs = first.size();
-        for(unsigned i=0; i<fs; i++) {
-            if (first[i] == -1) continue;
-            if (second[i] == -1) continue;
-            if (first[i] != second[i]) return false;
-        }
-
-        first.clear();
-        for(auto i=fs; i<second.size(); i++) {
-            first.push_back(second[i]);
-        }
-		return true;
-    }
-
-    ValueData Lookup(std::vector<int> indices) const {
-
+    ValueData Clear(size_t start, size_t end, size_t len) const {
         ValueData dat;
 
         for(const auto &pair : mapping) {
-            std::vector<int> next = indices;
-            if (lookupIndices(next, pair.first))
-                dat.insert(next, pair.second);
+            assert(pair.first.size() != 0);
+
+            if (pair.first[0] == -1) {
+                ValueData dat2;
+                auto next = pair.first;
+                for(size_t i=0; i<start; i++) {
+                    next[0] = i;
+                    dat2.insert(next, pair.second);
+                }
+                for(size_t i=end; i<len; i++) {
+                    next[0] = i;
+                    dat2.insert(next, pair.second);
+                }
+                dat |= dat2;
+            } else if ((size_t)pair.first[0] > start && (size_t)pair.first[0] >= end && (size_t)pair.first[0] < len) {
+                ValueData dat2;
+                dat2.insert(pair.first, pair.second);
+                dat |= dat2;
+            }
+        }
+
+        //TODO canonicalize this
+        return dat; 
+    }
+
+    ValueData Lookup(size_t len) const {
+
+        // Map of indices[1:] => ( End => possible Index[0] )
+        std::map<std::vector<int>, std::map<DataType, std::set<int> >> staging;
+
+        for(const auto &pair : mapping) {
+            assert(pair.first.size() != 0);
+
+            // Pointer is at offset 0 from this object
+            if (pair.first[0] != 0 && pair.first[0] != -1) continue;
+
+            if (pair.first.size() == 1) {
+                assert(pair.second == DataType(IntType::Pointer));
+                continue;
+            }
+            
+            if (pair.first[1] == -1) {
+            } else {
+                if ((size_t)pair.first[1] >= len) continue;
+            }
+
+            std::vector<int> next;
+            for(size_t i=2; i<pair.first.size(); i++) {
+                next.push_back(pair.first[i]);
+            }
+
+            staging[next][pair.second].insert(pair.first[1]);
+        }
+
+        ValueData dat;
+        for(auto & pair : staging) {
+            auto &pnext = pair.first;
+            for(auto & pair2 : pair.second) {
+                auto &dt = pair2.first;
+                auto &set = pair2.second;
+
+                bool legalCombine = set.count(-1);
+
+                // See if we can canonicalize the outermost index into a -1
+                if (!legalCombine) {
+                    size_t chunk = 1;
+                    if (auto flt = dt.isFloat()) {
+                        if (flt->isFloatTy()) {
+                            chunk = 4;
+                        } else if(flt->isDoubleTy()) {
+                            chunk = 8;
+                        } else if(flt->isHalfTy()) {
+                            chunk = 2;
+                        } else {
+                            llvm::errs() << *flt << "\n";
+                            assert(0 && "unhandled float type");
+                        }
+                    }
+
+                    legalCombine = true;
+                    for(size_t i=0; i<len; i+=chunk) {
+                        if (!set.count(i)) {
+                            legalCombine = false;
+                            break;
+                        }
+                    }
+                }
+
+                std::vector<int> next;
+                next.push_back(-1);
+                for(auto v : pnext) next.push_back(v);
+
+                if (legalCombine) {
+                    dat.insert(next, dt);
+                } else {
+                    for(auto e : set) {
+                        next[0] = e;
+                        dat.insert(next, dt);
+                    }
+                }
+
+            }
+        }
+
+        return dat;
+    }
+
+    ValueData CanonicalizeValue(size_t len) const {
+
+        // Map of indices[1:] => ( End => possible Index[0] )
+        std::map<std::vector<int>, std::map<DataType, std::set<int> >> staging;
+
+        for(const auto &pair : mapping) {
+            assert(pair.first.size() != 0);
+
+            std::vector<int> next;
+            for(size_t i=1; i<pair.first.size(); i++) {
+                next.push_back(pair.first[i]);
+            }
+
+            staging[next][pair.second].insert(pair.first[0]);
+        }
+
+        ValueData dat;
+        for(auto & pair : staging) {
+            auto &pnext = pair.first;
+            for(auto & pair2 : pair.second) {
+                auto &dt = pair2.first;
+                auto &set = pair2.second;
+
+                bool legalCombine = set.count(-1);
+
+                // See if we can canonicalize the outermost index into a -1
+                if (!legalCombine) {
+                    size_t chunk = 1;
+                    if (auto flt = dt.isFloat()) {
+                        if (flt->isFloatTy()) {
+                            chunk = 4;
+                        } else if(flt->isDoubleTy()) {
+                            chunk = 8;
+                        } else if(flt->isHalfTy()) {
+                            chunk = 2;
+                        } else {
+                            llvm::errs() << *flt << "\n";
+                            assert(0 && "unhandled float type");
+                        }
+                    }
+
+                    legalCombine = true;
+                    for(size_t i=0; i<len; i+=chunk) {
+                        if (!set.count(i)) {
+                            legalCombine = false;
+                            break;
+                        }
+                    }
+                }
+
+                std::vector<int> next;
+                next.push_back(-1);
+                for(auto v : pnext) next.push_back(v);
+
+                if (legalCombine) {
+                    dat.insert(next, dt);
+                } else {
+                    for(auto e : set) {
+                        next[0] = e;
+                        dat.insert(next, dt);
+                    }
+                }
+
+            }
         }
 
         return dat;
@@ -635,11 +863,20 @@ public:
 
         for(const auto &pair : mapping) {
 
-            if (pair.first.size() == 0) {
-                if (pair.second == IntType::Pointer || pair.second == IntType::Anything) continue;
+            assert(pair.first.size() != 0);
+
+            // Pointer is at offset 0 from this object
+            if (pair.first[0] != 0 && pair.first[0] != -1) continue;
+
+            if (pair.first.size() == 1) {
+                if (pair.second == IntType::Pointer || pair.second == IntType::Anything) {
+                    dat.insert(pair.first, pair.second);
+                    continue;
+                }
                 llvm::errs() << "could not merge test  " << str() << "\n";
             }
-            if (pair.first[0] == -1) {
+
+            if (pair.first[1] == -1) {
                 dat.insert(pair.first, pair.second);
             }
         }
@@ -647,106 +884,75 @@ public:
         return dat;
     }
 
-    static std::vector<int> mergeIndices(int offset, const std::vector<int> &second) {
-        assert(second.size() > 0);
-        assert(offset != -1);
-
-        std::vector<int> next(second);
-        //-1 represents all elements in that range
-        if (offset == 0 && next[0] == -1) {
-            next[0] = -1;
-        } else if (next[0] == -1) {
-            //TODO consider adding all possible ones after
-            next[0] = offset;
-        } else {
-            next[0] += offset;
-        }
-
-        assert(next.size() > 0);
-        return next;
-    }
-
-    ValueData MergeIndices(int offset) const {
-        ValueData dat;
-        assert(offset != -1);
-
-        for(const auto &pair : mapping) {
-            ValueData dat2;
-
-            if (pair.first.size() == 0) {
-                if (pair.second == IntType::Pointer || pair.second == IntType::Anything) continue;
-
-                llvm::errs() << "could not merge test  " << str() << "\n";
-            }
-            dat2.insert(mergeIndices(offset, pair.first), pair.second);
-            dat |= dat2;
-            dat |= DataType(IntType::Pointer);
-        }
-
-        return dat;
-    }
-
-    static llvm::Type* indexIntoType(llvm::Type* ty, int idx) {
-        if (ty == nullptr) return nullptr;
-        if (idx == -1) idx = 0;
-        if (auto st = llvm::dyn_cast<llvm::StructType>(ty)) {
-            return st->getElementType(idx);
-        }
-        if (auto at = llvm::dyn_cast<llvm::ArrayType>(ty)) {
-            return at->getElementType();
-        }
-        return nullptr;
-    }
-
-    // given previous [0, 1, 2], index[0, 1] we should get back [0, 2]
-    // we should also have type dependent [2], index[1], if index.type[1] cast to index.type[2] permits
-    static bool unmergeIndices(std::vector<int>& next, int offset, const std::vector<int> &previous, int maxSize) {
-        assert(next.size() == 0);
-
-        assert(previous.size() > 0);
-
-        next.assign(previous.begin(), previous.end());
-
-        if (next[0] == -1) {
-            return true;
-        }
-
-        if (next[0] < offset) {
-            return false;
-        }
-
-        next[0] -= offset;
-
-        if (maxSize != -1) {
-            if (next[0] >= maxSize) return false;
-        }
-
-        return true;
-    }
-
-    //We want all the data from this value, given that we are indexing with indices
-    // E.g. we might have a { [0, 1, 2]: Int, [5, 10, 30]: Pointer}, we may index [0, 1] and should get back [0, 2]:Int
-    ValueData UnmergeIndices(int offset, int maxSize) const {
+    //! Replace offsets in [offset, offset+maxSize] with [addOffset, addOffset + maxSize]
+    ValueData ShiftIndices(int offset, int maxSize, size_t addOffset=0) const {
         ValueData dat;
 
         for(const auto &pair : mapping) {
-            std::vector<int> next;
-
             if (pair.first.size() == 0) {
-                if (pair.second == IntType::Pointer || pair.second == IntType::Anything)
+                if (pair.second == IntType::Pointer || pair.second == IntType::Anything) {
+                    dat.insert(pair.first, pair.second);
                     continue;
+                }
 
                 llvm::errs() << "could not unmerge " << str() << "\n";
             }
             assert(pair.first.size() > 0);
 
-            if (unmergeIndices(next, offset, pair.first, maxSize)) {
-                ValueData dat2;
-                //llvm::errs() << "next: " << to_string(next) << " indices: " << to_string(indices) << " pair.first: " << to_string(pair.first) << "\n";
-                dat2.insert(next, pair.second);
-                dat |= dat2;
-                dat |= DataType(IntType::Pointer);
+            std::vector<int> next(pair.first);
+
+            if (next[0] == -1) {
+                if (maxSize == -1) {
+                    // Max size does not clip the next index
+
+                    // If we have a follow up offset add, we lose the -1 since we only represent [0, inf) with -1 not the [addOffset, inf) required here
+                    if (addOffset != 0) {
+                        next[0] = addOffset;
+                    }
+
+                } else {
+                    // This needs to become 0...maxSize as seen below
+                }
+            } else {
+                // Too small for range
+                if (next[0] < offset) {
+                    continue;
+                }
+                next[0] -= offset;
+
+                if (maxSize != -1) {
+                    if (next[0] >= maxSize) continue;
+                }
+
+                next[0] += addOffset;
             }
+
+            ValueData dat2;
+            //llvm::errs() << "next: " << to_string(next) << " indices: " << to_string(indices) << " pair.first: " << to_string(pair.first) << "\n";
+            if (next[0] == -1 && maxSize != -1) {
+                size_t chunk = 1;
+
+                if (auto flt = operator[]({ pair.first[0] }).isFloat()) {
+                    if (flt->isFloatTy()) {
+                        chunk = 4;
+                    } else if(flt->isDoubleTy()) {
+                        chunk = 8;
+                    } else if(flt->isHalfTy()) {
+                        chunk = 2;
+                    } else {
+                        llvm::errs() << *flt << "\n";
+                        assert(0 && "unhandled float type");
+                    }
+                }
+
+                for(int i=0; i<maxSize; i+= chunk) {
+                    next[0] = i + addOffset;
+                    dat2.insert(next, pair.second);
+                }
+            } else {
+                dat2.insert(next, pair.second);
+            }
+            dat |= dat2;
         }
 
         return dat;
@@ -762,6 +968,7 @@ public:
         return dat;
     }
 
+    // TODO note that this keeps -1's
     ValueData AtMost(size_t max) const {
         assert(max > 0);
         ValueData dat;
@@ -775,7 +982,7 @@ public:
 
     static ValueData Argument(DataType type, llvm::Value* v) {
         if (v->getType()->isIntOrIntVectorTy()) return ValueData(type);
-        return ValueData(type).Only({0});
+        return ValueData(type).Only(0);
     }
 
     bool operator==(const ValueData &v) const {
@@ -789,10 +996,6 @@ public:
         return true;
     }
 
-    int max(int a, int b) {
-        if (a>b) return a;
-        return b;
-    }
     bool mergeIn(const ValueData &v, bool pointerIntSame) {
         //! Todo detect recursive merge
 

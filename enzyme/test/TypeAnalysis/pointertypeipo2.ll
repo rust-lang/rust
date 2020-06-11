@@ -51,36 +51,36 @@ attributes #4 = { nounwind }
 !5 = !{!"Simple C++ TBAA"}
 
 ; CHECK: mv - {} |{}:{} {}:{}
-; CHECK-NEXT: i64* %m_dims: {[]:Pointer, [0]:Float@double}
-; CHECK-NEXT: i64* %out: {[]:Pointer, [0]:Float@double}
+; CHECK-NEXT: i64* %m_dims: {[-1]:Pointer, [-1,0]:Float@double}
+; CHECK-NEXT: i64* %out: {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %call4 = call i64 @sub(i64* nonnull %m_dims): {[]:Float@double}
+; CHECK-NEXT:   %call4 = call i64 @sub(i64* nonnull %m_dims): {[-1]:Float@double}
 ; CHECK-NEXT:   store i64 %call4, i64* %out: {}
 ; CHECK-NEXT:   ret void: {}
 
 ; CHECK: sub - {} |{}:{} 
-; CHECK-NEXT: i64* %this: {[]:Pointer, [0]:Float@double}
+; CHECK-NEXT: i64* %this: {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %agg = load i64, i64* %this: {[]:Float@double}
-; CHECK-NEXT:   %call = tail call i64 @pop(i64 %agg): {[]:Float@double}
+; CHECK-NEXT:   %agg = load i64, i64* %this: {[-1]:Float@double}
+; CHECK-NEXT:   %call = tail call i64 @pop(i64 %agg): {[-1]:Float@double}
 ; CHECK-NEXT:   ret i64 %call: {}
 
 ; CHECK: pop - {} |{}:{} 
-; CHECK-NEXT: i64 %arr.coerce0: {[]:Float@double}
+; CHECK-NEXT: i64 %arr.coerce0: {[-1]:Float@double}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %arr = alloca i64: {[]:Pointer, [0]:Float@double}
+; CHECK-NEXT:   %arr = alloca i64: {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT:   store i64 %arr.coerce0, i64* %arr: {}
-; CHECK-NEXT:   %call.i = call i64* @cast(i64* nonnull %arr): {[]:Pointer, [0]:Float@double}
-; CHECK-NEXT:   %a2 = load i64, i64* %call.i, !tbaa !2: {[]:Float@double}
-; CHECK-NEXT:   %call2 = call i64 @mul(i64 %a2): {[]:Float@double}
+; CHECK-NEXT:   %call.i = call i64* @cast(i64* nonnull %arr): {[-1]:Pointer, [-1,0]:Float@double}
+; CHECK-NEXT:   %a2 = load i64, i64* %call.i, !tbaa !2: {[-1]:Float@double}
+; CHECK-NEXT:   %call2 = call i64 @mul(i64 %a2): {[-1]:Float@double}
 ; CHECK-NEXT:   ret i64 %call2: {}
 
-; CHECK: cast - {[]:Pointer, [0]:Float@double} |{[]:Pointer}:{} 
-; CHECK-NEXT: i64* %a: {[]:Pointer, [0]:Float@double}
+; CHECK: cast - {[-1]:Pointer, [-1,0]:Float@double} |{[-1]:Pointer}:{} 
+; CHECK-NEXT: i64* %a: {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   ret i64* %a: {}
 
-; CHECK: mul - {} |{[]:Float@double}:{} 
-; CHECK-NEXT: i64 %a: {[]:Float@double}
+; CHECK: mul - {} |{[-1]:Float@double}:{} 
+; CHECK-NEXT: i64 %a: {[-1]:Float@double}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   ret i64 %a: {}

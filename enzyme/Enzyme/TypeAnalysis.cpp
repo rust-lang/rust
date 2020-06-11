@@ -150,7 +150,7 @@ static inline ValueData parseTBAA(TBAAStructTypeNode AccessType, Instruction* in
     //llvm::errs() << "cur access type: " << Id->getString() << "\n";
     auto dt = getTypeFromTBAAString(Id->getString().str(), inst);
     if (dt.isKnown()) {
-        return ValueData(dt).Only({0});
+        return ValueData(dt).Only(-1);
     }
   }
 
@@ -166,7 +166,7 @@ static inline ValueData parseTBAA(TBAAStructTypeNode AccessType, Instruction* in
     //llvm::errs() << " f at i: " << i << " at: " << start << " fd: " << *at.getNode() << "\n";
     auto vd = parseTBAA(at, inst);
     //llvm::errs() << " _^ for f found " << vd.str() << "\n";
-    dat |= vd.MergeIndices({(int)start});
+    dat |= vd.ShiftIndices(/*init offset*/0, /*max size*/-1, /*addOffset*/start);
   }
 
   return dat;
@@ -199,7 +199,7 @@ static inline ValueData parseTBAA(Instruction* Inst) {
                 auto start = cast<ConstantInt>(cast<ConstantAsMetadata>(M->getOperand(i))->getValue())->getLimitedValue();
                 auto len = cast<ConstantInt>(cast<ConstantAsMetadata>(M->getOperand(i+1))->getValue())->getLimitedValue();
                 //llvm::errs() << "inst: " << *Inst << " vd " << vd.str() << " len: " << len << " start: " << start << "\n";
-                dat |= vd.AtMost(len).MergeIndices({(int)start});
+                dat |= vd.ShiftIndices(/*init offset*/0, /*max size*/len, /*add offset*/start);
             }
         }
     }
@@ -228,46 +228,66 @@ TypeAnalyzer::TypeAnalyzer(const NewFnTypeInfo& fn, TypeAnalysis& TA) : intseen(
 }
 
 ValueData getConstantAnalysis(Constant* val, const NewFnTypeInfo& nfti, TypeAnalysis& TA) {
-    if (auto ca = dyn_cast<ConstantAggregate>(val)) {
-        return getConstantAnalysis(ca->getOperand(0), nfti, TA);
+    // Undefined value is an anything everywhere
+    if (isa<UndefValue>(val) || isa<ConstantAggregateZero>(val)) {
+        return ValueData(IntType::Anything).Only(-1);
     }
 
+    // Null pointer is a pointer to anything, everywhere
     if (isa<ConstantPointerNull>(val)) {
         ValueData vd(IntType::Pointer);
-        vd |= ValueData(IntType::Anything).Only({-1});
-        return vd;
+        vd |= ValueData(IntType::Anything).Only(-1);
+        return vd.Only(-1);
     }
 
-    if (isa<Function>(val)) {
-        return DataType(IntType::Pointer);
+    // Known pointers are pointers at offset 0
+    if (isa<Function>(val) || isa<BlockAddress>(val)) {
+        return ValueData(IntType::Pointer).Only(-1);
     }
 
-    if (isa<UndefValue>(val)) {
-        return ValueData(IntType::Anything);
+    if (auto ca = dyn_cast<ConstantAggregate>(val)) {
+        ValueData res;
+        int off = 0;
+        for(unsigned i=0; i<ca->getNumOperands(); i++) {
+            assert(nfti.function);
+            auto op = ca->getOperand(i);
+            // TODO check this for i1 constant aggregates packing/etc
+            auto size = (nfti.function->getParent()->getDataLayout().getTypeSizeInBits(op->getType()) + 7)/ 8;
+            res |= getConstantAnalysis(op, nfti, TA).ShiftIndices(/*init offset*/0, /*maxSize*/size, /*addOffset*/off);
+            off += size;
+        }
+        return res;
+    }
+
+    if (auto ca = dyn_cast<ConstantDataSequential>(val)) {
+        ValueData res;
+        int off = 0;
+        for(unsigned i=0; i<ca->getNumElements(); i++) {
+            assert(nfti.function);
+            auto op = ca->getElementAsConstant(0);
+            // TODO check this for i1 constant aggregates packing/etc
+            auto size = (nfti.function->getParent()->getDataLayout().getTypeSizeInBits(op->getType()) + 7)/ 8;
+            res |= getConstantAnalysis(op, nfti, TA).ShiftIndices(/*init offset*/0, /*maxSize*/size, /*addOffset*/off);            
+            off += size;
+        }
+        return res;
     }
 
     if (isa<ConstantData>(val)) {
         if (auto fp = dyn_cast<ConstantFP>(val)) {
-            if (fp->isExactlyValue(0.0)) return DataType(IntType::Anything);
-            return DataType(fp->getType());
-        }
-
-        if (isa<ConstantAggregateZero>(val)) {
-            return DataType(IntType::Anything);
+            if (fp->isExactlyValue(0.0)) return ValueData(IntType::Anything).Only(-1);
+            return ValueData(fp->getType()).Only(-1);
         }
 
         if (auto ci = dyn_cast<ConstantInt>(val)) {
             if (ci->getLimitedValue() >=1 && ci->getLimitedValue() <= 4096) {
-                return ValueData(DataType(IntType::Integer));
+                return ValueData(DataType(IntType::Integer)).Only(-1);
             }
             if (ci->getType()->getBitWidth() == 8 && ci->getLimitedValue() == 0) {
-                return ValueData(DataType(IntType::Integer));
+                return ValueData(DataType(IntType::Integer)).Only(-1);
             }
-            if (ci->getLimitedValue() == 0) return DataType(IntType::Anything);
-            return DataType(IntType::Anything);
-        }
-        if (auto seq = dyn_cast<ConstantDataSequential>(val)) {
-            return getConstantAnalysis(seq->getElementAsConstant(0), nfti, TA);
+            if (ci->getLimitedValue() == 0) return ValueData(IntType::Anything).Only(-1);
+            return ValueData(IntType::Anything).Only(-1);
         }
     }
 
@@ -288,21 +308,18 @@ ValueData getConstantAnalysis(Constant* val, const NewFnTypeInfo& nfti, TypeAnal
         return vd;
     }
 
-
-
     if (auto gv = dyn_cast<GlobalVariable>(val)) {
         if (gv->isConstant()) {
             ValueData vd = DataType(IntType::Pointer);
-            vd |= getConstantAnalysis(gv->getInitializer(), nfti, TA).Only({0});
-            return vd;
+            vd |= getConstantAnalysis(gv->getInitializer(), nfti, TA);
+            return vd.Only(-1);
         }
         auto globalSize = gv->getParent()->getDataLayout().getTypeSizeInBits(gv->getValueType()) / 8;
         // since halfs are 16bit (2 byte) and pointers are >=32bit (4 byte) any single byte object must be integral
         if (globalSize == 1) {
-            ValueData vd = ValueData(DataType(IntType::Integer)).Only({-1});
-            for(unsigned i=0; i<globalSize; i++)
-                vd |= ValueData(DataType(IntType::Integer)).Only({(int)i});
-            return vd;
+            ValueData vd = DataType(IntType::Pointer);
+            vd |= ValueData(DataType(IntType::Integer)).Only(0);
+            return vd.Only(-1);
         }
 
     }
@@ -311,7 +328,7 @@ ValueData getConstantAnalysis(Constant* val, const NewFnTypeInfo& nfti, TypeAnal
 }
 
 ValueData TypeAnalyzer::getAnalysis(Value* val) {
-	if (val->getType()->isIntegerTy() && cast<IntegerType>(val->getType())->getBitWidth() == 1) return ValueData(DataType(IntType::Integer));
+	if (val->getType()->isIntegerTy() && cast<IntegerType>(val->getType())->getBitWidth() == 1) return ValueData(DataType(IntType::Integer)).Only(-1);
 
 
 	Type* vt = val->getType();
@@ -483,7 +500,7 @@ void TypeAnalyzer::considerTBAA() {
                     for(auto val : fntypeinfo.isConstantInt(call->getOperand(2), DT, intseen)) {
                         sz = max(sz, val);
                     }
-                    auto update = vdptr.UnmergeIndices(0, sz);
+                    auto update = vdptr.ShiftIndices(/*init offset*/0, /*max size*/sz, /*new offset*/0);
 
                     //llvm::errs() << "found: " << inst << " tbaa: " << vdptr.str() << " update: " << update.str() << "\n";
                     //if (auto md = inst.getMetadata(LLVMContext::MD_tbaa)){
@@ -494,21 +511,25 @@ void TypeAnalyzer::considerTBAA() {
                     //if (auto md = inst.getMetadata(LLVMContext::MD_tbaa_struct))
                     //    llvm::errs() << " ++ tbaa.struct md: " << *md << "\n";
 
-                    updateAnalysis(call->getOperand(0), update, call);
-                    updateAnalysis(call->getOperand(1), update, call);
+                    updateAnalysis(call->getOperand(0), update.Only(-1), call);
+                    updateAnalysis(call->getOperand(1), update.Only(-1), call);
                     continue;
                 } else if (call->getType()->isPointerTy()) {
-                    updateAnalysis(call, vdptr, call);
+                    updateAnalysis(call, vdptr.Only(-1), call);
                 } else {
                     llvm::errs() << " inst: " << inst << " vdptr: " << vdptr.str() << "\n";
                     assert(0 && "unknown tbaa call instruction user");
                 }
             } else if (auto si = dyn_cast<StoreInst>(&inst)) {
-                updateAnalysis(si->getPointerOperand(), vdptr, si);
-                updateAnalysis(si->getValueOperand(), vdptr.Lookup({0}), si);
+                auto size = (si->getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(si->getValueOperand()->getType()) + 7)/ 8;
+                updateAnalysis(si->getPointerOperand(), vdptr.ShiftIndices(/*init offset*/0, /*max size*/size, /*new offset*/0).PurgeAnything().Only(-1), si);
+                auto req = vdptr.Only(-1);
+                updateAnalysis(si->getValueOperand(), req.Lookup(size), si);
             } else if (auto li = dyn_cast<LoadInst>(&inst)) {
-                updateAnalysis(li->getPointerOperand(), vdptr, li);
-                updateAnalysis(li, vdptr.Lookup({0}), li);
+                auto size = (li->getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(li->getType()) + 7) / 8;
+                updateAnalysis(li->getPointerOperand(), vdptr.ShiftIndices(/*init offset*/0, /*max size*/size, /*new offset*/0).PurgeAnything().Only(-1), li);
+                auto req = vdptr.Only(-1);
+                updateAnalysis(li, req.Lookup(size), li);
             } else {
                 llvm::errs() << " inst: " << inst << " vdptr: " << vdptr.str() << "\n";
                 assert(0 && "unknown tbaa instruction user");
@@ -705,14 +726,14 @@ bool TypeAnalyzer::runUnusedChecks() {
     for(BasicBlock &BB: *fntypeinfo.function) {
         for(auto &inst : BB) {
             auto analysis = getAnalysis(&inst);
-            if (analysis[{}] != IntType::Unknown) continue;
+            if (analysis[{0}] != IntType::Unknown) continue;
 
             if (!inst.getType()->isIntOrIntVectorTy()) continue;
 
             //This deals with integers representing floats or pointers with no use (and thus can be anything)
             {
                 if(!hasAnyUse(*this, &inst, anyseen, nullptr)) {
-                    updateAnalysis(&inst, IntType::Anything, &inst);
+                    updateAnalysis(&inst, ValueData(IntType::Anything).Only(inst.getType()->isIntegerTy() ? -1 : 0), &inst);
                     changed = true;
                 }
             }
@@ -720,7 +741,7 @@ bool TypeAnalyzer::runUnusedChecks() {
             //This deals with integers with no use
             {
                 if(!hasNonIntegralUse(*this, &inst, intseen, nullptr)) {
-                    updateAnalysis(&inst, IntType::Integer, &inst);
+                    updateAnalysis(&inst, ValueData(IntType::Integer).Only(inst.getType()->isIntegerTy() ? -1 : 0), &inst);
                     changed = true;
                 }
             }
@@ -793,37 +814,38 @@ void TypeAnalyzer::visitValue(Value& val) {
 }
 
 void TypeAnalyzer::visitCmpInst(CmpInst& cmp) {
-    updateAnalysis(&cmp, IntType::Integer, &cmp);
+    updateAnalysis(&cmp, ValueData(IntType::Integer).Only(-1), &cmp);
 }
 
 void TypeAnalyzer::visitAllocaInst(AllocaInst &I) {
-    updateAnalysis(I.getArraySize(), IntType::Integer, &I);
-    //todo consider users
+    updateAnalysis(I.getArraySize(), ValueData(IntType::Integer).Only(-1), &I);
+    updateAnalysis(&I, ValueData(IntType::Pointer).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitLoadInst(LoadInst &I) {
-    auto ptr = getAnalysis(&I).Only({0});
+    auto loadSize = (I.getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(I.getType()) + 7) / 8;
+
+    auto ptr = getAnalysis(&I).ShiftIndices(/*start*/0, loadSize, /*addOffset*/0).PurgeAnything();
     ptr |= ValueData(IntType::Pointer);
-    updateAnalysis(I.getOperand(0), ptr, &I);
-    updateAnalysis(&I, getAnalysis(I.getOperand(0)).Lookup({0}), &I);
+    //llvm::errs() << "LI: " << I << " prev i0: " << getAnalysis(I.getOperand(0)).str() << " ptr only-1:" << ptr.Only(-1).str() << "\n";
+    //llvm::errs() << "  + " << " prev i: " << getAnalysis(&I).str() <<" ga lu:" <<  getAnalysis(I.getOperand(0)).Lookup(loadSize).str() << "\n";
+    updateAnalysis(I.getOperand(0), ptr.Only(-1), &I);
+    updateAnalysis(&I, getAnalysis(I.getOperand(0)).Lookup(loadSize), &I);
 }
 
 void TypeAnalyzer::visitStoreInst(StoreInst &I) {
+    auto storeSize = (I.getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(I.getValueOperand()->getType()) + 7)/ 8;
+    
     auto ptr = ValueData(IntType::Pointer);
-
-    auto storeSize = I.getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(I.getValueOperand()->getType()) / 8;
-    storeSize = 1;
-    auto purged = getAnalysis(I.getValueOperand()).PurgeAnything();
-    for(unsigned i=0; i<storeSize; i++) {
-        ptr |= purged.Only({(int)i});
-    }
+    auto purged = getAnalysis(I.getValueOperand()).ShiftIndices(/*start*/0, storeSize, /*addOffset*/0).PurgeAnything();
+    ptr |= purged;
 
     //llvm::errs() << "considering si: " << I << "\n";
     //llvm::errs() << " prevanalysis: " << getAnalysis(I.getPointerOperand()).str() << "\n";
     //llvm::errs() << " new: " << ptr.str() << "\n";
 
-    updateAnalysis(I.getPointerOperand(), ptr, &I);
-    updateAnalysis(I.getValueOperand(), getAnalysis(I.getPointerOperand()).Lookup({0}), &I);
+    updateAnalysis(I.getPointerOperand(), ptr.Only(-1), &I);
+    updateAnalysis(I.getValueOperand(), getAnalysis(I.getPointerOperand()).Lookup(storeSize), &I);
 }
 
 template<typename T>
@@ -869,12 +891,9 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
         //llvm::errs() << "gep: " << gep << "\n";
         for(auto& ind : gep.indices()) {
            //llvm::errs() << " + ind: " << *ind << " - prev - " << getAnalysis(ind).str() << "\n";
-            updateAnalysis(ind, IntType::Integer, &gep);
+            updateAnalysis(ind, ValueData(IntType::Integer).Only(-1), &gep);
         }
     }
-
-
-
 
     for(auto& a : gep.indices()) {
         auto iset = fntypeinfo.isConstantInt(a, DT, intseen);
@@ -926,12 +945,12 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
         }
         */
 
-	   auto unmerged = pointerAnalysis.UnmergeIndices(off, maxSize);
+	   auto unmerged = pointerAnalysis.Data0().ShiftIndices(/*init offset*/off, /*max size*/maxSize, /*newoffset*/0).Only(-1);
         //llvm::errs() << "gep: " << gep << " prev:" << getAnalysis(&gep).str() << " unmerged: " << unmerged.str() << "\n";
 
         updateAnalysis(&gep, unmerged, &gep);
 
-        auto merged = getAnalysis(&gep).MergeIndices(off);
+        auto merged = getAnalysis(&gep).Data0().ShiftIndices(/*init offset*/0, /*max size*/-1, /*new offset*/off).Only(-1);
 
         //llvm::errs()  << " + prevanalysis: " << getAnalysis(gep.getPointerOperand()).str() << " merged: " << merged.str() << " g2:\n";
 
@@ -1008,10 +1027,11 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
 
     assert(set);
     for(BinaryOperator* bo : bos) {
-        ValueData vd1 = isa<ConstantInt>(bo->getOperand(0)) ? getAnalysis(bo->getOperand(0)) : vd;
-        ValueData vd2 = isa<ConstantInt>(bo->getOperand(1)) ? getAnalysis(bo->getOperand(1)) : vd2;
+        ValueData vd1 = isa<ConstantInt>(bo->getOperand(0)) ? getAnalysis(bo->getOperand(0)).Data0() : vd.Data0();
+        ValueData vd2 = isa<ConstantInt>(bo->getOperand(1)) ? getAnalysis(bo->getOperand(1)).Data0() : vd.Data0();
+        // TODO depointer and repointer
         vd1.pointerIntMerge(vd2, bo->getOpcode());
-        vd.andIn(vd1, /*assertIfIllegal*/false);
+        vd.andIn(vd1.Only(bo->getType()->isIntegerTy() ? -1 : 0), /*assertIfIllegal*/false);
     }
     //llvm::errs() << " -- res" << vd.str() << "\n";
 
@@ -1039,36 +1059,43 @@ void TypeAnalyzer::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
 }
 
 void TypeAnalyzer::visitFPTruncInst(FPTruncInst &I) {
-    updateAnalysis(&I, DataType(I.getType()), &I);
-    updateAnalysis(I.getOperand(0), DataType(I.getOperand(0)->getType()), &I);
+    updateAnalysis(&I, ValueData(DataType(I.getType())).Only(-1), &I);
+    updateAnalysis(I.getOperand(0), ValueData(DataType(I.getOperand(0)->getType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitFPToUIInst(FPToUIInst &I) {
-	updateAnalysis(&I, IntType::Integer, &I);
-    updateAnalysis(I.getOperand(0), DataType(I.getOperand(0)->getType()), &I);
+	updateAnalysis(&I, ValueData(IntType::Integer).Only(-1), &I);
+    updateAnalysis(I.getOperand(0), ValueData(DataType(I.getOperand(0)->getType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitFPToSIInst(FPToSIInst &I) {
-	updateAnalysis(&I, IntType::Integer, &I);
-    updateAnalysis(I.getOperand(0), DataType(I.getOperand(0)->getType()), &I);
+	updateAnalysis(&I, ValueData(IntType::Integer).Only(-1), &I);
+    updateAnalysis(I.getOperand(0), ValueData(DataType(I.getOperand(0)->getType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitUIToFPInst(UIToFPInst &I) {
-	updateAnalysis(I.getOperand(0), IntType::Integer, &I);
-    updateAnalysis(&I, DataType(I.getType()), &I);
+	updateAnalysis(I.getOperand(0), ValueData(IntType::Integer).Only(-1), &I);
+    updateAnalysis(&I, ValueData(DataType(I.getType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitSIToFPInst(SIToFPInst &I) {
-	updateAnalysis(I.getOperand(0), IntType::Integer, &I);
-    updateAnalysis(&I, DataType(I.getType()), &I);
+	updateAnalysis(I.getOperand(0), ValueData(IntType::Integer).Only(-1), &I);
+    updateAnalysis(&I, ValueData(DataType(I.getType())).Only(-1), &I);
 }
 
+
 void TypeAnalyzer::visitPtrToIntInst(PtrToIntInst &I) {
-	updateAnalysis(&I, IntType::Pointer, &I);
+	updateAnalysis(&I, ValueData(IntType::Pointer).Only(-1), &I);
+	updateAnalysis(I.getOperand(0), ValueData(IntType::Pointer).Only(-1), &I);
+	updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+	updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 }
 
 void TypeAnalyzer::visitIntToPtrInst(IntToPtrInst &I) {
-	updateAnalysis(I.getOperand(0), IntType::Pointer, &I);
+	updateAnalysis(&I, ValueData(IntType::Pointer).Only(-1), &I);
+	updateAnalysis(I.getOperand(0), ValueData(IntType::Pointer).Only(-1), &I);
+	updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+	updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 }
 
 void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
@@ -1086,8 +1113,9 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
     //dump();
     //llvm::errs() << "I: " << I << "\n";
     //llvm::errs() << " + keep for cast: " << getAnalysis(I.getOperand(0)).KeepForCast(function->getParent()->getDataLayout(), et2, et1).str() << "\n";
-	updateAnalysis(&I, getAnalysis(I.getOperand(0)).KeepForCast(fntypeinfo.function->getParent()->getDataLayout(), et2, et1), &I);
-	updateAnalysis(I.getOperand(0), getAnalysis(&I).KeepForCast(fntypeinfo.function->getParent()->getDataLayout(), et1, et2), &I);
+    // TODO update this
+	updateAnalysis(&I, getAnalysis(I.getOperand(0)).Data0().KeepForCast(fntypeinfo.function->getParent()->getDataLayout(), et2, et1).Only(-1), &I);
+	updateAnalysis(I.getOperand(0), getAnalysis(&I).Data0().KeepForCast(fntypeinfo.function->getParent()->getDataLayout(), et1, et2).Only(-1), &I);
   }
 }
 
@@ -1116,8 +1144,6 @@ void TypeAnalyzer::visitExtractElementInst(ExtractElementInst &I) {
     // 	idx = (int)ci->getLimitedValue();
 	//}
 
-	//updateAnalysis(I.getVectorOperand(), getAnalysis(&I).Only({idx}), Direction::Both);
-    //updateAnalysis(&I, getAnalysis(I.getVectorOperand()).Lookup({idx}), Direction::Both);
 	updateAnalysis(I.getVectorOperand(), getAnalysis(&I), &I);
     updateAnalysis(&I, getAnalysis(I.getVectorOperand()), &I);
 }
@@ -1134,13 +1160,12 @@ void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
 	auto res = getAnalysis(I.getOperand(0)).PurgeAnything();
 
 	res |= getAnalysis(I.getOperand(1));
-	//res |= getAnalysis(I.getOperand(1)).Only({idx});
+	//res |= getAnalysis(I.getOperand(1)).Only(idx);
 	res |= getAnalysis(&I);
 
     updateAnalysis(I.getOperand(0), res, &I);
     updateAnalysis(&I, res, &I);
 	updateAnalysis(I.getOperand(1), res, &I);
-	//updateAnalysis(I.getOperand(1), res.Lookup({idx}), Direction::Both);
 }
 
 void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
@@ -1154,33 +1179,57 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
 }
 
 void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
-	//TODO aggregate flow
-
-    if (auto call = dyn_cast<CallInst>(I.getOperand(0))) {
-        if (auto iasm = dyn_cast<InlineAsm>(call->getCalledValue())) {
-            if (iasm->getAsmString() == "cpuid") {
-                updateAnalysis(&I, ValueData(IntType::Integer), &I);
-            }
-        }
+    std::vector<Value*> vec;
+    vec.push_back(ConstantInt::get(Type::getInt64Ty(I.getContext()), 0));
+    for(auto ind : I.indices()) {
+        vec.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), ind));
     }
+    auto ud = UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
+    auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
+    #if LLVM_VERSION_MAJOR > 6
+    APInt ai(fntypeinfo.function->getParent()->getDataLayout().getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
+    #else
+    APInt ai(fntypeinfo.function->getParent()->getDataLayout().getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
+    #endif
+    g2->accumulateConstantOffset(fntypeinfo.function->getParent()->getDataLayout(), ai);
+    delete g2;//->eraseFromParent();
 
-    if (isa<UndefValue>(I.getOperand(0))) {
-        updateAnalysis(&I, ValueData(IntType::Anything), &I);
-    }
+    int off = (int)ai.getLimitedValue();
 
-    InsertValueInst* iv = dyn_cast<InsertValueInst>(I.getOperand(0));
-    if (I.getIndices().size() == 1)
-    while (iv) {
-      if (iv->getIndices().size() == 1 && iv->getIndices()[0] == I.getIndices()[0]) {
-        updateAnalysis(&I, getAnalysis(iv->getInsertedValueOperand()), &I);
-        break;
-      }
-      iv = dyn_cast<InsertValueInst>(iv->getAggregateOperand());
-    }
+    int size = I.getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(I.getType()) / 8;
+
+    updateAnalysis(&I, getAnalysis(I.getOperand(0)).ShiftIndices(off, size, /*addOffset*/0).CanonicalizeValue(size), &I);
+    updateAnalysis(I.getOperand(0), getAnalysis(&I).ShiftIndices(0, size, off), &I);
 }
 
 void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
-	//TODO aggregate flow
+    std::vector<Value*> vec;
+    vec.push_back(ConstantInt::get(Type::getInt64Ty(I.getContext()), 0));
+    for(auto ind : I.indices()) {
+        vec.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), ind));
+    }
+    auto ud = UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
+    auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
+    #if LLVM_VERSION_MAJOR > 6
+    APInt ai(fntypeinfo.function->getParent()->getDataLayout().getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
+    #else
+    APInt ai(fntypeinfo.function->getParent()->getDataLayout().getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
+    #endif
+    g2->accumulateConstantOffset(fntypeinfo.function->getParent()->getDataLayout(), ai);
+    delete g2;//->eraseFromParent();
+
+    int off = (int)ai.getLimitedValue();
+
+    int agg_size = I.getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(I.getType()) / 8;
+    int ins_size = I.getParent()->getParent()->getParent()->getDataLayout().getTypeSizeInBits(I.getInsertedValueOperand()->getType()) / 8;
+
+    updateAnalysis(I.getAggregateOperand(), getAnalysis(&I).Clear(off, off+ins_size, agg_size), &I);
+    updateAnalysis(I.getInsertedValueOperand(), getAnalysis(&I).ShiftIndices(off, ins_size, 0).CanonicalizeValue(ins_size), &I);
+    
+    auto new_res = getAnalysis(I.getAggregateOperand()).Clear(off, off+ins_size, agg_size);
+    auto shifted = getAnalysis(I.getInsertedValueOperand()).ShiftIndices(0, ins_size, off);
+    new_res |= shifted;
+    updateAnalysis(&I, new_res.CanonicalizeValue(agg_size), &I);
 }
 
 void TypeAnalyzer::dump() {
@@ -1198,9 +1247,9 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
         auto ty = I.getType()->getScalarType();
         assert(ty->isFloatingPointTy());
         DataType dt(ty);
-        updateAnalysis(I.getOperand(0), dt, &I);
-        updateAnalysis(I.getOperand(1), dt, &I);
-        updateAnalysis(&I, dt, &I);
+        updateAnalysis(I.getOperand(0), ValueData(dt).Only({-1}), &I);
+        updateAnalysis(I.getOperand(1), ValueData(dt).Only({-1}), &I);
+        updateAnalysis(&I, ValueData(dt).Only({-1}), &I);
     } else {
 
         auto analysis = getAnalysis(&I);
@@ -1264,9 +1313,10 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
 void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst& MTI) {
     //If memcpy / memmove of pointer, we can propagate type information from src to dst up to the length and vice versa
     //TODO length enforcement
-    int64_t sz = 1;
+    size_t sz = 1;
     for (auto val : fntypeinfo.isConstantInt(MTI.getArgOperand(2), DT, intseen)) {
-        sz = max(sz, val);
+        assert(val >= 0);
+        sz = max(sz, (size_t)val);
     }
 
     ValueData res = getAnalysis(MTI.getArgOperand(0)).AtMost(sz).PurgeAnything();
@@ -1303,8 +1353,8 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
         case Intrinsic::round:
         case Intrinsic::sqrt:
         case Intrinsic::fabs:
-            updateAnalysis(&I, DataType(I.getType()->getScalarType()), &I);
-            updateAnalysis(I.getOperand(0), DataType(I.getOperand(0)->getType()->getScalarType()), &I);
+            updateAnalysis(&I, ValueData(DataType(I.getType()->getScalarType())).Only(-1), &I);
+            updateAnalysis(I.getOperand(0), ValueData(DataType(I.getOperand(0)->getType()->getScalarType())).Only(-1), &I);
             return;
 
         case Intrinsic::x86_sse_max_ss:
@@ -1314,9 +1364,9 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
         case Intrinsic::x86_sse_min_ps:
         case Intrinsic::minnum:
         case Intrinsic::pow:
-            updateAnalysis(&I, DataType(I.getType()->getScalarType()), &I);
-            updateAnalysis(I.getOperand(0), DataType(I.getOperand(0)->getType()->getScalarType()), &I);
-            updateAnalysis(I.getOperand(1), DataType(I.getOperand(1)->getType()->getScalarType()), &I);
+            updateAnalysis(&I, ValueData(DataType(I.getType()->getScalarType())).Only(-1), &I);
+            updateAnalysis(I.getOperand(0), ValueData(DataType(I.getOperand(0)->getType()->getScalarType())).Only(-1), &I);
+            updateAnalysis(I.getOperand(1), ValueData(DataType(I.getOperand(1)->getType()->getScalarType())).Only(-1), &I);
             return;
         default: return;
     }
@@ -1329,64 +1379,64 @@ struct Meta {
 template<>
 struct Meta<double> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    TA.updateAnalysis(val, DataType(Type::getDoubleTy(call.getContext())), &call);
+    TA.updateAnalysis(val, ValueData(DataType(Type::getDoubleTy(call.getContext()))).Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<float> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    TA.updateAnalysis(val, DataType(Type::getFloatTy(call.getContext())), &call);
+    TA.updateAnalysis(val, ValueData(DataType(Type::getFloatTy(call.getContext()))).Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<long double> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    TA.updateAnalysis(val, DataType(Type::getX86_FP80Ty(call.getContext())), &call);
+    TA.updateAnalysis(val, ValueData(DataType(Type::getX86_FP80Ty(call.getContext()))).Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<__float128> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    TA.updateAnalysis(val, DataType(Type::getFP128Ty (call.getContext())), &call);
+    TA.updateAnalysis(val, ValueData(DataType(Type::getFP128Ty (call.getContext()))).Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<double*> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    ValueData vd = ValueData(Type::getDoubleTy(call.getContext())).Only({0});
+    ValueData vd = ValueData(Type::getDoubleTy(call.getContext())).Only(0);
     vd |= ValueData(IntType::Pointer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<float*> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    ValueData vd = ValueData(Type::getFloatTy(call.getContext())).Only({0});
+    ValueData vd = ValueData(Type::getFloatTy(call.getContext())).Only(0);
     vd |= ValueData(IntType::Pointer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<long double*> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    ValueData vd = ValueData(Type::getX86_FP80Ty(call.getContext())).Only({0});
+    ValueData vd = ValueData(Type::getX86_FP80Ty(call.getContext())).Only(0);
     vd |= ValueData(IntType::Pointer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<__float128*> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    ValueData vd = ValueData(Type::getFP128Ty(call.getContext())).Only({0});
+    ValueData vd = ValueData(Type::getFP128Ty(call.getContext())).Only(0);
     vd |= ValueData(IntType::Pointer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
@@ -1401,7 +1451,7 @@ template<>
 struct Meta<void*> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
     ValueData vd = ValueData(IntType::Pointer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
@@ -1409,16 +1459,16 @@ template<>
 struct Meta<int> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
     ValueData vd = ValueData(IntType::Integer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<int*> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    ValueData vd = ValueData(IntType::Integer).Only({0});
+    ValueData vd = ValueData(IntType::Integer).Only(0);
     vd |= ValueData(IntType::Pointer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
@@ -1426,16 +1476,16 @@ template<>
 struct Meta<long int> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
     ValueData vd = ValueData(IntType::Integer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<long int*> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    ValueData vd = ValueData(IntType::Integer).Only({0});
+    ValueData vd = ValueData(IntType::Integer).Only(0);
     vd |= ValueData(IntType::Pointer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
@@ -1443,16 +1493,16 @@ template<>
 struct Meta<long unsigned int> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
     ValueData vd = ValueData(IntType::Integer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<long unsigned int*> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    ValueData vd = ValueData(IntType::Integer).Only({0});
+    ValueData vd = ValueData(IntType::Integer).Only(0);
     vd |= ValueData(IntType::Pointer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
@@ -1460,16 +1510,16 @@ template<>
 struct Meta<long long int> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
     ValueData vd = ValueData(IntType::Integer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
 template<>
 struct Meta<long long int*> {
 static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
-    ValueData vd = ValueData(IntType::Integer).Only({0});
+    ValueData vd = ValueData(IntType::Integer).Only(0);
     vd |= ValueData(IntType::Pointer);
-    TA.updateAnalysis(val, vd, &call);
+    TA.updateAnalysis(val, vd.Only(-1), &call);
 }
 };
 
@@ -1498,9 +1548,9 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 
 	if (auto iasm = dyn_cast<InlineAsm>(call.getCalledValue())) {
 		if (iasm->getAsmString() == "cpuid") {
-			updateAnalysis(&call, ValueData(IntType::Integer), &call);
+			updateAnalysis(&call, ValueData(IntType::Integer).Only(-1), &call);
             for(unsigned i=0; i<call.getNumArgOperands(); i++) {
-                updateAnalysis(call.getArgOperand(i), ValueData(IntType::Integer), &call);
+                updateAnalysis(call.getArgOperand(i), ValueData(IntType::Integer).Only(-1), &call);
             }
 		}
 	}
@@ -1643,52 +1693,10 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 
 
         if (ci->getName() == "__lgamma_r_finite") {
-            updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
-            updateAnalysis(call.getArgOperand(1), ValueData(IntType::Integer).Only({0}), &call);
-            updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
+            updateAnalysis(call.getArgOperand(0), ValueData(DataType(Type::getDoubleTy(call.getContext()))).Only(-1), &call);
+            updateAnalysis(call.getArgOperand(1), ValueData(IntType::Integer).Only(0).Only(-1), &call);
+            updateAnalysis(&call, ValueData(DataType(Type::getDoubleTy(call.getContext()))).Only(-1), &call);
         }
-
-        /*
-		if (ci->getName() == "malloc") {
-			updateAnalysis(call.getArgOperand(0), IntType::Integer, &call);
-		}
-
-
-
-        if (ci->getName() == "frexp") {
-            updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
-            updateAnalysis(call.getArgOperand(1), ValueData(IntType::Integer).Only({0}), &call);
-            updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
-        }
-
-        if (ci->getName() == "ldexp") {
-            updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
-            updateAnalysis(call.getArgOperand(1), ValueData(IntType::Integer), &call);
-            updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
-        }
-
-        if (ci->getName() == "modf") {
-            updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
-            updateAnalysis(call.getArgOperand(1), ValueData(Type::getDoubleTy(call.getContext())).Only({0}), &call);
-            updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
-        }
-
-        if (ci->getName() == "sin")
-            analyzeFuncTypes(sin, call, *this);
-
-        const std::vector<std::string> doubleCmath = {
-                                                        "cos", "sin", "tan", "acos", "asin", "atan", "atan2",
-                                                        "cosh", "sinh", "tanh", "acosh", "asinh", "atanh",
-                                                        "exp", "log", "log10", "exp2", "expm1"
-                                                    };
-        const std::vector<std::string> floatCMath = {"acoshf", "asinhf", "atanhf", "exp2f", "expm1f"};
-        const std::vector<std::string> longDoubleCMath = {"acoshl", "asinhl", "atanhl", "exp2l", "expm1l"};
-
-        if (std::find(doubleCmath.begin(), doubleCmath.end(), ci->getName().str()) != doubleCmath.end()) {
-            for(unsigned i=0; i<call.getNumArgOperands(); i++)
-                updateAnalysis(call.getArgOperand(i), DataType(Type::getDoubleTy(call.getContext())), &call);
-            updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
-        }*/
 
 		//TODO we should handle calls interprocedurally, allowing better propagation of type information
 		if (!ci->empty()) {

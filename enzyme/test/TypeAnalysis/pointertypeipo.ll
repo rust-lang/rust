@@ -51,34 +51,34 @@ attributes #4 = { nounwind }
 
 
 ; CHECK: mv - {} |{}:{} 
-; CHECK-NEXT: i64* %m_dims: {[]:Pointer, [0]:Integer}
+; CHECK-NEXT: i64* %m_dims: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %call4 = call i64 @sub(i64* nonnull %m_dims): {[]:Integer}
+; CHECK-NEXT:   %call4 = call i64 @sub(i64* nonnull %m_dims): {[-1]:Integer}
 ; CHECK-NEXT:   ret void: {}
 
 ; CHECK: sub - {} |{}:{} 
-; CHECK-NEXT: i64* %this: {[]:Pointer, [0]:Integer}
+; CHECK-NEXT: i64* %this: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %agg = load i64, i64* %this: {[]:Integer}
-; CHECK-NEXT:   %call = tail call i64 @pop(i64 %agg): {[]:Integer}
+; CHECK-NEXT:   %agg = load i64, i64* %this: {[-1]:Integer}
+; CHECK-NEXT:   %call = tail call i64 @pop(i64 %agg): {[-1]:Integer}
 ; CHECK-NEXT:   ret i64 %call: {}
 
 ; CHECK: pop - {} |{}:{} 
-; CHECK-NEXT: i64 %arr.coerce0: {[]:Integer}
+; CHECK-NEXT: i64 %arr.coerce0: {[-1]:Integer}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %arr = alloca i64: {[]:Pointer, [0]:Integer}
+; CHECK-NEXT:   %arr = alloca i64: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT:   store i64 %arr.coerce0, i64* %arr: {}
-; CHECK-NEXT:   %call.i = call i64* @cast(i64* nonnull %arr): {[]:Pointer, [0]:Integer}
-; CHECK-NEXT:   %a2 = load i64, i64* %call.i, !tbaa !2: {[]:Integer}
-; CHECK-NEXT:   %call2 = call i64 @mul(i64 %a2): {[]:Integer}
+; CHECK-NEXT:   %call.i = call i64* @cast(i64* nonnull %arr): {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
+; CHECK-NEXT:   %a2 = load i64, i64* %call.i, !tbaa !2: {[-1]:Integer}
+; CHECK-NEXT:   %call2 = call i64 @mul(i64 %a2): {[-1]:Integer}
 ; CHECK-NEXT:   ret i64 %call2: {}
 
-; CHECK: cast - {[]:Pointer, [0]:Integer} |{[]:Pointer}:{} 
-; CHECK-NEXT: i64* %a: {[]:Pointer, [0]:Integer}
+; CHECK: cast - {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer} |{[-1]:Pointer}:{} 
+; CHECK-NEXT: i64* %a: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   ret i64* %a: {}
 
-; CHECK: mul - {} |{[]:Integer}:{} 
-; CHECK-NEXT: i64 %a: {[]:Integer}
+; CHECK: mul - {} |{[-1]:Integer}:{} 
+; CHECK-NEXT: i64 %a: {[-1]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   ret i64 %a: {}
