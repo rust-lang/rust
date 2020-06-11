@@ -1165,6 +1165,6 @@ fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {
     match impl_item.kind {
         ty::AssocKind::Const => "const",
         ty::AssocKind::Fn => "method",
-        ty::AssocKind::Type | ty::AssocKind::OpaqueTy => "type",
+        ty::AssocKind::Type => "type",
     }
 }

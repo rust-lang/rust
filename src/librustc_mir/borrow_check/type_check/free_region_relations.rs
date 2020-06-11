@@ -259,7 +259,13 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                     .param_env
                     .and(type_op::normalize::Normalize::new(ty))
                     .fully_perform(self.infcx)
-                    .unwrap_or_else(|_| bug!("failed to normalize {:?}", ty));
+                    .unwrap_or_else(|_| {
+                        self.infcx
+                            .tcx
+                            .sess
+                            .delay_span_bug(DUMMY_SP, &format!("failed to normalize {:?}", ty));
+                        (self.infcx.tcx.types.err, None)
+                    });
                 let constraints2 = self.add_implied_bounds(ty);
                 normalized_inputs_and_output.push(ty);
                 constraints1.into_iter().chain(constraints2)

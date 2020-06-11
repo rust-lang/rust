@@ -671,7 +671,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 | HirDefKind::TyAlias
                 | HirDefKind::ForeignTy
                 | HirDefKind::TraitAlias
-                | HirDefKind::AssocOpaqueTy
                 | HirDefKind::AssocTy
                 | HirDefKind::Trait
                 | HirDefKind::OpaqueTy

@@ -1102,6 +1102,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
             hir::ItemKind::TyAlias(ref ty, ref generics) => (&*ty, generics),
             _ => return,
         };
+        if let hir::TyKind::OpaqueDef(..) = ty.kind {
+            // Bounds are respected for `type X = impl Trait`
+            return;
+        }
         let mut suggested_changing_assoc_types = false;
         // There must not be a where clause
         if !type_alias_generics.where_clause.predicates.is_empty() {

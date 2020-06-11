@@ -1138,10 +1138,6 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 let item_type = type_.def_id().and_then(|did| inline::build_ty(cx, did));
                 TypedefItem(Typedef { type_, generics: Generics::default(), item_type }, true)
             }
-            hir::ImplItemKind::OpaqueTy(ref bounds) => OpaqueTyItem(
-                OpaqueTy { bounds: bounds.clean(cx), generics: Generics::default() },
-                true,
-            ),
         };
         let local_did = cx.tcx.hir().local_def_id(self.hir_id);
         Item {
@@ -1308,7 +1304,6 @@ impl Clean<Item> for ty::AssocItem {
                     )
                 }
             }
-            ty::AssocKind::OpaqueTy => unimplemented!(),
         };
 
         let visibility = match self.container {
@@ -1356,7 +1351,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 Array(box ty.clean(cx), length)
             }
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
-            TyKind::Def(item_id, _) => {
+            TyKind::OpaqueDef(item_id, _) => {
                 let item = cx.tcx.hir().expect_item(item_id.id);
                 if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
                     ImplTrait(ty.bounds.clean(cx))

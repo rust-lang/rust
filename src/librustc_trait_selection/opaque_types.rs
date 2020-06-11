@@ -11,7 +11,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{self, InferCtxt, InferOk};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::nightly_options;
 use rustc_span::Span;
 
@@ -133,9 +133,9 @@ pub trait InferCtxtExt<'tcx> {
     fn generate_member_constraint(
         &self,
         concrete_ty: Ty<'tcx>,
-        opaque_type_generics: &ty::Generics,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
         opaque_type_def_id: DefId,
+        first_own_region_index: usize,
     );
 
     /*private*/
@@ -405,7 +405,24 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         debug!("constrain_opaque_type: concrete_ty={:?}", concrete_ty);
 
-        let opaque_type_generics = tcx.generics_of(def_id);
+        let first_own_region = match opaque_defn.origin {
+            hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => {
+                // We lower
+                //
+                // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
+                //
+                // into
+                //
+                // type foo::<'p0..'pn>::Foo<'q0..'qm>
+                // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
+                //
+                // For these types we onlt iterate over `'l0..lm` below.
+                tcx.generics_of(def_id).parent_count
+            }
+            // These opaque type inherit all lifetime parameters from their
+            // parent, so we have to check them all.
+            hir::OpaqueTyOrigin::Binding | hir::OpaqueTyOrigin::Misc => 0,
+        };
 
         let span = tcx.def_span(def_id);
 
@@ -427,12 +444,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 });
             }
             if let GenerateMemberConstraints::IfNoStaticBound = mode {
-                self.generate_member_constraint(
-                    concrete_ty,
-                    opaque_type_generics,
-                    opaque_defn,
-                    def_id,
-                );
+                self.generate_member_constraint(concrete_ty, opaque_defn, def_id, first_own_region);
             }
             return;
         }
@@ -445,29 +457,27 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // `['a]` for the first impl trait and `'b` for the
         // second.
         let mut least_region = None;
-        for param in &opaque_type_generics.params {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {}
-                _ => continue,
-            }
 
-            // Get the value supplied for this region from the substs.
-            let subst_arg = opaque_defn.substs.region_at(param.index as usize);
+        for subst_arg in &opaque_defn.substs[first_own_region..] {
+            let subst_region = match subst_arg.unpack() {
+                GenericArgKind::Lifetime(r) => r,
+                GenericArgKind::Type(_) | GenericArgKind::Const(_) => continue,
+            };
 
             // Compute the least upper bound of it with the other regions.
             debug!("constrain_opaque_types: least_region={:?}", least_region);
-            debug!("constrain_opaque_types: subst_arg={:?}", subst_arg);
+            debug!("constrain_opaque_types: subst_region={:?}", subst_region);
             match least_region {
-                None => least_region = Some(subst_arg),
+                None => least_region = Some(subst_region),
                 Some(lr) => {
-                    if free_region_relations.sub_free_regions(self.tcx, lr, subst_arg) {
+                    if free_region_relations.sub_free_regions(self.tcx, lr, subst_region) {
                         // keep the current least region
-                    } else if free_region_relations.sub_free_regions(self.tcx, subst_arg, lr) {
-                        // switch to `subst_arg`
-                        least_region = Some(subst_arg);
+                    } else if free_region_relations.sub_free_regions(self.tcx, subst_region, lr) {
+                        // switch to `subst_region`
+                        least_region = Some(subst_region);
                     } else {
                         // There are two regions (`lr` and
-                        // `subst_arg`) which are not relatable. We
+                        // `subst_region`) which are not relatable. We
                         // can't find a best choice. Therefore,
                         // instead of creating a single bound like
                         // `'r: 'a` (which is our preferred choice),
@@ -476,13 +486,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // regions that appear in the impl trait.
 
                         // For now, enforce a feature gate outside of async functions.
-                        self.member_constraint_feature_gate(opaque_defn, def_id, lr, subst_arg);
+                        self.member_constraint_feature_gate(opaque_defn, def_id, lr, subst_region);
 
                         return self.generate_member_constraint(
                             concrete_ty,
-                            opaque_type_generics,
                             opaque_defn,
                             def_id,
+                            first_own_region,
                         );
                     }
                 }
@@ -494,12 +504,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         if let GenerateMemberConstraints::IfNoStaticBound = mode {
             if least_region != tcx.lifetimes.re_static {
-                self.generate_member_constraint(
-                    concrete_ty,
-                    opaque_type_generics,
-                    opaque_defn,
-                    def_id,
-                );
+                self.generate_member_constraint(concrete_ty, opaque_defn, def_id, first_own_region);
             }
         }
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
@@ -518,22 +523,20 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     fn generate_member_constraint(
         &self,
         concrete_ty: Ty<'tcx>,
-        opaque_type_generics: &ty::Generics,
         opaque_defn: &OpaqueTypeDecl<'tcx>,
         opaque_type_def_id: DefId,
+        first_own_region: usize,
     ) {
         // Create the set of choice regions: each region in the hidden
         // type can be equal to any of the region parameters of the
         // opaque type definition.
         let choice_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
-            opaque_type_generics
-                .params
+            opaque_defn.substs[first_own_region..]
                 .iter()
-                .filter(|param| match param.kind {
-                    GenericParamDefKind::Lifetime => true,
-                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => false,
+                .filter_map(|arg| match arg.unpack() {
+                    GenericArgKind::Lifetime(r) => Some(r),
+                    GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
                 })
-                .map(|param| opaque_defn.substs.region_at(param.index as usize))
                 .chain(std::iter::once(self.tcx.lifetimes.re_static))
                 .collect(),
         );
@@ -574,7 +577,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             hir::OpaqueTyOrigin::AsyncFn => return false,
 
             // Otherwise, generate the label we'll use in the error message.
-            hir::OpaqueTyOrigin::TypeAlias
+            hir::OpaqueTyOrigin::Binding
             | hir::OpaqueTyOrigin::FnReturn
             | hir::OpaqueTyOrigin::Misc => "impl Trait",
         };
@@ -1064,21 +1067,10 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     ),
                                     origin,
                                 ),
-                                _ => (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias),
-                            },
-                            Some(Node::ImplItem(item)) => match item.kind {
-                                hir::ImplItemKind::OpaqueTy(_) => (
-                                    may_define_opaque_type(
-                                        tcx,
-                                        self.parent_def_id.expect_local(),
-                                        opaque_hir_id,
-                                    ),
-                                    hir::OpaqueTyOrigin::TypeAlias,
-                                ),
-                                _ => (def_scope_default(), hir::OpaqueTyOrigin::TypeAlias),
+                                _ => (def_scope_default(), hir::OpaqueTyOrigin::Misc),
                             },
                             _ => bug!(
-                                "expected (impl) item, found {}",
+                                "expected item, found {}",
                                 tcx.hir().node_to_string(opaque_hir_id),
                             ),
                         };

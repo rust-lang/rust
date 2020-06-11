@@ -25,7 +25,7 @@ use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::{FnOnceTraitLangItem, GeneratorTraitLangItem};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
-use rustc_middle::ty::subst::{InternalSubsts, Subst};
+use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_span::symbol::{sym, Ident};
@@ -1477,12 +1477,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let substs = obligation.predicate.substs.rebase_onto(tcx, trait_def_id, substs);
     let substs =
         translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.defining_node);
-    let ty = if let ty::AssocKind::OpaqueTy = assoc_ty.item.kind {
-        let item_substs = InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
-        tcx.mk_opaque(assoc_ty.item.def_id, item_substs)
-    } else {
-        tcx.type_of(assoc_ty.item.def_id)
-    };
+    let ty = tcx.type_of(assoc_ty.item.def_id);
     if substs.len() != tcx.generics_of(assoc_ty.item.def_id).count() {
         tcx.sess
             .delay_span_bug(DUMMY_SP, "impl item and trait item have different parameter counts");
@@ -1515,7 +1510,7 @@ fn assoc_ty_def(
     // cycle error if the specialization graph is currently being built.
     let impl_node = specialization_graph::Node::Impl(impl_def_id);
     for item in impl_node.items(tcx) {
-        if matches!(item.kind, ty::AssocKind::Type | ty::AssocKind::OpaqueTy)
+        if matches!(item.kind, ty::AssocKind::Type)
             && tcx.hygienic_eq(item.ident, assoc_ty_name, trait_def_id)
         {
             return Ok(specialization_graph::LeafDef {

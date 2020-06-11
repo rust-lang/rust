@@ -304,7 +304,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-        if let TyKind::Def(item_id, _) = ty.kind {
+        if let TyKind::OpaqueDef(item_id, _) = ty.kind {
             let item = self.tcx.hir().expect_item(item_id.id);
             intravisit::walk_item(self, item);
         }
@@ -668,7 +668,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 }
                 self.visit_nested_body(body_id)
             }
-            hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(..) => {}
+            hir::ImplItemKind::TyAlias(..) => {}
         }
     }
 
