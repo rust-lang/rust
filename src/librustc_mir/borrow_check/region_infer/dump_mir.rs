@@ -4,7 +4,9 @@
 //! context internal state.
 
 use super::{OutlivesConstraint, RegionInferenceContext};
+use crate::borrow_check::type_check::Locations;
 use rustc_infer::infer::NLLRegionVariableOrigin;
+use rustc_middle::ty::TyCtxt;
 use std::io::{self, Write};
 
 // Room for "'_#NNNNr" before things get misaligned.
@@ -14,7 +16,7 @@ const REGION_WIDTH: usize = 8;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out our state into the `.mir` files.
-    pub(crate) fn dump_mir(&self, out: &mut dyn Write) -> io::Result<()> {
+    pub(crate) fn dump_mir(&self, tcx: TyCtxt<'tcx>, out: &mut dyn Write) -> io::Result<()> {
         writeln!(out, "| Free Region Mapping")?;
 
         for region in self.regions() {
@@ -48,7 +50,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         writeln!(out, "|")?;
         writeln!(out, "| Inference Constraints")?;
-        self.for_each_constraint(&mut |msg| writeln!(out, "| {}", msg))?;
+        self.for_each_constraint(tcx, &mut |msg| writeln!(out, "| {}", msg))?;
 
         Ok(())
     }
@@ -59,6 +61,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// inference resulted in the values that it did when debugging.
     fn for_each_constraint(
         &self,
+        tcx: TyCtxt<'tcx>,
         with_msg: &mut dyn FnMut(&str) -> io::Result<()>,
     ) -> io::Result<()> {
         for region in self.definitions.indices() {
@@ -72,7 +75,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         constraints.sort();
         for constraint in &constraints {
             let OutlivesConstraint { sup, sub, locations, category } = constraint;
-            with_msg(&format!("{:?}: {:?} due to {:?} at {:?}", sup, sub, category, locations,))?;
+            let (name, arg) = match locations {
+                Locations::All(span) => ("All", tcx.sess.source_map().span_to_string(*span)),
+                Locations::Single(loc) => ("Single", format!("{:?}", loc)),
+            };
+            with_msg(&format!("{:?}: {:?} due to {:?} at {}({})", sup, sub, category, name, arg))?;
         }
 
         Ok(())
