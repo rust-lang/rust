@@ -177,6 +177,9 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 }
 
 pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<FileSymbol> {
+    // FIXME(#4842): This now depends on CrateDefMap, why not build the entire symbol index from
+    // that instead?
+
     let def_map = db.crate_def_map(krate);
     let mut files = Vec::new();
     let mut modules = vec![def_map.root];
