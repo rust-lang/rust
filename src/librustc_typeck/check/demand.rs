@@ -15,6 +15,8 @@ use rustc_span::Span;
 
 use super::method::probe;
 
+use std::fmt;
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn emit_coerce_suggestions(
         &self,
@@ -670,15 +672,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        if self.tcx.hir().is_const_context(expr.hir_id) {
-            // Shouldn't suggest `.into()` on `const`s.
-            // FIXME(estebank): modify once we decide to suggest `as` casts
-            return false;
-        }
         if self.tcx.sess.source_map().is_imported(expr.span) {
             // Ignore if span is from within a macro.
             return false;
         }
+
+        let src = if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
+            src
+        } else {
+            return false;
+        };
 
         // If casting this expression to a given numeric type would be appropriate in case of a type
         // mismatch.
@@ -708,6 +711,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             String::new()
         };
+
         if let hir::ExprKind::Call(path, args) = &expr.kind {
             if let (hir::ExprKind::Path(hir::QPath::TypeRelative(base_ty, path_segment)), 1) =
                 (&path.kind, args.len())
@@ -749,222 +753,200 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             checked_ty, expected_ty,
         );
 
-        let needs_paren = expr.precedence().order() < (PREC_POSTFIX as i8);
-
-        if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
-            let cast_suggestion = format!(
-                "{}{}{}{} as {}",
-                prefix,
-                if needs_paren { "(" } else { "" },
-                src,
-                if needs_paren { ")" } else { "" },
-                expected_ty,
-            );
-            let try_into_suggestion = format!(
-                "{}{}{}{}.try_into().unwrap()",
-                prefix,
-                if needs_paren { "(" } else { "" },
-                src,
-                if needs_paren { ")" } else { "" },
-            );
-            let into_suggestion = format!(
-                "{}{}{}{}.into()",
-                prefix,
-                if needs_paren { "(" } else { "" },
-                src,
-                if needs_paren { ")" } else { "" },
-            );
-            let suffix_suggestion = format!(
-                "{}{}{}{}",
-                if needs_paren { "(" } else { "" },
-                if let (ty::Int(_) | ty::Uint(_), ty::Float(_)) =
-                    (&expected_ty.kind, &checked_ty.kind,)
-                {
-                    // Remove fractional part from literal, for example `42.0f32` into `42`
-                    let src = src.trim_end_matches(&checked_ty.to_string());
-                    src.split('.').next().unwrap()
-                } else {
-                    src.trim_end_matches(&checked_ty.to_string())
-                },
-                expected_ty,
-                if needs_paren { ")" } else { "" },
-            );
-            let literal_is_ty_suffixed = |expr: &hir::Expr<'_>| {
-                if let hir::ExprKind::Lit(lit) = &expr.kind {
-                    lit.node.is_suffixed()
-                } else {
-                    false
-                }
+        let with_opt_paren: fn(&dyn fmt::Display) -> String =
+            if expr.precedence().order() < PREC_POSTFIX {
+                |s| format!("({})", s)
+            } else {
+                |s| s.to_string()
             };
 
-            let suggest_to_change_suffix_or_into =
-                |err: &mut DiagnosticBuilder<'_>, is_fallible: bool| {
+        let cast_suggestion = format!("{}{} as {}", prefix, with_opt_paren(&src), expected_ty);
+        let try_into_suggestion = format!("{}{}.try_into().unwrap()", prefix, with_opt_paren(&src));
+        let into_suggestion = format!("{}{}.into()", prefix, with_opt_paren(&src));
+        let suffix_suggestion = with_opt_paren(&format_args!(
+            "{}{}",
+            if matches!(
+                (&expected_ty.kind, &checked_ty.kind),
+                (ty::Int(_) | ty::Uint(_), ty::Float(_))
+            ) {
+                // Remove fractional part from literal, for example `42.0f32` into `42`
+                let src = src.trim_end_matches(&checked_ty.to_string());
+                src.split('.').next().unwrap()
+            } else {
+                src.trim_end_matches(&checked_ty.to_string())
+            },
+            expected_ty,
+        ));
+        let literal_is_ty_suffixed = |expr: &hir::Expr<'_>| {
+            if let hir::ExprKind::Lit(lit) = &expr.kind { lit.node.is_suffixed() } else { false }
+        };
+
+        let in_const_context = self.tcx.hir().is_inside_const_context(expr.hir_id);
+        let suggest_to_change_suffix_or_into =
+            |err: &mut DiagnosticBuilder<'_>, is_fallible: bool| {
+                let msg = if literal_is_ty_suffixed(expr) {
+                    &lit_msg
+                } else if in_const_context {
+                    // Do not recommend `into` or `try_into` in const contexts.
+                    return;
+                } else if is_fallible {
+                    &try_msg
+                } else {
+                    &msg
+                };
+                let suggestion = if literal_is_ty_suffixed(expr) {
+                    suffix_suggestion.clone()
+                } else if is_fallible {
+                    try_into_suggestion
+                } else {
+                    into_suggestion.clone()
+                };
+                err.span_suggestion(expr.span, msg, suggestion, Applicability::MachineApplicable);
+            };
+
+        match (&expected_ty.kind, &checked_ty.kind) {
+            (&ty::Int(ref exp), &ty::Int(ref found)) => {
+                let is_fallible = match (exp.bit_width(), found.bit_width()) {
+                    (Some(exp), Some(found)) if exp < found => true,
+                    (None, Some(8 | 16)) => false,
+                    (None, _) | (_, None) => true,
+                    _ => false,
+                };
+                suggest_to_change_suffix_or_into(err, is_fallible);
+                true
+            }
+            (&ty::Uint(ref exp), &ty::Uint(ref found)) => {
+                let is_fallible = match (exp.bit_width(), found.bit_width()) {
+                    (Some(exp), Some(found)) if exp < found => true,
+                    (None, Some(8 | 16)) => false,
+                    (None, _) | (_, None) => true,
+                    _ => false,
+                };
+                suggest_to_change_suffix_or_into(err, is_fallible);
+                true
+            }
+            (&ty::Int(exp), &ty::Uint(found)) => {
+                let is_fallible = match (exp.bit_width(), found.bit_width()) {
+                    (Some(exp), Some(found)) if found < exp => false,
+                    (None, Some(8)) => false,
+                    _ => true,
+                };
+                suggest_to_change_suffix_or_into(err, is_fallible);
+                true
+            }
+            (&ty::Uint(_), &ty::Int(_)) => {
+                suggest_to_change_suffix_or_into(err, true);
+                true
+            }
+            (&ty::Float(ref exp), &ty::Float(ref found)) => {
+                if found.bit_width() < exp.bit_width() {
+                    suggest_to_change_suffix_or_into(err, false);
+                } else if literal_is_ty_suffixed(expr) {
                     err.span_suggestion(
                         expr.span,
-                        if literal_is_ty_suffixed(expr) {
-                            &lit_msg
-                        } else if is_fallible {
-                            &try_msg
-                        } else {
-                            &msg
-                        },
-                        if literal_is_ty_suffixed(expr) {
-                            suffix_suggestion.clone()
-                        } else if is_fallible {
-                            try_into_suggestion
-                        } else {
-                            into_suggestion.clone()
-                        },
+                        &lit_msg,
+                        suffix_suggestion,
                         Applicability::MachineApplicable,
                     );
-                };
-
-            match (&expected_ty.kind, &checked_ty.kind) {
-                (&ty::Int(ref exp), &ty::Int(ref found)) => {
-                    let is_fallible = match (exp.bit_width(), found.bit_width()) {
-                        (Some(exp), Some(found)) if exp < found => true,
-                        (None, Some(8 | 16)) => false,
-                        (None, _) | (_, None) => true,
-                        _ => false,
-                    };
-                    suggest_to_change_suffix_or_into(err, is_fallible);
-                    true
+                } else if can_cast {
+                    // Missing try_into implementation for `f64` to `f32`
+                    err.span_suggestion(
+                        expr.span,
+                        &format!("{}, producing the closest possible value", cast_msg),
+                        cast_suggestion,
+                        Applicability::MaybeIncorrect, // lossy conversion
+                    );
                 }
-                (&ty::Uint(ref exp), &ty::Uint(ref found)) => {
-                    let is_fallible = match (exp.bit_width(), found.bit_width()) {
-                        (Some(exp), Some(found)) if exp < found => true,
-                        (None, Some(8 | 16)) => false,
-                        (None, _) | (_, None) => true,
-                        _ => false,
-                    };
-                    suggest_to_change_suffix_or_into(err, is_fallible);
-                    true
-                }
-                (&ty::Int(exp), &ty::Uint(found)) => {
-                    let is_fallible = match (exp.bit_width(), found.bit_width()) {
-                        (Some(exp), Some(found)) if found < exp => false,
-                        (None, Some(8)) => false,
-                        _ => true,
-                    };
-                    suggest_to_change_suffix_or_into(err, is_fallible);
-                    true
-                }
-                (&ty::Uint(_), &ty::Int(_)) => {
-                    suggest_to_change_suffix_or_into(err, true);
-                    true
-                }
-                (&ty::Float(ref exp), &ty::Float(ref found)) => {
-                    if found.bit_width() < exp.bit_width() {
-                        suggest_to_change_suffix_or_into(err, false);
-                    } else if literal_is_ty_suffixed(expr) {
-                        err.span_suggestion(
-                            expr.span,
-                            &lit_msg,
-                            suffix_suggestion,
-                            Applicability::MachineApplicable,
-                        );
-                    } else if can_cast {
-                        // Missing try_into implementation for `f64` to `f32`
-                        err.span_suggestion(
-                            expr.span,
-                            &format!("{}, producing the closest possible value", cast_msg),
-                            cast_suggestion,
-                            Applicability::MaybeIncorrect, // lossy conversion
-                        );
-                    }
-                    true
-                }
-                (&ty::Uint(_) | &ty::Int(_), &ty::Float(_)) => {
-                    if literal_is_ty_suffixed(expr) {
-                        err.span_suggestion(
-                            expr.span,
-                            &lit_msg,
-                            suffix_suggestion,
-                            Applicability::MachineApplicable,
-                        );
-                    } else if can_cast {
-                        // Missing try_into implementation for `{float}` to `{integer}`
-                        err.span_suggestion(
-                            expr.span,
-                            &format!("{}, rounding the float towards zero", msg),
-                            cast_suggestion,
-                            Applicability::MaybeIncorrect, // lossy conversion
-                        );
-                    }
-                    true
-                }
-                (&ty::Float(ref exp), &ty::Uint(ref found)) => {
-                    // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
-                    if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                        err.span_suggestion(
-                            expr.span,
-                            &format!(
-                                "{}, producing the floating point representation of the integer",
-                                msg,
-                            ),
-                            into_suggestion,
-                            Applicability::MachineApplicable,
-                        );
-                    } else if literal_is_ty_suffixed(expr) {
-                        err.span_suggestion(
-                            expr.span,
-                            &lit_msg,
-                            suffix_suggestion,
-                            Applicability::MachineApplicable,
-                        );
-                    } else {
-                        // Missing try_into implementation for `{integer}` to `{float}`
-                        err.span_suggestion(
-                            expr.span,
-                            &format!(
-                                "{}, producing the floating point representation of the integer,
-                                 rounded if necessary",
-                                cast_msg,
-                            ),
-                            cast_suggestion,
-                            Applicability::MaybeIncorrect, // lossy conversion
-                        );
-                    }
-                    true
-                }
-                (&ty::Float(ref exp), &ty::Int(ref found)) => {
-                    // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
-                    if exp.bit_width() > found.bit_width().unwrap_or(256) {
-                        err.span_suggestion(
-                            expr.span,
-                            &format!(
-                                "{}, producing the floating point representation of the integer",
-                                &msg,
-                            ),
-                            into_suggestion,
-                            Applicability::MachineApplicable,
-                        );
-                    } else if literal_is_ty_suffixed(expr) {
-                        err.span_suggestion(
-                            expr.span,
-                            &lit_msg,
-                            suffix_suggestion,
-                            Applicability::MachineApplicable,
-                        );
-                    } else {
-                        // Missing try_into implementation for `{integer}` to `{float}`
-                        err.span_suggestion(
-                            expr.span,
-                            &format!(
-                                "{}, producing the floating point representation of the integer, \
-                                 rounded if necessary",
-                                &msg,
-                            ),
-                            cast_suggestion,
-                            Applicability::MaybeIncorrect, // lossy conversion
-                        );
-                    }
-                    true
-                }
-                _ => false,
+                true
             }
-        } else {
-            false
+            (&ty::Uint(_) | &ty::Int(_), &ty::Float(_)) => {
+                if literal_is_ty_suffixed(expr) {
+                    err.span_suggestion(
+                        expr.span,
+                        &lit_msg,
+                        suffix_suggestion,
+                        Applicability::MachineApplicable,
+                    );
+                } else if can_cast {
+                    // Missing try_into implementation for `{float}` to `{integer}`
+                    err.span_suggestion(
+                        expr.span,
+                        &format!("{}, rounding the float towards zero", msg),
+                        cast_suggestion,
+                        Applicability::MaybeIncorrect, // lossy conversion
+                    );
+                }
+                true
+            }
+            (&ty::Float(ref exp), &ty::Uint(ref found)) => {
+                // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
+                if exp.bit_width() > found.bit_width().unwrap_or(256) {
+                    err.span_suggestion(
+                        expr.span,
+                        &format!(
+                            "{}, producing the floating point representation of the integer",
+                            msg,
+                        ),
+                        into_suggestion,
+                        Applicability::MachineApplicable,
+                    );
+                } else if literal_is_ty_suffixed(expr) {
+                    err.span_suggestion(
+                        expr.span,
+                        &lit_msg,
+                        suffix_suggestion,
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    // Missing try_into implementation for `{integer}` to `{float}`
+                    err.span_suggestion(
+                        expr.span,
+                        &format!(
+                            "{}, producing the floating point representation of the integer,
+                                 rounded if necessary",
+                            cast_msg,
+                        ),
+                        cast_suggestion,
+                        Applicability::MaybeIncorrect, // lossy conversion
+                    );
+                }
+                true
+            }
+            (&ty::Float(ref exp), &ty::Int(ref found)) => {
+                // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
+                if exp.bit_width() > found.bit_width().unwrap_or(256) {
+                    err.span_suggestion(
+                        expr.span,
+                        &format!(
+                            "{}, producing the floating point representation of the integer",
+                            &msg,
+                        ),
+                        into_suggestion,
+                        Applicability::MachineApplicable,
+                    );
+                } else if literal_is_ty_suffixed(expr) {
+                    err.span_suggestion(
+                        expr.span,
+                        &lit_msg,
+                        suffix_suggestion,
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    // Missing try_into implementation for `{integer}` to `{float}`
+                    err.span_suggestion(
+                        expr.span,
+                        &format!(
+                            "{}, producing the floating point representation of the integer, \
+                                rounded if necessary",
+                            &msg,
+                        ),
+                        cast_suggestion,
+                        Applicability::MaybeIncorrect, // lossy conversion
+                    );
+                }
+                true
+            }
+            _ => false,
         }
     }
 }
