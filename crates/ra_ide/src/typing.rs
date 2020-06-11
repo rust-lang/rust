@@ -21,7 +21,9 @@ use ra_ide_db::{source_change::SourceFileEdit, RootDatabase};
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstToken},
-    AstNode, SourceFile, TextRange, TextSize,
+    AstNode, SourceFile,
+    SyntaxKind::{FIELD_EXPR, METHOD_CALL_EXPR},
+    TextRange, TextSize,
 };
 
 use ra_text_edit::TextEdit;
@@ -98,9 +100,12 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     };
     let current_indent_len = TextSize::of(current_indent);
 
+    let parent = whitespace.syntax().parent();
     // Make sure dot is a part of call chain
-    let field_expr = ast::FieldExpr::cast(whitespace.syntax().parent())?;
-    let prev_indent = leading_indent(field_expr.syntax())?;
+    if !matches!(parent.kind(), FIELD_EXPR | METHOD_CALL_EXPR) {
+        return None;
+    }
+    let prev_indent = leading_indent(&parent)?;
     let target_indent = format!("    {}", prev_indent);
     let target_indent_len = TextSize::of(&target_indent);
     if current_indent_len == target_indent_len {
@@ -143,11 +148,11 @@ mod tests {
         })
     }
 
-    fn type_char(char_typed: char, before: &str, after: &str) {
-        let actual = do_type_char(char_typed, before)
+    fn type_char(char_typed: char, ra_fixture_before: &str, ra_fixture_after: &str) {
+        let actual = do_type_char(char_typed, ra_fixture_before)
             .unwrap_or_else(|| panic!("typing `{}` did nothing", char_typed));
 
-        assert_eq_text!(after, &actual);
+        assert_eq_text!(ra_fixture_after, &actual);
     }
 
     fn type_char_noop(char_typed: char, before: &str) {
@@ -246,6 +251,27 @@ fn foo() {
             }
             ",
         )
+    }
+
+    #[test]
+    fn indents_new_chain_call_with_let() {
+        type_char(
+            '.',
+            r#"
+fn main() {
+    let _ = foo
+    <|>
+    bar()
+}
+"#,
+            r#"
+fn main() {
+    let _ = foo
+        .
+    bar()
+}
+"#,
+        );
     }
 
     #[test]
