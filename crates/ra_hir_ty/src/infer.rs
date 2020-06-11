@@ -555,13 +555,13 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
-        let path = path![std::iter::IntoIterator];
+        let path = path![core::iter::IntoIterator];
         let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Item])
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
-        let path = path![std::ops::Try];
+        let path = path![core::ops::Try];
         let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Ok])
     }
@@ -587,37 +587,37 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_range_full(&self) -> Option<AdtId> {
-        let path = path![std::ops::RangeFull];
+        let path = path![core::ops::RangeFull];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range(&self) -> Option<AdtId> {
-        let path = path![std::ops::Range];
+        let path = path![core::ops::Range];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_inclusive(&self) -> Option<AdtId> {
-        let path = path![std::ops::RangeInclusive];
+        let path = path![core::ops::RangeInclusive];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_from(&self) -> Option<AdtId> {
-        let path = path![std::ops::RangeFrom];
+        let path = path![core::ops::RangeFrom];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_to(&self) -> Option<AdtId> {
-        let path = path![std::ops::RangeTo];
+        let path = path![core::ops::RangeTo];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
-        let path = path![std::ops::RangeToInclusive];
+        let path = path![core::ops::RangeToInclusive];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }

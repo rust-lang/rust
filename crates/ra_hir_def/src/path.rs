@@ -323,16 +323,16 @@ pub use hir_expand::name as __name;
 
 #[macro_export]
 macro_rules! __known_path {
-    (std::iter::IntoIterator) => {};
-    (std::result::Result) => {};
-    (std::ops::Range) => {};
-    (std::ops::RangeFrom) => {};
-    (std::ops::RangeFull) => {};
-    (std::ops::RangeTo) => {};
-    (std::ops::RangeToInclusive) => {};
-    (std::ops::RangeInclusive) => {};
-    (std::future::Future) => {};
-    (std::ops::Try) => {};
+    (core::iter::IntoIterator) => {};
+    (core::result::Result) => {};
+    (core::ops::Range) => {};
+    (core::ops::RangeFrom) => {};
+    (core::ops::RangeFull) => {};
+    (core::ops::RangeTo) => {};
+    (core::ops::RangeToInclusive) => {};
+    (core::ops::RangeInclusive) => {};
+    (core::future::Future) => {};
+    (core::ops::Try) => {};
     ($path:path) => {
         compile_error!("Please register your known path in the path module")
     };

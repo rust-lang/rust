@@ -321,7 +321,7 @@ mod tests {
     fn test_wrap_return_type() {
         let before = r#"
             //- /main.rs
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::{string::String, result::Result::{self, Ok, Err}};
 
             fn div(x: i32, y: i32) -> Result<i32, String> {
                 if y == 0 {
@@ -330,7 +330,7 @@ mod tests {
                 x / y<|>
             }
 
-            //- /std/lib.rs
+            //- /core/lib.rs
             pub mod string {
                 pub struct String { }
             }
@@ -339,7 +339,7 @@ mod tests {
             }
         "#;
         let after = r#"
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::{string::String, result::Result::{self, Ok, Err}};
 
             fn div(x: i32, y: i32) -> Result<i32, String> {
                 if y == 0 {
@@ -355,7 +355,7 @@ mod tests {
     fn test_wrap_return_type_handles_generic_functions() {
         let before = r#"
             //- /main.rs
-            use std::result::Result::{self, Ok, Err};
+            use core::result::Result::{self, Ok, Err};
 
             fn div<T>(x: T) -> Result<T, i32> {
                 if x == 0 {
@@ -364,13 +364,13 @@ mod tests {
                 <|>x
             }
 
-            //- /std/lib.rs
+            //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
         let after = r#"
-            use std::result::Result::{self, Ok, Err};
+            use core::result::Result::{self, Ok, Err};
 
             fn div<T>(x: T) -> Result<T, i32> {
                 if x == 0 {
@@ -386,7 +386,7 @@ mod tests {
     fn test_wrap_return_type_handles_type_aliases() {
         let before = r#"
             //- /main.rs
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::{string::String, result::Result::{self, Ok, Err}};
 
             type MyResult<T> = Result<T, String>;
 
@@ -397,7 +397,7 @@ mod tests {
                 x <|>/ y
             }
 
-            //- /std/lib.rs
+            //- /core/lib.rs
             pub mod string {
                 pub struct String { }
             }
@@ -406,7 +406,7 @@ mod tests {
             }
         "#;
         let after = r#"
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::{string::String, result::Result::{self, Ok, Err}};
 
             type MyResult<T> = Result<T, String>;
             fn div(x: i32, y: i32) -> MyResult<i32> {

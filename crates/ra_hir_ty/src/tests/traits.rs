@@ -10,7 +10,7 @@ use super::{infer, infer_with_mismatches, type_at, type_at_pos};
 fn infer_await() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 
 struct IntFuture;
 
@@ -24,7 +24,7 @@ fn test() {
     v<|>;
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 #[prelude_import] use future::*;
 mod future {
     #[lang = "future_trait"]
@@ -42,7 +42,7 @@ mod future {
 fn infer_async() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 
 async fn foo() -> u64 {
     128
@@ -54,7 +54,7 @@ fn test() {
     v<|>;
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 #[prelude_import] use future::*;
 mod future {
     #[lang = "future_trait"]
@@ -72,7 +72,7 @@ mod future {
 fn infer_desugar_async() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 
 async fn foo() -> u64 {
     128
@@ -83,7 +83,7 @@ fn test() {
     r<|>;
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 #[prelude_import] use future::*;
 mod future {
     trait Future {
@@ -100,7 +100,7 @@ mod future {
 fn infer_try() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 
 fn test() {
     let r: Result<i32, u64> = Result::Ok(1);
@@ -108,7 +108,7 @@ fn test() {
     v<|>;
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 
 #[prelude_import] use ops::*;
 mod ops {
@@ -140,9 +140,9 @@ mod result {
 fn infer_for_loop() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core,alloc
 
-use std::collections::Vec;
+use alloc::collections::Vec;
 
 fn test() {
     let v = Vec::new();
@@ -152,7 +152,7 @@ fn test() {
     }
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 
 #[prelude_import] use iter::*;
 mod iter {
@@ -161,6 +161,8 @@ mod iter {
     }
 }
 
+//- /alloc.rs crate:alloc deps:core
+
 mod collections {
     struct Vec<T> {}
     impl<T> Vec<T> {
@@ -168,7 +170,7 @@ mod collections {
         fn push(&mut self, t: T) { }
     }
 
-    impl<T> crate::iter::IntoIterator for Vec<T> {
+    impl<T> IntoIterator for Vec<T> {
         type Item=T;
     }
 }
@@ -2846,12 +2848,12 @@ fn test() {
 fn integer_range_iterate() {
     let t = type_at(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 fn test() {
     for x in 0..100 { x<|>; }
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 pub mod ops {
     pub struct Range<Idx> {
         pub start: Idx,
