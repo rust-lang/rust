@@ -1307,6 +1307,12 @@ impl FileType {
     /// [`is_dir`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
     ///
+    /// This property means it is often more useful to use `!file_type.is_dir()`
+    /// than `file_type.is_file()` when your goal is to read bytes from a
+    /// source: the former includes symlink and pipes when the latter does not,
+    /// meaning you will break workflows like `diff <( prog_a ) <( prog_b )` on
+    /// a Unix-like system for example.
+    ///
     /// [`is_dir`]: struct.FileType.html#method.is_dir
     /// [`is_symlink`]: struct.FileType.html#method.is_symlink
     ///
