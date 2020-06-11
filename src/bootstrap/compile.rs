@@ -172,7 +172,14 @@ fn copy_self_contained_objects(
     compiler: &Compiler,
     target: Interned<String>,
 ) -> Vec<(PathBuf, DependencyType)> {
-    let libdir = builder.sysroot_libdir(*compiler, target);
+    // cfg(bootstrap)
+    // Remove when upgrading bootstrap compiler.
+    let libdir_self_contained = if compiler.stage == 0 {
+        builder.sysroot_libdir(*compiler, target).to_path_buf()
+    } else {
+        builder.sysroot_libdir(*compiler, target).join("self-contained")
+    };
+    t!(fs::create_dir_all(&libdir_self_contained));
     let mut target_deps = vec![];
 
     // Copies the CRT objects.
@@ -207,7 +214,7 @@ fn copy_self_contained_objects(
     } else if target.contains("windows-gnu") {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
             let src = compiler_file(builder, builder.cc(target), target, obj);
-            let target = libdir.join(obj);
+            let target = libdir_self_contained.join(obj);
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
         }
@@ -844,14 +851,17 @@ pub fn add_to_sysroot(
     sysroot_host_dst: &Path,
     stamp: &Path,
 ) {
+    let self_contained_dst = &sysroot_dst.join("self-contained");
     t!(fs::create_dir_all(&sysroot_dst));
     t!(fs::create_dir_all(&sysroot_host_dst));
+    t!(fs::create_dir_all(&self_contained_dst));
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
-        if dependency_type == DependencyType::Host {
-            builder.copy(&path, &sysroot_host_dst.join(path.file_name().unwrap()));
-        } else {
-            builder.copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
-        }
+        let dst = match dependency_type {
+            DependencyType::Host => sysroot_host_dst,
+            DependencyType::Target => sysroot_dst,
+            DependencyType::TargetSelfContained => self_contained_dst,
+        };
+        builder.copy(&path, &dst.join(path.file_name().unwrap()));
     }
 }
 

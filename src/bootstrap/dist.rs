@@ -321,7 +321,12 @@ fn make_win_dist(
     );
 
     //Copy platform libs to platform-specific lib directory
-    let target_lib_dir = plat_root.join("lib").join("rustlib").join(target_triple).join("lib");
+    let target_lib_dir = plat_root
+        .join("lib")
+        .join("rustlib")
+        .join(target_triple)
+        .join("lib")
+        .join("self-contained");
     fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
     for src in target_libs {
         builder.copy_to_folder(&src, &target_lib_dir);
@@ -650,9 +655,13 @@ fn skip_host_target_lib(builder: &Builder<'_>, compiler: Compiler) -> bool {
 /// Copy stamped files into an image's `target/lib` directory.
 fn copy_target_libs(builder: &Builder<'_>, target: &str, image: &Path, stamp: &Path) {
     let dst = image.join("lib/rustlib").join(target).join("lib");
+    let self_contained_dst = dst.join("self-contained");
     t!(fs::create_dir_all(&dst));
+    t!(fs::create_dir_all(&self_contained_dst));
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
-        if dependency_type != DependencyType::Host || builder.config.build == target {
+        if dependency_type == DependencyType::TargetSelfContained {
+            builder.copy(&path, &self_contained_dst.join(path.file_name().unwrap()));
+        } else if dependency_type == DependencyType::Target || builder.config.build == target {
             builder.copy(&path, &dst.join(path.file_name().unwrap()));
         }
     }
