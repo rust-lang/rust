@@ -126,7 +126,6 @@ impl GlobalState {
             let vfs_root_path = vfs.root2path(r);
             let is_local = local_roots.iter().any(|it| vfs_root_path.starts_with(it));
             change.add_root(SourceRootId(r.0), is_local);
-            change.set_debug_root_path(SourceRootId(r.0), vfs_root_path.display().to_string());
 
             // FIXME: add path2root in vfs to simpily this logic
             if extern_dirs.contains(&vfs_root_path) {
