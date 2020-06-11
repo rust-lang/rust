@@ -6,20 +6,23 @@ LL | fn baz<G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
    |        |
    |        help: consider introducing lifetime `'a` here: `'a,`
 
-error: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/missing-lifetimes-in-signature.rs:19:5
    |
 LL |   fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
-   |                            ------     ------------- ...is required to be `'static` by this...
-   |                            |
-   |                            data with this lifetime...
+   |                            ------ this data with an anonymous lifetime `'_`...
 ...
 LL | /     move || {
 LL | |         *dest = g.get();
 LL | |     }
-   | |_____^ ...and is captured here
+   | |_____^ ...is captured here...
    |
-help: to permit non-static references in an `impl Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 15:1
+note: ...and is required to live as long as `'static` here
+  --> $DIR/missing-lifetimes-in-signature.rs:15:37
+   |
+LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
+   |                                     ^^^^^^^^^^^^^
+help: to declare that the `impl Trait` captures data from argument `dest`, you can add an explicit `'_` lifetime bound
    |
 LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
    |                                                   ^^^^
@@ -122,5 +125,5 @@ LL | fn bak<'a, G, T>(g: G, dest: &'a mut T) -> impl FnOnce() + 'a
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0261, E0309, E0621.
+Some errors have detailed explanations: E0261, E0309, E0621, E0759.
 For more information about an error, try `rustc --explain E0261`.
