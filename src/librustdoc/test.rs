@@ -676,7 +676,11 @@ impl Collector {
     }
 
     fn generate_name(&self, line: usize, filename: &FileName) -> String {
-        format!("{} - {} (line {})", filename, self.names.join("::"), line)
+        let mut item_path = self.names.join("::");
+        if !item_path.is_empty() {
+            item_path.push(' ');
+        }
+        format!("{} - {}(line {})", filename, item_path, line)
     }
 
     pub fn set_position(&mut self, position: Span) {
