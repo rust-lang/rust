@@ -2225,3 +2225,4 @@ impl<'tcx> TyS<'tcx> {
         tcx.layout_of(tcx.param_env(did).and(self)).map(|layout| layout.is_zst()).unwrap_or(false)
     }
 }
+
