@@ -514,7 +514,6 @@ Value* GradientUtils::invertPointerM(Value* oval, IRBuilder<>& BuilderM) {
       invertedPointers[arg] = li;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<GetElementPtrInst>(oval)) {
-      llvm::errs() << *arg << " nv: " << *getNewFromOriginal(oval) << "\n";
       IRBuilder<> bb(getNewFromOriginal(arg));
       SmallVector<Value*,4> invertargs;
       for(unsigned i=0; i<arg->getNumIndices(); i++) {
@@ -1577,20 +1576,19 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
     }
     //llvm::errs() << "looking from cache: " << *inst << "\n";
 
-    if (auto origInst = isOriginal(inst))
+    if (auto origInst = isOriginal(inst)) 
     if (auto li = dyn_cast<LoadInst>(inst)) {
-
       auto liobj = GetUnderlyingObject(li->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
 
       for(auto pair : scopeMap) {
         if (auto li2 = dyn_cast<LoadInst>(const_cast<Value*>(pair.first))) {
 
-          auto orig2 = isOriginal(li2);
-          if (!orig2) continue;
-
           auto li2obj = GetUnderlyingObject(li2->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
 
           if (liobj == li2obj && DT.dominates(li2, li)) {
+            auto orig2 = isOriginal(li2);
+            if (!orig2) continue;
+            
             bool failed = false;
 
             llvm::errs() << "found potential candidate loads: oli:" << *origInst << " oli2: " << *orig2 << "\n";

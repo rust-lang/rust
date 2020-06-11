@@ -1156,8 +1156,6 @@ public:
     } else if (auto op = dyn_cast<CastInst>(val)) {
       auto op0 = getOp(SAFE(op,getOperand(0)));
       if (op0 == nullptr) goto endCheck;
-      //if (isOriginal(op))
-      //llvm::errs() << "op: " << *op << " op0: " << *op0 << " SAFE(op,getOperand(0)):" << *SAFE(op, getOperand(0)) << " orig:" << *getOriginal(op) << "\n";
       auto toreturn = BuilderM.CreateCast(op->getOpcode(), op0, op->getDestTy(), op->getName()+"_unwrap");
       if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
       unwrap_cache[cidx] = toreturn;

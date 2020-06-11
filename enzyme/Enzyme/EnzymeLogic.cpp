@@ -916,7 +916,6 @@ public:
         for(unsigned i=0; i<inst->getNumOperands(); i++) {
           if (inst->getOperand(i) == iload) {
             inst->setOperand(i, pn);
-            //inst->setOperand(i, UndefValue::get(iload->getType()));
           }
         }
       }
@@ -2535,7 +2534,6 @@ public:
           if( gutils->invertedPointers.count(orig) ) {
 
               auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
-              llvm::errs() << " +  considering placeholder: " << *placeholder << " of " << *orig << "\n";
 
               bool subcheck = (subretType == DIFFE_TYPE::DUP_ARG || subretType == DIFFE_TYPE::DUP_NONEED);
 
@@ -3193,6 +3191,20 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
     gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::ZExt);
   }
 
+  //! Keep track of inverted pointers we may need to return
+  ValueToValueMapTy invertedRetPs;
+  if (retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED) {
+    for(BasicBlock& BB: *gutils->oldFunc) {
+      if(auto ri = dyn_cast<ReturnInst>(BB.getTerminator())) {
+        if (Value* orig_oldval = ri->getReturnValue()) {
+          auto newri = gutils->getNewFromOriginal(ri);
+          IRBuilder<> BuilderZ(newri);
+          invertedRetPs[newri] = gutils->invertPointerM(orig_oldval, BuilderZ);
+        }
+      }
+    }
+  }
+
   gutils->cleanupActiveDetection();
   gutils->eraseFictiousPHIs();
 
@@ -3297,20 +3309,6 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, DIFFE_TYPE retTyp
 
     i++;
     ii++;
-  }
-
-  //! Keep track of inverted pointers we may need to return
-  ValueToValueMapTy invertedRetPs;
-  if (retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED) {
-    for(BasicBlock& BB: *gutils->oldFunc) {
-      if(auto ri = dyn_cast<ReturnInst>(BB.getTerminator())) {
-        if (Value* orig_oldval = ri->getReturnValue()) {
-          auto newri = gutils->getNewFromOriginal(ri);
-          IRBuilder<> BuilderZ(newri);
-          invertedRetPs[newri] = gutils->invertPointerM(orig_oldval, BuilderZ);
-        }
-      }
-    }
   }
 
   SmallVector <ReturnInst*,4> Returns;
