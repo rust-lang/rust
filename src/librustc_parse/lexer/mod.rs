@@ -409,7 +409,7 @@ impl<'a> StringReader<'a> {
         let content_end = suffix_start - BytePos(postfix_len);
         let id = self.symbol_from_to(content_start, content_end);
         self.validate_literal_escape(mode, content_start, content_end);
-        return (lit_kind, id);
+        (lit_kind, id)
     }
 
     pub fn pos(&self) -> BytePos {

@@ -457,7 +457,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
 
                 let mut chars = arg.format.ty.chars();
                 let mut modifier = chars.next();
-                if !chars.next().is_none() {
+                if chars.next().is_some() {
                     let span = arg
                         .format
                         .ty_span

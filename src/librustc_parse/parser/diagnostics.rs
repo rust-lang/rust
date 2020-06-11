@@ -936,7 +936,7 @@ impl<'a> Parser<'a> {
         } else if !sm.is_multiline(self.prev_token.span.until(self.token.span)) {
             // The current token is in the same line as the prior token, not recoverable.
         } else if [token::Comma, token::Colon].contains(&self.token.kind)
-            && &self.prev_token.kind == &token::CloseDelim(token::Paren)
+            && self.prev_token.kind == token::CloseDelim(token::Paren)
         {
             // Likely typo: The current token is on a new line and is expected to be
             // `.`, `;`, `?`, or an operator after a close delimiter token.

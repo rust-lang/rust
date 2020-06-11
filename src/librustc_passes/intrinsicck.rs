@@ -232,7 +232,7 @@ impl ExprVisitor<'tcx> {
         // size).
         if let Some((in_expr, Some(in_asm_ty))) = tied_input {
             if in_asm_ty != asm_ty {
-                let msg = &format!("incompatible types for asm inout argument");
+                let msg = "incompatible types for asm inout argument";
                 let mut err = self.tcx.sess.struct_span_err(vec![in_expr.span, expr.span], msg);
                 err.span_label(
                     in_expr.span,

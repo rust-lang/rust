@@ -392,7 +392,7 @@ impl TokenStream {
                         break;
                     }
                 }
-                token_trees = out.into_iter().map(|t| TokenTree::Token(t)).collect();
+                token_trees = out.into_iter().map(TokenTree::Token).collect();
                 if token_trees.len() != 1 {
                     debug!("break_tokens: broke {:?} to {:?}", tree, token_trees);
                 }

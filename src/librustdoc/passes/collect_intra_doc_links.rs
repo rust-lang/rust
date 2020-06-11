@@ -451,7 +451,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             ..
                         },
                     ..
-                })) => segments.first().and_then(|seg| Some(seg.ident.to_string())),
+                })) => segments.first().map(|seg| seg.ident.to_string()),
                 Some(hir::Node::Item(hir::Item {
                     ident, kind: hir::ItemKind::Enum(..), ..
                 }))
