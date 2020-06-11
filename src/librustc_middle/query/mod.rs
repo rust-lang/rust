@@ -136,6 +136,16 @@ rustc_queries! {
         /// Returns the list of predicates that can be used for
         /// `SelectionCandidate::ProjectionCandidate` and
         /// `ProjectionTyCandidate::TraitDef`.
+        /// Specifically this is the bounds (equivalent to) those
+        /// written on the trait's type definition, or those
+        /// after the `impl` keyword
+        ///
+        /// type X: Bound + 'lt
+        ///         ^^^^^^^^^^^
+        /// impl Debug + Display
+        ///      ^^^^^^^^^^^^^^^
+        ///
+        /// `key` is the `DefId` of the associated type or opaque type.
         query projection_predicates(key: DefId) -> &'tcx ty::List<ty::Predicate<'tcx>> {
             desc { |tcx| "finding projection predicates for `{}`", tcx.def_path_str(key) }
         }

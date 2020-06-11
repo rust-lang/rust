@@ -6,7 +6,7 @@
 // http://smallcultfollowing.com/babysteps/blog/2016/11/03/
 // associated-type-constructors-part-2-family-traits/
 
-// run-pass
+// check that we don't normalize with trait defaults.
 
 trait Collection<T> {
     type Iter<'iter>: Iterator<Item=&'iter T> where T: 'iter;
@@ -49,7 +49,7 @@ impl<T> Collection<T> for Vec<T> {
     }
 }
 
-fn floatify<C>(ints: &C) -> <<C as Collection<i32>>::Family as CollectionFamily>::Member<f32>
+fn floatify_sibling<C>(ints: &C) -> <C as Collection<i32>>::Sibling<f32>
 where
     C: Collection<i32>,
 {
@@ -58,12 +58,13 @@ where
         res.add(v as f32);
     }
     res
+    //~^ ERROR mismatched types
 }
 
 fn use_floatify() {
-    let a = vec![1, 2, 3];
-    let b = floatify(&a);
-    assert_eq!(Some(&1.0), b.iterate().next());
+    let a = vec![1i32, 2, 3];
+    let c = floatify_sibling(&a);
+    assert_eq!(Some(&1.0), c.iterate().next());
 }
 
 fn main() {

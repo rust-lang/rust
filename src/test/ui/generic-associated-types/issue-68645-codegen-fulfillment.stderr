@@ -10,8 +10,8 @@ LL | #![feature(generic_associated_types)]
 error[E0277]: expected a `std::ops::Fn<()>` closure, found `T`
   --> $DIR/issue-68645-codegen-fulfillment.rs:15:5
    |
-LL | trait Fun {
-   | --------- required by `Fun`
+LL |     type F<'a>: Fn() -> u32;
+   |     ------------------------ required by `Fun::F`
 ...
 LL |     type F<'a> = Self;
    |     ^^^^^^^^^^^^^^^^^^ expected an `Fn<()>` closure, found `T`
