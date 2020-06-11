@@ -13,11 +13,11 @@ use rustc_ast::ast::{self};
 use rustc_ast::util::comments::strip_doc_comment_decoration;
 use rustc_ast_pretty::pprust::attribute_to_string;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind as HirDefKind, Res};
+use rustc_hir::def::{DefKind as HirDefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
-use rustc_hir_pretty::ty_to_string;
+use rustc_hir_pretty::{enum_def_to_string, fn_to_string, ty_to_string};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::ExternCrate;
 use rustc_middle::middle::privacy::AccessLevels;
@@ -135,7 +135,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let def_id = self.tcx.hir().local_def_id(item.hir_id).to_def_id();
         let qualname = format!("::{}", self.tcx.def_path_str(def_id));
         match item.kind {
-            hir::ForeignItemKind::Fn(ref decl, _, ref generics) => {
+            hir::ForeignItemKind::Fn(ref decl, arg_names, ref generics) => {
                 filter!(self.span_utils, item.ident.span);
 
                 Some(Data::DefData(Def {
@@ -144,7 +144,23 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
-                    value: make_signature(decl, generics),
+                    value: fn_to_string(
+                        decl,
+                        hir::FnHeader {
+                            // functions in extern block are implicitly unsafe
+                            unsafety: hir::Unsafety::Unsafe,
+                            // functions in extern block cannot be const
+                            constness: hir::Constness::NotConst,
+                            abi: self.tcx.hir().get_foreign_abi(item.hir_id),
+                            // functions in extern block cannot be async
+                            asyncness: hir::IsAsync::NotAsync,
+                        },
+                        Some(item.ident.name),
+                        generics,
+                        &item.vis,
+                        arg_names,
+                        None,
+                    ),
                     parent: None,
                     children: vec![],
                     decl_id: None,
@@ -191,7 +207,15 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
-                    value: make_signature(&sig.decl, generics),
+                    value: fn_to_string(
+                        sig.decl,
+                        sig.header,
+                        Some(item.ident.name),
+                        generics,
+                        &item.vis,
+                        &[],
+                        None,
+                    ),
                     parent: None,
                     children: vec![],
                     decl_id: None,
@@ -268,13 +292,12 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.to_vec(), self),
                 }))
             }
-            hir::ItemKind::Enum(ref def, _) => {
+            hir::ItemKind::Enum(ref def, ref generics) => {
                 let name = item.ident.to_string();
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
                 filter!(self.span_utils, item.ident.span);
-                let variants_str =
-                    def.variants.iter().map(|v| v.ident.to_string()).collect::<Vec<_>>().join(", ");
-                let value = format!("{}::{{{}}}", name, variants_str);
+                let value =
+                    enum_def_to_string(def, generics, item.ident.name, item.span, &item.vis);
                 Some(Data::DefData(Def {
                     kind: DefKind::Enum,
                     id: id_from_def_id(def_id),
@@ -579,7 +602,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     ref_id: def_id.or(decl_id).map(id_from_def_id).unwrap_or_else(null_id),
                 }))
             }
-            hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => {
+            hir::ExprKind::Path(ref path) => {
                 self.get_path_data(expr.hir_id, path).map(Data::RefData)
             }
             _ => {
@@ -631,8 +654,12 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_data(&self, id: hir::HirId, path: &hir::Path<'_>) -> Option<Ref> {
-        path.segments.last().and_then(|seg| {
+    pub fn get_path_data(&self, id: hir::HirId, path: &hir::QPath<'_>) -> Option<Ref> {
+        let segment = match path {
+            hir::QPath::Resolved(_, path) => path.segments.last(),
+            hir::QPath::TypeRelative(_, segment) => Some(*segment),
+        };
+        segment.and_then(|seg| {
             self.get_path_segment_data(seg).or_else(|| self.get_path_segment_data_with_id(seg, id))
         })
     }
@@ -681,20 +708,16 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Res::Def(HirDefKind::ConstParam, def_id) => {
                 Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(def_id) })
             }
-            Res::Def(HirDefKind::Ctor(CtorOf::Struct, ..), def_id) => {
-                // This is a reference to a tuple struct where the def_id points
+            Res::Def(HirDefKind::Ctor(_, ..), def_id) => {
+                // This is a reference to a tuple struct or an enum variant where the def_id points
                 // to an invisible constructor function. That is not a very useful
-                // def, so adjust to point to the tuple struct itself.
+                // def, so adjust to point to the tuple struct or enum variant itself.
                 let parent_def_id = self.tcx.parent(def_id).unwrap();
                 Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(parent_def_id) })
             }
-            Res::Def(
-                HirDefKind::Static
-                | HirDefKind::Const
-                | HirDefKind::AssocConst
-                | HirDefKind::Ctor(..),
-                _,
-            ) => Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) }),
+            Res::Def(HirDefKind::Static | HirDefKind::Const | HirDefKind::AssocConst, _) => {
+                Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) })
+            }
             Res::Def(HirDefKind::AssocFn, decl_id) => {
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);
@@ -842,31 +865,6 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         self.impl_counter.set(next + 1);
         next
     }
-}
-
-fn make_signature(decl: &hir::FnDecl<'_>, generics: &hir::Generics<'_>) -> String {
-    let mut sig = "fn ".to_owned();
-    if !generics.params.is_empty() {
-        sig.push('<');
-        sig.push_str(
-            &generics
-                .params
-                .iter()
-                .map(|param| param.name.ident().to_string())
-                .collect::<Vec<_>>()
-                .join(", "),
-        );
-        sig.push_str("> ");
-    }
-    sig.push('(');
-    sig.push_str(&decl.inputs.iter().map(ty_to_string).collect::<Vec<_>>().join(", "));
-    sig.push(')');
-    match decl.output {
-        hir::FnRetTy::DefaultReturn(_) => sig.push_str(" -> ()"),
-        hir::FnRetTy::Return(ref t) => sig.push_str(&format!(" -> {}", ty_to_string(t))),
-    }
-
-    sig
 }
 
 // An AST visitor for collecting paths (e.g., the names of structs) and formal

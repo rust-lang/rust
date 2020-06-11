@@ -227,6 +227,28 @@ pub fn path_to_string(segment: &hir::Path<'_>) -> String {
     to_string(NO_ANN, |s| s.print_path(segment, false))
 }
 
+pub fn fn_to_string(
+    decl: &hir::FnDecl<'_>,
+    header: hir::FnHeader,
+    name: Option<Symbol>,
+    generics: &hir::Generics<'_>,
+    vis: &hir::Visibility<'_>,
+    arg_names: &[Ident],
+    body_id: Option<hir::BodyId>,
+) -> String {
+    to_string(NO_ANN, |s| s.print_fn(decl, header, name, generics, vis, arg_names, body_id))
+}
+
+pub fn enum_def_to_string(
+    enum_definition: &hir::EnumDef<'_>,
+    generics: &hir::Generics<'_>,
+    name: Symbol,
+    span: rustc_span::Span,
+    visibility: &hir::Visibility<'_>,
+) -> String {
+    to_string(NO_ANN, |s| s.print_enum_def(enum_definition, generics, name, span, visibility))
+}
+
 impl<'a> State<'a> {
     pub fn cbox(&mut self, u: usize) {
         self.s.cbox(u);
