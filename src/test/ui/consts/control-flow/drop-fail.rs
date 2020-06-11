@@ -1,11 +1,14 @@
+// revisions: stock precise
+
 #![feature(const_if_match)]
 #![feature(const_loop)]
+#![cfg_attr(precise, feature(const_precise_live_drops))]
 
-// `x` is *not* always moved into the final value may be dropped inside the initializer.
+// `x` is *not* always moved into the final value and may be dropped inside the initializer.
 const _: Option<Vec<i32>> = {
     let y: Option<Vec<i32>> = None;
     let x = Some(Vec::new());
-    //~^ ERROR destructors cannot be evaluated at compile-time
+    //[stock,precise]~^ ERROR destructors cannot be evaluated at compile-time
 
     if true {
         x
@@ -18,7 +21,7 @@ const _: Option<Vec<i32>> = {
 // existing analysis.
 const _: Vec<i32> = {
     let vec_tuple = (Vec::new(),);
-    //~^ ERROR destructors cannot be evaluated at compile-time
+    //[stock]~^ ERROR destructors cannot be evaluated at compile-time
 
     vec_tuple.0
 };
@@ -26,7 +29,7 @@ const _: Vec<i32> = {
 // This applies to single-field enum variants as well.
 const _: Vec<i32> = {
     let x: Result<_, Vec<i32>> = Ok(Vec::new());
-    //~^ ERROR destructors cannot be evaluated at compile-time
+    //[stock]~^ ERROR destructors cannot be evaluated at compile-time
 
     match x {
         Ok(x) | Err(x) => x,
@@ -36,7 +39,7 @@ const _: Vec<i32> = {
 const _: Option<Vec<i32>> = {
     let mut some = Some(Vec::new());
     let mut tmp = None;
-    //~^ ERROR destructors cannot be evaluated at compile-time
+    //[stock,precise]~^ ERROR destructors cannot be evaluated at compile-time
 
     let mut i = 0;
     while i < 10 {
