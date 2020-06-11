@@ -17,9 +17,9 @@ use hir::db::{AstDatabase, DefDatabase};
 use ra_db::{
     salsa::{self, Database, Durability},
     Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase,
-    SourceRootId, Upcast,
+    Upcast,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
 use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 
@@ -36,7 +36,6 @@ use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
 #[derive(Debug)]
 pub struct RootDatabase {
     runtime: salsa::Runtime<RootDatabase>,
-    pub(crate) debug_data: Arc<DebugData>,
     pub last_gc: crate::wasm_shims::Instant,
     pub last_gc_check: crate::wasm_shims::Instant,
 }
@@ -98,7 +97,6 @@ impl RootDatabase {
             runtime: salsa::Runtime::default(),
             last_gc: crate::wasm_shims::Instant::now(),
             last_gc_check: crate::wasm_shims::Instant::now(),
-            debug_data: Default::default(),
         };
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
@@ -121,7 +119,6 @@ impl salsa::ParallelDatabase for RootDatabase {
             runtime: self.runtime.snapshot(self),
             last_gc: self.last_gc,
             last_gc_check: self.last_gc_check,
-            debug_data: Arc::clone(&self.debug_data),
         })
     }
 }
@@ -134,15 +131,4 @@ pub trait LineIndexDatabase: ra_db::SourceDatabase + CheckCanceled {
 fn line_index(db: &impl LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
     Arc::new(LineIndex::new(&*text))
-}
-
-#[derive(Debug, Default, Clone)]
-pub(crate) struct DebugData {
-    pub(crate) root_paths: FxHashMap<SourceRootId, String>,
-}
-
-impl DebugData {
-    pub(crate) fn merge(&mut self, other: DebugData) {
-        self.root_paths.extend(other.root_paths.into_iter());
-    }
 }
