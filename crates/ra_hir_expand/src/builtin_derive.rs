@@ -9,7 +9,7 @@ use ra_syntax::{
 };
 
 use crate::db::AstDatabase;
-use crate::{name, quote, LazyMacroId, MacroCallId, MacroDefId, MacroDefKind};
+use crate::{guess_crate, name, quote, LazyMacroId, MacroCallId, MacroDefId, MacroDefKind};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {
@@ -160,8 +160,7 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: LazyMacroId) -> tt::TokenTree {
     let m: MacroCallId = id.into();
     let file_id = m.as_file().original_file(db);
     let cg = db.crate_graph();
-    let krates = db.relevant_crates(file_id);
-    let krate = match krates.get(0) {
+    let krate = match guess_crate(db, file_id) {
         Some(krate) => krate,
         None => {
             let tt = quote! { core };
@@ -172,7 +171,7 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: LazyMacroId) -> tt::TokenTree {
     // XXX
     //  All crates except core itself should have a dependency on core,
     //  We detect `core` by seeing whether it doesn't have such a dependency.
-    let tt = if cg[*krate].dependencies.iter().any(|dep| dep.name == "core") {
+    let tt = if cg[krate].dependencies.iter().any(|dep| dep.name == "core") {
         quote! { core }
     } else {
         quote! { crate }

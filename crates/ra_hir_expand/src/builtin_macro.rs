@@ -5,7 +5,7 @@ use crate::{
     name, AstId, CrateId, MacroDefId, MacroDefKind, TextSize,
 };
 
-use crate::{quote, EagerMacroId, LazyMacroId, MacroCallId};
+use crate::{guess_crate, quote, EagerMacroId, LazyMacroId, MacroCallId};
 use either::Either;
 use mbe::parse_to_token_tree;
 use ra_db::FileId;
@@ -335,8 +335,7 @@ fn include_expand(
 fn get_env_inner(db: &dyn AstDatabase, arg_id: EagerMacroId, key: &str) -> Option<String> {
     let call_id: MacroCallId = arg_id.into();
     let original_file = call_id.as_file().original_file(db);
-
-    let krate = *db.relevant_crates(original_file).get(0)?;
+    let krate = guess_crate(db, original_file)?;
     db.crate_graph()[krate].env.get(key)
 }
 

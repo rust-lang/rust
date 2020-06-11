@@ -424,3 +424,8 @@ impl<N: AstNode> InFile<N> {
         self.with_value(self.value.syntax())
     }
 }
+
+// FIXME: this is obviously wrong, there shouldn't be any guesing here
+fn guess_crate(db: &dyn db::AstDatabase, file_id: FileId) -> Option<CrateId> {
+    db.relevant_crates(file_id).iter().next().copied()
+}

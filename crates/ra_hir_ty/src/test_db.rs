@@ -8,6 +8,7 @@ use std::{
 use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId, ModuleId};
 use hir_expand::{db::AstDatabase, diagnostics::DiagnosticSink};
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast};
+use rustc_hash::FxHashSet;
 use stdx::format_to;
 
 use crate::{db::HirDatabase, diagnostics::Diagnostic, expr::ExprValidator};
@@ -73,7 +74,7 @@ impl FileLoader for TestDB {
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(anchor, path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }
