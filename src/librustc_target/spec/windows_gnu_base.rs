@@ -17,6 +17,8 @@ pub fn opts() -> TargetOptions {
     let mut late_link_args = LinkArgs::new();
     let mut late_link_args_dynamic = LinkArgs::new();
     let mut late_link_args_static = LinkArgs::new();
+    // Order of `late_link_args*` was found through trial and error to work with various
+    // mingw-w64 versions (not tested on the CI). It's expected to change from time to time.
     late_link_args.insert(
         LinkerFlavor::Gcc,
         vec![
@@ -27,10 +29,9 @@ pub fn opts() -> TargetOptions {
             // And it seems that the linker fails to use import symbols from msvcrt
             // that are required from functions in msvcrt in certain cases. For example
             // `_fmode` that is used by an implementation of `__p__fmode` in x86_64.
-            // Listing the library twice seems to fix that, and seems to also be done
-            // by mingw's gcc (Though not sure if it's done on purpose, or by mistake).
+            // The library is purposely listed twice to fix that.
             //
-            // See https://github.com/rust-lang/rust/pull/47483
+            // See https://github.com/rust-lang/rust/pull/47483 for some more details.
             "-lmsvcrt".to_string(),
             "-luser32".to_string(),
             "-lkernel32".to_string(),
