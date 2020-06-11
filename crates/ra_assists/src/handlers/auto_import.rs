@@ -130,7 +130,7 @@ impl AutoImportAssets {
     fn search_for_imports(&self, db: &RootDatabase) -> BTreeSet<ModPath> {
         let _p = profile("auto_import::search_for_imports");
         let current_crate = self.module_with_name_to_import.krate();
-        ImportsLocator::new(db)
+        ImportsLocator::new(db, current_crate)
             .find_imports(&self.get_search_query())
             .into_iter()
             .filter_map(|candidate| match &self.import_candidate {
@@ -840,5 +840,106 @@ fn main() {
             }
             ",
         )
+    }
+
+    #[test]
+    fn dep_import() {
+        check_assist(
+            auto_import,
+            r"
+                    //- /lib.rs crate:dep
+                    pub struct Struct;
+
+                    //- /main.rs crate:main deps:dep
+                    fn main() {
+                        Struct<|>
+                    }",
+            r"use dep::Struct;
+
+fn main() {
+    Struct
+}
+",
+        );
+    }
+
+    #[test]
+    fn whole_segment() {
+        // Tests that only imports whose last segment matches the identifier get suggested.
+        check_assist(
+            auto_import,
+            r"
+                    //- /lib.rs crate:dep
+                    pub mod fmt {
+                        pub trait Display {}
+                    }
+
+                    pub fn panic_fmt() {}
+
+                    //- /main.rs crate:main deps:dep
+                    struct S;
+
+                    impl f<|>mt::Display for S {}",
+            r"use dep::fmt;
+
+struct S;
+impl fmt::Display for S {}
+",
+        );
+    }
+
+    #[test]
+    fn macro_generated() {
+        // Tests that macro-generated items are suggested from external crates.
+        check_assist(
+            auto_import,
+            r"
+                    //- /lib.rs crate:dep
+
+                    macro_rules! mac {
+                        () => {
+                            pub struct Cheese;
+                        };
+                    }
+
+                    mac!();
+
+                    //- /main.rs crate:main deps:dep
+
+                    fn main() {
+                        Cheese<|>;
+                    }",
+            r"use dep::Cheese;
+
+fn main() {
+    Cheese;
+}
+",
+        );
+    }
+
+    #[test]
+    fn casing() {
+        // Tests that differently cased names don't interfere and we only suggest the matching one.
+        check_assist(
+            auto_import,
+            r"
+                    //- /lib.rs crate:dep
+
+                    pub struct FMT;
+                    pub struct fmt;
+
+                    //- /main.rs crate:main deps:dep
+
+                    fn main() {
+                        FMT<|>;
+                    }",
+            r"use dep::FMT;
+
+fn main() {
+    FMT;
+}
+",
+        );
     }
 }

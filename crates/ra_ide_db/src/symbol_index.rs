@@ -29,9 +29,10 @@ use std::{
 };
 
 use fst::{self, Streamer};
+use hir::db::DefDatabase;
 use ra_db::{
     salsa::{self, ParallelDatabase},
-    FileId, SourceDatabaseExt, SourceRootId,
+    CrateId, FileId, SourceDatabaseExt, SourceRootId,
 };
 use ra_syntax::{
     ast::{self, NameOwner},
@@ -110,6 +111,14 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
     Arc::new(SymbolIndex::new(symbols))
 }
 
+/// Need to wrap Snapshot to provide `Clone` impl for `map_with`
+struct Snap(salsa::Snapshot<RootDatabase>);
+impl Clone for Snap {
+    fn clone(&self) -> Snap {
+        Snap(self.0.snapshot())
+    }
+}
+
 // Feature: Workspace Symbol
 //
 // Uses fuzzy-search to find types, modules and functions by name across your
@@ -132,13 +141,7 @@ fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> 
 // | VS Code | kbd:[Ctrl+T]
 // |===
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
-    /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
-    struct Snap(salsa::Snapshot<RootDatabase>);
-    impl Clone for Snap {
-        fn clone(&self) -> Snap {
-            Snap(self.0.snapshot())
-        }
-    }
+    let _p = ra_prof::profile("world_symbols").detail(|| query.query.clone());
 
     let buf: Vec<Arc<SymbolIndex>> = if query.libs {
         let snap = Snap(db.snapshot());
@@ -170,6 +173,33 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 
         buf
     };
+    query.search(&buf)
+}
+
+pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<FileSymbol> {
+    // FIXME(#4842): This now depends on CrateDefMap, why not build the entire symbol index from
+    // that instead?
+
+    let def_map = db.crate_def_map(krate);
+    let mut files = Vec::new();
+    let mut modules = vec![def_map.root];
+    while let Some(module) = modules.pop() {
+        let data = &def_map[module];
+        files.extend(data.origin.file_id());
+        modules.extend(data.children.values());
+    }
+
+    let snap = Snap(db.snapshot());
+
+    #[cfg(not(feature = "wasm"))]
+    let buf = files
+        .par_iter()
+        .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
+        .collect::<Vec<_>>();
+
+    #[cfg(feature = "wasm")]
+    let buf = files.iter().map(|&file_id| snap.0.file_symbols(file_id)).collect::<Vec<_>>();
+
     query.search(&buf)
 }
 
@@ -298,9 +328,6 @@ impl Query {
         let mut stream = op.union();
         let mut res = Vec::new();
         while let Some((_, indexed_values)) = stream.next() {
-            if res.len() >= self.limit {
-                break;
-            }
             for indexed_value in indexed_values {
                 let symbol_index = &indices[indexed_value.index];
                 let (start, end) = SymbolIndex::map_value_to_range(indexed_value.value);
@@ -312,7 +339,11 @@ impl Query {
                     if self.exact && symbol.name != self.query {
                         continue;
                     }
+
                     res.push(symbol.clone());
+                    if res.len() >= self.limit {
+                        return res;
+                    }
                 }
             }
         }
