@@ -1,8 +1,8 @@
-error[E0005]: refutable pattern in local binding: `std::i32::MIN..=-1i32` and `1i32..=std::i32::MAX` not covered
+error[E0005]: refutable pattern in local binding: `i32::MIN..=-1i32` and `1i32..=i32::MAX` not covered
   --> $DIR/const-match-check.rs:31:24
    |
 LL |     let x: [i32; { let 0 = 0; 0 }] = [];
-   |                        ^ patterns `std::i32::MIN..=-1i32` and `1i32..=std::i32::MAX` not covered
+   |                        ^ patterns `i32::MIN..=-1i32` and `1i32..=i32::MAX` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
