@@ -247,7 +247,7 @@ fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<String> {
                 ))
             })
         },
-        ExprKind::MethodCall(path, _, args) if args.len() == 1 => {
+        ExprKind::MethodCall(path, _, args, _) if args.len() == 1 => {
             let type_of_receiver = cx.tables.expr_ty(&args[0]);
             if !is_type_diagnostic_item(cx, type_of_receiver, sym!(option_type))
                 && !is_type_diagnostic_item(cx, type_of_receiver, sym!(result_type))

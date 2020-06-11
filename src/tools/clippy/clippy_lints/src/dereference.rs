@@ -42,7 +42,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Dereferencing {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();
-            if let ExprKind::MethodCall(ref method_name, _, ref args) = &expr.kind;
+            if let ExprKind::MethodCall(ref method_name, _, ref args, _) = &expr.kind;
             if args.len() == 1;
 
             then {

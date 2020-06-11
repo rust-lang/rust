@@ -307,7 +307,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (method_path, method_span, method_expr) = match (hir, closure_params_len) {
             (
                 Some(Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::MethodCall(path, span, expr),
+                    kind: hir::ExprKind::MethodCall(path, span, expr, _),
                     ..
                 })),
                 1,
@@ -457,7 +457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 if self.can_coerce(ref_ty, expected) {
                     let mut sugg_sp = sp;
-                    if let hir::ExprKind::MethodCall(ref segment, sp, ref args) = expr.kind {
+                    if let hir::ExprKind::MethodCall(ref segment, sp, ref args, _) = expr.kind {
                         let clone_trait = self.tcx.require_lang_item(CloneTraitLangItem, Some(sp));
                         if let ([arg], Some(true), sym::clone) = (
                             &args[..],

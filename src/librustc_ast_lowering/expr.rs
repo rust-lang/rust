@@ -39,7 +39,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let f = self.lower_expr(f);
                     hir::ExprKind::Call(f, self.lower_exprs(args))
                 }
-                ExprKind::MethodCall(ref seg, ref args) => {
+                ExprKind::MethodCall(ref seg, ref args, span) => {
                     let hir_seg = self.arena.alloc(self.lower_path_segment(
                         e.span,
                         seg,
@@ -50,7 +50,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         None,
                     ));
                     let args = self.lower_exprs(args);
-                    hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args)
+                    hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args, span)
                 }
                 ExprKind::Binary(binop, ref lhs, ref rhs) => {
                     let binop = self.lower_binop(binop);

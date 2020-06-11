@@ -401,6 +401,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 ref destination,
                 cleanup: _,
                 from_hir_call: _,
+                fn_span: _,
             } => {
                 self.gather_operand(func);
                 for arg in args {

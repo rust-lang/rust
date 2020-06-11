@@ -1094,8 +1094,17 @@ extern "C" void LLVMRustUnpackOptimizationDiagnostic(
   MessageOS << Opt->getMsg();
 }
 
+enum class LLVMRustDiagnosticLevel {
+    Error,
+    Warning,
+    Note,
+    Remark,
+};
+
 extern "C" void
-LLVMRustUnpackInlineAsmDiagnostic(LLVMDiagnosticInfoRef DI, unsigned *CookieOut,
+LLVMRustUnpackInlineAsmDiagnostic(LLVMDiagnosticInfoRef DI,
+                                  LLVMRustDiagnosticLevel *LevelOut,
+                                  unsigned *CookieOut,
                                   LLVMTwineRef *MessageOut,
                                   LLVMValueRef *InstructionOut) {
   // Undefined to call this not on an inline assembly diagnostic!
@@ -1105,6 +1114,23 @@ LLVMRustUnpackInlineAsmDiagnostic(LLVMDiagnosticInfoRef DI, unsigned *CookieOut,
   *CookieOut = IA->getLocCookie();
   *MessageOut = wrap(&IA->getMsgStr());
   *InstructionOut = wrap(IA->getInstruction());
+
+  switch (IA->getSeverity()) {
+    case DS_Error:
+      *LevelOut = LLVMRustDiagnosticLevel::Error;
+      break;
+    case DS_Warning:
+      *LevelOut = LLVMRustDiagnosticLevel::Warning;
+      break;
+    case DS_Note:
+      *LevelOut = LLVMRustDiagnosticLevel::Note;
+      break;
+    case DS_Remark:
+      *LevelOut = LLVMRustDiagnosticLevel::Remark;
+      break;
+    default:
+      report_fatal_error("Invalid LLVMRustDiagnosticLevel value!");
+  }
 }
 
 extern "C" void LLVMRustWriteDiagnosticInfoToString(LLVMDiagnosticInfoRef DI,
@@ -1166,6 +1192,7 @@ extern "C" LLVMRustDiagnosticKind
 LLVMRustGetDiagInfoKind(LLVMDiagnosticInfoRef DI) {
   return toRust((DiagnosticKind)unwrap(DI)->getKind());
 }
+
 // This is kept distinct from LLVMGetTypeKind, because when
 // a new type kind is added, the Rust-side enum must be
 // updated or UB will result.
@@ -1219,12 +1246,30 @@ extern "C" void LLVMRustSetInlineAsmDiagnosticHandler(
 extern "C" bool LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef,
                                            RustStringRef MessageOut,
                                            RustStringRef BufferOut,
+                                           LLVMRustDiagnosticLevel* LevelOut,
                                            unsigned* LocOut,
                                            unsigned* RangesOut,
                                            size_t* NumRanges) {
   SMDiagnostic& D = *unwrap(DRef);
   RawRustStringOstream MessageOS(MessageOut);
   MessageOS << D.getMessage();
+
+  switch (D.getKind()) {
+    case SourceMgr::DK_Error:
+      *LevelOut = LLVMRustDiagnosticLevel::Error;
+      break;
+    case SourceMgr::DK_Warning:
+      *LevelOut = LLVMRustDiagnosticLevel::Warning;
+      break;
+    case SourceMgr::DK_Note:
+      *LevelOut = LLVMRustDiagnosticLevel::Note;
+      break;
+    case SourceMgr::DK_Remark:
+      *LevelOut = LLVMRustDiagnosticLevel::Remark;
+      break;
+    default:
+      report_fatal_error("Invalid LLVMRustDiagnosticLevel value!");
+  }
 
   if (D.getLoc() == SMLoc())
     return false;

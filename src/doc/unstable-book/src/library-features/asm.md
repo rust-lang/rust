@@ -201,7 +201,7 @@ fn mul(a: u64, b: u64) -> u128 {
         );
     }
 
-    (hi as u128) << 64 + lo as u128
+    ((hi as u128) << 64) + lo as u128
 }
 ```
 
@@ -382,7 +382,9 @@ The macro will initially be supported only on ARM, AArch64, x86, x86-64 and RISC
 
 The assembler template uses the same syntax as [format strings][format-syntax] (i.e. placeholders are specified by curly braces). The corresponding arguments are accessed in order, by index, or by name. However, implicit named arguments (introduced by [RFC #2795][rfc-2795]) are not supported.
 
-As with format strings, named arguments must appear after positional arguments. Explicit register operands must appear at the end of the operand list, after any named arguments if any. Explicit register operands cannot be used by placeholders in the template string. All other operands must appear at least once in the template string, otherwise a compiler error is generated.
+As with format strings, named arguments must appear after positional arguments. Explicit register operands must appear at the end of the operand list, after named arguments if any.
+
+Explicit register operands cannot be used by placeholders in the template string. All other named and positional operands must appear at least once in the template string, otherwise a compiler error is generated.
 
 The exact assembly code syntax is target-specific and opaque to the compiler except for the way operands are substituted into the template string to form the code passed to the assembler.
 

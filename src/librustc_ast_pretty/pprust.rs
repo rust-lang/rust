@@ -1818,7 +1818,7 @@ impl<'a> State<'a> {
             ast::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(func, &args[..]);
             }
-            ast::ExprKind::MethodCall(ref segment, ref args) => {
+            ast::ExprKind::MethodCall(ref segment, ref args, _) => {
                 self.print_expr_method_call(segment, &args[..]);
             }
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => {

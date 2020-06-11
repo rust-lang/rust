@@ -16,7 +16,7 @@ use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, Mo
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{FatalError, Handler};
+use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
@@ -242,6 +242,7 @@ impl<'a> Drop for DiagnosticHandlers<'a> {
 fn report_inline_asm(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     msg: String,
+    level: llvm::DiagnosticLevel,
     mut cookie: c_uint,
     source: Option<(String, Vec<InnerSpan>)>,
 ) {
@@ -251,7 +252,12 @@ fn report_inline_asm(
     if matches!(cgcx.lto, Lto::Fat | Lto::Thin) {
         cookie = 0;
     }
-    cgcx.diag_emitter.inline_asm_error(cookie as u32, msg, source);
+    let level = match level {
+        llvm::DiagnosticLevel::Error => Level::Error,
+        llvm::DiagnosticLevel::Warning => Level::Warning,
+        llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
+    };
+    cgcx.diag_emitter.inline_asm_error(cookie as u32, msg, level, source);
 }
 
 unsafe extern "C" fn inline_asm_handler(diag: &SMDiagnostic, user: *const c_void, cookie: c_uint) {
@@ -264,6 +270,7 @@ unsafe extern "C" fn inline_asm_handler(diag: &SMDiagnostic, user: *const c_void
     // diagnostics.
     let mut have_source = false;
     let mut buffer = String::new();
+    let mut level = llvm::DiagnosticLevel::Error;
     let mut loc = 0;
     let mut ranges = [0; 8];
     let mut num_ranges = ranges.len() / 2;
@@ -273,6 +280,7 @@ unsafe extern "C" fn inline_asm_handler(diag: &SMDiagnostic, user: *const c_void
                 diag,
                 msg,
                 buffer,
+                &mut level,
                 &mut loc,
                 ranges.as_mut_ptr(),
                 &mut num_ranges,
@@ -290,7 +298,7 @@ unsafe extern "C" fn inline_asm_handler(diag: &SMDiagnostic, user: *const c_void
         (buffer, spans)
     });
 
-    report_inline_asm(cgcx, msg, cookie, source);
+    report_inline_asm(cgcx, msg, level, cookie, source);
 }
 
 unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
@@ -301,7 +309,13 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {
-            report_inline_asm(cgcx, llvm::twine_to_string(inline.message), inline.cookie, None);
+            report_inline_asm(
+                cgcx,
+                llvm::twine_to_string(inline.message),
+                inline.level,
+                inline.cookie,
+                None,
+            );
         }
 
         llvm::diagnostic::Optimization(opt) => {

@@ -1131,6 +1131,9 @@ pub enum TerminatorKind<'tcx> {
         /// `true` if this is from a call in HIR rather than from an overloaded
         /// operator. True for overloaded function call.
         from_hir_call: bool,
+        /// This `Span` is the span of the function, without the dot and receiver
+        /// (e.g. `foo(a, b)` in `x.foo(a, b)`
+        fn_span: Span,
     },
 
     /// Jump to the target if the condition has the expected value,
@@ -2449,7 +2452,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                                     tcx.def_path_str_with_substs(def_id.to_def_id(), substs),
                                 )
                             } else {
-                                format!("[closure@{:?}]", tcx.hir().span(hir_id))
+                                let span = tcx.hir().span(hir_id);
+                                format!("[closure@{}]", tcx.sess.source_map().span_to_string(span))
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 

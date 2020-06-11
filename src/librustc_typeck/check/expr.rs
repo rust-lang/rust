@@ -182,7 +182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Call(ref callee, _) => {
                 self.warn_if_unreachable(expr.hir_id, callee.span, "call")
             }
-            ExprKind::MethodCall(_, ref span, _) => {
+            ExprKind::MethodCall(_, ref span, _, _) => {
                 self.warn_if_unreachable(expr.hir_id, *span, "call")
             }
             _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression"),
@@ -262,7 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Block(ref body, _) => self.check_block_with_expected(&body, expected),
             ExprKind::Call(ref callee, ref args) => self.check_call(expr, &callee, args, expected),
-            ExprKind::MethodCall(ref segment, span, ref args) => {
+            ExprKind::MethodCall(ref segment, span, ref args, _) => {
                 self.check_method_call(expr, segment, span, args, expected, needs)
             }
             ExprKind::Cast(ref e, ref t) => self.check_expr_cast(e, t, expr),

@@ -492,6 +492,7 @@ macro_rules! make_mir_visitor {
                         destination,
                         cleanup: _,
                         from_hir_call: _,
+                        fn_span: _
                     } => {
                         self.visit_operand(func, source_location);
                         for arg in args {

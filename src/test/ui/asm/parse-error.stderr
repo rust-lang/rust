@@ -127,6 +127,8 @@ error: argument never used
    |
 LL |         asm!("{a}", a = const foo, a = const bar);
    |                                    ^^^^^^^^^^^^^ argument never used
+   |
+   = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {1} */"`
 
 error: explicit register arguments cannot have names
   --> $DIR/parse-error.rs:47:18

@@ -1429,7 +1429,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         }
 
         match expr.kind {
-            hir::ExprKind::MethodCall(ref method_call, ref method_span, ref args) => {
+            hir::ExprKind::MethodCall(ref method_call, ref method_span, ref args, _) => {
                 lint_or_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
                 lint_expect_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
 
@@ -1677,7 +1677,7 @@ fn lint_or_fun_call<'a, 'tcx>(
         or_has_args: bool,
         span: Span,
     ) {
-        if let hir::ExprKind::MethodCall(ref path, _, ref args) = &arg.kind {
+        if let hir::ExprKind::MethodCall(ref path, _, ref args, _) = &arg.kind {
             if path.ident.as_str() == "len" {
                 let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
 
@@ -1751,7 +1751,7 @@ fn lint_or_fun_call<'a, 'tcx>(
                     );
                 }
             },
-            hir::ExprKind::MethodCall(_, span, ref or_args) => check_general_case(
+            hir::ExprKind::MethodCall(_, span, ref or_args, _) => check_general_case(
                 cx,
                 name,
                 method_span,
@@ -1782,7 +1782,7 @@ fn lint_expect_fun_call(
         loop {
             arg_root = match &arg_root.kind {
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
-                hir::ExprKind::MethodCall(method_name, _, call_args) => {
+                hir::ExprKind::MethodCall(method_name, _, call_args, _) => {
                     if call_args.len() == 1
                         && (method_name.ident.name == sym!(as_str) || method_name.ident.name == sym!(as_ref))
                         && {
@@ -2002,7 +2002,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
                     // &*x is a nop, &x.clone() is not
                     hir::ExprKind::AddrOf(..) => return,
                     // (*x).func() is useless, x.clone().func() can work in case func borrows mutably
-                    hir::ExprKind::MethodCall(_, _, parent_args) if expr.hir_id == parent_args[0].hir_id => return,
+                    hir::ExprKind::MethodCall(_, _, parent_args, _) if expr.hir_id == parent_args[0].hir_id => return,
 
                     _ => {},
                 },
@@ -2478,7 +2478,7 @@ fn derefs_to_slice<'a, 'tcx>(
         }
     }
 
-    if let hir::ExprKind::MethodCall(ref path, _, ref args) = expr.kind {
+    if let hir::ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind {
         if path.ident.name == sym!(iter) && may_slice(cx, cx.tables.expr_ty(&args[0])) {
             Some(&args[0])
         } else {
@@ -3182,7 +3182,7 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, call_name: &str, a
             // allow the `as_ref` or `as_mut` if it is followed by another method call
             if_chain! {
                 if let Some(parent) = get_parent_expr(cx, expr);
-                if let hir::ExprKind::MethodCall(_, ref span, _) = parent.kind;
+                if let hir::ExprKind::MethodCall(_, ref span, _, _) = parent.kind;
                 if span != &expr.span;
                 then {
                     return;
@@ -3310,7 +3310,7 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
             let closure_expr = remove_blocks(&closure_body.value);
 
             match &closure_expr.kind {
-                hir::ExprKind::MethodCall(_, _, args) => {
+                hir::ExprKind::MethodCall(_, _, args, _) => {
                     if_chain! {
                         if args.len() == 1;
                         if let hir::ExprKind::Path(qpath) = &args[0].kind;
