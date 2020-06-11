@@ -358,8 +358,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         hair::InlineAsmOperand::SymFn { expr } => {
                             mir::InlineAsmOperand::SymFn { value: box this.as_constant(expr) }
                         }
-                        hair::InlineAsmOperand::SymStatic { expr } => {
-                            mir::InlineAsmOperand::SymStatic { value: box this.as_constant(expr) }
+                        hair::InlineAsmOperand::SymStatic { def_id } => {
+                            mir::InlineAsmOperand::SymStatic { def_id }
                         }
                     })
                     .collect();

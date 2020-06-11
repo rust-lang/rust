@@ -467,25 +467,8 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                                     }
                                 }
 
-                                Res::Def(DefKind::Static, id) => {
-                                    ty = cx.tcx.static_ptr_ty(id);
-                                    let ptr = cx.tcx.create_static_alloc(id);
-                                    InlineAsmOperand::SymStatic {
-                                        expr: Expr {
-                                            ty,
-                                            temp_lifetime,
-                                            span: expr.span,
-                                            kind: ExprKind::StaticRef {
-                                                literal: ty::Const::from_scalar(
-                                                    cx.tcx,
-                                                    Scalar::Ptr(ptr.into()),
-                                                    ty,
-                                                ),
-                                                def_id: id,
-                                            },
-                                        }
-                                        .to_ref(),
-                                    }
+                                Res::Def(DefKind::Static, def_id) => {
+                                    InlineAsmOperand::SymStatic { def_id }
                                 }
 
                                 _ => {

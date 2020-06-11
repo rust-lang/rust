@@ -927,12 +927,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         span_bug!(span, "invalid type for asm sym (fn)");
                     }
                 }
-                mir::InlineAsmOperand::SymStatic { ref value } => {
-                    if let Some(def_id) = value.check_static_ptr(bx.tcx()) {
-                        InlineAsmOperandRef::SymStatic { def_id }
-                    } else {
-                        span_bug!(span, "invalid type for asm sym (static)");
-                    }
+                mir::InlineAsmOperand::SymStatic { def_id } => {
+                    InlineAsmOperandRef::SymStatic { def_id }
                 }
             })
             .collect();
