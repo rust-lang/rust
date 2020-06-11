@@ -5091,7 +5091,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
-        if self.tcx.hir().is_const_context(expr.hir_id) {
+        if self.tcx.hir().is_inside_const_context(expr.hir_id) {
             // Do not suggest `Box::new` in const context.
             return;
         }
@@ -5128,7 +5128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         // Handle #68197.
 
-        if self.tcx.hir().is_const_context(expr.hir_id) {
+        if self.tcx.hir().is_inside_const_context(expr.hir_id) {
             // Do not suggest `Box::new` in const context.
             return false;
         }
