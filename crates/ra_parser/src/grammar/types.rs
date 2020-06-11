@@ -217,6 +217,7 @@ pub(super) fn for_binder(p: &mut Parser) {
 // test for_type
 // type A = for<'a> fn() -> ();
 // type B = for<'a> unsafe extern "C" fn(&'a ()) -> ();
+// type Obj = for<'a> PartialEq<&'a i32>;
 pub(super) fn for_type(p: &mut Parser) {
     assert!(p.at(T![for]));
     let m = p.start();

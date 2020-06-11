@@ -1,4 +1,4 @@
-SOURCE_FILE@0..82
+SOURCE_FILE@0..121
   TYPE_ALIAS_DEF@0..28
     TYPE_KW@0..4 "type"
     WHITESPACE@4..5 " "
@@ -74,3 +74,39 @@ SOURCE_FILE@0..82
             R_PAREN@79..80 ")"
     SEMICOLON@80..81 ";"
   WHITESPACE@81..82 "\n"
+  TYPE_ALIAS_DEF@82..120
+    TYPE_KW@82..86 "type"
+    WHITESPACE@86..87 " "
+    NAME@87..90
+      IDENT@87..90 "Obj"
+    WHITESPACE@90..91 " "
+    EQ@91..92 "="
+    WHITESPACE@92..93 " "
+    FOR_TYPE@93..119
+      FOR_KW@93..96 "for"
+      TYPE_PARAM_LIST@96..100
+        L_ANGLE@96..97 "<"
+        LIFETIME_PARAM@97..99
+          LIFETIME@97..99 "\'a"
+        R_ANGLE@99..100 ">"
+      WHITESPACE@100..101 " "
+      PATH_TYPE@101..119
+        PATH@101..119
+          PATH_SEGMENT@101..119
+            NAME_REF@101..110
+              IDENT@101..110 "PartialEq"
+            TYPE_ARG_LIST@110..119
+              L_ANGLE@110..111 "<"
+              TYPE_ARG@111..118
+                REFERENCE_TYPE@111..118
+                  AMP@111..112 "&"
+                  LIFETIME@112..114 "\'a"
+                  WHITESPACE@114..115 " "
+                  PATH_TYPE@115..118
+                    PATH@115..118
+                      PATH_SEGMENT@115..118
+                        NAME_REF@115..118
+                          IDENT@115..118 "i32"
+              R_ANGLE@118..119 ">"
+    SEMICOLON@119..120 ";"
+  WHITESPACE@120..121 "\n"
