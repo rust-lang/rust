@@ -1069,29 +1069,30 @@ fn build_manual_memcpy_suggestion<'tcx>(
         }
     }
 
-    let print_limit = |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| -> MinifyingSugg<'static> {
-        if_chain! {
-            if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
-            if method.ident.name == sym!(len);
-            if len_args.len() == 1;
-            if let Some(arg) = len_args.get(0);
-            if var_def_id(cx, arg) == var_def_id(cx, base);
-            then {
-                if sugg.as_str() == end_str {
-                    MinifyingSugg::non_paren("")
+    let print_limit =
+        |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| -> MinifyingSugg<'static> {
+            if_chain! {
+                if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
+                if method.ident.name == sym!(len);
+                if len_args.len() == 1;
+                if let Some(arg) = len_args.get(0);
+                if var_def_id(cx, arg) == var_def_id(cx, base);
+                then {
+                    if sugg.as_str() == end_str {
+                        MinifyingSugg::non_paren("")
+                    } else {
+                        sugg
+                    }
                 } else {
-                    sugg
-                }
-            } else {
-                match limits {
-                    ast::RangeLimits::Closed => {
-                        sugg + &MinifyingSugg::non_paren("1")
-                    },
-                    ast::RangeLimits::HalfOpen => sugg,
+                    match limits {
+                        ast::RangeLimits::Closed => {
+                            sugg + &MinifyingSugg::non_paren("1")
+                        },
+                        ast::RangeLimits::HalfOpen => sugg,
+                    }
                 }
             }
-        }
-    };
+        };
 
     let start_str = MinifyingSugg::hir(cx, start, "");
     let end_str = MinifyingSugg::hir(cx, end, "");
