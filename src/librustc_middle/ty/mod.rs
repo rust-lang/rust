@@ -2387,11 +2387,15 @@ impl<'tcx> AdtDef {
         assert!(self.is_struct() && self.repr.transparent());
 
         for field in &self.non_enum_variant().fields {
-            let field_ty = tcx.normalize_erasing_regions(
-                param_env,
-                field.ty(tcx, InternalSubsts::identity_for_item(tcx, self.did)),
-            );
+            let field_ty = field.ty(tcx, InternalSubsts::identity_for_item(tcx, self.did));
 
+            // `normalize_erasing_regions` will fail for projections that contain generic
+            // parameters, so check these before normalizing.
+            if field_ty.has_projections() && field_ty.needs_subst() {
+                return Some(field);
+            }
+
+            let field_ty = tcx.normalize_erasing_regions(param_env, field_ty);
             if !field_ty.is_zst(tcx, self.did) {
                 return Some(field);
             }
