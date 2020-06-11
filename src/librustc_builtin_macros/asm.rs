@@ -391,7 +391,8 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         used[*pos] = true;
     }
 
-    let named_pos: FxHashSet<usize> = args.named_args.values().cloned().collect();
+    let named_pos: FxHashMap<usize, Symbol> =
+        args.named_args.iter().map(|(&sym, &idx)| (idx, sym)).collect();
     let mut arg_spans = parser.arg_places.iter().map(|span| template_span.from_inner(*span));
     let mut template = vec![];
     for piece in unverified_pieces {
@@ -405,7 +406,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
                 let operand_idx = match arg.position {
                     parse::ArgumentIs(idx) | parse::ArgumentImplicitlyIs(idx) => {
                         if idx >= args.operands.len()
-                            || named_pos.contains(&idx)
+                            || named_pos.contains_key(&idx)
                             || args.reg_args.contains(&idx)
                         {
                             let msg = format!("invalid reference to argument at index {}", idx);
@@ -426,7 +427,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
                             };
                             err.note(&msg);
 
-                            if named_pos.contains(&idx) {
+                            if named_pos.contains_key(&idx) {
                                 err.span_label(args.operands[idx].1, "named argument");
                                 err.span_note(
                                     args.operands[idx].1,
@@ -480,27 +481,31 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         }
     }
 
-    let operands = args.operands;
-    let unused_operands: Vec<_> = used
-        .into_iter()
-        .enumerate()
-        .filter(|&(_, used)| !used)
-        .map(|(idx, _)| {
-            if named_pos.contains(&idx) {
-                // named argument
-                (operands[idx].1, "named argument never used")
+    let mut unused_operands = vec![];
+    let mut help_str = String::new();
+    for (idx, used) in used.into_iter().enumerate() {
+        if !used {
+            let msg = if let Some(sym) = named_pos.get(&idx) {
+                help_str.push_str(&format!(" {{{}}}", sym));
+                "named argument never used"
             } else {
-                // positional argument
-                (operands[idx].1, "argument never used")
-            }
-        })
-        .collect();
+                help_str.push_str(&format!(" {{{}}}", idx));
+                "argument never used"
+            };
+            unused_operands.push((args.operands[idx].1, msg));
+        }
+    }
     match unused_operands.len() {
         0 => {}
         1 => {
             let (sp, msg) = unused_operands.into_iter().next().unwrap();
             let mut err = ecx.struct_span_err(sp, msg);
             err.span_label(sp, msg);
+            err.help(&format!(
+                "if this argument is intentionally unused, \
+                 consider using it in an asm comment: `\"/*{} */\"`",
+                help_str
+            ));
             err.emit();
         }
         _ => {
@@ -511,6 +516,11 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
             for (sp, msg) in unused_operands {
                 err.span_label(sp, msg);
             }
+            err.help(&format!(
+                "if these arguments are intentionally unused, \
+                 consider using them in an asm comment: `\"/*{} */\"`",
+                help_str
+            ));
             err.emit();
         }
     }
@@ -521,7 +531,8 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         parser.line_spans.iter().map(|span| template_span.from_inner(*span)).collect()
     };
 
-    let inline_asm = ast::InlineAsm { template, operands, options: args.options, line_spans };
+    let inline_asm =
+        ast::InlineAsm { template, operands: args.operands, options: args.options, line_spans };
     P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         kind: ast::ExprKind::InlineAsm(P(inline_asm)),

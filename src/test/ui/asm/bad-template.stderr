@@ -19,6 +19,8 @@ error: argument never used
    |
 LL |         asm!("{1}", in(reg) foo);
    |                     ^^^^^^^^^^^ argument never used
+   |
+   = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {0} */"`
 
 error: there is no argument named `a`
   --> $DIR/bad-template.rs:13:15
@@ -46,6 +48,8 @@ error: named argument never used
    |
 LL |         asm!("{}", a = in(reg) foo);
    |                    ^^^^^^^^^^^^^^^ named argument never used
+   |
+   = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {a} */"`
 
 error: invalid reference to argument at index 1
   --> $DIR/bad-template.rs:18:15
@@ -60,6 +64,8 @@ error: named argument never used
    |
 LL |         asm!("{1}", a = in(reg) foo);
    |                     ^^^^^^^^^^^^^^^ named argument never used
+   |
+   = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {a} */"`
 
 error: invalid reference to argument at index 0
   --> $DIR/bad-template.rs:21:15
@@ -82,5 +88,15 @@ error: asm template modifier must be a single character
 LL |         asm!("{:foo}", in(reg) foo);
    |                 ^^^
 
-error: aborting due to 10 previous errors
+error: multiple unused asm arguments
+  --> $DIR/bad-template.rs:25:18
+   |
+LL |         asm!("", in(reg) 0, in(reg) 1);
+   |                  ^^^^^^^^^  ^^^^^^^^^ argument never used
+   |                  |
+   |                  argument never used
+   |
+   = help: if these arguments are intentionally unused, consider using them in an asm comment: `"/* {0} {1} */"`
+
+error: aborting due to 11 previous errors
 

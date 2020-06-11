@@ -22,5 +22,7 @@ fn main() {
         //~^ ERROR invalid reference to argument at index 0
         asm!("{:foo}", in(reg) foo);
         //~^ ERROR asm template modifier must be a single character
+        asm!("", in(reg) 0, in(reg) 1);
+        //~^ ERROR multiple unused asm arguments
     }
 }
