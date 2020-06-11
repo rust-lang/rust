@@ -3,48 +3,47 @@ use ra_syntax::{
     ast::{self, LoopBodyOwner},
     match_ast, AstNode, Direction, NodeOrToken, SyntaxElement,
     SyntaxKind::*,
-    SyntaxNode,
+    SyntaxNode, SyntaxToken,
 };
 
 pub(crate) fn inside_impl(element: SyntaxElement) -> bool {
-    let node = match element {
-        NodeOrToken::Node(node) => node,
-        NodeOrToken::Token(token) => token.parent(),
-    };
-    node.ancestors().find(|it| it.kind() == IMPL_DEF).is_some()
+    element.ancestors().find(|it| it.kind() == IMPL_DEF).is_some()
+}
+
+pub(crate) fn inside_trait(element: SyntaxElement) -> bool {
+    element.ancestors().find(|it| it.kind() == TRAIT_DEF).is_some()
 }
 
 pub(crate) fn has_bind_pat_parent(element: SyntaxElement) -> bool {
-    let node = match element {
-        NodeOrToken::Node(node) => node,
-        NodeOrToken::Token(token) => token.parent(),
-    };
-    node.ancestors().find(|it| it.kind() == BIND_PAT).is_some()
+    element.ancestors().find(|it| it.kind() == BIND_PAT).is_some()
 }
 
 pub(crate) fn has_ref_pat_parent(element: SyntaxElement) -> bool {
-    let node = match element {
-        NodeOrToken::Node(node) => node,
-        NodeOrToken::Token(token) => token.parent(),
-    };
-    node.ancestors().find(|it| it.kind() == REF_PAT).is_some()
+    element.ancestors().find(|it| it.kind() == REF_PAT).is_some()
 }
 
 pub(crate) fn goes_after_unsafe(element: SyntaxElement) -> bool {
-    if let Some(token) = previous_non_triva_element(element).and_then(|it| it.into_token()) {
-        if token.kind() == UNSAFE_KW {
-            return true;
-        }
-    }
-    false
+    element
+        .into_token()
+        .and_then(|it| previous_non_trivia_token(it))
+        .filter(|it| it.kind() == UNSAFE_KW)
+        .is_some()
 }
 
 pub(crate) fn has_block_expr_parent(element: SyntaxElement) -> bool {
-    not_same_range_parent(element).filter(|it| it.kind() == BLOCK_EXPR).is_some()
+    not_same_range_ancestor(element).filter(|it| it.kind() == BLOCK_EXPR).is_some()
 }
 
 pub(crate) fn has_item_list_parent(element: SyntaxElement) -> bool {
-    not_same_range_parent(element).filter(|it| it.kind() == ITEM_LIST).is_some()
+    not_same_range_ancestor(element).filter(|it| it.kind() == ITEM_LIST).is_some()
+}
+
+pub(crate) fn has_trait_as_prev_sibling(element: SyntaxElement) -> bool {
+    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == TRAIT_DEF).is_some()
+}
+
+pub(crate) fn has_impl_as_prev_sibling(element: SyntaxElement) -> bool {
+    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == IMPL_DEF).is_some()
 }
 
 pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
@@ -73,20 +72,30 @@ pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
     false
 }
 
-fn not_same_range_parent(element: SyntaxElement) -> Option<SyntaxNode> {
-    let node = match element {
-        NodeOrToken::Node(node) => node,
-        NodeOrToken::Token(token) => token.parent(),
-    };
-    let range = node.text_range();
-    node.ancestors().take_while(|it| it.text_range() == range).last().and_then(|it| it.parent())
+fn not_same_range_ancestor(element: SyntaxElement) -> Option<SyntaxNode> {
+    element
+        .ancestors()
+        .take_while(|it| it.text_range() == element.text_range())
+        .last()
+        .and_then(|it| it.parent())
 }
 
-fn previous_non_triva_element(element: SyntaxElement) -> Option<SyntaxElement> {
-    // trying to get first non triva sibling if we have one
+fn previous_non_trivia_token(token: SyntaxToken) -> Option<SyntaxToken> {
+    let mut token = token.prev_token();
+    while let Some(inner) = token.clone() {
+        if !inner.kind().is_trivia() {
+            return Some(inner);
+        } else {
+            token = inner.prev_token();
+        }
+    }
+    None
+}
+
+fn previous_sibling_or_ancestor_sibling(element: SyntaxElement) -> Option<SyntaxElement> {
     let token_sibling = non_trivia_sibling(element.clone(), Direction::Prev);
-    let mut wrapped = if let Some(sibling) = token_sibling {
-        sibling
+    if let Some(sibling) = token_sibling {
+        Some(sibling)
     } else {
         // if not trying to find first ancestor which has such a sibling
         let node = match element {
@@ -98,21 +107,6 @@ fn previous_non_triva_element(element: SyntaxElement) -> Option<SyntaxElement> {
         let prev_sibling_node = top_node.ancestors().find(|it| {
             non_trivia_sibling(NodeOrToken::Node(it.to_owned()), Direction::Prev).is_some()
         })?;
-        non_trivia_sibling(NodeOrToken::Node(prev_sibling_node), Direction::Prev)?
-    };
-    // TODO: Check if this can be simplified
-    // Matklad: I think you can avoid this loop if you use SyntaxToken::prev_token -- unlike prev_sibling_or_token, it works across parents.
-    // traversing the tree down to get the last token or node, i.e. the closest one
-    loop {
-        if let Some(token) = wrapped.as_token() {
-            return Some(NodeOrToken::Token(token.clone()));
-        } else {
-            let new = wrapped.as_node().and_then(|n| n.last_child_or_token());
-            if new.is_some() {
-                wrapped = new.unwrap().clone();
-            } else {
-                return Some(wrapped);
-            }
-        }
+        non_trivia_sibling(NodeOrToken::Node(prev_sibling_node), Direction::Prev)
     }
 }

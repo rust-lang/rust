@@ -62,7 +62,7 @@ fn add_keyword(
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     add_keyword(ctx, acc, "fn", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
     add_keyword(ctx, acc, "type", "type ", ctx.is_new_item || ctx.block_expr_parent);
-    add_keyword(ctx, acc, "fn", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "use", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
     add_keyword(ctx, acc, "impl", "impl $0 {}", ctx.is_new_item);
     add_keyword(ctx, acc, "trait", "impl $0 {}", ctx.is_new_item);
     add_keyword(ctx, acc, "enum", "enum $0 {}", ctx.is_new_item && !ctx.after_unsafe);
@@ -71,7 +71,6 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     add_keyword(ctx, acc, "match", "match $0 {}", ctx.block_expr_parent);
     add_keyword(ctx, acc, "loop", "loop {$0}", ctx.block_expr_parent);
     add_keyword(ctx, acc, "while", "while $0 {}", ctx.block_expr_parent);
-    add_keyword(ctx, acc, "let", "let ", ctx.after_if || ctx.block_expr_parent);
     add_keyword(ctx, acc, "let", "let ", ctx.after_if || ctx.block_expr_parent);
     add_keyword(ctx, acc, "else", "else {$0}", ctx.after_if);
     add_keyword(ctx, acc, "else if", "else if $0 {}", ctx.after_if);
@@ -88,6 +87,8 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     add_keyword(ctx, acc, "break", "break;", ctx.in_loop_body && ctx.can_be_stmt);
     add_keyword(ctx, acc, "continue", "continue", ctx.in_loop_body && !ctx.can_be_stmt);
     add_keyword(ctx, acc, "break", "break", ctx.in_loop_body && !ctx.can_be_stmt);
+    add_keyword(ctx, acc, "pub", "pub ", ctx.is_new_item && !ctx.inside_trait);
+    add_keyword(ctx, acc, "where", "where ", ctx.trait_as_prev_sibling || ctx.impl_as_prev_sibling);
     complete_use_tree_keyword(acc, ctx);
 
     let fn_def = match &ctx.function_syntax {
