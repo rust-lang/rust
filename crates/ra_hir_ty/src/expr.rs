@@ -226,17 +226,19 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             None => return,
         };
 
-        let std_result_path = path![std::result::Result];
+        let core_result_path = path![core::result::Result];
 
         let resolver = self.func.resolver(db.upcast());
-        let std_result_enum = match resolver.resolve_known_enum(db.upcast(), &std_result_path) {
+        let core_result_enum = match resolver.resolve_known_enum(db.upcast(), &core_result_path) {
             Some(it) => it,
             _ => return,
         };
 
-        let std_result_ctor = TypeCtor::Adt(AdtId::EnumId(std_result_enum));
+        let core_result_ctor = TypeCtor::Adt(AdtId::EnumId(core_result_enum));
         let params = match &mismatch.expected {
-            Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &std_result_ctor => parameters,
+            Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &core_result_ctor => {
+                parameters
+            }
             _ => return,
         };
 

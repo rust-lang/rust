@@ -95,7 +95,7 @@ fn foo() {
 fn infer_ranges() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 fn test() {
     let a = ..;
     let b = 1..;
@@ -108,7 +108,7 @@ fn test() {
     t<|>;
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 #[prelude_import] use prelude::*;
 mod prelude {}
 
