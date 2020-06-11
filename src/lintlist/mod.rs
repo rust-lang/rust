@@ -2329,7 +2329,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "unnested_or_patterns",
-        group: "complexity",
+        group: "pedantic",
         desc: "unnested or-patterns, e.g., `Foo(Bar) | Foo(Baz) instead of `Foo(Bar | Baz)`",
         deprecation: None,
         module: "unnested_or_patterns",
