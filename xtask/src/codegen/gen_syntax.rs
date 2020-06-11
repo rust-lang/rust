@@ -40,7 +40,7 @@ fn generate_tokens(grammar: AstSrc<'_>) -> Result<String> {
                 pub(crate) syntax: SyntaxToken,
             }
             impl std::fmt::Display for #name {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                     std::fmt::Display::fmt(&self.syntax, f)
                 }
             }
@@ -199,7 +199,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         enum_names.chain(node_names.clone()).map(|it| format_ident!("{}", it)).map(|name| {
             quote! {
                 impl std::fmt::Display for #name {
-                    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                         std::fmt::Display::fmt(self.syntax(), f)
                     }
                 }
