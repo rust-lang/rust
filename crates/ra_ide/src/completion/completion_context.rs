@@ -12,8 +12,8 @@ use ra_syntax::{
 use ra_text_edit::Indel;
 
 use super::patterns::{
-    goes_after_unsafe, has_bind_pat_parent, has_block_expr_parent, has_impl_as_prev_sibling,
-    has_ref_pat_parent, has_trait_as_prev_sibling, inside_trait, is_in_loop_body,
+    has_bind_pat_parent, has_block_expr_parent, has_impl_as_prev_sibling, has_ref_pat_parent,
+    has_trait_as_prev_sibling, if_is_prev, inside_trait, is_in_loop_body, unsafe_is_prev,
 };
 use crate::{call_info::ActiveParameter, completion::CompletionConfig, FilePosition};
 use test_utils::mark;
@@ -64,7 +64,8 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
     pub(super) attribute_under_caret: Option<ast::Attr>,
-    pub(super) after_unsafe: bool,
+    pub(super) unsafe_is_prev: bool,
+    pub(super) if_is_prev: bool,
     pub(super) block_expr_parent: bool,
     pub(super) bind_pat_parent: bool,
     pub(super) ref_pat_parent: bool,
@@ -130,7 +131,7 @@ impl<'a> CompletionContext<'a> {
             has_type_args: false,
             dot_receiver_is_ambiguous_float_literal: false,
             attribute_under_caret: None,
-            after_unsafe: false,
+            unsafe_is_prev: false,
             in_loop_body: false,
             ref_pat_parent: false,
             bind_pat_parent: false,
@@ -138,6 +139,7 @@ impl<'a> CompletionContext<'a> {
             inside_trait: false,
             trait_as_prev_sibling: false,
             impl_as_prev_sibling: false,
+            if_is_prev: false,
         };
 
         let mut original_file = original_file.syntax().clone();
@@ -212,7 +214,8 @@ impl<'a> CompletionContext<'a> {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token.clone());
         self.block_expr_parent = has_block_expr_parent(syntax_element.clone());
-        self.after_unsafe = goes_after_unsafe(syntax_element.clone());
+        self.unsafe_is_prev = unsafe_is_prev(syntax_element.clone());
+        self.if_is_prev = if_is_prev(syntax_element.clone());
         self.bind_pat_parent = has_bind_pat_parent(syntax_element.clone());
         self.ref_pat_parent = has_ref_pat_parent(syntax_element.clone());
         self.in_loop_body = is_in_loop_body(syntax_element.clone());

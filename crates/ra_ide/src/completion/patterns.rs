@@ -22,11 +22,19 @@ pub(crate) fn has_ref_pat_parent(element: SyntaxElement) -> bool {
     element.ancestors().find(|it| it.kind() == REF_PAT).is_some()
 }
 
-pub(crate) fn goes_after_unsafe(element: SyntaxElement) -> bool {
+pub(crate) fn unsafe_is_prev(element: SyntaxElement) -> bool {
     element
         .into_token()
         .and_then(|it| previous_non_trivia_token(it))
         .filter(|it| it.kind() == UNSAFE_KW)
+        .is_some()
+}
+
+pub(crate) fn if_is_prev(element: SyntaxElement) -> bool {
+    element
+        .into_token()
+        .and_then(|it| previous_non_trivia_token(it))
+        .filter(|it| it.kind() == IF_KW)
         .is_some()
 }
 
@@ -108,5 +116,81 @@ fn previous_sibling_or_ancestor_sibling(element: SyntaxElement) -> Option<Syntax
             non_trivia_sibling(NodeOrToken::Node(it.to_owned()), Direction::Prev).is_some()
         })?;
         non_trivia_sibling(NodeOrToken::Node(prev_sibling_node), Direction::Prev)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        has_block_expr_parent, has_impl_as_prev_sibling, has_trait_as_prev_sibling, if_is_prev,
+        inside_trait, unsafe_is_prev,
+    };
+    use crate::completion::test_utils::check_pattern_is_applicable;
+
+    #[test]
+    fn test_unsafe_is_prev() {
+        check_pattern_is_applicable(
+            r"
+        unsafe i<|>
+        ",
+            unsafe_is_prev,
+        );
+    }
+
+    #[test]
+    fn test_if_is_prev() {
+        check_pattern_is_applicable(
+            r"
+        if l<|>
+        ",
+            if_is_prev,
+        );
+    }
+
+    #[test]
+    fn test_inside_trait() {
+        check_pattern_is_applicable(
+            r"
+        trait A {
+            fn<|>
+        }
+        ",
+            inside_trait,
+        );
+    }
+
+    #[test]
+    fn test_has_trait_as_prev_sibling() {
+        check_pattern_is_applicable(
+            r"
+        trait A w<|> {
+        }
+        ",
+            has_trait_as_prev_sibling,
+        );
+    }
+
+    #[test]
+    fn test_has_impl_as_prev_sibling() {
+        check_pattern_is_applicable(
+            r"
+        impl A w<|> {
+        }
+        ",
+            has_impl_as_prev_sibling,
+        );
+    }
+
+    #[test]
+    fn test_parent_block_expr() {
+        check_pattern_is_applicable(
+            r"
+        fn my_fn() {
+            let a = 2;
+            f<|>
+        }
+        ",
+            has_block_expr_parent,
+        );
     }
 }

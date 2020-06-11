@@ -65,13 +65,13 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     add_keyword(ctx, acc, "use", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
     add_keyword(ctx, acc, "impl", "impl $0 {}", ctx.is_new_item);
     add_keyword(ctx, acc, "trait", "impl $0 {}", ctx.is_new_item);
-    add_keyword(ctx, acc, "enum", "enum $0 {}", ctx.is_new_item && !ctx.after_unsafe);
-    add_keyword(ctx, acc, "struct", "struct $0 {}", ctx.is_new_item && !ctx.after_unsafe);
-    add_keyword(ctx, acc, "union", "union $0 {}", ctx.is_new_item && !ctx.after_unsafe);
+    add_keyword(ctx, acc, "enum", "enum $0 {}", ctx.is_new_item && !ctx.unsafe_is_prev);
+    add_keyword(ctx, acc, "struct", "struct $0 {}", ctx.is_new_item && !ctx.unsafe_is_prev);
+    add_keyword(ctx, acc, "union", "union $0 {}", ctx.is_new_item && !ctx.unsafe_is_prev);
     add_keyword(ctx, acc, "match", "match $0 {}", ctx.block_expr_parent);
     add_keyword(ctx, acc, "loop", "loop {$0}", ctx.block_expr_parent);
     add_keyword(ctx, acc, "while", "while $0 {}", ctx.block_expr_parent);
-    add_keyword(ctx, acc, "let", "let ", ctx.after_if || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "let", "let ", ctx.if_is_prev || ctx.block_expr_parent);
     add_keyword(ctx, acc, "else", "else {$0}", ctx.after_if);
     add_keyword(ctx, acc, "else if", "else if $0 {}", ctx.after_if);
     add_keyword(ctx, acc, "mod", "mod $0 {}", ctx.is_new_item || ctx.block_expr_parent);
