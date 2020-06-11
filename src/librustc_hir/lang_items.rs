@@ -21,11 +21,26 @@ use rustc_span::Span;
 
 use lazy_static::lazy_static;
 
+pub enum LangItemGroup {
+    Op,
+}
+
+const NUM_GROUPS: usize = 1;
+
+macro_rules! expand_group {
+    () => {
+        None
+    };
+    ($group:expr) => {
+        Some($group)
+    };
+}
+
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
     (
-        $( $variant:ident, $name:expr, $method:ident, $target:expr; )*
+        $( $variant:ident $($group:expr)?, $name:expr, $method:ident, $target:expr; )*
     ) => {
 
         enum_from_u32! {
@@ -45,6 +60,13 @@ macro_rules! language_item_table {
                     $( $variant => $name, )*
                 }
             }
+
+            pub fn group(self) -> Option<LangItemGroup> {
+                use LangItemGroup::*;
+                match self {
+                    $( $variant => expand_group!($($group)*), )*
+                }
+            }
         }
 
         #[derive(HashStable_Generic)]
@@ -54,6 +76,9 @@ macro_rules! language_item_table {
             pub items: Vec<Option<DefId>>,
             /// Lang items that were not found during collection.
             pub missing: Vec<LangItem>,
+            /// Mapping from `LangItemGroup` discriminants to all
+            /// `DefId`s of lang items in that group.
+            pub groups: [Vec<DefId>; NUM_GROUPS],
         }
 
         impl LanguageItems {
@@ -64,6 +89,7 @@ macro_rules! language_item_table {
                 Self {
                     items: vec![$(init_none($variant)),*],
                     missing: Vec::new(),
+                    groups: [vec![]; NUM_GROUPS],
                 }
             }
 
@@ -77,6 +103,10 @@ macro_rules! language_item_table {
             /// returns an error message as a string.
             pub fn require(&self, it: LangItem) -> Result<DefId, String> {
                 self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
+            }
+
+            pub fn group(&self, group: LangItemGroup) -> &[DefId] {
+                self.groups[group as usize].as_ref()
             }
 
             $(
@@ -171,30 +201,30 @@ language_item_table! {
     CoerceUnsizedTraitLangItem,  "coerce_unsized",     coerce_unsized_trait,    Target::Trait;
     DispatchFromDynTraitLangItem,"dispatch_from_dyn",  dispatch_from_dyn_trait, Target::Trait;
 
-    AddTraitLangItem,            "add",                add_trait,               Target::Trait;
-    SubTraitLangItem,            "sub",                sub_trait,               Target::Trait;
-    MulTraitLangItem,            "mul",                mul_trait,               Target::Trait;
-    DivTraitLangItem,            "div",                div_trait,               Target::Trait;
-    RemTraitLangItem,            "rem",                rem_trait,               Target::Trait;
-    NegTraitLangItem,            "neg",                neg_trait,               Target::Trait;
-    NotTraitLangItem,            "not",                not_trait,               Target::Trait;
-    BitXorTraitLangItem,         "bitxor",             bitxor_trait,            Target::Trait;
-    BitAndTraitLangItem,         "bitand",             bitand_trait,            Target::Trait;
-    BitOrTraitLangItem,          "bitor",              bitor_trait,             Target::Trait;
-    ShlTraitLangItem,            "shl",                shl_trait,               Target::Trait;
-    ShrTraitLangItem,            "shr",                shr_trait,               Target::Trait;
-    AddAssignTraitLangItem,      "add_assign",         add_assign_trait,        Target::Trait;
-    SubAssignTraitLangItem,      "sub_assign",         sub_assign_trait,        Target::Trait;
-    MulAssignTraitLangItem,      "mul_assign",         mul_assign_trait,        Target::Trait;
-    DivAssignTraitLangItem,      "div_assign",         div_assign_trait,        Target::Trait;
-    RemAssignTraitLangItem,      "rem_assign",         rem_assign_trait,        Target::Trait;
-    BitXorAssignTraitLangItem,   "bitxor_assign",      bitxor_assign_trait,     Target::Trait;
-    BitAndAssignTraitLangItem,   "bitand_assign",      bitand_assign_trait,     Target::Trait;
-    BitOrAssignTraitLangItem,    "bitor_assign",       bitor_assign_trait,      Target::Trait;
-    ShlAssignTraitLangItem,      "shl_assign",         shl_assign_trait,        Target::Trait;
-    ShrAssignTraitLangItem,      "shr_assign",         shr_assign_trait,        Target::Trait;
-    IndexTraitLangItem,          "index",              index_trait,             Target::Trait;
-    IndexMutTraitLangItem,       "index_mut",          index_mut_trait,         Target::Trait;
+    AddTraitLangItem(Op),        "add",                add_trait,               Target::Trait;
+    SubTraitLangItem(Op),        "sub",                sub_trait,               Target::Trait;
+    MulTraitLangItem(Op),        "mul",                mul_trait,               Target::Trait;
+    DivTraitLangItem(Op),        "div",                div_trait,               Target::Trait;
+    RemTraitLangItem(Op),        "rem",                rem_trait,               Target::Trait;
+    NegTraitLangItem(Op),        "neg",                neg_trait,               Target::Trait;
+    NotTraitLangItem(Op),        "not",                not_trait,               Target::Trait;
+    BitXorTraitLangItem(Op),     "bitxor",             bitxor_trait,            Target::Trait;
+    BitAndTraitLangItem(Op),     "bitand",             bitand_trait,            Target::Trait;
+    BitOrTraitLangItem(Op),      "bitor",              bitor_trait,             Target::Trait;
+    ShlTraitLangItem(Op),        "shl",                shl_trait,               Target::Trait;
+    ShrTraitLangItem(Op),        "shr",                shr_trait,               Target::Trait;
+    AddAssignTraitLangItem(Op),  "add_assign",         add_assign_trait,        Target::Trait;
+    SubAssignTraitLangItem(Op),  "sub_assign",         sub_assign_trait,        Target::Trait;
+    MulAssignTraitLangItem(Op),  "mul_assign",         mul_assign_trait,        Target::Trait;
+    DivAssignTraitLangItem(Op),  "div_assign",         div_assign_trait,        Target::Trait;
+    RemAssignTraitLangItem(Op),  "rem_assign",         rem_assign_trait,        Target::Trait;
+    BitXorAssignTraitLangItem(Op),"bitxor_assign",     bitxor_assign_trait,     Target::Trait;
+    BitAndAssignTraitLangItem(Op),"bitand_assign",     bitand_assign_trait,     Target::Trait;
+    BitOrAssignTraitLangItem(Op),"bitor_assign",       bitor_assign_trait,      Target::Trait;
+    ShlAssignTraitLangItem(Op),  "shl_assign",         shl_assign_trait,        Target::Trait;
+    ShrAssignTraitLangItem(Op),  "shr_assign",         shr_assign_trait,        Target::Trait;
+    IndexTraitLangItem(Op),      "index",              index_trait,             Target::Trait;
+    IndexMutTraitLangItem(Op),   "index_mut",          index_mut_trait,         Target::Trait;
 
     UnsafeCellTypeLangItem,      "unsafe_cell",        unsafe_cell_type,        Target::Struct;
     VaListTypeLangItem,          "va_list",            va_list,                 Target::Struct;
