@@ -25,12 +25,14 @@ use crate::{
     EagerCallLoc, EagerMacroId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 
+use ra_db::CrateId;
 use ra_parser::FragmentKind;
 use ra_syntax::{algo::SyntaxRewriter, SyntaxNode};
 use std::sync::Arc;
 
 pub fn expand_eager_macro(
     db: &dyn AstDatabase,
+    krate: CrateId,
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
     resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
@@ -47,6 +49,7 @@ pub fn expand_eager_macro(
             def,
             fragment: FragmentKind::Expr,
             subtree: Arc::new(parsed_args.clone()),
+            krate,
             file_id: macro_call.file_id,
         }
     });
@@ -56,14 +59,20 @@ pub fn expand_eager_macro(
     let result = eager_macro_recur(
         db,
         InFile::new(arg_file_id.as_file(), parsed_args.syntax_node()),
+        krate,
         resolver,
     )?;
     let subtree = to_subtree(&result)?;
 
     if let MacroDefKind::BuiltInEager(eager) = def.kind {
         let (subtree, fragment) = eager.expand(db, arg_id, &subtree).ok()?;
-        let eager =
-            EagerCallLoc { def, fragment, subtree: Arc::new(subtree), file_id: macro_call.file_id };
+        let eager = EagerCallLoc {
+            def,
+            fragment,
+            subtree: Arc::new(subtree),
+            krate,
+            file_id: macro_call.file_id,
+        };
 
         Some(db.intern_eager_expansion(eager))
     } else {
@@ -81,11 +90,12 @@ fn lazy_expand(
     db: &dyn AstDatabase,
     def: &MacroDefId,
     macro_call: InFile<ast::MacroCall>,
+    krate: CrateId,
 ) -> Option<InFile<SyntaxNode>> {
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
     let id: MacroCallId =
-        def.as_lazy_macro(db, MacroCallKind::FnLike(macro_call.with_value(ast_id))).into();
+        def.as_lazy_macro(db, krate, MacroCallKind::FnLike(macro_call.with_value(ast_id))).into();
 
     db.parse_or_expand(id.as_file()).map(|node| InFile::new(id.as_file(), node))
 }
@@ -93,6 +103,7 @@ fn lazy_expand(
 fn eager_macro_recur(
     db: &dyn AstDatabase,
     curr: InFile<SyntaxNode>,
+    krate: CrateId,
     macro_resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
 ) -> Option<SyntaxNode> {
     let original = curr.value.clone();
@@ -105,18 +116,23 @@ fn eager_macro_recur(
         let def: MacroDefId = macro_resolver(child.path()?)?;
         let insert = match def.kind {
             MacroDefKind::BuiltInEager(_) => {
-                let id: MacroCallId =
-                    expand_eager_macro(db, curr.with_value(child.clone()), def, macro_resolver)?
-                        .into();
+                let id: MacroCallId = expand_eager_macro(
+                    db,
+                    krate,
+                    curr.with_value(child.clone()),
+                    def,
+                    macro_resolver,
+                )?
+                .into();
                 db.parse_or_expand(id.as_file())?
             }
             MacroDefKind::Declarative
             | MacroDefKind::BuiltIn(_)
             | MacroDefKind::BuiltInDerive(_)
             | MacroDefKind::CustomDerive(_) => {
-                let expanded = lazy_expand(db, &def, curr.with_value(child.clone()))?;
+                let expanded = lazy_expand(db, &def, curr.with_value(child.clone()), krate)?;
                 // replace macro inside
-                eager_macro_recur(db, expanded, macro_resolver)?
+                eager_macro_recur(db, expanded, krate, macro_resolver)?
             }
         };
 
