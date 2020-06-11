@@ -118,6 +118,9 @@ process described above, producing a usable compiler toolchain from the source
 code you have checked out. This takes a long time, so it is not usually what
 you want to actually run (more on this later).
 
+Note that building will require a relatively large amount of storage space.
+You may want to have upwards of 10 or 15 gigabytes available to build the compiler.
+
 There are many flags you can pass to the build command of `x.py` that can be
 beneficial to cutting down compile times or fitting other things you might
 need to change. They are:
