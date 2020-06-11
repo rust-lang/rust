@@ -100,7 +100,8 @@ fn previous_non_triva_element(element: SyntaxElement) -> Option<SyntaxElement> {
         })?;
         non_trivia_sibling(NodeOrToken::Node(prev_sibling_node), Direction::Prev)?
     };
-    //I think you can avoid this loop if you use SyntaxToken::prev_token -- unlike prev_sibling_or_token, it works across parents.
+    // TODO: Check if this can be simplified
+    // Matklad: I think you can avoid this loop if you use SyntaxToken::prev_token -- unlike prev_sibling_or_token, it works across parents.
     // traversing the tree down to get the last token or node, i.e. the closest one
     loop {
         if let Some(token) = wrapped.as_token() {
