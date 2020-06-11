@@ -3309,7 +3309,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
-assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_add(127), ", stringify!($SelfT), "::MAX);",
+$EndFeature, "
 ```"),
 
             #[stable(feature = "rust1", since = "1.0.0")]
