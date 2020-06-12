@@ -187,7 +187,12 @@ fn check_struct_shorthand_initialization(
         if let (Some(name_ref), Some(expr)) = (record_field.name_ref(), record_field.expr()) {
             let field_name = name_ref.syntax().text().to_string();
             let field_expr = expr.syntax().text().to_string();
-            if field_name == field_expr {
+            let field_name_is_tup_index = name_ref
+                .syntax()
+                .first_token()
+                .map(|token| token.kind().is_literal())
+                .unwrap_or(false);
+            if field_name == field_expr && !field_name_is_tup_index {
                 let mut edit_builder = TextEditBuilder::default();
                 edit_builder.delete(record_field.syntax().text_range());
                 edit_builder.insert(record_field.syntax().text_range().start(), field_name);
@@ -714,6 +719,18 @@ mod tests {
             fn main() {
                 A {
                     a: "hello"
+                }
+            }
+        "#,
+            check_struct_shorthand_initialization,
+        );
+        check_not_applicable(
+            r#"
+            struct A(usize);
+
+            fn main() {
+                A {
+                    0: 0
                 }
             }
         "#,
