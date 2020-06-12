@@ -2729,14 +2729,8 @@ impl Node<'_> {
     pub fn generics(&self) -> Option<&Generics<'_>> {
         match self {
             Node::TraitItem(TraitItem { generics, .. })
-            | Node::ImplItem(ImplItem { generics, .. })
-            | Node::Item(Item {
-                kind:
-                    ItemKind::Trait(_, _, generics, ..)
-                    | ItemKind::Impl { generics, .. }
-                    | ItemKind::Fn(_, generics, _),
-                ..
-            }) => Some(generics),
+            | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
+            Node::Item(item) => item.kind.generics(),
             _ => None,
         }
     }
