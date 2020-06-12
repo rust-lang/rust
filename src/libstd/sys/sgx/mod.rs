@@ -115,9 +115,15 @@ pub fn decode_error_kind(code: i32) -> ErrorKind {
 // timeouts in SGX model. The enclave runner serving usercalls may lie about
 // current time and/or ignore timeout values.
 //
+// Once the event is observed, `stop` will be used to determine whether or not
+// we should continue to wait.
+//
 // FIXME: note these caveats in documentation of all public types that use this
 // function in their execution path.
-pub fn wait_timeout_sgx(event_mask: u64, duration: crate::time::Duration) {
+pub fn wait_timeout_sgx<F>(event_mask: u64, duration: crate::time::Duration, stop: F)
+where
+    F: Fn() -> bool,
+{
     use self::abi::usercalls;
     use crate::cmp;
     use crate::io::ErrorKind;
@@ -129,11 +135,13 @@ pub fn wait_timeout_sgx(event_mask: u64, duration: crate::time::Duration) {
         let timeout = cmp::min((u64::MAX - 1) as u128, remaining.as_nanos()) as u64;
         match usercalls::wait(event_mask, timeout) {
             Ok(eventset) => {
-                if event_mask != 0 {
-                    rtassert!(eventset & event_mask == event_mask);
+                if event_mask == 0 {
+                    rtabort!("expected usercalls::wait() to return Err, found Ok.");
+                }
+                rtassert!(eventset & event_mask == event_mask);
+                if stop() {
                     return;
                 }
-                rtabort!("expected usercalls::wait() to return Err, found Ok.");
             }
             Err(e) => {
                 rtassert!(e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock)

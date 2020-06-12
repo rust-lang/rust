@@ -177,7 +177,7 @@ impl WaitQueue {
             let entry_lock = lock.lock().queue.inner.push(&mut entry);
             before_wait();
             // don't panic, this would invalidate `entry` during unwinding
-            wait_timeout_sgx(EV_UNPARK, timeout);
+            wait_timeout_sgx(EV_UNPARK, timeout, || entry_lock.lock().wake);
             // acquire the wait queue's lock first to avoid deadlock.
             let mut guard = lock.lock();
             let entry_guard = entry_lock.lock();

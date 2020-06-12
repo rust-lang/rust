@@ -76,7 +76,7 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        wait_timeout_sgx(0, dur);
+        wait_timeout_sgx(0, dur, || true);
     }
 
     pub fn join(self) {
