@@ -794,10 +794,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         debug!("move_spans: target_temp = {:?}", target_temp);
 
-        if let Some(Terminator {
-            kind: TerminatorKind::Call { func, args, fn_span, .. },
-            ..
-        }) = &self.body[location.block].terminator
+        if let Some(Terminator { kind: TerminatorKind::Call { func, args, fn_span, .. }, .. }) =
+            &self.body[location.block].terminator
         {
             let mut method_did = None;
             if let Operand::Constant(box Constant { literal: ty::Const { ty, .. }, .. }) = func {
