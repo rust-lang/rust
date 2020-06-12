@@ -6,7 +6,10 @@ LL | enum MList { Cons(isize, MList), Nil }
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `MList` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `MList` representable
+   |
+LL | enum MList { Cons(isize, Box<MList>), Nil }
+   |                          ^^^^     ^
 
 error[E0391]: cycle detected when computing drop-check constraints for `MList`
   --> $DIR/infinite-tag-type-recursion.rs:1:1
