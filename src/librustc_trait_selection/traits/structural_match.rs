@@ -66,7 +66,7 @@ pub fn search_for_structural_match_violation<'tcx>(
 ///
 /// Note that this does *not* recursively check if the substructure of `adt_ty`
 /// implements the traits.
-pub fn type_marked_structural(
+fn type_marked_structural(
     infcx: &InferCtxt<'_, 'tcx>,
     adt_ty: Ty<'tcx>,
     cause: ObligationCause<'tcx>,
