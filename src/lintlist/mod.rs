@@ -1622,7 +1622,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "option_if_let_else",
-        group: "style",
+        group: "pedantic",
         desc: "reimplementation of Option::map_or",
         deprecation: None,
         module: "option_if_let_else",

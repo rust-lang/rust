@@ -63,7 +63,7 @@ declare_clippy_lint! {
     /// }, |foo| foo);
     /// ```
     pub OPTION_IF_LET_ELSE,
-    style,
+    pedantic,
     "reimplementation of Option::map_or"
 }
 

@@ -99,6 +99,5 @@ fn fetch_const<'a>(cx: &LateContext<'_>, args: &'a [Expr<'a>], m: MinMax) -> Opt
             } else {
                 None
             }
-        }
-    ).map(|(c, arg)| (m, c, arg))
+    })
 }
