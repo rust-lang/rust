@@ -1,28 +1,20 @@
-error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/regions-close-object-into-object-2.rs:10:11
-   |
-LL |     box B(&*v) as Box<dyn X>
-   |           ^^^
-   |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 9:6...
-  --> $DIR/regions-close-object-into-object-2.rs:9:6
    |
 LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
-   |      ^^
-note: ...so that the type `(dyn A<T> + 'a)` is not borrowed for too long
-  --> $DIR/regions-close-object-into-object-2.rs:10:11
-   |
+   |                         ------------------ this data with lifetime `'a`...
 LL |     box B(&*v) as Box<dyn X>
-   |           ^^^
-   = note: but, the lifetime must be valid for the static lifetime...
-note: ...so that the expression is assignable
-  --> $DIR/regions-close-object-into-object-2.rs:10:5
+   |           ^^^ ...is captured here, requiring it to live as long as `'static`
    |
-LL |     box B(&*v) as Box<dyn X>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected `std::boxed::Box<(dyn X + 'static)>`
-              found `std::boxed::Box<dyn X>`
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
+   |
+LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'a> {
+   |                                                            ^^
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn g<'a, T: 'static>(v: std::boxed::Box<(dyn A<T> + 'static)>) -> Box<dyn X + 'static> {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0759`.
