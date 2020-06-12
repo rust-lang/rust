@@ -81,13 +81,12 @@ pub struct Definitions {
 
     def_id_to_span: IndexVec<LocalDefId, Span>,
 
-    // FIXME(eddyb) don't go through `ast::NodeId` to convert between `HirId`
-    // and `LocalDefId` - ideally all `LocalDefId`s would be HIR owners.
     node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
     def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
-    pub(super) node_id_to_hir_id: IndexVec<ast::NodeId, Option<hir::HirId>>,
-    /// The pre-computed mapping of `hir_id_to_node_id` -> `node_id_to_def_id`.
+    // FIXME(eddyb) ideally all `LocalDefId`s would be HIR owners.
+    pub(super) def_id_to_hir_id: IndexVec<LocalDefId, Option<hir::HirId>>,
+    /// The reverse mapping of `def_id_to_hir_id`.
     pub(super) hir_id_to_def_id: FxHashMap<hir::HirId, LocalDefId>,
 
     /// If `ExpnId` is an ID of some macro expansion,
@@ -327,9 +326,7 @@ impl Definitions {
 
     #[inline]
     pub fn local_def_id(&self, node: ast::NodeId) -> LocalDefId {
-        self.opt_local_def_id(node).unwrap_or_else(|| {
-            panic!("no entry for node id: `{:?}` / `{:?}`", node, self.node_id_to_hir_id.get(node))
-        })
+        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
     }
 
     #[inline]
@@ -339,14 +336,12 @@ impl Definitions {
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
-        let node_id = self.def_id_to_node_id[id];
-        self.node_id_to_hir_id[node_id].unwrap()
+        self.def_id_to_hir_id[id].unwrap()
     }
 
     #[inline]
     pub fn opt_local_def_id_to_hir_id(&self, id: LocalDefId) -> Option<hir::HirId> {
-        let node_id = self.def_id_to_node_id[id];
-        self.node_id_to_hir_id[node_id]
+        self.def_id_to_hir_id[id]
     }
 
     #[inline]
@@ -461,16 +456,20 @@ impl Definitions {
         mapping: IndexVec<ast::NodeId, Option<hir::HirId>>,
     ) {
         assert!(
-            self.node_id_to_hir_id.is_empty(),
-            "trying to initialize `NodeId` -> `HirId` mapping twice"
+            self.def_id_to_hir_id.is_empty(),
+            "trying to initialize `LocalDefId` <-> `HirId` mappings twice"
         );
-        self.node_id_to_hir_id = mapping;
 
-        // Build the pre-computed mapping of `hir_id_to_node_id` -> `node_id_to_def_id`.
-        self.hir_id_to_def_id = self
-            .node_id_to_hir_id
-            .iter_enumerated()
-            .filter_map(|(node_id, &hir_id)| {
+        self.def_id_to_hir_id = self
+            .def_id_to_node_id
+            .iter()
+            .map(|&node_id| mapping.get(node_id).and_then(|&hir_id| hir_id))
+            .collect();
+
+        // Build the reverse mapping of `def_id_to_hir_id`.
+        self.hir_id_to_def_id = mapping
+            .into_iter_enumerated()
+            .filter_map(|(node_id, hir_id)| {
                 hir_id.and_then(|hir_id| {
                     self.node_id_to_def_id.get(&node_id).map(|&def_id| (hir_id, def_id))
                 })
