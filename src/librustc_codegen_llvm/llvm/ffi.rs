@@ -45,6 +45,8 @@ pub enum CallConv {
     X86_64_Win64 = 79,
     X86_VectorCall = 80,
     X86_Intr = 83,
+    AvrNonBlockingInterrupt = 84,
+    AvrInterrupt = 85,
     AmdGpuKernel = 91,
 }
 
