@@ -60,32 +60,104 @@ fn add_keyword(
 }
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
+    let has_trait_or_impl_parent = ctx.has_impl_parent || ctx.has_trait_parent;
+    if ctx.trait_as_prev_sibling || ctx.impl_as_prev_sibling {
+        add_keyword(ctx, acc, "where", "where ", true);
+        return;
+    }
+    if ctx.unsafe_is_prev {
+        add_keyword(ctx, acc, "fn", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
+        add_keyword(
+            ctx,
+            acc,
+            "trait",
+            "trait $0 {}",
+            (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+        );
+        add_keyword(
+            ctx,
+            acc,
+            "impl",
+            "impl $0 {}",
+            (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+        );
+        return;
+    }
     add_keyword(ctx, acc, "fn", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
-    add_keyword(ctx, acc, "use", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
-    add_keyword(ctx, acc, "impl", "impl $0 {}", ctx.is_new_item);
-    add_keyword(ctx, acc, "trait", "impl $0 {}", ctx.is_new_item);
-    add_keyword(ctx, acc, "enum", "enum $0 {}", ctx.is_new_item && !ctx.unsafe_is_prev);
-    add_keyword(ctx, acc, "struct", "struct $0 {}", ctx.is_new_item && !ctx.unsafe_is_prev);
-    add_keyword(ctx, acc, "union", "union $0 {}", ctx.is_new_item && !ctx.unsafe_is_prev);
-    add_keyword(ctx, acc, "match", "match $0 {}", ctx.block_expr_parent);
-    add_keyword(ctx, acc, "loop", "loop {$0}", ctx.block_expr_parent);
+    add_keyword(
+        ctx,
+        acc,
+        "use",
+        "use ",
+        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+    );
+    add_keyword(
+        ctx,
+        acc,
+        "impl",
+        "impl $0 {}",
+        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+    );
+    add_keyword(
+        ctx,
+        acc,
+        "trait",
+        "trait $0 {}",
+        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+    );
+    add_keyword(ctx, acc, "enum", "enum $0 {}", ctx.is_new_item && !has_trait_or_impl_parent);
+    add_keyword(ctx, acc, "struct", "struct $0 {}", ctx.is_new_item && !has_trait_or_impl_parent);
+    add_keyword(ctx, acc, "union", "union $0 {}", ctx.is_new_item && !has_trait_or_impl_parent);
+    add_keyword(ctx, acc, "match", "match $0 {}", ctx.block_expr_parent || ctx.is_match_arm);
+    add_keyword(ctx, acc, "loop", "loop {$0}", ctx.block_expr_parent || ctx.is_match_arm);
     add_keyword(ctx, acc, "while", "while $0 {}", ctx.block_expr_parent);
     add_keyword(ctx, acc, "let", "let ", ctx.if_is_prev || ctx.block_expr_parent);
+    add_keyword(ctx, acc, "if", "if ", ctx.if_is_prev || ctx.block_expr_parent || ctx.is_match_arm);
+    add_keyword(
+        ctx,
+        acc,
+        "if let",
+        "if let ",
+        ctx.if_is_prev || ctx.block_expr_parent || ctx.is_match_arm,
+    );
     add_keyword(ctx, acc, "else", "else {$0}", ctx.after_if);
     add_keyword(ctx, acc, "else if", "else if $0 {}", ctx.after_if);
-    add_keyword(ctx, acc, "mod", "mod $0 {}", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(
+        ctx,
+        acc,
+        "mod",
+        "mod $0 {}",
+        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+    );
     add_keyword(ctx, acc, "mut", "mut ", ctx.bind_pat_parent || ctx.ref_pat_parent);
     add_keyword(ctx, acc, "const", "const ", ctx.is_new_item || ctx.block_expr_parent);
     add_keyword(ctx, acc, "type", "type ", ctx.is_new_item || ctx.block_expr_parent);
-    add_keyword(ctx, acc, "static", "static ", ctx.is_new_item || ctx.block_expr_parent);
-    add_keyword(ctx, acc, "extern", "extern ", ctx.is_new_item || ctx.block_expr_parent);
-    add_keyword(ctx, acc, "unsafe", "unsafe ", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(
+        ctx,
+        acc,
+        "static",
+        "static ",
+        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+    );
+    add_keyword(
+        ctx,
+        acc,
+        "extern",
+        "extern ",
+        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+    );
+    add_keyword(
+        ctx,
+        acc,
+        "unsafe",
+        "unsafe ",
+        ctx.is_new_item || ctx.block_expr_parent || ctx.is_match_arm,
+    );
     add_keyword(ctx, acc, "continue", "continue;", ctx.in_loop_body && ctx.can_be_stmt);
     add_keyword(ctx, acc, "break", "break;", ctx.in_loop_body && ctx.can_be_stmt);
     add_keyword(ctx, acc, "continue", "continue", ctx.in_loop_body && !ctx.can_be_stmt);
     add_keyword(ctx, acc, "break", "break", ctx.in_loop_body && !ctx.can_be_stmt);
-    add_keyword(ctx, acc, "pub", "pub ", ctx.is_new_item && !ctx.inside_trait);
-    add_keyword(ctx, acc, "where", "where ", ctx.trait_as_prev_sibling || ctx.impl_as_prev_sibling);
+    add_keyword(ctx, acc, "pub", "pub ", ctx.is_new_item && !ctx.has_trait_parent);
 
     let fn_def = match &ctx.function_syntax {
         Some(it) => it,
@@ -111,21 +183,17 @@ fn complete_return(
 #[cfg(test)]
 mod tests {
     use crate::completion::{
-        test_utils::{do_completion, get_completions},
-        CompletionItem, CompletionKind,
+        test_utils::get_completions,
+        CompletionKind,
     };
     use insta::assert_debug_snapshot;
-
-    fn do_keyword_completion(code: &str) -> Vec<CompletionItem> {
-        do_completion(code, CompletionKind::Keyword)
-    }
 
     fn get_keyword_completions(code: &str) -> Vec<String> {
         get_completions(code, CompletionKind::Keyword)
     }
 
     #[test]
-    fn completes_keywords_in_use_stmt() {
+    fn test_keywords_in_use_stmt() {
         assert_debug_snapshot!(
             get_keyword_completions(r"use <|>"),
             @r###"
@@ -159,7 +227,7 @@ mod tests {
     }
 
     #[test]
-    fn completes_various_keywords_in_function() {
+    fn test_keywords_in_function() {
         assert_debug_snapshot!(
             get_keyword_completions(r"fn quux() { <|> }"),
             @r###"
@@ -167,12 +235,16 @@ mod tests {
             "kw const",
             "kw extern",
             "kw fn",
+            "kw if",
+            "kw if let",
+            "kw impl",
             "kw let",
             "kw loop",
             "kw match",
             "kw mod",
             "kw return",
             "kw static",
+            "kw trait",
             "kw type",
             "kw unsafe",
             "kw use",
@@ -183,9 +255,37 @@ mod tests {
     }
 
     #[test]
-    fn completes_else_after_if() {
+    fn test_keywords_inside_block() {
         assert_debug_snapshot!(
-            do_keyword_completion(
+            get_keyword_completions(r"fn quux() { if true { <|> } }"),
+            @r###"
+        [
+            "kw const",
+            "kw extern",
+            "kw fn",
+            "kw if",
+            "kw if let",
+            "kw impl",
+            "kw let",
+            "kw loop",
+            "kw match",
+            "kw mod",
+            "kw return",
+            "kw static",
+            "kw trait",
+            "kw type",
+            "kw unsafe",
+            "kw use",
+            "kw while",
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_keywords_after_if() {
+        assert_debug_snapshot!(
+            get_keyword_completions(
                 r"
                 fn quux() {
                     if true {
@@ -196,166 +296,34 @@ mod tests {
             ),
             @r###"
         [
-            CompletionItem {
-                label: "else",
-                source_range: 108..108,
-                delete: 108..108,
-                insert: "else {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "else if",
-                source_range: 108..108,
-                delete: 108..108,
-                insert: "else if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "if",
-                source_range: 108..108,
-                delete: 108..108,
-                insert: "if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "loop",
-                source_range: 108..108,
-                delete: 108..108,
-                insert: "loop {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "match",
-                source_range: 108..108,
-                delete: 108..108,
-                insert: "match $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "return",
-                source_range: 108..108,
-                delete: 108..108,
-                insert: "return;",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "while",
-                source_range: 108..108,
-                delete: 108..108,
-                insert: "while $0 {}",
-                kind: Keyword,
-            },
+            "kw const",
+            "kw else",
+            "kw else if",
+            "kw extern",
+            "kw fn",
+            "kw if",
+            "kw if let",
+            "kw impl",
+            "kw let",
+            "kw loop",
+            "kw match",
+            "kw mod",
+            "kw return",
+            "kw static",
+            "kw trait",
+            "kw type",
+            "kw unsafe",
+            "kw use",
+            "kw while",
         ]
         "###
         );
     }
 
     #[test]
-    fn test_completion_return_value() {
+    fn test_keywords_in_match_arm() {
         assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                fn quux() -> i32 {
-                    <|>
-                    92
-                }
-                ",
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "if",
-                source_range: 56..56,
-                delete: 56..56,
-                insert: "if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "loop",
-                source_range: 56..56,
-                delete: 56..56,
-                insert: "loop {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "match",
-                source_range: 56..56,
-                delete: 56..56,
-                insert: "match $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "return",
-                source_range: 56..56,
-                delete: 56..56,
-                insert: "return $0;",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "while",
-                source_range: 56..56,
-                delete: 56..56,
-                insert: "while $0 {}",
-                kind: Keyword,
-            },
-        ]
-        "###
-        );
-        assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                fn quux() {
-                    <|>
-                    92
-                }
-                ",
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "if",
-                source_range: 49..49,
-                delete: 49..49,
-                insert: "if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "loop",
-                source_range: 49..49,
-                delete: 49..49,
-                insert: "loop {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "match",
-                source_range: 49..49,
-                delete: 49..49,
-                insert: "match $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "return",
-                source_range: 49..49,
-                delete: 49..49,
-                insert: "return;",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "while",
-                source_range: 49..49,
-                delete: 49..49,
-                insert: "while $0 {}",
-                kind: Keyword,
-            },
-        ]
-        "###
-        );
-    }
-
-    #[test]
-    fn dont_add_semi_after_return_if_not_a_statement() {
-        assert_debug_snapshot!(
-            do_keyword_completion(
+            get_keyword_completions(
                 r"
                 fn quux() -> i32 {
                     match () {
@@ -366,335 +334,151 @@ mod tests {
             ),
             @r###"
         [
-            CompletionItem {
-                label: "if",
-                source_range: 97..97,
-                delete: 97..97,
-                insert: "if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "loop",
-                source_range: 97..97,
-                delete: 97..97,
-                insert: "loop {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "match",
-                source_range: 97..97,
-                delete: 97..97,
-                insert: "match $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "return",
-                source_range: 97..97,
-                delete: 97..97,
-                insert: "return $0",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "while",
-                source_range: 97..97,
-                delete: 97..97,
-                insert: "while $0 {}",
-                kind: Keyword,
-            },
+            "kw if",
+            "kw if let",
+            "kw loop",
+            "kw match",
+            "kw return",
+            "kw unsafe",
         ]
         "###
         );
     }
 
     #[test]
-    fn last_return_in_block_has_semi() {
+    fn test_keywords_in_trait_def() {
         assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                fn quux() -> i32 {
-                    if condition {
-                        <|>
-                    }
-                }
-                ",
-            ),
+            get_keyword_completions(r"trait My { <|> }"),
             @r###"
         [
-            CompletionItem {
-                label: "if",
-                source_range: 95..95,
-                delete: 95..95,
-                insert: "if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "loop",
-                source_range: 95..95,
-                delete: 95..95,
-                insert: "loop {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "match",
-                source_range: 95..95,
-                delete: 95..95,
-                insert: "match $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "return",
-                source_range: 95..95,
-                delete: 95..95,
-                insert: "return $0;",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "while",
-                source_range: 95..95,
-                delete: 95..95,
-                insert: "while $0 {}",
-                kind: Keyword,
-            },
-        ]
-        "###
-        );
-        assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                fn quux() -> i32 {
-                    if condition {
-                        <|>
-                    }
-                    let x = 92;
-                    x
-                }
-                ",
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "if",
-                source_range: 95..95,
-                delete: 95..95,
-                insert: "if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "loop",
-                source_range: 95..95,
-                delete: 95..95,
-                insert: "loop {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "match",
-                source_range: 95..95,
-                delete: 95..95,
-                insert: "match $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "return",
-                source_range: 95..95,
-                delete: 95..95,
-                insert: "return $0;",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "while",
-                source_range: 95..95,
-                delete: 95..95,
-                insert: "while $0 {}",
-                kind: Keyword,
-            },
+            "kw const",
+            "kw fn",
+            "kw type",
+            "kw unsafe",
         ]
         "###
         );
     }
 
     #[test]
-    fn completes_break_and_continue_in_loops() {
+    fn test_keywords_in_impl_def() {
         assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                fn quux() -> i32 {
-                    loop { <|> }
-                }
-                ",
-            ),
+            get_keyword_completions(r"impl My { <|> }"),
             @r###"
         [
-            CompletionItem {
-                label: "break",
-                source_range: 63..63,
-                delete: 63..63,
-                insert: "break;",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "continue",
-                source_range: 63..63,
-                delete: 63..63,
-                insert: "continue;",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "if",
-                source_range: 63..63,
-                delete: 63..63,
-                insert: "if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "loop",
-                source_range: 63..63,
-                delete: 63..63,
-                insert: "loop {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "match",
-                source_range: 63..63,
-                delete: 63..63,
-                insert: "match $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "return",
-                source_range: 63..63,
-                delete: 63..63,
-                insert: "return $0;",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "while",
-                source_range: 63..63,
-                delete: 63..63,
-                insert: "while $0 {}",
-                kind: Keyword,
-            },
-        ]
-        "###
-        );
-
-        // No completion: lambda isolates control flow
-        assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                fn quux() -> i32 {
-                    loop { || { <|> } }
-                }
-                ",
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "if",
-                source_range: 68..68,
-                delete: 68..68,
-                insert: "if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "loop",
-                source_range: 68..68,
-                delete: 68..68,
-                insert: "loop {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "match",
-                source_range: 68..68,
-                delete: 68..68,
-                insert: "match $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "return",
-                source_range: 68..68,
-                delete: 68..68,
-                insert: "return $0;",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "while",
-                source_range: 68..68,
-                delete: 68..68,
-                insert: "while $0 {}",
-                kind: Keyword,
-            },
+            "kw const",
+            "kw fn",
+            "kw pub",
+            "kw type",
+            "kw unsafe",
         ]
         "###
         );
     }
 
     #[test]
-    fn no_semi_after_break_continue_in_expr() {
+    fn test_keywords_in_loop() {
         assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                fn f() {
-                    loop {
-                        match () {
-                            () => br<|>
-                        }
-                    }
-                }
-                ",
-            ),
+            get_keyword_completions(r"fn my() { loop { <|> } }"),
             @r###"
         [
-            CompletionItem {
-                label: "break",
-                source_range: 122..124,
-                delete: 122..124,
-                insert: "break",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "continue",
-                source_range: 122..124,
-                delete: 122..124,
-                insert: "continue",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "if",
-                source_range: 122..124,
-                delete: 122..124,
-                insert: "if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "loop",
-                source_range: 122..124,
-                delete: 122..124,
-                insert: "loop {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "match",
-                source_range: 122..124,
-                delete: 122..124,
-                insert: "match $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "return",
-                source_range: 122..124,
-                delete: 122..124,
-                insert: "return",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "while",
-                source_range: 122..124,
-                delete: 122..124,
-                insert: "while $0 {}",
-                kind: Keyword,
-            },
+            "kw break",
+            "kw const",
+            "kw continue",
+            "kw extern",
+            "kw fn",
+            "kw if",
+            "kw if let",
+            "kw impl",
+            "kw let",
+            "kw loop",
+            "kw match",
+            "kw mod",
+            "kw return",
+            "kw static",
+            "kw trait",
+            "kw type",
+            "kw unsafe",
+            "kw use",
+            "kw while",
         ]
         "###
-        )
+        );
+    }
+
+    #[test]
+    fn test_keywords_after_unsafe_in_item_list() {
+        assert_debug_snapshot!(
+            get_keyword_completions(r"unsafe <|>"),
+            @r###"
+        [
+            "kw fn",
+            "kw impl",
+            "kw trait",
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_keywords_after_unsafe_in_block_expr() {
+        assert_debug_snapshot!(
+            get_keyword_completions(r"fn my_fn() { unsafe <|> }"),
+            @r###"
+        [
+            "kw fn",
+            "kw impl",
+            "kw trait",
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_mut_in_ref_and_in_fn_parameters_list() {
+        assert_debug_snapshot!(
+            get_keyword_completions(r"fn my_fn(&<|>) {}"),
+            @r###"
+        [
+            "kw mut",
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            get_keyword_completions(r"fn my_fn(<|>) {}"),
+            @r###"
+        [
+            "kw mut",
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            get_keyword_completions(r"fn my_fn() { let &<|> }"),
+            @r###"
+        [
+            "kw mut",
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_where_keyword() {
+        assert_debug_snapshot!(
+            get_keyword_completions(r"trait A <|>"),
+            @r###"
+        [
+            "kw where",
+        ]
+        "###
+        );
+        assert_debug_snapshot!(
+            get_keyword_completions(r"impl A <|>"),
+            @r###"
+        [
+            "kw where",
+        ]
+        "###
+        );
     }
 }

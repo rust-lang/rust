@@ -12,8 +12,9 @@ use ra_syntax::{
 use ra_text_edit::Indel;
 
 use super::patterns::{
-    has_bind_pat_parent, has_block_expr_parent, has_impl_as_prev_sibling, has_ref_pat_parent,
-    has_trait_as_prev_sibling, if_is_prev, inside_trait, is_in_loop_body, unsafe_is_prev,
+    has_bind_pat_parent, has_block_expr_parent, has_impl_as_prev_sibling, has_impl_parent,
+    has_ref_parent, has_trait_as_prev_sibling, has_trait_parent, if_is_prev, is_in_loop_body,
+    is_match_arm, unsafe_is_prev,
 };
 use crate::{call_info::ActiveParameter, completion::CompletionConfig, FilePosition};
 use test_utils::mark;
@@ -70,9 +71,11 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) bind_pat_parent: bool,
     pub(super) ref_pat_parent: bool,
     pub(super) in_loop_body: bool,
-    pub(super) inside_trait: bool,
+    pub(super) has_trait_parent: bool,
+    pub(super) has_impl_parent: bool,
     pub(super) trait_as_prev_sibling: bool,
     pub(super) impl_as_prev_sibling: bool,
+    pub(super) is_match_arm: bool,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -136,10 +139,12 @@ impl<'a> CompletionContext<'a> {
             ref_pat_parent: false,
             bind_pat_parent: false,
             block_expr_parent: false,
-            inside_trait: false,
+            has_trait_parent: false,
+            has_impl_parent: false,
             trait_as_prev_sibling: false,
             impl_as_prev_sibling: false,
             if_is_prev: false,
+            is_match_arm: false,
         };
 
         let mut original_file = original_file.syntax().clone();
@@ -217,11 +222,13 @@ impl<'a> CompletionContext<'a> {
         self.unsafe_is_prev = unsafe_is_prev(syntax_element.clone());
         self.if_is_prev = if_is_prev(syntax_element.clone());
         self.bind_pat_parent = has_bind_pat_parent(syntax_element.clone());
-        self.ref_pat_parent = has_ref_pat_parent(syntax_element.clone());
+        self.ref_pat_parent = has_ref_parent(syntax_element.clone());
         self.in_loop_body = is_in_loop_body(syntax_element.clone());
-        self.inside_trait = inside_trait(syntax_element.clone());
+        self.has_trait_parent = has_trait_parent(syntax_element.clone());
+        self.has_impl_parent = has_impl_parent(syntax_element.clone());
         self.impl_as_prev_sibling = has_impl_as_prev_sibling(syntax_element.clone());
         self.trait_as_prev_sibling = has_trait_as_prev_sibling(syntax_element.clone());
+        self.is_match_arm = is_match_arm(syntax_element.clone());
     }
 
     fn fill(
