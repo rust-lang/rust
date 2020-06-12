@@ -171,15 +171,8 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
 
 impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// Return the `SourceInfo` of the current instruction.
-    pub fn current_source_info(&self) -> Option<mir::SourceInfo> {
-        self.loc.map(|loc| {
-            let block = &self.body.basic_blocks()[loc.block];
-            if loc.statement_index < block.statements.len() {
-                block.statements[loc.statement_index].source_info
-            } else {
-                block.terminator().source_info
-            }
-        })
+    pub fn current_source_info(&self) -> Option<&mir::SourceInfo> {
+        self.loc.map(|loc| self.body.source_info(loc))
     }
 }
 
