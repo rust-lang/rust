@@ -9,7 +9,7 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
 LL |     fn add(self, rhs: Rhs) -> Self::Output;
    |            ^^^^
@@ -45,7 +45,7 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
 LL |     fn sub(self, rhs: Rhs) -> Self::Output;
    |            ^^^^
@@ -81,7 +81,7 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
 LL |     fn mul(self, rhs: Rhs) -> Self::Output;
    |            ^^^^
@@ -117,7 +117,7 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
 LL |     fn div(self, rhs: Rhs) -> Self::Output;
    |            ^^^^
@@ -153,7 +153,7 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
 LL |     fn rem(self, rhs: Rhs) -> Self::Output;
    |            ^^^^
@@ -189,7 +189,7 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
    |
 LL |     fn bitand(self, rhs: Rhs) -> Self::Output;
    |               ^^^^
@@ -225,7 +225,7 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
    |
 LL |     fn bitor(self, rhs: Rhs) -> Self::Output;
    |              ^^^^
@@ -261,7 +261,7 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
    |
 LL |     fn bitxor(self, rhs: Rhs) -> Self::Output;
    |               ^^^^
@@ -297,7 +297,7 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
    |
 LL |     fn shl(self, rhs: Rhs) -> Self::Output;
    |            ^^^^
@@ -333,7 +333,7 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
    |
 LL |     fn shr(self, rhs: Rhs) -> Self::Output;
    |            ^^^^

@@ -4,7 +4,7 @@ error[E0277]: the trait bound `Error: std::hash::Hash` is not satisfied
 LL |     x: Error
    |     ^^^^^^^^ the trait `std::hash::Hash` is not implemented for `Error`
    | 
-  ::: $SRC_DIR/libcore/hash/mod.rs:LL:COL
+  ::: $SRC_DIR/core/src/hash/mod.rs:LL:COL
    |
 LL |     fn hash<H: Hasher>(&self, state: &mut H);
    |             - required by this bound in `std::hash::Hash::hash`

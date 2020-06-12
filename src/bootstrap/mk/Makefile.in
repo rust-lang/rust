@@ -25,9 +25,9 @@ clean:
 	$(Q)$(BOOTSTRAP) clean $(BOOTSTRAP_ARGS)
 
 rustc-stage1:
-	$(Q)$(BOOTSTRAP) build --stage 1 src/libtest $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) build --stage 1 library/test $(BOOTSTRAP_ARGS)
 rustc-stage2:
-	$(Q)$(BOOTSTRAP) build --stage 2 src/libtest $(BOOTSTRAP_ARGS)
+	$(Q)$(BOOTSTRAP) build --stage 2 library/test $(BOOTSTRAP_ARGS)
 
 docs: doc
 doc:

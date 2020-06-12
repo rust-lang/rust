@@ -24,7 +24,7 @@ LL |         extern crate std as Vec;
 LL | define_vec!();
    | -------------- in this macro invocation
 note: `Vec` could also refer to the struct defined here
-  --> $SRC_DIR/libstd/prelude/v1.rs:LL:COL
+  --> $SRC_DIR/std/src/prelude/v1.rs:LL:COL
    |
 LL | pub use crate::vec::Vec;
    |         ^^^^^^^^^^^^^^^

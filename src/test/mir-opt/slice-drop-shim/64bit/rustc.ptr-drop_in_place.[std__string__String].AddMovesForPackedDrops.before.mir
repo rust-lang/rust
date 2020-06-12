@@ -1,131 +1,131 @@
 // MIR for `std::intrinsics::drop_in_place` before AddMovesForPackedDrops
 
 fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
-    let mut _0: ();                      // return place in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _2: usize;                   // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _3: usize;                   // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _4: usize;                   // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _5: *mut std::string::String; // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _6: bool;                    // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _7: *mut std::string::String; // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _8: bool;                    // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _9: *mut std::string::String; // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _10: *mut std::string::String; // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _11: *mut std::string::String; // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _12: bool;                   // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _13: *mut std::string::String; // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _14: bool;                   // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-    let mut _15: *mut [std::string::String]; // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+    let mut _0: ();                      // return place in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _2: usize;                   // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _3: usize;                   // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _4: usize;                   // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _5: *mut std::string::String; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _6: bool;                    // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _7: *mut std::string::String; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _8: bool;                    // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _9: *mut std::string::String; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _10: *mut std::string::String; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _11: *mut std::string::String; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _12: bool;                   // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _13: *mut std::string::String; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _14: bool;                   // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+    let mut _15: *mut [std::string::String]; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
     bb0: {
-        goto -> bb15;                    // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        goto -> bb15;                    // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb1: {
-        return;                          // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        return;                          // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb2 (cleanup): {
-        resume;                          // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        resume;                          // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb3 (cleanup): {
-        _5 = &raw mut (*_1)[_4];         // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _4 = Add(move _4, const 1_usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _5 = &raw mut (*_1)[_4];         // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _4 = Add(move _4, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000001))
                                          // mir::Constant
-                                         // + span: $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
-        drop((*_5)) -> bb4;              // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        drop((*_5)) -> bb4;              // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb4 (cleanup): {
-        _6 = Eq(_4, _3);                 // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        switchInt(move _6) -> [false: bb3, otherwise: bb2]; // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _6 = Eq(_4, _3);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        switchInt(move _6) -> [false: bb3, otherwise: bb2]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb5: {
-        _7 = &raw mut (*_1)[_4];         // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _4 = Add(move _4, const 1_usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _7 = &raw mut (*_1)[_4];         // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _4 = Add(move _4, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000001))
                                          // mir::Constant
-                                         // + span: $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
-        drop((*_7)) -> [return: bb6, unwind: bb4]; // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        drop((*_7)) -> [return: bb6, unwind: bb4]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb6: {
-        _8 = Eq(_4, _3);                 // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        switchInt(move _8) -> [false: bb5, otherwise: bb1]; // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _8 = Eq(_4, _3);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        switchInt(move _8) -> [false: bb5, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb7: {
-        _4 = const 0_usize;              // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _4 = const 0_usize;              // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000000))
                                          // mir::Constant
-                                         // + span: $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000000)) }
-        goto -> bb6;                     // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        goto -> bb6;                     // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb8: {
-        goto -> bb7;                     // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        goto -> bb7;                     // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb9 (cleanup): {
-        _11 = _9;                        // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _9 = Offset(move _9, const 1_usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _11 = _9;                        // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _9 = Offset(move _9, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000001))
                                          // mir::Constant
-                                         // + span: $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
-        drop((*_11)) -> bb10;            // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        drop((*_11)) -> bb10;            // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb10 (cleanup): {
-        _12 = Eq(_9, _10);               // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        switchInt(move _12) -> [false: bb9, otherwise: bb2]; // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _12 = Eq(_9, _10);               // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        switchInt(move _12) -> [false: bb9, otherwise: bb2]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb11: {
-        _13 = _9;                        // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _9 = Offset(move _9, const 1_usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _13 = _9;                        // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _9 = Offset(move _9, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000001))
                                          // mir::Constant
-                                         // + span: $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
-        drop((*_13)) -> [return: bb12, unwind: bb10]; // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        drop((*_13)) -> [return: bb12, unwind: bb10]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb12: {
-        _14 = Eq(_9, _10);               // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        switchInt(move _14) -> [false: bb11, otherwise: bb1]; // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _14 = Eq(_9, _10);               // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        switchInt(move _14) -> [false: bb11, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb13: {
-        _15 = &raw mut (*_1);            // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _9 = move _15 as *mut std::string::String (Misc); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _10 = Offset(_9, move _3);       // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        goto -> bb12;                    // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _15 = &raw mut (*_1);            // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _9 = move _15 as *mut std::string::String (Misc); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _10 = Offset(_9, move _3);       // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        goto -> bb12;                    // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb14: {
-        goto -> bb13;                    // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        goto -> bb13;                    // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
     bb15: {
-        _2 = SizeOf(std::string::String); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _3 = Len((*_1));                 // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        switchInt(move _2) -> [0_usize: bb8, otherwise: bb14]; // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _2 = SizeOf(std::string::String); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _3 = Len((*_1));                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        switchInt(move _2) -> [0_usize: bb8, otherwise: bb14]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 }

@@ -1,5 +1,5 @@
 error: reached the type-length limit while instantiating `std::mem::drop::<std::option::Op... G), (G, G, G), (G, G, G))))))>>`
-  --> $SRC_DIR/libcore/mem/mod.rs:LL:COL
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL | pub fn drop<T>(_x: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^

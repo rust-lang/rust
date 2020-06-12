@@ -20,10 +20,10 @@ fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i
         debug err => ((_0 as Err).0: i32); // in scope 2 at $DIR/simplify_try.rs:6:14: 6:15
         scope 3 {
             scope 7 {
-                debug t => ((_0 as Err).0: i32); // in scope 7 at $SRC_DIR/libcore/convert/mod.rs:LL:COL
+                debug t => ((_0 as Err).0: i32); // in scope 7 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
             }
             scope 8 {
-                debug v => ((_0 as Err).0: i32); // in scope 8 at $SRC_DIR/libcore/result.rs:LL:COL
+                debug v => ((_0 as Err).0: i32); // in scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
                 let mut _12: i32;        // in scope 8 at $DIR/simplify_try.rs:6:14: 6:15
             }
         }
@@ -34,7 +34,7 @@ fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i
         }
     }
     scope 6 {
-        debug self => _4;                // in scope 6 at $SRC_DIR/libcore/result.rs:LL:COL
+        debug self => _4;                // in scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
     }
 
     bb0: {
@@ -42,7 +42,7 @@ fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i
         StorageLive(_3);                 // scope 0 at $DIR/simplify_try.rs:6:13: 6:15
         StorageLive(_4);                 // scope 0 at $DIR/simplify_try.rs:6:13: 6:14
         _4 = _1;                         // scope 0 at $DIR/simplify_try.rs:6:13: 6:14
-        _3 = move _4;                    // scope 6 at $SRC_DIR/libcore/result.rs:LL:COL
+        _3 = move _4;                    // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_4);                 // scope 0 at $DIR/simplify_try.rs:6:14: 6:15
         _5 = discriminant(_3);           // scope 0 at $DIR/simplify_try.rs:6:14: 6:15
         goto -> bb1;                     // scope 0 at $DIR/simplify_try.rs:6:14: 6:15

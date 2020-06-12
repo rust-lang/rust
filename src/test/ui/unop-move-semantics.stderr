@@ -10,7 +10,7 @@ LL |     x.clone();
    |     ^ value borrowed here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
    |
 LL |     fn not(self) -> Self::Output;
    |            ^^^^

@@ -4,7 +4,7 @@ error: cannot find derive macro `Eqr` in this scope
 LL | #[derive(Eqr)]
    |          ^^^ help: a derive macro with a similar name exists: `Eq`
    | 
-  ::: $SRC_DIR/libcore/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
 LL | pub macro Eq($item:item) {
    | ------------------------ similarly named derive macro `Eq` defined here
@@ -15,7 +15,7 @@ error: cannot find derive macro `Eqr` in this scope
 LL | #[derive(Eqr)]
    |          ^^^ help: a derive macro with a similar name exists: `Eq`
    | 
-  ::: $SRC_DIR/libcore/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
 LL | pub macro Eq($item:item) {
    | ------------------------ similarly named derive macro `Eq` defined here

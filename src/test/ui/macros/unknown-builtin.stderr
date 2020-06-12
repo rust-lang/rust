@@ -5,7 +5,7 @@ LL | macro_rules! unknown { () => () }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot find a built-in macro with name `line`
-  --> $SRC_DIR/libcore/macros/mod.rs:LL:COL
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
 LL | /     macro_rules! line {
 LL | |         () => {

@@ -27,5 +27,5 @@ ENV SCRIPT python3 ../x.py test src/tools/expand-yaml-anchors && \
            python3 ../x.py build --stage 0 src/tools/build-manifest && \
            python3 ../x.py test --stage 0 src/tools/compiletest && \
            python3 ../x.py test src/tools/tidy && \
-           python3 ../x.py doc --stage 0 src/libstd && \
+           python3 ../x.py doc --stage 0 library/std && \
            /scripts/validate-toolstate.sh

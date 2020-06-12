@@ -3286,8 +3286,17 @@ impl<'test> TestCx<'test> {
         normalize_path(parent_dir, "$DIR");
 
         // Paths into the libstd/libcore
-        let src_dir = self.config.src_base.parent().unwrap().parent().unwrap();
-        normalize_path(src_dir, "$SRC_DIR");
+        let src_dir = self
+            .config
+            .src_base
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("library");
+        normalize_path(&src_dir, "$SRC_DIR");
 
         // Paths into the build directory
         let test_build_dir = &self.config.build_base;

@@ -1,0 +1,33 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "test"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+crate-type = ["dylib", "rlib"]
+
+[dependencies]
+cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
+getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
+term = { path = "../term" }
+std = { path = "../std" }
+core = { path = "../core" }
+libc = { version = "0.2", default-features = false }
+panic_unwind = { path = "../panic_unwind" }
+panic_abort = { path = "../panic_abort" }
+
+# not actually used but needed to always have proc_macro in the sysroot
+proc_macro = { path = "../proc_macro" }
+
+# Forward features to the `std` crate as necessary
+[features]
+default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind"]
+backtrace = ["std/backtrace"]
+compiler-builtins-c = ["std/compiler-builtins-c"]
+llvm-libunwind = ["std/llvm-libunwind"]
+panic-unwind = ["std/panic_unwind"]
+panic_immediate_abort = ["std/panic_immediate_abort"]
+profiler = ["std/profiler"]
+std_detect_file_io = ["std/std_detect_file_io"]
+std_detect_dlsym_getauxval = ["std/std_detect_dlsym_getauxval"]

@@ -37,43 +37,43 @@ use std::path::Path;
 // Paths that may contain platform-specific code.
 const EXCEPTION_PATHS: &[&str] = &[
     // std crates
-    "src/libpanic_abort",
-    "src/libpanic_unwind",
-    "src/libunwind",
+    "library/panic_abort",
+    "library/panic_unwind",
+    "library/unwind",
     // black_box implementation is LLVM-version specific and it uses
     // target_os to tell targets with different LLVM-versions apart
     // (e.g. `wasm32-unknown-emscripten` vs `wasm32-unknown-unknown`):
-    "src/libcore/hint.rs",
-    "src/libstd/sys/", // Platform-specific code for std lives here.
+    "library/core/src/hint.rs",
+    "library/std/src/sys/", // Platform-specific code for std lives here.
     // This has the trailing slash so that sys_common is not excepted.
-    "src/libstd/os", // Platform-specific public interfaces
-    "src/rtstartup", // Not sure what to do about this. magic stuff for mingw
+    "library/std/src/os", // Platform-specific public interfaces
+    "library/rtstartup",  // Not sure what to do about this. magic stuff for mingw
     // temporary exceptions
-    "src/libstd/lib.rs",
-    "src/libstd/path.rs",
-    "src/libstd/f32.rs",
-    "src/libstd/f64.rs",
+    "library/std/src/lib.rs",
+    "library/std/src/path.rs",
+    "library/std/src/f32.rs",
+    "library/std/src/f64.rs",
     // Integration test for platform-specific run-time feature detection:
-    "src/libstd/tests/run-time-detect.rs",
-    "src/libstd/net/test.rs",
-    "src/libstd/sys_common/mod.rs",
-    "src/libstd/sys_common/net.rs",
-    "src/libstd/sys_common/backtrace.rs",
+    "library/std/tests/run-time-detect.rs",
+    "library/std/src/net/test.rs",
+    "library/std/src/sys_common/mod.rs",
+    "library/std/src/sys_common/net.rs",
+    "library/std/src/sys_common/backtrace.rs",
     // panic_unwind shims
-    "src/libstd/panicking.rs",
-    "src/libterm", // Not sure how to make this crate portable, but test crate needs it.
-    "src/libtest", // Probably should defer to unstable `std::sys` APIs.
-    "src/libstd/sync/mpsc", // some tests are only run on non-emscripten
+    "library/std/src/panicking.rs",
+    "library/term", // Not sure how to make this crate portable, but test crate needs it.
+    "library/test", // Probably should defer to unstable `std::sys` APIs.
+    "library/std/src/sync/mpsc", // some tests are only run on non-emscripten
     // std testing crates, okay for now at least
-    "src/libcore/tests",
-    "src/liballoc/tests/lib.rs",
-    "src/liballoc/benches/lib.rs",
+    "library/core/tests",
+    "library/alloc/tests/lib.rs",
+    "library/alloc/benches/lib.rs",
     // The `VaList` implementation must have platform specific code.
     // The Windows implementation of a `va_list` is always a character
     // pointer regardless of the target architecture. As a result,
     // we must use `#[cfg(windows)]` to conditionally compile the
     // correct `VaList` structure for windows.
-    "src/libcore/ffi.rs",
+    "library/core/src/ffi.rs",
     // non-std crates
     "src/test",
     "src/tools",

@@ -7,7 +7,7 @@ LL | struct C {
 LL |     let _d = c.clone();
    |                ^^^^^ method not found in `C`
    | 
-  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+  ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL |     fn clone(&self) -> Self;
    |        -----

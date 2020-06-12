@@ -2,9 +2,9 @@
 members = [
   "src/bootstrap",
   "src/rustc",
-  "src/libstd",
-  "src/libtest",
   "src/librustc_codegen_llvm",
+  "library/std",
+  "library/test",
   "src/tools/cargotest",
   "src/tools/clippy",
   "src/tools/compiletest",
@@ -74,11 +74,11 @@ rustfmt-nightly = { path = "src/tools/rustfmt" }
 # here
 rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
 
-# See comments in `tools/rustc-std-workspace-core/README.md` for what's going on
+# See comments in `library/rustc-std-workspace-core/README.md` for what's going on
 # here
-rustc-std-workspace-core = { path = 'src/tools/rustc-std-workspace-core' }
-rustc-std-workspace-alloc = { path = 'src/tools/rustc-std-workspace-alloc' }
-rustc-std-workspace-std = { path = 'src/tools/rustc-std-workspace-std' }
+rustc-std-workspace-core = { path = 'library/rustc-std-workspace-core' }
+rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
+rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
 
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }

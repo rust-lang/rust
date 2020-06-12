@@ -4,7 +4,7 @@ error[E0412]: cannot find type `Fo` in this scope
 LL | impl Fo {
    |      ^^ help: a trait with a similar name exists: `Fn`
    | 
-  ::: $SRC_DIR/libcore/ops/function.rs:LL:COL
+  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
 LL | pub trait Fn<Args>: FnMut<Args> {
    | ------------------------------- similarly named trait `Fn` defined here

@@ -4,7 +4,7 @@ error[E0277]: the trait bound `U1: std::marker::Copy` is not satisfied
 LL | #[derive(Clone)]
    |          ^^^^^ the trait `std::marker::Copy` is not implemented for `U1`
    | 
-  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+  ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL | pub struct AssertParamIsCopy<T: Copy + ?Sized> {
    |                                 ---- required by this bound in `std::clone::AssertParamIsCopy`
@@ -26,7 +26,7 @@ LL | struct CloneNoCopy;
 LL |     let w = u.clone();
    |               ^^^^^ method not found in `U5<CloneNoCopy>`
    | 
-  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+  ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL |     fn clone(&self) -> Self;
    |        -----

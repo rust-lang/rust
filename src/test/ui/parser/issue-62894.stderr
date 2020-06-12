@@ -43,7 +43,7 @@ LL |
 LL | fn main() {}
    | ^^ unexpected token
    | 
-  ::: $SRC_DIR/libcore/macros/mod.rs:LL:COL
+  ::: $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
 LL |     ($left:expr, $right:expr) => ({
    |      ---------- while parsing argument for this `expr` macro fragment

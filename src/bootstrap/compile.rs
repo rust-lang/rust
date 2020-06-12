@@ -245,7 +245,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         cargo
             .args(&["-p", "alloc"])
             .arg("--manifest-path")
-            .arg(builder.src.join("src/liballoc/Cargo.toml"))
+            .arg(builder.src.join("library/alloc/Cargo.toml"))
             .arg("--features")
             .arg("compiler-builtins-mem compiler-builtins-c");
     } else {
@@ -256,7 +256,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
             .arg("--features")
             .arg(features)
             .arg("--manifest-path")
-            .arg(builder.src.join("src/libtest/Cargo.toml"));
+            .arg(builder.src.join("library/test/Cargo.toml"));
 
         // Help the libc crate compile by assisting it in finding various
         // sysroot native libraries.
@@ -380,7 +380,7 @@ impl Step for StartupObjects {
     type Output = Vec<(PathBuf, DependencyType)>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/rtstartup")
+        run.path("library/rtstartup")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -405,7 +405,7 @@ impl Step for StartupObjects {
 
         let mut target_deps = vec![];
 
-        let src_dir = &builder.src.join("src/rtstartup");
+        let src_dir = &builder.src.join("library").join("rtstartup");
         let dst_dir = &builder.native_dir(target).join("rtstartup");
         let sysroot_dir = &builder.sysroot_libdir(for_compiler, target);
         t!(fs::create_dir_all(dst_dir));

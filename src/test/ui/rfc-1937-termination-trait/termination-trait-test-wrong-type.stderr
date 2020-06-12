@@ -6,7 +6,7 @@ LL | |     "0".parse()
 LL | | }
    | |_^ `main` can only return types that implement `std::process::Termination`
    | 
-  ::: $SRC_DIR/libtest/lib.rs:LL:COL
+  ::: $SRC_DIR/test/src/lib.rs:LL:COL
    |
 LL |   pub fn assert_test_result<T: Termination>(result: T) {
    |                                ----------- required by this bound in `test::assert_test_result`

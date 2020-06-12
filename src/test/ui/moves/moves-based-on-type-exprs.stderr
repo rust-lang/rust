@@ -109,7 +109,7 @@ LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
 note: this function consumes the receiver `self` by taking ownership of it, which moves `x`
-  --> $SRC_DIR/libcore/iter/traits/collect.rs:LL:COL
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^
@@ -125,7 +125,7 @@ LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
 note: this function consumes the receiver `self` by taking ownership of it, which moves `x`
-  --> $SRC_DIR/libcore/iter/traits/collect.rs:LL:COL
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^

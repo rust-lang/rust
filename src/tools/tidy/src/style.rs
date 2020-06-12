@@ -173,7 +173,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             // parser to tidy.
             !file.ancestors().any(|a| {
                 a.ends_with("src/test") ||
-                    a.ends_with("src/libstd/sys/cloudabi") ||
+                    a.ends_with("library/std/src/sys/cloudabi") ||
                     a.ends_with("src/doc/book")
             });
 
@@ -259,7 +259,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             let is_test = || file.components().any(|c| c.as_os_str() == "tests");
             // for now we just check libcore
             if line.contains("unsafe {") && !line.trim().starts_with("//") && !last_safety_comment {
-                if file.components().any(|c| c.as_os_str() == "libcore") && !is_test() {
+                if file.components().any(|c| c.as_os_str() == "core") && !is_test() {
                     suppressible_tidy_err!(err, skip_undocumented_unsafe, "undocumented unsafe");
                 }
             }

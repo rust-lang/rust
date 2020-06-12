@@ -11,7 +11,7 @@ LL | |         println!("{:?}", y);
 LL | |     });
    | |_____- within this `[closure@$DIR/no-send-res-ports.rs:25:19: 29:6 x:main::Foo]`
    | 
-  ::: $SRC_DIR/libstd/thread/mod.rs:LL:COL
+  ::: $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
 LL |       F: Send + 'static,
    |          ---- required by this bound in `std::thread::spawn`

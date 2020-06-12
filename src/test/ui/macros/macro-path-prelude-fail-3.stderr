@@ -4,7 +4,7 @@ error: cannot find macro `inline` in this scope
 LL |     inline!();
    |     ^^^^^^ help: a macro with a similar name exists: `line`
    | 
-  ::: $SRC_DIR/libcore/macros/mod.rs:LL:COL
+  ::: $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
 LL |     macro_rules! line {
    |     ----------------- similarly named macro `line` defined here

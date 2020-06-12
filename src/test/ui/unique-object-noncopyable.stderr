@@ -10,12 +10,12 @@ LL | trait Foo {
 LL |     let _z = y.clone();
    |                ^^^^^ method not found in `std::boxed::Box<dyn Foo>`
    | 
-  ::: $SRC_DIR/liballoc/boxed.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
 LL | pub struct Box<T: ?Sized>(Unique<T>);
    | ------------------------------------- doesn't satisfy `std::boxed::Box<dyn Foo>: std::clone::Clone`
    | 
-  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+  ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL |     fn clone(&self) -> Self;
    |        -----

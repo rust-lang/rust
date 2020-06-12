@@ -4,7 +4,7 @@ error[E0277]: the trait bound `Error: std::cmp::Eq` is not satisfied
 LL |      x: Error
    |      ^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `Error`
    | 
-  ::: $SRC_DIR/libcore/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
 LL | pub struct AssertParamIsEq<T: Eq + ?Sized> {
    |                               -- required by this bound in `std::cmp::AssertParamIsEq`
