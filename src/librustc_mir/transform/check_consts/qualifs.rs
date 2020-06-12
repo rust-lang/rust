@@ -2,7 +2,6 @@
 //!
 //! See the `Qualif` trait for more info.
 
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
@@ -137,10 +136,7 @@ impl Qualif for CustomEq {
         substs: SubstsRef<'tcx>,
     ) -> bool {
         let ty = cx.tcx.mk_ty(ty::Adt(adt, substs));
-        let id = cx.tcx.hir().local_def_id_to_hir_id(cx.def_id.as_local().unwrap());
-        cx.tcx
-            .infer_ctxt()
-            .enter(|infcx| !traits::type_marked_structural(id, cx.body.span, &infcx, ty))
+        !ty.is_structural_eq_shallow(cx.tcx)
     }
 }
 

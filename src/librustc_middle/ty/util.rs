@@ -778,6 +778,57 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
+    /// Returns `true` if equality for this type is both reflexive and structural.
+    ///
+    /// Reflexive equality for a type is indicated by an `Eq` impl for that type.
+    ///
+    /// Primitive types (`u32`, `str`) have structural equality by definition. For composite data
+    /// types, equality for the type as a whole is structural when it is the same as equality
+    /// between all components (fields, array elements, etc.) of that type. For ADTs, structural
+    /// equality is indicated by an implementation of `PartialStructuralEq` and `StructuralEq` for
+    /// that type.
+    ///
+    /// This function is "shallow" because it may return `true` for a composite type whose fields
+    /// are not `StructuralEq`. For example, `[T; 4]` has structural equality regardless of `T`
+    /// because equality for arrays is determined by the equality of each array element. If you
+    /// want to know whether a given call to `PartialEq::eq` will proceed structurally all the way
+    /// down, you will need to use a type visitor.
+    #[inline]
+    pub fn is_structural_eq_shallow(&'tcx self, tcx: TyCtxt<'tcx>) -> bool {
+        match self.kind {
+            // Look for an impl of both `PartialStructuralEq` and `StructuralEq`.
+            Adt(..) => tcx.has_structural_eq_impls(self),
+
+            // Primitive types that satisfy `Eq`.
+            Bool | Char | Int(_) | Uint(_) | Str | Never => true,
+
+            // Composite types that satisfy `Eq` when all of their fields do.
+            //
+            // Because this function is "shallow", we return `true` for these composites regardless
+            // of the type(s) contained within.
+            Ref(..) | Array(..) | Slice(_) | Tuple(..) => true,
+
+            // Raw pointers use bitwise comparison.
+            RawPtr(_) | FnPtr(_) => true,
+
+            // Floating point numbers are not `Eq`.
+            Float(_) => false,
+
+            // Conservatively return `false` for all others...
+
+            // Anonymous function types
+            FnDef(..) | Closure(..) | Dynamic(..) | Generator(..) => false,
+
+            // Generic or inferred types
+            //
+            // FIXME(ecstaticmorse): Maybe we should `bug` here? This should probably only be
+            // called for known, fully-monomorphized types.
+            Projection(_) | Opaque(..) | Param(_) | Bound(..) | Placeholder(_) | Infer(_) => false,
+
+            Foreign(_) | GeneratorWitness(..) | Error => false,
+        }
+    }
+
     pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         match (&a.kind, &b.kind) {
             (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {
