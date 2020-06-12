@@ -721,12 +721,14 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_whole_staticlib(&mut self, lib: Symbol, _search_path: &[PathBuf]) {
-        // not supported?
         self.link_staticlib(lib);
+        self.cmd.arg(format!("/WHOLEARCHIVE:{}.lib", lib));
     }
     fn link_whole_rlib(&mut self, path: &Path) {
-        // not supported?
         self.link_rlib(path);
+        let mut arg = OsString::from("/WHOLEARCHIVE:");
+        arg.push(path);
+        self.cmd.arg(arg);
     }
     fn optimize(&mut self) {
         // Needs more investigation of `/OPT` arguments
