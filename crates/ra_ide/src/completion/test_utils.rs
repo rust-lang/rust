@@ -3,7 +3,7 @@
 use crate::{
     completion::{completion_item::CompletionKind, CompletionConfig},
     mock_analysis::{analysis_and_position, single_file_with_position},
-    CompletionItem,
+    CompletionItem, FilePosition,
 };
 use hir::Semantics;
 use ra_syntax::{AstNode, NodeOrToken, SyntaxElement, SyntaxToken};
@@ -12,11 +12,26 @@ pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionI
     do_completion_with_options(code, kind, &CompletionConfig::default())
 }
 
+pub(crate) fn do_completion_with_position(
+    code: &str,
+    kind: CompletionKind,
+) -> (FilePosition, Vec<CompletionItem>) {
+    do_completion_with_options_and_position(code, kind, &CompletionConfig::default())
+}
+
 pub(crate) fn do_completion_with_options(
     code: &str,
     kind: CompletionKind,
     options: &CompletionConfig,
 ) -> Vec<CompletionItem> {
+    do_completion_with_options_and_position(code, kind, options).1
+}
+
+pub(crate) fn do_completion_with_options_and_position(
+    code: &str,
+    kind: CompletionKind,
+    options: &CompletionConfig,
+) -> (FilePosition, Vec<CompletionItem>) {
     let (analysis, position) = if code.contains("//-") {
         analysis_and_position(code)
     } else {
@@ -27,7 +42,7 @@ pub(crate) fn do_completion_with_options(
     let mut kind_completions: Vec<CompletionItem> =
         completion_items.into_iter().filter(|c| c.completion_kind == kind).collect();
     kind_completions.sort_by_key(|c| c.label().to_owned());
-    kind_completions
+    (position, kind_completions)
 }
 
 pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -> bool) {

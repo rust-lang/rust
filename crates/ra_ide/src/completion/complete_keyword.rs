@@ -76,8 +76,6 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     add_keyword(ctx, acc, "else if", "else if $0 {}", ctx.after_if);
     add_keyword(ctx, acc, "mod", "mod $0 {}", ctx.is_new_item || ctx.block_expr_parent);
     add_keyword(ctx, acc, "mut", "mut ", ctx.bind_pat_parent || ctx.ref_pat_parent);
-    add_keyword(ctx, acc, "true", "true", !ctx.is_new_item); // this should be defined properly
-    add_keyword(ctx, acc, "false", "false", !ctx.is_new_item); // this should be defined properly
     add_keyword(ctx, acc, "const", "const ", ctx.is_new_item || ctx.block_expr_parent);
     add_keyword(ctx, acc, "type", "type ", ctx.is_new_item || ctx.block_expr_parent);
     add_keyword(ctx, acc, "static", "static ", ctx.is_new_item || ctx.block_expr_parent);
@@ -89,7 +87,6 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     add_keyword(ctx, acc, "break", "break", ctx.in_loop_body && !ctx.can_be_stmt);
     add_keyword(ctx, acc, "pub", "pub ", ctx.is_new_item && !ctx.inside_trait);
     add_keyword(ctx, acc, "where", "where ", ctx.trait_as_prev_sibling || ctx.impl_as_prev_sibling);
-    complete_use_tree_keyword(acc, ctx);
 
     let fn_def = match &ctx.function_syntax {
         Some(it) => it,
@@ -114,11 +111,49 @@ fn complete_return(
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
+    use crate::{
+        completion::{
+            test_utils::{do_completion, do_completion_with_position},
+            CompletionItem, CompletionKind,
+        },
+        CompletionItemKind,
+    };
     use insta::assert_debug_snapshot;
+    use rustc_hash::FxHashSet;
 
     fn do_keyword_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Keyword)
+    }
+
+    fn assert_completion_keyword(code: &str, keywords: &[(&str, &str)]) {
+        let (position, completion_items) =
+            do_completion_with_position(code, CompletionKind::Keyword);
+        let mut set = FxHashSet::<(String, String)>::default();
+        for (key, value) in keywords {
+            set.insert(((*key).to_string(), (*value).to_string()));
+        }
+
+        for item in completion_items {
+            assert!(item.text_edit().len() == 1);
+            assert!(item.kind() == Some(CompletionItemKind::Keyword));
+            let atom = item.text_edit().iter().next().unwrap().clone();
+            assert!(atom.delete.start() == position.offset);
+            assert!(atom.delete.end() == position.offset);
+            let pair = (item.label().to_string(), atom.insert);
+            assert!(set.contains(&pair));
+            set.remove(&pair);
+        }
+        assert!(set.is_empty());
+    }
+
+    #[test]
+    fn completes_keywords_in_use_stmt_new_approach() {
+        assert_completion_keyword(
+            r"
+        use <|>
+        ",
+            &[("crate", "crate::"), ("self", "self"), ("super", "super::")],
+        );
     }
 
     #[test]
