@@ -11,7 +11,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{sign_extend, truncate};
 use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -597,6 +597,22 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
+    /// Checks if the given field's type is "ffi-safe".
+    fn check_field_type_for_ffi(
+        &self,
+        cache: &mut FxHashSet<Ty<'tcx>>,
+        field: &ty::FieldDef,
+        substs: SubstsRef<'tcx>,
+    ) -> FfiResult<'tcx> {
+        let field_ty = field.ty(self.cx.tcx, substs);
+        if field_ty.has_opaque_types() {
+            self.check_type_for_ffi(cache, field_ty)
+        } else {
+            let field_ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, field_ty);
+            self.check_type_for_ffi(cache, field_ty)
+        }
+    }
+
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
     fn check_type_for_ffi(&self, cache: &mut FxHashSet<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult<'tcx> {
@@ -654,11 +670,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             if let Some(field) =
                                 def.transparent_newtype_field(cx, self.cx.param_env)
                             {
-                                let field_ty = cx.normalize_erasing_regions(
-                                    self.cx.param_env,
-                                    field.ty(cx, substs),
-                                );
-                                self.check_type_for_ffi(cache, field_ty)
+                                self.check_field_type_for_ffi(cache, field, substs)
                             } else {
                                 FfiSafe
                             }
@@ -667,11 +679,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             // actually safe.
                             let mut all_phantom = true;
                             for field in &def.non_enum_variant().fields {
-                                let field_ty = cx.normalize_erasing_regions(
-                                    self.cx.param_env,
-                                    field.ty(cx, substs),
-                                );
-                                let r = self.check_type_for_ffi(cache, field_ty);
+                                let r = self.check_field_type_for_ffi(cache, field, substs);
                                 match r {
                                     FfiSafe => {
                                         all_phantom = false;
@@ -886,6 +894,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Foreign(..) => FfiSafe,
 
+            // While opaque types are checked for earlier, if a projection in a struct field
+            // normalizes to an opaque type, then it will reach this branch.
+            ty::Opaque(..) => {
+                FfiUnsafe { ty, reason: "opaque types have no C equivalent", help: None }
+            }
+
             ty::Param(..)
             | ty::Infer(..)
             | ty::Bound(..)
@@ -895,7 +909,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::GeneratorWitness(..)
             | ty::Placeholder(..)
             | ty::Projection(..)
-            | ty::Opaque(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }
     }
@@ -925,8 +938,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
-        use rustc_middle::ty::TypeFoldable;
-
         struct ProhibitOpaqueTypes<'tcx> {
             ty: Option<Ty<'tcx>>,
         };
