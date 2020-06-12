@@ -16,7 +16,7 @@ struct AsmArgs {
     named_args: FxHashMap<Symbol, usize>,
     reg_args: FxHashSet<usize>,
     options: ast::InlineAsmOptions,
-    options_spans: Option<Vec<Span>>,
+    options_spans: Vec<Span>,
 }
 
 fn parse_args<'a>(
@@ -59,7 +59,7 @@ fn parse_args<'a>(
         named_args: FxHashMap::default(),
         reg_args: FxHashSet::default(),
         options: ast::InlineAsmOptions::empty(),
-        options_spans: None,
+        options_spans: vec![],
     };
 
     let mut allow_templates = true;
@@ -174,9 +174,9 @@ fn parse_args<'a>(
 
         // Validate the order of named, positional & explicit register operands and options. We do
         // this at the end once we have the full span of the argument available.
-        if let Some(ref options_spans) = args.options_spans {
+        if args.options_spans.len() > 0 {
             ecx.struct_span_err(span, "arguments are not allowed after options")
-                .span_labels(options_spans.clone(), "previous options")
+                .span_labels(args.options_spans.clone(), "previous options")
                 .span_label(span, "argument")
                 .emit();
         }
@@ -227,21 +227,21 @@ fn parse_args<'a>(
     if args.options.contains(ast::InlineAsmOptions::NOMEM)
         && args.options.contains(ast::InlineAsmOptions::READONLY)
     {
-        let spans = args.options_spans.clone().unwrap();
+        let spans = args.options_spans.clone();
         ecx.struct_span_err(spans, "the `nomem` and `readonly` options are mutually exclusive")
             .emit();
     }
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && args.options.contains(ast::InlineAsmOptions::NORETURN)
     {
-        let spans = args.options_spans.clone().unwrap();
+        let spans = args.options_spans.clone();
         ecx.struct_span_err(spans, "the `pure` and `noreturn` options are mutually exclusive")
             .emit();
     }
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && !args.options.intersects(ast::InlineAsmOptions::NOMEM | ast::InlineAsmOptions::READONLY)
     {
-        let span = args.options_spans.clone().unwrap();
+        let span = args.options_spans.clone();
         ecx.struct_span_err(
             span,
             "the `pure` option must be combined with either `nomem` or `readonly`",
@@ -267,7 +267,7 @@ fn parse_args<'a>(
     }
     if args.options.contains(ast::InlineAsmOptions::PURE) && !have_real_output {
         ecx.struct_span_err(
-            args.options_spans.clone().unwrap(),
+            args.options_spans.clone(),
             "asm with `pure` option must have at least one output",
         )
         .emit();
@@ -314,11 +314,7 @@ fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), Diagn
     }
 
     let new_span = span_start.to(p.prev_token.span);
-    if let Some(options_spans) = &mut args.options_spans {
-        options_spans.push(new_span);
-    } else {
-        args.options_spans = Some(vec![new_span]);
-    }
+    args.options_spans.push(new_span);
 
     Ok(())
 }
