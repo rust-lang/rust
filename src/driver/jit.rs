@@ -57,8 +57,8 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
     super::time(tcx, "codegen mono items", || {
         super::codegen_mono_items(tcx, &mut jit_module, None, &mut unwind_context, mono_items);
     });
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module);
-    crate::allocator::codegen(tcx, &mut jit_module);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut unwind_context);
+    crate::allocator::codegen(tcx, &mut jit_module, &mut unwind_context);
 
     jit_module.finalize_definitions();
 

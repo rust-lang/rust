@@ -123,7 +123,7 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
     let mut unwind_context = UnwindContext::new(tcx, &mut module);
 
     super::codegen_mono_items(tcx, &mut module, debug.as_mut(), &mut unwind_context, mono_items);
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context);
 
     emit_module(
         tcx,
@@ -185,19 +185,21 @@ pub(super) fn run_aot(
     tcx.sess.abort_if_errors();
 
     let mut allocator_module = new_module(tcx, "allocator_shim".to_string());
-    let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
+    let mut allocator_unwind_context = UnwindContext::new(tcx, &mut allocator_module);
+    let created_alloc_shim = crate::allocator::codegen(
+        tcx,
+        &mut allocator_module,
+        &mut allocator_unwind_context,
+    );
 
     let allocator_module = if created_alloc_shim {
-        // FIXME create .eh_frame for allocator shim
-        let unwind_context = UnwindContext::new(tcx, &mut allocator_module);
-
         let ModuleCodegenResult(module, work_product) = emit_module(
             tcx,
             "allocator_shim".to_string(),
             ModuleKind::Allocator,
             allocator_module,
             None,
-            unwind_context,
+            allocator_unwind_context,
         );
         if let Some((id, product)) = work_product {
             work_products.insert(id, product);

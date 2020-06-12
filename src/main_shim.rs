@@ -2,7 +2,11 @@ use crate::prelude::*;
 
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
-pub(crate) fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) {
+pub(crate) fn maybe_create_entry_wrapper(
+    tcx: TyCtxt<'_>,
+    module: &mut Module<impl Backend + 'static>,
+    unwind_context: &mut UnwindContext<'_>,
+) {
     use rustc_hir::lang_items::StartFnLangItem;
     use rustc_session::config::EntryFnType;
 
@@ -22,11 +26,12 @@ pub(crate) fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<im
         return;
     }
 
-    create_entry_fn(tcx, module, main_def_id, use_start_lang_item);
+    create_entry_fn(tcx, module, unwind_context, main_def_id, use_start_lang_item);
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
         m: &mut Module<impl Backend + 'static>,
+        unwind_context: &mut UnwindContext<'_>,
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
     ) {
@@ -109,5 +114,6 @@ pub(crate) fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<im
             &mut ctx,
             &mut cranelift_codegen::binemit::NullTrapSink {},
         ).unwrap();
+        unwind_context.add_function(cmain_func_id, &ctx, m.isa());
     }
 }

@@ -13,7 +13,11 @@ use crate::prelude::*;
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 
 /// Returns whether an allocator shim was created
-pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) -> bool {
+pub(crate) fn codegen(
+    tcx: TyCtxt<'_>,
+    module: &mut Module<impl Backend + 'static>,
+    unwind_context: &mut UnwindContext<'_>,
+) -> bool {
     let any_dynamic_crate = tcx.dependency_formats(LOCAL_CRATE).iter().any(|(_, list)| {
         use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
@@ -21,14 +25,18 @@ pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'stati
     if any_dynamic_crate {
         false
     } else if let Some(kind) = tcx.allocator_kind() {
-        codegen_inner(module, kind);
+        codegen_inner(module, unwind_context, kind);
         true
     } else {
         false
     }
 }
 
-fn codegen_inner(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
+fn codegen_inner(
+    module: &mut Module<impl Backend + 'static>,
+    unwind_context: &mut UnwindContext<'_>,
+    kind: AllocatorKind,
+) {
     let usize_ty = module.target_config().pointer_type();
 
     for method in ALLOCATOR_METHODS {
@@ -99,5 +107,6 @@ fn codegen_inner(module: &mut Module<impl Backend + 'static>, kind: AllocatorKin
             &mut ctx,
             &mut cranelift_codegen::binemit::NullTrapSink {},
         ).unwrap();
+        unwind_context.add_function(func_id, &ctx, module.isa());
     }
 }
