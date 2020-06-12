@@ -878,7 +878,9 @@ bool isconstantValueM(TypeResults &TR, Value* val, SmallPtrSetImpl<Value*> &cons
             return true;
         }
         auto res = TR.query(gi).Data0();
-        if (res[{-1}].isIntegral()) {
+        auto dt = res[{-1}];
+        dt |= res[{0}];
+        if (dt.isIntegral()) {
             if (printconst)
                 llvm::errs() << " VALUE const as global int pointer " << *val << " type - " << res.str() << "\n";
             return true;

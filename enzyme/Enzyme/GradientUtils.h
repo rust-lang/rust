@@ -1744,7 +1744,6 @@ endCheck:
 
             SmallVector<Value*,3> indices;
             SmallVector<Value*,3> limits;
-            llvm::errs() << "start\n";
             for(auto riter = containedloops.begin(), rend = containedloops.end(); riter != rend; riter++) {
               // Only include dynamic index on last iteration (== skip dynamic index on non-last iterations)
               //if (i != 0 && riter+1 == rend) break;
@@ -1752,7 +1751,6 @@ endCheck:
               if (riter+1 != rend) {
                 assert(!idx.dynamic);
               }
-              llvm::errs() << "idx: " << *idx.var << "\n";
               if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
                 Value* av;
                 if (idx.var) av = BuilderM.CreateLoad(idx.antivaralloc);
