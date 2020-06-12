@@ -246,6 +246,7 @@ impl ProjectWorkspace {
         let mut crate_graph = CrateGraph::default();
         match self {
             ProjectWorkspace::Json { project } => {
+                let mut target_cfg_map = FxHashMap::<Option<&str>, CfgOptions>::default();
                 let crates: FxHashMap<_, _> = project
                     .crates
                     .iter()
@@ -265,6 +266,14 @@ impl ProjectWorkspace {
                             .proc_macro_dylib_path
                             .clone()
                             .map(|it| proc_macro_client.by_dylib_path(&it));
+
+                        let target = krate.target.as_deref();
+                        let target_cfgs = target_cfg_map
+                            .entry(target.clone())
+                            .or_insert_with(|| get_rustc_cfg_options(target.as_deref()));
+                        let mut cfg_options = krate.cfg.clone();
+                        cfg_options.append(target_cfgs);
+
                         // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
                         Some((
                             CrateId(seq_index as u32),
@@ -273,7 +282,7 @@ impl ProjectWorkspace {
                                 krate.edition,
                                 // FIXME json definitions can store the crate name
                                 None,
-                                krate.cfg.clone(),
+                                cfg_options,
                                 env,
                                 proc_macro.unwrap_or_default(),
                             ),

@@ -31,6 +31,7 @@ pub struct Crate {
     pub(crate) edition: Edition,
     pub(crate) deps: Vec<Dependency>,
     pub(crate) cfg: CfgOptions,
+    pub(crate) target: Option<String>,
     pub(crate) out_dir: Option<AbsPathBuf>,
     pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
 }
@@ -65,6 +66,7 @@ impl ProjectJson {
                         }
                         cfg
                     },
+                    target: crate_data.target,
                     out_dir: crate_data.out_dir.map(|it| base.join(it)),
                     proc_macro_dylib_path: crate_data.proc_macro_dylib_path.map(|it| base.join(it)),
                 })
@@ -86,6 +88,7 @@ struct CrateData {
     deps: Vec<DepData>,
     #[serde(default)]
     cfg: FxHashSet<String>,
+    target: Option<String>,
     out_dir: Option<PathBuf>,
     proc_macro_dylib_path: Option<PathBuf>,
 }
