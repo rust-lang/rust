@@ -778,9 +778,9 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
-    /// Returns `true` if equality for this type is both total and structural.
+    /// Returns `true` if equality for this type is both reflexive and structural.
     ///
-    /// Total equality for a type is indicated by an `Eq` impl for that type.
+    /// Reflexive equality for a type is indicated by an `Eq` impl for that type.
     ///
     /// Primitive types (`u32`, `str`) have structural equality by definition. For composite data
     /// types, equality for the type as a whole is structural when it is the same as equality
