@@ -36,8 +36,8 @@ pub(crate) struct ModResolver<'ast, 'sess> {
 #[error("failed to resolve mod `{module}`: {kind}")]
 #[derive(Debug, Error)]
 pub struct ModuleResolutionError {
-    module: String,
-    kind: ModuleResolutionErrorKind,
+    pub(crate) module: String,
+    pub(crate) kind: ModuleResolutionErrorKind,
 }
 
 #[derive(Debug, Error)]

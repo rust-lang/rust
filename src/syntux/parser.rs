@@ -119,7 +119,17 @@ impl<'a> Parser<'a> {
             }
         }));
         match result {
-            Ok(Some(m)) => Ok(m),
+            Ok(Some(m)) => {
+                if !sess.has_errors() {
+                    return Ok(m);
+                }
+
+                if sess.can_reset_errors() {
+                    sess.reset_errors();
+                    return Ok(m);
+                }
+                Err(ParserError::ParseError)
+            }
             Ok(None) => Err(ParserError::ParseError),
             Err(..) if path.exists() => Err(ParserError::ParseError),
             Err(_) => Err(ParserError::ParsePanicError),
