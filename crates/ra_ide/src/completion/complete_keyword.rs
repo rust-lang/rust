@@ -118,7 +118,7 @@ mod tests {
         },
         CompletionItemKind,
     };
-    use insta::assert_debug_snapshot;
+    use insta::{assert_snapshot, assert_debug_snapshot};
     use rustc_hash::FxHashSet;
 
     fn do_keyword_completion(code: &str) -> Vec<CompletionItem> {
@@ -128,11 +128,12 @@ mod tests {
     fn assert_completion_keyword(code: &str, keywords: &[(&str, &str)]) {
         let (position, completion_items) =
             do_completion_with_position(code, CompletionKind::Keyword);
-        let mut set = FxHashSet::<(String, String)>::default();
+        let mut expected_keywords = FxHashSet::<(String, String)>::default();
         for (key, value) in keywords {
-            set.insert(((*key).to_string(), (*value).to_string()));
+            expected_keywords.insert(((*key).to_string(), (*value).to_string()));
         }
-
+        let mut returned_keywords = FxHashSet::<(String, String)>::default();
+        
         for item in completion_items {
             assert!(item.text_edit().len() == 1);
             assert!(item.kind() == Some(CompletionItemKind::Keyword));
@@ -140,10 +141,10 @@ mod tests {
             assert!(atom.delete.start() == position.offset);
             assert!(atom.delete.end() == position.offset);
             let pair = (item.label().to_string(), atom.insert);
-            assert!(set.contains(&pair));
-            set.remove(&pair);
+            returned_keywords.insert(pair);
         }
-        assert!(set.is_empty());
+        let assert_failed_message = format!("Expected keywords: {:#?}\nReceived keywords: {:#?}", expected_keywords, returned_keywords);
+        debug_assert!(returned_keywords == expected_keywords, assert_failed_message);
     }
 
     #[test]
