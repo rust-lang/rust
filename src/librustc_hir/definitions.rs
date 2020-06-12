@@ -519,6 +519,12 @@ impl Definitions {
         let old_index = self.placeholder_field_indices.insert(node_id, index);
         assert!(old_index.is_none(), "placeholder field index is reset for a node ID");
     }
+
+    pub fn lint_node_id(&mut self, expn_id: ExpnId) -> ast::NodeId {
+        self.invocation_parents
+            .get(&expn_id)
+            .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[*id])
+    }
 }
 
 impl DefPathData {
