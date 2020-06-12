@@ -11,7 +11,7 @@ pub struct Whitespace {
     pub(crate) syntax: SyntaxToken,
 }
 impl std::fmt::Display for Whitespace {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
@@ -32,7 +32,7 @@ pub struct Comment {
     pub(crate) syntax: SyntaxToken,
 }
 impl std::fmt::Display for Comment {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
@@ -53,7 +53,7 @@ pub struct String {
     pub(crate) syntax: SyntaxToken,
 }
 impl std::fmt::Display for String {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
@@ -74,7 +74,7 @@ pub struct RawString {
     pub(crate) syntax: SyntaxToken,
 }
 impl std::fmt::Display for RawString {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
