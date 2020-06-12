@@ -1946,18 +1946,18 @@ fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_
     let which = match (&ty.kind, cv) {
         (&ty::Bool, Constant::Bool(false)) | (&ty::Uint(_), Constant::Int(0)) => Minimum,
         (&ty::Int(ity), Constant::Int(i))
-            if i == unsext(cx.tcx, i128::min_value() >> (128 - int_bits(cx.tcx, ity)), ity) =>
+            if i == unsext(cx.tcx, i128::MIN >> (128 - int_bits(cx.tcx, ity)), ity) =>
         {
             Minimum
         },
 
         (&ty::Bool, Constant::Bool(true)) => Maximum,
         (&ty::Int(ity), Constant::Int(i))
-            if i == unsext(cx.tcx, i128::max_value() >> (128 - int_bits(cx.tcx, ity)), ity) =>
+            if i == unsext(cx.tcx, i128::MAX >> (128 - int_bits(cx.tcx, ity)), ity) =>
         {
             Maximum
         },
-        (&ty::Uint(uty), Constant::Int(i)) if clip(cx.tcx, u128::max_value(), uty) == i => Maximum,
+        (&ty::Uint(uty), Constant::Int(i)) if clip(cx.tcx, u128::MAX, uty) == i => Maximum,
 
         _ => return None,
     };
@@ -2039,7 +2039,7 @@ impl FullInt {
     fn cmp_s_u(s: i128, u: u128) -> Ordering {
         if s < 0 {
             Ordering::Less
-        } else if u > (i128::max_value() as u128) {
+        } else if u > (i128::MAX as u128) {
             Ordering::Greater
         } else {
             (s as u128).cmp(&u)
@@ -2084,48 +2084,48 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'_>)
         match pre_cast_ty.kind {
             ty::Int(int_ty) => Some(match int_ty {
                 IntTy::I8 => (
-                    FullInt::S(i128::from(i8::min_value())),
-                    FullInt::S(i128::from(i8::max_value())),
+                    FullInt::S(i128::from(i8::MIN)),
+                    FullInt::S(i128::from(i8::MAX)),
                 ),
                 IntTy::I16 => (
-                    FullInt::S(i128::from(i16::min_value())),
-                    FullInt::S(i128::from(i16::max_value())),
+                    FullInt::S(i128::from(i16::MIN)),
+                    FullInt::S(i128::from(i16::MAX)),
                 ),
                 IntTy::I32 => (
-                    FullInt::S(i128::from(i32::min_value())),
-                    FullInt::S(i128::from(i32::max_value())),
+                    FullInt::S(i128::from(i32::MIN)),
+                    FullInt::S(i128::from(i32::MAX)),
                 ),
                 IntTy::I64 => (
-                    FullInt::S(i128::from(i64::min_value())),
-                    FullInt::S(i128::from(i64::max_value())),
+                    FullInt::S(i128::from(i64::MIN)),
+                    FullInt::S(i128::from(i64::MAX)),
                 ),
-                IntTy::I128 => (FullInt::S(i128::min_value()), FullInt::S(i128::max_value())),
+                IntTy::I128 => (FullInt::S(i128::MIN), FullInt::S(i128::MAX)),
                 IntTy::Isize => (
-                    FullInt::S(isize::min_value() as i128),
-                    FullInt::S(isize::max_value() as i128),
+                    FullInt::S(isize::MIN as i128),
+                    FullInt::S(isize::MAX as i128),
                 ),
             }),
             ty::Uint(uint_ty) => Some(match uint_ty {
                 UintTy::U8 => (
-                    FullInt::U(u128::from(u8::min_value())),
-                    FullInt::U(u128::from(u8::max_value())),
+                    FullInt::U(u128::from(u8::MIN)),
+                    FullInt::U(u128::from(u8::MAX)),
                 ),
                 UintTy::U16 => (
-                    FullInt::U(u128::from(u16::min_value())),
-                    FullInt::U(u128::from(u16::max_value())),
+                    FullInt::U(u128::from(u16::MIN)),
+                    FullInt::U(u128::from(u16::MAX)),
                 ),
                 UintTy::U32 => (
-                    FullInt::U(u128::from(u32::min_value())),
-                    FullInt::U(u128::from(u32::max_value())),
+                    FullInt::U(u128::from(u32::MIN)),
+                    FullInt::U(u128::from(u32::MAX)),
                 ),
                 UintTy::U64 => (
-                    FullInt::U(u128::from(u64::min_value())),
-                    FullInt::U(u128::from(u64::max_value())),
+                    FullInt::U(u128::from(u64::MIN)),
+                    FullInt::U(u128::from(u64::MAX)),
                 ),
-                UintTy::U128 => (FullInt::U(u128::min_value()), FullInt::U(u128::max_value())),
+                UintTy::U128 => (FullInt::U(u128::MIN), FullInt::U(u128::MAX)),
                 UintTy::Usize => (
-                    FullInt::U(usize::min_value() as u128),
-                    FullInt::U(usize::max_value() as u128),
+                    FullInt::U(usize::MIN as u128),
+                    FullInt::U(usize::MAX as u128),
                 ),
             }),
             _ => None,
