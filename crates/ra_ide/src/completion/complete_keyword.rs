@@ -118,43 +118,59 @@ mod tests {
         },
         CompletionItemKind,
     };
-    use insta::{assert_snapshot, assert_debug_snapshot};
-    use rustc_hash::FxHashSet;
+    use insta::assert_debug_snapshot;
 
     fn do_keyword_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Keyword)
     }
 
-    fn assert_completion_keyword(code: &str, keywords: &[(&str, &str)]) {
+    fn get_completion_text_and_assert_positions(code: &str) -> Vec<(String, String)> {
         let (position, completion_items) =
             do_completion_with_position(code, CompletionKind::Keyword);
-        let mut expected_keywords = FxHashSet::<(String, String)>::default();
-        for (key, value) in keywords {
-            expected_keywords.insert(((*key).to_string(), (*value).to_string()));
-        }
-        let mut returned_keywords = FxHashSet::<(String, String)>::default();
-        
+        let mut returned_keywords = Vec::<(String, String)>::new();
+
         for item in completion_items {
-            assert!(item.text_edit().len() == 1);
+            debug_assert!(item.text_edit().len() == 1);
             assert!(item.kind() == Some(CompletionItemKind::Keyword));
             let atom = item.text_edit().iter().next().unwrap().clone();
             assert!(atom.delete.start() == position.offset);
             assert!(atom.delete.end() == position.offset);
             let pair = (item.label().to_string(), atom.insert);
-            returned_keywords.insert(pair);
+            returned_keywords.push(pair);
         }
-        let assert_failed_message = format!("Expected keywords: {:#?}\nReceived keywords: {:#?}", expected_keywords, returned_keywords);
-        debug_assert!(returned_keywords == expected_keywords, assert_failed_message);
+        returned_keywords.sort();
+        returned_keywords
     }
 
     #[test]
     fn completes_keywords_in_use_stmt_new_approach() {
-        assert_completion_keyword(
-            r"
-        use <|>
-        ",
-            &[("crate", "crate::"), ("self", "self"), ("super", "super::")],
+        assert_debug_snapshot!(
+            get_completion_text_and_assert_positions(r"
+            use <|>
+            "),
+            @r###"
+        [
+            (
+                "crate",
+                "crate::",
+            ),
+            (
+                "self",
+                "self",
+            ),
+            (
+                "super",
+                "super::",
+            ),
+        ]
+        "###
         );
+        // assert_completion_keyword(
+        //     r"
+        // use <|>
+        // ",
+        //     &[("crate", "crate::"), ("self", "self"), ("super", "super::")],
+        // );
     }
 
     #[test]
