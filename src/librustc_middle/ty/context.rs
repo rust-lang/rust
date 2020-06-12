@@ -1101,9 +1101,9 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
-        for (hir_id, v) in resolutions.trait_map.into_iter() {
+        for (hir_id, v) in krate.trait_map.iter() {
             let map = trait_map.entry(hir_id.owner).or_default();
-            map.insert(hir_id.local_id, StableVec::new(v));
+            map.insert(hir_id.local_id, StableVec::new(v.to_vec()));
         }
 
         GlobalCtxt {
