@@ -895,22 +895,33 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
-        struct ProhibitOpaqueTypes<'tcx> {
+        struct ProhibitOpaqueTypes<'a, 'tcx> {
+            cx: &'a LateContext<'a, 'tcx>,
             ty: Option<Ty<'tcx>>,
         };
 
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'tcx> {
+        impl<'a, 'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
-                if let ty::Opaque(..) = ty.kind {
-                    self.ty = Some(ty);
-                    true
-                } else {
-                    ty.super_visit_with(self)
+                match ty.kind {
+                    ty::Opaque(..) => {
+                        self.ty = Some(ty);
+                        true
+                    }
+                    // Consider opaque types within projections FFI-safe if they do not normalize
+                    // to more opaque types.
+                    ty::Projection(..) => {
+                        let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
+
+                        // If `ty` is a opaque type directly then `super_visit_with` won't invoke
+                        // this function again.
+                        if ty.has_opaque_types() { self.visit_ty(ty) } else { false }
+                    }
+                    _ => ty.super_visit_with(self),
                 }
             }
         }
 
-        let mut visitor = ProhibitOpaqueTypes { ty: None };
+        let mut visitor = ProhibitOpaqueTypes { cx: self.cx, ty: None };
         ty.visit_with(&mut visitor);
         if let Some(ty) = visitor.ty {
             self.emit_ffi_unsafe_type_lint(ty, sp, "opaque types have no C equivalent", None);
