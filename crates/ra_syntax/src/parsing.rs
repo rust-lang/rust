@@ -15,7 +15,7 @@ pub use lexer::*;
 pub(crate) use self::reparsing::incremental_reparse;
 use ra_parser::SyntaxKind;
 
-pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
+pub fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let (tokens, lexer_errors) = tokenize(&text);
 
     let mut token_source = TextTokenSource::new(text, &tokens);

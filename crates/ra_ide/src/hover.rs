@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
-    ModuleSource, Semantics, Documentation, AttrDef, Crate
+    ModuleSource, Semantics, Documentation, AttrDef, Crate, GenericDef, ModPath, Hygiene
 };
 use itertools::Itertools;
 use ra_db::SourceDatabase;
@@ -12,11 +12,13 @@ use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
 };
-use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
+use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, SyntaxNode, TokenAtOffset, ast::Path};
 use ra_project_model::ProjectWorkspace;
-use ra_hir_def::{item_scope::ItemInNs, db::DefDatabase};
+use ra_hir_def::{item_scope::ItemInNs, db::DefDatabase, GenericDefId, ModuleId, resolver::HasResolver};
 use ra_tt::{Literal, Ident, Punct, TokenTree, Leaf};
 use ra_hir_expand::name::AsName;
+use ra_parser::FragmentKind;
+use maplit::{hashset, hashmap};
 
 use comrak::{parse_document,format_commonmark, ComrakOptions, Arena};
 use comrak::nodes::NodeValue;
@@ -412,8 +414,9 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition, wor
                     // module-based links (AKA intra-doc links): `super::super::module::MyStruct`
                     Err(_) => {
                         let link_str = String::from_utf8(link.url.clone()).unwrap();
+                        let link_text = String::from_utf8(link.title.clone()).unwrap();
                         let resolved = try_resolve_path(db, &mut doc_target_dirs.clone(), definition, &link_str, UrlMode::Url)
-                            .or_else(|| try_resolve_intra(db, &mut doc_target_dirs.clone(), definition, &link_str));
+                            .or_else(|| try_resolve_intra(db, &mut doc_target_dirs.clone(), definition, &link_text, &link_str));
 
                         if let Some(resolved) = resolved {
                             link.url = resolved.as_bytes().to_vec();
@@ -430,11 +433,113 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition, wor
     Some(String::from_utf8(out).unwrap())
 }
 
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+enum Namespace {
+    Types,
+    Values,
+    Macros
+}
+
+impl Namespace {
+    /// Extract the specified namespace from an intra-doc-link if one exists.
+    fn from_intra_spec(s: &str) -> Option<Self> {
+        let ns_map = hashmap!{
+            Self::Types => (hashset!{"type", "struct", "enum", "mod", "trait", "union", "module"}, hashset!{}),
+            Self::Values => (hashset!{"value", "function", "fn", "method", "const", "static", "mod", "module"}, hashset!{"()"}),
+            Self::Macros => (hashset!{"macro"}, hashset!{"!"})
+        };
+
+        ns_map
+            .iter()
+            .filter(|(ns, (prefixes, suffixes))| {
+                prefixes.iter().map(|prefix| s.starts_with(prefix) && s.chars().nth(prefix.len()+1).map(|c| c == '@' || c == ' ').unwrap_or(false)).any(|cond| cond) ||
+                suffixes.iter().map(|suffix| s.starts_with(suffix) && s.chars().nth(suffix.len()+1).map(|c| c == '@' || c == ' ').unwrap_or(false)).any(|cond| cond)
+            })
+            .map(|(ns, (_, _))| *ns)
+            .next()
+    }
+}
+
 /// Try to resolve path to local documentation via intra-doc-links (i.e. `super::gateway::Shard`).
 ///
 /// See [RFC1946](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md).
-fn try_resolve_intra(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link: &str) -> Option<String> {
-    None
+fn try_resolve_intra(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link_text: &str, link_target: &str) -> Option<String> {
+    eprintln!("try_resolve_intra");
+
+    // Set link_target for implied shortlinks
+    let link_target = if link_target.is_empty() {
+        link_text.trim_matches('`')
+    } else {
+        link_target
+    };
+
+    // Parse link as a module path
+    // This expects a full document, which a single path isn't, but we can just ignore the errors.
+    let parsed = SyntaxNode::new_root(ra_syntax::parse_text(link_target).0);
+    let path = parsed.descendants().filter_map(Path::cast).next()?;
+    let modpath = ModPath::from_src(path, &Hygiene::new_unhygienic()).unwrap();
+
+    // Resolve it relative to symbol's location (according to the RFC this should consider small scopes
+    let resolver = {
+        use ra_hir_def::*;
+        use hir::*;
+
+        // TODO: This should be replaced by implementing HasResolver/TryHasResolver on ModuleDef and Definition.
+        match definition {
+            Definition::ModuleDef(def) => match def {
+                ModuleDef::Module(m) => Into::<ModuleId>::into(m.clone()).resolver(db),
+                ModuleDef::Function(f) => Into::<FunctionId>::into(f.clone()).resolver(db),
+                ModuleDef::Adt(adt) => Into::<AdtId>::into(adt.clone()).resolver(db),
+                ModuleDef::EnumVariant(ev) => Into::<GenericDefId>::into(Into::<GenericDef>::into(ev.clone())).resolver(db),
+                ModuleDef::Const(c) => Into::<GenericDefId>::into(Into::<GenericDef>::into(c.clone())).resolver(db),
+                ModuleDef::Static(s) => Into::<StaticId>::into(s.clone()).resolver(db),
+                ModuleDef::Trait(t) => Into::<TraitId>::into(t.clone()).resolver(db),
+                ModuleDef::TypeAlias(t) => Into::<ModuleId>::into(t.module(db)).resolver(db),
+                // TODO: This should be a resolver relative to `std`
+                ModuleDef::BuiltinType(t) => Into::<ModuleId>::into(definition.module(db)?).resolver(db)
+            },
+            Definition::Field(field) => Into::<VariantId>::into(Into::<VariantDef>::into(field.parent_def(db))).resolver(db),
+            Definition::Macro(m) => Into::<ModuleId>::into(m.module(db)?).resolver(db),
+            Definition::SelfType(imp) => Into::<ImplId>::into(imp.clone()).resolver(db),
+            // it's possible, read probable, that other arms of this are also unreachable
+            Definition::Local(local) => unreachable!(),
+            Definition::TypeParam(tp) => Into::<ModuleId>::into(tp.module(db)).resolver(db)
+        }
+    };
+
+    // Namespace disambiguation
+    let namespace = Namespace::from_intra_spec(link_target);
+
+    let resolved = resolver.resolve_module_path_in_items(db, &modpath);
+    let (defid, namespace) = match namespace {
+        // TODO: .or(resolved.macros)
+        None => resolved.types.map(|t| (t.0, Namespace::Types)).or(resolved.values.map(|t| (t.0, Namespace::Values)))?,
+        Some(ns @ Namespace::Types) => (resolved.types?.0, ns),
+        Some(ns @ Namespace::Values) => (resolved.values?.0, ns),
+        // TODO:
+        Some(Namespace::Macros) => None?
+    };
+
+    // Get the filepath of the final symbol
+    let def: ModuleDef = defid.into();
+    let module = def.module(db)?;
+    let krate = module.krate();
+    let ns = match namespace {
+        Namespace::Types => ItemInNs::Types(defid),
+        Namespace::Values => ItemInNs::Values(defid),
+        // TODO:
+        Namespace::Macros => None?
+    };
+    let import_map = db.import_map(krate.into());
+    let path = import_map.path_of(ns)?;
+
+    Some(
+        get_doc_url(db, &krate)?
+            .join(&format!("{}/", krate.display_name(db)?)).ok()?
+            .join(&path.segments.iter().map(|name| format!("{}", name)).join("/")).ok()?
+            .join(&get_symbol_filename(db, definition)?).ok()?
+            .into_string()
+    )
 }
 
 enum UrlMode {
@@ -444,6 +549,7 @@ enum UrlMode {
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
 fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link: &str, mode: UrlMode) -> Option<String> {
+    eprintln!("try_resolve_path");
     let ns = if let Definition::ModuleDef(moddef) = definition {
         ItemInNs::Types(moddef.clone().into())
     } else {
@@ -481,6 +587,7 @@ fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = Pat
 }
 
 /// Try to get the root URL of the documentation of a crate.
+// TODO: Special case standard, core, alloc libraries
 fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
     // Look for #![doc(html_root_url = "...")]
     let attrs = db.attrs(AttrDef::from(krate.root_module(db)?).into());
