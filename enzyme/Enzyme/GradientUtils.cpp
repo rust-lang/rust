@@ -334,7 +334,7 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInf
       }
     }
 
-    auto res = new GradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
+    auto res = new GradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew, DerivativeMode::Forward);
     return res;
 }
 
@@ -357,7 +357,7 @@ DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(bool topLevel, Function 
   }
 
   //llvm::errs() << "creating from clone: " << todiff->getName() << " differentialReturn: " << differentialReturn << " returnvals: " << returnvals.size() << " nonconstant_values: " << nonconstant_values.size() << "\n";
-  auto res = new DiffeGradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew);
+  auto res = new DiffeGradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers, constants, nonconstant, constant_values, nonconstant_values, originalToNew, topLevel ? DerivativeMode::Both : DerivativeMode::Reverse);
   return res;
 }
 
@@ -1580,68 +1580,216 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
     if (auto li = dyn_cast<LoadInst>(inst)) {
       auto liobj = GetUnderlyingObject(li->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
 
-      for(auto pair : scopeMap) {
-        if (auto li2 = dyn_cast<LoadInst>(const_cast<Value*>(pair.first))) {
 
-          auto li2obj = GetUnderlyingObject(li2->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
+      if (scopeMap.find(inst) == scopeMap.end()) {
+        for(auto pair : scopeMap) {
+          if (auto li2 = dyn_cast<LoadInst>(const_cast<Value*>(pair.first))) {
 
-          if (liobj == li2obj && DT.dominates(li2, li)) {
-            auto orig2 = isOriginal(li2);
-            if (!orig2) continue;
-            
-            bool failed = false;
+            auto li2obj = GetUnderlyingObject(li2->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
 
-            llvm::errs() << "found potential candidate loads: oli:" << *origInst << " oli2: " << *orig2 << "\n";
-            auto scev1 = SE.getSCEV(li->getPointerOperand());
-            auto scev2 = SE.getSCEV(li2->getPointerOperand());
-            llvm::errs() << " scev1: " << *scev1 << " scev2: " << *scev2 << "\n";
+            if (liobj == li2obj && DT.dominates(li2, li)) {
+              auto orig2 = isOriginal(li2);
+              if (!orig2) continue;
+              
+              bool failed = false;
 
-            allInstructionsBetween(OrigLI, orig2, origInst, [&](Instruction* I) -> bool {
-              //llvm::errs() << "examining instruction: " << *I << " between: " << *li2 << " and " << *li << "\n";
-              if ( I->mayWriteToMemory() && writesToMemoryReadBy(AA, /*maybeReader*/origInst, /*maybeWriter*/I) ) {
-                failed = true;
-                llvm::errs() << "FAILED: " << *I << "\n";
-                return /*earlyBreak*/true;
-              }
-              return /*earlyBreak*/false;
-            });
-            if (failed) continue;
+              llvm::errs() << "found potential candidate loads: oli:" << *origInst << " oli2: " << *orig2 << "\n";
+
+              auto scev1 = SE.getSCEV(li->getPointerOperand());
+              auto scev2 = SE.getSCEV(li2->getPointerOperand());
+              llvm::errs() << " scev1: " << *scev1 << " scev2: " << *scev2 << "\n";
+
+              allInstructionsBetween(OrigLI, orig2, origInst, [&](Instruction* I) -> bool {
+                //llvm::errs() << "examining instruction: " << *I << " between: " << *li2 << " and " << *li << "\n";
+                if ( I->mayWriteToMemory() && writesToMemoryReadBy(AA, /*maybeReader*/origInst, /*maybeWriter*/I) ) {
+                  failed = true;
+                  llvm::errs() << "FAILED: " << *I << "\n";
+                  return /*earlyBreak*/true;
+                }
+                return /*earlyBreak*/false;
+              });
+              if (failed) continue;
 
 
-            if (auto ar1 = dyn_cast<SCEVAddRecExpr>(scev1)) {
-              if (auto ar2 = dyn_cast<SCEVAddRecExpr>(scev2)) {
-                if (ar1->getStart() != SE.getCouldNotCompute() && ar1->getStart() == ar2->getStart() &&
-                    ar1->getStart() != SE.getCouldNotCompute() && ar1->getStepRecurrence(SE) == ar2->getStepRecurrence(SE)) {
+              if (auto ar1 = dyn_cast<SCEVAddRecExpr>(scev1)) {
+                if (auto ar2 = dyn_cast<SCEVAddRecExpr>(scev2)) {
+                  if (ar1->getStart() != SE.getCouldNotCompute() && ar1->getStart() == ar2->getStart() &&
+                      ar1->getStepRecurrence(SE) != SE.getCouldNotCompute() && ar1->getStepRecurrence(SE) == ar2->getStepRecurrence(SE)) {
 
-                  LoopContext l1;
-                  getContext(ar1->getLoop()->getHeader(), l1);
-                  LoopContext l2;
-                  getContext(ar2->getLoop()->getHeader(), l2);
+                    LoopContext l1;
+                    getContext(ar1->getLoop()->getHeader(), l1);
+                    LoopContext l2;
+                    getContext(ar2->getLoop()->getHeader(), l2);
 
-                  //TODO IF len(ar2) >= len(ar1) then we can replace li with li2
-                  if (SE.getSCEV(l1.limit) != SE.getCouldNotCompute() && SE.getSCEV(l1.limit) == SE.getSCEV(l2.limit)) {
-                    llvm::errs() << " step1: " << *ar1->getStepRecurrence(SE) << " step2: " << *ar2->getStepRecurrence(SE) << "\n";
+                    //TODO IF len(ar2) >= len(ar1) then we can replace li with li2
+                    if (SE.getSCEV(l1.limit) != SE.getCouldNotCompute() && SE.getSCEV(l1.limit) == SE.getSCEV(l2.limit)) {
+                      llvm::errs() << " step1: " << *ar1->getStepRecurrence(SE) << " step2: " << *ar2->getStepRecurrence(SE) << "\n";
 
-                    inst = li2;
-                    idx = std::make_pair(val, BuilderM.GetInsertBlock());
-                    break;
+                      inst = li2;
+                      idx = std::make_pair(val, BuilderM.GetInsertBlock());
+                      break;
+                    }
+
                   }
-
                 }
               }
-            }
 
+            }
           }
         }
       }
+
+      auto loadSize = (li->getParent()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(li->getType()) + 7)/8;
+
+      // this is guarded because havent told addMalloc how to move
+      if (mode == DerivativeMode::Both)
+      if (!li->isVolatile()) {
+        auto scev1 = SE.getSCEV(li->getPointerOperand());
+        llvm::errs() << "scev1: " << *scev1 << "\n";
+        // Store in memcpy opt
+        if (auto ar1 = dyn_cast<SCEVAddRecExpr>(scev1)) {
+          if (auto step = dyn_cast<SCEVConstant>(ar1->getStepRecurrence(SE))) {
+            if (step->getAPInt() != loadSize) goto noSpeedCache;
+
+
+            LoopContext l1;
+            getContext(ar1->getLoop()->getHeader(), l1);
+
+            if (l1.dynamic) goto noSpeedCache;
+
+            BasicBlock* ctx = l1.preheader;
+
+            IRBuilder <> v(ctx->getTerminator());
+
+            auto origPH = cast_or_null<BasicBlock>(isOriginal(ctx));
+            assert(origPH);
+            if (OrigPDT.dominates(origPH, origInst->getParent())) {
+              goto noSpeedCache;
+            }
+
+
+            Value* lim = unwrapM(l1.limit, v, {}, UnwrapMode::AttemptFullUnwrapWithLookup);
+            if (!lim) {
+              goto noSpeedCache;
+            }
+            lim = v.CreateAdd(lim, ConstantInt::get(lim->getType(), 1), "", true, true);
+            llvm::errs() << "l1: " << *li << "\n";
+            llvm::errs() << "lim: " << *lim << "\n";
+
+            Value* start = nullptr;
+
+            std::vector<Instruction*> toErase;
+            {
+            fake::SCEVExpander Exp(SE, ctx->getParent()->getParent()->getDataLayout(), "enzyme");
+            Exp.setInsertPoint(l1.header->getTerminator());
+            Value *start0 = Exp.expandCodeFor(ar1->getStart(), li->getPointerOperand()->getType());
+            start = unwrapM(start0, v, {}, UnwrapMode::AttemptFullUnwrapWithLookup);
+            l1.header->dump();
+            std::set<Value*> todo = {start0};
+            while(todo.size()) {
+              Value* now = *todo.begin();
+              todo.erase(now);
+              if (Instruction* inst = dyn_cast<Instruction>(now)) {
+                if (inst != start && inst->getNumUses() == 0 && Exp.isInsertedInstruction(inst)) {
+                  for(auto& op : inst->operands()) {
+                    todo.insert(op);
+                  }
+                  toErase.push_back(inst);
+                }
+              }
+            }
+            }
+            for(auto a : toErase) erase(a);
+
+            if (!start) goto noSpeedCache;
+
+            llvm::errs() << " getStart: " << *ar1->getStart() << "\n";
+            llvm::errs() << " starT: " << *start << "\n";
+
+            bool failed = false;
+            allInstructionsBetween(OrigLI, &*v.GetInsertPoint(), origInst, [&](Instruction* I) -> bool {
+                //llvm::errs() << "examining instruction: " << *I << " between: " << *li2 << " and " << *li << "\n";
+                if ( I->mayWriteToMemory() && writesToMemoryReadBy(AA, /*maybeReader*/origInst, /*maybeWriter*/I) ) {
+                  failed = true;
+                  llvm::errs() << "memcpy FAILED: " << *I << "\n";
+                  return /*earlyBreak*/true;
+                }
+                return /*earlyBreak*/false;
+            });
+            if (failed) goto noSpeedCache;
+
+
+            bool isi1 = val->getType()->isIntegerTy() && cast<IntegerType>(li->getType())->getBitWidth() == 1;
+
+            AllocaInst* cache = nullptr;
+            
+            LoopContext tmp;
+            if (!getContext(ctx, tmp)) {
+              ctx = (BasicBlock*)((size_t)ctx | 1);
+            }
+
+            if (scopeMap.find(inst) == scopeMap.end()) {
+              cache = createCacheForScope(ctx, li->getType(), li->getName(), /*shouldFree*/true, /*allocate*/true, /*extraSize*/lim);
+              assert(cache);
+              scopeMap[inst] = std::make_pair(cache, ctx);
+
+              v.setFastMathFlags(getFast());
+              
+              Value* outer = getCachePointer(v, ctx, cache, isi1, /*storeinstorecache*/true, /*extraSize*/lim);
+
+              auto dst_arg = v.CreateBitCast(outer, Type::getInt8PtrTy(inst->getContext()));
+              scopeStores[cache].push_back(dst_arg);
+              auto src_arg = v.CreateBitCast(start, Type::getInt8PtrTy(inst->getContext()));
+              auto len_arg = v.CreateMul(ConstantInt::get(lim->getType(), step->getAPInt()), lim, "", true, true);
+              if (!isa<Constant>(len_arg))
+                scopeStores[cache].push_back(len_arg);
+              //if (!isa<Constant>(lim))
+              //  scopeStores[cache].push_back(lim);
+              auto volatile_arg = ConstantInt::getFalse(inst->getContext());
+
+              Value *nargs[] = { dst_arg, src_arg, len_arg, volatile_arg };
+
+              Type *tys[] = {dst_arg->getType(), src_arg->getType(), len_arg->getType()};
+
+              auto memcpyF = Intrinsic::getDeclaration(newFunc->getParent(), Intrinsic::memcpy, tys);
+              memcpyF->dump();
+
+              auto mem = cast<CallInst>(v.CreateCall(memcpyF, nargs));
+              //memset->addParamAttr(0, Attribute::getWithAlignment(Context, inst->getAlignment()));
+              mem->addParamAttr(0, Attribute::NonNull);
+              mem->addParamAttr(1, Attribute::NonNull);
+
+              auto bsize = newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(li->getType())/8;
+              if ((bsize & (bsize - 1)) == 0) {
+                mem->addParamAttr(0, Attribute::getWithAlignment(memcpyF->getContext(), bsize));
+              }
+
+              if (li->getAlignment()) {
+                mem->addParamAttr(1, Attribute::getWithAlignment(memcpyF->getContext(), li->getAlignment()));
+              }
+
+              // TODO alignment
+
+              scopeStores[cache].push_back(mem);
+            } else {
+              cache = scopeMap[inst].first;
+            }
+
+            Value* result = lookupValueFromCache(BuilderM, ctx, cache, isi1, /*extraSize*/lim, available[l1.var]);
+            lookup_cache[idx] = result;
+            return result;
+          }
+        }
+      }
+
+      noSpeedCache:;
     }
 
     //llvm::errs() << "looking from cache: " << *inst << "\n";
 
     ensureLookupCached(inst);
-    assert(scopeMap[inst]);
     bool isi1 = inst->getType()->isIntegerTy() && cast<IntegerType>(inst->getType())->getBitWidth() == 1;
-    Value* result = lookupValueFromCache(BuilderM, inst->getParent(), scopeMap[inst], isi1);
+    Value* result = lookupValueFromCache(BuilderM, scopeMap[inst].second, scopeMap[inst].first, isi1);
     assert(result->getType() == inst->getType());
     lookup_cache[idx] = result;
     assert(result);

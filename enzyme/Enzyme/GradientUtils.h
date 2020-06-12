@@ -35,6 +35,7 @@
 #include "llvm/IR/Type.h"
 
 #include "llvm/Support/Casting.h"
+#include "llvm/Analysis/PostDominators.h"
 
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
@@ -44,6 +45,21 @@
 #include "EnzymeLogic.h"
 
 using namespace llvm;
+
+enum class DerivativeMode {
+    Forward,
+    Reverse,
+    Both
+};
+
+static inline std::string to_string(DerivativeMode mode) {
+  switch(mode) {
+    case DerivativeMode::Forward: return "Forward";
+    case DerivativeMode::Reverse: return "Reverse";
+    case DerivativeMode::Both: return "Both";
+  }
+  llvm_unreachable("illegal derivative mode");
+}
 
 extern llvm::cl::opt<bool> efficientBoolCache;
 
@@ -103,11 +119,13 @@ public:
 
 class GradientUtils {
 public:
+  DerivativeMode mode;
   llvm::Function *newFunc;
   llvm::Function *oldFunc;
   ValueToValueMapTy invertedPointers;
   DominatorTree DT;
   DominatorTree OrigDT;
+  PostDominatorTree OrigPDT;
   SmallPtrSet<Value*,4> constants;
   SmallPtrSet<Value*,20> nonconstant;
   SmallPtrSet<Value*,4> constant_values;
@@ -120,7 +138,7 @@ public:
   SmallVector<BasicBlock*, 12> originalBlocks;
   ValueMap<BasicBlock*,BasicBlock*> reverseBlocks;
   BasicBlock* inversionAllocs;
-  ValueToValueMapTy scopeMap;
+  std::map<Value*, std::pair<AllocaInst*, /*ctx*/BasicBlock*>> scopeMap;
   std::map<AllocaInst*, std::set<CallInst*>> scopeFrees;
   std::map<AllocaInst*, std::vector<CallInst*>> scopeAllocs;
   std::map<AllocaInst*, std::vector<Value*>> scopeStores;
@@ -247,9 +265,9 @@ public:
     nonconstant.erase(I);
     nonconstant_values.erase(I);
     if (scopeMap.find(I) != scopeMap.end()) {
-        scopeFrees.erase(cast<AllocaInst>(scopeMap[I]));
-        scopeAllocs.erase(cast<AllocaInst>(scopeMap[I]));
-        scopeStores.erase(cast<AllocaInst>(scopeMap[I]));
+        scopeFrees.erase(scopeMap[I].first);
+        scopeAllocs.erase(scopeMap[I].first);
+        scopeStores.erase(scopeMap[I].first);
     }
     if (auto ai = dyn_cast<AllocaInst>(I)) {
         scopeFrees.erase(ai);
@@ -267,7 +285,7 @@ public:
         }
     }
     for(auto v: scopeMap) {
-        if (v.second == I) {
+        if (v.second.first == I) {
             llvm::errs() << *oldFunc << "\n";
             llvm::errs() << *newFunc << "\n";
             dumpScope();
@@ -375,7 +393,7 @@ public:
   void dumpScope() {
     llvm::errs() << "scope:\n";
     for(auto a : scopeMap) {
-        llvm::errs() << "   scopeMap[" << *a.first << "] = " << *a.second << "\n";
+        llvm::errs() << "   scopeMap[" << *a.first << "] = " << *a.second.first << " ctx:" << a.second.second->getName() << "\n";
     }
     llvm::errs() << "end scope\n";
   }
@@ -461,13 +479,6 @@ public:
     }
   }
 
-  /*
-  Instruction* addMalloc(IRBuilder<> &BuilderQ, Instruction* malloc, int idx) {
-      assert(malloc);
-      return cast<Instruction>(addMalloc(BuilderQ, (Value*)malloc, idx));
-  }
-  */
-
   Value* addMalloc(IRBuilder<> &BuilderQ, Value* malloc, int idx) {
     assert(BuilderQ.GetInsertBlock()->getParent() == newFunc);
 
@@ -506,13 +517,22 @@ public:
         return UndefValue::get(retType);
       }
 
-      BasicBlock* parent = BuilderQ.GetInsertBlock();
-	  	if (Instruction* inst = dyn_cast_or_null<Instruction>(malloc)) {
-			 parent = inst->getParent();
-		  }
+      BasicBlock* ctx = BuilderQ.GetInsertBlock();
+      if (auto inst = dyn_cast<Instruction>(malloc)) 
+        ctx = inst->getParent();
+      auto found = scopeMap.find(malloc);
+      if (found != scopeMap.end()) {
+        ctx = found->second.second;
+      }
 
-	    LoopContext lc;
-    	bool inLoop = getContext(parent, lc);
+      bool inLoop;
+      if ((size_t)ctx & 1) {
+        inLoop = true;
+        ctx = (BasicBlock*)( (size_t)ctx ^ 1);
+      } else {
+    	  LoopContext lc;
+        inLoop = getContext(ctx, lc);
+      }
 
       if (!inLoop) {
         if (malloc) ret->setName(malloc->getName()+"_fromtape");
@@ -523,7 +543,6 @@ public:
         entryBuilder.setFastMathFlags(getFast());
         ret = (idx < 0) ? tape : cast<Instruction>(entryBuilder.CreateExtractValue(tape, {(unsigned)idx}));
 
-        //scopeMap[inst] = cache;
         Type* innerType = ret->getType();
         for(const auto unused : getSubLimits(BuilderQ.GetInsertBlock()) ) {
           if (!isa<PointerType>(innerType)) {
@@ -559,7 +578,7 @@ public:
         if (malloc) {
           assert(v->getType() == malloc->getType());
         }
-        scopeMap[v] = cache;
+        scopeMap[v] = std::make_pair(cache, ctx);
         ret = cast<Instruction>(v);
       }
 
@@ -580,8 +599,8 @@ public:
           if (!inLoop) {
 
             // Remove stores into
-            auto stores = scopeStores[cast<AllocaInst>(scopeMap[malloc])];
-            scopeStores.erase(cast<AllocaInst>(scopeMap[malloc]));
+            auto stores = scopeStores[scopeMap[malloc].first];
+            scopeStores.erase(scopeMap[malloc].first);
             for(int i=stores.size()-1; i>=0; i--) {
                 if (auto inst = dyn_cast<Instruction>(stores[i])) {
                     erase(inst);
@@ -589,7 +608,7 @@ public:
             }
 
             std::vector<User*> users;
-            for (auto u : scopeMap[malloc]->users()) {
+            for (auto u : scopeMap[malloc].first->users()) {
                 users.push_back(u);
             }
             for(auto u : users) {
@@ -601,21 +620,21 @@ public:
               } else {
                 llvm::errs() << "newFunc: " << *newFunc << "\n";
                 llvm::errs() << "malloc: " << *malloc << "\n";
-                llvm::errs() << "scopeMap[malloc]: " << *scopeMap[malloc] << "\n";
+                llvm::errs() << "scopeMap[malloc]: " << *scopeMap[malloc].first << "\n";
                 llvm::errs() << "u: " << *u << "\n";
                 assert(0 && "illegal use for out of loop scopeMap");
               }
             }
 
             {
-            Instruction* preerase = cast<Instruction>(scopeMap[malloc]);
+            AllocaInst* preerase = scopeMap[malloc].first;
             scopeMap.erase(malloc);
             erase(preerase);
             }
           } else {
             // Remove stores into
-            auto stores = scopeStores[cast<AllocaInst>(scopeMap[malloc])];
-            scopeStores.erase(cast<AllocaInst>(scopeMap[malloc]));
+            auto stores = scopeStores[scopeMap[malloc].first];
+            scopeStores.erase(scopeMap[malloc].first);
             for(int i=stores.size()-1; i>=0; i--) {
               if (auto inst = dyn_cast<Instruction>(stores[i])) {
                 erase(inst);
@@ -624,8 +643,8 @@ public:
 
 
                     //Remove allocations for scopealloc since it is already allocated by the augmented forward pass
-                    auto allocs = scopeAllocs[cast<AllocaInst>(scopeMap[malloc])];
-                    scopeAllocs.erase(cast<AllocaInst>(scopeMap[malloc]));
+                    auto allocs = scopeAllocs[scopeMap[malloc].first];
+                    scopeAllocs.erase(scopeMap[malloc].first);
                     for(auto allocinst : allocs) {
                         CastInst* cast = nullptr;
                         StoreInst* store = nullptr;
@@ -673,8 +692,8 @@ public:
                     }
 
                     // Remove frees
-                    auto tofree = scopeFrees[cast<AllocaInst>(scopeMap[malloc])];
-                    scopeFrees.erase(cast<AllocaInst>(scopeMap[malloc]));
+                    auto tofree = scopeFrees[scopeMap[malloc].first];
+                    scopeFrees.erase(scopeMap[malloc].first);
                     for(auto freeinst : tofree) {
                         std::deque<Value*> ops = { freeinst->getArgOperand(0) };
                         erase(freeinst);
@@ -693,7 +712,7 @@ public:
 
                     // uses of the alloc
                     std::vector<User*> users;
-                    for (auto u : scopeMap[malloc]->users()) {
+                    for (auto u : scopeMap[malloc].first->users()) {
                         users.push_back(u);
                     }
                     for( auto u : users) {
@@ -707,7 +726,7 @@ public:
                         } else {
                             llvm::errs() << "newFunc: " << *newFunc << "\n";
                             llvm::errs() << "malloc: " << *malloc << "\n";
-                            llvm::errs() << "scopeMap[malloc]: " << *scopeMap[malloc] << "\n";
+                            llvm::errs() << "scopeMap[malloc]: " << *scopeMap[malloc].first << "\n";
                             llvm::errs() << "u: " << *u << "\n";
                             assert(0 && "illegal use for out of loop scopeMap");
                         }
@@ -717,7 +736,7 @@ public:
 
                     //llvm::errs() << "did erase for malloc: " << *malloc << " " << *scopeMap[malloc] << "\n";
 
-                    Instruction* preerase = cast<Instruction>(scopeMap[malloc]);
+                    AllocaInst* preerase = scopeMap[malloc].first;
                     scopeMap.erase(malloc);
                     erase(preerase);
 
@@ -742,22 +761,33 @@ public:
         return malloc;
       }
 
-	  BasicBlock* parent = BuilderQ.GetInsertBlock();
-	  if (Instruction* inst = dyn_cast_or_null<Instruction>(malloc)) {
-			parent = inst->getParent();
-	  }
-	  LoopContext lc;
-      bool inLoop = getContext(parent, lc);
+      BasicBlock* ctx = BuilderQ.GetInsertBlock();
+      if (auto inst = dyn_cast<Instruction>(malloc)) 
+        ctx = inst->getParent();
+      auto found = scopeMap.find(malloc);
+      if (found != scopeMap.end()) {
+        ctx = found->second.second;
+      }
+
+      bool inLoop;
+
+      if ((size_t)ctx & 1) {
+        inLoop = true;
+        ctx = (BasicBlock*)( (size_t)ctx ^ 1);
+      } else {
+    	  LoopContext lc;
+        inLoop = getContext(ctx, lc);
+      }
 
       if (!inLoop) {
-	    addedMallocs.push_back(malloc);
+        addedMallocs.push_back(malloc);
         return malloc;
       }
 
       ensureLookupCached(cast<Instruction>(malloc), /*shouldFree=*/reverseBlocks.size() > 0);
-      assert(scopeMap[malloc]);
+      assert(scopeMap[malloc].first);
 
-      Instruction* toadd = scopeAllocs[cast<AllocaInst>(scopeMap[malloc])][0];
+      Instruction* toadd = scopeAllocs[scopeMap[malloc].first][0];
       for(auto u : toadd->users()) {
           if (auto ci = dyn_cast<CastInst>(u)) {
              toadd = ci;
@@ -797,8 +827,8 @@ public:
   TargetLibraryInfo &TLI;
   AAResults &AA;
   TypeAnalysis &TA;
-  GradientUtils(Function* newFunc_, Function* oldFunc_, TargetLibraryInfo &TLI_, TypeAnalysis &TA_, AAResults &AA_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_) :
-      newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), constant_values(constantvalues_.begin(), constantvalues_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), OrigLI(OrigDT), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
+  GradientUtils(Function* newFunc_, Function* oldFunc_, TargetLibraryInfo &TLI_, TypeAnalysis &TA_, AAResults &AA_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_, DerivativeMode mode) :
+      mode(mode), newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), OrigPDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), constant_values(constantvalues_.begin(), constantvalues_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), OrigLI(OrigDT), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), TLI(TLI_), AA(AA_), TA(TA_) {
         invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
         originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
           for (BasicBlock &BB: *newFunc) {
@@ -1339,8 +1369,31 @@ endCheck:
       return nullptr;
     }
 
+    BasicBlock* const fakeContext = (BasicBlock*)(0xDEADBEEF);
     //! returns true indices
     std::vector<std::pair</*sublimit*/Value*, /*loop limits*/std::vector<std::pair<LoopContext, Value*>>>> getSubLimits(BasicBlock* ctx) {
+        {
+          LoopContext idx;
+          if ( (size_t)ctx & 1) {
+            auto subctx = (BasicBlock*)( (size_t)ctx ^ 1);
+            auto zero = ConstantInt::get(Type::getInt64Ty(oldFunc->getContext()), 0);
+            auto one = ConstantInt::get(Type::getInt64Ty(oldFunc->getContext()), 1);
+            idx.var = nullptr;
+            idx.incvar = nullptr;
+            idx.antivaralloc = nullptr;
+            idx.limit = zero;
+            idx.latchMerge = nullptr;
+            idx.header = subctx;
+            idx.preheader = subctx;
+            idx.dynamic = false;
+            idx.parent = nullptr;
+            idx.exitBlocks = {};
+            std::vector<std::pair<Value*, std::vector<std::pair<LoopContext,Value*>>>> sublimits;
+            sublimits.push_back( { one, { { idx, one }}});
+            return sublimits;
+          }
+        }
+
         std::vector<LoopContext> contexts;
         for (BasicBlock* blk = ctx; blk != nullptr; ) {
             LoopContext idx;
@@ -1444,7 +1497,7 @@ endCheck:
     }
 
     //! Caching mechanism: creates a cache of type T in a scope given by ctx (where if ctx is in a loop there will be a corresponding number of slots)
-    AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, bool shouldFree, bool allocateInternal=true) {
+    AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, bool shouldFree, bool allocateInternal=true, Value* extraSize = nullptr) {
         assert(ctx);
         assert(T);
 
@@ -1463,7 +1516,7 @@ endCheck:
         entryBuilder.setFastMathFlags(getFast());
         AllocaInst* alloc = entryBuilder.CreateAlloca(types.back(), nullptr, name+"_cache");
         {
-            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(types.back())/8);
+            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(T->getContext()), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(types.back())/8);
             unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
             if ((bsize & (bsize - 1)) == 0) {
                 alloc->setAlignment(bsize);
@@ -1471,8 +1524,8 @@ endCheck:
         }
 
 
-        Type *BPTy = Type::getInt8PtrTy(ctx->getContext());
-        auto realloc = newFunc->getParent()->getOrInsertFunction("realloc", BPTy, BPTy, Type::getInt64Ty(ctx->getContext()));
+        Type *BPTy = Type::getInt8PtrTy(T->getContext());
+        auto realloc = newFunc->getParent()->getOrInsertFunction("realloc", BPTy, BPTy, Type::getInt64Ty(T->getContext()));
 
         Value* storeInto = alloc;
 
@@ -1484,7 +1537,7 @@ endCheck:
             //llvm::errs() << " + size: " << *size << " ph: " << containedloops.back().first.preheader->getName() << " header: " << containedloops.back().first.header->getName() << "\n";
             Type* myType = types[i];
 
-            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8);
+            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(T->getContext()), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8);
 
             if (allocateInternal) {
 
@@ -1492,7 +1545,12 @@ endCheck:
 
                 Value* size = sublimits[i].first;
                 if (efficientBoolCache && isi1 && i == 0) {
-                  size = allocationBuilder.CreateLShr(allocationBuilder.CreateAdd(size, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 7), "", true), ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 3));
+                  size = allocationBuilder.CreateLShr(allocationBuilder.CreateAdd(size, ConstantInt::get(Type::getInt64Ty(T->getContext()), 7), "", true), ConstantInt::get(Type::getInt64Ty(T->getContext()), 3));
+                }
+                if (extraSize && i == 0) {
+                  Value* es = unwrapM(extraSize, allocationBuilder, {}, UnwrapMode::AttemptFullUnwrapWithLookup);
+                  assert(es); 
+                  size = allocationBuilder.CreateMul(size, es, "", /*NUW*/true, /*NSW*/true);
                 }
 
                 StoreInst* storealloc = nullptr;
@@ -1533,7 +1591,7 @@ endCheck:
                     */
                     IRBuilder <> build(containedloops.back().first.incvar->getNextNode());
                     Value* allocation = build.CreateLoad(storeInto);
-                    //Value* foo = build.CreateNUWAdd(containedloops.back().first.var, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1));
+                    //Value* foo = build.CreateNUWAdd(containedloops.back().first.var, ConstantInt::get(Type::getInt64Ty(T->getContext()), 1));
                     Value* realloc_size = nullptr;
                     if (isa<ConstantInt>(sublimits[i].first) && cast<ConstantInt>(sublimits[i].first)->isOne()) {
                         realloc_size = containedloops.back().first.incvar;
@@ -1585,7 +1643,8 @@ endCheck:
                     auto& innercontainedloops = sublimits[j].second;
                     for(auto riter = innercontainedloops.rbegin(), rend = innercontainedloops.rend(); riter != rend; riter++) {
                         const auto& idx = riter->first;
-                        antimap[idx.var] = tbuild.CreateLoad(idx.antivaralloc);
+                        if (idx.var)
+                          antimap[idx.var] = tbuild.CreateLoad(idx.antivaralloc);
                     }
                 }
 
@@ -1597,7 +1656,7 @@ endCheck:
                     forfree->setAlignment(bsize);
                 }
                 //forfree->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(forfree->getContext(), {}));
-                auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(forfree, Type::getInt8PtrTy(ctx->getContext())), tbuild.GetInsertBlock()));
+                auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(forfree, Type::getInt8PtrTy(oldFunc->getContext())), tbuild.GetInsertBlock()));
                 ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
                 if (ci->getParent()==nullptr) {
                     tbuild.Insert(ci);
@@ -1616,8 +1675,11 @@ endCheck:
                   //if (i != 0 && riter+1 == rend) break;
 
                   const auto &idx = riter->first;
-                  indices.push_back(idx.var);
-                  available[idx.var] = idx.var;
+                  Value* var = idx.var;
+                  if (var == nullptr) var = ConstantInt::get(idx.limit->getType(), 0);
+                  indices.push_back(var);
+                  if (idx.var)
+                    available[var] = var;
 
                   Value* lim = unwrapM(riter->second, v, available, UnwrapMode::AttemptFullUnwrapWithLookup);
                   assert(lim);
@@ -1643,7 +1705,7 @@ endCheck:
         return alloc;
     }
 
-    Value* getCachePointer(IRBuilder <>& BuilderM, BasicBlock* ctx, Value* cache, bool isi1, bool storeInStoresMap=false) {
+    Value* getCachePointer(IRBuilder <>& BuilderM, BasicBlock* ctx, Value* cache, bool isi1, bool storeInStoresMap=false, Value* extraSize = nullptr) {
         assert(ctx);
         assert(cache);
 
@@ -1671,7 +1733,7 @@ endCheck:
             }
             cast<LoadInst>(next)->setMetadata(LLVMContext::MD_invariant_group, invariantGroups[std::make_pair(cache, i)]);
             ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()),
-                            ctx->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(next->getType())/8);
+                            oldFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(next->getType())/8);
             cast<LoadInst>(next)->setMetadata(LLVMContext::MD_dereferenceable, MDNode::get(cache->getContext(), {ConstantAsMetadata::get(byteSizeOfType)}));
             unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
             if ((bsize & (bsize - 1)) == 0) {
@@ -1688,12 +1750,18 @@ endCheck:
 
               const auto &idx = riter->first;
               if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
-                Value* av = BuilderM.CreateLoad(idx.antivaralloc);
+                Value* av;
+                if (idx.var) av = BuilderM.CreateLoad(idx.antivaralloc);
+                else av = ConstantInt::get(idx.limit->getType(), 0);
+                
                 indices.push_back(av);
-                available[idx.var] = av;
+                if (idx.var)
+                  available[idx.var] = av;
               } else {
-                indices.push_back(idx.var);
-                available[idx.var] = idx.var;
+                assert(idx.limit);
+                indices.push_back(idx.var ? (Value*)idx.var : (Value*)ConstantInt::get(idx.limit->getType(), 0));
+                if (idx.var)
+                  available[idx.var] = idx.var;
               }
 
               Value* lim = unwrapM(riter->second, BuilderM, available, UnwrapMode::AttemptFullUnwrapWithLookup);
@@ -1710,7 +1778,12 @@ endCheck:
                 for(unsigned ind=1; ind<indices.size(); ind++) {
                   idx = BuilderM.CreateAdd(idx, BuilderM.CreateMul(indices[ind], limits[ind-1], "", /*NUW*/true, /*NSW*/true), "", /*NUW*/true, /*NSW*/true);
                 }
-                if (efficientBoolCache && isi1 && i == 0) idx = BuilderM.CreateLShr(idx, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 3));
+                if (efficientBoolCache && isi1 && i == 0) idx = BuilderM.CreateLShr(idx, ConstantInt::get(Type::getInt64Ty(oldFunc->getContext()), 3));
+                if (i == 0 && extraSize) {
+                  Value* es = lookupM(extraSize, BuilderM);
+                  assert(es); 
+                  idx = BuilderM.CreateMul(idx, es, "", /*NUW*/true, /*NSW*/true);
+                }
                 next = BuilderM.CreateGEP(next, {idx});
                 cast<GetElementPtrInst>(next)->setIsInBounds(true);
                 if (storeInStoresMap && isa<AllocaInst>(cache)) scopeStores[cast<AllocaInst>(cache)].push_back(next);
@@ -1720,8 +1793,12 @@ endCheck:
         return next;
     }
 
-    Value* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache, bool isi1) {
-        auto cptr = getCachePointer(BuilderM, ctx, cache, isi1);
+    Value* lookupValueFromCache(IRBuilder<>& BuilderM, BasicBlock* ctx, Value* cache, bool isi1, Value* extraSize=nullptr, Value* extraOffset=nullptr) {
+        auto cptr = getCachePointer(BuilderM, ctx, cache, isi1, /*storeInStoresMap*/false, extraSize);
+        if (extraOffset) {
+          cptr = BuilderM.CreateGEP(cptr, {extraOffset});
+          cast<GetElementPtrInst>(cptr)->setIsInBounds(true);
+        }
         auto result = BuilderM.CreateLoad(cptr);
 
         if (valueInvariantGroups.find(cache) == valueInvariantGroups.end()) {
@@ -1731,7 +1808,7 @@ endCheck:
         result->setMetadata("enzyme_fromcache", MDNode::get(result->getContext(), {}));
         result->setMetadata(LLVMContext::MD_invariant_group, valueInvariantGroups[cache]);
         ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()),
-                        ctx->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(result->getType())/8);
+                        oldFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(result->getType())/8);
         //result->setMetadata(LLVMContext::MD_dereferenceable, MDNode::get(cache->getContext(), {ConstantAsMetadata::get(byteSizeOfType)}));
         unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
         if ((bsize & (bsize - 1)) == 0) {
@@ -1837,7 +1914,7 @@ endCheck:
         if (scopeMap.find(inst) != scopeMap.end()) return;
         AllocaInst* cache = createCacheForScope(inst->getParent(), inst->getType(), inst->getName(), shouldFree);
         assert(cache);
-        scopeMap[inst] = cache;
+        scopeMap[inst] = std::make_pair(cache, inst->getParent());
         storeInstructionInCache(inst->getParent(), inst, cache);
     }
 
@@ -1906,8 +1983,8 @@ endCheck:
 };
 
 class DiffeGradientUtils : public GradientUtils {
-  DiffeGradientUtils(Function* newFunc_, Function* oldFunc_, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy &origToNew_)
-      : GradientUtils(newFunc_, oldFunc_, TLI, TA, AA, invertedPointers_, constants_, nonconstant_, constantvalues_, returnvals_, origToNew_) {
+  DiffeGradientUtils(Function* newFunc_, Function* oldFunc_, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &constantvalues_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy &origToNew_, DerivativeMode mode)
+      : GradientUtils(newFunc_, oldFunc_, TLI, TA, AA, invertedPointers_, constants_, nonconstant_, constantvalues_, returnvals_, origToNew_, mode) {
         prepareForReverse();
     }
 

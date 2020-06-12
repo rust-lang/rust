@@ -822,21 +822,6 @@ bool legalCombinedForwardReverse(CallInst *origop, const std::map<ReturnInst*,St
   return true;
 }
 
-enum class DerivativeMode {
-    Forward,
-    Reverse,
-    Both
-};
-
-std::string to_string(DerivativeMode mode) {
-  switch(mode) {
-    case DerivativeMode::Forward: return "Forward";
-    case DerivativeMode::Reverse: return "Reverse";
-    case DerivativeMode::Both: return "Both";
-  }
-  llvm_unreachable("illegal derivative mode");
-}
-
 template<class AugmentedReturnType = AugmentedReturn*>
 class DerivativeMaker : public llvm::InstVisitor<DerivativeMaker<AugmentedReturnType>> {
 public:
@@ -2721,11 +2706,11 @@ public:
 
         
         if (gutils->scopeMap.find(op) != gutils->scopeMap.end()) {
-          AllocaInst* cache = cast<AllocaInst>(gutils->scopeMap[op]);
+          AllocaInst* cache = gutils->scopeMap[op].first;
           for(auto st : gutils->scopeStores[cache])
             cast<StoreInst>(st)->eraseFromParent();
           gutils->scopeStores.clear();
-          gutils->storeInstructionInCache(op->getParent(), retval, cache);
+          gutils->storeInstructionInCache(gutils->scopeMap[op].second, retval, cache);
         }
         op->replaceAllUsesWith(retval);
         mapp[op] = retval;
