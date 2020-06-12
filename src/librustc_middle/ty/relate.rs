@@ -508,16 +508,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
-    let eagerly_eval = |x: &'tcx ty::Const<'tcx>| {
-        // FIXME(eddyb) this doesn't account for lifetime inference variables
-        // being erased by `eval`, *nor* for the polymorphic aspect of `eval`.
-        // That is, we could always use `eval` and it will just return the
-        // old value back if it doesn't succeed.
-        if !x.val.needs_infer() {
-            return x.eval(tcx, relation.param_env()).val;
-        }
-        x.val
-    };
+    let eagerly_eval = |x: &'tcx ty::Const<'tcx>| x.eval(tcx, relation.param_env()).val;
 
     // FIXME(eddyb) doesn't look like everything below checks that `a.ty == b.ty`.
     // We could probably always assert it early, as `const` generic parameters
