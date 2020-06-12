@@ -46,6 +46,7 @@ pub struct RawItems {
 impl RawItems {
     pub(crate) fn raw_items_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<RawItems> {
         let _p = profile("raw_items_query");
+        db.item_tree(file_id);
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
             source_ast_id_map: db.ast_id_map(file_id),

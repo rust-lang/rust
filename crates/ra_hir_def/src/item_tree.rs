@@ -82,8 +82,8 @@ impl ItemTree {
 
     /// Returns an iterator over all items located at the top level of the `HirFileId` this
     /// `ItemTree` was created from.
-    pub fn top_level_items(&self) -> impl Iterator<Item = ModItem> + '_ {
-        self.top_level.iter().copied()
+    pub fn top_level_items(&self) -> &[ModItem] {
+        &self.top_level
     }
 }
 
@@ -120,7 +120,7 @@ impl_index!(
 );
 
 /// A desugared `extern crate` or `use` import.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Import {
     pub path: ModPath,
     pub alias: Option<ImportAlias>,
@@ -218,6 +218,12 @@ pub struct Mod {
     pub name: Name,
     pub visibility: RawVisibility,
     pub items: Vec<ModItem>,
+}
+
+pub enum ModKind {
+    Inline { items: Vec<ModItem> },
+
+    Outline {},
 }
 
 #[derive(Debug, Eq, PartialEq)]

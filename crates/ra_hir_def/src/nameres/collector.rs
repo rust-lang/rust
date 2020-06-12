@@ -19,9 +19,10 @@ use test_utils::mark;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
+    item_tree::{Import, ItemTree, Mod, ModItem},
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
-        raw, BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
+        BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
     },
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
@@ -30,6 +31,7 @@ use crate::{
     FunctionLoc, ImplLoc, Intern, LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc,
     TraitLoc, TypeAliasLoc, UnionLoc,
 };
+use ra_arena::Idx;
 
 pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
     let crate_graph = db.crate_graph();
@@ -104,8 +106,8 @@ impl PartialResolvedImport {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ImportDirective {
     module_id: LocalModuleId,
-    import_id: raw::Import,
-    import: raw::ImportData,
+    import_id: Idx<Import>,
+    import: Import,
     status: PartialResolvedImport,
 }
 
@@ -140,7 +142,7 @@ struct DefCollector<'a> {
 impl DefCollector<'_> {
     fn collect(&mut self) {
         let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
-        let raw_items = self.db.raw_items(file_id.into());
+        let item_tree = self.db.item_tree(file_id.into());
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
         ModCollector {
@@ -148,10 +150,10 @@ impl DefCollector<'_> {
             macro_depth: 0,
             module_id,
             file_id: file_id.into(),
-            raw_items: &raw_items,
+            item_tree: &item_tree,
             mod_dir: ModDir::root(),
         }
-        .collect(raw_items.items());
+        .collect(item_tree.top_level_items());
 
         // main name resolution fixed-point loop.
         let mut i = 0;
@@ -286,7 +288,7 @@ impl DefCollector<'_> {
     fn import_macros_from_extern_crate(
         &mut self,
         current_module_id: LocalModuleId,
-        import: &raw::ImportData,
+        import: &Import,
     ) {
         log::debug!(
             "importing macros from extern crate: {:?} ({:?})",
@@ -352,11 +354,7 @@ impl DefCollector<'_> {
         }
     }
 
-    fn resolve_import(
-        &self,
-        module_id: LocalModuleId,
-        import: &raw::ImportData,
-    ) -> PartialResolvedImport {
+    fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
         log::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
         if import.is_extern_crate {
             let res = self.def_map.resolve_name_in_extern_prelude(
@@ -649,17 +647,17 @@ impl DefCollector<'_> {
         depth: usize,
     ) {
         let file_id: HirFileId = macro_call_id.as_file();
-        let raw_items = self.db.raw_items(file_id);
+        let item_tree = self.db.item_tree(file_id);
         let mod_dir = self.mod_dirs[&module_id].clone();
         ModCollector {
             def_collector: &mut *self,
             macro_depth: depth,
             file_id,
             module_id,
-            raw_items: &raw_items,
+            item_tree: &item_tree,
             mod_dir,
         }
-        .collect(raw_items.items());
+        .collect(item_tree.top_level_items());
     }
 
     fn finish(self) -> CrateDefMap {
@@ -673,12 +671,12 @@ struct ModCollector<'a, 'b> {
     macro_depth: usize,
     module_id: LocalModuleId,
     file_id: HirFileId,
-    raw_items: &'a raw::RawItems,
+    item_tree: &'a ItemTree,
     mod_dir: ModDir,
 }
 
 impl ModCollector<'_, '_> {
-    fn collect(&mut self, items: &[raw::RawItem]) {
+    fn collect(&mut self, items: &[ModItem]) {
         // Note: don't assert that inserted value is fresh: it's simply not true
         // for macros.
         self.def_collector.mod_dirs.insert(self.module_id, self.mod_dir.clone());
@@ -697,7 +695,7 @@ impl ModCollector<'_, '_> {
         for item in items {
             if self.is_cfg_enabled(&item.attrs) {
                 if let raw::RawItemKind::Import(import_id) = item.kind {
-                    let import = self.raw_items[import_id].clone();
+                    let import = self.item_tree[import_id].clone();
                     if import.is_extern_crate && import.is_macro_use {
                         self.def_collector.import_macros_from_extern_crate(self.module_id, &import);
                     }
@@ -709,27 +707,27 @@ impl ModCollector<'_, '_> {
             if self.is_cfg_enabled(&item.attrs) {
                 match item.kind {
                     raw::RawItemKind::Module(m) => {
-                        self.collect_module(&self.raw_items[m], &item.attrs)
+                        self.collect_module(&self.item_tree[m], &item.attrs)
                     }
                     raw::RawItemKind::Import(import_id) => {
                         self.def_collector.unresolved_imports.push(ImportDirective {
                             module_id: self.module_id,
                             import_id,
-                            import: self.raw_items[import_id].clone(),
+                            import: self.item_tree[import_id].clone(),
                             status: PartialResolvedImport::Unresolved,
                         })
                     }
                     raw::RawItemKind::Def(def) => {
-                        self.define_def(&self.raw_items[def], &item.attrs)
+                        self.define_def(&self.item_tree[def], &item.attrs)
                     }
-                    raw::RawItemKind::Macro(mac) => self.collect_macro(&self.raw_items[mac]),
+                    raw::RawItemKind::Macro(mac) => self.collect_macro(&self.item_tree[mac]),
                     raw::RawItemKind::Impl(imp) => {
                         let module = ModuleId {
                             krate: self.def_collector.def_map.krate,
                             local_id: self.module_id,
                         };
                         let container = ContainerId::ModuleId(module);
-                        let ast_id = self.raw_items[imp].ast_id;
+                        let ast_id = self.item_tree[imp].ast_id;
                         let impl_id =
                             ImplLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                                 .intern(self.def_collector.db);
@@ -742,7 +740,7 @@ impl ModCollector<'_, '_> {
         }
     }
 
-    fn collect_module(&mut self, module: &raw::ModuleData, attrs: &Attrs) {
+    fn collect_module(&mut self, module: &Mod, attrs: &Attrs) {
         let path_attr = attrs.by_key("path").string_value();
         let is_macro_use = attrs.by_key("macro_use").exists();
         match module {
@@ -760,7 +758,7 @@ impl ModCollector<'_, '_> {
                     macro_depth: self.macro_depth,
                     module_id,
                     file_id: self.file_id,
-                    raw_items: self.raw_items,
+                    item_tree: self.item_tree,
                     mod_dir: self.mod_dir.descend_into_definition(name, path_attr),
                 }
                 .collect(&*items);
@@ -790,7 +788,7 @@ impl ModCollector<'_, '_> {
                             macro_depth: self.macro_depth,
                             module_id,
                             file_id: file_id.into(),
-                            raw_items: &raw_items,
+                            item_tree: &raw_items,
                             mod_dir,
                         }
                         .collect(raw_items.items());
