@@ -338,11 +338,6 @@ impl Definitions {
     }
 
     #[inline]
-    pub fn hir_id_to_node_id(&self, hir_id: hir::HirId) -> ast::NodeId {
-        self.hir_id_to_node_id[&hir_id]
-    }
-
-    #[inline]
     pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
         let node_id = self.def_id_to_node_id[id];
         self.node_id_to_hir_id[node_id].unwrap()
@@ -356,7 +351,7 @@ impl Definitions {
 
     #[inline]
     pub fn opt_hir_id_to_local_def_id(&self, hir_id: hir::HirId) -> Option<LocalDefId> {
-        let node_id = self.hir_id_to_node_id(hir_id);
+        let node_id = self.hir_id_to_node_id[&hir_id];
         self.opt_local_def_id(node_id)
     }
 
