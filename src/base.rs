@@ -292,12 +292,13 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 func,
                 args,
                 destination,
+                fn_span,
                 cleanup: _,
                 from_hir_call: _,
             } => {
                 fx.tcx.sess.time("codegen call", || crate::abi::codegen_terminator_call(
                     fx,
-                    bb_data.terminator().source_info.span,
+                    *fn_span,
                     block,
                     func,
                     args,
