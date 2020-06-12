@@ -1086,7 +1086,7 @@ fn id_from_hir_id(id: hir::HirId, scx: &SaveContext<'_, '_>) -> rls_data::Id {
 }
 
 fn null_id() -> rls_data::Id {
-    rls_data::Id { krate: u32::max_value(), index: u32::max_value() }
+    rls_data::Id { krate: u32::MAX, index: u32::MAX }
 }
 
 fn lower_attributes(

@@ -819,9 +819,7 @@ impl SourceMap {
 
         // Disregard indexes that are at the start or end of their spans, they can't fit bigger
         // characters.
-        if (!forwards && end_index == usize::min_value())
-            || (forwards && start_index == usize::max_value())
-        {
+        if (!forwards && end_index == usize::MIN) || (forwards && start_index == usize::MAX) {
             debug!("find_width_of_character_at_span: start or end of span, cannot be multibyte");
             return 1;
         }

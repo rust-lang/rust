@@ -943,8 +943,7 @@ impl f64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::f64;
-    use crate::f64::*;
+    use crate::f64::consts;
     use crate::num::FpCategory as Fp;
     use crate::num::*;
 
@@ -955,19 +954,19 @@ mod tests {
 
     #[test]
     fn test_min_nan() {
-        assert_eq!(NAN.min(2.0), 2.0);
-        assert_eq!(2.0f64.min(NAN), 2.0);
+        assert_eq!(f64::NAN.min(2.0), 2.0);
+        assert_eq!(2.0f64.min(f64::NAN), 2.0);
     }
 
     #[test]
     fn test_max_nan() {
-        assert_eq!(NAN.max(2.0), 2.0);
-        assert_eq!(2.0f64.max(NAN), 2.0);
+        assert_eq!(f64::NAN.max(2.0), 2.0);
+        assert_eq!(2.0f64.max(f64::NAN), 2.0);
     }
 
     #[test]
     fn test_nan() {
-        let nan: f64 = NAN;
+        let nan: f64 = f64::NAN;
         assert!(nan.is_nan());
         assert!(!nan.is_infinite());
         assert!(!nan.is_finite());
@@ -979,7 +978,7 @@ mod tests {
 
     #[test]
     fn test_infinity() {
-        let inf: f64 = INFINITY;
+        let inf: f64 = f64::INFINITY;
         assert!(inf.is_infinite());
         assert!(!inf.is_finite());
         assert!(inf.is_sign_positive());
@@ -991,7 +990,7 @@ mod tests {
 
     #[test]
     fn test_neg_infinity() {
-        let neg_inf: f64 = NEG_INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert!(neg_inf.is_infinite());
         assert!(!neg_inf.is_finite());
         assert!(!neg_inf.is_sign_positive());
@@ -1043,9 +1042,9 @@ mod tests {
 
     #[test]
     fn test_is_nan() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert!(nan.is_nan());
         assert!(!0.0f64.is_nan());
         assert!(!5.3f64.is_nan());
@@ -1056,9 +1055,9 @@ mod tests {
 
     #[test]
     fn test_is_infinite() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert!(!nan.is_infinite());
         assert!(inf.is_infinite());
         assert!(neg_inf.is_infinite());
@@ -1069,9 +1068,9 @@ mod tests {
 
     #[test]
     fn test_is_finite() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert!(!nan.is_finite());
         assert!(!inf.is_finite());
         assert!(!neg_inf.is_finite());
@@ -1083,9 +1082,9 @@ mod tests {
     #[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
     #[test]
     fn test_is_normal() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         let zero: f64 = 0.0f64;
         let neg_zero: f64 = -0.0;
         assert!(!nan.is_normal());
@@ -1101,9 +1100,9 @@ mod tests {
     #[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
     #[test]
     fn test_classify() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         let zero: f64 = 0.0f64;
         let neg_zero: f64 = -0.0;
         assert_eq!(nan.classify(), Fp::Nan);
@@ -1187,59 +1186,59 @@ mod tests {
 
     #[test]
     fn test_abs() {
-        assert_eq!(INFINITY.abs(), INFINITY);
+        assert_eq!(f64::INFINITY.abs(), f64::INFINITY);
         assert_eq!(1f64.abs(), 1f64);
         assert_eq!(0f64.abs(), 0f64);
         assert_eq!((-0f64).abs(), 0f64);
         assert_eq!((-1f64).abs(), 1f64);
-        assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f64 / NEG_INFINITY).abs(), 0f64);
-        assert!(NAN.abs().is_nan());
+        assert_eq!(f64::NEG_INFINITY.abs(), f64::INFINITY);
+        assert_eq!((1f64 / f64::NEG_INFINITY).abs(), 0f64);
+        assert!(f64::NAN.abs().is_nan());
     }
 
     #[test]
     fn test_signum() {
-        assert_eq!(INFINITY.signum(), 1f64);
+        assert_eq!(f64::INFINITY.signum(), 1f64);
         assert_eq!(1f64.signum(), 1f64);
         assert_eq!(0f64.signum(), 1f64);
         assert_eq!((-0f64).signum(), -1f64);
         assert_eq!((-1f64).signum(), -1f64);
-        assert_eq!(NEG_INFINITY.signum(), -1f64);
-        assert_eq!((1f64 / NEG_INFINITY).signum(), -1f64);
-        assert!(NAN.signum().is_nan());
+        assert_eq!(f64::NEG_INFINITY.signum(), -1f64);
+        assert_eq!((1f64 / f64::NEG_INFINITY).signum(), -1f64);
+        assert!(f64::NAN.signum().is_nan());
     }
 
     #[test]
     fn test_is_sign_positive() {
-        assert!(INFINITY.is_sign_positive());
+        assert!(f64::INFINITY.is_sign_positive());
         assert!(1f64.is_sign_positive());
         assert!(0f64.is_sign_positive());
         assert!(!(-0f64).is_sign_positive());
         assert!(!(-1f64).is_sign_positive());
-        assert!(!NEG_INFINITY.is_sign_positive());
-        assert!(!(1f64 / NEG_INFINITY).is_sign_positive());
-        assert!(NAN.is_sign_positive());
-        assert!(!(-NAN).is_sign_positive());
+        assert!(!f64::NEG_INFINITY.is_sign_positive());
+        assert!(!(1f64 / f64::NEG_INFINITY).is_sign_positive());
+        assert!(f64::NAN.is_sign_positive());
+        assert!(!(-f64::NAN).is_sign_positive());
     }
 
     #[test]
     fn test_is_sign_negative() {
-        assert!(!INFINITY.is_sign_negative());
+        assert!(!f64::INFINITY.is_sign_negative());
         assert!(!1f64.is_sign_negative());
         assert!(!0f64.is_sign_negative());
         assert!((-0f64).is_sign_negative());
         assert!((-1f64).is_sign_negative());
-        assert!(NEG_INFINITY.is_sign_negative());
-        assert!((1f64 / NEG_INFINITY).is_sign_negative());
-        assert!(!NAN.is_sign_negative());
-        assert!((-NAN).is_sign_negative());
+        assert!(f64::NEG_INFINITY.is_sign_negative());
+        assert!((1f64 / f64::NEG_INFINITY).is_sign_negative());
+        assert!(!f64::NAN.is_sign_negative());
+        assert!((-f64::NAN).is_sign_negative());
     }
 
     #[test]
     fn test_mul_add() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert_approx_eq!(12.3f64.mul_add(4.5, 6.7), 62.05);
         assert_approx_eq!((-12.3f64).mul_add(-4.5, -6.7), 48.65);
         assert_approx_eq!(0.0f64.mul_add(8.9, 1.2), 1.2);
@@ -1253,9 +1252,9 @@ mod tests {
 
     #[test]
     fn test_recip() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert_eq!(1.0f64.recip(), 1.0);
         assert_eq!(2.0f64.recip(), 0.5);
         assert_eq!((-0.4f64).recip(), -2.5);
@@ -1267,9 +1266,9 @@ mod tests {
 
     #[test]
     fn test_powi() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert_eq!(1.0f64.powi(1), 1.0);
         assert_approx_eq!((-3.1f64).powi(2), 9.61);
         assert_approx_eq!(5.9f64.powi(-2), 0.028727);
@@ -1281,9 +1280,9 @@ mod tests {
 
     #[test]
     fn test_powf() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert_eq!(1.0f64.powf(1.0), 1.0);
         assert_approx_eq!(3.4f64.powf(4.5), 246.408183);
         assert_approx_eq!(2.7f64.powf(-3.2), 0.041652);
@@ -1297,13 +1296,13 @@ mod tests {
 
     #[test]
     fn test_sqrt_domain() {
-        assert!(NAN.sqrt().is_nan());
-        assert!(NEG_INFINITY.sqrt().is_nan());
+        assert!(f64::NAN.sqrt().is_nan());
+        assert!(f64::NEG_INFINITY.sqrt().is_nan());
         assert!((-1.0f64).sqrt().is_nan());
         assert_eq!((-0.0f64).sqrt(), -0.0);
         assert_eq!(0.0f64.sqrt(), 0.0);
         assert_eq!(1.0f64.sqrt(), 1.0);
-        assert_eq!(INFINITY.sqrt(), INFINITY);
+        assert_eq!(f64::INFINITY.sqrt(), f64::INFINITY);
     }
 
     #[test]
@@ -1312,9 +1311,9 @@ mod tests {
         assert_approx_eq!(2.718282, 1.0f64.exp());
         assert_approx_eq!(148.413159, 5.0f64.exp());
 
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
-        let nan: f64 = NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
+        let nan: f64 = f64::NAN;
         assert_eq!(inf, inf.exp());
         assert_eq!(0.0, neg_inf.exp());
         assert!(nan.exp().is_nan());
@@ -1325,9 +1324,9 @@ mod tests {
         assert_eq!(32.0, 5.0f64.exp2());
         assert_eq!(1.0, 0.0f64.exp2());
 
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
-        let nan: f64 = NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
+        let nan: f64 = f64::NAN;
         assert_eq!(inf, inf.exp2());
         assert_eq!(0.0, neg_inf.exp2());
         assert!(nan.exp2().is_nan());
@@ -1335,9 +1334,9 @@ mod tests {
 
     #[test]
     fn test_ln() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert_approx_eq!(1.0f64.exp().ln(), 1.0);
         assert!(nan.ln().is_nan());
         assert_eq!(inf.ln(), inf);
@@ -1350,9 +1349,9 @@ mod tests {
 
     #[test]
     fn test_log() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert_eq!(10.0f64.log(10.0), 1.0);
         assert_approx_eq!(2.3f64.log(3.5), 0.664858);
         assert_eq!(1.0f64.exp().log(1.0f64.exp()), 1.0);
@@ -1368,9 +1367,9 @@ mod tests {
 
     #[test]
     fn test_log2() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert_approx_eq!(10.0f64.log2(), 3.321928);
         assert_approx_eq!(2.3f64.log2(), 1.201634);
         assert_approx_eq!(1.0f64.exp().log2(), 1.442695);
@@ -1384,9 +1383,9 @@ mod tests {
 
     #[test]
     fn test_log10() {
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert_eq!(10.0f64.log10(), 1.0);
         assert_approx_eq!(2.3f64.log10(), 0.361728);
         assert_approx_eq!(1.0f64.exp().log10(), 0.434294);
@@ -1402,9 +1401,9 @@ mod tests {
     #[test]
     fn test_to_degrees() {
         let pi: f64 = consts::PI;
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert_eq!(0.0f64.to_degrees(), 0.0);
         assert_approx_eq!((-5.8f64).to_degrees(), -332.315521);
         assert_eq!(pi.to_degrees(), 180.0);
@@ -1416,9 +1415,9 @@ mod tests {
     #[test]
     fn test_to_radians() {
         let pi: f64 = consts::PI;
-        let nan: f64 = NAN;
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
+        let nan: f64 = f64::NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
         assert_eq!(0.0f64.to_radians(), 0.0);
         assert_approx_eq!(154.6f64.to_radians(), 2.698279);
         assert_approx_eq!((-332.31f64).to_radians(), -5.799903);
@@ -1433,9 +1432,9 @@ mod tests {
         assert_eq!(0.0f64.asinh(), 0.0f64);
         assert_eq!((-0.0f64).asinh(), -0.0f64);
 
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
-        let nan: f64 = NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
+        let nan: f64 = f64::NAN;
         assert_eq!(inf.asinh(), inf);
         assert_eq!(neg_inf.asinh(), neg_inf);
         assert!(nan.asinh().is_nan());
@@ -1450,9 +1449,9 @@ mod tests {
         assert_eq!(1.0f64.acosh(), 0.0f64);
         assert!(0.999f64.acosh().is_nan());
 
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
-        let nan: f64 = NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
+        let nan: f64 = f64::NAN;
         assert_eq!(inf.acosh(), inf);
         assert!(neg_inf.acosh().is_nan());
         assert!(nan.acosh().is_nan());
@@ -1465,9 +1464,9 @@ mod tests {
         assert_eq!(0.0f64.atanh(), 0.0f64);
         assert_eq!((-0.0f64).atanh(), -0.0f64);
 
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
-        let nan: f64 = NAN;
+        let inf: f64 = f64::INFINITY;
+        let neg_inf: f64 = f64::NEG_INFINITY;
+        let nan: f64 = f64::NAN;
         assert_eq!(1.0f64.atanh(), inf);
         assert_eq!((-1.0f64).atanh(), neg_inf);
         assert!(2f64.atanh().atanh().is_nan());
@@ -1546,13 +1545,13 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_clamp_min_is_nan() {
-        let _ = 1.0f64.clamp(NAN, 1.0);
+        let _ = 1.0f64.clamp(f64::NAN, 1.0);
     }
 
     #[test]
     #[should_panic]
     fn test_clamp_max_is_nan() {
-        let _ = 1.0f64.clamp(3.0, NAN);
+        let _ = 1.0f64.clamp(3.0, f64::NAN);
     }
 
     #[test]

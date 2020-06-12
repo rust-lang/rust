@@ -2034,7 +2034,7 @@ trait RcBoxPtr<T: ?Sized> {
         // The reference count will never be zero when this is called;
         // nevertheless, we insert an abort here to hint LLVM at
         // an otherwise missed optimization.
-        if strong == 0 || strong == usize::max_value() {
+        if strong == 0 || strong == usize::MAX {
             abort();
         }
         self.inner().strong.set(strong + 1);
@@ -2058,7 +2058,7 @@ trait RcBoxPtr<T: ?Sized> {
         // The reference count will never be zero when this is called;
         // nevertheless, we insert an abort here to hint LLVM at
         // an otherwise missed optimization.
-        if weak == 0 || weak == usize::max_value() {
+        if weak == 0 || weak == usize::MAX {
             abort();
         }
         self.inner().weak.set(weak + 1);
