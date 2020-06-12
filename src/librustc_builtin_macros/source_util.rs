@@ -122,6 +122,7 @@ pub fn expand_include<'cx>(
 
     struct ExpandResult<'a> {
         p: Parser<'a>,
+        node_id: ast::NodeId,
     }
     impl<'a> base::MacResult for ExpandResult<'a> {
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
@@ -130,7 +131,7 @@ pub fn expand_include<'cx>(
                 self.p.sess.buffer_lint(
                     &INCOMPLETE_INCLUDE,
                     self.p.token.span,
-                    ast::CRATE_NODE_ID,
+                    self.node_id,
                     "include macro expected single expression in source",
                 );
             }
@@ -158,7 +159,7 @@ pub fn expand_include<'cx>(
         }
     }
 
-    Box::new(ExpandResult { p })
+    Box::new(ExpandResult { p, node_id: cx.resolver.lint_node_id(cx.current_expansion.id) })
 }
 
 // include_str! : read the given file, insert it as a literal string expr

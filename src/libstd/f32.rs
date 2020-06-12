@@ -916,8 +916,7 @@ impl f32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::f32;
-    use crate::f32::*;
+    use crate::f32::consts;
     use crate::num::FpCategory as Fp;
     use crate::num::*;
 
@@ -928,14 +927,14 @@ mod tests {
 
     #[test]
     fn test_min_nan() {
-        assert_eq!(NAN.min(2.0), 2.0);
-        assert_eq!(2.0f32.min(NAN), 2.0);
+        assert_eq!(f32::NAN.min(2.0), 2.0);
+        assert_eq!(2.0f32.min(f32::NAN), 2.0);
     }
 
     #[test]
     fn test_max_nan() {
-        assert_eq!(NAN.max(2.0), 2.0);
-        assert_eq!(2.0f32.max(NAN), 2.0);
+        assert_eq!(f32::NAN.max(2.0), 2.0);
+        assert_eq!(2.0f32.max(f32::NAN), 2.0);
     }
 
     #[test]
@@ -1158,52 +1157,52 @@ mod tests {
 
     #[test]
     fn test_abs() {
-        assert_eq!(INFINITY.abs(), INFINITY);
+        assert_eq!(f32::INFINITY.abs(), f32::INFINITY);
         assert_eq!(1f32.abs(), 1f32);
         assert_eq!(0f32.abs(), 0f32);
         assert_eq!((-0f32).abs(), 0f32);
         assert_eq!((-1f32).abs(), 1f32);
-        assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f32 / NEG_INFINITY).abs(), 0f32);
-        assert!(NAN.abs().is_nan());
+        assert_eq!(f32::NEG_INFINITY.abs(), f32::INFINITY);
+        assert_eq!((1f32 / f32::NEG_INFINITY).abs(), 0f32);
+        assert!(f32::NAN.abs().is_nan());
     }
 
     #[test]
     fn test_signum() {
-        assert_eq!(INFINITY.signum(), 1f32);
+        assert_eq!(f32::INFINITY.signum(), 1f32);
         assert_eq!(1f32.signum(), 1f32);
         assert_eq!(0f32.signum(), 1f32);
         assert_eq!((-0f32).signum(), -1f32);
         assert_eq!((-1f32).signum(), -1f32);
-        assert_eq!(NEG_INFINITY.signum(), -1f32);
-        assert_eq!((1f32 / NEG_INFINITY).signum(), -1f32);
-        assert!(NAN.signum().is_nan());
+        assert_eq!(f32::NEG_INFINITY.signum(), -1f32);
+        assert_eq!((1f32 / f32::NEG_INFINITY).signum(), -1f32);
+        assert!(f32::NAN.signum().is_nan());
     }
 
     #[test]
     fn test_is_sign_positive() {
-        assert!(INFINITY.is_sign_positive());
+        assert!(f32::INFINITY.is_sign_positive());
         assert!(1f32.is_sign_positive());
         assert!(0f32.is_sign_positive());
         assert!(!(-0f32).is_sign_positive());
         assert!(!(-1f32).is_sign_positive());
-        assert!(!NEG_INFINITY.is_sign_positive());
-        assert!(!(1f32 / NEG_INFINITY).is_sign_positive());
-        assert!(NAN.is_sign_positive());
-        assert!(!(-NAN).is_sign_positive());
+        assert!(!f32::NEG_INFINITY.is_sign_positive());
+        assert!(!(1f32 / f32::NEG_INFINITY).is_sign_positive());
+        assert!(f32::NAN.is_sign_positive());
+        assert!(!(-f32::NAN).is_sign_positive());
     }
 
     #[test]
     fn test_is_sign_negative() {
-        assert!(!INFINITY.is_sign_negative());
+        assert!(!f32::INFINITY.is_sign_negative());
         assert!(!1f32.is_sign_negative());
         assert!(!0f32.is_sign_negative());
         assert!((-0f32).is_sign_negative());
         assert!((-1f32).is_sign_negative());
-        assert!(NEG_INFINITY.is_sign_negative());
-        assert!((1f32 / NEG_INFINITY).is_sign_negative());
-        assert!(!NAN.is_sign_negative());
-        assert!((-NAN).is_sign_negative());
+        assert!(f32::NEG_INFINITY.is_sign_negative());
+        assert!((1f32 / f32::NEG_INFINITY).is_sign_negative());
+        assert!(!f32::NAN.is_sign_negative());
+        assert!((-f32::NAN).is_sign_negative());
     }
 
     #[test]
@@ -1268,13 +1267,13 @@ mod tests {
 
     #[test]
     fn test_sqrt_domain() {
-        assert!(NAN.sqrt().is_nan());
-        assert!(NEG_INFINITY.sqrt().is_nan());
+        assert!(f32::NAN.sqrt().is_nan());
+        assert!(f32::NEG_INFINITY.sqrt().is_nan());
         assert!((-1.0f32).sqrt().is_nan());
         assert_eq!((-0.0f32).sqrt(), -0.0);
         assert_eq!(0.0f32.sqrt(), 0.0);
         assert_eq!(1.0f32.sqrt(), 1.0);
-        assert_eq!(INFINITY.sqrt(), INFINITY);
+        assert_eq!(f32::INFINITY.sqrt(), f32::INFINITY);
     }
 
     #[test]
@@ -1523,13 +1522,13 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_clamp_min_is_nan() {
-        let _ = 1.0f32.clamp(NAN, 1.0);
+        let _ = 1.0f32.clamp(f32::NAN, 1.0);
     }
 
     #[test]
     #[should_panic]
     fn test_clamp_max_is_nan() {
-        let _ = 1.0f32.clamp(3.0, NAN);
+        let _ = 1.0f32.clamp(3.0, f32::NAN);
     }
 
     #[test]

@@ -107,7 +107,7 @@ impl Socket {
                 timeout = 1;
             }
 
-            let timeout = cmp::min(timeout, c_int::max_value() as u64) as c_int;
+            let timeout = cmp::min(timeout, c_int::MAX as u64) as c_int;
 
             match unsafe { libc::poll(&mut pollfd, 1, timeout) } {
                 -1 => {
@@ -220,8 +220,8 @@ impl Socket {
                     ));
                 }
 
-                let secs = if dur.as_secs() > libc::time_t::max_value() as u64 {
-                    libc::time_t::max_value()
+                let secs = if dur.as_secs() > libc::time_t::MAX as u64 {
+                    libc::time_t::MAX
                 } else {
                     dur.as_secs() as libc::time_t
                 };

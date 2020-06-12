@@ -963,7 +963,7 @@ mod tests {
     #[cfg(target_pointer_width = "32")]
     fn vec_seek_and_write_past_usize_max() {
         let mut c = Cursor::new(Vec::new());
-        c.set_position(<usize>::max_value() as u64 + 1);
+        c.set_position(usize::MAX as u64 + 1);
         assert!(c.write_all(&[1, 2, 3]).is_err());
     }
 

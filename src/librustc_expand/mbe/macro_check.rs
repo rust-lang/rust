@@ -106,7 +106,7 @@
 //! bound.
 use crate::mbe::{KleeneToken, TokenTree};
 
-use rustc_ast::ast::NodeId;
+use rustc_ast::ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast::token::{DelimToken, Token, TokenKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
@@ -626,5 +626,8 @@ fn ops_is_prefix(
 }
 
 fn buffer_lint(sess: &ParseSess, span: MultiSpan, node_id: NodeId, message: &str) {
-    sess.buffer_lint(&META_VARIABLE_MISUSE, span, node_id, message);
+    // Macros loaded from other crates have dummy node ids.
+    if node_id != DUMMY_NODE_ID {
+        sess.buffer_lint(&META_VARIABLE_MISUSE, span, node_id, message);
+    }
 }

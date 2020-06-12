@@ -43,7 +43,7 @@ impl RawEmitter {
         words.push(0);
         let unique_words =
             words.iter().cloned().collect::<BTreeSet<_>>().into_iter().collect::<Vec<_>>();
-        if unique_words.len() > u8::max_value() as usize {
+        if unique_words.len() > u8::MAX as usize {
             panic!("cannot pack {} into 8 bits", unique_words.len());
         }
         // needed for the chunk mapping to work

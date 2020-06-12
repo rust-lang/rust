@@ -28,8 +28,8 @@ pub const CONST_CALC_I32: i32 = 42 + 1;
 // @!has show_const_contents/constant.CONST_REF_I32.html '; //'
 pub const CONST_REF_I32: &'static i32 = &42;
 
-// @has show_const_contents/constant.CONST_I32_MAX.html '= i32::max_value(); // 2_147_483_647i32'
-pub const CONST_I32_MAX: i32 = i32::max_value();
+// @has show_const_contents/constant.CONST_I32_MAX.html '= i32::MAX; // 2_147_483_647i32'
+pub const CONST_I32_MAX: i32 = i32::MAX;
 
 // @!has show_const_contents/constant.UNIT.html '= ();'
 // @!has show_const_contents/constant.UNIT.html '; //'
@@ -56,11 +56,11 @@ pub use std::i32::MAX;
 
 macro_rules! int_module {
     ($T:ident) => (
-        pub const MIN: $T = $T::min_value();
+        pub const MIN: $T = $T::MIN;
     )
 }
 
-// @has show_const_contents/constant.MIN.html '= i16::min_value(); // -32_768i16'
+// @has show_const_contents/constant.MIN.html '= i16::MIN; // -32_768i16'
 int_module!(i16);
 
 // @has show_const_contents/constant.ESCAPE.html //pre '= r#"<script>alert("ESCAPE");</script>"#;'

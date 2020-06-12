@@ -131,12 +131,12 @@ const _: u16 = unsafe { std::intrinsics::unchecked_mul(300u16, 250u16) };
 
 const _: i32 = unsafe { std::intrinsics::unchecked_div(1, 0) };
 //~^ ERROR any use of this value will cause an error
-const _: i32 = unsafe { std::intrinsics::unchecked_div(i32::min_value(), -1) };
+const _: i32 = unsafe { std::intrinsics::unchecked_div(i32::MIN, -1) };
 //~^ ERROR any use of this value will cause an error
 
 const _: i32 = unsafe { std::intrinsics::unchecked_rem(1, 0) };
 //~^ ERROR any use of this value will cause an error
-const _: i32 = unsafe { std::intrinsics::unchecked_rem(i32::min_value(), -1) };
+const _: i32 = unsafe { std::intrinsics::unchecked_rem(i32::MIN, -1) };
 //~^ ERROR any use of this value will cause an error
 
 fn main() {}

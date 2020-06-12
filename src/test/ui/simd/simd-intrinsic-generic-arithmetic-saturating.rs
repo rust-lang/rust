@@ -20,7 +20,7 @@ extern "platform-intrinsic" {
 fn main() {
     // unsigned
     {
-        const M: u32 = u32::max_value();
+        const M: u32 = u32::MAX;
 
         let a = u32x4(1, 2, 3, 4);
         let b = u32x4(2, 4, 6, 8);
@@ -48,8 +48,8 @@ fn main() {
 
     // signed
     {
-        const MIN: i32 = i32::min_value();
-        const MAX: i32 = i32::max_value();
+        const MIN: i32 = i32::MIN;
+        const MAX: i32 = i32::MAX;
 
         let a = i32x4(1, 2, 3, 4);
         let b = i32x4(2, 4, 6, 8);

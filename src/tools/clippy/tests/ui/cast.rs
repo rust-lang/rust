@@ -37,11 +37,11 @@ fn main() {
     1isize as usize;
     -1isize as usize;
     0i8 as u8;
-    i8::max_value() as u8;
-    i16::max_value() as u16;
-    i32::max_value() as u32;
-    i64::max_value() as u64;
-    i128::max_value() as u128;
+    i8::MAX as u8;
+    i16::MAX as u16;
+    i32::MAX as u32;
+    i64::MAX as u64;
+    i128::MAX as u128;
 
     (-1i8).abs() as u8;
     (-1i16).abs() as u16;

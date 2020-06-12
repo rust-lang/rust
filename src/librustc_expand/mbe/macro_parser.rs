@@ -383,7 +383,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                 }
             }
             TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
-                if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
+                if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
                     return Err((span, "missing fragment specifier".to_string()));
                 }
             }
@@ -566,7 +566,7 @@ fn inner_parse_loop<'root, 'tt>(
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
                 TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
-                    if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
+                    if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
                         return Error(span, "missing fragment specifier".to_string());
                     }
                 }

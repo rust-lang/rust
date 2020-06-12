@@ -35,7 +35,7 @@ impl Condvar {
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         let nanos = dur.as_nanos();
-        let nanos = cmp::min(i64::max_value() as u128, nanos);
+        let nanos = cmp::min(i64::MAX as u128, nanos);
 
         // add current task to the wait queue
         let _ = abi::add_queue(self.id(), nanos as i64);

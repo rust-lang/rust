@@ -1691,8 +1691,8 @@ fn test_copy_within_panics_src_inverted() {
 #[should_panic(expected = "attempted to index slice up to maximum usize")]
 fn test_copy_within_panics_src_out_of_bounds() {
     let mut bytes = *b"Hello, World!";
-    // an inclusive range ending at usize::max_value() would make src_end overflow
-    bytes.copy_within(usize::max_value()..=usize::max_value(), 0);
+    // an inclusive range ending at usize::MAX would make src_end overflow
+    bytes.copy_within(usize::MAX..=usize::MAX, 0);
 }
 
 #[test]
