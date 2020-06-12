@@ -17,6 +17,15 @@ use crate::{
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 
+/// Item import details stored in the `ImportMap`.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ImportInfo {
+    /// A path that can be used to import the item, relative to the crate's root.
+    pub path: ModPath,
+    /// The module containing this item.
+    pub container: ModuleId,
+}
+
 /// A map from publicly exported items to the path needed to import/name them from a downstream
 /// crate.
 ///
@@ -26,7 +35,7 @@ type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 /// Note that all paths are relative to the containing crate's root, so the crate name still needs
 /// to be prepended to the `ModPath` before the path is valid.
 pub struct ImportMap {
-    map: FxIndexMap<ItemInNs, ModPath>,
+    map: FxIndexMap<ItemInNs, ImportInfo>,
 
     /// List of keys stored in `map`, sorted lexicographically by their `ModPath`. Indexed by the
     /// values returned by running `fst`.
@@ -78,12 +87,12 @@ impl ImportMap {
                     let path = mk_path();
                     match import_map.entry(item) {
                         Entry::Vacant(entry) => {
-                            entry.insert(path);
+                            entry.insert(ImportInfo { path, container: module });
                         }
                         Entry::Occupied(mut entry) => {
                             // If the new path is shorter, prefer that one.
-                            if path.len() < entry.get().len() {
-                                *entry.get_mut() = path;
+                            if path.len() < entry.get().path.len() {
+                                *entry.get_mut() = ImportInfo { path, container: module };
                             } else {
                                 continue;
                             }
@@ -119,7 +128,7 @@ impl ImportMap {
             let start = last_batch_start;
             last_batch_start = idx + 1;
 
-            let key = fst_path(&importables[start].1);
+            let key = fst_path(&importables[start].1.path);
 
             builder.insert(key, start as u64).unwrap();
         }
@@ -132,6 +141,10 @@ impl ImportMap {
 
     /// Returns the `ModPath` needed to import/mention `item`, relative to this crate's root.
     pub fn path_of(&self, item: ItemInNs) -> Option<&ModPath> {
+        Some(&self.map.get(&item)?.path)
+    }
+
+    pub fn import_info_for(&self, item: ItemInNs) -> Option<&ImportInfo> {
         self.map.get(&item)
     }
 }
@@ -150,13 +163,13 @@ impl fmt::Debug for ImportMap {
         let mut importable_paths: Vec<_> = self
             .map
             .iter()
-            .map(|(item, modpath)| {
+            .map(|(item, info)| {
                 let ns = match item {
                     ItemInNs::Types(_) => "t",
                     ItemInNs::Values(_) => "v",
                     ItemInNs::Macros(_) => "m",
                 };
-                format!("- {} ({})", modpath, ns)
+                format!("- {} ({})", info.path, ns)
             })
             .collect();
 
@@ -171,9 +184,9 @@ fn fst_path(path: &ModPath) -> String {
     s
 }
 
-fn cmp((_, lhs): &(&ItemInNs, &ModPath), (_, rhs): &(&ItemInNs, &ModPath)) -> Ordering {
-    let lhs_str = fst_path(lhs);
-    let rhs_str = fst_path(rhs);
+fn cmp((_, lhs): &(&ItemInNs, &ImportInfo), (_, rhs): &(&ItemInNs, &ImportInfo)) -> Ordering {
+    let lhs_str = fst_path(&lhs.path);
+    let rhs_str = fst_path(&rhs.path);
     lhs_str.cmp(&rhs_str)
 }
 
@@ -243,7 +256,7 @@ pub fn search_dependencies<'a>(
             let importables = &import_map.importables[indexed_value.value as usize..];
 
             // Path shared by the importable items in this group.
-            let path = &import_map.map[&importables[0]];
+            let path = &import_map.map[&importables[0]].path;
 
             if query.anchor_end {
                 // Last segment must match query.
@@ -256,14 +269,14 @@ pub fn search_dependencies<'a>(
             // Add the items from this `ModPath` group. Those are all subsequent items in
             // `importables` whose paths match `path`.
             let iter = importables.iter().copied().take_while(|item| {
-                let item_path = &import_map.map[item];
+                let item_path = &import_map.map[item].path;
                 fst_path(item_path) == fst_path(path)
             });
 
             if query.case_sensitive {
                 // FIXME: This does not do a subsequence match.
                 res.extend(iter.filter(|item| {
-                    let item_path = &import_map.map[item];
+                    let item_path = &import_map.map[item].path;
                     item_path.to_string().contains(&query.query)
                 }));
             } else {
