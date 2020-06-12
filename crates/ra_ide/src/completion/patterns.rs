@@ -6,10 +6,6 @@ use ra_syntax::{
     SyntaxNode, SyntaxToken,
 };
 
-pub(crate) fn inside_impl(element: SyntaxElement) -> bool {
-    element.ancestors().find(|it| it.kind() == IMPL_DEF).is_some()
-}
-
 pub(crate) fn inside_trait(element: SyntaxElement) -> bool {
     element.ancestors().find(|it| it.kind() == TRAIT_DEF).is_some()
 }
@@ -40,10 +36,6 @@ pub(crate) fn if_is_prev(element: SyntaxElement) -> bool {
 
 pub(crate) fn has_block_expr_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element).filter(|it| it.kind() == BLOCK_EXPR).is_some()
-}
-
-pub(crate) fn has_item_list_parent(element: SyntaxElement) -> bool {
-    not_same_range_ancestor(element).filter(|it| it.kind() == ITEM_LIST).is_some()
 }
 
 pub(crate) fn has_trait_as_prev_sibling(element: SyntaxElement) -> bool {
@@ -122,8 +114,8 @@ fn previous_sibling_or_ancestor_sibling(element: SyntaxElement) -> Option<Syntax
 #[cfg(test)]
 mod tests {
     use super::{
-        has_block_expr_parent, has_impl_as_prev_sibling, has_trait_as_prev_sibling, if_is_prev,
-        inside_trait, unsafe_is_prev,
+        has_bind_pat_parent, has_block_expr_parent, has_impl_as_prev_sibling, has_ref_pat_parent,
+        has_trait_as_prev_sibling, if_is_prev, inside_trait, unsafe_is_prev,
     };
     use crate::completion::test_utils::check_pattern_is_applicable;
 
@@ -191,6 +183,53 @@ mod tests {
         }
         ",
             has_block_expr_parent,
+        );
+    }
+
+    #[test]
+    fn test_has_ref_pat_parent_in_func_parameters() {
+        check_pattern_is_applicable(
+            r"
+        fn my_fn(&<|>) {
+            let a = 2;
+        }
+        ",
+            has_ref_pat_parent,
+        );
+    }
+
+    #[test]
+    fn test_has_ref_pat_parent_in_let_statement() {
+        check_pattern_is_applicable(
+            r"
+        fn my_fn() {
+            let &<|>
+        }
+        ",
+            has_ref_pat_parent,
+        );
+    }
+
+    #[test]
+    fn test_has_bind_pat_parent_in_func_parameters() {
+        check_pattern_is_applicable(
+            r"
+        fn my_fn(m<|>) {
+        }
+        ",
+            has_bind_pat_parent,
+        );
+    }
+
+    #[test]
+    fn test_has_bind_pat_parent_in_let_statement() {
+        check_pattern_is_applicable(
+            r"
+        fn my_fn() {
+            let m<|>
+        }
+        ",
+            has_bind_pat_parent,
         );
     }
 }

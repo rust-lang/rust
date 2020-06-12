@@ -6,7 +6,7 @@ use crate::{
     CompletionItem, FilePosition,
 };
 use hir::Semantics;
-use ra_syntax::{AstNode, NodeOrToken, SyntaxElement, SyntaxToken};
+use ra_syntax::{AstNode, NodeOrToken, SyntaxElement};
 
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
     do_completion_with_options(code, kind, &CompletionConfig::default())
