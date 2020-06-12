@@ -627,7 +627,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if def.repr.transparent() {
             // Can assume that only one field is not a ZST, so only check
             // that field's type for FFI-safety.
-            if let Some(field) = variant.transparent_newtype_field(self.cx.tcx, self.cx.param_env) {
+            if let Some(field) = variant.transparent_newtype_field(self.cx.tcx) {
                 self.check_field_type_for_ffi(cache, field, substs)
             } else {
                 bug!("malformed transparent type");

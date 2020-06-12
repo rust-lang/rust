@@ -1810,21 +1810,9 @@ impl<'tcx> VariantDef {
 
     /// `repr(transparent)` structs can have a single non-ZST field, this function returns that
     /// field.
-    pub fn transparent_newtype_field(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-    ) -> Option<&FieldDef> {
+    pub fn transparent_newtype_field(&self, tcx: TyCtxt<'tcx>) -> Option<&FieldDef> {
         for field in &self.fields {
             let field_ty = field.ty(tcx, InternalSubsts::identity_for_item(tcx, self.def_id));
-
-            // `normalize_erasing_regions` will fail for projections that contain generic
-            // parameters, so check these before normalizing.
-            if field_ty.has_projections() && field_ty.needs_subst() {
-                return Some(field);
-            }
-
-            let field_ty = tcx.normalize_erasing_regions(param_env, field_ty);
             if !field_ty.is_zst(tcx, self.def_id) {
                 return Some(field);
             }
