@@ -1696,14 +1696,14 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        let (pred, item_def_id, span) = match (obligation.predicate.kind(), &obligation.cause.code)
-        {
-            (
-                ty::PredicateKind::Trait(pred, _),
-                ObligationCauseCode::BindingObligation(item_def_id, span),
-            ) => (pred, item_def_id, span),
-            _ => return,
-        };
+        let (pred, item_def_id, span) =
+            match (obligation.predicate.kind(), &obligation.cause.code.peel_derives()) {
+                (
+                    ty::PredicateKind::Trait(pred, _),
+                    ObligationCauseCode::BindingObligation(item_def_id, span),
+                ) => (pred, item_def_id, span),
+                _ => return,
+            };
 
         let node = match (
             self.tcx.hir().get_if_local(*item_def_id),
