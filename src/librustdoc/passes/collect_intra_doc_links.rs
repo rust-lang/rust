@@ -124,7 +124,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     }
 
     /// Resolves a string as a macro.
-    fn macro_resolve(&self, path_str: &str, parent_id: Option<hir::HirId>) -> Option<Res> {
+    fn macro_resolve(&self, path_str: &str, parent_id: Option<DefId>) -> Option<Res> {
         let cx = self.cx;
         let path = ast::Path::from_ident(Ident::from_str(path_str));
         cx.enter_resolver(|resolver| {
@@ -142,8 +142,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             if let Some(res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
                 return Some(res.map_id(|_| panic!("unexpected id")));
             }
-            if let Some(module_id) = parent_id.or(self.mod_ids.last().cloned()) {
-                let module_id = cx.tcx.hir().local_def_id(module_id);
+            if let Some(module_id) = parent_id {
                 if let Ok((_, res)) =
                     resolver.resolve_str_path_error(DUMMY_SP, path_str, MacroNS, module_id)
                 {
@@ -167,17 +166,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         disambiguator: Option<&str>,
         ns: Namespace,
         current_item: &Option<String>,
-        mut parent_id: Option<DefId>,
+        parent_id: Option<DefId>,
         extra_fragment: &Option<String>,
         item_opt: Option<&Item>,
     ) -> Result<(Res, Option<String>), ErrorKind> {
         let cx = self.cx;
 
         // In case we're in a module, try to resolve the relative path.
-        if parent_id.is_none() {
-            let id = self.mod_ids.last().cloned();
-            parent_id = id.map(|id| cx.tcx.hir().local_def_id(id).to_def_id());
-        }
         if let Some(module_id) = parent_id {
             let result = cx.enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
@@ -659,8 +654,11 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 // we've already pushed this node onto the resolution stack but
                 // for outer comments we explicitly try and resolve against the
                 // parent_node first.
-                let base_node =
-                    if item.is_mod() && item.attrs.inner_docs { None } else { parent_node };
+                let base_node = if item.is_mod() && item.attrs.inner_docs {
+                    self.mod_ids.last().map(|&id| self.cx.tcx.hir().local_def_id(id).to_def_id())
+                } else {
+                    parent_node
+                };
 
                 // replace `Self` with suitable item's parent name
                 if path_str.starts_with("Self::") {
