@@ -40,6 +40,7 @@ const SKIP_FILE_WHITE_LIST: &[&str] = &[
     "cfg_mod/bar.rs",
     "cfg_mod/foo.rs",
     "cfg_mod/wasm32.rs",
+    "skip/foo.rs",
 ];
 
 fn init_log() {

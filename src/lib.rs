@@ -26,6 +26,7 @@ use crate::comment::LineClasses;
 use crate::emitter::Emitter;
 use crate::formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
 use crate::issues::Issue;
+use crate::modules::ModuleResolutionError;
 use crate::shape::Indent;
 use crate::syntux::parser::DirectoryOwnership;
 use crate::utils::indent_next_line;
@@ -110,6 +111,9 @@ pub enum ErrorKind {
     /// An io error during reading or writing.
     #[error("io error: {0}")]
     IoError(io::Error),
+    /// Error during module resolution.
+    #[error("{0}")]
+    ModuleResolutionError(#[from] ModuleResolutionError),
     /// Parse error occurred when parsing the input.
     #[error("parse error")]
     ParseError,

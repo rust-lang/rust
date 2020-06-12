@@ -72,7 +72,7 @@ pub enum OperationError {
     #[error("The `--print-config=minimal` option doesn't work with standard input.")]
     MinimalPathWithStdin,
     /// An io error during reading or writing.
-    #[error("io error: {0}")]
+    #[error("{0}")]
     IoError(IoError),
     /// Attempt to use --check with stdin, which isn't currently
     /// supported.

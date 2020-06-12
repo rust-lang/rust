@@ -106,7 +106,7 @@ impl<'a> Parser<'a> {
         sess: &'a ParseSess,
         path: &Path,
         span: Span,
-    ) -> Option<(ast::Mod, Vec<ast::Attribute>)> {
+    ) -> Result<(ast::Mod, Vec<ast::Attribute>), ParserError> {
         let result = catch_unwind(AssertUnwindSafe(|| {
             let mut parser = new_parser_from_file(sess.inner(), &path, Some(span));
             match parser.parse_mod(&TokenKind::Eof) {
@@ -119,8 +119,10 @@ impl<'a> Parser<'a> {
             }
         }));
         match result {
-            Ok(Some(m)) => Some(m),
-            _ => None,
+            Ok(Some(m)) => Ok(m),
+            Ok(None) => Err(ParserError::ParseError),
+            Err(..) if path.exists() => Err(ParserError::ParseError),
+            Err(_) => Err(ParserError::ParsePanicError),
         }
     }
 
