@@ -87,8 +87,8 @@ pub struct Definitions {
     def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
     pub(super) node_id_to_hir_id: IndexVec<ast::NodeId, Option<hir::HirId>>,
-    /// The reverse mapping of `node_id_to_hir_id`.
-    pub(super) hir_id_to_node_id: FxHashMap<hir::HirId, ast::NodeId>,
+    /// The pre-computed mapping of `hir_id_to_node_id` -> `node_id_to_def_id`.
+    pub(super) hir_id_to_def_id: FxHashMap<hir::HirId, LocalDefId>,
 
     /// If `ExpnId` is an ID of some macro expansion,
     /// then `DefId` is the normal module (`mod`) in which the expanded macro was defined.
@@ -351,8 +351,7 @@ impl Definitions {
 
     #[inline]
     pub fn opt_hir_id_to_local_def_id(&self, hir_id: hir::HirId) -> Option<LocalDefId> {
-        let node_id = self.hir_id_to_node_id[&hir_id];
-        self.opt_local_def_id(node_id)
+        self.hir_id_to_def_id.get(&hir_id).copied()
     }
 
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
@@ -467,11 +466,15 @@ impl Definitions {
         );
         self.node_id_to_hir_id = mapping;
 
-        // Build the reverse mapping of `node_id_to_hir_id`.
-        self.hir_id_to_node_id = self
+        // Build the pre-computed mapping of `hir_id_to_node_id` -> `node_id_to_def_id`.
+        self.hir_id_to_def_id = self
             .node_id_to_hir_id
             .iter_enumerated()
-            .filter_map(|(node_id, &hir_id)| hir_id.map(|hir_id| (hir_id, node_id)))
+            .filter_map(|(node_id, &hir_id)| {
+                hir_id.and_then(|hir_id| {
+                    self.node_id_to_def_id.get(&node_id).map(|&def_id| (hir_id, def_id))
+                })
+            })
             .collect();
     }
 
