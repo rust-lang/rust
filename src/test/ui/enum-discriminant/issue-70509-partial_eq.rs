@@ -5,7 +5,7 @@
 #[repr(i128)]
 enum Test {
     A(Box<u64>) = 0,
-    B(usize) = u64::max_value() as i128 + 1,
+    B(usize) = u64::MAX as i128 + 1,
 }
 
 fn main() {

@@ -3,6 +3,6 @@
 // compile-flags: -C overflow-checks -C opt-level=3
 
 fn main() {
-    let i = (0..usize::max_value()).chain(0..10).skip(usize::max_value());
+    let i = (0..usize::MAX).chain(0..10).skip(usize::MAX);
     assert_eq!(i.count(), 10);
 }

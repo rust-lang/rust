@@ -1031,7 +1031,7 @@ pub fn get_cmd_lint_options(
                 // HACK: forbid is always specified last, so it can't be overridden.
                 // FIXME: remove this once <https://github.com/rust-lang/rust/issues/70819> is
                 // fixed and `forbid` works as expected.
-                usize::max_value()
+                usize::MAX
             } else {
                 passed_arg_pos
             };

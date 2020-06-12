@@ -750,9 +750,9 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Unchecked integer addition. Computes `self + rhs, assuming overflow
+            concat!("Unchecked integer addition. Computes `self + rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self + rhs > ", stringify!($SelfT),
-"::max_value()` or `self + rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -792,9 +792,9 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Unchecked integer subtraction. Computes `self - rhs, assuming overflow
+            concat!("Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self - rhs > ", stringify!($SelfT),
-"::max_value()` or `self - rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -834,9 +834,9 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Unchecked integer multiplication. Computes `self * rhs, assuming overflow
+            concat!("Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self * rhs > ", stringify!($SelfT),
-"::max_value()` or `self * rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -871,7 +871,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_div(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if rhs == 0 || (self == Self::MIN && rhs == -1) {
                     None
                 } else {
                     // SAFETY: div by zero and by INT_MIN have been checked above
@@ -900,7 +900,7 @@ assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if rhs == 0 || (self == Self::MIN && rhs == -1) {
                     None
                 } else {
                     Some(self.div_euclid(rhs))
@@ -929,7 +929,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if rhs == 0 || (self == Self::MIN && rhs == -1) {
                     None
                 } else {
                     // SAFETY: div by zero and by INT_MIN have been checked above
@@ -957,7 +957,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if rhs == 0 || (self == Self::MIN && rhs == -1) {
                     None
                 } else {
                     Some(self.rem_euclid(rhs))
@@ -1236,9 +1236,9 @@ $EndFeature, "
                 match self.checked_mul(rhs) {
                     Some(x) => x,
                     None => if (self < 0) == (rhs < 0) {
-                        Self::max_value()
+                        Self::MAX
                     } else {
-                        Self::min_value()
+                        Self::MIN
                     }
                 }
             }
@@ -1267,8 +1267,8 @@ $EndFeature, "
             pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
-                    None if self < 0 && exp % 2 == 1 => Self::min_value(),
-                    None => Self::max_value(),
+                    None if self < 0 && exp % 2 == 1 => Self::MIN,
+                    None => Self::MAX,
                 }
             }
         }
@@ -1738,7 +1738,7 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if self == Self::MIN && rhs == -1 {
                     (self, true)
                 } else {
                     (self / rhs, false)
@@ -1771,7 +1771,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if self == Self::MIN && rhs == -1 {
                     (self, true)
                 } else {
                     (self.div_euclid(rhs), false)
@@ -1805,7 +1805,7 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if self == Self::MIN && rhs == -1 {
                     (0, true)
                 } else {
                     (self % rhs, false)
@@ -1838,7 +1838,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if self == Self::MIN && rhs == -1 {
                     (0, true)
                 } else {
                     (self.rem_euclid(rhs), false)
@@ -1869,8 +1869,8 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($Self
             #[allow(unused_attributes)]
             #[allow_internal_unstable(const_if_match)]
             pub const fn overflowing_neg(self) -> (Self, bool) {
-                if self == Self::min_value() {
-                    (Self::min_value(), true)
+                if self == Self::MIN {
+                    (Self::MIN, true)
                 } else {
                     (-self, false)
                 }
@@ -1952,7 +1952,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[inline]
             pub const fn overflowing_abs(self) -> (Self, bool) {
-                (self.wrapping_abs(), self == Self::min_value())
+                (self.wrapping_abs(), self == Self::MIN)
             }
         }
 
@@ -2986,9 +2986,9 @@ assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);", $EndFeat
         }
 
         doc_comment! {
-            concat!("Unchecked integer addition. Computes `self + rhs, assuming overflow
+            concat!("Unchecked integer addition. Computes `self + rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self + rhs > ", stringify!($SelfT),
-"::max_value()` or `self + rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -3026,9 +3026,9 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Unchecked integer subtraction. Computes `self - rhs, assuming overflow
+            concat!("Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self - rhs > ", stringify!($SelfT),
-"::max_value()` or `self - rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -3066,9 +3066,9 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);", $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Unchecked integer multiplication. Computes `self * rhs, assuming overflow
+            concat!("Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self * rhs > ", stringify!($SelfT),
-"::max_value()` or `self * rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -3367,7 +3367,7 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
             pub const fn saturating_mul(self, rhs: Self) -> Self {
                 match self.checked_mul(rhs) {
                     Some(x) => x,
-                    None => Self::max_value(),
+                    None => Self::MAX,
                 }
             }
         }
@@ -3394,7 +3394,7 @@ $EndFeature, "
             pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
-                    None => Self::max_value(),
+                    None => Self::MAX,
                 }
             }
         }
@@ -4081,7 +4081,7 @@ Basic usage:
         }
     }
 
-            doc_comment! {
+        doc_comment! {
             concat!("Performs Euclidean division.
 
 Since, for the positive integers, all common
@@ -4179,7 +4179,7 @@ assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
             // (such as intel pre-haswell) have more efficient ctlz
             // intrinsics when the argument is non-zero.
             let z = unsafe { intrinsics::ctlz_nonzero(p) };
-            <$SelfT>::max_value() >> z
+            <$SelfT>::MAX >> z
         }
 
         doc_comment! {
@@ -5161,9 +5161,9 @@ trait FromStrRadixHelper: PartialOrd + Copy {
 macro_rules! doit {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
         #[inline]
-        fn min_value() -> Self { Self::min_value() }
+        fn min_value() -> Self { Self::MIN }
         #[inline]
-        fn max_value() -> Self { Self::max_value() }
+        fn max_value() -> Self { Self::MAX }
         #[inline]
         fn from_u32(u: u32) -> Self { u as Self }
         #[inline]
