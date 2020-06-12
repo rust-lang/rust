@@ -35,7 +35,7 @@ use self::Ordering::*;
 ///
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
-/// so floating point types implement `PartialEq` but not [`Eq`].
+/// so floating point types implement `PartialEq` but not [`Eq`](Eq).
 ///
 /// Formally, the equality must be (for all `a`, `b` and `c`):
 ///
@@ -191,7 +191,6 @@ use self::Ordering::*;
 /// assert_eq!(x.eq(&y), false);
 /// ```
 ///
-/// [`Eq`]: Eq
 /// [`eq`]: PartialEq::eq
 /// [`ne`]: PartialEq::ne
 #[lang = "eq"]
