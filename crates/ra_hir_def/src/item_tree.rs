@@ -4,7 +4,7 @@ use hir_expand::{
     ast_id_map::{AstIdMap, FileAstId},
     hygiene::Hygiene,
     name::{name, AsName, Name},
-    HirFileId,
+    HirFileId, InFile,
 };
 use ra_arena::{Arena, Idx, RawId};
 use ra_syntax::{ast, match_ast};
@@ -12,17 +12,20 @@ use ra_syntax::{ast, match_ast};
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    generics::GenericParams,
+    generics,
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path},
     type_ref::{Mutability, TypeBound, TypeRef},
     visibility::RawVisibility,
 };
-use ast::{AstNode, ModuleItemOwner, NameOwner, StructKind, TypeAscriptionOwner};
+use ast::{AstNode, AttrsOwner, ModuleItemOwner, NameOwner, StructKind, TypeAscriptionOwner};
+use either::Either;
+use smallvec::SmallVec;
 use std::{
     ops::{Index, Range},
     sync::Arc,
 };
 
+/// The item tree of a source file.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
     top_level: Vec<ModItem>,
@@ -70,6 +73,7 @@ impl ItemTree {
         let ctx = Ctx {
             tree: ItemTree::default(),
             hygiene: Hygiene::new(db.upcast(), file_id),
+            file: file_id,
             source_ast_id_map: map,
             body_ctx: crate::body::LowerCtx::new(db, file_id),
         };
@@ -115,6 +119,7 @@ impl_index!(
     exprs: Expr,
 );
 
+/// A desugared `extern crate` or `use` import.
 #[derive(Debug, Eq, PartialEq)]
 pub struct Import {
     pub path: ModPath,
@@ -131,11 +136,12 @@ pub struct Function {
     pub name: Name,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
-    pub generic_params: GenericParams,
+    pub generic_params: generics::GenericParams,
     pub has_self_param: bool,
     pub params: Vec<TypeRef>,
     pub ret_type: TypeRef,
     pub ast: FileAstId<ast::FnDef>,
+    // FIXME inner items
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -143,7 +149,7 @@ pub struct Struct {
     pub name: Name,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
-    pub generic_params: GenericParams,
+    pub generic_params: generics::GenericParams,
     pub fields: Fields,
     pub ast: FileAstId<ast::StructDef>,
 }
@@ -153,7 +159,7 @@ pub struct Union {
     pub name: Name,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
-    pub generic_params: GenericParams,
+    pub generic_params: generics::GenericParams,
     pub fields: Fields,
 }
 
@@ -162,7 +168,7 @@ pub struct Enum {
     pub name: Name,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
-    pub generic_params: GenericParams,
+    pub generic_params: generics::GenericParams,
     pub variants: Range<Idx<Variant>>,
 }
 
@@ -185,14 +191,14 @@ pub struct Static {
 pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibility,
-    pub generic_params: GenericParams,
+    pub generic_params: generics::GenericParams,
     pub auto: bool,
     pub items: Vec<AssocItem>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Impl {
-    pub generic_params: GenericParams,
+    pub generic_params: generics::GenericParams,
     pub target_trait: Option<TypeRef>,
     pub target_type: TypeRef,
     pub is_negative: bool,
@@ -203,7 +209,7 @@ pub struct Impl {
 pub struct TypeAlias {
     pub name: Name,
     pub visibility: RawVisibility,
-    pub generic_params: GenericParams,
+    pub generic_params: generics::GenericParams,
     pub type_ref: Option<TypeRef>,
 }
 
@@ -218,8 +224,12 @@ pub struct Mod {
 pub struct MacroCall {
     pub name: Option<Name>,
     pub path: ModPath,
-    pub export: bool,
-    pub builtin: bool,
+    /// Has `#[macro_export]`.
+    pub is_export: bool,
+    /// Has `#[macro_export(local_inner_macros)]`.
+    pub is_local_inner: bool,
+    /// Has `#[rustc_builtin_macro]`.
+    pub is_builtin: bool,
     pub ast_id: FileAstId<ast::MacroCall>,
 }
 
@@ -307,20 +317,36 @@ pub struct Field {
     pub visibility: RawVisibility,
 }
 
+struct ModItems(SmallVec<[ModItem; 1]>);
+
+impl<T> From<T> for ModItems
+where
+    T: Into<ModItem>,
+{
+    fn from(t: T) -> Self {
+        ModItems(SmallVec::from_buf([t.into(); 1]))
+    }
+}
+
 struct Ctx {
     tree: ItemTree,
     hygiene: Hygiene,
+    file: HirFileId,
     source_ast_id_map: Arc<AstIdMap>,
     body_ctx: crate::body::LowerCtx,
 }
 
 impl Ctx {
     fn lower(mut self, item_owner: &dyn ModuleItemOwner) -> ItemTree {
-        self.tree.top_level = item_owner.items().flat_map(|item| self.lower_item(&item)).collect();
+        self.tree.top_level = item_owner
+            .items()
+            .flat_map(|item| self.lower_mod_item(&item))
+            .flat_map(|items| items.0)
+            .collect();
         self.tree
     }
 
-    fn lower_item(&mut self, item: &ast::ModuleItem) -> Option<ModItem> {
+    fn lower_mod_item(&mut self, item: &ast::ModuleItem) -> Option<ModItems> {
         match item {
             ast::ModuleItem::StructDef(ast) => {
                 self.lower_struct(ast).map(|data| self.tree.structs.alloc(data).into())
@@ -347,12 +373,48 @@ impl Ctx {
             ast::ModuleItem::Module(ast) => {
                 self.lower_module(ast).map(|data| self.tree.mods.alloc(data).into())
             }
-            ast::ModuleItem::TraitDef(_) => todo!(),
-            ast::ModuleItem::ImplDef(_) => todo!(),
-            ast::ModuleItem::UseItem(_) => todo!(),
-            ast::ModuleItem::ExternCrateItem(_) => todo!(),
-            ast::ModuleItem::MacroCall(_) => todo!(),
-            ast::ModuleItem::ExternBlock(_) => todo!(),
+            ast::ModuleItem::TraitDef(ast) => {
+                self.lower_trait(ast).map(|data| self.tree.traits.alloc(data).into())
+            }
+            ast::ModuleItem::ImplDef(ast) => {
+                self.lower_impl(ast).map(|data| self.tree.impls.alloc(data).into())
+            }
+            ast::ModuleItem::UseItem(ast) => Some(ModItems(
+                self.lower_use(ast)
+                    .into_iter()
+                    .map(|data| self.tree.imports.alloc(data).into())
+                    .collect::<SmallVec<_>>(),
+            )),
+            ast::ModuleItem::ExternCrateItem(ast) => {
+                self.lower_extern_crate(ast).map(|data| self.tree.imports.alloc(data).into())
+            }
+            ast::ModuleItem::MacroCall(ast) => {
+                self.lower_macro_call(ast).map(|data| self.tree.macro_calls.alloc(data).into())
+            }
+            ast::ModuleItem::ExternBlock(ast) => Some(ModItems(
+                self.lower_extern_block(ast)
+                    .into_iter()
+                    .map(|item| match item {
+                        Either::Left(func) => self.tree.functions.alloc(func).into(),
+                        Either::Right(statik) => self.tree.statics.alloc(statik).into(),
+                    })
+                    .collect::<SmallVec<_>>(),
+            )),
+        }
+    }
+
+    fn lower_assoc_item(&mut self, item: &ast::AssocItem) -> Option<AssocItem> {
+        match item {
+            ast::AssocItem::FnDef(ast) => {
+                self.lower_function(ast).map(|data| self.tree.functions.alloc(data).into())
+            }
+            ast::AssocItem::TypeAliasDef(ast) => {
+                self.lower_type_alias(ast).map(|data| self.tree.type_aliases.alloc(data).into())
+            }
+            ast::AssocItem::ConstDef(ast) => {
+                let data = self.lower_const(ast);
+                Some(self.tree.consts.alloc(data).into())
+            }
         }
     }
 
@@ -385,7 +447,7 @@ impl Ctx {
         let start = self.next_field_idx();
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
-                let idx = self.tree.fields.alloc(data);
+                self.tree.fields.alloc(data);
             }
         }
         let end = self.next_field_idx();
@@ -404,7 +466,7 @@ impl Ctx {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
             if let Some(data) = self.lower_tuple_field(i, &field) {
-                let idx = self.tree.fields.alloc(data);
+                self.tree.fields.alloc(data);
             }
         }
         let end = self.next_field_idx();
@@ -451,7 +513,7 @@ impl Ctx {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
-                let idx = self.tree.variants.alloc(data);
+                self.tree.variants.alloc(data);
             }
         }
         let end = self.next_variant_idx();
@@ -551,14 +613,129 @@ impl Ctx {
     fn lower_module(&mut self, module: &ast::Module) -> Option<Mod> {
         let name = module.name()?.as_name();
         let visibility = self.lower_visibility(module);
-        let items = module
-            .item_list()
-            .map(move |list| list.items().flat_map(move |item| self.lower_item(&item)).collect());
+        let items = module.item_list().map(move |list| {
+            list.items()
+                .flat_map(move |item| self.lower_mod_item(&item))
+                .flat_map(|items| items.0)
+                .collect()
+        });
         Some(Mod { name, visibility, items: items.unwrap_or_default() })
     }
 
-    fn lower_generic_params(&mut self, _item: &impl ast::TypeParamsOwner) -> GenericParams {
-        None.unwrap()
+    fn lower_trait(&mut self, trait_def: &ast::TraitDef) -> Option<Trait> {
+        let name = trait_def.name()?.as_name();
+        let visibility = self.lower_visibility(trait_def);
+        let generic_params = self.lower_generic_params(trait_def);
+        let auto = trait_def.auto_token().is_some();
+        let items = trait_def.item_list().map(move |list| {
+            // FIXME: Does not handle macros
+            list.assoc_items().flat_map(move |item| self.lower_assoc_item(&item)).collect()
+        });
+        Some(Trait { name, visibility, generic_params, auto, items: items.unwrap_or_default() })
+    }
+
+    fn lower_impl(&mut self, impl_def: &ast::ImplDef) -> Option<Impl> {
+        let generic_params = self.lower_generic_params(impl_def);
+        let target_trait = impl_def.target_trait().map(|tr| self.lower_type_ref(&tr));
+        let target_type = self.lower_type_ref(&impl_def.target_type()?);
+        let is_negative = impl_def.excl_token().is_some();
+        let items = impl_def
+            .item_list()?
+            .assoc_items()
+            .filter_map(|item| self.lower_assoc_item(&item))
+            .collect();
+        Some(Impl { generic_params, target_trait, target_type, is_negative, items })
+    }
+
+    fn lower_use(&mut self, use_item: &ast::UseItem) -> Vec<Import> {
+        // FIXME: cfg_attr
+        let is_prelude = use_item.has_atom_attr("prelude_import");
+        let visibility = self.lower_visibility(use_item);
+
+        // Every use item can expand to many `Import`s.
+        let mut imports = Vec::new();
+        ModPath::expand_use_item(
+            InFile::new(self.file, use_item.clone()),
+            &self.hygiene,
+            |path, _tree, is_glob, alias| {
+                imports.push(Import {
+                    path,
+                    alias,
+                    visibility: visibility.clone(),
+                    is_glob,
+                    is_prelude,
+                    is_extern_crate: false,
+                    is_macro_use: false,
+                });
+            },
+        );
+
+        imports
+    }
+
+    fn lower_extern_crate(&mut self, extern_crate: &ast::ExternCrateItem) -> Option<Import> {
+        let path = ModPath::from_name_ref(&extern_crate.name_ref()?);
+        let alias = extern_crate.alias().map(|a| {
+            a.name().map(|it| it.as_name()).map_or(ImportAlias::Underscore, ImportAlias::Alias)
+        });
+        let visibility = self.lower_visibility(extern_crate);
+        // FIXME: cfg_attr
+        let is_macro_use = extern_crate.has_atom_attr("macro_use");
+
+        Some(Import {
+            path,
+            alias,
+            visibility,
+            is_glob: false,
+            is_prelude: false,
+            is_extern_crate: true,
+            is_macro_use,
+        })
+    }
+
+    fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<MacroCall> {
+        let name = m.name().map(|it| it.as_name());
+        let attrs = Attrs::new(m, &self.hygiene);
+        let path = ModPath::from_src(m.path()?, &self.hygiene)?;
+
+        let ast_id = self.source_ast_id_map.ast_id(m);
+
+        // FIXME: cfg_attr
+        let export_attr = attrs.by_key("macro_export");
+
+        let is_export = export_attr.exists();
+        let is_local_inner = if is_export {
+            export_attr.tt_values().map(|it| &it.token_trees).flatten().any(|it| match it {
+                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                    ident.text.contains("local_inner_macros")
+                }
+                _ => false,
+            })
+        } else {
+            false
+        };
+
+        let is_builtin = attrs.by_key("rustc_builtin_macro").exists();
+        Some(MacroCall { name, path, is_export, is_builtin, is_local_inner, ast_id })
+    }
+
+    fn lower_extern_block(&mut self, block: &ast::ExternBlock) -> Vec<Either<Function, Static>> {
+        block.extern_item_list().map_or(Vec::new(), |list| {
+            list.extern_items()
+                .filter_map(|item| match item {
+                    ast::ExternItem::FnDef(ast) => self.lower_function(&ast).map(Either::Left),
+                    ast::ExternItem::StaticDef(ast) => self.lower_static(&ast).map(Either::Right),
+                })
+                .collect()
+        })
+    }
+
+    fn lower_generic_params(
+        &mut self,
+        _item: &impl ast::TypeParamsOwner,
+    ) -> generics::GenericParams {
+        // TODO
+        generics::GenericParams { types: Arena::new(), where_predicates: Vec::new() }
     }
 
     fn lower_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
@@ -583,7 +760,7 @@ impl Ctx {
 }
 
 fn desugar_future_path(orig: TypeRef) -> Path {
-    let path = path![std::future::Future];
+    let path = path![core::future::Future];
     let mut generic_args: Vec<_> = std::iter::repeat(None).take(path.segments.len() - 1).collect();
     let mut last = GenericArgs::empty();
     let binding =
