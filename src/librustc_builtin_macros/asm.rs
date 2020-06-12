@@ -174,7 +174,7 @@ fn parse_args<'a>(
 
         // Validate the order of named, positional & explicit register operands and options. We do
         // this at the end once we have the full span of the argument available.
-        if args.options_spans.len() > 0 {
+        if !args.options_spans.is_empty() {
             ecx.struct_span_err(span, "arguments are not allowed after options")
                 .span_labels(args.options_spans.clone(), "previous options")
                 .span_label(span, "argument")
@@ -241,9 +241,9 @@ fn parse_args<'a>(
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && !args.options.intersects(ast::InlineAsmOptions::NOMEM | ast::InlineAsmOptions::READONLY)
     {
-        let span = args.options_spans.clone();
+        let spans = args.options_spans.clone();
         ecx.struct_span_err(
-            span,
+            spans,
             "the `pure` option must be combined with either `nomem` or `readonly`",
         )
         .emit();
