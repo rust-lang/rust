@@ -243,7 +243,6 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         // owner of that node.
         if cfg!(debug_assertions) {
             let node_id = self.definitions.hir_id_to_node_id(hir_id);
-            assert_eq!(self.definitions.node_id_to_hir_id(node_id), hir_id);
 
             if hir_id.owner != self.current_dep_node_owner {
                 let node_str = match self.definitions.opt_local_def_id(node_id) {

@@ -328,7 +328,7 @@ impl Definitions {
     #[inline]
     pub fn local_def_id(&self, node: ast::NodeId) -> LocalDefId {
         self.opt_local_def_id(node).unwrap_or_else(|| {
-            panic!("no entry for node id: `{:?}` / `{:?}`", node, self.opt_node_id_to_hir_id(node))
+            panic!("no entry for node id: `{:?}` / `{:?}`", node, self.node_id_to_hir_id.get(node))
         })
     }
 
@@ -340,16 +340,6 @@ impl Definitions {
     #[inline]
     pub fn hir_id_to_node_id(&self, hir_id: hir::HirId) -> ast::NodeId {
         self.hir_id_to_node_id[&hir_id]
-    }
-
-    #[inline]
-    pub fn node_id_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
-        self.node_id_to_hir_id[node_id].unwrap()
-    }
-
-    #[inline]
-    pub fn opt_node_id_to_hir_id(&self, node_id: ast::NodeId) -> Option<hir::HirId> {
-        self.node_id_to_hir_id[node_id]
     }
 
     #[inline]
