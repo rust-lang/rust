@@ -159,10 +159,16 @@ fn find_path_inner(
         let crate_graph = db.crate_graph();
         let extern_paths = crate_graph[from.krate].dependencies.iter().filter_map(|dep| {
             let import_map = db.import_map(dep.crate_id);
-            import_map.path_of(item).map(|modpath| {
-                let mut modpath = modpath.clone();
-                modpath.segments.insert(0, dep.as_name());
-                modpath
+            import_map.import_info_for(item).and_then(|info| {
+                // Determine best path for containing module and append last segment from `info`.
+                let mut path = find_path_inner(
+                    db,
+                    ItemInNs::Types(ModuleDefId::ModuleId(info.container)),
+                    from,
+                    best_path_len - 1,
+                )?;
+                path.segments.push(info.path.segments.last().unwrap().clone());
+                Some(path)
             })
         });
 
@@ -299,8 +305,8 @@ mod tests {
     /// `code` needs to contain a cursor marker; checks that `find_path` for the
     /// item the `path` refers to returns that same path when called from the
     /// module the cursor is in.
-    fn check_found_path(code: &str, path: &str) {
-        let (db, pos) = TestDB::with_position(code);
+    fn check_found_path(ra_fixture: &str, path: &str) {
+        let (db, pos) = TestDB::with_position(ra_fixture);
         let module = db.module_for_file(pos.file_id);
         let parsed_path_file = ra_syntax::SourceFile::parse(&format!("use {};", path));
         let ast_path = parsed_path_file
@@ -420,7 +426,6 @@ mod tests {
 
     #[test]
     fn different_crate_renamed() {
-        // Even if a local path exists, if the item is defined externally, prefer an external path.
         let code = r#"
             //- /main.rs crate:main deps:std
             extern crate std as std_renamed;
@@ -428,7 +433,45 @@ mod tests {
             //- /std.rs crate:std
             pub struct S;
         "#;
-        check_found_path(code, "std::S");
+        check_found_path(code, "std_renamed::S");
+    }
+
+    #[test]
+    fn partially_imported() {
+        // Tests that short paths are used even for external items, when parts of the path are
+        // already in scope.
+        check_found_path(
+            r#"
+            //- /main.rs crate:main deps:ra_syntax
+
+            use ra_syntax::ast;
+            <|>
+
+            //- /lib.rs crate:ra_syntax
+            pub mod ast {
+                pub enum ModuleItem {
+                    A, B, C,
+                }
+            }
+        "#,
+            "ast::ModuleItem",
+        );
+
+        check_found_path(
+            r#"
+            //- /main.rs crate:main deps:ra_syntax
+
+            <|>
+
+            //- /lib.rs crate:ra_syntax
+            pub mod ast {
+                pub enum ModuleItem {
+                    A, B, C,
+                }
+            }
+        "#,
+            "ra_syntax::ast::ModuleItem",
+        );
     }
 
     #[test]
