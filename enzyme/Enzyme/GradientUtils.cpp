@@ -1642,7 +1642,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
       auto loadSize = (li->getParent()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(li->getType()) + 7)/8;
 
       // this is guarded because havent told addMalloc how to move
-      if (mode == DerivativeMode::Both)
+      if (mode == DerivativeMode::Both && false)
       if (!li->isVolatile()) {
         auto scev1 = SE.getSCEV(li->getPointerOperand());
         llvm::errs() << "scev1: " << *scev1 << "\n";

@@ -601,9 +601,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK: if.end.i.i:                                       ; preds = %for.body5
 ; CHECK-NEXT:   %call2.i.i.i_augmented = call { double*, double } @augmented_sumsq(double* %add.ptr, double* %"add.ptr'ipg")
 ; CHECK-NEXT:   %[[exttape:.+]] = extractvalue { double*, double } %call2.i.i.i_augmented, 0
-; CHECK-NEXT:   %[[muliv:.+]] = mul nuw nsw i64 %iv1, 4
-; CHECK-NEXT:   %[[addiv:.+]] = add nuw nsw i64 %iv, %[[muliv]]
-; CHECK-NEXT:   %[[ge:.+]] = getelementptr inbounds double*, double** %[[_malloccache]], i64 %[[addiv]]
+; CHECK-NEXT:   %[[ge:.+]] = getelementptr inbounds double*, double** %[[_malloccache]], i64 %add.i.i.i
 ; CHECK-NEXT:   store double* %[[exttape]], double** %[[ge]]
 ; CHECK-NEXT:   %call2.i.i.i = extractvalue { double*, double } %call2.i.i.i_augmented, 1
 ; CHECK-NEXT:   br label %if.exit
@@ -642,9 +640,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK: invertif.end.i.i:                                 ; preds = %invertif.exit
 ; CHECK-NEXT:   %add.ptr_unwrap = getelementptr inbounds double, double* %w9, i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %"add.ptr'ipg_unwrap" = getelementptr inbounds double, double* %"w9'", i64 %"iv1'ac.0"
-; CHECK-NEXT:   %[[mulniv:.+]] = mul nuw nsw i64 %"iv1'ac.0", 4
-; CHECK-NEXT:   %[[addniv:.+]] = add nuw nsw i64 %"iv'ac.0", %[[mulniv]]
-; CHECK-NEXT:   %[[ngep:.+]] = getelementptr inbounds double*, double** %[[_malloccache]], i64 %[[addniv]]
+; CHECK-NEXT:   %[[ngep:.+]] = getelementptr inbounds double*, double** %[[_malloccache]], i64 %add.i.i.i_unwrap
 ; CHECK-NEXT:   %[[loadtape:.+]] = load double*, double** %[[ngep]]
 ; CHECK-NEXT:   call void @diffesumsq(double* %add.ptr_unwrap, double* %"add.ptr'ipg_unwrap", double %[[nv:.+]], double* %[[loadtape]])
 ; CHECK-NEXT:   br label %invertfor.body5
