@@ -113,6 +113,11 @@ declare_features! (
      Some("removed in favor of `#![feature(marker_trait_attr)]`")),
     /// Allows `#[no_debug]`.
     (removed, no_debug, "1.43.0", Some(29721), None, Some("removed due to lack of demand")),
+
+    /// Allows comparing raw pointers during const eval.
+    (removed, const_compare_raw_pointers, "1.46.0", Some(53020), None,
+     Some("cannot be allowed in const eval in any meaningful way")),
+
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
     // -------------------------------------------------------------------------

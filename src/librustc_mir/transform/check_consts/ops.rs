@@ -284,18 +284,24 @@ impl NonConstOp for Panic {
 #[derive(Debug)]
 pub struct RawPtrComparison;
 impl NonConstOp for RawPtrComparison {
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_compare_raw_pointers)
-    }
-
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_compare_raw_pointers,
+        let mut err = ccx.tcx.sess.struct_span_err(
             span,
-            &format!("comparing raw pointers inside {}", ccx.const_kind()),
-        )
-        .emit();
+            "pointers cannot be compared in a meaningful way during const eval.",
+        );
+        err.note(
+            "It is conceptually impossible for const eval to know in all cases whether two \
+             pointers are equal. While sometimes it is clear (the address of a static item \
+             is never equal to the address of another static item), comparing an integer \
+             address with any allocation's address is impossible to do at compile-time.",
+        );
+        err.note(
+            "That said, there's the `ptr_maybe_eq` intrinsic which returns `true` for all \
+             comparisons where CTFE isn't sure whether two addresses are equal. The mirror \
+             intrinsic `ptr_maybe_ne` returns `true` for all comparisons where CTFE isn't \
+             sure whether two addresses are inequal.",
+        );
+        err.emit();
     }
 }
 

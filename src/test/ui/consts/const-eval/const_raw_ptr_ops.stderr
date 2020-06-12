@@ -1,44 +1,20 @@
-error: any use of this value will cause an error
-  --> $DIR/const_raw_ptr_ops.rs:6:26
+error: pointers cannot be compared in a meaningful way during const eval.
+  --> $DIR/const_raw_ptr_ops.rs:4:26
    |
 LL | const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 };
-   | -------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
-   |                          |
-   |                          "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[deny(const_err)]` on by default
+   = note: It is conceptually impossible for const eval to know in all cases whether two pointers are equal. While sometimes it is clear (the address of a static item is never equal to the address of another static item), comparing an integer address with any allocation's address is impossible to do at compile-time.
+   = note: That said, there's the `ptr_maybe_eq` intrinsic which returns `true` for all comparisons where CTFE isn't sure whether two addresses are equal. The mirror intrinsic `ptr_maybe_ne` returns `true` for all comparisons where CTFE isn't sure whether two addresses are inequal.
 
-error: any use of this value will cause an error
-  --> $DIR/const_raw_ptr_ops.rs:8:27
+error: pointers cannot be compared in a meaningful way during const eval.
+  --> $DIR/const_raw_ptr_ops.rs:6:27
    |
 LL | const X2: bool = unsafe { 42 as *const i32 == 43 as *const i32 };
-   | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
-   |                           |
-   |                           "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
-
-error: any use of this value will cause an error
-  --> $DIR/const_raw_ptr_ops.rs:12:28
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL | const Y2: usize = unsafe { &1 as *const i32 as usize + 1 };
-   | ---------------------------^^^^^^^^^^^^^^^^^^^^^^^^^-------
-   |                            |
-   |                            "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   = note: It is conceptually impossible for const eval to know in all cases whether two pointers are equal. While sometimes it is clear (the address of a static item is never equal to the address of another static item), comparing an integer address with any allocation's address is impossible to do at compile-time.
+   = note: That said, there's the `ptr_maybe_eq` intrinsic which returns `true` for all comparisons where CTFE isn't sure whether two addresses are equal. The mirror intrinsic `ptr_maybe_ne` returns `true` for all comparisons where CTFE isn't sure whether two addresses are inequal.
 
-error: any use of this value will cause an error
-  --> $DIR/const_raw_ptr_ops.rs:16:26
-   |
-LL | const Z2: i32 = unsafe { *(42 as *const i32) };
-   | -------------------------^^^^^^^^^^^^^^^^^^^---
-   |                          |
-   |                          unable to turn bytes into a pointer
-
-error: any use of this value will cause an error
-  --> $DIR/const_raw_ptr_ops.rs:17:26
-   |
-LL | const Z3: i32 = unsafe { *(44 as *const i32) };
-   | -------------------------^^^^^^^^^^^^^^^^^^^---
-   |                          |
-   |                          unable to turn bytes into a pointer
-
-error: aborting due to 5 previous errors
+error: aborting due to 2 previous errors
 
