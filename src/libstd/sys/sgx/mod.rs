@@ -110,6 +110,42 @@ pub fn decode_error_kind(code: i32) -> ErrorKind {
     }
 }
 
+// This function makes an effort to sleep at least as long as `duration`.
+// Note that in general there is no guarantee about accuracy of time and
+// timeouts in SGX model. The enclave runner serving usercalls may lie about
+// current time and/or ignore timeout values.
+//
+// FIXME: note these caveats in documentation of all public types that use this
+// function in their execution path.
+pub fn wait_timeout_sgx(event_mask: u64, duration: crate::time::Duration) {
+    use self::abi::usercalls;
+    use crate::cmp;
+    use crate::io::ErrorKind;
+    use crate::time::Instant;
+
+    let start = Instant::now();
+    let mut remaining = duration;
+    loop {
+        let timeout = cmp::min((u64::MAX - 1) as u128, remaining.as_nanos()) as u64;
+        match usercalls::wait(event_mask, timeout) {
+            Ok(eventset) => {
+                if event_mask != 0 {
+                    rtassert!(eventset & event_mask == event_mask);
+                    return;
+                }
+                rtabort!("expected usercalls::wait() to return Err, found Ok.");
+            }
+            Err(e) => {
+                rtassert!(e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock)
+            }
+        }
+        remaining = match duration.checked_sub(start.elapsed()) {
+            Some(remaining) => remaining,
+            None => break,
+        }
+    }
+}
+
 // This enum is used as the storage for a bunch of types which can't actually
 // exist.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
@@ -137,8 +173,8 @@ pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 
-pub fn hashmap_random_keys() -> (u64, u64) {
-    fn rdrand64() -> u64 {
+pub mod rand {
+    pub fn rdrand64() -> u64 {
         unsafe {
             let mut ret: u64 = 0;
             for _ in 0..10 {
@@ -149,7 +185,10 @@ pub fn hashmap_random_keys() -> (u64, u64) {
             rtabort!("Failed to obtain random data");
         }
     }
-    (rdrand64(), rdrand64())
+}
+
+pub fn hashmap_random_keys() -> (u64, u64) {
+    (self::rand::rdrand64(), self::rand::rdrand64())
 }
 
 pub use crate::sys_common::{AsInner, FromInner, IntoInner};

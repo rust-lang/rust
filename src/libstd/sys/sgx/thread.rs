@@ -1,6 +1,8 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
+
 use crate::ffi::CStr;
 use crate::io;
+use crate::sys::wait_timeout_sgx;
 use crate::time::Duration;
 
 use super::abi::usercalls;
@@ -73,8 +75,8 @@ impl Thread {
         // FIXME: could store this pointer in TLS somewhere
     }
 
-    pub fn sleep(_dur: Duration) {
-        rtabort!("can't sleep"); // FIXME
+    pub fn sleep(dur: Duration) {
+        wait_timeout_sgx(0, dur);
     }
 
     pub fn join(self) {
