@@ -91,8 +91,9 @@ impl<'a> CommentStyle<'a> {
             | CommentStyle::TripleSlash
             | CommentStyle::Custom(..)
             | CommentStyle::Doc => "",
-            CommentStyle::DoubleBullet => " **/",
-            CommentStyle::SingleBullet | CommentStyle::Exclamation => " */",
+            CommentStyle::SingleBullet | CommentStyle::DoubleBullet | CommentStyle::Exclamation => {
+                " */"
+            }
         }
     }
 
@@ -101,8 +102,9 @@ impl<'a> CommentStyle<'a> {
             CommentStyle::DoubleSlash => "// ",
             CommentStyle::TripleSlash => "/// ",
             CommentStyle::Doc => "//! ",
-            CommentStyle::SingleBullet | CommentStyle::Exclamation => " * ",
-            CommentStyle::DoubleBullet => " ** ",
+            CommentStyle::SingleBullet | CommentStyle::DoubleBullet | CommentStyle::Exclamation => {
+                " * "
+            }
             CommentStyle::Custom(opener) => opener,
         }
     }
