@@ -367,7 +367,8 @@ impl Step for Miri {
             extra_features: Vec::new(),
         });
         if let (Some(miri), Some(_cargo_miri)) = (miri, cargo_miri) {
-            let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "install");
+            let mut cargo =
+                builder.cargo(compiler, Mode::ToolRustc, SourceType::Submodule, host, "install");
             cargo.arg("xargo");
             // Configure `cargo install` path. cargo adds a `bin/`.
             cargo.env("CARGO_INSTALL_ROOT", &builder.out);
@@ -1696,7 +1697,8 @@ impl Step for Crate {
         // we're working with automatically.
         let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
-        let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
+        let mut cargo =
+            builder.cargo(compiler, mode, SourceType::InTree, target, test_kind.subcommand());
         match mode {
             Mode::Std => {
                 compile::std_cargo(builder, target, compiler.stage, &mut cargo);

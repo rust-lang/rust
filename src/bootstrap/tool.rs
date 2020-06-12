@@ -16,7 +16,7 @@ use crate::util::{add_dylib_path, exe, CiEnv};
 use crate::Compiler;
 use crate::Mode;
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
     InTree,
     Submodule,
@@ -226,13 +226,9 @@ pub fn prepare_tool_cargo(
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {
-    let mut cargo = builder.cargo(compiler, mode, target, command);
+    let mut cargo = builder.cargo(compiler, mode, source_type, target, command);
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
-
-    if source_type == SourceType::Submodule {
-        cargo.env("RUSTC_EXTERNAL_TOOL", "1");
-    }
 
     let mut features = extra_features.to_vec();
     if builder.build.config.cargo_native_static {
@@ -596,6 +592,7 @@ macro_rules! tool_extended {
        $path:expr,
        $tool_name:expr,
        stable = $stable:expr,
+       $(in_tree = $in_tree:expr,)*
        $extra_deps:block;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -647,7 +644,11 @@ macro_rules! tool_extended {
                     path: $path,
                     extra_features: $sel.extra_features,
                     is_optional_tool: true,
-                    source_type: SourceType::Submodule,
+                    source_type: if false $(|| $in_tree)* {
+                        SourceType::InTree
+                    } else {
+                        SourceType::Submodule
+                    },
                 })
             }
         }
@@ -659,8 +660,8 @@ macro_rules! tool_extended {
 // to make `./x.py build <tool>` work.
 tool_extended!((self, builder),
     Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", stable=true, {};
-    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", stable=true, {};
-    Clippy, clippy, "src/tools/clippy", "clippy-driver", stable=true, {};
+    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
+    Clippy, clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
     Miri, miri, "src/tools/miri", "miri", stable=false, {};
     CargoMiri, miri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, {};
     Rls, rls, "src/tools/rls", "rls", stable=true, {

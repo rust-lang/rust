@@ -1,5 +1,4 @@
 #![crate_name = "compiletest"]
-#![deny(warnings)]
 // The `test` crate is the only unstable feature
 // allowed here, just to share similar code.
 #![feature(test)]
