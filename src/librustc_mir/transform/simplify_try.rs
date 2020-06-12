@@ -306,7 +306,11 @@ fn optimization_applies<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
-    fn run_pass(&self, _: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
+            return;
+        }
+
         trace!("running SimplifyArmIdentity on {:?}", source);
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for bb in basic_blocks {
