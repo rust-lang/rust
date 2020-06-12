@@ -26,15 +26,14 @@
       }
   
       bb3: {
--         StorageLive(_3);                 // scope 0 at $DIR/simplify-arm.rs:11:14: 11:15
--         _3 = ((_1 as Some).0: u8);       // scope 0 at $DIR/simplify-arm.rs:11:14: 11:15
--         StorageLive(_4);                 // scope 1 at $DIR/simplify-arm.rs:11:25: 11:26
--         _4 = _3;                         // scope 1 at $DIR/simplify-arm.rs:11:25: 11:26
--         ((_0 as Some).0: u8) = move _4;  // scope 1 at $DIR/simplify-arm.rs:11:20: 11:27
--         discriminant(_0) = 1;            // scope 1 at $DIR/simplify-arm.rs:11:20: 11:27
--         StorageDead(_4);                 // scope 1 at $DIR/simplify-arm.rs:11:26: 11:27
--         StorageDead(_3);                 // scope 0 at $DIR/simplify-arm.rs:11:27: 11:28
-+         _0 = move _1;                    // scope 1 at $DIR/simplify-arm.rs:11:20: 11:27
+          StorageLive(_3);                 // scope 0 at $DIR/simplify-arm.rs:11:14: 11:15
+          _3 = ((_1 as Some).0: u8);       // scope 0 at $DIR/simplify-arm.rs:11:14: 11:15
+          StorageLive(_4);                 // scope 1 at $DIR/simplify-arm.rs:11:25: 11:26
+          _4 = _3;                         // scope 1 at $DIR/simplify-arm.rs:11:25: 11:26
+          ((_0 as Some).0: u8) = move _4;  // scope 1 at $DIR/simplify-arm.rs:11:20: 11:27
+          discriminant(_0) = 1;            // scope 1 at $DIR/simplify-arm.rs:11:20: 11:27
+          StorageDead(_4);                 // scope 1 at $DIR/simplify-arm.rs:11:26: 11:27
+          StorageDead(_3);                 // scope 0 at $DIR/simplify-arm.rs:11:27: 11:28
           goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:10:5: 13:6
       }
   
