@@ -84,7 +84,7 @@ impl Whitespace {
 }
 
 pub struct QuoteOffsets {
-    pub quotes: [TextRange; 2],
+    pub quotes: (TextRange, TextRange),
     pub contents: TextRange,
 }
 
@@ -103,7 +103,7 @@ impl QuoteOffsets {
         let end = TextSize::of(literal);
 
         let res = QuoteOffsets {
-            quotes: [TextRange::new(start, left_quote), TextRange::new(right_quote, end)],
+            quotes: (TextRange::new(start, left_quote), TextRange::new(right_quote, end)),
             contents: TextRange::new(left_quote, right_quote),
         };
         Some(res)
@@ -116,17 +116,17 @@ pub trait HasQuotes: AstToken {
         let offsets = QuoteOffsets::new(text)?;
         let o = self.syntax().text_range().start();
         let offsets = QuoteOffsets {
-            quotes: [offsets.quotes[0] + o, offsets.quotes[1] + o],
+            quotes: (offsets.quotes.0 + o, offsets.quotes.1 + o),
             contents: offsets.contents + o,
         };
         Some(offsets)
     }
     fn open_quote_text_range(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.quotes[0])
+        self.quote_offsets().map(|it| it.quotes.0)
     }
 
     fn close_quote_text_range(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.quotes[1])
+        self.quote_offsets().map(|it| it.quotes.1)
     }
 
     fn text_range_between_quotes(&self) -> Option<TextRange> {
