@@ -121,115 +121,51 @@ mod tests {
 
     #[test]
     fn test_unsafe_is_prev() {
-        check_pattern_is_applicable(
-            r"
-        unsafe i<|>
-        ",
-            unsafe_is_prev,
-        );
+        check_pattern_is_applicable(r"unsafe i<|>", unsafe_is_prev);
     }
 
     #[test]
     fn test_if_is_prev() {
-        check_pattern_is_applicable(
-            r"
-        if l<|>
-        ",
-            if_is_prev,
-        );
+        check_pattern_is_applicable(r"if l<|>", if_is_prev);
     }
 
     #[test]
     fn test_inside_trait() {
-        check_pattern_is_applicable(
-            r"
-        trait A {
-            fn<|>
-        }
-        ",
-            inside_trait,
-        );
+        check_pattern_is_applicable(r"trait A { fn<|> }", inside_trait);
     }
 
     #[test]
     fn test_has_trait_as_prev_sibling() {
-        check_pattern_is_applicable(
-            r"
-        trait A w<|> {
-        }
-        ",
-            has_trait_as_prev_sibling,
-        );
+        check_pattern_is_applicable(r"trait A w<|> {}", has_trait_as_prev_sibling);
     }
 
     #[test]
     fn test_has_impl_as_prev_sibling() {
-        check_pattern_is_applicable(
-            r"
-        impl A w<|> {
-        }
-        ",
-            has_impl_as_prev_sibling,
-        );
+        check_pattern_is_applicable(r"impl A w<|> {}", has_impl_as_prev_sibling);
     }
 
     #[test]
     fn test_parent_block_expr() {
-        check_pattern_is_applicable(
-            r"
-        fn my_fn() {
-            let a = 2;
-            f<|>
-        }
-        ",
-            has_block_expr_parent,
-        );
+        check_pattern_is_applicable(r"fn my_fn() { let a = 2; f<|> }", has_block_expr_parent);
     }
 
     #[test]
     fn test_has_ref_pat_parent_in_func_parameters() {
-        check_pattern_is_applicable(
-            r"
-        fn my_fn(&<|>) {
-            let a = 2;
-        }
-        ",
-            has_ref_pat_parent,
-        );
+        check_pattern_is_applicable(r"fn my_fn(&<|>) {}", has_ref_pat_parent);
     }
 
     #[test]
     fn test_has_ref_pat_parent_in_let_statement() {
-        check_pattern_is_applicable(
-            r"
-        fn my_fn() {
-            let &<|>
-        }
-        ",
-            has_ref_pat_parent,
-        );
+        check_pattern_is_applicable(r"fn my_fn() { let &<|> }", has_ref_pat_parent);
     }
 
     #[test]
     fn test_has_bind_pat_parent_in_func_parameters() {
-        check_pattern_is_applicable(
-            r"
-        fn my_fn(m<|>) {
-        }
-        ",
-            has_bind_pat_parent,
-        );
+        check_pattern_is_applicable(r"fn my_fn(m<|>) {}", has_bind_pat_parent);
     }
 
     #[test]
     fn test_has_bind_pat_parent_in_let_statement() {
-        check_pattern_is_applicable(
-            r"
-        fn my_fn() {
-            let m<|>
-        }
-        ",
-            has_bind_pat_parent,
-        );
+        check_pattern_is_applicable(r"fn my_fn() { let m<|> }", has_bind_pat_parent);
     }
 }

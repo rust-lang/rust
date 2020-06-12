@@ -61,7 +61,6 @@ fn add_keyword(
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     add_keyword(ctx, acc, "fn", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
-    add_keyword(ctx, acc, "type", "type ", ctx.is_new_item || ctx.block_expr_parent);
     add_keyword(ctx, acc, "use", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
     add_keyword(ctx, acc, "impl", "impl $0 {}", ctx.is_new_item);
     add_keyword(ctx, acc, "trait", "impl $0 {}", ctx.is_new_item);
@@ -111,12 +110,9 @@ fn complete_return(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        completion::{
-            test_utils::{do_completion, do_completion_with_position},
-            CompletionItem, CompletionKind,
-        },
-        CompletionItemKind,
+    use crate::completion::{
+        test_utils::{do_completion, get_completions},
+        CompletionItem, CompletionKind,
     };
     use insta::assert_debug_snapshot;
 
@@ -124,132 +120,39 @@ mod tests {
         do_completion(code, CompletionKind::Keyword)
     }
 
-    fn get_completion_text_and_assert_positions(code: &str) -> Vec<(String, String)> {
-        let (position, completion_items) =
-            do_completion_with_position(code, CompletionKind::Keyword);
-        let mut returned_keywords = Vec::<(String, String)>::new();
-
-        for item in completion_items {
-            assert!(item.text_edit().len() == 1);
-            assert!(item.kind() == Some(CompletionItemKind::Keyword));
-            let atom = item.text_edit().iter().next().unwrap().clone();
-            assert!(atom.delete.start() == position.offset);
-            assert!(atom.delete.end() == position.offset);
-            let pair = (item.label().to_string(), atom.insert);
-            returned_keywords.push(pair);
-        }
-        returned_keywords.sort();
-        returned_keywords
-    }
-
-    #[test]
-    fn completes_keywords_in_use_stmt_new_approach() {
-        assert_debug_snapshot!(
-            get_completion_text_and_assert_positions(r"
-            use <|>
-            "),
-            @r###"
-        [
-            (
-                "crate",
-                "crate::",
-            ),
-            (
-                "self",
-                "self",
-            ),
-            (
-                "super",
-                "super::",
-            ),
-        ]
-        "###
-        );
+    fn get_keyword_completions(code: &str) -> Vec<String> {
+        get_completions(code, CompletionKind::Keyword)
     }
 
     #[test]
     fn completes_keywords_in_use_stmt() {
         assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                use <|>
-                ",
-            ),
+            get_keyword_completions(r"use <|>"),
             @r###"
         [
-            CompletionItem {
-                label: "crate",
-                source_range: 21..21,
-                delete: 21..21,
-                insert: "crate::",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "self",
-                source_range: 21..21,
-                delete: 21..21,
-                insert: "self",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "super",
-                source_range: 21..21,
-                delete: 21..21,
-                insert: "super::",
-                kind: Keyword,
-            },
+            "kw crate",
+            "kw self",
+            "kw super",
         ]
         "###
         );
 
         assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                use a::<|>
-                ",
-            ),
+            get_keyword_completions(r"use a::<|>"),
             @r###"
         [
-            CompletionItem {
-                label: "self",
-                source_range: 24..24,
-                delete: 24..24,
-                insert: "self",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "super",
-                source_range: 24..24,
-                delete: 24..24,
-                insert: "super::",
-                kind: Keyword,
-            },
+            "kw self",
+            "kw super",
         ]
         "###
         );
 
         assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                use a::{b, <|>}
-                ",
-            ),
+            get_keyword_completions(r"use a::{b, <|>}"),
             @r###"
         [
-            CompletionItem {
-                label: "self",
-                source_range: 28..28,
-                delete: 28..28,
-                insert: "self",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "super",
-                source_range: 28..28,
-                delete: 28..28,
-                insert: "super::",
-                kind: Keyword,
-            },
+            "kw self",
+            "kw super",
         ]
         "###
         );
@@ -258,50 +161,22 @@ mod tests {
     #[test]
     fn completes_various_keywords_in_function() {
         assert_debug_snapshot!(
-            do_keyword_completion(
-                r"
-                fn quux() {
-                    <|>
-                }
-                ",
-            ),
+            get_keyword_completions(r"fn quux() { <|> }"),
             @r###"
         [
-            CompletionItem {
-                label: "if",
-                source_range: 49..49,
-                delete: 49..49,
-                insert: "if $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "loop",
-                source_range: 49..49,
-                delete: 49..49,
-                insert: "loop {$0}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "match",
-                source_range: 49..49,
-                delete: 49..49,
-                insert: "match $0 {}",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "return",
-                source_range: 49..49,
-                delete: 49..49,
-                insert: "return;",
-                kind: Keyword,
-            },
-            CompletionItem {
-                label: "while",
-                source_range: 49..49,
-                delete: 49..49,
-                insert: "while $0 {}",
-                kind: Keyword,
-            },
+            "kw const",
+            "kw extern",
+            "kw fn",
+            "kw let",
+            "kw loop",
+            "kw match",
+            "kw mod",
+            "kw return",
+            "kw static",
+            "kw type",
+            "kw unsafe",
+            "kw use",
+            "kw while",
         ]
         "###
         );
