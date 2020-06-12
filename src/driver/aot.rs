@@ -108,21 +108,11 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
     let cgu = tcx.codegen_unit(cgu_name);
     let mono_items = cgu.items_in_deterministic_order(tcx);
 
-    let mut module = new_module(tcx, cgu_name.as_str().to_string());
+    let module = new_module(tcx, cgu_name.as_str().to_string());
 
-    let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None {
-        let debug = DebugContext::new(
-            tcx,
-            module.isa(),
-        );
-        Some(debug)
-    } else {
-        None
-    };
-
-    let mut unwind_context = UnwindContext::new(tcx, &mut module);
-
-    super::codegen_mono_items(tcx, &mut module, debug.as_mut(), &mut unwind_context, mono_items);
+    let mut cx = CodegenCx::new(tcx, module, tcx.sess.opts.debuginfo != DebugInfo::None);
+    super::codegen_mono_items(&mut cx, mono_items);
+    let (mut module, debug, mut unwind_context) = tcx.sess.time("finalize CodegenCx", || cx.finalize());
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context);
 
     emit_module(
@@ -185,7 +175,7 @@ pub(super) fn run_aot(
     tcx.sess.abort_if_errors();
 
     let mut allocator_module = new_module(tcx, "allocator_shim".to_string());
-    let mut allocator_unwind_context = UnwindContext::new(tcx, &mut allocator_module);
+    let mut allocator_unwind_context = UnwindContext::new(tcx, allocator_module.isa());
     let created_alloc_shim = crate::allocator::codegen(
         tcx,
         &mut allocator_module,

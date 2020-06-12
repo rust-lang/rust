@@ -15,12 +15,12 @@ pub(crate) struct UnwindContext<'tcx> {
 impl<'tcx> UnwindContext<'tcx> {
     pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
-        module: &mut Module<impl Backend>,
+        isa: &dyn TargetIsa,
     ) -> Self {
         let mut frame_table = FrameTable::default();
 
 
-        let cie_id = if let Some(cie) = module.isa().create_systemv_cie() {
+        let cie_id = if let Some(cie) = isa.create_systemv_cie() {
             Some(frame_table.add_cie(cie))
         } else {
             None

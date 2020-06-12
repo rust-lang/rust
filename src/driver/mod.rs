@@ -30,20 +30,15 @@ pub(crate) fn codegen_crate(
 }
 
 fn codegen_mono_items<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    module: &mut Module<impl Backend + 'static>,
-    debug_context: Option<&mut DebugContext<'tcx>>,
-    unwind_context: &mut UnwindContext<'tcx>,
+    cx: &mut CodegenCx<'tcx, impl Backend + 'static>,
     mono_items: Vec<(MonoItem<'tcx>, (RLinkage, Visibility))>,
 ) {
-    let mut cx = CodegenCx::new(tcx, module, debug_context, unwind_context);
-
-    tcx.sess.time("predefine functions", || {
+    cx.tcx.sess.time("predefine functions", || {
         for &(mono_item, (linkage, visibility)) in &mono_items {
             match mono_item {
                 MonoItem::Fn(instance) => {
                     let (name, sig) =
-                        get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
+                        get_function_name_and_sig(cx.tcx, cx.module.isa().triple(), instance, false);
                     let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
                     cx.module.declare_function(&name, linkage, &sig).unwrap();
                 }
@@ -54,14 +49,12 @@ fn codegen_mono_items<'tcx>(
 
     for (mono_item, (linkage, visibility)) in mono_items {
         let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-        trans_mono_item(&mut cx, mono_item, linkage);
+        trans_mono_item(cx, mono_item, linkage);
     }
-
-    tcx.sess.time("finalize CodegenCx", || cx.finalize());
 }
 
-fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
-    cx: &mut crate::CodegenCx<'clif, 'tcx, B>,
+fn trans_mono_item<'tcx, B: Backend + 'static>(
+    cx: &mut crate::CodegenCx<'tcx, B>,
     mono_item: MonoItem<'tcx>,
     linkage: Linkage,
 ) {

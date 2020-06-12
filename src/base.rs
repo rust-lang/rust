@@ -3,8 +3,8 @@ use rustc_index::vec::IndexVec;
 
 use crate::prelude::*;
 
-pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
-    cx: &mut crate::CodegenCx<'clif, 'tcx, B>,
+pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
+    cx: &mut crate::CodegenCx<'tcx, B>,
     instance: Instance<'tcx>,
     linkage: Linkage,
 ) {
@@ -39,7 +39,7 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
     let mut fx = FunctionCx {
         tcx,
-        module: cx.module,
+        module: &mut cx.module,
         pointer_type,
 
         instance,

@@ -52,10 +52,11 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .into_iter()
         .collect::<Vec<(_, (_, _))>>();
 
-    let mut unwind_context = UnwindContext::new(tcx, &mut jit_module);
+    let mut cx = CodegenCx::new(tcx, jit_module, false);
 
-    super::time(tcx, "codegen mono items", || {
-        super::codegen_mono_items(tcx, &mut jit_module, None, &mut unwind_context, mono_items);
+    let (mut jit_module, _debug, mut unwind_context) = super::time(tcx, "codegen mono items", || {
+        super::codegen_mono_items(&mut cx, mono_items);
+        tcx.sess.time("finalize CodegenCx", || cx.finalize())
     });
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut unwind_context);
     crate::allocator::codegen(tcx, &mut jit_module, &mut unwind_context);

@@ -126,23 +126,31 @@ mod prelude {
     }
 }
 
-pub(crate) struct CodegenCx<'clif, 'tcx, B: Backend + 'static> {
+pub(crate) struct CodegenCx<'tcx, B: Backend + 'static> {
     tcx: TyCtxt<'tcx>,
-    module: &'clif mut Module<B>,
+    module: Module<B>,
     constants_cx: ConstantCx,
     cached_context: Context,
     vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
-    debug_context: Option<&'clif mut DebugContext<'tcx>>,
-    unwind_context: &'clif mut UnwindContext<'tcx>,
+    debug_context: Option<DebugContext<'tcx>>,
+    unwind_context: UnwindContext<'tcx>,
 }
 
-impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
+impl<'tcx, B: Backend + 'static> CodegenCx<'tcx, B> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        module: &'clif mut Module<B>,
-        debug_context: Option<&'clif mut DebugContext<'tcx>>,
-        unwind_context: &'clif mut UnwindContext<'tcx>,
+        module: Module<B>,
+        debug_info: bool,
     ) -> Self {
+        let unwind_context = UnwindContext::new(tcx, module.isa());
+        let debug_context = if debug_info {
+            Some(DebugContext::new(
+                tcx,
+                module.isa(),
+            ))
+        } else {
+            None
+        };
         CodegenCx {
             tcx,
             module,
@@ -154,8 +162,9 @@ impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
         }
     }
 
-    fn finalize(self) {
-        self.constants_cx.finalize(self.tcx, self.module);
+    fn finalize(mut self) -> (Module<B>, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
+        self.constants_cx.finalize(self.tcx, &mut self.module);
+        (self.module, self.debug_context, self.unwind_context)
     }
 }
 
