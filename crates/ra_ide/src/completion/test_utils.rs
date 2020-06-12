@@ -38,15 +38,6 @@ fn get_all_completion_items(code: &str, options: &CompletionConfig) -> Vec<Compl
     analysis.completions(options, position).unwrap().unwrap().into()
 }
 
-pub(crate) fn get_all_completions(code: &str, options: &CompletionConfig) -> Vec<String> {
-    let mut kind_completions = get_all_completion_items(code, options);
-    kind_completions.sort_by_key(|c| c.label().to_owned());
-    kind_completions
-        .into_iter()
-        .map(|it| format!("{} {}", it.kind().unwrap().tag(), it.label()))
-        .collect()
-}
-
 pub(crate) fn get_completions_with_options(
     code: &str,
     kind: CompletionKind,

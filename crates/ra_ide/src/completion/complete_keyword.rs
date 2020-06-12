@@ -159,6 +159,9 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     add_keyword(ctx, acc, "break", "break", ctx.in_loop_body && !ctx.can_be_stmt);
     add_keyword(ctx, acc, "pub", "pub ", ctx.is_new_item && !ctx.has_trait_parent);
 
+    if !ctx.is_trivial_path {
+        return;
+    }
     let fn_def = match &ctx.function_syntax {
         Some(it) => it,
         None => return,
@@ -182,10 +185,7 @@ fn complete_return(
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{
-        test_utils::get_completions,
-        CompletionKind,
-    };
+    use crate::completion::{test_utils::get_completions, CompletionKind};
     use insta::assert_debug_snapshot;
 
     fn get_keyword_completions(code: &str) -> Vec<String> {

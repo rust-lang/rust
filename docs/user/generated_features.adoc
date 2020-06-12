@@ -118,7 +118,7 @@ Join selected lines into one, smartly fixing up whitespace, trailing commas, and
 
 
 === Magic Completions
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/completion.rs#L38[completion.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/completion.rs#L39[completion.rs]
 
 In addition to usual reference completion, rust-analyzer provides some ✨magic✨
 completions as well:

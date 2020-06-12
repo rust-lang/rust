@@ -1,3 +1,5 @@
+//! Patterns telling us certain facts about current syntax element, they are used in completion context
+
 use ra_syntax::{
     algo::non_trivia_sibling,
     ast::{self, LoopBodyOwner},
