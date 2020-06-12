@@ -130,7 +130,7 @@ mod tests {
         let mut returned_keywords = Vec::<(String, String)>::new();
 
         for item in completion_items {
-            debug_assert!(item.text_edit().len() == 1);
+            assert!(item.text_edit().len() == 1);
             assert!(item.kind() == Some(CompletionItemKind::Keyword));
             let atom = item.text_edit().iter().next().unwrap().clone();
             assert!(atom.delete.start() == position.offset);
@@ -165,12 +165,6 @@ mod tests {
         ]
         "###
         );
-        // assert_completion_keyword(
-        //     r"
-        // use <|>
-        // ",
-        //     &[("crate", "crate::"), ("self", "self"), ("super", "super::")],
-        // );
     }
 
     #[test]
