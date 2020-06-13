@@ -1654,9 +1654,7 @@ impl Step for Crate {
     fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
         for krate in run.builder.in_tree_crates("test") {
-            if !(krate.name.starts_with("rustc_") && krate.name.ends_with("san")) {
-                run = run.path(krate.local_path(&builder).to_str().unwrap());
-            }
+            run = run.path(krate.local_path(&builder).to_str().unwrap());
         }
         run
     }

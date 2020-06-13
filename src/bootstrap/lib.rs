@@ -271,7 +271,7 @@ struct Crate {
 
 impl Crate {
     fn is_local(&self, build: &Build) -> bool {
-        self.path.starts_with(&build.config.src) && !self.path.to_string_lossy().ends_with("_shim")
+        self.path.starts_with(&build.config.src)
     }
 
     fn local_path(&self, build: &Build) -> PathBuf {
