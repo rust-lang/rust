@@ -161,6 +161,8 @@ pub const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
 
 pub const PROGRESS_CONTINUE: DWORD = 0;
 
+// List of Windows system error codes with descriptions:
+// https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes#system-error-codes
 pub const ERROR_FILE_NOT_FOUND: DWORD = 2;
 pub const ERROR_PATH_NOT_FOUND: DWORD = 3;
 pub const ERROR_ACCESS_DENIED: DWORD = 5;
