@@ -184,7 +184,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         return Vec::new();
     }
 
-    let mut severity = map_level_to_severity(rd.level);
+    let severity = map_level_to_severity(rd.level);
 
     let mut source = String::from("rustc");
     let mut code = rd.code.as_ref().map(|c| c.code.clone());
@@ -226,7 +226,6 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     }
 
     if is_unused_or_unnecessary(rd) {
-        severity = Some(DiagnosticSeverity::Hint);
         tags.push(DiagnosticTag::Unnecessary);
     }
 
