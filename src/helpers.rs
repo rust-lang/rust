@@ -291,6 +291,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 } else if self.ecx.type_is_freeze(v.layout.ty) {
                     // This is `Freeze`, there cannot be an `UnsafeCell`
                     Ok(())
+                } else if matches!(v.layout.fields, FieldsShape::Union(..)) {
+                    // A (non-frozen) union. We fall back to whatever the type says.
+                    (self.unsafe_cell_action)(v)
                 } else {
                     // We want to not actually read from memory for this visit. So, before
                     // walking this value, we have to make sure it is not a
@@ -341,13 +344,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            // We have to do *something* for unions.
-            fn visit_union(&mut self, v: MPlaceTy<'tcx, Tag>, _fields: NonZeroUsize) -> InterpResult<'tcx> {
-                // With unions, we fall back to whatever the type says, to hopefully be consistent
-                // with LLVM IR.
-                // FIXME: are we consistent, and is this really the behavior we want?
-                let frozen = self.ecx.type_is_freeze(v.layout.ty);
-                if frozen { Ok(()) } else { (self.unsafe_cell_action)(v) }
+            fn visit_union(&mut self, _v: MPlaceTy<'tcx, Tag>, _fields: NonZeroUsize) -> InterpResult<'tcx> {
+                bug!("we should have already handled unions in `visit_value`")
             }
         }
     }
