@@ -219,7 +219,7 @@ Do
 ```rust
 // Good
 struct Foo {
-  bars: Vec<Bar>
+    bars: Vec<Bar>
 }
 
 struct Bar;
@@ -232,14 +232,9 @@ rather than
 struct Bar;
 
 struct Foo {
-  bars: Vec<Bar>
+    bars: Vec<Bar>
 }
 ```
-
-## Documentation
-
-For `.md` and `.adoc` files, prefer a sentence-per-line format, don't wrap lines.
-If the line is too long, you want to split the sentence in two :-)
 
 ## Preconditions
 
@@ -248,18 +243,44 @@ Function preconditions should generally be expressed in types and provided by th
 ```rust
 // Good
 fn frbonicate(walrus: Walrus) {
-  ...
+    ...
 }
 
 // Not as good
 fn frobnicate(walrus: Option<Walrus>) {
-  let walrus = match walrus {
-    Some(it) => it,
-    None => return,
-  };
-  ...
+    let walrus = match walrus {
+        Some(it) => it,
+        None => return,
+    };
+    ...
 }
 ```
+
+## Premature Pessimization
+
+While we don't specifically optimize code yet, avoid writing the code which is slower than it needs to be.
+Don't allocate a `Vec` were an iterator would do, don't allocate strings needlessly.
+
+```rust
+// Good
+use itertools::Itertools;
+
+let (first_word, second_word) = match text.split_ascii_whitespace().collect_tuple() {
+    Some(it) => it,
+    None => return,
+}
+
+// Not as good
+let words = text.split_ascii_whitespace().collect::<Vec<_>>();
+if words.len() != 2 {
+    return
+}
+```
+
+## Documentation
+
+For `.md` and `.adoc` files, prefer a sentence-per-line format, don't wrap lines.
+If the line is too long, you want to split the sentence in two :-)
 
 ## Commit Style
 
