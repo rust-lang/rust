@@ -306,7 +306,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true; // Could wind up being a fn() type.
             }
             // Provide an impl, but only for suitable `fn` pointers.
-            ty::FnDef(..) | ty::FnPtr(_) => {
+            ty::FnPtr(_) => {
                 if let ty::FnSig {
                     unsafety: hir::Unsafety::Normal,
                     abi: Abi::Rust,
@@ -315,6 +315,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 } = self_ty.fn_sig(self.tcx()).skip_binder()
                 {
                     candidates.vec.push(FnPointerCandidate);
+                }
+            }
+            // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
+            ty::FnDef(def_id, _) => {
+                if let ty::FnSig {
+                    unsafety: hir::Unsafety::Normal,
+                    abi: Abi::Rust,
+                    c_variadic: false,
+                    ..
+                } = self_ty.fn_sig(self.tcx()).skip_binder()
+                {
+                    if self.tcx().codegen_fn_attrs(def_id).target_features.is_empty() {
+                        candidates.vec.push(FnPointerCandidate);
+                    }
                 }
             }
             _ => {}

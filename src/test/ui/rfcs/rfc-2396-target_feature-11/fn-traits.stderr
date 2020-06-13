@@ -1,0 +1,39 @@
+error[E0277]: expected a `std::ops::Fn<()>` closure, found `fn() {foo}`
+  --> $DIR/fn-traits.rs:21:10
+   |
+LL | fn call(f: impl Fn()) {
+   |                 ---- required by this bound in `call`
+...
+LL |     call(foo);
+   |          ^^^ expected an `Fn<()>` closure, found `fn() {foo}`
+   |
+   = help: the trait `std::ops::Fn<()>` is not implemented for `fn() {foo}`
+   = note: wrap the `fn() {foo}` in a closure with no arguments: `|| { /* code */ }
+
+error[E0277]: expected a `std::ops::FnMut<()>` closure, found `fn() {foo}`
+  --> $DIR/fn-traits.rs:22:14
+   |
+LL | fn call_mut(f: impl FnMut()) {
+   |                     ------- required by this bound in `call_mut`
+...
+LL |     call_mut(foo);
+   |              ^^^ expected an `FnMut<()>` closure, found `fn() {foo}`
+   |
+   = help: the trait `std::ops::FnMut<()>` is not implemented for `fn() {foo}`
+   = note: wrap the `fn() {foo}` in a closure with no arguments: `|| { /* code */ }
+
+error[E0277]: expected a `std::ops::FnOnce<()>` closure, found `fn() {foo}`
+  --> $DIR/fn-traits.rs:23:15
+   |
+LL | fn call_once(f: impl FnOnce()) {
+   |                      -------- required by this bound in `call_once`
+...
+LL |     call_once(foo);
+   |               ^^^ expected an `FnOnce<()>` closure, found `fn() {foo}`
+   |
+   = help: the trait `std::ops::FnOnce<()>` is not implemented for `fn() {foo}`
+   = note: wrap the `fn() {foo}` in a closure with no arguments: `|| { /* code */ }
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
