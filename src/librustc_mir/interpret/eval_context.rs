@@ -860,7 +860,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        let val = self.tcx.const_eval_global_id(param_env, gid, Some(self.cur_span()))?;
+        let val = self.tcx.const_eval_global_id(param_env, gid, Some(self.root_span))?;
 
         // Even though `ecx.const_eval` is called from `eval_const_to_op` we can never have a
         // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
