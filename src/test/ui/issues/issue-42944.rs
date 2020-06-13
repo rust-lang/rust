@@ -1,20 +1,20 @@
 mod foo {
-    pub struct B(());
+    pub struct Bx(());
 }
 
 mod bar {
-    use foo::B;
+    use foo::Bx;
 
     fn foo() {
-        B(());
-        //~^ ERROR expected function, tuple struct or tuple variant, found struct `B` [E0423]
+        Bx(());
+        //~^ ERROR expected function, tuple struct or tuple variant, found struct `Bx` [E0423]
     }
 }
 
 mod baz {
     fn foo() {
-        B(());
-        //~^ ERROR cannot find function, tuple struct or tuple variant `B` in this scope [E0425]
+        Bx(());
+        //~^ ERROR cannot find function, tuple struct or tuple variant `Bx` in this scope [E0425]
     }
 }
 
