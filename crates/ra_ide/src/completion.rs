@@ -15,6 +15,7 @@ mod complete_unqualified_path;
 mod complete_postfix;
 mod complete_macro_in_item_position;
 mod complete_trait_impl;
+mod patterns;
 #[cfg(test)]
 mod test_utils;
 

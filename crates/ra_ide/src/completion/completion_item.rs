@@ -125,6 +125,32 @@ pub enum CompletionItemKind {
     Attribute,
 }
 
+impl CompletionItemKind {
+    #[cfg(test)]
+    pub(crate) fn tag(&self) -> &'static str {
+        match self {
+            CompletionItemKind::Snippet => "sn",
+            CompletionItemKind::Keyword => "kw",
+            CompletionItemKind::Module => "md",
+            CompletionItemKind::Function => "fn",
+            CompletionItemKind::BuiltinType => "bt",
+            CompletionItemKind::Struct => "st",
+            CompletionItemKind::Enum => "en",
+            CompletionItemKind::EnumVariant => "ev",
+            CompletionItemKind::Binding => "bn",
+            CompletionItemKind::Field => "fd",
+            CompletionItemKind::Static => "sc",
+            CompletionItemKind::Const => "ct",
+            CompletionItemKind::Trait => "tt",
+            CompletionItemKind::TypeAlias => "ta",
+            CompletionItemKind::Method => "me",
+            CompletionItemKind::TypeParam => "tp",
+            CompletionItemKind::Macro => "ma",
+            CompletionItemKind::Attribute => "at",
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub(crate) enum CompletionKind {
     /// Parser-based keyword completion.
