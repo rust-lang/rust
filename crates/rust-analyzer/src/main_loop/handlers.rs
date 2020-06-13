@@ -258,7 +258,7 @@ pub fn handle_document_symbol(
     let res = if snap.config.client_caps.hierarchical_symbols {
         document_symbols.into()
     } else {
-        let url = to_proto::url(&snap, file_id)?;
+        let url = to_proto::url(&snap, file_id);
         let mut symbol_information = Vec::<SymbolInformation>::new();
         for symbol in document_symbols {
             flatten_document_symbol(&symbol, None, &url, &mut symbol_information);
@@ -1160,7 +1160,7 @@ fn show_impl_command_link(
 ) -> Option<lsp_ext::CommandLinkGroup> {
     if snap.config.hover.implementations {
         if let Some(nav_data) = snap.analysis().goto_implementation(*position).unwrap_or(None) {
-            let uri = to_proto::url(snap, position.file_id).ok()?;
+            let uri = to_proto::url(snap, position.file_id);
             let line_index = snap.analysis().file_line_index(position.file_id).ok()?;
             let position = to_proto::position(&line_index, position.offset);
             let locations: Vec<_> = nav_data

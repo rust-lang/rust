@@ -1,4 +1,7 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
+use std::path::{self, Path};
+
+use itertools::Itertools;
 use ra_db::{FileId, FileRange};
 use ra_ide::{
     Assist, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold, FoldKind,
@@ -385,24 +388,55 @@ pub(crate) fn folding_range(
     }
 }
 
-pub(crate) fn url(snap: &GlobalStateSnapshot, file_id: FileId) -> Result<lsp_types::Url> {
-    snap.file_id_to_uri(file_id)
+pub(crate) fn url(snap: &GlobalStateSnapshot, file_id: FileId) -> lsp_types::Url {
+    snap.file_id_to_url(file_id)
+}
+
+/// Returns a `Url` object from a given path, will lowercase drive letters if present.
+/// This will only happen when processing windows paths.
+///
+/// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
+pub(crate) fn url_from_abs_path(path: &Path) -> lsp_types::Url {
+    assert!(path.is_absolute());
+    let url = lsp_types::Url::from_file_path(path).unwrap();
+    match path.components().next() {
+        Some(path::Component::Prefix(prefix)) if matches!(prefix.kind(), path::Prefix::Disk(_) | path::Prefix::VerbatimDisk(_)) =>
+        {
+            // Need to lowercase driver letter
+        }
+        _ => return url,
+    }
+
+    let driver_letter_range = {
+        let (scheme, drive_letter, _rest) = match url.as_str().splitn(3, ':').collect_tuple() {
+            Some(it) => it,
+            None => return url,
+        };
+        let start = scheme.len() + ':'.len_utf8();
+        start..(start + drive_letter.len())
+    };
+
+    // Note: lowercasing the `path` itself doesn't help, the `Url::parse`
+    // machinery *also* canonicalizes the drive letter. So, just massage the
+    // string in place.
+    let mut url = url.into_string();
+    url[driver_letter_range].make_ascii_lowercase();
+    lsp_types::Url::parse(&url).unwrap()
 }
 
 pub(crate) fn versioned_text_document_identifier(
     snap: &GlobalStateSnapshot,
     file_id: FileId,
     version: Option<i64>,
-) -> Result<lsp_types::VersionedTextDocumentIdentifier> {
-    let res = lsp_types::VersionedTextDocumentIdentifier { uri: url(snap, file_id)?, version };
-    Ok(res)
+) -> lsp_types::VersionedTextDocumentIdentifier {
+    lsp_types::VersionedTextDocumentIdentifier { uri: url(snap, file_id), version }
 }
 
 pub(crate) fn location(
     snap: &GlobalStateSnapshot,
     frange: FileRange,
 ) -> Result<lsp_types::Location> {
-    let url = url(snap, frange.file_id)?;
+    let url = url(snap, frange.file_id);
     let line_index = snap.analysis().file_line_index(frange.file_id)?;
     let range = range(&line_index, frange.range);
     let loc = lsp_types::Location::new(url, range);
@@ -438,7 +472,7 @@ fn location_info(
 ) -> Result<(lsp_types::Url, lsp_types::Range, lsp_types::Range)> {
     let line_index = snap.analysis().file_line_index(target.file_id())?;
 
-    let target_uri = url(snap, target.file_id())?;
+    let target_uri = url(snap, target.file_id());
     let target_range = range(&line_index, target.full_range());
     let target_selection_range =
         target.focus_range().map(|it| range(&line_index, it)).unwrap_or(target_range);
@@ -478,7 +512,7 @@ pub(crate) fn snippet_text_document_edit(
     is_snippet: bool,
     source_file_edit: SourceFileEdit,
 ) -> Result<lsp_ext::SnippetTextDocumentEdit> {
-    let text_document = versioned_text_document_identifier(snap, source_file_edit.file_id, None)?;
+    let text_document = versioned_text_document_identifier(snap, source_file_edit.file_id, None);
     let line_index = snap.analysis().file_line_index(source_file_edit.file_id)?;
     let line_endings = snap.file_line_endings(source_file_edit.file_id);
     let edits = source_file_edit
@@ -492,19 +526,18 @@ pub(crate) fn snippet_text_document_edit(
 pub(crate) fn resource_op(
     snap: &GlobalStateSnapshot,
     file_system_edit: FileSystemEdit,
-) -> Result<lsp_types::ResourceOp> {
-    let res = match file_system_edit {
+) -> lsp_types::ResourceOp {
+    match file_system_edit {
         FileSystemEdit::CreateFile { source_root, path } => {
-            let uri = snap.path_to_uri(source_root, &path)?;
+            let uri = snap.path_to_url(source_root, &path);
             lsp_types::ResourceOp::Create(lsp_types::CreateFile { uri, options: None })
         }
         FileSystemEdit::MoveFile { src, dst_source_root, dst_path } => {
-            let old_uri = snap.file_id_to_uri(src)?;
-            let new_uri = snap.path_to_uri(dst_source_root, &dst_path)?;
+            let old_uri = snap.file_id_to_url(src);
+            let new_uri = snap.path_to_url(dst_source_root, &dst_path);
             lsp_types::ResourceOp::Rename(lsp_types::RenameFile { old_uri, new_uri, options: None })
         }
-    };
-    Ok(res)
+    }
 }
 
 pub(crate) fn snippet_workspace_edit(
@@ -513,7 +546,7 @@ pub(crate) fn snippet_workspace_edit(
 ) -> Result<lsp_ext::SnippetWorkspaceEdit> {
     let mut document_changes: Vec<lsp_ext::SnippetDocumentChangeOperation> = Vec::new();
     for op in source_change.file_system_edits {
-        let op = resource_op(&snap, op)?;
+        let op = resource_op(&snap, op);
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Op(op));
     }
     for edit in source_change.source_file_edits {
@@ -568,7 +601,7 @@ impl From<lsp_ext::SnippetWorkspaceEdit> for lsp_types::WorkspaceEdit {
     }
 }
 
-pub fn call_hierarchy_item(
+pub(crate) fn call_hierarchy_item(
     snap: &GlobalStateSnapshot,
     target: NavigationTarget,
 ) -> Result<lsp_types::CallHierarchyItem> {
@@ -577,50 +610,6 @@ pub fn call_hierarchy_item(
     let kind = symbol_kind(target.kind());
     let (uri, range, selection_range) = location_info(snap, target)?;
     Ok(lsp_types::CallHierarchyItem { name, kind, tags: None, detail, uri, range, selection_range })
-}
-
-#[cfg(test)]
-mod tests {
-    use test_utils::extract_ranges;
-
-    use super::*;
-
-    #[test]
-    fn conv_fold_line_folding_only_fixup() {
-        let text = r#"<fold>mod a;
-mod b;
-mod c;</fold>
-
-fn main() <fold>{
-    if cond <fold>{
-        a::do_a();
-    }</fold> else <fold>{
-        b::do_b();
-    }</fold>
-}</fold>"#;
-
-        let (ranges, text) = extract_ranges(text, "fold");
-        assert_eq!(ranges.len(), 4);
-        let folds = vec![
-            Fold { range: ranges[0], kind: FoldKind::Mods },
-            Fold { range: ranges[1], kind: FoldKind::Block },
-            Fold { range: ranges[2], kind: FoldKind::Block },
-            Fold { range: ranges[3], kind: FoldKind::Block },
-        ];
-
-        let line_index = LineIndex::new(&text);
-        let converted: Vec<lsp_types::FoldingRange> =
-            folds.into_iter().map(|it| folding_range(&text, &line_index, true, it)).collect();
-
-        let expected_lines = [(0, 2), (4, 10), (5, 6), (7, 9)];
-        assert_eq!(converted.len(), expected_lines.len());
-        for (folding_range, (start_line, end_line)) in converted.iter().zip(expected_lines.iter()) {
-            assert_eq!(folding_range.start_line, *start_line);
-            assert_eq!(folding_range.start_character, None);
-            assert_eq!(folding_range.end_line, *end_line);
-            assert_eq!(folding_range.end_character, None);
-        }
-    }
 }
 
 pub(crate) fn unresolved_code_action(
@@ -675,4 +664,63 @@ pub(crate) fn runnable(
             executable_args,
         },
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use test_utils::extract_ranges;
+
+    use super::*;
+
+    #[test]
+    fn conv_fold_line_folding_only_fixup() {
+        let text = r#"<fold>mod a;
+mod b;
+mod c;</fold>
+
+fn main() <fold>{
+    if cond <fold>{
+        a::do_a();
+    }</fold> else <fold>{
+        b::do_b();
+    }</fold>
+}</fold>"#;
+
+        let (ranges, text) = extract_ranges(text, "fold");
+        assert_eq!(ranges.len(), 4);
+        let folds = vec![
+            Fold { range: ranges[0], kind: FoldKind::Mods },
+            Fold { range: ranges[1], kind: FoldKind::Block },
+            Fold { range: ranges[2], kind: FoldKind::Block },
+            Fold { range: ranges[3], kind: FoldKind::Block },
+        ];
+
+        let line_index = LineIndex::new(&text);
+        let converted: Vec<lsp_types::FoldingRange> =
+            folds.into_iter().map(|it| folding_range(&text, &line_index, true, it)).collect();
+
+        let expected_lines = [(0, 2), (4, 10), (5, 6), (7, 9)];
+        assert_eq!(converted.len(), expected_lines.len());
+        for (folding_range, (start_line, end_line)) in converted.iter().zip(expected_lines.iter()) {
+            assert_eq!(folding_range.start_line, *start_line);
+            assert_eq!(folding_range.start_character, None);
+            assert_eq!(folding_range.end_line, *end_line);
+            assert_eq!(folding_range.end_character, None);
+        }
+    }
+
+    // `Url` is not able to parse windows paths on unix machines.
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_lowercase_drive_letter_with_drive() {
+        let url = url_from_abs_path(Path::new("C:\\Test"));
+        assert_eq!(url.to_string(), "file:///c:/Test");
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_drive_without_colon_passthrough() {
+        let url = url_from_abs_path(Path::new(r#"\\localhost\C$\my_dir"#));
+        assert_eq!(url.to_string(), "file://localhost/C$/my_dir");
+    }
 }
