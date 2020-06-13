@@ -5,11 +5,9 @@
 //! its name suggest, is to provide an abstraction boundary for creating
 //! interned Chalk types.
 
-use chalk_ir::{GoalData, Parameter};
-
-use rustc_middle::mir::Mutability;
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 
 use rustc_hir::def_id::DefId;
 
@@ -18,27 +16,6 @@ use smallvec::SmallVec;
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-
-/// Since Chalk doesn't have full support for all Rust builtin types yet, we
-/// need to use an enum here, rather than just `DefId`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum RustDefId {
-    Adt(DefId),
-    Str,
-    Never,
-    Slice,
-    Array,
-    Ref(Mutability),
-    RawPtr,
-
-    Trait(DefId),
-
-    Impl(DefId),
-
-    FnDef(DefId),
-
-    AssocTy(DefId),
-}
 
 #[derive(Copy, Clone)]
 pub struct RustInterner<'tcx> {
@@ -86,16 +63,19 @@ impl fmt::Debug for RustInterner<'_> {
 impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     type InternedType = Box<chalk_ir::TyData<Self>>;
     type InternedLifetime = Box<chalk_ir::LifetimeData<Self>>;
-    type InternedParameter = Box<chalk_ir::ParameterData<Self>>;
+    type InternedConst = Box<chalk_ir::ConstData<Self>>;
+    type InternedConcreteConst = ConstValue<'tcx>;
+    type InternedGenericArg = Box<chalk_ir::GenericArgData<Self>>;
     type InternedGoal = Box<chalk_ir::GoalData<Self>>;
     type InternedGoals = Vec<chalk_ir::Goal<Self>>;
-    type InternedSubstitution = Vec<chalk_ir::Parameter<Self>>;
+    type InternedSubstitution = Vec<chalk_ir::GenericArg<Self>>;
     type InternedProgramClause = Box<chalk_ir::ProgramClauseData<Self>>;
     type InternedProgramClauses = Vec<chalk_ir::ProgramClause<Self>>;
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
-    type InternedParameterKinds = Vec<chalk_ir::ParameterKind<()>>;
-    type InternedCanonicalVarKinds = Vec<chalk_ir::ParameterKind<chalk_ir::UniverseIndex>>;
-    type DefId = RustDefId;
+    type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
+    type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
+    type DefId = DefId;
+    type InternedAdtId = &'tcx AdtDef;
     type Identifier = ();
 
     fn debug_program_clause_implication(
@@ -209,25 +189,39 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         &lifetime
     }
 
-    fn intern_parameter(
-        &self,
-        parameter: chalk_ir::ParameterData<Self>,
-    ) -> Self::InternedParameter {
-        Box::new(parameter)
+    fn intern_const(&self, constant: chalk_ir::ConstData<Self>) -> Self::InternedConst {
+        Box::new(constant)
     }
 
-    fn parameter_data<'a>(
-        &self,
-        parameter: &'a Self::InternedParameter,
-    ) -> &'a chalk_ir::ParameterData<Self> {
-        &parameter
+    fn const_data<'a>(&self, constant: &'a Self::InternedConst) -> &'a chalk_ir::ConstData<Self> {
+        &constant
     }
 
-    fn intern_goal(&self, goal: GoalData<Self>) -> Self::InternedGoal {
+    fn const_eq(
+        &self,
+        _ty: &Self::InternedType,
+        c1: &Self::InternedConcreteConst,
+        c2: &Self::InternedConcreteConst,
+    ) -> bool {
+        c1 == c2
+    }
+
+    fn intern_generic_arg(&self, data: chalk_ir::GenericArgData<Self>) -> Self::InternedGenericArg {
+        Box::new(data)
+    }
+
+    fn generic_arg_data<'a>(
+        &self,
+        data: &'a Self::InternedGenericArg,
+    ) -> &'a chalk_ir::GenericArgData<Self> {
+        &data
+    }
+
+    fn intern_goal(&self, goal: chalk_ir::GoalData<Self>) -> Self::InternedGoal {
         Box::new(goal)
     }
 
-    fn goal_data<'a>(&self, goal: &'a Self::InternedGoal) -> &'a GoalData<Self> {
+    fn goal_data<'a>(&self, goal: &'a Self::InternedGoal) -> &'a chalk_ir::GoalData<Self> {
         &goal
     }
 
@@ -244,7 +238,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
 
     fn intern_substitution<E>(
         &self,
-        data: impl IntoIterator<Item = Result<chalk_ir::Parameter<Self>, E>>,
+        data: impl IntoIterator<Item = Result<chalk_ir::GenericArg<Self>, E>>,
     ) -> Result<Self::InternedSubstitution, E> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
@@ -252,7 +246,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     fn substitution_data<'a>(
         &self,
         substitution: &'a Self::InternedSubstitution,
-    ) -> &'a [Parameter<Self>] {
+    ) -> &'a [chalk_ir::GenericArg<Self>] {
         substitution
     }
 
@@ -298,23 +292,23 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         clauses
     }
 
-    fn intern_parameter_kinds<E>(
+    fn intern_generic_arg_kinds<E>(
         &self,
-        data: impl IntoIterator<Item = Result<chalk_ir::ParameterKind<()>, E>>,
-    ) -> Result<Self::InternedParameterKinds, E> {
+        data: impl IntoIterator<Item = Result<chalk_ir::VariableKind<Self>, E>>,
+    ) -> Result<Self::InternedVariableKinds, E> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
 
-    fn parameter_kinds_data<'a>(
+    fn variable_kinds_data<'a>(
         &self,
-        parameter_kinds: &'a Self::InternedParameterKinds,
-    ) -> &'a [chalk_ir::ParameterKind<()>] {
+        parameter_kinds: &'a Self::InternedVariableKinds,
+    ) -> &'a [chalk_ir::VariableKind<Self>] {
         parameter_kinds
     }
 
     fn intern_canonical_var_kinds<E>(
         &self,
-        data: impl IntoIterator<Item = Result<chalk_ir::ParameterKind<chalk_ir::UniverseIndex>, E>>,
+        data: impl IntoIterator<Item = Result<chalk_ir::CanonicalVarKind<Self>, E>>,
     ) -> Result<Self::InternedCanonicalVarKinds, E> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
@@ -322,7 +316,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     fn canonical_var_kinds_data<'a>(
         &self,
         canonical_var_kinds: &'a Self::InternedCanonicalVarKinds,
-    ) -> &'a [chalk_ir::ParameterKind<chalk_ir::UniverseIndex>] {
+    ) -> &'a [chalk_ir::CanonicalVarKind<Self>] {
         canonical_var_kinds
     }
 }

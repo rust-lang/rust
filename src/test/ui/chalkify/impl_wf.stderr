@@ -1,5 +1,17 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/impl_wf.rs:11:6
+   |
+LL | trait Foo: Sized { }
+   |            ----- required by this bound in `Foo`
+...
+LL | impl Foo for str { }
+   |      ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+
 error[E0277]: the trait bound `f32: Foo` is not satisfied
-  --> $DIR/impl_wf.rs:43:6
+  --> $DIR/impl_wf.rs:40:6
    |
 LL | trait Baz<U: ?Sized> where U: Foo { }
    |                               --- required by this bound in `Baz`
@@ -7,6 +19,6 @@ LL | trait Baz<U: ?Sized> where U: Foo { }
 LL | impl Baz<f32> for f32 { }
    |      ^^^^^^^^ the trait `Foo` is not implemented for `f32`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
