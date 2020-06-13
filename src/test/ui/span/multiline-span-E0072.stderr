@@ -6,11 +6,14 @@ LL | | ListNode
 LL | | {
 LL | |     head: u8,
 LL | |     tail: Option<ListNode>,
-   | |     ---------------------- recursive without indirection
+   | |           ---------------- recursive without indirection
 LL | | }
    | |_^ recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `ListNode` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `ListNode` representable
+   |
+LL |     tail: Box<Option<ListNode>>,
+   |           ^^^^                ^
 
 error: aborting due to previous error
 
