@@ -8,6 +8,8 @@
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
 #[allow(unused_extern_crates)]
+extern crate rustc_data_structures;
+#[allow(unused_extern_crates)]
 extern crate rustc_driver;
 #[allow(unused_extern_crates)]
 extern crate rustc_errors;
@@ -97,7 +99,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
 #[allow(clippy::find_map, clippy::filter_map)]
 fn describe_lints() {
     use lintlist::{Level, Lint, ALL_LINTS, LINT_LEVELS};
-    use std::collections::HashSet;
+    use rustc_data_structures::fx::FxHashSet;
 
     println!(
         "
@@ -141,7 +143,7 @@ Available lint options:
 
     let scoped = |x: &str| format!("clippy::{}", x);
 
-    let lint_groups: HashSet<_> = lints.iter().map(|lint| lint.group).collect();
+    let lint_groups: FxHashSet<_> = lints.iter().map(|lint| lint.group).collect();
 
     println!("Lint checks provided by clippy:\n");
     println!("    {}  {:7.7}  meaning", padded("name"), "default");

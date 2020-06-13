@@ -1497,7 +1497,7 @@ struct MutatePairDelegate<'a, 'tcx> {
     span_high: Option<Span>,
 }
 
-impl<'a, 'tcx> Delegate<'tcx> for MutatePairDelegate<'a, 'tcx> {
+impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
@@ -1525,7 +1525,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutatePairDelegate<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MutatePairDelegate<'a, 'tcx> {
+impl MutatePairDelegate<'_, '_> {
     fn mutation_span(&self) -> (Option<Span>, Option<Span>) {
         (self.span_low, self.span_high)
     }
@@ -2292,7 +2292,7 @@ struct HasBreakOrReturnVisitor {
     has_break_or_return: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for HasBreakOrReturnVisitor {
+impl<'tcx> Visitor<'tcx> for HasBreakOrReturnVisitor {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
