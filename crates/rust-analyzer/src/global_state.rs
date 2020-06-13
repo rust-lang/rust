@@ -22,10 +22,9 @@ use stdx::format_to;
 
 use crate::{
     config::Config,
-    diagnostics::{
-        to_proto::url_from_path_with_drive_lowercasing, CheckFixes, DiagnosticCollection,
-    },
+    diagnostics::{CheckFixes, DiagnosticCollection},
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
+    to_proto::url_from_abs_path,
     vfs_glob::{Glob, RustPackageFilterBuilder},
     LspError, Result,
 };
@@ -274,8 +273,8 @@ impl GlobalStateSnapshot {
         &self.analysis
     }
 
-    pub fn uri_to_file_id(&self, uri: &Url) -> Result<FileId> {
-        let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
+    pub fn url_to_file_id(&self, url: &Url) -> Result<FileId> {
+        let path = url.to_file_path().map_err(|()| format!("invalid uri: {}", url))?;
         let file = self.vfs.read().path2file(&path).ok_or_else(|| {
             // Show warning as this file is outside current workspace
             // FIXME: just handle such files, and remove `LspError::UNKNOWN_FILE`.
@@ -287,11 +286,8 @@ impl GlobalStateSnapshot {
         Ok(FileId(file.0))
     }
 
-    pub fn file_id_to_uri(&self, id: FileId) -> Result<Url> {
-        let path = self.vfs.read().file2path(VfsFile(id.0));
-        let url = url_from_path_with_drive_lowercasing(path)?;
-
-        Ok(url)
+    pub fn file_id_to_url(&self, id: FileId) -> Url {
+        file_id_to_url(&self.vfs.read(), id)
     }
 
     pub fn file_id_to_path(&self, id: FileId) -> PathBuf {
@@ -302,12 +298,10 @@ impl GlobalStateSnapshot {
         self.vfs.read().file_line_endings(VfsFile(id.0))
     }
 
-    pub fn path_to_uri(&self, root: SourceRootId, path: &RelativePathBuf) -> Result<Url> {
+    pub fn path_to_url(&self, root: SourceRootId, path: &RelativePathBuf) -> Url {
         let base = self.vfs.read().root2path(VfsRoot(root.0));
         let path = path.to_path(base);
-        let url = Url::from_file_path(&path)
-            .map_err(|_| format!("can't convert path to url: {}", path.display()))?;
-        Ok(url)
+        url_from_abs_path(&path)
     }
 
     pub fn status(&self) -> String {
@@ -334,4 +328,9 @@ impl GlobalStateSnapshot {
         let path = self.vfs.read().file2path(VfsFile(file_id.0));
         self.workspaces.iter().find_map(|ws| ws.workspace_root_for(&path))
     }
+}
+
+pub(crate) fn file_id_to_url(vfs: &Vfs, id: FileId) -> Url {
+    let path = vfs.file2path(VfsFile(id.0));
+    url_from_abs_path(&path)
 }

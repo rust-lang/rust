@@ -17,7 +17,7 @@ pub(crate) fn text_range(line_index: &LineIndex, range: lsp_types::Range) -> Tex
 }
 
 pub(crate) fn file_id(world: &GlobalStateSnapshot, url: &lsp_types::Url) -> Result<FileId> {
-    world.uri_to_file_id(url)
+    world.url_to_file_id(url)
 }
 
 pub(crate) fn file_position(

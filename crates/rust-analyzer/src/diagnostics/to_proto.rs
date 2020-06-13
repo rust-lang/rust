@@ -1,10 +1,6 @@
 //! This module provides the functionality needed to convert diagnostics from
 //! `cargo check` json format to the LSP diagnostic format.
-use std::{
-    collections::HashMap,
-    path::{Component, Path, Prefix},
-    str::FromStr,
-};
+use std::{collections::HashMap, path::Path};
 
 use lsp_types::{
     Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag, Location,
@@ -13,7 +9,7 @@ use lsp_types::{
 use ra_flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion};
 use stdx::format_to;
 
-use crate::{lsp_ext, Result};
+use crate::{lsp_ext, to_proto::url_from_abs_path};
 
 /// Converts a Rust level string to a LSP severity
 fn map_level_to_severity(val: DiagnosticLevel) -> Option<DiagnosticSeverity> {
@@ -65,7 +61,7 @@ fn map_span_to_location(span: &DiagnosticSpan, workspace_root: &Path) -> Locatio
 fn map_span_to_location_naive(span: &DiagnosticSpan, workspace_root: &Path) -> Location {
     let mut file_name = workspace_root.to_path_buf();
     file_name.push(&span.file_name);
-    let uri = url_from_path_with_drive_lowercasing(file_name).unwrap();
+    let uri = url_from_abs_path(&file_name);
 
     // FIXME: this doesn't handle UTF16 offsets correctly
     let range = Range::new(
@@ -275,70 +271,16 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         .collect()
 }
 
-/// Returns a `Url` object from a given path, will lowercase drive letters if present.
-/// This will only happen when processing windows paths.
-///
-/// When processing non-windows path, this is essentially the same as `Url::from_file_path`.
-pub fn url_from_path_with_drive_lowercasing(path: impl AsRef<Path>) -> Result<Url> {
-    let component_has_windows_drive = path.as_ref().components().any(|comp| {
-        if let Component::Prefix(c) = comp {
-            return matches!(c.kind(), Prefix::Disk(_) | Prefix::VerbatimDisk(_));
-        }
-        false
-    });
-
-    // VSCode expects drive letters to be lowercased, where rust will uppercase the drive letters.
-    let res = if component_has_windows_drive {
-        let url_original = Url::from_file_path(&path)
-            .map_err(|_| format!("can't convert path to url: {}", path.as_ref().display()))?;
-
-        let drive_partition: Vec<&str> = url_original.as_str().rsplitn(2, ':').collect();
-
-        // There is a drive partition, but we never found a colon.
-        // This should not happen, but in this case we just pass it through.
-        if drive_partition.len() == 1 {
-            return Ok(url_original);
-        }
-
-        let joined = drive_partition[1].to_ascii_lowercase() + ":" + drive_partition[0];
-        let url = Url::from_str(&joined).expect("This came from a valid `Url`");
-
-        url
-    } else {
-        Url::from_file_path(&path)
-            .map_err(|_| format!("can't convert path to url: {}", path.as_ref().display()))?
-    };
-    Ok(res)
-}
-
 #[cfg(test)]
+#[cfg(not(windows))]
 mod tests {
     use super::*;
 
-    // `Url` is not able to parse windows paths on unix machines.
-    #[test]
-    #[cfg(target_os = "windows")]
-    fn test_lowercase_drive_letter_with_drive() {
-        let url = url_from_path_with_drive_lowercasing("C:\\Test").unwrap();
-
-        assert_eq!(url.to_string(), "file:///c:/Test");
-    }
-
-    #[test]
-    #[cfg(target_os = "windows")]
-    fn test_drive_without_colon_passthrough() {
-        let url = url_from_path_with_drive_lowercasing(r#"\\localhost\C$\my_dir"#).unwrap();
-
-        assert_eq!(url.to_string(), "file://localhost/C$/my_dir");
-    }
-
-    #[cfg(not(windows))]
     fn parse_diagnostic(val: &str) -> ra_flycheck::Diagnostic {
         serde_json::from_str::<ra_flycheck::Diagnostic>(val).unwrap()
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn snap_rustc_incompatible_type_for_trait() {
         let diag = parse_diagnostic(
             r##"{
@@ -392,7 +334,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn snap_rustc_unused_variable() {
         let diag = parse_diagnostic(
             r##"{
@@ -475,7 +416,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn snap_rustc_wrong_number_of_parameters() {
         let diag = parse_diagnostic(
             r##"{
@@ -600,7 +540,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn snap_clippy_pass_by_ref() {
         let diag = parse_diagnostic(
             r##"{
@@ -721,7 +660,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn snap_rustc_mismatched_type() {
         let diag = parse_diagnostic(
             r##"{
@@ -765,7 +703,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn snap_handles_macro_location() {
         let diag = parse_diagnostic(
             r##"{
@@ -1037,7 +974,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn snap_macro_compiler_error() {
         let diag = parse_diagnostic(
             r##"{
@@ -1267,7 +1203,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn snap_multi_line_fix() {
         let diag = parse_diagnostic(
             r##"{

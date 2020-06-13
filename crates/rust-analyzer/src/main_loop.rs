@@ -27,7 +27,7 @@ use ra_flycheck::{CheckTask, Status};
 use ra_ide::{Canceled, FileId, LibraryData, LineIndex, SourceRootId};
 use ra_prof::profile;
 use ra_project_model::{PackageRoot, ProjectWorkspace};
-use ra_vfs::{VfsFile, VfsTask, Watch};
+use ra_vfs::{VfsTask, Watch};
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
@@ -35,9 +35,9 @@ use threadpool::ThreadPool;
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
-    diagnostics::{to_proto::url_from_path_with_drive_lowercasing, DiagnosticTask},
+    diagnostics::DiagnosticTask,
     from_proto,
-    global_state::{GlobalState, GlobalStateSnapshot},
+    global_state::{file_id_to_url, GlobalState, GlobalStateSnapshot},
     lsp_ext,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
@@ -801,17 +801,9 @@ fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state:
     let subscriptions = state.diagnostics.handle_task(task);
 
     for file_id in subscriptions {
-        let path = state.vfs.read().file2path(VfsFile(file_id.0));
-        let uri = match url_from_path_with_drive_lowercasing(&path) {
-            Ok(uri) => uri,
-            Err(err) => {
-                log::error!("Couldn't convert path to url ({}): {}", err, path.display());
-                continue;
-            }
-        };
-
+        let url = file_id_to_url(&state.vfs.read(), file_id);
         let diagnostics = state.diagnostics.diagnostics_for(file_id).cloned().collect();
-        let params = lsp_types::PublishDiagnosticsParams { uri, diagnostics, version: None };
+        let params = lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None };
         let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
         msg_sender.send(not.into()).unwrap();
     }
