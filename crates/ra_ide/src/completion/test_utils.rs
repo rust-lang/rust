@@ -12,8 +12,8 @@ pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionI
     do_completion_with_options(code, kind, &CompletionConfig::default())
 }
 
-pub(crate) fn get_completions(code: &str, kind: CompletionKind) -> Vec<String> {
-    get_completions_with_options(code, kind, &CompletionConfig::default())
+pub(crate) fn completion_list(code: &str, kind: CompletionKind) -> String {
+    completion_list_with_options(code, kind, &CompletionConfig::default())
 }
 
 pub(crate) fn do_completion_with_options(
@@ -38,11 +38,11 @@ fn get_all_completion_items(code: &str, options: &CompletionConfig) -> Vec<Compl
     analysis.completions(options, position).unwrap().unwrap().into()
 }
 
-pub(crate) fn get_completions_with_options(
+pub(crate) fn completion_list_with_options(
     code: &str,
     kind: CompletionKind,
     options: &CompletionConfig,
-) -> Vec<String> {
+) -> String {
     let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(code, options)
         .into_iter()
         .filter(|c| c.completion_kind == kind)
@@ -50,7 +50,7 @@ pub(crate) fn get_completions_with_options(
     kind_completions.sort_by_key(|c| c.label().to_owned());
     kind_completions
         .into_iter()
-        .map(|it| format!("{} {}", it.kind().unwrap().tag(), it.label()))
+        .map(|it| format!("{} {}\n", it.kind().unwrap().tag(), it.label()))
         .collect()
 }
 
