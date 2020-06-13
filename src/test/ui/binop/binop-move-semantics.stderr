@@ -1,14 +1,21 @@
 error[E0382]: use of moved value: `x`
   --> $DIR/binop-move-semantics.rs:8:5
    |
-LL | fn double_move<T: Add<Output=()>>(x: T) {
-   |                                   - move occurs because `x` has type `T`, which does not implement the `Copy` trait
-LL |     x
-   |     - value moved here
-LL |     +
-LL |     x;
-   |     ^ value used here after move
+LL |   fn double_move<T: Add<Output=()>>(x: T) {
+   |                                     - move occurs because `x` has type `T`, which does not implement the `Copy` trait
+LL | /     x
+LL | |     +
+LL | |     x;
+   | |     ^
+   | |     |
+   | |_____value used here after move
+   |       `x` moved due to usage in operator
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+   |
+LL |     fn add(self, rhs: Rhs) -> Self::Output;
+   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn double_move<T: Add<Output=()> + Copy>(x: T) {

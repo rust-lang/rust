@@ -6,11 +6,17 @@ LL |     let mut bad_letters = vec!['e', 't', 'o', 'i'];
 LL |     for l in bad_letters {
    |              -----------
    |              |
-   |              value moved here
+   |              `bad_letters` moved due to this implicit call to `.into_iter()`
    |              help: consider borrowing to avoid moving into the for loop: `&bad_letters`
 ...
 LL |     bad_letters.push('s');
    |     ^^^^^^^^^^^ value borrowed here after move
+   |
+note: this function consumes the receiver `self` by taking ownership of it, which moves `bad_letters`
+  --> $SRC_DIR/libcore/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |                  ^^^^
 
 error: aborting due to previous error
 

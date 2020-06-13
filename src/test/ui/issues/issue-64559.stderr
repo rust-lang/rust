@@ -6,12 +6,18 @@ LL |     let orig = vec![true];
 LL |     for _val in orig {}
    |                 ----
    |                 |
-   |                 value moved here
+   |                 `orig` moved due to this implicit call to `.into_iter()`
    |                 help: consider borrowing to avoid moving into the for loop: `&orig`
 LL |     let _closure = || orig;
    |                    ^^ ---- use occurs due to use in closure
    |                    |
    |                    value used here after move
+   |
+note: this function consumes the receiver `self` by taking ownership of it, which moves `orig`
+  --> $SRC_DIR/libcore/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |                  ^^^^
 
 error: aborting due to previous error
 
