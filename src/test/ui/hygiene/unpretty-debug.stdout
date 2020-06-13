@@ -18,8 +18,12 @@ fn y /* 0#0 */() { }
 Expansions:
 0: parent: ExpnId(0), call_site_ctxt: #0, kind: Root
 1: parent: ExpnId(0), call_site_ctxt: #0, kind: Macro(Bang, "foo")
+2: parent: ExpnId(0), call_site_ctxt: #1, kind: Desugaring(Operator)
+3: parent: ExpnId(0), call_site_ctxt: #1, kind: Desugaring(Operator)
 
 SyntaxContexts:
 #0: parent: #0, outer_mark: (ExpnId(0), Opaque)
 #1: parent: #0, outer_mark: (ExpnId(1), SemiTransparent)
+#2: parent: #1, outer_mark: (ExpnId(2), Transparent)
+#3: parent: #1, outer_mark: (ExpnId(3), Transparent)
 */
