@@ -38,7 +38,7 @@ $RUSTC example/arbitrary_self_types_pointers_and_wrappers.rs --crate-name arbitr
 $RUN_WRAPPER ./target/out/arbitrary_self_types_pointers_and_wrappers
 
 echo "[BUILD] sysroot"
-time ./build_sysroot/build_sysroot.sh
+time ./build_sysroot/build_sysroot.sh --release
 
 echo "[AOT] alloc_example"
 $RUSTC example/alloc_example.rs --crate-type bin --target $TARGET_TRIPLE
@@ -70,10 +70,6 @@ $RUN_WRAPPER ./target/out/track-caller-attribute
 
 echo "[BUILD] mod_bench"
 $RUSTC example/mod_bench.rs --crate-type bin --target $TARGET_TRIPLE
-
-# FIXME linker gives multiple definitions error on Linux
-#echo "[BUILD] sysroot in release mode"
-#./build_sysroot/build_sysroot.sh --release
 
 pushd simple-raytracer
 if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then

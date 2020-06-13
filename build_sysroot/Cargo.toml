@@ -21,3 +21,4 @@ rustc-std-workspace-std = { path = "./sysroot_src/src/tools/rustc-std-workspace-
 
 [profile.release]
 debug = true
+incremental = true
