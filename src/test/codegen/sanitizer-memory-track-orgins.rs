@@ -1,9 +1,7 @@
 // Verifies that MemorySanitizer track-origins level can be controlled
 // with -Zsanitizer-memory-track-origins option.
 //
-// needs-sanitizer-support
-// only-linux
-// only-x86_64
+// needs-sanitizer-memory
 // revisions:MSAN-0 MSAN-1 MSAN-2 MSAN-1-LTO MSAN-2-LTO
 //
 //[MSAN-0] compile-flags: -Zsanitizer=memory

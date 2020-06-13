@@ -201,3 +201,22 @@ fn debugger() {
     config.debugger = Some(Debugger::Lldb);
     assert!(parse_rs(&config, "// ignore-lldb").ignore);
 }
+
+#[test]
+fn sanitizers() {
+    let mut config = config();
+
+    // Target that supports all sanitizers:
+    config.target = "x86_64-unknown-linux-gnu".to_owned();
+    assert!(!parse_rs(&config, "// needs-sanitizer-address").ignore);
+    assert!(!parse_rs(&config, "// needs-sanitizer-leak").ignore);
+    assert!(!parse_rs(&config, "// needs-sanitizer-memory").ignore);
+    assert!(!parse_rs(&config, "// needs-sanitizer-thread").ignore);
+
+    // Target that doesn't support sanitizers:
+    config.target = "wasm32-unknown-emscripten".to_owned();
+    assert!(parse_rs(&config, "// needs-sanitizer-address").ignore);
+    assert!(parse_rs(&config, "// needs-sanitizer-leak").ignore);
+    assert!(parse_rs(&config, "// needs-sanitizer-memory").ignore);
+    assert!(parse_rs(&config, "// needs-sanitizer-thread").ignore);
+}
