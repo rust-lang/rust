@@ -778,18 +778,13 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// An example of panic:
     ///
-    /// ```
+    /// ```should_panic
     /// use std::cell::RefCell;
-    /// use std::thread;
     ///
-    /// let result = thread::spawn(move || {
-    ///    let c = RefCell::new(5);
-    ///    let m = c.borrow_mut();
+    /// let c = RefCell::new(5);
     ///
-    ///    let b = c.borrow(); // this causes a panic
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// let m = c.borrow_mut();
+    /// let b = c.borrow(); // this causes a panic
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -858,18 +853,13 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// An example of panic:
     ///
-    /// ```
+    /// ```should_panic
     /// use std::cell::RefCell;
-    /// use std::thread;
     ///
-    /// let result = thread::spawn(move || {
-    ///    let c = RefCell::new(5);
-    ///    let m = c.borrow();
+    /// let c = RefCell::new(5);
+    /// let m = c.borrow();
     ///
-    ///    let b = c.borrow_mut(); // this causes a panic
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// let b = c.borrow_mut(); // this causes a panic
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
