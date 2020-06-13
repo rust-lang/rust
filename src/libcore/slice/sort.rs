@@ -20,6 +20,9 @@ struct CopyOnDrop<T> {
 
 impl<T> Drop for CopyOnDrop<T> {
     fn drop(&mut self) {
+        // SAFETY:  This is a helper class.
+        //          Please refer to its usage for correctness.
+        //          Namely, one must be sure that `src` and `dst` does not overlap as required by `ptr::copy_nonoverlapping`.
         unsafe {
             ptr::copy_nonoverlapping(self.src, self.dest, 1);
         }
@@ -43,7 +46,8 @@ where
     //  1. We are obtaining pointers to references which are guaranteed to be valid.
     //  2. They cannot overlap because we obtain pointers to difference indices of the slice.
     //     Namely, `i` and `i-1`.
-    //  3. FIXME: Guarantees that the elements are properly aligned?
+    //  3. If the slice is properly aligned, the elements are properly aligned.
+    //     It is the caller's responsibility to make sure the slice is properly aligned.
     //
     // See comments below for further detail.
     unsafe {
@@ -76,18 +80,19 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
-    // SAFETY: As with shift_head, the unsafe operations below involves indexing without a bound check (`get_unchecked` and `get_unchecked_mut`)
+    // SAFETY: The unsafe operations below involves indexing without a bound check (`get_unchecked` and `get_unchecked_mut`)
     // and copying memory (`ptr::copy_nonoverlapping`).
     //
     // a. Indexing:
-    //  1. We checked the size of the array to >=2.
-    //  2. All the indexing that we will do is always between {0 <= index < len-1} at most.
+    //  1. We checked the size of the array to >= 2.
+    //  2. All the indexing that we will do is always between `0 <= index < len-1` at most.
     //
     // b. Memory copying
     //  1. We are obtaining pointers to references which are guaranteed to be valid.
     //  2. They cannot overlap because we obtain pointers to difference indices of the slice.
     //     Namely, `i` and `i+1`.
-    //  3. FIXME: Guarantees that the elements are properly aligned?
+    //  3. If the slice is properly aligned, the elements are properly aligned.
+    //     It is the caller's responsibility to make sure the slice is properly aligned.
     //
     // See comments below for further detail.
     unsafe {
@@ -131,8 +136,8 @@ where
     let mut i = 1;
 
     for _ in 0..MAX_STEPS {
-        // SAFETY: We already explicitly done the bound checking with `i<len`
-        // All our indexing following that is only in the range {0 <= index < len}
+        // SAFETY: We already explicitly did the bound checking with `i < len`.
+        // All our subsequent indexing is only in the range `0 <= index < len`
         unsafe {
             // Find the next pair of adjacent out-of-order elements.
             while i < len && !is_less(v.get_unchecked(i), v.get_unchecked(i - 1)) {
@@ -299,6 +304,16 @@ where
             let mut elem = l;
 
             for i in 0..block_l {
+                // SAFETY: The unsafety operations below involve the usage of the `offset`.
+                //         According to the conditions required by the function, we satisfy them because:
+                //         1. `offsets_l` is stack-allocated, and thus considered separate allocated object.
+                //         2. The function `is_less` returns a `bool`.
+                //            Casting a `bool` will never overflow `isize`.
+                //         3. We have guaranteed that `block_l` will be `<= BLOCK`.
+                //            Plus, `end_l` was initially set to the begin pointer of `offsets_` which was declared on the stack.
+                //            Thus, we know that even in the worst case (all invocations of `is_less` returns false) we will only be at most 1 byte pass the end.
+                //        Another unsafety operation here is dereferencing `elem`.
+                //        However, `elem` was initially the begin pointer to the slice which is always valid.
                 unsafe {
                     // Branchless comparison.
                     *end_l = i as u8;
@@ -315,6 +330,17 @@ where
             let mut elem = r;
 
             for i in 0..block_r {
+                // SAFETY: The unsafety operations below involve the usage of the `offset`.
+                //         According to the conditions required by the function, we satisfy them because:
+                //         1. `offsets_r` is stack-allocated, and thus considered separate allocated object.
+                //         2. The function `is_less` returns a `bool`.
+                //            Casting a `bool` will never overflow `isize`.
+                //         3. We have guaranteed that `block_r` will be `<= BLOCK`.
+                //            Plus, `end_r` was initially set to the begin pointer of `offsets_` which was declared on the stack.
+                //            Thus, we know that even in the worst case (all invocations of `is_less` returns true) we will only be at most 1 byte pass the end.
+                //        Another unsafety operation here is dereferencing `elem`.
+                //        However, `elem` was initially `1 * sizeof(T)` past the end and we decrement it by `1 * sizeof(T)` before accessing it.
+                //        Plus, `block_r` was asserted to be less than `BLOCK` and `elem` will therefore at most be pointing to the beginning of the slice.
                 unsafe {
                     // Branchless comparison.
                     elem = elem.offset(-1);
@@ -437,8 +463,9 @@ where
         let mut r = v.len();
 
         // SAFETY: The unsafety below involves indexing an array.
-        // For the first one: we already do the bound checking here with `l<r`.
-        // For the secondn one: the minimum value for `l` is 0 and the maximum value for `r` is `v.len().`
+        // For the first one: We already do the bounds checking here with `l < r`.
+        // For the second one: We initially have `l == 0` and `r == v.len()` and we checked that `l < r` at every indexing operation.
+        //                     From here we know that `r` must be at least `r == l` which was shown to be valid from the first one.
         unsafe {
             // Find the first element greater than or equal to the pivot.
             while l < r && is_less(v.get_unchecked(l), pivot) {
@@ -489,8 +516,9 @@ where
     let mut r = v.len();
     loop {
         // SAFETY: The unsafety below involves indexing an array.
-        // For the first one: we already do the bound checking here with `l<r`.
-        // For the second one: the minimum value for `l` is 0 and the maximum value for `r` is `v.len().`
+        // For the first one: We already do the bounds checking here with `l < r`.
+        // For the second one: We initially have `l == 0` and `r == v.len()` and we checked that `l < r` at every indexing operation.
+        //                     From here we know that `r` must be at least `r == l` which was shown to be valid from the first one.
         unsafe {
             // Find the first element greater than the pivot.
             while l < r && !is_less(pivot, v.get_unchecked(l)) {
