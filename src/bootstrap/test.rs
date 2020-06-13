@@ -154,6 +154,7 @@ impl Step for Cargotest {
     fn run(self, builder: &Builder<'_>) {
         let compiler = builder.compiler(self.stage, self.host);
         builder.ensure(compile::Rustc { compiler, target: compiler.host });
+        let cargo = builder.ensure(tool::Cargo { compiler, target: compiler.host });
 
         // Note that this is a short, cryptic, and not scoped directory name. This
         // is currently to minimize the length of path on Windows where we otherwise
@@ -165,7 +166,7 @@ impl Step for Cargotest {
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
         try_run(
             builder,
-            cmd.arg(&builder.initial_cargo)
+            cmd.arg(&cargo)
                 .arg(&out_dir)
                 .env("RUSTC", builder.rustc(compiler))
                 .env("RUSTDOC", builder.rustdoc(compiler)),

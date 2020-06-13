@@ -278,16 +278,11 @@ impl fmt::Display for CharTryFromError {
 ///
 /// Passing a large radix, causing a panic:
 ///
-/// ```
-/// use std::thread;
+/// ```should_panic
 /// use std::char;
 ///
-/// let result = thread::spawn(|| {
-///     // this panics
-///     let c = char::from_digit(1, 37);
-/// }).join();
-///
-/// assert!(result.is_err());
+/// // this panics
+/// let c = char::from_digit(1, 37);
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]

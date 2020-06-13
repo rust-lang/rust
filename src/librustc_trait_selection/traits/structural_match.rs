@@ -1,10 +1,11 @@
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::ObligationCause;
-use crate::traits::{self, ConstPatternStructural, TraitEngine};
+use crate::traits::{self, TraitEngine};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::lang_items::{StructuralPeqTraitLangItem, StructuralTeqTraitLangItem};
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::Span;
 
@@ -45,14 +46,14 @@ pub enum NonStructuralMatchTy<'tcx> {
 /// that arose when the requirement was not enforced completely, see
 /// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
 pub fn search_for_structural_match_violation<'tcx>(
-    id: hir::HirId,
+    _id: hir::HirId,
     span: Span,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<NonStructuralMatchTy<'tcx>> {
     // FIXME: we should instead pass in an `infcx` from the outside.
     tcx.infer_ctxt().enter(|infcx| {
-        let mut search = Search { id, span, infcx, found: None, seen: FxHashSet::default() };
+        let mut search = Search { infcx, span, found: None, seen: FxHashSet::default() };
         ty.visit_with(&mut search);
         search.found
     })
@@ -65,27 +66,26 @@ pub fn search_for_structural_match_violation<'tcx>(
 ///
 /// Note that this does *not* recursively check if the substructure of `adt_ty`
 /// implements the traits.
-pub fn type_marked_structural(
-    id: hir::HirId,
-    span: Span,
+fn type_marked_structural(
     infcx: &InferCtxt<'_, 'tcx>,
     adt_ty: Ty<'tcx>,
+    cause: ObligationCause<'tcx>,
 ) -> bool {
     let mut fulfillment_cx = traits::FulfillmentContext::new();
-    let cause = ObligationCause::new(span, id, ConstPatternStructural);
     // require `#[derive(PartialEq)]`
-    let structural_peq_def_id = infcx.tcx.require_lang_item(StructuralPeqTraitLangItem, Some(span));
+    let structural_peq_def_id =
+        infcx.tcx.require_lang_item(StructuralPeqTraitLangItem, Some(cause.span));
     fulfillment_cx.register_bound(
         infcx,
         ty::ParamEnv::empty(),
         adt_ty,
         structural_peq_def_id,
-        cause,
+        cause.clone(),
     );
     // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
     // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
-    let cause = ObligationCause::new(span, id, ConstPatternStructural);
-    let structural_teq_def_id = infcx.tcx.require_lang_item(StructuralTeqTraitLangItem, Some(span));
+    let structural_teq_def_id =
+        infcx.tcx.require_lang_item(StructuralTeqTraitLangItem, Some(cause.span));
     fulfillment_cx.register_bound(
         infcx,
         ty::ParamEnv::empty(),
@@ -110,7 +110,6 @@ pub fn type_marked_structural(
 /// find instances of ADTs (specifically structs or enums) that do not implement
 /// the structural-match traits (`StructuralPartialEq` and `StructuralEq`).
 struct Search<'a, 'tcx> {
-    id: hir::HirId,
     span: Span,
 
     infcx: InferCtxt<'a, 'tcx>,
@@ -129,7 +128,7 @@ impl Search<'a, 'tcx> {
     }
 
     fn type_marked_structural(&self, adt_ty: Ty<'tcx>) -> bool {
-        type_marked_structural(self.id, self.span, &self.infcx, adt_ty)
+        adt_ty.is_structural_eq_shallow(self.tcx())
     }
 }
 
@@ -265,4 +264,13 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
         // want our caller to continue its own search.
         false
     }
+}
+
+pub fn provide(providers: &mut Providers<'_>) {
+    providers.has_structural_eq_impls = |tcx, ty| {
+        tcx.infer_ctxt().enter(|infcx| {
+            let cause = ObligationCause::dummy();
+            type_marked_structural(&infcx, ty, cause)
+        })
+    };
 }
