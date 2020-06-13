@@ -286,6 +286,20 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             .starts_with("std::convert::From<");
                         let is_unsize =
                             { Some(trait_ref.def_id()) == self.tcx.lang_items().unsize_trait() };
+                        let is_fn_trait = [
+                            self.tcx.lang_items().fn_trait(),
+                            self.tcx.lang_items().fn_mut_trait(),
+                            self.tcx.lang_items().fn_once_trait(),
+                        ]
+                        .contains(&Some(trait_ref.def_id()));
+                        let is_safe_target_feature_fn =
+                            if let ty::FnDef(def_id, _) = trait_ref.skip_binder().self_ty().kind {
+                                trait_ref.skip_binder().self_ty().fn_sig(self.tcx).unsafety()
+                                    == hir::Unsafety::Normal
+                                    && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                            } else {
+                                false
+                            };
                         let (message, note) = if is_try && is_from {
                             (
                                 Some(format!(
@@ -425,6 +439,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> \
                                 for more information",
                             );
+                        }
+
+                        if is_fn_trait && is_safe_target_feature_fn {
+                            err.note(&format!(
+                                "`{}` has `#[target_feature]` and is unsafe to call",
+                                trait_ref.skip_binder().self_ty(),
+                            ));
                         }
 
                         // Try to report a help message
