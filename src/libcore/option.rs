@@ -926,7 +926,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_zip)]
     /// let x = Some(1);
     /// let y = Some("hi");
     /// let z = None::<u8>;
@@ -934,9 +933,12 @@ impl<T> Option<T> {
     /// assert_eq!(x.zip(y), Some((1, "hi")));
     /// assert_eq!(x.zip(z), None);
     /// ```
-    #[unstable(feature = "option_zip", issue = "70086")]
+    #[stable(feature = "option_zip_option", since = "1.46.0")]
     pub fn zip<U>(self, other: Option<U>) -> Option<(T, U)> {
-        self.zip_with(other, |a, b| (a, b))
+        match (self, other) {
+            (Some(a), Some(b)) => Some((a, b)),
+            _ => None,
+        }
     }
 
     /// Zips `self` and another `Option` with function `f`.
