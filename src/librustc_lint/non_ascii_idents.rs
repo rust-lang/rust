@@ -8,20 +8,23 @@ use std::ops::Deref;
 declare_lint! {
     pub NON_ASCII_IDENTS,
     Allow,
-    "detects non-ASCII identifiers"
+    "detects non-ASCII identifiers",
+    crate_level_only
 }
 
 declare_lint! {
     pub UNCOMMON_CODEPOINTS,
     Warn,
-    "detects uncommon Unicode codepoints in identifiers"
+    "detects uncommon Unicode codepoints in identifiers",
+    crate_level_only
 }
 
 // FIXME: Change this to warn.
 declare_lint! {
     pub CONFUSABLE_IDENTS,
     Allow,
-    "detects visually confusable pairs between identifiers"
+    "detects visually confusable pairs between identifiers",
+    crate_level_only
 }
 
 declare_lint_pass!(NonAsciiIdents => [NON_ASCII_IDENTS, UNCOMMON_CODEPOINTS, CONFUSABLE_IDENTS]);
