@@ -108,8 +108,8 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// *guard += 1;
 /// ```
 ///
-/// It is sometimes necessary to manually drop the mutex guard
-/// to unlock it sooner than the end of the enclosing scope.
+/// It is sometimes necessary to manually drop the mutex guard to unlock it
+/// sooner than the end of the enclosing scope.
 ///
 /// ```
 /// use std::sync::{Arc, Mutex};
@@ -139,18 +139,18 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// // This is the result of some important and long-ish work.
 /// let result = data.iter().fold(0, |acc, x| acc + x * 2);
 /// data.push(result);
-/// // We drop the `data` explicitly because it's not necessary anymore
-/// // and the thread still has work to do. This allow other threads to
-/// // start working on the data immediately, without waiting
-/// // for the rest of the unrelated work to be done here.
+/// // We drop the `data` explicitly because it's not necessary anymore and the
+/// // thread still has work to do. This allow other threads to start working on
+/// // the data immediately, without waiting for the rest of the unrelated work
+/// // to be done here.
 /// //
 /// // It's even more important here than in the threads because we `.join` the
-/// // threads after that. If we had not dropped the mutex guard, a thread could be
-/// // waiting forever for it, causing a deadlock.
+/// // threads after that. If we had not dropped the mutex guard, a thread could
+/// // be waiting forever for it, causing a deadlock.
 /// drop(data);
-/// // Here the mutex guard is not assigned to a variable and so, even if the scope
-/// // does not end after this line, the mutex is still released:
-/// // there is no deadlock.
+/// // Here the mutex guard is not assigned to a variable and so, even if the
+/// // scope does not end after this line, the mutex is still released: there is
+/// // no deadlock.
 /// *res_mutex.lock().unwrap() += result;
 ///
 /// threads.into_iter().for_each(|thread| {
