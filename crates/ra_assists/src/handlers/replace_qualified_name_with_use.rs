@@ -1,7 +1,11 @@
-use hir;
-use ra_syntax::{ast, AstNode, SmolStr, TextRange};
+use hir::{self, ModPath};
+use ra_syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SmolStr, SyntaxNode};
 
-use crate::{utils::insert_use_statement, AssistContext, AssistId, Assists};
+use crate::{
+    utils::{find_insert_use_container, insert_use_statement},
+    AssistContext, AssistId, Assists,
+};
+use either::Either;
 
 // Assist: replace_qualified_name_with_use
 //
@@ -39,16 +43,28 @@ pub(crate) fn replace_qualified_name_with_use(
         target,
         |builder| {
             let path_to_import = hir_path.mod_path().clone();
+            let container = match find_insert_use_container(path.syntax(), ctx) {
+                Some(c) => c,
+                None => return,
+            };
             insert_use_statement(path.syntax(), &path_to_import, ctx, builder.text_edit_builder());
 
-            if let Some(last) = path.segment() {
-                // Here we are assuming the assist will provide a correct use statement
-                // so we can delete the path qualifier
-                builder.delete(TextRange::new(
-                    path.syntax().text_range().start(),
-                    last.syntax().text_range().start(),
-                ));
+            // Now that we've brought the name into scope, re-qualify all paths that could be
+            // affected (that is, all paths inside the node we added the `use` to).
+            let hir_path = match hir::Path::from_ast(path.clone()) {
+                Some(p) => p,
+                None => return,
+            };
+            let mut rewriter = SyntaxRewriter::default();
+            match container {
+                Either::Left(l) => {
+                    shorten_paths(&mut rewriter, l.syntax().clone(), hir_path.mod_path());
+                }
+                Either::Right(r) => {
+                    shorten_paths(&mut rewriter, r.syntax().clone(), hir_path.mod_path());
+                }
             }
+            builder.rewrite(rewriter);
         },
     )
 }
@@ -71,6 +87,59 @@ fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
     }
     ps.extend(path.segments().iter().map(|it| it.name.to_string().into()));
     Some(ps)
+}
+
+/// Adds replacements to `re` that shorten `path` in all descendants of `node`.
+fn shorten_paths(re: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: &ModPath) {
+    for child in node.children() {
+        match_ast! {
+            match child {
+                // Don't modify `use` items, as this can break the `use` item when injecting a new
+                // import into the use tree.
+                ast::UseItem(_it) => continue,
+                // Don't descend into submodules, they don't have the same `use` items in scope.
+                ast::Module(_it) => continue,
+
+                ast::Path(p) => {
+                    match maybe_replace_path(re, &p, path) {
+                        Some(()) => {},
+                        None => shorten_paths(re, p.syntax().clone(), path),
+                    }
+                },
+                _ => shorten_paths(re, child, path),
+            }
+        }
+    }
+}
+
+fn maybe_replace_path(
+    re: &mut SyntaxRewriter<'static>,
+    p: &ast::Path,
+    path: &ModPath,
+) -> Option<()> {
+    let hir_path = hir::Path::from_ast(p.clone())?;
+
+    if hir_path.mod_path() != path {
+        return None;
+    }
+
+    // Replace path with its last "plain" segment.
+    let mut mod_path = hir_path.mod_path().clone();
+    let last = mod_path.segments.len() - 1;
+    mod_path.segments.swap(0, last);
+    mod_path.segments.truncate(1);
+    mod_path.kind = hir::PathKind::Plain;
+
+    let mut new_path = crate::ast_transform::path_to_ast(mod_path);
+
+    let type_args = p.segment().and_then(|s| s.type_arg_list());
+    if let Some(type_args) = type_args {
+        let last_segment = new_path.segment().unwrap();
+        new_path = new_path.with_segment(last_segment.with_type_args(type_args));
+    }
+
+    re.replace(p.syntax(), new_path.syntax());
+    Some(())
 }
 
 #[cfg(test)]
@@ -459,6 +528,118 @@ use std::fmt::Debug;
 
 fn main() {
     Debug
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn replaces_all_affected_paths() {
+        check_assist(
+            replace_qualified_name_with_use,
+            "
+fn main() {
+    std::fmt::Debug<|>;
+    let x: std::fmt::Debug = std::fmt::Debug;
+}
+    ",
+            "
+use std::fmt::Debug;
+
+fn main() {
+    Debug;
+    let x: Debug = Debug;
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn replaces_all_affected_paths_mod() {
+        check_assist(
+            replace_qualified_name_with_use,
+            "
+mod m {
+    fn f() {
+        std::fmt::Debug<|>;
+        let x: std::fmt::Debug = std::fmt::Debug;
+    }
+    fn g() {
+        std::fmt::Debug;
+    }
+}
+
+fn f() {
+    std::fmt::Debug;
+}
+    ",
+            "
+mod m {
+    use std::fmt::Debug;
+
+    fn f() {
+        Debug;
+        let x: Debug = Debug;
+    }
+    fn g() {
+        Debug;
+    }
+}
+
+fn f() {
+    std::fmt::Debug;
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn does_not_replace_in_submodules() {
+        check_assist(
+            replace_qualified_name_with_use,
+            "
+fn main() {
+    std::fmt::Debug<|>;
+}
+
+mod sub {
+    fn f() {
+        std::fmt::Debug;
+    }
+}
+    ",
+            "
+use std::fmt::Debug;
+
+fn main() {
+    Debug;
+}
+
+mod sub {
+    fn f() {
+        std::fmt::Debug;
+    }
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn does_not_replace_in_use() {
+        check_assist(
+            replace_qualified_name_with_use,
+            "
+use std::fmt::Display;
+
+fn main() {
+    std::fmt<|>;
+}
+    ",
+            "
+use std::fmt::{self, Display};
+
+fn main() {
+    fmt;
 }
     ",
         );

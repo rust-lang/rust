@@ -252,7 +252,7 @@ impl AssistBuilder {
     pub(crate) fn rewrite(&mut self, rewriter: SyntaxRewriter) {
         let node = rewriter.rewrite_root().unwrap();
         let new = rewriter.rewrite(&node);
-        algo::diff(&node, &new).into_text_edit(&mut self.edit)
+        algo::diff(&node, &new).into_text_edit(&mut self.edit);
     }
 
     // FIXME: kill this API
