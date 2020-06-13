@@ -150,7 +150,7 @@ ifdef IS_MSVC
 	$(CC) $< -link -dll -out:`cygpath -w $@`
 else
 %.dll: lib%.o
-	$(CC) -o $@ $< -shared
+	$(CC) -o $@ $< -shared -Wl,--out-implib=$@.a
 endif
 
 $(TMPDIR)/lib%.o: %.c
