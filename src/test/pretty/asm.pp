@@ -8,6 +8,7 @@ extern crate std;
 
 // pretty-mode:expanded
 // pp-exact:asm.pp
+// only-x86_64
 
 pub fn main() {
     let a: i32;
