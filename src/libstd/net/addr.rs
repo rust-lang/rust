@@ -1228,5 +1228,10 @@ mod tests {
         assert!(v6_1 < v6_3);
         assert!(v4_3 > v4_1);
         assert!(v6_3 > v6_1);
+
+        // compare with an inferred right-hand side
+        assert_eq!(v4_1, "224.120.45.1:23456".parse().unwrap());
+        assert_eq!(v6_1, "[2001:db8:f00::1002]:23456".parse().unwrap());
+        assert_eq!(SocketAddr::V4(v4_1), "224.120.45.1:23456".parse().unwrap());
     }
 }
