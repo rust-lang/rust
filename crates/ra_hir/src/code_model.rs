@@ -186,20 +186,33 @@ impl ModuleDef {
         module.visibility_of(db, self)
     }
 
-    pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
+    pub fn name(&self, db: &dyn HirDatabase) -> Option<Name> {
         match self {
-            ModuleDef::Adt(it) => Some(it.name(db)),
-            ModuleDef::Trait(it) => Some(it.name(db)),
-            ModuleDef::Function(it) => Some(it.name(db)),
-            ModuleDef::EnumVariant(it) => Some(it.name(db)),
-            ModuleDef::TypeAlias(it) => Some(it.name(db)),
-
-            ModuleDef::Module(it) => it.name(db),
-            ModuleDef::Const(it) => it.name(db),
-            ModuleDef::Static(it) => it.name(db),
-
-            ModuleDef::BuiltinType(it) => Some(it.as_name()),
+            ModuleDef::Module(m) => m.name(db),
+            ModuleDef::Function(m) => Some(m.name(db)),
+            ModuleDef::Adt(m) => Some(m.name(db)),
+            ModuleDef::EnumVariant(m) => Some(m.name(db)),
+            ModuleDef::Const(m) => {m.name(db)},
+            ModuleDef::Static(m) => {m.name(db)},
+            ModuleDef::Trait(m) => {Some(m.name(db))},
+            ModuleDef::TypeAlias(m) => {Some(m.name(db))},
+            ModuleDef::BuiltinType(m) => {Some(m.as_name())}
         }
+    }
+
+    pub fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
+        Some(match self {
+            ModuleDef::Module(m) => Into::<ModuleId>::into(m.clone()).resolver(db),
+            ModuleDef::Function(f) => Into::<FunctionId>::into(f.clone()).resolver(db),
+            ModuleDef::Adt(adt) => Into::<AdtId>::into(adt.clone()).resolver(db),
+            ModuleDef::EnumVariant(ev) => Into::<GenericDefId>::into(Into::<GenericDef>::into(ev.clone())).resolver(db),
+            ModuleDef::Const(c) => Into::<GenericDefId>::into(Into::<GenericDef>::into(c.clone())).resolver(db),
+            ModuleDef::Static(s) => Into::<StaticId>::into(s.clone()).resolver(db),
+            ModuleDef::Trait(t) => Into::<TraitId>::into(t.clone()).resolver(db),
+            ModuleDef::TypeAlias(t) => Into::<ModuleId>::into(t.module(db)).resolver(db),
+            // TODO: This should be a resolver relative to `std`
+            ModuleDef::BuiltinType(_t) => None?
+        })
     }
 }
 

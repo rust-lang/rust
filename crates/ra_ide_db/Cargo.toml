@@ -24,6 +24,7 @@ ra_text_edit = { path = "../ra_text_edit" }
 ra_db = { path = "../ra_db" }
 ra_prof = { path = "../ra_prof" }
 test_utils = { path = "../test_utils" }
+ra_hir_def = { path = "../ra_hir_def" }
 
 # ra_ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.

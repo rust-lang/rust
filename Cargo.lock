@@ -1303,6 +1303,7 @@ dependencies = [
  "once_cell",
  "ra_db",
  "ra_hir",
+ "ra_hir_def",
  "ra_prof",
  "ra_syntax",
  "ra_text_edit",

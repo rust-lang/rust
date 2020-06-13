@@ -99,7 +99,7 @@ impl MockAnalysis {
                 root_crate = Some(crate_graph.add_crate_root(
                     file_id,
                     edition,
-                    None,
+                    Some(CrateName::new("test").unwrap()),
                     cfg,
                     env,
                     Default::default(),

@@ -146,7 +146,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     } {
         let range = sema.original_range(&node).range;
-        let text = hover_text_from_name_kind(db, name_kind.clone()).map(|text| rewrite_links(db, &text, &name_kind).unwrap_or(text));
+        let text = hover_text_from_name_kind(db, name_kind.clone());
+        let text = text.map(|text| rewrite_links(db, &text, &name_kind).unwrap_or(text));
         res.extend(text);
 
         if !res.is_empty() {
@@ -405,8 +406,8 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> 
                     Err(_) => {
                         let link_str = String::from_utf8(link.url.clone()).unwrap();
                         let link_text = String::from_utf8(link.title.clone()).unwrap();
-                        let resolved = try_resolve_path(db, definition, &link_str)
-                            .or_else(|| try_resolve_intra(db, definition, &link_text, &link_str));
+                        let resolved = try_resolve_intra(db, definition, &link_text, &link_str)
+                            .or_else(|| try_resolve_path(db, definition, &link_str));
 
                         if let Some(resolved) = resolved {
                             link.url = resolved.as_bytes().to_vec();
@@ -420,7 +421,7 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> 
     });
     let mut out = Vec::new();
     format_commonmark(doc, &ComrakOptions::default(), &mut out).ok()?;
-    Some(String::from_utf8(out).unwrap())
+    Some(String::from_utf8(out).unwrap().trim().to_string())
 }
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
@@ -470,32 +471,7 @@ fn try_resolve_intra(db: &RootDatabase, definition: &Definition, link_text: &str
     let modpath = ModPath::from_src(path, &Hygiene::new_unhygienic()).unwrap();
 
     // Resolve it relative to symbol's location (according to the RFC this should consider small scopes
-    let resolver = {
-        use ra_hir_def::*;
-        use hir::*;
-
-        // TODO: This should be replaced by implementing HasResolver/TryHasResolver on ModuleDef and Definition.
-        match definition {
-            Definition::ModuleDef(def) => match def {
-                ModuleDef::Module(m) => Into::<ModuleId>::into(m.clone()).resolver(db),
-                ModuleDef::Function(f) => Into::<FunctionId>::into(f.clone()).resolver(db),
-                ModuleDef::Adt(adt) => Into::<AdtId>::into(adt.clone()).resolver(db),
-                ModuleDef::EnumVariant(ev) => Into::<GenericDefId>::into(Into::<GenericDef>::into(ev.clone())).resolver(db),
-                ModuleDef::Const(c) => Into::<GenericDefId>::into(Into::<GenericDef>::into(c.clone())).resolver(db),
-                ModuleDef::Static(s) => Into::<StaticId>::into(s.clone()).resolver(db),
-                ModuleDef::Trait(t) => Into::<TraitId>::into(t.clone()).resolver(db),
-                ModuleDef::TypeAlias(t) => Into::<ModuleId>::into(t.module(db)).resolver(db),
-                // TODO: This should be a resolver relative to `std`
-                ModuleDef::BuiltinType(_t) => Into::<ModuleId>::into(definition.module(db)?).resolver(db)
-            },
-            Definition::Field(field) => Into::<VariantId>::into(Into::<VariantDef>::into(field.parent_def(db))).resolver(db),
-            Definition::Macro(m) => Into::<ModuleId>::into(m.module(db)?).resolver(db),
-            Definition::SelfType(imp) => Into::<ImplId>::into(imp.clone()).resolver(db),
-            // it's possible, read probable, that other arms of this are also unreachable
-            Definition::Local(_local) => unreachable!(),
-            Definition::TypeParam(tp) => Into::<ModuleId>::into(tp.module(db)).resolver(db)
-        }
-    };
+    let resolver = definition.resolver(db)?;
 
     // Namespace disambiguation
     let namespace = Namespace::from_intra_spec(link_target);
@@ -527,7 +503,7 @@ fn try_resolve_intra(db: &RootDatabase, definition: &Definition, link_text: &str
         get_doc_url(db, &krate)?
             .join(&format!("{}/", krate.display_name(db)?)).ok()?
             .join(&path.segments.iter().map(|name| format!("{}", name)).join("/")).ok()?
-            .join(&get_symbol_filename(db, definition)?).ok()?
+            .join(&get_symbol_filename(db, &Definition::ModuleDef(def))?).ok()?
             .into_string()
     )
 }
@@ -637,11 +613,20 @@ mod tests {
 
     use crate::mock_analysis::analysis_and_position;
 
-    fn trim_markup(s: &str) -> &str {
-        s.trim_start_matches("```rust\n").trim_end_matches("\n```")
+    fn trim_markup(s: &str) -> String {
+        s
+            .replace("``` rust", "```rust")
+            .replace("-----", "___")
+            .replace("\n\n___\n\n", "\n___\n\n")
+            .replace("\\<-", "<-")
+            .trim_start_matches("test\n```\n\n")
+            .trim_start_matches("```rust\n")
+            .trim_start_matches("test\n```\n\n```rust\n")
+            .trim_end_matches("\n```")
+            .to_string()
     }
 
-    fn trim_markup_opt(s: Option<&str>) -> Option<&str> {
+    fn trim_markup_opt(s: Option<&str>) -> Option<String> {
         s.map(trim_markup)
     }
 
@@ -689,7 +674,7 @@ fn main() {
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(hover.range, TextRange::new(58.into(), 63.into()));
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("u32"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("u32"));
     }
 
     #[test]
@@ -818,7 +803,7 @@ fn main() {
                 };
             }
         "#,
-            &["Foo\n```\n\n```rust\nfield_a: u32"],
+            &["test::Foo\n```\n\n```rust\nfield_a: u32"],
         );
 
         // Hovering over the field in the definition
@@ -835,7 +820,7 @@ fn main() {
                 };
             }
         "#,
-            &["Foo\n```\n\n```rust\nfield_a: u32"],
+            &["test::Foo\n```\n\n```rust\nfield_a: u32"],
         );
     }
 
@@ -888,7 +873,7 @@ fn main() {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Option\n```\n\n```rust\nSome"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("test::Option\n```\n\n```rust\nSome"));
 
         let (analysis, position) = analysis_and_position(
             "
@@ -901,7 +886,7 @@ fn main() {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Option<i32>"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("Option<i32>"));
     }
 
     #[test]
@@ -915,7 +900,7 @@ fn main() {
             }
         "#,
             &["
-Option
+test::Option
 ```
 
 ```rust
@@ -940,7 +925,7 @@ The None variant
             }
         "#,
             &["
-Option
+test::Option
 ```
 
 ```rust
@@ -958,14 +943,14 @@ The Some variant
     fn hover_for_local_variable() {
         let (analysis, position) = analysis_and_position("fn func(foo: i32) { fo<|>o; }");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("i32"));
     }
 
     #[test]
     fn hover_for_local_variable_pat() {
         let (analysis, position) = analysis_and_position("fn func(fo<|>o: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("i32"));
     }
 
     #[test]
@@ -976,14 +961,14 @@ fn func(foo: i32) { if true { <|>foo; }; }
 ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("i32"));
     }
 
     #[test]
     fn hover_for_param_edge() {
         let (analysis, position) = analysis_and_position("fn func(<|>foo: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("i32"));
     }
 
     #[test]
@@ -1004,7 +989,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("Thing"));
     }
 
     #[test]
@@ -1028,8 +1013,8 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(
-            trim_markup_opt(hover.info.first()),
-            Some("wrapper::Thing\n```\n\n```rust\nfn new() -> Thing")
+            trim_markup_opt(hover.info.first()).as_deref(),
+            Some("test::wrapper::Thing\n```\n\n```rust\nfn new() -> Thing")
         );
     }
 
@@ -1052,7 +1037,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("const C: u32"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("const C: u32"));
     }
 
     #[test]
@@ -1068,7 +1053,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
         ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("Thing"));
 
         /* FIXME: revive these tests
                 let (analysis, position) = analysis_and_position(
@@ -1125,7 +1110,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("i32"));
     }
 
     #[test]
@@ -1142,7 +1127,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("macro_rules! foo"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("macro_rules! foo"));
     }
 
     #[test]
@@ -1153,7 +1138,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("i32"));
     }
 
     #[test]
@@ -1415,6 +1400,59 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
+    fn test_hover_path_link() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [Foo](struct.Foo.html)
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"]
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [Foo](Foo)
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"]
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_shortlink() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [Foo]
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"]
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_namespaced() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            fn Foo() {}
+            /// [Foo()]
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"]
+        );
+    }
+
+    #[test]
     fn test_hover_macro_generated_struct_fn_doc_comment() {
         mark::check!(hover_macro_generated_struct_fn_doc_comment);
 
@@ -1438,7 +1476,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 bar.fo<|>o();
             }
             "#,
-            &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\n Do the foo"],
+            &["test::Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\nDo the foo"],
         );
     }
 
@@ -1466,7 +1504,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 bar.fo<|>o();
             }
             "#,
-            &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\nDo the foo"],
+            &["test::Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\nDo the foo"],
         );
     }
 
