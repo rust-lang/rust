@@ -227,6 +227,7 @@ symbols! {
         const_loop,
         const_mut_refs,
         const_panic,
+        const_precise_live_drops,
         const_raw_ptr_deref,
         const_raw_ptr_to_usize_cast,
         const_transmute,
