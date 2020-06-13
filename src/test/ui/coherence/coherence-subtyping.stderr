@@ -1,5 +1,5 @@
 warning: conflicting implementations of trait `TheTrait` for type `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`:
-  --> $DIR/coherence-subtyping.rs:16:1
+  --> $DIR/coherence-subtyping.rs:15:1
    |
 LL | impl TheTrait for for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8 {}
    | ---------------------------------------------------------- first implementation here

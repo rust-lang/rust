@@ -1,5 +1,4 @@
-// FIXME(chalk): should have an error, see below
-// check-pass
+// check-fail
 // compile-flags: -Z chalk
 
 trait Foo { }
@@ -16,17 +15,11 @@ fn main() {
        x: 5,
     };
 
-    // FIXME(chalk): blocked on float/int special handling. Needs to know that {float}: !i32
-    /*
-    let s = S { // ERROR the trait bound `{float}: Foo` is not satisfied
+    let s = S { //~ ERROR the trait bound `f64: Foo` is not satisfied
         x: 5.0,
     };
-    */
 
-    // FIXME(chalk): blocked on float/int special handling. Needs to know that {float}: Sized
-    /*
     let s = S {
         x: Some(5.0),
     };
-    */
 }
