@@ -452,6 +452,14 @@ impl<'a> CrateLoader<'a> {
         if dep.is_none() {
             self.used_extern_options.insert(name);
         }
+        if !name.as_str().is_ascii() {
+            self.sess
+                .struct_span_err(
+                    span,
+                    &format!("cannot load a crate with a non-ascii name `{}`", name,),
+                )
+                .emit();
+        }
         self.maybe_resolve_crate(name, span, dep_kind, dep).unwrap_or_else(|err| err.report())
     }
 
