@@ -7,6 +7,7 @@ extern crate libc;
 
 use std::marker::PhantomData;
 
+trait Bar { }
 trait Mirror { type It: ?Sized; }
 impl<T: ?Sized> Mirror for T { type It = Self; }
 #[repr(C)]
@@ -53,7 +54,7 @@ extern {
     pub fn char_type(p: char); //~ ERROR uses type `char`
     pub fn i128_type(p: i128); //~ ERROR uses type `i128`
     pub fn u128_type(p: u128); //~ ERROR uses type `u128`
-    pub fn trait_type(p: &dyn Clone); //~ ERROR uses type `dyn std::clone::Clone`
+    pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `dyn Bar`
     pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
     pub fn tuple_type2(p: I32Pair); //~ ERROR uses type `(i32, i32)`
     pub fn zero_size(p: ZeroSize); //~ ERROR uses type `ZeroSize`
