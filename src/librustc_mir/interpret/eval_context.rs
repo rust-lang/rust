@@ -891,7 +891,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // FIXME: We can hit delay_span_bug if this is an invalid const, interning finds
         // that problem, but we never run validation to show an error. Can we ensure
         // this does not happen?
-        let val = self.tcx.at(self.cur_span()).const_eval_raw(param_env.and(gid))?;
+        let val = self.tcx_at().const_eval_raw(param_env.and(gid))?;
         self.raw_const_to_mplace(val)
     }
 
