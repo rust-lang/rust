@@ -3,7 +3,7 @@
 //! This module implements the command-line parsing of the build system which
 //! has various flags to configure how it's run.
 
-use std::fs;
+use std::env;
 use std::path::PathBuf;
 use std::process;
 
@@ -433,13 +433,7 @@ Arguments:
         // Get any optional paths which occur after the subcommand
         let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
-        let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
-            if fs::metadata("config.toml").is_ok() {
-                Some(PathBuf::from("config.toml"))
-            } else {
-                None
-            }
-        });
+        let cfg_file = env::var_os("BOOTSTRAP_CONFIG").map(PathBuf::from);
 
         // All subcommands except `clean` can have an optional "Available paths" section
         if matches.opt_present("verbose") {
