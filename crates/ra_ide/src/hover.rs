@@ -1,10 +1,8 @@
 use std::iter::once;
-use std::path::PathBuf;
-use std::sync::Arc;
 
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
-    ModuleSource, Semantics, Documentation, AttrDef, Crate, GenericDef, ModPath, Hygiene
+    ModuleSource, Semantics, Documentation, AttrDef, Crate, ModPath, Hygiene
 };
 use itertools::Itertools;
 use ra_db::SourceDatabase;
@@ -13,11 +11,9 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, SyntaxNode, TokenAtOffset, ast::Path};
-use ra_project_model::ProjectWorkspace;
-use ra_hir_def::{item_scope::ItemInNs, db::DefDatabase, GenericDefId, ModuleId, resolver::HasResolver};
+use ra_hir_def::{item_scope::ItemInNs, db::DefDatabase, resolver::HasResolver};
 use ra_tt::{Literal, Ident, Punct, TokenTree, Leaf};
 use ra_hir_expand::name::AsName;
-use ra_parser::FragmentKind;
 use maplit::{hashset, hashmap};
 
 use comrak::{parse_document,format_commonmark, ComrakOptions, Arena};
@@ -130,7 +126,7 @@ impl HoverResult {
 //
 // Shows additional information, like type of an expression or documentation for definition when "focusing" code.
 // Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
-pub(crate) fn hover(db: &RootDatabase, position: FilePosition, workspaces: Arc<Vec<ProjectWorkspace>>) -> Option<RangeInfo<HoverResult>> {
+pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id).syntax().clone();
     let token = pick_best(file.token_at_offset(position.offset))?;
@@ -150,7 +146,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition, workspaces: Arc<V
         }
     } {
         let range = sema.original_range(&node).range;
-        let text = hover_text_from_name_kind(db, name_kind.clone()).map(|text| rewrite_links(db, &text, &name_kind, workspaces).unwrap_or(text));
+        let text = hover_text_from_name_kind(db, name_kind.clone()).map(|text| rewrite_links(db, &text, &name_kind).unwrap_or(text));
         res.extend(text);
 
         if !res.is_empty() {
@@ -393,15 +389,9 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
 }
 
 /// Rewrite documentation links in markdown to point to local documentation/docs.rs
-fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition, workspaces: Arc<Vec<ProjectWorkspace>>) -> Option<String> {
+fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> Option<String> {
     let arena = Arena::new();
     let doc = parse_document(&arena, markdown, &ComrakOptions::default());
-    let doc_target_dirs = workspaces
-        .iter()
-        .filter_map(|workspace| if let ProjectWorkspace::Cargo{cargo: cargo_workspace, ..} = workspace {Some(cargo_workspace)} else {None})
-        .map(|workspace| workspace.workspace_root())
-        // TODO: `target` is configurable in cargo config, we should respect it
-        .map(|root| root.join("target/doc"));
 
     iter_nodes(doc, &|node| {
         match &mut node.data.borrow_mut().value {
@@ -415,8 +405,8 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition, wor
                     Err(_) => {
                         let link_str = String::from_utf8(link.url.clone()).unwrap();
                         let link_text = String::from_utf8(link.title.clone()).unwrap();
-                        let resolved = try_resolve_path(db, &mut doc_target_dirs.clone(), definition, &link_str, UrlMode::Url)
-                            .or_else(|| try_resolve_intra(db, &mut doc_target_dirs.clone(), definition, &link_text, &link_str));
+                        let resolved = try_resolve_path(db, definition, &link_str)
+                            .or_else(|| try_resolve_intra(db, definition, &link_text, &link_str));
 
                         if let Some(resolved) = resolved {
                             link.url = resolved.as_bytes().to_vec();
@@ -451,7 +441,7 @@ impl Namespace {
 
         ns_map
             .iter()
-            .filter(|(ns, (prefixes, suffixes))| {
+            .filter(|(_ns, (prefixes, suffixes))| {
                 prefixes.iter().map(|prefix| s.starts_with(prefix) && s.chars().nth(prefix.len()+1).map(|c| c == '@' || c == ' ').unwrap_or(false)).any(|cond| cond) ||
                 suffixes.iter().map(|suffix| s.starts_with(suffix) && s.chars().nth(suffix.len()+1).map(|c| c == '@' || c == ' ').unwrap_or(false)).any(|cond| cond)
             })
@@ -463,7 +453,7 @@ impl Namespace {
 /// Try to resolve path to local documentation via intra-doc-links (i.e. `super::gateway::Shard`).
 ///
 /// See [RFC1946](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md).
-fn try_resolve_intra(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link_text: &str, link_target: &str) -> Option<String> {
+fn try_resolve_intra(db: &RootDatabase, definition: &Definition, link_text: &str, link_target: &str) -> Option<String> {
     eprintln!("try_resolve_intra");
 
     // Set link_target for implied shortlinks
@@ -496,13 +486,13 @@ fn try_resolve_intra(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = Pa
                 ModuleDef::Trait(t) => Into::<TraitId>::into(t.clone()).resolver(db),
                 ModuleDef::TypeAlias(t) => Into::<ModuleId>::into(t.module(db)).resolver(db),
                 // TODO: This should be a resolver relative to `std`
-                ModuleDef::BuiltinType(t) => Into::<ModuleId>::into(definition.module(db)?).resolver(db)
+                ModuleDef::BuiltinType(_t) => Into::<ModuleId>::into(definition.module(db)?).resolver(db)
             },
             Definition::Field(field) => Into::<VariantId>::into(Into::<VariantDef>::into(field.parent_def(db))).resolver(db),
             Definition::Macro(m) => Into::<ModuleId>::into(m.module(db)?).resolver(db),
             Definition::SelfType(imp) => Into::<ImplId>::into(imp.clone()).resolver(db),
             // it's possible, read probable, that other arms of this are also unreachable
-            Definition::Local(local) => unreachable!(),
+            Definition::Local(_local) => unreachable!(),
             Definition::TypeParam(tp) => Into::<ModuleId>::into(tp.module(db)).resolver(db)
         }
     };
@@ -542,13 +532,8 @@ fn try_resolve_intra(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = Pa
     )
 }
 
-enum UrlMode {
-    Url,
-    File
-}
-
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
-fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = PathBuf>, definition: &Definition, link: &str, mode: UrlMode) -> Option<String> {
+fn try_resolve_path(db: &RootDatabase, definition: &Definition, link: &str) -> Option<String> {
     eprintln!("try_resolve_path");
     let ns = if let Definition::ModuleDef(moddef) = definition {
         ItemInNs::Types(moddef.clone().into())
@@ -561,29 +546,13 @@ fn try_resolve_path(db: &RootDatabase, doc_target_dirs: impl Iterator<Item = Pat
     // TODO: It should be possible to fall back to not-necessarilly-public paths if we can't find a public one,
     // then hope rustdoc was run locally with `--document-private-items`
     let base = import_map.path_of(ns)?;
-    let mut base = once(format!("{}", krate.display_name(db)?)).chain(base.segments.iter().map(|name| format!("{}", name)));
+    let base = once(format!("{}", krate.display_name(db)?)).chain(base.segments.iter().map(|name| format!("{}", name))).join("/");
 
-    match mode {
-        UrlMode::Url => {
-            let mut base = base.join("/");
-            get_doc_url(db, &krate)
-                .and_then(|url| url.join(&base).ok())
-                .and_then(|url| get_symbol_filename(db, definition).as_deref().map(|f| url.join(f).ok()).flatten())
-                .and_then(|url| url.join(link).ok())
-                .map(|url| url.into_string())
-        },
-        UrlMode::File => {
-            let base = base.collect::<PathBuf>();
-            doc_target_dirs
-                .map(|dir| dir.join(format!("{}", krate.display_name(db).unwrap())).join(base.join("..").join(link)))
-                .inspect(|path| eprintln!("candidate {}", path.display()))
-                .filter(|path| path.exists())
-                .map(|path| format!("file:///{}", path.display()))
-                // \. is treated as an escape in vscode's markdown hover rendering
-                .map(|path_str| path_str.replace("\\", "/"))
-                .next()
-        }
-    }
+    get_doc_url(db, &krate)
+        .and_then(|url| url.join(&base).ok())
+        .and_then(|url| get_symbol_filename(db, definition).as_deref().map(|f| url.join(f).ok()).flatten())
+        .and_then(|url| url.join(link).ok())
+        .map(|url| url.into_string())
 }
 
 /// Try to get the root URL of the documentation of a crate.

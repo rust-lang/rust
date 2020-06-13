@@ -54,7 +54,6 @@ use ra_ide_db::{
     LineIndexDatabase,
 };
 use ra_syntax::{SourceFile, TextRange, TextSize};
-use ra_project_model::ProjectWorkspace;
 
 use crate::display::ToNav;
 
@@ -390,8 +389,8 @@ impl Analysis {
     }
 
     /// Returns a short text describing element at position.
-    pub fn hover(&self, position: FilePosition, workspaces: Arc<Vec<ProjectWorkspace>>) -> Cancelable<Option<RangeInfo<HoverResult>>> {
-        self.with_db(|db| hover::hover(db, position, workspaces))
+    pub fn hover(&self, position: FilePosition) -> Cancelable<Option<RangeInfo<HoverResult>>> {
+        self.with_db(|db| hover::hover(db, position))
     }
 
     /// Computes parameter information for the given call expression.

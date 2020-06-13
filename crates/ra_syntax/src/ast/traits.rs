@@ -146,39 +146,3 @@ impl Iterator for CommentIter {
         self.iter.by_ref().find_map(|el| el.into_token().and_then(ast::Comment::cast))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use comrak::{parse_document,format_commonmark, ComrakOptions, Arena};
-    use comrak::nodes::{AstNode, NodeValue};
-
-    fn iter_nodes<'a, F>(node: &'a AstNode<'a>, f: &F)
-        where F : Fn(&'a AstNode<'a>) {
-        f(node);
-        for c in node.children() {
-            iter_nodes(c, f);
-        }
-    }
-
-    #[allow(non_snake_case)]
-    #[test]
-    fn test_link_rewrite() {
-        let src = include_str!("./test.txt");
-
-        let arena = Arena::new();
-        let doc = parse_document(&arena, src, &ComrakOptions::default());
-
-        iter_nodes(doc, &|node| {
-            match &mut node.data.borrow_mut().value {
-                &mut NodeValue::Link(ref mut link) => {
-                    link.url = "https://www.google.com".as_bytes().to_vec();
-                },
-                _ => ()
-            }
-        });
-
-        let mut out = Vec::new();
-        format_commonmark(doc, &ComrakOptions::default(), &mut out);
-        panic!("{}", String::from_utf8(out).unwrap());
-    }
-}
