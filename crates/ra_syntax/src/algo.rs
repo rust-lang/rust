@@ -290,6 +290,11 @@ impl<'a> SyntaxRewriter<'a> {
         N::cast(self.rewrite(node.syntax())).unwrap()
     }
 
+    /// Returns a node that encompasses all replacements to be done by this rewriter.
+    ///
+    /// Passing the returned node to `rewrite` will apply all replacements queued up in `self`.
+    ///
+    /// Returns `None` when there are no replacements.
     pub fn rewrite_root(&self) -> Option<SyntaxNode> {
         assert!(self.f.is_none());
         self.replacements
@@ -298,6 +303,9 @@ impl<'a> SyntaxRewriter<'a> {
                 SyntaxElement::Node(it) => it.clone(),
                 SyntaxElement::Token(it) => it.parent(),
             })
+            // If we only have one replacement, we must return its parent node, since `rewrite` does
+            // not replace the node passed to it.
+            .map(|it| it.parent().unwrap_or(it))
             .fold1(|a, b| least_common_ancestor(&a, &b).unwrap())
     }
 
