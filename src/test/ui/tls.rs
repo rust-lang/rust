@@ -1,4 +1,5 @@
 // run-pass
+// ignore-emscripten no threads support
 // compile-flags: -O
 
 #![feature(thread_local)]
