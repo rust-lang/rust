@@ -25,7 +25,7 @@ pub(crate) fn do_completion_with_options(
         .into_iter()
         .filter(|c| c.completion_kind == kind)
         .collect();
-    kind_completions.sort_by_key(|c| c.label().to_owned());
+    kind_completions.sort_by(|l, r| l.label().cmp(r.label()));
     kind_completions
 }
 

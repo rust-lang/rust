@@ -36,6 +36,109 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
     }
 }
 
+pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
+    let has_trait_or_impl_parent = ctx.has_impl_parent || ctx.has_trait_parent;
+    if ctx.trait_as_prev_sibling || ctx.impl_as_prev_sibling {
+        add_keyword(ctx, acc, "where", "where ");
+        return;
+    }
+    if ctx.unsafe_is_prev {
+        if ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent {
+            add_keyword(ctx, acc, "fn", "fn $0() {}")
+        }
+
+        if (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+            || ctx.block_expr_parent
+        {
+            add_keyword(ctx, acc, "trait", "trait $0 {}");
+            add_keyword(ctx, acc, "impl", "impl $0 {}");
+        }
+
+        return;
+    }
+    if ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent {
+        add_keyword(ctx, acc, "fn", "fn $0() {}");
+    }
+    if (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+        || ctx.block_expr_parent
+    {
+        add_keyword(ctx, acc, "use", "use ");
+        add_keyword(ctx, acc, "impl", "impl $0 {}");
+        add_keyword(ctx, acc, "trait", "trait $0 {}");
+    }
+
+    if ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent {
+        add_keyword(ctx, acc, "enum", "enum $0 {}");
+        add_keyword(ctx, acc, "struct", "struct $0 {}");
+        add_keyword(ctx, acc, "union", "union $0 {}");
+    }
+
+    if ctx.block_expr_parent || ctx.is_match_arm {
+        add_keyword(ctx, acc, "match", "match $0 {}");
+        add_keyword(ctx, acc, "loop", "loop {$0}");
+    }
+    if ctx.block_expr_parent {
+        add_keyword(ctx, acc, "while", "while $0 {}");
+    }
+    if ctx.if_is_prev || ctx.block_expr_parent {
+        add_keyword(ctx, acc, "let", "let ");
+    }
+    if ctx.if_is_prev || ctx.block_expr_parent || ctx.is_match_arm {
+        add_keyword(ctx, acc, "if", "if ");
+        add_keyword(ctx, acc, "if let", "if let ");
+    }
+    if ctx.after_if {
+        add_keyword(ctx, acc, "else", "else {$0}");
+        add_keyword(ctx, acc, "else if", "else if $0 {}");
+    }
+    if (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+        || ctx.block_expr_parent
+    {
+        add_keyword(ctx, acc, "mod", "mod $0 {}");
+    }
+    if ctx.bind_pat_parent || ctx.ref_pat_parent {
+        add_keyword(ctx, acc, "mut", "mut ");
+    }
+    if ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent {
+        add_keyword(ctx, acc, "const", "const ");
+        add_keyword(ctx, acc, "type", "type ");
+    }
+    if (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+        || ctx.block_expr_parent
+    {
+        add_keyword(ctx, acc, "static", "static ");
+    };
+    if (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+        || ctx.block_expr_parent
+    {
+        add_keyword(ctx, acc, "extern", "extern ");
+    }
+    if ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent || ctx.is_match_arm {
+        add_keyword(ctx, acc, "unsafe", "unsafe ");
+    }
+    if ctx.in_loop_body {
+        if ctx.can_be_stmt {
+            add_keyword(ctx, acc, "continue", "continue;");
+            add_keyword(ctx, acc, "break", "break;");
+        } else {
+            add_keyword(ctx, acc, "continue", "continue");
+            add_keyword(ctx, acc, "break", "break");
+        }
+    }
+    if ctx.has_item_list_or_source_file_parent && !ctx.has_trait_parent {
+        add_keyword(ctx, acc, "pub", "pub ")
+    }
+
+    if !ctx.is_trivial_path {
+        return;
+    }
+    let fn_def = match &ctx.function_syntax {
+        Some(it) => it,
+        None => return,
+    };
+    acc.add_all(complete_return(ctx, &fn_def, ctx.can_be_stmt));
+}
+
 fn keyword(ctx: &CompletionContext, kw: &str, snippet: &str) -> CompletionItem {
     let res = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw)
         .kind(CompletionItemKind::Keyword);
@@ -47,182 +150,8 @@ fn keyword(ctx: &CompletionContext, kw: &str, snippet: &str) -> CompletionItem {
     .build()
 }
 
-fn add_keyword(
-    ctx: &CompletionContext,
-    acc: &mut Completions,
-    kw: &str,
-    snippet: &str,
-    should_add: bool,
-) {
-    if should_add {
-        acc.add(keyword(ctx, kw, snippet));
-    }
-}
-
-pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
-    let has_trait_or_impl_parent = ctx.has_impl_parent || ctx.has_trait_parent;
-    if ctx.trait_as_prev_sibling || ctx.impl_as_prev_sibling {
-        add_keyword(ctx, acc, "where", "where ", true);
-        return;
-    }
-    if ctx.unsafe_is_prev {
-        add_keyword(
-            ctx,
-            acc,
-            "fn",
-            "fn $0() {}",
-            ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent,
-        );
-        add_keyword(
-            ctx,
-            acc,
-            "trait",
-            "trait $0 {}",
-            (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-                || ctx.block_expr_parent,
-        );
-        add_keyword(
-            ctx,
-            acc,
-            "impl",
-            "impl $0 {}",
-            (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-                || ctx.block_expr_parent,
-        );
-        return;
-    }
-    add_keyword(
-        ctx,
-        acc,
-        "fn",
-        "fn $0() {}",
-        ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent,
-    );
-    add_keyword(
-        ctx,
-        acc,
-        "use",
-        "use ",
-        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-            || ctx.block_expr_parent,
-    );
-    add_keyword(
-        ctx,
-        acc,
-        "impl",
-        "impl $0 {}",
-        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-            || ctx.block_expr_parent,
-    );
-    add_keyword(
-        ctx,
-        acc,
-        "trait",
-        "trait $0 {}",
-        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-            || ctx.block_expr_parent,
-    );
-    add_keyword(
-        ctx,
-        acc,
-        "enum",
-        "enum $0 {}",
-        ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent,
-    );
-    add_keyword(
-        ctx,
-        acc,
-        "struct",
-        "struct $0 {}",
-        ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent,
-    );
-    add_keyword(
-        ctx,
-        acc,
-        "union",
-        "union $0 {}",
-        ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent,
-    );
-    add_keyword(ctx, acc, "match", "match $0 {}", ctx.block_expr_parent || ctx.is_match_arm);
-    add_keyword(ctx, acc, "loop", "loop {$0}", ctx.block_expr_parent || ctx.is_match_arm);
-    add_keyword(ctx, acc, "while", "while $0 {}", ctx.block_expr_parent);
-    add_keyword(ctx, acc, "let", "let ", ctx.if_is_prev || ctx.block_expr_parent);
-    add_keyword(ctx, acc, "if", "if ", ctx.if_is_prev || ctx.block_expr_parent || ctx.is_match_arm);
-    add_keyword(
-        ctx,
-        acc,
-        "if let",
-        "if let ",
-        ctx.if_is_prev || ctx.block_expr_parent || ctx.is_match_arm,
-    );
-    add_keyword(ctx, acc, "else", "else {$0}", ctx.after_if);
-    add_keyword(ctx, acc, "else if", "else if $0 {}", ctx.after_if);
-    add_keyword(
-        ctx,
-        acc,
-        "mod",
-        "mod $0 {}",
-        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-            || ctx.block_expr_parent,
-    );
-    add_keyword(ctx, acc, "mut", "mut ", ctx.bind_pat_parent || ctx.ref_pat_parent);
-    add_keyword(
-        ctx,
-        acc,
-        "const",
-        "const ",
-        ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent,
-    );
-    add_keyword(
-        ctx,
-        acc,
-        "type",
-        "type ",
-        ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent,
-    );
-    add_keyword(
-        ctx,
-        acc,
-        "static",
-        "static ",
-        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-            || ctx.block_expr_parent,
-    );
-    add_keyword(
-        ctx,
-        acc,
-        "extern",
-        "extern ",
-        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-            || ctx.block_expr_parent,
-    );
-    add_keyword(
-        ctx,
-        acc,
-        "unsafe",
-        "unsafe ",
-        ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent || ctx.is_match_arm,
-    );
-    add_keyword(ctx, acc, "continue", "continue;", ctx.in_loop_body && ctx.can_be_stmt);
-    add_keyword(ctx, acc, "break", "break;", ctx.in_loop_body && ctx.can_be_stmt);
-    add_keyword(ctx, acc, "continue", "continue", ctx.in_loop_body && !ctx.can_be_stmt);
-    add_keyword(ctx, acc, "break", "break", ctx.in_loop_body && !ctx.can_be_stmt);
-    add_keyword(
-        ctx,
-        acc,
-        "pub",
-        "pub ",
-        ctx.has_item_list_or_source_file_parent && !ctx.has_trait_parent,
-    );
-
-    if !ctx.is_trivial_path {
-        return;
-    }
-    let fn_def = match &ctx.function_syntax {
-        Some(it) => it,
-        None => return,
-    };
-    acc.add_all(complete_return(ctx, &fn_def, ctx.can_be_stmt));
+fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet: &str) {
+    acc.add(keyword(ctx, kw, snippet));
 }
 
 fn complete_return(

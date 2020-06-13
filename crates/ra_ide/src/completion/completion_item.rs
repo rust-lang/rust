@@ -126,8 +126,9 @@ pub enum CompletionItemKind {
 }
 
 impl CompletionItemKind {
-    pub fn tag(&self) -> String {
-        let tag = match self {
+    #[cfg(test)]
+    pub(crate) fn tag(&self) -> &'static str {
+        match self {
             CompletionItemKind::Snippet => "sn",
             CompletionItemKind::Keyword => "kw",
             CompletionItemKind::Module => "md",
@@ -146,8 +147,7 @@ impl CompletionItemKind {
             CompletionItemKind::TypeParam => "tp",
             CompletionItemKind::Macro => "ma",
             CompletionItemKind::Attribute => "at",
-        };
-        tag.to_owned()
+        }
     }
 }
 
