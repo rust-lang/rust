@@ -5,14 +5,19 @@ LL |     pub fn baz<T: Foo>(x: T) -> T {
    |                        - move occurs because `x` has type `T`, which does not implement the `Copy` trait
 LL |         if 0 == 1 {
 LL |             bar::bar(x.zero())
-   |                      - value moved here
+   |                        ------ `x` moved due to this method call
 LL |         } else {
 LL |             x.zero()
-   |             - value moved here
+   |               ------ `x` moved due to this method call
 LL |         };
 LL |         x.zero()
    |         ^ value used here after move
    |
+note: this function consumes the receiver `self` by taking ownership of it, which moves `x`
+  --> $DIR/issue-34721.rs:4:13
+   |
+LL |     fn zero(self) -> Self;
+   |             ^^^^
 help: consider further restricting this bound
    |
 LL |     pub fn baz<T: Foo + Copy>(x: T) -> T {
