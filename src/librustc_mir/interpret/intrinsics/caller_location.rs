@@ -29,18 +29,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             })
             // Assert that there is always such a frame.
             .unwrap();
+        // Assert that the frame we look at is actually executing code currently
+        // (`current_source_info` is None when we are unwinding and the frame does
+        // not require cleanup).
         let loc = frame.loc.unwrap();
+        // If this is a `Call` terminator, use the `fn_span` instead.
         let block = &frame.body.basic_blocks()[loc.block];
-        assert_eq!(block.statements.len(), loc.statement_index);
-        debug!(
-            "find_closest_untracked_caller_location:: got terminator {:?} ({:?})",
-            block.terminator(),
-            block.terminator().kind
-        );
-        if let TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
-            return fn_span;
+        if loc.statement_index == block.statements.len() {
+            debug!(
+                "find_closest_untracked_caller_location:: got terminator {:?} ({:?})",
+                block.terminator(),
+                block.terminator().kind
+            );
+            if let TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
+                return fn_span;
+            }
         }
-        unreachable!();
+        // This is a different terminator (such as `Drop`) or not a terminator at all
+        // (such as `box`). Use the normal span.
+        frame.body.source_info(loc).span
     }
 
     /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
