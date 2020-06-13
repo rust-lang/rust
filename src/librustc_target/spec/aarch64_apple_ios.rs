@@ -15,7 +15,7 @@ pub fn target() -> TargetResult {
         target_vendor: "apple".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
-            features: "+neon,+fp-armv8,+cyclone".to_string(),
+            features: "+neon,+fp-armv8,+apple-a7".to_string(),
             eliminate_frame_pointer: false,
             max_atomic_width: Some(128),
             abi_blacklist: super::arm_base::abi_blacklist(),

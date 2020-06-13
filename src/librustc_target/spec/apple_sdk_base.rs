@@ -122,7 +122,7 @@ fn target_cpu(arch: Arch) -> String {
     match arch {
         Armv7 => "cortex-a8", // iOS7 is supported on iPhone 4 and higher
         Armv7s => "cortex-a9",
-        Arm64 => "cyclone",
+        Arm64 => "apple-a7",
         I386 => "yonah",
         X86_64 => "core2",
         X86_64_macabi => "core2",
