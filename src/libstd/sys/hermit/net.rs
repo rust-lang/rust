@@ -23,12 +23,6 @@ pub fn init() -> io::Result<()> {
 #[derive(Debug, Clone)]
 pub struct Socket(abi::Handle);
 
-impl Socket {
-    fn new(handle: abi::Handle) -> Socket {
-        Socket(handle)
-    }
-}
-
 impl AsInner<abi::Handle> for Socket {
     fn as_inner(&self) -> &abi::Handle {
         &self.0
