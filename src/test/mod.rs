@@ -11,10 +11,12 @@ use std::thread;
 
 use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle, ReportTactic};
 use crate::formatting::{ReportedErrors, SourceFile};
-use crate::is_nightly_channel;
+use crate::modules::{ModuleResolutionError, ModuleResolutionErrorKind};
 use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChunk, OutputWriter};
 use crate::source_file;
-use crate::{FormatReport, FormatReportFormatterBuilder, Input, Session};
+use crate::{
+    is_nightly_channel, ErrorKind, FormatReport, FormatReportFormatterBuilder, Input, Session,
+};
 
 mod configuration_snippet;
 
@@ -40,6 +42,7 @@ const SKIP_FILE_WHITE_LIST: &[&str] = &[
     "cfg_mod/bar.rs",
     "cfg_mod/foo.rs",
     "cfg_mod/wasm32.rs",
+    "skip/foo.rs",
 ];
 
 fn init_log() {
@@ -480,6 +483,34 @@ fn format_lines_errors_are_reported_with_tabs() {
     let mut session = Session::<io::Stdout>::new(config, None);
     session.format(input).unwrap();
     assert!(session.has_formatting_errors());
+}
+
+#[test]
+fn parser_errors_in_submods_are_surfaced() {
+    // See also https://github.com/rust-lang/rustfmt/issues/4126
+    let filename = "tests/parser/issue-4126/lib.rs";
+    let input_file = PathBuf::from(filename);
+    let exp_mod_name = "invalid";
+    let config = read_config(&input_file);
+    let mut session = Session::<io::Stdout>::new(config, None);
+    if let Err(ErrorKind::ModuleResolutionError(ModuleResolutionError { module, kind })) =
+        session.format(Input::File(filename.into()))
+    {
+        assert_eq!(&module, exp_mod_name);
+        if let ModuleResolutionErrorKind::ParseError {
+            file: unparseable_file,
+        } = kind
+        {
+            assert_eq!(
+                unparseable_file,
+                PathBuf::from("tests/parser/issue-4126/invalid.rs"),
+            );
+        } else {
+            panic!("Expected parser error");
+        }
+    } else {
+        panic!("Expected ModuleResolution operation error");
+    }
 }
 
 // For each file, run rustfmt and collect the output.

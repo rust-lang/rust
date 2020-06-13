@@ -17,15 +17,16 @@ use std::panic;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use failure::Fail;
 use ignore;
 use rustc_ast::ast;
 use rustc_span::symbol;
+use thiserror::Error;
 
 use crate::comment::LineClasses;
 use crate::emitter::Emitter;
 use crate::formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
 use crate::issues::Issue;
+use crate::modules::ModuleResolutionError;
 use crate::shape::Indent;
 use crate::syntux::parser::DirectoryOwnership;
 use crate::utils::indent_next_line;
@@ -84,45 +85,47 @@ pub(crate) mod visitor;
 
 /// The various errors that can occur during formatting. Note that not all of
 /// these can currently be propagated to clients.
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum ErrorKind {
     /// Line has exceeded character limit (found, maximum).
-    #[fail(
-        display = "line formatted, but exceeded maximum width \
-                   (maximum: {} (see `max_width` option), found: {})",
-        _1, _0
+    #[error(
+        "line formatted, but exceeded maximum width \
+         (maximum: {1} (see `max_width` option), found: {0})"
     )]
     LineOverflow(usize, usize),
     /// Line ends in whitespace.
-    #[fail(display = "left behind trailing whitespace")]
+    #[error("left behind trailing whitespace")]
     TrailingWhitespace,
     /// TODO or FIXME item without an issue number.
-    #[fail(display = "found {}", _0)]
+    #[error("found {0}")]
     BadIssue(Issue),
     /// License check has failed.
-    #[fail(display = "license check failed")]
+    #[error("license check failed")]
     LicenseCheck,
     /// Used deprecated skip attribute.
-    #[fail(display = "`rustfmt_skip` is deprecated; use `rustfmt::skip`")]
+    #[error("`rustfmt_skip` is deprecated; use `rustfmt::skip`")]
     DeprecatedAttr,
     /// Used a rustfmt:: attribute other than skip or skip::macros.
-    #[fail(display = "invalid attribute")]
+    #[error("invalid attribute")]
     BadAttr,
     /// An io error during reading or writing.
-    #[fail(display = "io error: {}", _0)]
+    #[error("io error: {0}")]
     IoError(io::Error),
+    /// Error during module resolution.
+    #[error("{0}")]
+    ModuleResolutionError(#[from] ModuleResolutionError),
     /// Parse error occurred when parsing the input.
-    #[fail(display = "parse error")]
+    #[error("parse error")]
     ParseError,
     /// The user mandated a version and the current version of Rustfmt does not
     /// satisfy that requirement.
-    #[fail(display = "version mismatch")]
+    #[error("version mismatch")]
     VersionMismatch,
     /// If we had formatted the given node, then we would have lost a comment.
-    #[fail(display = "not formatted because a comment would be lost")]
+    #[error("not formatted because a comment would be lost")]
     LostComment,
     /// Invalid glob pattern in `ignore` configuration option.
-    #[fail(display = "Invalid glob pattern found in ignore list: {}", _0)]
+    #[error("Invalid glob pattern found in ignore list: {0}")]
     InvalidGlobPattern(ignore::Error),
 }
 

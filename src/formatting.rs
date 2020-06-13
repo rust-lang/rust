@@ -62,7 +62,7 @@ fn format_project<T: FormatHandler>(
     let main_file = input.file_name();
     let input_is_stdin = main_file == FileName::Stdin;
 
-    let mut parse_session = ParseSess::new(config)?;
+    let parse_session = ParseSess::new(config)?;
     if config.skip_children() && parse_session.ignore_file(&main_file) {
         return Ok(FormatReport::new());
     }
@@ -82,10 +82,6 @@ fn format_project<T: FormatHandler>(
             return Ok(report);
         }
     };
-    timer = timer.done_parsing();
-
-    // Suppress error output if we have to do any further parsing.
-    parse_session.set_silent_emitter();
 
     let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
     let files = modules::ModResolver::new(
@@ -93,8 +89,12 @@ fn format_project<T: FormatHandler>(
         directory_ownership.unwrap_or(DirectoryOwnership::UnownedViaMod),
         !input_is_stdin && !config.skip_children(),
     )
-    .visit_crate(&krate)
-    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    .visit_crate(&krate)?;
+
+    timer = timer.done_parsing();
+
+    // Suppress error output if we have to do any further parsing.
+    context.parse_session.set_silent_emitter();
 
     for (path, module) in files {
         let should_ignore = !input_is_stdin && context.ignore_file(&path);

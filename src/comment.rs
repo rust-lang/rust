@@ -91,8 +91,9 @@ impl<'a> CommentStyle<'a> {
             | CommentStyle::TripleSlash
             | CommentStyle::Custom(..)
             | CommentStyle::Doc => "",
-            CommentStyle::DoubleBullet => " **/",
-            CommentStyle::SingleBullet | CommentStyle::Exclamation => " */",
+            CommentStyle::SingleBullet | CommentStyle::DoubleBullet | CommentStyle::Exclamation => {
+                " */"
+            }
         }
     }
 
@@ -101,8 +102,9 @@ impl<'a> CommentStyle<'a> {
             CommentStyle::DoubleSlash => "// ",
             CommentStyle::TripleSlash => "/// ",
             CommentStyle::Doc => "//! ",
-            CommentStyle::SingleBullet | CommentStyle::Exclamation => " * ",
-            CommentStyle::DoubleBullet => " ** ",
+            CommentStyle::SingleBullet | CommentStyle::DoubleBullet | CommentStyle::Exclamation => {
+                " * "
+            }
             CommentStyle::Custom(opener) => opener,
         }
     }
@@ -527,7 +529,6 @@ impl<'a> CommentRewrite<'a> {
             .checked_sub(closer.len() + opener.len())
             .unwrap_or(1);
         let indent_str = shape.indent.to_string_with_newline(config).to_string();
-        let fmt_indent = shape.indent + (opener.len() - line_start.len());
 
         let mut cr = CommentRewrite {
             result: String::with_capacity(orig.len() * 2),
@@ -538,14 +539,14 @@ impl<'a> CommentRewrite<'a> {
             comment_line_separator: format!("{}{}", indent_str, line_start),
             max_width,
             indent_str,
-            fmt_indent,
+            fmt_indent: shape.indent,
 
             fmt: StringFormat {
                 opener: "",
                 closer: "",
                 line_start,
                 line_end: "",
-                shape: Shape::legacy(max_width, fmt_indent),
+                shape: Shape::legacy(max_width, shape.indent),
                 trim_end: true,
                 config,
             },

@@ -6,12 +6,11 @@
 
 use env_logger;
 #[macro_use]
-extern crate failure;
-#[macro_use]
 extern crate log;
 use regex;
 use serde::{Deserialize, Serialize};
 use serde_json as json;
+use thiserror::Error;
 
 use std::collections::HashSet;
 use std::io::{self, BufRead};
@@ -27,32 +26,14 @@ use structopt::StructOpt;
 /// We only want to format rust files by default.
 const DEFAULT_PATTERN: &str = r".*\.rs";
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 enum FormatDiffError {
-    #[fail(display = "{}", _0)]
-    IncorrectOptions(#[cause] getopts::Fail),
-    #[fail(display = "{}", _0)]
-    IncorrectFilter(#[cause] regex::Error),
-    #[fail(display = "{}", _0)]
-    IoError(#[cause] io::Error),
-}
-
-impl From<getopts::Fail> for FormatDiffError {
-    fn from(fail: getopts::Fail) -> Self {
-        FormatDiffError::IncorrectOptions(fail)
-    }
-}
-
-impl From<regex::Error> for FormatDiffError {
-    fn from(err: regex::Error) -> Self {
-        FormatDiffError::IncorrectFilter(err)
-    }
-}
-
-impl From<io::Error> for FormatDiffError {
-    fn from(fail: io::Error) -> Self {
-        FormatDiffError::IoError(fail)
-    }
+    #[error("{0}")]
+    IncorrectOptions(#[from] getopts::Fail),
+    #[error("{0}")]
+    IncorrectFilter(#[from] regex::Error),
+    #[error("{0}")]
+    IoError(#[from] io::Error),
 }
 
 #[derive(StructOpt, Debug)]

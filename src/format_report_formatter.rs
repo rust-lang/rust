@@ -162,6 +162,7 @@ fn error_kind_to_snippet_annotation_type(error_kind: &ErrorKind) -> AnnotationTy
         ErrorKind::LineOverflow(..)
         | ErrorKind::TrailingWhitespace
         | ErrorKind::IoError(_)
+        | ErrorKind::ModuleResolutionError(_)
         | ErrorKind::ParseError
         | ErrorKind::LostComment
         | ErrorKind::LicenseCheck

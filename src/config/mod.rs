@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use regex::Regex;
+use thiserror::Error;
 
 use crate::config::config_type::ConfigType;
 #[allow(unreachable_pub)]
@@ -157,8 +158,12 @@ create_config! {
          files that would be formated when used with `--check` mode. ";
 }
 
+#[derive(Error, Debug)]
+#[error("Could not output config: {0}")]
+pub struct ToTomlError(toml::ser::Error);
+
 impl PartialConfig {
-    pub fn to_toml(&self) -> Result<String, String> {
+    pub fn to_toml(&self) -> Result<String, ToTomlError> {
         // Non-user-facing options can't be specified in TOML
         let mut cloned = self.clone();
         cloned.file_lines = None;
@@ -166,7 +171,7 @@ impl PartialConfig {
         cloned.width_heuristics = None;
         cloned.print_misformatted_file_names = None;
 
-        ::toml::to_string(&cloned).map_err(|e| format!("Could not output config: {}", e))
+        ::toml::to_string(&cloned).map_err(ToTomlError)
     }
 }
 
