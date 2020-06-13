@@ -12,6 +12,20 @@ use ra_syntax::{
 use ra_text_edit::TextEditBuilder;
 
 use crate::assist_context::AssistContext;
+use either::Either;
+
+/// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
+pub(crate) fn find_insert_use_container(
+    position: &SyntaxNode,
+    ctx: &AssistContext,
+) -> Option<Either<ast::ItemList, ast::SourceFile>> {
+    ctx.sema.ancestors_with_macros(position.clone()).find_map(|n| {
+        if let Some(module) = ast::Module::cast(n.clone()) {
+            return module.item_list().map(|it| Either::Left(it));
+        }
+        Some(Either::Right(ast::SourceFile::cast(n)?))
+    })
+}
 
 /// Creates and inserts a use statement for the given path to import.
 /// The use statement is inserted in the scope most appropriate to the
@@ -24,15 +38,11 @@ pub(crate) fn insert_use_statement(
     builder: &mut TextEditBuilder,
 ) {
     let target = path_to_import.to_string().split("::").map(SmolStr::new).collect::<Vec<_>>();
-    let container = ctx.sema.ancestors_with_macros(position.clone()).find_map(|n| {
-        if let Some(module) = ast::Module::cast(n.clone()) {
-            return module.item_list().map(|it| it.syntax().clone());
-        }
-        ast::SourceFile::cast(n).map(|it| it.syntax().clone())
-    });
+    let container = find_insert_use_container(position, ctx);
 
     if let Some(container) = container {
-        let action = best_action_for_target(container, position.clone(), &target);
+        let syntax = container.either(|l| l.syntax().clone(), |r| r.syntax().clone());
+        let action = best_action_for_target(syntax, position.clone(), &target);
         make_assist(&action, &target, builder);
     }
 }
