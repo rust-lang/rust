@@ -1,61 +1,76 @@
-error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/region-object-lifetime-in-coercion.rs:8:37
+error[E0759]: cannot infer an appropriate lifetime
+  --> $DIR/region-object-lifetime-in-coercion.rs:8:46
    |
 LL | fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
-   |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
+   |         ----- this data with an anonymous lifetime `'_`...
 LL |     let x: Box<dyn Foo + 'static> = Box::new(v);
-   |                                     ^^^^^^^^^^^ lifetime `'static` required
+   |                                              ^ ...is captured here, requiring it to live as long as `'static`
+   |
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
+   |
+LL | fn a(v: &[u8]) -> Box<dyn Foo + '_> {
+   |                                 ^^
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn a(v: &'static [u8]) -> Box<dyn Foo + 'static> {
+   |         ^^^^^^^^^^^^^
 
-error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/region-object-lifetime-in-coercion.rs:14:5
+error[E0759]: cannot infer an appropriate lifetime
+  --> $DIR/region-object-lifetime-in-coercion.rs:13:14
    |
 LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
-   |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
+   |         ----- this data with an anonymous lifetime `'_`...
 LL |     Box::new(v)
-   |     ^^^^^^^^^^^ lifetime `'static` required
+   |              ^ ...is captured here, requiring it to live as long as `'static`
+   |
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
+   |
+LL | fn b(v: &[u8]) -> Box<dyn Foo + '_> {
+   |                                 ^^
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn b(v: &'static [u8]) -> Box<dyn Foo + 'static> {
+   |         ^^^^^^^^^^^^^
 
-error: cannot infer an appropriate lifetime
-  --> $DIR/region-object-lifetime-in-coercion.rs:20:14
+error[E0759]: cannot infer an appropriate lifetime
+  --> $DIR/region-object-lifetime-in-coercion.rs:19:14
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo> {
-   |         ----- data with this lifetime...
+   |         ----- this data with an anonymous lifetime `'_`...
 ...
 LL |     Box::new(v)
-   |     ---------^-
-   |     |        |
-   |     |        ...and is captured here
-   |     ...is required to be `'static` by this...
+   |              ^ ...is captured here, requiring it to live as long as `'static`
    |
-help: to permit non-static references in a `dyn Trait` value, you can add an explicit bound for the anonymous lifetime #1 defined on the function body at 17:1
+help: to declare that the trait object captures data from argument `v`, you can add an explicit `'_` lifetime bound
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo + '_> {
    |                               ^^^^
 
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/region-object-lifetime-in-coercion.rs:24:14
+  --> $DIR/region-object-lifetime-in-coercion.rs:23:14
    |
 LL |     Box::new(v)
    |              ^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 23:6...
-  --> $DIR/region-object-lifetime-in-coercion.rs:23:6
+note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 22:6...
+  --> $DIR/region-object-lifetime-in-coercion.rs:22:6
    |
 LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |      ^^
 note: ...so that the expression is assignable
-  --> $DIR/region-object-lifetime-in-coercion.rs:24:14
+  --> $DIR/region-object-lifetime-in-coercion.rs:23:14
    |
 LL |     Box::new(v)
    |              ^
    = note: expected `&[u8]`
               found `&'a [u8]`
-note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 23:9...
-  --> $DIR/region-object-lifetime-in-coercion.rs:23:9
+note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 22:9...
+  --> $DIR/region-object-lifetime-in-coercion.rs:22:9
    |
 LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |         ^^
 note: ...so that the expression is assignable
-  --> $DIR/region-object-lifetime-in-coercion.rs:24:5
+  --> $DIR/region-object-lifetime-in-coercion.rs:23:5
    |
 LL |     Box::new(v)
    |     ^^^^^^^^^^^
@@ -64,5 +79,5 @@ LL |     Box::new(v)
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0495, E0621.
+Some errors have detailed explanations: E0495, E0759.
 For more information about an error, try `rustc --explain E0495`.
