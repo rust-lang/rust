@@ -43,6 +43,10 @@ impl EarlyProps {
         let mut props = EarlyProps::default();
         let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
         let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
+        let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
 
         iter_header(testfile, None, rdr, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
@@ -74,7 +78,25 @@ impl EarlyProps {
                     props.ignore = true;
                 }
 
-                if !rustc_has_sanitizer_support && config.parse_needs_sanitizer_support(ln) {
+                if !rustc_has_sanitizer_support
+                    && config.parse_name_directive(ln, "needs-sanitizer-support")
+                {
+                    props.ignore = true;
+                }
+
+                if !has_asan && config.parse_name_directive(ln, "needs-sanitizer-address") {
+                    props.ignore = true;
+                }
+
+                if !has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak") {
+                    props.ignore = true;
+                }
+
+                if !has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory") {
+                    props.ignore = true;
+                }
+
+                if !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread") {
                     props.ignore = true;
                 }
 
@@ -827,10 +849,6 @@ impl Config {
 
     fn parse_needs_profiler_support(&self, line: &str) -> bool {
         self.parse_name_directive(line, "needs-profiler-support")
-    }
-
-    fn parse_needs_sanitizer_support(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "needs-sanitizer-support")
     }
 
     /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`

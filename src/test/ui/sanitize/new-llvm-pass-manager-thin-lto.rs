@@ -4,7 +4,7 @@
 //
 // min-llvm-version 9.0
 // needs-sanitizer-support
-// only-x86_64
+// needs-sanitizer-address
 //
 // no-prefer-dynamic
 // revisions: opt0 opt1
