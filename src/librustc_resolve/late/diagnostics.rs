@@ -920,7 +920,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         path: &[Segment],
     ) -> Option<(Span, &'static str, String, Applicability)> {
         let ident = match path {
-            [segment] => segment.ident,
+            [segment] if !segment.has_args => segment.ident,
             _ => return None,
         };
         match (

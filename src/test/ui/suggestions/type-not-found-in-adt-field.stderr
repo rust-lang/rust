@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Hashmap` in this scope
+  --> $DIR/type-not-found-in-adt-field.rs:2:12
+   |
+LL |     m: Vec<Hashmap<String, ()>>,
+   |            ^^^^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.
