@@ -108,9 +108,8 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 /// *guard += 1;
 /// ```
 ///
-/// It is sometimes necessary to manually drop the mutex
-/// guard to unlock it as soon as possible. If you need the resource until the end of
-/// the scope, this is not needed.
+/// It is sometimes necessary to manually drop the mutex guard
+/// to unlock it sooner than the end of the enclosing scope.
 ///
 /// ```
 /// use std::sync::{Arc, Mutex};
