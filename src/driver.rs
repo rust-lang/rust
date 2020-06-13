@@ -1,5 +1,9 @@
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![feature(rustc_private)]
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+// warn on lints, that are included in `rust-lang/rust`s bootstrap
+#![warn(rust_2018_idioms, unused_lifetimes)]
+// warn on rustc internal lints
+#![deny(rustc::internal)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)

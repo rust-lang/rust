@@ -1,4 +1,6 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
+// warn on lints, that are included in `rust-lang/rust`s bootstrap
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use rustc_tools_util::VersionInfo;
 use std::env;
