@@ -789,6 +789,17 @@ rustc_queries! {
             desc { "computing whether `{}` needs drop", env.value }
         }
 
+        /// Query backing `TyS::is_structural_eq_shallow`.
+        ///
+        /// This is only correct for ADTs. Call `is_structural_eq_shallow` to handle all types
+        /// correctly.
+        query has_structural_eq_impls(ty: Ty<'tcx>) -> bool {
+            desc {
+                "computing whether `{:?}` implements `PartialStructuralEq` and `StructuralEq`",
+                ty
+            }
+        }
+
         /// A list of types where the ADT requires drop if and only if any of
         /// those types require drop. If the ADT is known to always need drop
         /// then `Err(AlwaysRequiresDrop)` is returned.
