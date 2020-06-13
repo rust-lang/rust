@@ -12,7 +12,7 @@ use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound}
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::mir::{
     Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
-    ConstraintCategory, Local, Location,
+    ConstraintCategory, Local, Location, ReturnConstraint,
 };
 use rustc_middle::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
@@ -2017,7 +2017,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     | ConstraintCategory::BoringNoLocation
                     | ConstraintCategory::Internal => false,
                     ConstraintCategory::TypeAnnotation
-                    | ConstraintCategory::Return
+                    | ConstraintCategory::Return(_)
                     | ConstraintCategory::Yield => true,
                     _ => constraint_sup_scc != target_scc,
                 }
@@ -2042,7 +2042,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
-                if categorized_path[i].0 == ConstraintCategory::Return
+                if matches!(categorized_path[i].0, ConstraintCategory::Return(_))
                     && next.0 == ConstraintCategory::OpaqueType
                 {
                     // The return expression is being influenced by the return type being
@@ -2050,6 +2050,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     return *next;
                 }
             }
+
+            if categorized_path[i].0 == ConstraintCategory::Return(ReturnConstraint::Normal) {
+                let field = categorized_path.iter().find_map(|p| {
+                    if let ConstraintCategory::ClosureUpvar(f) = p.0 { Some(f) } else { None }
+                });
+
+                if let Some(field) = field {
+                    categorized_path[i].0 =
+                        ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
+                }
+            }
+
             return categorized_path[i];
         }
 
