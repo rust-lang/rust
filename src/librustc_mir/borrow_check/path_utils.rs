@@ -1,10 +1,11 @@
 use crate::borrow_check::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 use crate::borrow_check::places_conflict;
 use crate::borrow_check::AccessDepth;
+use crate::borrow_check::Upvar;
 use crate::dataflow::indexes::BorrowIndex;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::BorrowKind;
-use rustc_middle::mir::{BasicBlock, Body, Location, Place};
+use rustc_middle::mir::{BasicBlock, Body, Field, Location, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::TyCtxt;
 
 /// Returns `true` if the borrow represented by `kind` is
@@ -134,4 +135,39 @@ pub(super) fn borrow_of_local_data(place: Place<'_>) -> bool {
     // Reborrow of already borrowed data is ignored
     // Any errors will be caught on the initial borrow
     !place.is_indirect()
+}
+
+/// If `place` is a field projection, and the field is being projected from a closure type,
+/// then returns the index of the field being projected. Note that this closure will always
+/// be `self` in the current MIR, because that is the only time we directly access the fields
+/// of a closure type.
+pub(crate) fn is_upvar_field_projection(
+    tcx: TyCtxt<'tcx>,
+    upvars: &[Upvar],
+    place_ref: PlaceRef<'tcx>,
+    body: &Body<'tcx>,
+) -> Option<Field> {
+    let mut place_projection = place_ref.projection;
+    let mut by_ref = false;
+
+    if let [proj_base @ .., ProjectionElem::Deref] = place_projection {
+        place_projection = proj_base;
+        by_ref = true;
+    }
+
+    match place_projection {
+        [base @ .., ProjectionElem::Field(field, _ty)] => {
+            let base_ty = Place::ty_from(place_ref.local, base, body, tcx).ty;
+
+            if (base_ty.is_closure() || base_ty.is_generator())
+                && (!by_ref || upvars[field.index()].by_ref)
+            {
+                Some(*field)
+            } else {
+                None
+            }
+        }
+
+        _ => None,
+    }
 }
