@@ -19,9 +19,9 @@ use crate::ty::TyKind::*;
 use crate::ty::{
     self, query, AdtDef, AdtKind, BindingMode, BoundVar, CanonicalPolyFnSig, Const, ConstVid,
     DefIdTree, ExistentialPredicate, FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy,
-    IntVar, IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKint,
-    ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar,
-    TyVid, TypeAndMut,
+    IntVar, IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind,
+    PredicateKint, ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
+    TyS, TyVar, TyVid, TypeAndMut,
 };
 use rustc_ast::ast;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -2026,12 +2026,6 @@ impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
 
 impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a Const<'tcx> {
-        &self.0
-    }
-}
-
-impl<'tcx> Borrow<PredicateKind<'tcx>> for Interned<'tcx, PredicateKind<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a PredicateKind<'tcx> {
         &self.0
     }
 }

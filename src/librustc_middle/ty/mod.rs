@@ -1063,7 +1063,9 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
 
         kind.hash_stable(hcx, hasher);
     }
+}
 
+impl<'tcx> Predicate<'tcx> {
     pub fn kint(self, tcx: TyCtxt<'tcx>) -> &'tcx PredicateKint<'tcx> {
         // I am efficient
         tcx.intern_predicate_kint(match *self.kind() {
