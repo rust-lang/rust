@@ -1383,7 +1383,10 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn return_type_impl_or_dyn_trait(&self, scope_def_id: DefId) -> Option<(Span, bool)> {
+    pub fn return_type_impl_or_dyn_trait(
+        &self,
+        scope_def_id: DefId,
+    ) -> Option<&'tcx hir::Ty<'tcx>> {
         let hir_id = self.hir().as_local_hir_id(scope_def_id.expect_local());
         let hir_output = match self.hir().get(hir_id) {
             Node::Item(hir::Item {
@@ -1429,15 +1432,17 @@ impl<'tcx> TyCtxt<'tcx> {
                 let output = self.erase_late_bound_regions(&sig.output());
                 if output.is_impl_trait() {
                     let fn_decl = self.hir().fn_decl_by_hir_id(hir_id).unwrap();
-                    Some((fn_decl.output.span(), false))
+                    if let hir::FnRetTy::Return(ty) = fn_decl.output {
+                        return Some(ty);
+                    }
                 } else {
                     let mut v = TraitObjectVisitor(vec![]);
                     rustc_hir::intravisit::walk_ty(&mut v, hir_output);
                     if v.0.len() == 1 {
-                        return Some((v.0[0], true));
+                        return Some(v.0[0]);
                     }
-                    None
                 }
+                None
             }
             _ => None,
         }
