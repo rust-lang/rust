@@ -33,6 +33,12 @@ export const matchingBrace = new lc.RequestType<MatchingBraceParams, lc.Position
 
 export const parentModule = new lc.RequestType<lc.TextDocumentPositionParams, lc.LocationLink[], void>("experimental/parentModule");
 
+export interface ResolveCodeActionParams {
+    id: string;
+    codeActionParams: lc.CodeActionParams;
+}
+export const resolveCodeAction = new lc.RequestType<ResolveCodeActionParams, lc.WorkspaceEdit, unknown>('experimental/resolveCodeAction');
+
 export interface JoinLinesParams {
     textDocument: lc.TextDocumentIdentifier;
     ranges: lc.Range[];
@@ -45,16 +51,18 @@ export interface RunnablesParams {
     textDocument: lc.TextDocumentIdentifier;
     position: lc.Position | null;
 }
+
 export interface Runnable {
-    range: lc.Range;
     label: string;
-    bin: string;
-    args: string[];
-    extraArgs: string[];
-    env: { [key: string]: string };
-    cwd: string | null;
+    location?: lc.LocationLink;
+    kind: "cargo";
+    args: {
+        workspaceRoot?: string;
+        cargoArgs: string[];
+        executableArgs: string[];
+    };
 }
-export const runnables = new lc.RequestType<RunnablesParams, Runnable[], void>("rust-analyzer/runnables");
+export const runnables = new lc.RequestType<RunnablesParams, Runnable[], void>("experimental/runnables");
 
 export type InlayHint = InlayHint.TypeHint | InlayHint.ParamHint | InlayHint.ChainingHint;
 
@@ -82,3 +90,15 @@ export interface SsrParams {
     parseOnly: boolean;
 }
 export const ssr = new lc.RequestType<SsrParams, lc.WorkspaceEdit, void>('experimental/ssr');
+
+export interface CommandLink extends lc.Command {
+    /**
+     * A tooltip for the command, when represented in the UI.
+     */
+    tooltip?: string;
+}
+
+export interface CommandLinkGroup {
+    title?: string;
+    commands: CommandLink[];
+}

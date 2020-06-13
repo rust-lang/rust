@@ -4,6 +4,7 @@
 
 pub mod not_bash;
 pub mod install;
+pub mod release;
 pub mod dist;
 pub mod pre_commit;
 
@@ -19,7 +20,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     codegen::Mode,
-    not_bash::{date_iso, fs2, pushd, pushenv, rm_rf, run},
+    not_bash::{fs2, pushd, pushenv, rm_rf, run},
 };
 
 pub use anyhow::{bail, Context as _, Result};
@@ -149,58 +150,6 @@ pub fn run_pre_cache() -> Result<()> {
             }
         }
     }
-
-    Ok(())
-}
-
-pub fn run_release(dry_run: bool) -> Result<()> {
-    if !dry_run {
-        run!("git switch release")?;
-        run!("git fetch upstream --tags --force")?;
-        run!("git reset --hard tags/nightly")?;
-        run!("git push")?;
-    }
-
-    let website_root = project_root().join("../rust-analyzer.github.io");
-    let changelog_dir = website_root.join("./thisweek/_posts");
-
-    let today = date_iso()?;
-    let commit = run!("git rev-parse HEAD")?;
-    let changelog_n = fs2::read_dir(changelog_dir.as_path())?.count();
-
-    let contents = format!(
-        "\
-= Changelog #{}
-:sectanchors:
-:page-layout: post
-
-Commit: commit:{}[] +
-Release: release:{}[]
-
-== New Features
-
-* pr:[] .
-
-== Fixes
-
-== Internal Improvements
-",
-        changelog_n, commit, today
-    );
-
-    let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
-    fs2::write(&path, &contents)?;
-
-    for &adoc in ["manual.adoc", "generated_features.adoc", "generated_assists.adoc"].iter() {
-        let src = project_root().join("./docs/user/").join(adoc);
-        let dst = website_root.join(adoc);
-        fs2::copy(src, dst)?;
-    }
-
-    let tags = run!("git tag --list"; echo = false)?;
-    let prev_tag = tags.lines().filter(|line| is_release_tag(line)).last().unwrap();
-
-    println!("\n    git log {}..HEAD --merges --reverse", prev_tag);
 
     Ok(())
 }

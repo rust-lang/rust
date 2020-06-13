@@ -17,23 +17,29 @@ SOURCE_FILE@0..50
       L_CURLY@22..23 "{"
       R_CURLY@23..24 "}"
   WHITESPACE@24..25 "\n"
-  ERROR@25..31
+  CONST_DEF@25..46
     UNSAFE_KW@25..31 "unsafe"
-  WHITESPACE@31..32 " "
-  FN_DEF@32..49
+    WHITESPACE@31..32 " "
     CONST_KW@32..37 "const"
     WHITESPACE@37..38 " "
-    FN_KW@38..40 "fn"
+    ERROR@38..40
+      FN_KW@38..40 "fn"
     WHITESPACE@40..41 " "
-    NAME@41..44
-      IDENT@41..44 "bar"
-    PARAM_LIST@44..46
-      L_PAREN@44..45 "("
-      R_PAREN@45..46 ")"
-    WHITESPACE@46..47 " "
-    BLOCK_EXPR@47..49
-      L_CURLY@47..48 "{"
-      R_CURLY@48..49 "}"
+    PATH_TYPE@41..46
+      PATH@41..46
+        PATH_SEGMENT@41..46
+          NAME_REF@41..44
+            IDENT@41..44 "bar"
+          PARAM_LIST@44..46
+            L_PAREN@44..45 "("
+            R_PAREN@45..46 ")"
+  WHITESPACE@46..47 " "
+  ERROR@47..49
+    L_CURLY@47..48 "{"
+    R_CURLY@48..49 "}"
   WHITESPACE@49..50 "\n"
 error 6..6: expected existential, fn, trait or impl
-error 31..31: expected existential, fn, trait or impl
+error 38..38: expected a name
+error 40..40: expected COLON
+error 46..46: expected SEMICOLON
+error 47..47: expected an item

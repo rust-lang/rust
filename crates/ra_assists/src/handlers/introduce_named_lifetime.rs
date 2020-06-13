@@ -41,8 +41,6 @@ pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext) -
     if let Some(fn_def) = lifetime_token.ancestors().find_map(ast::FnDef::cast) {
         generate_fn_def_assist(acc, &fn_def, lifetime_token.text_range())
     } else if let Some(impl_def) = lifetime_token.ancestors().find_map(ast::ImplDef::cast) {
-        // only allow naming the last anonymous lifetime
-        lifetime_token.next_token().filter(|tok| tok.kind() == SyntaxKind::R_ANGLE)?;
         generate_impl_def_assist(acc, &impl_def, lifetime_token.text_range())
     } else {
         None
@@ -188,6 +186,23 @@ mod tests {
             r#"impl Cursor<'<|>_> {"#,
             r#"impl<'a> Cursor<'a> {"#,
         );
+    }
+
+    #[test]
+    fn test_impl_with_other_type_param() {
+        check_assist(
+            introduce_named_lifetime,
+            "impl<I> fmt::Display for SepByBuilder<'_<|>, I>
+        where
+            I: Iterator,
+            I::Item: fmt::Display,
+        {",
+            "impl<I, 'a> fmt::Display for SepByBuilder<'a, I>
+        where
+            I: Iterator,
+            I::Item: fmt::Display,
+        {",
+        )
     }
 
     #[test]

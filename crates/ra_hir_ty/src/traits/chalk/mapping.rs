@@ -14,10 +14,10 @@ use ra_db::salsa::InternKey;
 
 use crate::{
     db::HirDatabase,
-    primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness, Uncertain},
+    primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
     traits::{builtin, AssocTyValue, Canonical, Impl, Obligation},
-    ApplicationTy, CallableDef, GenericPredicate, InEnvironment, ProjectionPredicate, ProjectionTy,
-    Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
+    ApplicationTy, CallableDef, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId,
+    ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
 
 use super::interner::*;
@@ -68,7 +68,16 @@ impl ToChalk for Ty {
                 let bounded_ty = chalk_ir::DynTy { bounds: make_binders(where_clauses, 1) };
                 chalk_ir::TyData::Dyn(bounded_ty).intern(&Interner)
             }
-            Ty::Opaque(_) | Ty::Unknown => {
+            Ty::Opaque(opaque_ty) => {
+                let opaque_ty_id = opaque_ty.opaque_ty_id.to_chalk(db);
+                let substitution = opaque_ty.parameters.to_chalk(db);
+                chalk_ir::TyData::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
+                    opaque_ty_id,
+                    substitution,
+                }))
+                .intern(&Interner)
+            }
+            Ty::Unknown => {
                 let substitution = chalk_ir::Substitution::empty(&Interner);
                 let name = TypeName::Error;
                 chalk_ir::ApplicationTy { name, substitution }.cast(&Interner).intern(&Interner)
@@ -98,7 +107,11 @@ impl ToChalk for Ty {
                 let parameters = from_chalk(db, proj.substitution);
                 Ty::Projection(ProjectionTy { associated_ty, parameters })
             }
-            chalk_ir::TyData::Alias(chalk_ir::AliasTy::Opaque(_)) => unimplemented!(),
+            chalk_ir::TyData::Alias(chalk_ir::AliasTy::Opaque(opaque_ty)) => {
+                let impl_trait_id = from_chalk(db, opaque_ty.opaque_ty_id);
+                let parameters = from_chalk(db, opaque_ty.substitution);
+                Ty::Opaque(OpaqueTy { opaque_ty_id: impl_trait_id, parameters })
+            }
             chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: _, substitution }) => {
                 let parameters: Substs = from_chalk(db, substitution);
                 Ty::Apply(ApplicationTy {
@@ -204,6 +217,21 @@ impl ToChalk for hir_def::TraitId {
     }
 }
 
+impl ToChalk for OpaqueTyId {
+    type Chalk = chalk_ir::OpaqueTyId<Interner>;
+
+    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::OpaqueTyId<Interner> {
+        db.intern_impl_trait_id(self).into()
+    }
+
+    fn from_chalk(
+        db: &dyn HirDatabase,
+        opaque_ty_id: chalk_ir::OpaqueTyId<Interner>,
+    ) -> OpaqueTyId {
+        db.lookup_intern_impl_trait_id(opaque_ty_id.into())
+    }
+}
+
 impl ToChalk for TypeCtor {
     type Chalk = TypeName<Interner>;
 
@@ -214,13 +242,18 @@ impl ToChalk for TypeCtor {
                 TypeName::AssociatedType(type_id)
             }
 
+            TypeCtor::OpaqueType(impl_trait_id) => {
+                let id = impl_trait_id.to_chalk(db);
+                TypeName::OpaqueType(id)
+            }
+
             TypeCtor::Bool => TypeName::Scalar(Scalar::Bool),
             TypeCtor::Char => TypeName::Scalar(Scalar::Char),
-            TypeCtor::Int(Uncertain::Known(int_ty)) => TypeName::Scalar(int_ty_to_chalk(int_ty)),
-            TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X32 })) => {
+            TypeCtor::Int(int_ty) => TypeName::Scalar(int_ty_to_chalk(int_ty)),
+            TypeCtor::Float(FloatTy { bitness: FloatBitness::X32 }) => {
                 TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F32))
             }
-            TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X64 })) => {
+            TypeCtor::Float(FloatTy { bitness: FloatBitness::X64 }) => {
                 TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F64))
             }
 
@@ -235,9 +268,7 @@ impl ToChalk for TypeCtor {
             }
             TypeCtor::Never => TypeName::Never,
 
-            TypeCtor::Int(Uncertain::Unknown)
-            | TypeCtor::Float(Uncertain::Unknown)
-            | TypeCtor::Adt(_)
+            TypeCtor::Adt(_)
             | TypeCtor::Array
             | TypeCtor::FnPtr { .. }
             | TypeCtor::Closure { .. } => {
@@ -252,23 +283,25 @@ impl ToChalk for TypeCtor {
         match type_name {
             TypeName::Adt(struct_id) => db.lookup_intern_type_ctor(struct_id.into()),
             TypeName::AssociatedType(type_id) => TypeCtor::AssociatedType(from_chalk(db, type_id)),
-            TypeName::OpaqueType(_) => unreachable!(),
+            TypeName::OpaqueType(opaque_type_id) => {
+                TypeCtor::OpaqueType(from_chalk(db, opaque_type_id))
+            }
 
             TypeName::Scalar(Scalar::Bool) => TypeCtor::Bool,
             TypeName::Scalar(Scalar::Char) => TypeCtor::Char,
-            TypeName::Scalar(Scalar::Int(int_ty)) => TypeCtor::Int(Uncertain::Known(IntTy {
+            TypeName::Scalar(Scalar::Int(int_ty)) => TypeCtor::Int(IntTy {
                 signedness: Signedness::Signed,
                 bitness: bitness_from_chalk_int(int_ty),
-            })),
-            TypeName::Scalar(Scalar::Uint(uint_ty)) => TypeCtor::Int(Uncertain::Known(IntTy {
+            }),
+            TypeName::Scalar(Scalar::Uint(uint_ty)) => TypeCtor::Int(IntTy {
                 signedness: Signedness::Unsigned,
                 bitness: bitness_from_chalk_uint(uint_ty),
-            })),
+            }),
             TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F32)) => {
-                TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X32 }))
+                TypeCtor::Float(FloatTy { bitness: FloatBitness::X32 })
             }
             TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F64)) => {
-                TypeCtor::Float(Uncertain::Known(FloatTy { bitness: FloatBitness::X64 }))
+                TypeCtor::Float(FloatTy { bitness: FloatBitness::X64 })
             }
             TypeName::Tuple(cardinality) => TypeCtor::Tuple { cardinality: cardinality as u16 },
             TypeName::Raw(mutability) => TypeCtor::RawPtr(from_chalk(db, mutability)),
@@ -446,6 +479,11 @@ impl ToChalk for GenericPredicate {
                 );
                 let ty = from_chalk(db, projection_eq.ty);
                 GenericPredicate::Projection(ProjectionPredicate { projection_ty, ty })
+            }
+
+            chalk_ir::WhereClause::LifetimeOutlives(_) => {
+                // we shouldn't get these from Chalk
+                panic!("encountered LifetimeOutlives from Chalk")
             }
         }
     }

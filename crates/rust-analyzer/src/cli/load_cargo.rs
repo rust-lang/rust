@@ -8,7 +8,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{ExternSourceId, FileId, SourceRootId};
 use ra_ide::{AnalysisChange, AnalysisHost};
 use ra_project_model::{
-    get_rustc_cfg_options, CargoConfig, PackageRoot, ProcMacroClient, ProjectRoot, ProjectWorkspace,
+    CargoConfig, PackageRoot, ProcMacroClient, ProjectManifest, ProjectWorkspace,
 };
 use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -28,7 +28,7 @@ pub fn load_cargo(
     with_proc_macro: bool,
 ) -> Result<(AnalysisHost, FxHashMap<SourceRootId, PackageRoot>)> {
     let root = std::env::current_dir()?.join(root);
-    let root = ProjectRoot::discover_single(&root)?;
+    let root = ProjectManifest::discover_single(&root)?;
     let ws = ProjectWorkspace::load(
         root,
         &CargoConfig { load_out_dirs_from_check, ..Default::default() },
@@ -36,28 +36,28 @@ pub fn load_cargo(
     )?;
 
     let mut extern_dirs = FxHashSet::default();
-    extern_dirs.extend(ws.out_dirs());
-
-    let mut project_roots = ws.to_roots();
-    project_roots.extend(extern_dirs.iter().cloned().map(PackageRoot::new_non_member));
 
     let (sender, receiver) = unbounded();
     let sender = Box::new(move |t| sender.send(t).unwrap());
-    let (mut vfs, roots) = Vfs::new(
-        project_roots
-            .iter()
-            .map(|pkg_root| {
-                RootEntry::new(
-                    pkg_root.path().to_owned(),
-                    RustPackageFilterBuilder::default()
-                        .set_member(pkg_root.is_member())
-                        .into_vfs_filter(),
-                )
-            })
-            .collect(),
-        sender,
-        Watch(false),
-    );
+
+    let mut roots = Vec::new();
+    let project_roots = ws.to_roots();
+    for root in &project_roots {
+        roots.push(RootEntry::new(
+            root.path().to_owned(),
+            RustPackageFilterBuilder::default().set_member(root.is_member()).into_vfs_filter(),
+        ));
+
+        if let Some(out_dir) = root.out_dir() {
+            extern_dirs.insert(out_dir.to_path_buf());
+            roots.push(RootEntry::new(
+                out_dir.to_owned(),
+                RustPackageFilterBuilder::default().set_member(root.is_member()).into_vfs_filter(),
+            ))
+        }
+    }
+
+    let (mut vfs, roots) = Vfs::new(roots, sender, Watch(false));
 
     let source_roots = roots
         .into_iter()
@@ -111,10 +111,6 @@ pub(crate) fn load(
                         vfs.root2path(root)
                     );
                     analysis_change.add_root(source_root_id, is_local);
-                    analysis_change.set_debug_root_path(
-                        source_root_id,
-                        source_roots[&source_root_id].path().display().to_string(),
-                    );
 
                     let vfs_root_path = vfs.root2path(root);
                     if extern_dirs.contains(&vfs_root_path) {
@@ -147,26 +143,14 @@ pub(crate) fn load(
         }
     }
 
-    // FIXME: cfg options?
-    let default_cfg_options = {
-        let mut opts = get_rustc_cfg_options(None);
-        opts.insert_atom("test".into());
-        opts.insert_atom("debug_assertion".into());
-        opts
-    };
-
-    let crate_graph = ws.to_crate_graph(
-        &default_cfg_options,
-        &extern_source_roots,
-        proc_macro_client,
-        &mut |path: &Path| {
+    let crate_graph =
+        ws.to_crate_graph(None, &extern_source_roots, proc_macro_client, &mut |path: &Path| {
             // Some path from metadata will be non canonicalized, e.g. /foo/../bar/lib.rs
             let path = path.canonicalize().ok()?;
             let vfs_file = vfs.load(&path);
             log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
             vfs_file.map(vfs_file_to_id)
-        },
-    );
+        });
     log::debug!("crate graph: {:?}", crate_graph);
     analysis_change.set_crate_graph(crate_graph);
 

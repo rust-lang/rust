@@ -64,7 +64,7 @@ pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let target = call.syntax().text_range();
     acc.add(AssistId("add_function"), "Add function", target, |builder| {
         let function_template = function_builder.render();
-        builder.set_file(function_template.file);
+        builder.edit_file(function_template.file);
         let new_fn = function_template.to_string(ctx.config.snippet_cap);
         match ctx.config.snippet_cap {
             Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),

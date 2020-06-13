@@ -118,7 +118,22 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         && p.at_contextual_kw("default")
         && (match p.nth(1) {
             T![impl] => true,
-            T![fn] | T![type] => {
+            T![unsafe] => {
+                // test default_unsafe_impl
+                // default unsafe impl Foo {}
+
+                // test default_unsafe_fn
+                // impl T for Foo {
+                //     default unsafe fn foo() {}
+                // }
+                if p.nth(2) == T![impl] || p.nth(2) == T![fn] {
+                    p.bump_remap(T![default]);
+                    p.bump(T![unsafe]);
+                    has_mods = true;
+                }
+                false
+            }
+            T![fn] | T![type] | T![const] => {
                 if let ItemFlavor::Mod = flavor {
                     true
                 } else {
@@ -198,6 +213,9 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         //     default type T = Bar;
         //     default fn foo() {}
         // }
+        T![const] => {
+            consts::const_def(p, m);
+        }
 
         // test unsafe_default_impl
         // unsafe default impl Foo {}

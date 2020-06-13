@@ -15,12 +15,10 @@ use std::{
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
-use rustc_hash::FxHashMap;
-use rustc_hash::FxHashSet;
+use ra_tt::TokenExpander;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{RelativePath, RelativePathBuf};
-use fmt::Display;
-use ra_tt::TokenExpander;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -111,7 +109,7 @@ impl CrateName {
     }
 }
 
-impl Display for CrateName {
+impl fmt::Display for CrateName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -337,15 +335,11 @@ impl Env {
 }
 
 impl ExternSource {
-    pub fn extern_path(&self, path: impl AsRef<Path>) -> Option<(ExternSourceId, RelativePathBuf)> {
-        let path = path.as_ref();
+    pub fn extern_path(&self, path: &Path) -> Option<(ExternSourceId, RelativePathBuf)> {
         self.extern_paths.iter().find_map(|(root_path, id)| {
-            if let Ok(rel_path) = path.strip_prefix(root_path) {
-                let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
-                Some((*id, rel_path))
-            } else {
-                None
-            }
+            let rel_path = path.strip_prefix(root_path).ok()?;
+            let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
+            Some((*id, rel_path))
         })
     }
 

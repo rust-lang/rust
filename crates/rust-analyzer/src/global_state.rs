@@ -15,7 +15,7 @@ use ra_flycheck::{Flycheck, FlycheckConfig};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
-use ra_project_model::{get_rustc_cfg_options, ProcMacroClient, ProjectWorkspace};
+use ra_project_model::{ProcMacroClient, ProjectWorkspace};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 use stdx::format_to;
@@ -50,15 +50,15 @@ fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> 
         })
 }
 
-/// `WorldState` is the primary mutable state of the language server
+/// `GlobalState` is the primary mutable state of the language server
 ///
 /// The most interesting components are `vfs`, which stores a consistent
 /// snapshot of the file systems, and `analysis_host`, which stores our
 /// incremental salsa database.
 #[derive(Debug)]
-pub struct WorldState {
+pub struct GlobalState {
     pub config: Config,
-    pub roots: Vec<PathBuf>,
+    pub local_roots: Vec<PathBuf>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis_host: AnalysisHost,
     pub vfs: Arc<RwLock<Vfs>>,
@@ -70,7 +70,7 @@ pub struct WorldState {
 }
 
 /// An immutable snapshot of the world's state at a point in time.
-pub struct WorldSnapshot {
+pub struct GlobalStateSnapshot {
     pub config: Config,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
@@ -79,20 +79,19 @@ pub struct WorldSnapshot {
     vfs: Arc<RwLock<Vfs>>,
 }
 
-impl WorldState {
+impl GlobalState {
     pub fn new(
-        folder_roots: Vec<PathBuf>,
         workspaces: Vec<ProjectWorkspace>,
         lru_capacity: Option<usize>,
         exclude_globs: &[Glob],
         watch: Watch,
         config: Config,
-    ) -> WorldState {
+    ) -> GlobalState {
         let mut change = AnalysisChange::new();
 
-        let extern_dirs: FxHashSet<_> =
-            workspaces.iter().flat_map(ProjectWorkspace::out_dirs).collect();
+        let mut extern_dirs: FxHashSet<PathBuf> = FxHashSet::default();
 
+        let mut local_roots = Vec::new();
         let roots: Vec<_> = {
             let create_filter = |is_member| {
                 RustPackageFilterBuilder::default()
@@ -100,18 +99,22 @@ impl WorldState {
                     .exclude(exclude_globs.iter().cloned())
                     .into_vfs_filter()
             };
-            folder_roots
-                .iter()
-                .map(|path| RootEntry::new(path.clone(), create_filter(true)))
-                .chain(workspaces.iter().flat_map(ProjectWorkspace::to_roots).map(|pkg_root| {
-                    RootEntry::new(pkg_root.path().to_owned(), create_filter(pkg_root.is_member()))
-                }))
-                .chain(
-                    extern_dirs
-                        .iter()
-                        .map(|path| RootEntry::new(path.to_owned(), create_filter(false))),
-                )
-                .collect()
+            let mut roots = Vec::new();
+            for root in workspaces.iter().flat_map(ProjectWorkspace::to_roots) {
+                let path = root.path().to_owned();
+                if root.is_member() {
+                    local_roots.push(path.clone());
+                }
+                roots.push(RootEntry::new(path, create_filter(root.is_member())));
+                if let Some(out_dir) = root.out_dir() {
+                    extern_dirs.insert(out_dir.to_path_buf());
+                    roots.push(RootEntry::new(
+                        out_dir.to_path_buf(),
+                        create_filter(root.is_member()),
+                    ))
+                }
+            }
+            roots
         };
 
         let (task_sender, task_receiver) = unbounded();
@@ -121,23 +124,14 @@ impl WorldState {
         let mut extern_source_roots = FxHashMap::default();
         for r in vfs_roots {
             let vfs_root_path = vfs.root2path(r);
-            let is_local = folder_roots.iter().any(|it| vfs_root_path.starts_with(it));
+            let is_local = local_roots.iter().any(|it| vfs_root_path.starts_with(it));
             change.add_root(SourceRootId(r.0), is_local);
-            change.set_debug_root_path(SourceRootId(r.0), vfs_root_path.display().to_string());
 
             // FIXME: add path2root in vfs to simpily this logic
             if extern_dirs.contains(&vfs_root_path) {
                 extern_source_roots.insert(vfs_root_path, ExternSourceId(r.0));
             }
         }
-
-        // FIXME: Read default cfgs from config
-        let default_cfg_options = {
-            let mut opts = get_rustc_cfg_options(config.cargo.target.as_ref());
-            opts.insert_atom("test".into());
-            opts.insert_atom("debug_assertion".into());
-            opts
-        };
 
         let proc_macro_client = match &config.proc_macro_srv {
             None => ProcMacroClient::dummy(),
@@ -164,7 +158,7 @@ impl WorldState {
         };
         for ws in workspaces.iter() {
             crate_graph.extend(ws.to_crate_graph(
-                &default_cfg_options,
+                config.cargo.target.as_deref(),
                 &extern_source_roots,
                 &proc_macro_client,
                 &mut load,
@@ -176,9 +170,9 @@ impl WorldState {
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
-        WorldState {
+        GlobalState {
             config,
-            roots: folder_roots,
+            local_roots,
             workspaces: Arc::new(workspaces),
             analysis_host,
             vfs: Arc::new(RwLock::new(vfs)),
@@ -216,7 +210,7 @@ impl WorldState {
             match c {
                 VfsChange::AddRoot { root, files } => {
                     let root_path = self.vfs.read().root2path(root);
-                    let is_local = self.roots.iter().any(|r| root_path.starts_with(r));
+                    let is_local = self.local_roots.iter().any(|r| root_path.starts_with(r));
                     if is_local {
                         *roots_scanned += 1;
                         for (file, path, text) in files {
@@ -251,8 +245,8 @@ impl WorldState {
         self.analysis_host.apply_change(change);
     }
 
-    pub fn snapshot(&self) -> WorldSnapshot {
-        WorldSnapshot {
+    pub fn snapshot(&self) -> GlobalStateSnapshot {
+        GlobalStateSnapshot {
             config: self.config.clone(),
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
@@ -275,7 +269,7 @@ impl WorldState {
     }
 }
 
-impl WorldSnapshot {
+impl GlobalStateSnapshot {
     pub fn analysis(&self) -> &Analysis {
         &self.analysis
     }

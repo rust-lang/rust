@@ -7,9 +7,8 @@ use std::{
 
 use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId, ModuleId};
 use hir_expand::{db::AstDatabase, diagnostics::DiagnosticSink};
-use ra_db::{
-    salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase, Upcast,
-};
+use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast};
+use rustc_hash::FxHashSet;
 use stdx::format_to;
 
 use crate::{db::HirDatabase, diagnostics::Diagnostic, expr::ExprValidator};
@@ -72,22 +71,11 @@ impl FileLoader for TestDB {
     fn file_text(&self, file_id: FileId) -> Arc<String> {
         FileLoaderDelegate(self).file_text(file_id)
     }
-    fn resolve_relative_path(
-        &self,
-        anchor: FileId,
-        relative_path: &RelativePath,
-    ) -> Option<FileId> {
-        FileLoaderDelegate(self).resolve_relative_path(anchor, relative_path)
+    fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
+        FileLoaderDelegate(self).resolve_path(anchor, path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
-    }
-    fn resolve_extern_path(
-        &self,
-        extern_id: ra_db::ExternSourceId,
-        relative_path: &RelativePath,
-    ) -> Option<FileId> {
-        FileLoaderDelegate(self).resolve_extern_path(extern_id, relative_path)
     }
 }
 

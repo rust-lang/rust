@@ -1707,7 +1707,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         /// ```
         ///
         /// [Reference](https://doc.rust-lang.org/reference/items/generics.html#where-clauses)
-        struct WherePred: TypeBoundsOwner { T![lifetime], TypeRef }
+        struct WherePred: TypeBoundsOwner { T![for], TypeParamList, T![lifetime], TypeRef }
 
         /// Where clause.
         ///

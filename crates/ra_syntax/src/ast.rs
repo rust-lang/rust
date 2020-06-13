@@ -75,7 +75,7 @@ impl<N> AstChildren<N> {
 impl<N: AstNode> Iterator for AstChildren<N> {
     type Item = N;
     fn next(&mut self) -> Option<N> {
-        self.inner.by_ref().find_map(N::cast)
+        self.inner.find_map(N::cast)
     }
 }
 
@@ -285,6 +285,8 @@ where
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
+    assert!(pred.for_token().is_none());
+    assert!(pred.type_param_list().is_none());
     assert_eq!("T", pred.type_ref().unwrap().syntax().text().to_string());
     assert_bound("Clone", bounds.next());
     assert_bound("Copy", bounds.next());
@@ -322,6 +324,8 @@ where
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
-    assert_eq!("for<'a> F", pred.type_ref().unwrap().syntax().text().to_string());
+    assert!(pred.for_token().is_some());
+    assert_eq!("<'a>", pred.type_param_list().unwrap().syntax().text().to_string());
+    assert_eq!("F", pred.type_ref().unwrap().syntax().text().to_string());
     assert_bound("Fn(&'a str)", bounds.next());
 }

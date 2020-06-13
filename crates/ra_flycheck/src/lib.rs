@@ -18,8 +18,17 @@ pub use cargo_metadata::diagnostic::{
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
-    CargoCommand { command: String, all_targets: bool, all_features: bool, extra_args: Vec<String> },
-    CustomCommand { command: String, args: Vec<String> },
+    CargoCommand {
+        command: String,
+        all_targets: bool,
+        all_features: bool,
+        features: Vec<String>,
+        extra_args: Vec<String>,
+    },
+    CustomCommand {
+        command: String,
+        args: Vec<String>,
+    },
 }
 
 /// Flycheck wraps the shared state and communication machinery used for
@@ -188,7 +197,13 @@ impl FlycheckThread {
         self.check_process = None;
 
         let mut cmd = match &self.config {
-            FlycheckConfig::CargoCommand { command, all_targets, all_features, extra_args } => {
+            FlycheckConfig::CargoCommand {
+                command,
+                all_targets,
+                all_features,
+                extra_args,
+                features,
+            } => {
                 let mut cmd = Command::new(ra_toolchain::cargo());
                 cmd.arg(command);
                 cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
@@ -198,6 +213,9 @@ impl FlycheckThread {
                 }
                 if *all_features {
                     cmd.arg("--all-features");
+                } else if !features.is_empty() {
+                    cmd.arg("--features");
+                    cmd.arg(features.join(" "));
                 }
                 cmd.args(extra_args);
                 cmd

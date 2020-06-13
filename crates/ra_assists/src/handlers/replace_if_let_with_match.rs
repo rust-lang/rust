@@ -51,6 +51,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
     acc.add(AssistId("replace_if_let_with_match"), "Replace with match", target, move |edit| {
         let match_expr = {
             let then_arm = {
+                let then_block = then_block.reset_indent().indent(IndentLevel(1));
                 let then_expr = unwrap_trivial_block(then_block);
                 make::match_arm(vec![pat.clone()], then_expr)
             };
@@ -64,8 +65,8 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
                 let else_expr = unwrap_trivial_block(else_block);
                 make::match_arm(vec![pattern], else_expr)
             };
-            make::expr_match(expr, make::match_arm_list(vec![then_arm, else_arm]))
-                .indent(IndentLevel::from_node(if_expr.syntax()))
+            let match_expr = make::expr_match(expr, make::match_arm_list(vec![then_arm, else_arm]));
+            match_expr.indent(IndentLevel::from_node(if_expr.syntax()))
         };
 
         edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr);
@@ -212,5 +213,37 @@ fn foo(x: Result<i32, ()>) {
 }
            "#,
         );
+    }
+
+    #[test]
+    fn nested_indent() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+fn main() {
+    if true {
+        <|>if let Ok(rel_path) = path.strip_prefix(root_path) {
+            let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
+            Some((*id, rel_path))
+        } else {
+            None
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    if true {
+        match path.strip_prefix(root_path) {
+            Ok(rel_path) => {
+                let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
+                Some((*id, rel_path))
+            }
+            _ => None,
+        }
+    }
+}
+"#,
+        )
     }
 }

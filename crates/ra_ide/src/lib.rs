@@ -66,7 +66,7 @@ pub use crate::{
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
     expand_macro::ExpandedMacro,
     folding_ranges::{Fold, FoldKind},
-    hover::HoverResult,
+    hover::{HoverAction, HoverConfig, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
@@ -77,7 +77,7 @@ pub use crate::{
 };
 
 pub use hir::Documentation;
-pub use ra_assists::{AssistConfig, AssistId};
+pub use ra_assists::{Assist, AssistConfig, AssistId, ResolvedAssist};
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRootId,
 };
@@ -140,14 +140,6 @@ pub struct CallInfo {
 #[derive(Debug)]
 pub struct AnalysisHost {
     db: RootDatabase,
-}
-
-#[derive(Debug)]
-pub struct Assist {
-    pub id: AssistId,
-    pub label: String,
-    pub group_label: Option<String>,
-    pub source_change: SourceChange,
 }
 
 impl AnalysisHost {
@@ -470,20 +462,23 @@ impl Analysis {
         self.with_db(|db| completion::completions(db, config, position).map(Into::into))
     }
 
-    /// Computes assists (aka code actions aka intentions) for the given
+    /// Computes resolved assists with source changes for the given position.
+    pub fn resolved_assists(
+        &self,
+        config: &AssistConfig,
+        frange: FileRange,
+    ) -> Cancelable<Vec<ResolvedAssist>> {
+        self.with_db(|db| ra_assists::Assist::resolved(db, config, frange))
+    }
+
+    /// Computes unresolved assists (aka code actions aka intentions) for the given
     /// position.
-    pub fn assists(&self, config: &AssistConfig, frange: FileRange) -> Cancelable<Vec<Assist>> {
-        self.with_db(|db| {
-            ra_assists::Assist::resolved(db, config, frange)
-                .into_iter()
-                .map(|assist| Assist {
-                    id: assist.assist.id,
-                    label: assist.assist.label,
-                    group_label: assist.assist.group.map(|it| it.0),
-                    source_change: assist.source_change,
-                })
-                .collect()
-        })
+    pub fn unresolved_assists(
+        &self,
+        config: &AssistConfig,
+        frange: FileRange,
+    ) -> Cancelable<Vec<Assist>> {
+        self.with_db(|db| Assist::unresolved(db, config, frange))
     }
 
     /// Computes the set of diagnostics for the given file.
@@ -508,7 +503,7 @@ impl Analysis {
     ) -> Cancelable<Result<SourceChange, SsrError>> {
         self.with_db(|db| {
             let edits = ssr::parse_search_replace(query, parse_only, db)?;
-            Ok(SourceChange::source_file_edits(edits))
+            Ok(SourceChange::from(edits))
         })
     }
 

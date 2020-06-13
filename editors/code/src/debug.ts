@@ -3,46 +3,59 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as ra from './lsp_ext';
 
-import { Cargo } from './cargo';
+import { Cargo } from './toolchain';
 import { Ctx } from "./ctx";
 
 const debugOutput = vscode.window.createOutputChannel("Debug");
 type DebugConfigProvider = (config: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>) => vscode.DebugConfiguration;
 
-function getLldbDebugConfig(config: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>): vscode.DebugConfiguration {
-    return {
-        type: "lldb",
-        request: "launch",
-        name: config.label,
-        program: executable,
-        args: config.extraArgs,
-        cwd: config.cwd,
-        sourceMap: sourceFileMap,
-        sourceLanguages: ["rust"]
-    };
+export async function makeDebugConfig(ctx: Ctx, runnable: ra.Runnable): Promise<void> {
+    const scope = ctx.activeRustEditor?.document.uri;
+    if (!scope) return;
+
+    const debugConfig = await getDebugConfiguration(ctx, runnable);
+    if (!debugConfig) return;
+
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch", scope);
+    const configurations = wsLaunchSection.get<any[]>("configurations") || [];
+
+    const index = configurations.findIndex(c => c.name === debugConfig.name);
+    if (index !== -1) {
+        const answer = await vscode.window.showErrorMessage(`Launch configuration '${debugConfig.name}' already exists!`, 'Cancel', 'Update');
+        if (answer === "Cancel") return;
+
+        configurations[index] = debugConfig;
+    } else {
+        configurations.push(debugConfig);
+    }
+
+    await wsLaunchSection.update("configurations", configurations);
 }
 
-function getCppvsDebugConfig(config: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>): vscode.DebugConfiguration {
-    return {
-        type: (os.platform() === "win32") ? "cppvsdbg" : "cppdbg",
-        request: "launch",
-        name: config.label,
-        program: executable,
-        args: config.extraArgs,
-        cwd: config.cwd,
-        sourceFileMap: sourceFileMap,
-    };
+export async function startDebugSession(ctx: Ctx, runnable: ra.Runnable): Promise<boolean> {
+    let debugConfig: vscode.DebugConfiguration | undefined = undefined;
+    let message = "";
+
+    const wsLaunchSection = vscode.workspace.getConfiguration("launch");
+    const configurations = wsLaunchSection.get<any[]>("configurations") || [];
+
+    const index = configurations.findIndex(c => c.name === runnable.label);
+    if (-1 !== index) {
+        debugConfig = configurations[index];
+        message = " (from launch.json)";
+        debugOutput.clear();
+    } else {
+        debugConfig = await getDebugConfiguration(ctx, runnable);
+    }
+
+    if (!debugConfig) return false;
+
+    debugOutput.appendLine(`Launching debug configuration${message}:`);
+    debugOutput.appendLine(JSON.stringify(debugConfig, null, 2));
+    return vscode.debug.startDebugging(undefined, debugConfig);
 }
 
-async function getDebugExecutable(config: ra.Runnable): Promise<string> {
-    const cargo = new Cargo(config.cwd || '.', debugOutput);
-    const executable = await cargo.executableFromArgs(config.args);
-
-    // if we are here, there were no compilation errors.
-    return executable;
-}
-
-export async function getDebugConfiguration(ctx: Ctx, config: ra.Runnable): Promise<vscode.DebugConfiguration | undefined> {
+async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<vscode.DebugConfiguration | undefined> {
     const editor = ctx.activeRustEditor;
     if (!editor) return;
 
@@ -78,8 +91,8 @@ export async function getDebugConfiguration(ctx: Ctx, config: ra.Runnable): Prom
         return path.normalize(p).replace(wsFolder, '${workspaceRoot}');
     }
 
-    const executable = await getDebugExecutable(config);
-    const debugConfig = knownEngines[debugEngine.id](config, simplifyPath(executable), debugOptions.sourceFileMap);
+    const executable = await getDebugExecutable(runnable);
+    const debugConfig = knownEngines[debugEngine.id](runnable, simplifyPath(executable), debugOptions.sourceFileMap);
     if (debugConfig.type in debugOptions.engineSettings) {
         const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
         for (var key in settingsMap) {
@@ -100,25 +113,35 @@ export async function getDebugConfiguration(ctx: Ctx, config: ra.Runnable): Prom
     return debugConfig;
 }
 
-export async function startDebugSession(ctx: Ctx, config: ra.Runnable): Promise<boolean> {
-    let debugConfig: vscode.DebugConfiguration | undefined = undefined;
-    let message = "";
+async function getDebugExecutable(runnable: ra.Runnable): Promise<string> {
+    const cargo = new Cargo(runnable.args.workspaceRoot || '.', debugOutput);
+    const executable = await cargo.executableFromArgs(runnable.args.cargoArgs);
 
-    const wsLaunchSection = vscode.workspace.getConfiguration("launch");
-    const configurations = wsLaunchSection.get<any[]>("configurations") || [];
+    // if we are here, there were no compilation errors.
+    return executable;
+}
 
-    const index = configurations.findIndex(c => c.name === config.label);
-    if (-1 !== index) {
-        debugConfig = configurations[index];
-        message = " (from launch.json)";
-        debugOutput.clear();
-    } else {
-        debugConfig = await getDebugConfiguration(ctx, config);
-    }
+function getLldbDebugConfig(runnable: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>): vscode.DebugConfiguration {
+    return {
+        type: "lldb",
+        request: "launch",
+        name: runnable.label,
+        program: executable,
+        args: runnable.args.executableArgs,
+        cwd: runnable.args.workspaceRoot,
+        sourceMap: sourceFileMap,
+        sourceLanguages: ["rust"]
+    };
+}
 
-    if (!debugConfig) return false;
-
-    debugOutput.appendLine(`Launching debug configuration${message}:`);
-    debugOutput.appendLine(JSON.stringify(debugConfig, null, 2));
-    return vscode.debug.startDebugging(undefined, debugConfig);
+function getCppvsDebugConfig(runnable: ra.Runnable, executable: string, sourceFileMap?: Record<string, string>): vscode.DebugConfiguration {
+    return {
+        type: (os.platform() === "win32") ? "cppvsdbg" : "cppdbg",
+        request: "launch",
+        name: runnable.label,
+        program: executable,
+        args: runnable.args.executableArgs,
+        cwd: runnable.args.workspaceRoot,
+        sourceFileMap: sourceFileMap,
+    };
 }

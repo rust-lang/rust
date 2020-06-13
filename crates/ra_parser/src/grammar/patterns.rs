@@ -4,7 +4,7 @@ use super::*;
 
 pub(super) const PATTERN_FIRST: TokenSet = expressions::LITERAL_FIRST
     .union(paths::PATH_FIRST)
-    .union(token_set![BOX_KW, REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE, MINUS, DOT]);
+    .union(token_set![T![box], T![ref], T![mut], T!['('], T!['['], T![&], T![_], T![-], T![.]]);
 
 pub(crate) fn pattern(p: &mut Parser) {
     pattern_r(p, PAT_RECOVERY_SET);
@@ -88,7 +88,9 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
             _ => bind_pat(p, true),
         },
 
-        _ if paths::is_use_path_start(p) => path_or_macro_pat(p),
+        // test type_path_in_pattern
+        // fn main() { let <_>::Foo = (); }
+        _ if paths::is_path_start(p) => path_or_macro_pat(p),
         _ if is_literal_pat_start(p) => literal_pat(p),
 
         T![.] if p.at(T![..]) => dot_dot_pat(p),
@@ -138,7 +140,7 @@ fn literal_pat(p: &mut Parser) -> CompletedMarker {
 //     let Bar(..) = ();
 // }
 fn path_or_macro_pat(p: &mut Parser) -> CompletedMarker {
-    assert!(paths::is_use_path_start(p));
+    assert!(paths::is_path_start(p));
     let m = p.start();
     paths::expr_path(p);
     let kind = match p.current() {

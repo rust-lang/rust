@@ -29,7 +29,7 @@ expression: diag
                 },
             },
             severity: Some(
-                Warning,
+                Hint,
             ),
             code: Some(
                 String(
@@ -50,6 +50,7 @@ expression: diag
         fixes: [
             CodeAction {
                 title: "consider prefixing with an underscore",
+                id: None,
                 group: None,
                 kind: Some(
                     "quickfix",

@@ -17,11 +17,13 @@ mod on_enter;
 
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
-use ra_ide_db::RootDatabase;
+use ra_ide_db::{source_change::SourceFileEdit, RootDatabase};
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstToken},
-    AstNode, SourceFile, TextRange, TextSize,
+    AstNode, SourceFile,
+    SyntaxKind::{FIELD_EXPR, METHOD_CALL_EXPR},
+    TextRange, TextSize,
 };
 
 use ra_text_edit::TextEdit;
@@ -47,8 +49,8 @@ pub(crate) fn on_char_typed(
     assert!(TRIGGER_CHARS.contains(char_typed));
     let file = &db.parse(position.file_id).tree();
     assert_eq!(file.syntax().text().char_at(position.offset), Some(char_typed));
-    let text_edit = on_char_typed_inner(file, position.offset, char_typed)?;
-    Some(SourceChange::source_file_edit_from(position.file_id, text_edit))
+    let edit = on_char_typed_inner(file, position.offset, char_typed)?;
+    Some(SourceFileEdit { file_id: position.file_id, edit }.into())
 }
 
 fn on_char_typed_inner(file: &SourceFile, offset: TextSize, char_typed: char) -> Option<TextEdit> {
@@ -98,9 +100,12 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     };
     let current_indent_len = TextSize::of(current_indent);
 
+    let parent = whitespace.syntax().parent();
     // Make sure dot is a part of call chain
-    let field_expr = ast::FieldExpr::cast(whitespace.syntax().parent())?;
-    let prev_indent = leading_indent(field_expr.syntax())?;
+    if !matches!(parent.kind(), FIELD_EXPR | METHOD_CALL_EXPR) {
+        return None;
+    }
+    let prev_indent = leading_indent(&parent)?;
     let target_indent = format!("    {}", prev_indent);
     let target_indent_len = TextSize::of(&target_indent);
     if current_indent_len == target_indent_len {
@@ -143,11 +148,11 @@ mod tests {
         })
     }
 
-    fn type_char(char_typed: char, before: &str, after: &str) {
-        let actual = do_type_char(char_typed, before)
+    fn type_char(char_typed: char, ra_fixture_before: &str, ra_fixture_after: &str) {
+        let actual = do_type_char(char_typed, ra_fixture_before)
             .unwrap_or_else(|| panic!("typing `{}` did nothing", char_typed));
 
-        assert_eq_text!(after, &actual);
+        assert_eq_text!(ra_fixture_after, &actual);
     }
 
     fn type_char_noop(char_typed: char, before: &str) {
@@ -246,6 +251,27 @@ fn foo() {
             }
             ",
         )
+    }
+
+    #[test]
+    fn indents_new_chain_call_with_let() {
+        type_char(
+            '.',
+            r#"
+fn main() {
+    let _ = foo
+    <|>
+    bar()
+}
+"#,
+            r#"
+fn main() {
+    let _ = foo
+        .
+    bar()
+}
+"#,
+        );
     }
 
     #[test]

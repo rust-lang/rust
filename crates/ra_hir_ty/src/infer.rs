@@ -39,8 +39,7 @@ use ra_syntax::SmolStr;
 use super::{
     primitive::{FloatTy, IntTy},
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, GenericPredicate, InEnvironment, ProjectionTy, Substs, TraitEnvironment,
-    TraitRef, Ty, TypeCtor, TypeWalk, Uncertain,
+    InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
@@ -312,12 +311,6 @@ impl<'a> InferenceContext<'a> {
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty {
             Ty::Unknown => self.table.new_type_var(),
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Int(Uncertain::Unknown), .. }) => {
-                self.table.new_integer_var()
-            }
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Float(Uncertain::Unknown), .. }) => {
-                self.table.new_float_var()
-            }
             _ => ty,
         }
     }
@@ -383,25 +376,6 @@ impl<'a> InferenceContext<'a> {
     ) -> Ty {
         match assoc_ty {
             Some(res_assoc_ty) => {
-                // FIXME:
-                // Check if inner_ty is is `impl Trait` and contained input TypeAlias id
-                // this is a workaround while Chalk assoc type projection doesn't always work yet,
-                // but once that is fixed I don't think we should keep this
-                // (we'll probably change how associated types are resolved anyway)
-                if let Ty::Opaque(ref predicates) = inner_ty {
-                    for p in predicates.iter() {
-                        if let GenericPredicate::Projection(projection) = p {
-                            if projection.projection_ty.associated_ty == res_assoc_ty {
-                                if let ty_app!(_, params) = &projection.ty {
-                                    if params.len() == 0 {
-                                        return projection.ty.clone();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
                 let ty = self.table.new_type_var();
                 let builder = Substs::build_for_def(self.db, res_assoc_ty)
                     .push(inner_ty)
@@ -458,13 +432,13 @@ impl<'a> InferenceContext<'a> {
             };
         return match resolution {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
-                let substs = Ty::substs_from_path(&ctx, path, strukt.into());
+                let substs = Ty::substs_from_path(&ctx, path, strukt.into(), true);
                 let ty = self.db.ty(strukt.into());
                 let ty = self.insert_type_vars(ty.subst(&substs));
                 forbid_unresolved_segments((ty, Some(strukt.into())), unresolved)
             }
             TypeNs::EnumVariantId(var) => {
-                let substs = Ty::substs_from_path(&ctx, path, var.into());
+                let substs = Ty::substs_from_path(&ctx, path, var.into(), true);
                 let ty = self.db.ty(var.parent.into());
                 let ty = self.insert_type_vars(ty.subst(&substs));
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)
@@ -581,13 +555,13 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
-        let path = path![std::iter::IntoIterator];
+        let path = path![core::iter::IntoIterator];
         let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Item])
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
-        let path = path![std::ops::Try];
+        let path = path![core::ops::Try];
         let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Ok])
     }
@@ -613,37 +587,37 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_range_full(&self) -> Option<AdtId> {
-        let path = path![std::ops::RangeFull];
+        let path = path![core::ops::RangeFull];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range(&self) -> Option<AdtId> {
-        let path = path![std::ops::Range];
+        let path = path![core::ops::Range];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_inclusive(&self) -> Option<AdtId> {
-        let path = path![std::ops::RangeInclusive];
+        let path = path![core::ops::RangeInclusive];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_from(&self) -> Option<AdtId> {
-        let path = path![std::ops::RangeFrom];
+        let path = path![core::ops::RangeFrom];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_to(&self) -> Option<AdtId> {
-        let path = path![std::ops::RangeTo];
+        let path = path![core::ops::RangeTo];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
 
     fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
-        let path = path![std::ops::RangeToInclusive];
+        let path = path![core::ops::RangeToInclusive];
         let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
         Some(struct_.into())
     }
@@ -683,8 +657,8 @@ impl InferTy {
     fn fallback_value(self) -> Ty {
         match self {
             InferTy::TypeVar(..) => Ty::Unknown,
-            InferTy::IntVar(..) => Ty::simple(TypeCtor::Int(Uncertain::Known(IntTy::i32()))),
-            InferTy::FloatVar(..) => Ty::simple(TypeCtor::Float(Uncertain::Known(FloatTy::f64()))),
+            InferTy::IntVar(..) => Ty::simple(TypeCtor::Int(IntTy::i32())),
+            InferTy::FloatVar(..) => Ty::simple(TypeCtor::Float(FloatTy::f64())),
             InferTy::MaybeNeverTypeVar(..) => Ty::simple(TypeCtor::Never),
         }
     }

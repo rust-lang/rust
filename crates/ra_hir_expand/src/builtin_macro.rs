@@ -1,15 +1,14 @@
 //! Builtin macro
-use crate::db::AstDatabase;
 use crate::{
-    ast::{self, AstToken, HasStringValue},
-    name, AstId, CrateId, MacroDefId, MacroDefKind, TextSize,
+    db::AstDatabase, name, quote, AstId, CrateId, EagerMacroId, LazyMacroId, MacroCallId,
+    MacroDefId, MacroDefKind, TextSize,
 };
 
-use crate::{quote, EagerMacroId, LazyMacroId, MacroCallId};
 use either::Either;
 use mbe::parse_to_token_tree;
-use ra_db::{FileId, RelativePath};
+use ra_db::FileId;
 use ra_parser::FragmentKind;
+use ra_syntax::ast::{self, AstToken, HasStringValue};
 
 macro_rules! register_builtin {
     ( LAZY: $(($name:ident, $kind: ident) => $expand:ident),* , EAGER: $(($e_name:ident, $e_kind: ident) => $e_expand:ident),*  ) => {
@@ -295,19 +294,13 @@ fn concat_expand(
 
 fn relative_file(db: &dyn AstDatabase, call_id: MacroCallId, path: &str) -> Option<FileId> {
     let call_site = call_id.as_file().original_file(db);
-
-    // Handle trivial case
-    if let Some(res) = db.resolve_relative_path(call_site, &RelativePath::new(&path)) {
-        // Prevent include itself
-        return if res == call_site { None } else { Some(res) };
+    let res = db.resolve_path(call_site, path)?;
+    // Prevent include itself
+    if res == call_site {
+        None
+    } else {
+        Some(res)
     }
-
-    // Extern paths ?
-    let krate = *db.relevant_crates(call_site).get(0)?;
-    let (extern_source_id, relative_file) =
-        db.crate_graph()[krate].extern_source.extern_path(path)?;
-
-    db.resolve_extern_path(extern_source_id, &relative_file)
 }
 
 fn parse_string(tt: &tt::Subtree) -> Result<String, mbe::ExpandError> {
@@ -339,10 +332,7 @@ fn include_expand(
 }
 
 fn get_env_inner(db: &dyn AstDatabase, arg_id: EagerMacroId, key: &str) -> Option<String> {
-    let call_id: MacroCallId = arg_id.into();
-    let original_file = call_id.as_file().original_file(db);
-
-    let krate = *db.relevant_crates(original_file).get(0)?;
+    let krate = db.lookup_intern_eager_expansion(arg_id).krate;
     db.crate_graph()[krate].env.get(key)
 }
 
@@ -401,6 +391,7 @@ mod tests {
 
         let expander = find_by_name(&macro_calls[0].name().unwrap().as_name()).unwrap();
 
+        let krate = CrateId(0);
         let file_id = match expander {
             Either::Left(expander) => {
                 // the first one should be a macro_rules
@@ -413,6 +404,7 @@ mod tests {
 
                 let loc = MacroCallLoc {
                     def,
+                    krate,
                     kind: MacroCallKind::FnLike(AstId::new(
                         file_id.into(),
                         ast_id_map.ast_id(&macro_calls[1]),
@@ -425,7 +417,7 @@ mod tests {
             Either::Right(expander) => {
                 // the first one should be a macro_rules
                 let def = MacroDefId {
-                    krate: Some(CrateId(0)),
+                    krate: Some(krate),
                     ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
                     kind: MacroDefKind::BuiltInEager(expander),
                     local_inner: false,
@@ -439,6 +431,7 @@ mod tests {
                         def,
                         fragment: FragmentKind::Expr,
                         subtree: Arc::new(parsed_args.clone()),
+                        krate,
                         file_id: file_id.into(),
                     }
                 });
@@ -448,6 +441,7 @@ mod tests {
                     def,
                     fragment,
                     subtree: Arc::new(subtree),
+                    krate,
                     file_id: file_id.into(),
                 };
 

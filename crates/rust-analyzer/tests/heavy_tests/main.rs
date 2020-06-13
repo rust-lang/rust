@@ -4,9 +4,7 @@ use std::{collections::HashMap, path::PathBuf, time::Instant};
 
 use lsp_types::{
     notification::DidOpenTextDocument,
-    request::{
-        CodeActionRequest, Completion, Formatting, GotoDefinition, GotoTypeDefinition, HoverRequest,
-    },
+    request::{CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest},
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, FormattingOptions, GotoDefinitionParams, HoverParams,
     PartialResultParams, Position, Range, TextDocumentItem, TextDocumentPositionParams,
@@ -59,52 +57,6 @@ use std::collections::Spam;
 }
 
 #[test]
-fn test_runnables_no_project() {
-    if skip_slow_tests() {
-        return;
-    }
-
-    let server = project(
-        r"
-//- lib.rs
-#[test]
-fn foo() {
-}
-",
-    );
-    server.wait_until_workspace_is_loaded();
-    server.request::<Runnables>(
-        RunnablesParams { text_document: server.doc_id("lib.rs"), position: None },
-        json!([
-          {
-            "args": [ "test" ],
-            "extraArgs": [ "foo", "--nocapture" ],
-            "bin": "cargo",
-            "env": { "RUST_BACKTRACE": "short" },
-            "cwd": null,
-            "label": "test foo",
-            "range": {
-              "end": { "character": 1, "line": 2 },
-              "start": { "character": 0, "line": 0 }
-            }
-          },
-          {
-            "args": ["check", "--workspace"],
-            "extraArgs": [],
-            "bin": "cargo",
-            "env": {},
-            "cwd": null,
-            "label": "cargo check --workspace",
-            "range": {
-              "end": { "character": 0, "line": 0 },
-              "start": { "character": 0, "line": 0 }
-            }
-          }
-        ]),
-    );
-}
-
-#[test]
 fn test_runnables_project() {
     if skip_slow_tests() {
         return;
@@ -138,42 +90,44 @@ fn main() {}
     server.request::<Runnables>(
         RunnablesParams { text_document: server.doc_id("foo/tests/spam.rs"), position: None },
         json!([
-            {
-              "args": [ "test", "--package", "foo", "--test", "spam" ],
-              "extraArgs": [ "test_eggs", "--exact", "--nocapture" ],
-              "bin": "cargo",
-              "env": { "RUST_BACKTRACE": "short" },
-              "label": "test test_eggs",
-              "range": {
+          {
+            "args": {
+              "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
+              "executableArgs": ["test_eggs", "--exact", "--nocapture"],
+              "workspaceRoot": server.path().join("foo")
+            },
+            "kind": "cargo",
+            "label": "test test_eggs",
+            "location": {
+              "targetRange": {
                 "end": { "character": 17, "line": 1 },
                 "start": { "character": 0, "line": 0 }
               },
-              "cwd": server.path().join("foo")
-            },
-            {
-              "args": [ "check", "--package", "foo" ],
-              "extraArgs": [],
-              "bin": "cargo",
-              "env": {},
-              "label": "cargo check -p foo",
-              "range": {
-                "end": { "character": 0, "line": 0 },
-                "start": { "character": 0, "line": 0 }
+              "targetSelectionRange": {
+                "end": { "character": 12, "line": 1 },
+                "start": { "character": 3, "line": 1 }
               },
-              "cwd": server.path().join("foo")
-            },
-            {
-              "args": [ "test", "--package", "foo" ],
-              "extraArgs": [],
-              "bin": "cargo",
-              "env": {},
-              "label": "cargo test -p foo",
-              "range": {
-                "end": { "character": 0, "line": 0 },
-                "start": { "character": 0, "line": 0 }
-              },
-              "cwd": server.path().join("foo")
+              "targetUri": "file:///[..]/tests/spam.rs"
             }
+          },
+          {
+            "args": {
+              "cargoArgs": ["check", "--package", "foo"],
+              "executableArgs": [],
+              "workspaceRoot": server.path().join("foo")
+            },
+            "kind": "cargo",
+            "label": "cargo check -p foo"
+          },
+          {
+            "args": {
+              "cargoArgs": ["test", "--package", "foo"],
+              "executableArgs": [],
+              "workspaceRoot": server.path().join("foo")
+            },
+            "kind": "cargo",
+            "label": "cargo test -p foo"
+          }
         ]),
     );
 }
@@ -342,6 +296,7 @@ fn main() {}
                 }
               ]
             },
+            "kind": "quickfix",
             "title": "Create module"
         }]),
     );
@@ -374,8 +329,7 @@ fn test_missing_module_code_action_in_json_project() {
             "root_module": path.join("src/lib.rs"),
             "deps": [],
             "edition": "2015",
-            "atom_cfgs": [],
-            "key_value_cfgs": {}
+            "cfg": [ "cfg_atom_1", "feature=cfg_1"],
         } ]
     });
 
@@ -413,6 +367,7 @@ fn main() {{}}
                 }
               ]
             },
+            "kind": "quickfix",
             "title": "Create module"
         }]),
     );
@@ -550,6 +505,10 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 }
 //- src/main.rs
+#[rustc_builtin_macro] macro_rules! include {}
+#[rustc_builtin_macro] macro_rules! concat {}
+#[rustc_builtin_macro] macro_rules! env {}
+
 include!(concat!(env!("OUT_DIR"), "/hello.rs"));
 
 #[cfg(atom_cfg)]
@@ -564,10 +523,8 @@ struct B;
 fn main() {
     let va = A;
     let vb = B;
-    message();
+    let should_be_str = message();
 }
-
-fn main() { message(); }
 "###,
     )
     .with_config(|config| {
@@ -575,54 +532,35 @@ fn main() { message(); }
     })
     .server();
     server.wait_until_workspace_is_loaded();
-    let res = server.send_request::<GotoDefinition>(GotoDefinitionParams {
+    let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/main.rs"),
-            Position::new(14, 8),
+            Position::new(18, 10),
         ),
         work_done_progress_params: Default::default(),
-        partial_result_params: Default::default(),
     });
-    assert!(format!("{}", res).contains("hello.rs"));
+    assert!(res.to_string().contains("&str"));
     server.request::<GotoTypeDefinition>(
         GotoDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
                 server.doc_id("src/main.rs"),
-                Position::new(12, 9),
+                Position::new(16, 9),
             ),
             work_done_progress_params: Default::default(),
             partial_result_params: Default::default(),
         },
         json!([{
             "originSelectionRange": {
-                "end": {
-                    "character": 10,
-                    "line": 12
-                },
-                "start": {
-                    "character": 8,
-                    "line": 12
-                }
+                "end": { "character": 10, "line": 16 },
+                "start": { "character": 8, "line": 16 }
             },
             "targetRange": {
-                "end": {
-                    "character": 9,
-                    "line": 3
-                },
-                "start": {
-                    "character": 0,
-                    "line": 2
-                }
+                "end": { "character": 9, "line": 7 },
+                "start": { "character": 0, "line": 6 }
             },
             "targetSelectionRange": {
-                "end": {
-                    "character": 8,
-                    "line": 3
-                },
-                "start": {
-                    "character": 7,
-                    "line": 3
-                }
+                "end": { "character": 8, "line": 7 },
+                "start": { "character": 7, "line": 7 }
             },
             "targetUri": "file:///[..]src/main.rs"
         }]),
@@ -631,41 +569,23 @@ fn main() { message(); }
         GotoDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
                 server.doc_id("src/main.rs"),
-                Position::new(13, 9),
+                Position::new(17, 9),
             ),
             work_done_progress_params: Default::default(),
             partial_result_params: Default::default(),
         },
         json!([{
             "originSelectionRange": {
-                "end": {
-                    "character": 10,
-                    "line": 13
-                },
-                "start": {
-                    "character": 8,
-                    "line":13
-                }
+                "end": { "character": 10, "line": 17 },
+                "start": { "character": 8, "line": 17 }
             },
             "targetRange": {
-                "end": {
-                    "character": 9,
-                    "line": 7
-                },
-                "start": {
-                    "character": 0,
-                    "line":6
-                }
+                "end": { "character": 9, "line": 11 },
+                "start": { "character": 0, "line":10 }
             },
             "targetSelectionRange": {
-                "end": {
-                    "character": 8,
-                    "line": 7
-                },
-                "start": {
-                    "character": 7,
-                    "line": 7
-                }
+                "end": { "character": 8, "line": 11 },
+                "start": { "character": 7, "line": 11 }
             },
             "targetUri": "file:///[..]src/main.rs"
         }]),

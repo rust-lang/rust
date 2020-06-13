@@ -16,8 +16,9 @@ use xtask::{
     dist::run_dist,
     install::{ClientOpt, InstallCmd, ServerOpt},
     not_bash::pushd,
-    pre_commit, project_root, run_clippy, run_fuzzer, run_pre_cache, run_release, run_rustfmt,
-    Result,
+    pre_commit, project_root,
+    release::ReleaseCmd,
+    run_clippy, run_fuzzer, run_pre_cache, run_rustfmt, Result,
 };
 
 fn main() -> Result<()> {
@@ -74,6 +75,7 @@ FLAGS:
             args.finish()?;
             codegen::generate_syntax(Mode::Overwrite)?;
             codegen::generate_parser_tests(Mode::Overwrite)?;
+            codegen::generate_assists_tests(Mode::Overwrite)?;
             codegen::generate_assists_docs(Mode::Overwrite)?;
             codegen::generate_feature_docs(Mode::Overwrite)?;
             Ok(())
@@ -101,7 +103,7 @@ FLAGS:
         "release" => {
             let dry_run = args.contains("--dry-run");
             args.finish()?;
-            run_release(dry_run)
+            ReleaseCmd { dry_run }.run()
         }
         "dist" => {
             let nightly = args.contains("--nightly");

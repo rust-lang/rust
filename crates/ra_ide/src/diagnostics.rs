@@ -21,7 +21,7 @@ use ra_syntax::{
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{Diagnostic, FileId, FileSystemEdit, Fix, SourceChange, SourceFileEdit};
+use crate::{Diagnostic, FileId, FileSystemEdit, Fix, SourceFileEdit};
 
 #[derive(Debug, Copy, Clone)]
 pub enum Severity {
@@ -115,7 +115,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let node = d.ast(db);
         let replacement = format!("Ok({})", node.syntax());
         let edit = TextEdit::replace(node.syntax().text_range(), replacement);
-        let source_change = SourceChange::source_file_edit_from(file_id, edit);
+        let source_change = SourceFileEdit { file_id, edit }.into();
         let fix = Fix::new("Wrap with ok", source_change);
         res.borrow_mut().push(Diagnostic {
             range: sema.diagnostics_range(d).range,
@@ -187,7 +187,8 @@ fn check_struct_shorthand_initialization(
         if let (Some(name_ref), Some(expr)) = (record_field.name_ref(), record_field.expr()) {
             let field_name = name_ref.syntax().text().to_string();
             let field_expr = expr.syntax().text().to_string();
-            if field_name == field_expr {
+            let field_name_is_tup_index = name_ref.as_tuple_field().is_some();
+            if field_name == field_expr && !field_name_is_tup_index {
                 let mut edit_builder = TextEditBuilder::default();
                 edit_builder.delete(record_field.syntax().text_range());
                 edit_builder.insert(record_field.syntax().text_range().start(), field_name);
@@ -321,29 +322,26 @@ mod tests {
     fn test_wrap_return_type() {
         let before = r#"
             //- /main.rs
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
-            fn div(x: i32, y: i32) -> Result<i32, String> {
+            fn div(x: i32, y: i32) -> Result<i32, ()> {
                 if y == 0 {
-                    return Err("div by zero".into());
+                    return Err(());
                 }
                 x / y<|>
             }
 
-            //- /std/lib.rs
-            pub mod string {
-                pub struct String { }
-            }
+            //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
         let after = r#"
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
-            fn div(x: i32, y: i32) -> Result<i32, String> {
+            fn div(x: i32, y: i32) -> Result<i32, ()> {
                 if y == 0 {
-                    return Err("div by zero".into());
+                    return Err(());
                 }
                 Ok(x / y)
             }
@@ -355,7 +353,7 @@ mod tests {
     fn test_wrap_return_type_handles_generic_functions() {
         let before = r#"
             //- /main.rs
-            use std::result::Result::{self, Ok, Err};
+            use core::result::Result::{self, Ok, Err};
 
             fn div<T>(x: T) -> Result<T, i32> {
                 if x == 0 {
@@ -364,13 +362,13 @@ mod tests {
                 <|>x
             }
 
-            //- /std/lib.rs
+            //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
         let after = r#"
-            use std::result::Result::{self, Ok, Err};
+            use core::result::Result::{self, Ok, Err};
 
             fn div<T>(x: T) -> Result<T, i32> {
                 if x == 0 {
@@ -386,32 +384,29 @@ mod tests {
     fn test_wrap_return_type_handles_type_aliases() {
         let before = r#"
             //- /main.rs
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
-            type MyResult<T> = Result<T, String>;
+            type MyResult<T> = Result<T, ()>;
 
             fn div(x: i32, y: i32) -> MyResult<i32> {
                 if y == 0 {
-                    return Err("div by zero".into());
+                    return Err(());
                 }
                 x <|>/ y
             }
 
-            //- /std/lib.rs
-            pub mod string {
-                pub struct String { }
-            }
+            //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
         let after = r#"
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
-            type MyResult<T> = Result<T, String>;
+            type MyResult<T> = Result<T, ()>;
             fn div(x: i32, y: i32) -> MyResult<i32> {
                 if y == 0 {
-                    return Err("div by zero".into());
+                    return Err(());
                 }
                 Ok(x / y)
             }
@@ -423,16 +418,13 @@ mod tests {
     fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
         let content = r#"
             //- /main.rs
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
-            fn foo() -> Result<String, i32> {
+            fn foo() -> Result<(), i32> {
                 0<|>
             }
 
-            //- /std/lib.rs
-            pub mod string {
-                pub struct String { }
-            }
+            //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
@@ -444,7 +436,7 @@ mod tests {
     fn test_wrap_return_type_not_applicable_when_return_type_is_not_result() {
         let content = r#"
             //- /main.rs
-            use std::{string::String, result::Result::{self, Ok, Err}};
+            use core::result::Result::{self, Ok, Err};
 
             enum SomeOtherEnum {
                 Ok(i32),
@@ -455,10 +447,7 @@ mod tests {
                 0<|>
             }
 
-            //- /std/lib.rs
-            pub mod string {
-                pub struct String { }
-            }
+            //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
@@ -726,6 +715,18 @@ mod tests {
             fn main() {
                 A {
                     a: "hello"
+                }
+            }
+        "#,
+            check_struct_shorthand_initialization,
+        );
+        check_not_applicable(
+            r#"
+            struct A(usize);
+
+            fn main() {
+                A {
+                    0: 0
                 }
             }
         "#,

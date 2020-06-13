@@ -69,6 +69,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .string_literal     { color: #CC9393; }
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
+.function.unsafe    { color: #BC8383; }
+.operator.unsafe    { color: #BC8383; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }

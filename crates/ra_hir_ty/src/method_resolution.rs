@@ -16,12 +16,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::Substs;
 use crate::{
-    autoderef,
-    db::HirDatabase,
-    primitive::{FloatBitness, Uncertain},
-    utils::all_super_traits,
-    ApplicationTy, Canonical, DebruijnIndex, InEnvironment, TraitEnvironment, TraitRef, Ty,
-    TypeCtor, TypeWalk,
+    autoderef, db::HirDatabase, primitive::FloatBitness, utils::all_super_traits, ApplicationTy,
+    Canonical, DebruijnIndex, InEnvironment, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -147,12 +143,12 @@ impl Ty {
                 }
                 TypeCtor::Bool => lang_item_crate!("bool"),
                 TypeCtor::Char => lang_item_crate!("char"),
-                TypeCtor::Float(Uncertain::Known(f)) => match f.bitness {
+                TypeCtor::Float(f) => match f.bitness {
                     // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
                     FloatBitness::X32 => lang_item_crate!("f32", "f32_runtime"),
                     FloatBitness::X64 => lang_item_crate!("f64", "f64_runtime"),
                 },
-                TypeCtor::Int(Uncertain::Known(i)) => lang_item_crate!(i.ty_to_string()),
+                TypeCtor::Int(i) => lang_item_crate!(i.ty_to_string()),
                 TypeCtor::Str => lang_item_crate!("str_alloc", "str"),
                 TypeCtor::Slice => lang_item_crate!("slice_alloc", "slice"),
                 TypeCtor::RawPtr(Mutability::Shared) => lang_item_crate!("const_ptr"),

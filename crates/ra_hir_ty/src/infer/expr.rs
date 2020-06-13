@@ -18,7 +18,7 @@ use crate::{
     traits::InEnvironment,
     utils::{generics, variant_data, Generics},
     ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
-    TraitRef, Ty, TypeCtor, Uncertain,
+    TraitRef, Ty, TypeCtor,
 };
 
 use super::{
@@ -426,15 +426,7 @@ impl<'a> InferenceContext<'a> {
                         match &inner_ty {
                             // Fast path for builtins
                             Ty::Apply(ApplicationTy {
-                                ctor:
-                                    TypeCtor::Int(Uncertain::Known(IntTy {
-                                        signedness: Signedness::Signed,
-                                        ..
-                                    })),
-                                ..
-                            })
-                            | Ty::Apply(ApplicationTy {
-                                ctor: TypeCtor::Int(Uncertain::Unknown),
+                                ctor: TypeCtor::Int(IntTy { signedness: Signedness::Signed, .. }),
                                 ..
                             })
                             | Ty::Apply(ApplicationTy { ctor: TypeCtor::Float(_), .. })
@@ -577,9 +569,7 @@ impl<'a> InferenceContext<'a> {
                         );
                         self.infer_expr(
                             *repeat,
-                            &Expectation::has_type(Ty::simple(TypeCtor::Int(Uncertain::Known(
-                                IntTy::usize(),
-                            )))),
+                            &Expectation::has_type(Ty::simple(TypeCtor::Int(IntTy::usize()))),
                         );
                     }
                 }
@@ -592,13 +582,19 @@ impl<'a> InferenceContext<'a> {
                     Ty::apply_one(TypeCtor::Ref(Mutability::Shared), Ty::simple(TypeCtor::Str))
                 }
                 Literal::ByteString(..) => {
-                    let byte_type = Ty::simple(TypeCtor::Int(Uncertain::Known(IntTy::u8())));
+                    let byte_type = Ty::simple(TypeCtor::Int(IntTy::u8()));
                     let array_type = Ty::apply_one(TypeCtor::Array, byte_type);
                     Ty::apply_one(TypeCtor::Ref(Mutability::Shared), array_type)
                 }
                 Literal::Char(..) => Ty::simple(TypeCtor::Char),
-                Literal::Int(_v, ty) => Ty::simple(TypeCtor::Int((*ty).into())),
-                Literal::Float(_v, ty) => Ty::simple(TypeCtor::Float((*ty).into())),
+                Literal::Int(_v, ty) => match ty {
+                    Some(int_ty) => Ty::simple(TypeCtor::Int((*int_ty).into())),
+                    None => self.table.new_integer_var(),
+                },
+                Literal::Float(_v, ty) => match ty {
+                    Some(float_ty) => Ty::simple(TypeCtor::Float((*float_ty).into())),
+                    None => self.table.new_float_var(),
+                },
             },
         };
         // use a new type variable if we got Ty::Unknown here

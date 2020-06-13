@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use hir_def::{
-    db::DefDatabase, DefWithBodyId, GenericDefId, ImplId, LocalFieldId, TraitId, TypeParamId,
-    VariantId,
+    db::DefDatabase, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId, TraitId,
+    TypeParamId, VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::{impl_intern_key, salsa, CrateId, Upcast};
@@ -13,8 +13,8 @@ use ra_prof::profile;
 use crate::{
     method_resolution::{CrateImplDefs, TyFingerprint},
     traits::{chalk, AssocTyValue, Impl},
-    Binders, CallableDef, GenericPredicate, InferenceResult, PolyFnSig, Substs, TraitRef, Ty,
-    TyDefId, TypeCtor, ValueTyDefId,
+    Binders, CallableDef, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
+    ReturnTypeImplTraits, Substs, TraitRef, Ty, TyDefId, TypeCtor, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -48,6 +48,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDef) -> PolyFnSig;
 
+    #[salsa::invoke(crate::lower::return_type_impl_traits)]
+    fn return_type_impl_traits(
+        &self,
+        def: FunctionId,
+    ) -> Option<Arc<Binders<ReturnTypeImplTraits>>>;
+
     #[salsa::invoke(crate::lower::generic_predicates_for_param_query)]
     #[salsa::cycle(crate::lower::generic_predicates_for_param_recover)]
     fn generic_predicates_for_param(
@@ -79,6 +85,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn intern_callable_def(&self, callable_def: CallableDef) -> crate::CallableDefId;
     #[salsa::interned]
     fn intern_type_param_id(&self, param_id: TypeParamId) -> GlobalTypeParamId;
+    #[salsa::interned]
+    fn intern_impl_trait_id(&self, id: OpaqueTyId) -> InternedOpaqueTyId;
     #[salsa::interned]
     fn intern_chalk_impl(&self, impl_: Impl) -> crate::traits::GlobalImplId;
     #[salsa::interned]
@@ -142,3 +150,7 @@ fn hir_database_is_object_safe() {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GlobalTypeParamId(salsa::InternId);
 impl_intern_key!(GlobalTypeParamId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InternedOpaqueTyId(salsa::InternId);
+impl_intern_key!(InternedOpaqueTyId);

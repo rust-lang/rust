@@ -149,11 +149,10 @@ fn get_param_name_hints(
         ast::Expr::MethodCallExpr(expr) => expr.arg_list()?.args(),
         _ => return None,
     };
-    let args_count = args.clone().count();
 
     let fn_signature = get_fn_signature(sema, &expr)?;
     let n_params_to_skip =
-        if fn_signature.has_self_param && fn_signature.parameter_names.len() > args_count {
+        if fn_signature.has_self_param && matches!(&expr, ast::Expr::MethodCallExpr(_)) {
             1
         } else {
             0
@@ -416,7 +415,7 @@ struct Test<K, T = u8> {
 }
 
 fn main() {
-    let zz = Test { t: 23, k: 33 };
+    let zz = Test { t: 23u8, k: 33 };
     let zz_ref = &zz;
 }"#,
         );
@@ -429,7 +428,7 @@ fn main() {
                 label: "Test<i32>",
             },
             InlayHint {
-                range: 105..111,
+                range: 107..113,
                 kind: TypeHint,
                 label: "&Test<i32>",
             },

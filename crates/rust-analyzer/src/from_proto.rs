@@ -3,7 +3,7 @@ use ra_db::{FileId, FilePosition, FileRange};
 use ra_ide::{LineCol, LineIndex};
 use ra_syntax::{TextRange, TextSize};
 
-use crate::{world::WorldSnapshot, Result};
+use crate::{global_state::GlobalStateSnapshot, Result};
 
 pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> TextSize {
     let line_col = LineCol { line: position.line as u32, col_utf16: position.character as u32 };
@@ -16,12 +16,12 @@ pub(crate) fn text_range(line_index: &LineIndex, range: lsp_types::Range) -> Tex
     TextRange::new(start, end)
 }
 
-pub(crate) fn file_id(world: &WorldSnapshot, url: &lsp_types::Url) -> Result<FileId> {
+pub(crate) fn file_id(world: &GlobalStateSnapshot, url: &lsp_types::Url) -> Result<FileId> {
     world.uri_to_file_id(url)
 }
 
 pub(crate) fn file_position(
-    world: &WorldSnapshot,
+    world: &GlobalStateSnapshot,
     tdpp: lsp_types::TextDocumentPositionParams,
 ) -> Result<FilePosition> {
     let file_id = file_id(world, &tdpp.text_document.uri)?;
@@ -31,7 +31,7 @@ pub(crate) fn file_position(
 }
 
 pub(crate) fn file_range(
-    world: &WorldSnapshot,
+    world: &GlobalStateSnapshot,
     text_document_identifier: lsp_types::TextDocumentIdentifier,
     range: lsp_types::Range,
 ) -> Result<FileRange> {

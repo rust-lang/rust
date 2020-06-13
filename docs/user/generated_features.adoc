@@ -76,7 +76,7 @@ Navigates to the type of an identifier.
 
 
 === Hover
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/hover.rs#L63[hover.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/hover.rs#L106[hover.rs]
 
 Shows additional information, like type of an expression or documentation for definition when "focusing" code.
 Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
@@ -177,7 +177,7 @@ braces, so it won't confuse generics with comparisons.
 
 
 === On Typing Assists
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/typing.rs#L35[typing.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/typing.rs#L37[typing.rs]
 
 Some features trigger on typing certain characters:
 
@@ -199,7 +199,7 @@ Navigates to the parent module of the current module.
 
 
 === Run
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/runnables.rs#L45[runnables.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/runnables.rs#L81[runnables.rs]
 
 Shows a popup suggesting to run a test/benchmark/binary **at the current cursor
 location**. Super useful for repeatedly running just a single test. Do bind this
@@ -213,7 +213,7 @@ to a shortcut!
 
 
 === Semantic Syntax Highlighting
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/syntax_highlighting.rs#L33[syntax_highlighting.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide/src/syntax_highlighting.rs#L34[syntax_highlighting.rs]
 
 rust-analyzer highlights the code semantically.
 For example, `bar` in `foo::Bar` might be colored differently depending on whether `Bar` is an enum or a trait.
@@ -275,7 +275,7 @@ String::from((y + 5).foo(z))
 
 
 === Workspace Symbol
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide_db/src/symbol_index.rs#L113[symbol_index.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/ra_ide_db/src/symbol_index.rs#L122[symbol_index.rs]
 
 Uses fuzzy-search to find types, modules and functions by name across your
 project and dependencies. This is **the** most useful feature, which improves code

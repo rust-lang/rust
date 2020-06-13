@@ -8,6 +8,7 @@ import { spawnSync } from 'child_process';
 import { RunnableQuickPick, selectRunnable, createTask } from './run';
 import { AstInspector } from './ast_inspector';
 import { isRustDocument, sleep, isRustEditor } from './util';
+import { startDebugSession, makeDebugConfig } from './debug';
 
 export * from './ast_inspector';
 export * from './run';
@@ -197,20 +198,6 @@ export function toggleInlayHints(ctx: Ctx): Cmd {
     };
 }
 
-export function run(ctx: Ctx): Cmd {
-    let prevRunnable: RunnableQuickPick | undefined;
-
-    return async () => {
-        const item = await selectRunnable(ctx, prevRunnable);
-        if (!item) return;
-
-        item.detail = 'rerun';
-        prevRunnable = item;
-        const task = createTask(item.runnable);
-        return await vscode.tasks.executeTask(task);
-    };
-}
-
 // Opens the virtual file that will show the syntax tree
 //
 // The contents of the file come from the `TextDocumentContentProvider`
@@ -356,15 +343,89 @@ export function showReferences(ctx: Ctx): Cmd {
 }
 
 export function applyActionGroup(_ctx: Ctx): Cmd {
-    return async (actions: { label: string; edit: vscode.WorkspaceEdit }[]) => {
+    return async (actions: { label: string; arguments: ra.ResolveCodeActionParams }[]) => {
         const selectedAction = await vscode.window.showQuickPick(actions);
         if (!selectedAction) return;
-        await applySnippetWorkspaceEdit(selectedAction.edit);
+        vscode.commands.executeCommand(
+            'rust-analyzer.resolveCodeAction',
+            selectedAction.arguments,
+        );
+    };
+}
+
+export function resolveCodeAction(ctx: Ctx): Cmd {
+    const client = ctx.client;
+    return async (params: ra.ResolveCodeActionParams) => {
+        const item: lc.WorkspaceEdit = await client.sendRequest(ra.resolveCodeAction, params);
+        if (!item) {
+            return;
+        }
+        const edit = client.protocol2CodeConverter.asWorkspaceEdit(item);
+        await applySnippetWorkspaceEdit(edit);
     };
 }
 
 export function applySnippetWorkspaceEditCommand(_ctx: Ctx): Cmd {
     return async (edit: vscode.WorkspaceEdit) => {
         await applySnippetWorkspaceEdit(edit);
+    };
+}
+
+export function run(ctx: Ctx): Cmd {
+    let prevRunnable: RunnableQuickPick | undefined;
+
+    return async () => {
+        const item = await selectRunnable(ctx, prevRunnable);
+        if (!item) return;
+
+        item.detail = 'rerun';
+        prevRunnable = item;
+        const task = createTask(item.runnable);
+        return await vscode.tasks.executeTask(task);
+    };
+}
+
+export function runSingle(ctx: Ctx): Cmd {
+    return async (runnable: ra.Runnable) => {
+        const editor = ctx.activeRustEditor;
+        if (!editor) return;
+
+        const task = createTask(runnable);
+        task.group = vscode.TaskGroup.Build;
+        task.presentationOptions = {
+            reveal: vscode.TaskRevealKind.Always,
+            panel: vscode.TaskPanelKind.Dedicated,
+            clear: true,
+        };
+
+        return vscode.tasks.executeTask(task);
+    };
+}
+
+export function debug(ctx: Ctx): Cmd {
+    let prevDebuggee: RunnableQuickPick | undefined;
+
+    return async () => {
+        const item = await selectRunnable(ctx, prevDebuggee, true);
+        if (!item) return;
+
+        item.detail = 'restart';
+        prevDebuggee = item;
+        return await startDebugSession(ctx, item.runnable);
+    };
+}
+
+export function debugSingle(ctx: Ctx): Cmd {
+    return async (config: ra.Runnable) => {
+        await startDebugSession(ctx, config);
+    };
+}
+
+export function newDebugConfig(ctx: Ctx): Cmd {
+    return async () => {
+        const item = await selectRunnable(ctx, undefined, true, false);
+        if (!item) return;
+
+        await makeDebugConfig(ctx, item.runnable);
     };
 }

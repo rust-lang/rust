@@ -1,8 +1,25 @@
 import * as lc from 'vscode-languageclient';
 import * as vscode from 'vscode';
+import * as ra from '../src/lsp_ext';
+import * as Is from 'vscode-languageclient/lib/utils/is';
 
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
+import { assert } from './util';
+
+function renderCommand(cmd: ra.CommandLink) {
+    return `[${cmd.title}](command:${cmd.command}?${encodeURIComponent(JSON.stringify(cmd.arguments))} '${cmd.tooltip!}')`;
+}
+
+function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownString {
+    const text = actions.map(group =>
+        (group.title ? (group.title + " ") : "") + group.commands.map(renderCommand).join(' | ')
+    ).join('___');
+
+    const result = new vscode.MarkdownString(text);
+    result.isTrusted = true;
+    return result;
+}
 
 export function createClient(serverPath: string, cwd: string): lc.LanguageClient {
     // '.' Is the fallback if no folder is open
@@ -32,6 +49,25 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                 if (res === undefined) throw new Error('busy');
                 return res;
             },
+            async provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, _next: lc.ProvideHoverSignature) {
+                return client.sendRequest(lc.HoverRequest.type, client.code2ProtocolConverter.asTextDocumentPositionParams(document, position), token).then(
+                    (result) => {
+                        const hover = client.protocol2CodeConverter.asHover(result);
+                        if (hover) {
+                            const actions = (<any>result).actions;
+                            if (actions) {
+                                hover.contents.push(renderHoverActions(actions));
+                            }
+                        }
+                        return hover;
+                    },
+                    (error) => {
+                        client.logFailedRequest(lc.HoverRequest.type, error);
+                        return Promise.resolve(null);
+                    });
+            },
+            // Using custom handling of CodeActions where each code action is resloved lazily
+            // That's why we are not waiting for any command or edits
             async provideCodeActions(document: vscode.TextDocument, range: vscode.Range, context: vscode.CodeActionContext, token: vscode.CancellationToken, _next: lc.ProvideCodeActionsSignature) {
                 const params: lc.CodeActionParams = {
                     textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
@@ -43,32 +79,36 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                     const result: (vscode.CodeAction | vscode.Command)[] = [];
                     const groups = new Map<string, { index: number; items: vscode.CodeAction[] }>();
                     for (const item of values) {
+                        // In our case we expect to get code edits only from diagnostics
                         if (lc.CodeAction.is(item)) {
+                            assert(!item.command, "We don't expect to receive commands in CodeActions");
                             const action = client.protocol2CodeConverter.asCodeAction(item);
-                            const group = actionGroup(item);
-                            if (isSnippetEdit(item) || group) {
-                                action.command = {
-                                    command: "rust-analyzer.applySnippetWorkspaceEdit",
-                                    title: "",
-                                    arguments: [action.edit],
-                                };
-                                action.edit = undefined;
-                            }
-
-                            if (group) {
-                                let entry = groups.get(group);
-                                if (!entry) {
-                                    entry = { index: result.length, items: [] };
-                                    groups.set(group, entry);
-                                    result.push(action);
-                                }
-                                entry.items.push(action);
-                            } else {
+                            result.push(action);
+                            continue;
+                        }
+                        assert(isCodeActionWithoutEditsAndCommands(item), "We don't expect edits or commands here");
+                        const action = new vscode.CodeAction(item.title);
+                        const group = (item as any).group;
+                        const id = (item as any).id;
+                        const resolveParams: ra.ResolveCodeActionParams = {
+                            id: id,
+                            codeActionParams: params
+                        };
+                        action.command = {
+                            command: "rust-analyzer.resolveCodeAction",
+                            title: item.title,
+                            arguments: [resolveParams],
+                        };
+                        if (group) {
+                            let entry = groups.get(group);
+                            if (!entry) {
+                                entry = { index: result.length, items: [] };
+                                groups.set(group, entry);
                                 result.push(action);
                             }
+                            entry.items.push(action);
                         } else {
-                            const command = client.protocol2CodeConverter.asCommand(item);
-                            result.push(command);
+                            result.push(action);
                         }
                     }
                     for (const [group, { index, items }] of groups) {
@@ -80,7 +120,7 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                                 command: "rust-analyzer.applyActionGroup",
                                 title: "",
                                 arguments: [items.map((item) => {
-                                    return { label: item.title, edit: item.command!!.arguments!![0] };
+                                    return { label: item.title, arguments: item.command!!.arguments!![0] };
                                 })],
                             };
                             result[index] = action;
@@ -119,24 +159,18 @@ class ExperimentalFeatures implements lc.StaticFeature {
         const caps: any = capabilities.experimental ?? {};
         caps.snippetTextEdit = true;
         caps.codeActionGroup = true;
+        caps.resolveCodeAction = true;
+        caps.hoverActions = true;
         capabilities.experimental = caps;
     }
     initialize(_capabilities: lc.ServerCapabilities<any>, _documentSelector: lc.DocumentSelector | undefined): void {
     }
 }
 
-function isSnippetEdit(action: lc.CodeAction): boolean {
-    const documentChanges = action.edit?.documentChanges ?? [];
-    for (const edit of documentChanges) {
-        if (lc.TextDocumentEdit.is(edit)) {
-            if (edit.edits.some((indel) => (indel as any).insertTextFormat === lc.InsertTextFormat.Snippet)) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-function actionGroup(action: lc.CodeAction): string | undefined {
-    return (action as any).group;
+function isCodeActionWithoutEditsAndCommands(value: any): boolean {
+    const candidate: lc.CodeAction = value;
+    return candidate && Is.string(candidate.title) &&
+        (candidate.diagnostics === void 0 || Is.typedArray(candidate.diagnostics, lc.Diagnostic.is)) &&
+        (candidate.kind === void 0 || Is.string(candidate.kind)) &&
+        (candidate.edit === void 0 && candidate.command === void 0);
 }

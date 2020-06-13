@@ -122,8 +122,9 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         let macro_call =
             self.find_file(actual_macro_call.syntax().clone()).with_value(actual_macro_call);
         let sa = self.analyze2(macro_call.map(|it| it.syntax()), None);
+        let krate = sa.resolver.krate()?;
         let macro_call_id = macro_call
-            .as_call_id(self.db, |path| sa.resolver.resolve_path_as_macro(self.db, &path))?;
+            .as_call_id(self.db, krate, |path| sa.resolver.resolve_path_as_macro(self.db, &path))?;
         hir_expand::db::expand_hypothetical(self.db, macro_call_id, hypothetical_args, token_to_map)
     }
 

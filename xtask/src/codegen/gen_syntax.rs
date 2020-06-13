@@ -40,7 +40,7 @@ fn generate_tokens(grammar: AstSrc<'_>) -> Result<String> {
                 pub(crate) syntax: SyntaxToken,
             }
             impl std::fmt::Display for #name {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                     std::fmt::Display::fmt(&self.syntax, f)
                 }
             }
@@ -68,7 +68,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         .iter()
         .map(|node| {
             let name = format_ident!("{}", node.name);
-            let kind = format_ident!("{}", to_upper_snake_case(&name.to_string()));
+            let kind = format_ident!("{}", to_upper_snake_case(node.name));
             let traits = node.traits.iter().map(|trait_name| {
                 let trait_name = format_ident!("{}", trait_name);
                 quote!(impl ast::#trait_name for #name {})
@@ -199,7 +199,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         enum_names.chain(node_names.clone()).map(|it| format_ident!("{}", it)).map(|name| {
             quote! {
                 impl std::fmt::Display for #name {
-                    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                         std::fmt::Display::fmt(self.syntax(), f)
                     }
                 }

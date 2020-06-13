@@ -10,7 +10,7 @@ use super::{infer, infer_with_mismatches, type_at, type_at_pos};
 fn infer_await() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 
 struct IntFuture;
 
@@ -24,7 +24,7 @@ fn test() {
     v<|>;
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 #[prelude_import] use future::*;
 mod future {
     #[lang = "future_trait"]
@@ -42,7 +42,7 @@ mod future {
 fn infer_async() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 
 async fn foo() -> u64 {
     128
@@ -54,7 +54,7 @@ fn test() {
     v<|>;
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 #[prelude_import] use future::*;
 mod future {
     #[lang = "future_trait"]
@@ -72,7 +72,7 @@ mod future {
 fn infer_desugar_async() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 
 async fn foo() -> u64 {
     128
@@ -83,7 +83,7 @@ fn test() {
     r<|>;
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 #[prelude_import] use future::*;
 mod future {
     trait Future {
@@ -100,7 +100,7 @@ mod future {
 fn infer_try() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 
 fn test() {
     let r: Result<i32, u64> = Result::Ok(1);
@@ -108,7 +108,7 @@ fn test() {
     v<|>;
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 
 #[prelude_import] use ops::*;
 mod ops {
@@ -140,9 +140,9 @@ mod result {
 fn infer_for_loop() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core,alloc
 
-use std::collections::Vec;
+use alloc::collections::Vec;
 
 fn test() {
     let v = Vec::new();
@@ -152,7 +152,7 @@ fn test() {
     }
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 
 #[prelude_import] use iter::*;
 mod iter {
@@ -161,6 +161,8 @@ mod iter {
     }
 }
 
+//- /alloc.rs crate:alloc deps:core
+
 mod collections {
     struct Vec<T> {}
     impl<T> Vec<T> {
@@ -168,7 +170,7 @@ mod collections {
         fn push(&mut self, t: T) { }
     }
 
-    impl<T> crate::iter::IntoIterator for Vec<T> {
+    impl<T> IntoIterator for Vec<T> {
         type Item=T;
     }
 }
@@ -1110,7 +1112,6 @@ fn test() {
 }
 
 #[test]
-#[ignore]
 fn impl_trait() {
     assert_snapshot!(
         infer(r#"
@@ -1156,6 +1157,95 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
     244..252 'y.foo2()': i64
     258..259 'z': impl Trait<u64>
     258..266 'z.foo2()': i64
+    "###
+    );
+}
+
+#[test]
+fn simple_return_pos_impl_trait() {
+    mark::check!(lower_rpit);
+    assert_snapshot!(
+        infer(r#"
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+fn bar() -> impl Trait<u64> { loop {} }
+
+fn test() {
+    let a = bar();
+    a.foo();
+}
+"#),
+        @r###"
+    30..34 'self': &Self
+    72..83 '{ loop {} }': !
+    74..81 'loop {}': !
+    79..81 '{}': ()
+    95..130 '{     ...o(); }': ()
+    105..106 'a': impl Trait<u64>
+    109..112 'bar': fn bar() -> impl Trait<u64>
+    109..114 'bar()': impl Trait<u64>
+    120..121 'a': impl Trait<u64>
+    120..127 'a.foo()': u64
+    "###
+    );
+}
+
+#[test]
+fn more_return_pos_impl_trait() {
+    assert_snapshot!(
+        infer(r#"
+trait Iterator {
+    type Item;
+    fn next(&mut self) -> Self::Item;
+}
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+fn bar() -> (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>) { loop {} }
+fn baz<T>(t: T) -> (impl Iterator<Item = impl Trait<T>>, impl Trait<T>) { loop {} }
+
+fn test() {
+    let (a, b) = bar();
+    a.next().foo();
+    b.foo();
+    let (c, d) = baz(1u128);
+    c.next().foo();
+    d.foo();
+}
+"#),
+        @r###"
+    50..54 'self': &mut Self
+    102..106 'self': &Self
+    185..196 '{ loop {} }': ({unknown}, {unknown})
+    187..194 'loop {}': !
+    192..194 '{}': ()
+    207..208 't': T
+    269..280 '{ loop {} }': ({unknown}, {unknown})
+    271..278 'loop {}': !
+    276..278 '{}': ()
+    292..414 '{     ...o(); }': ()
+    302..308 '(a, b)': (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
+    303..304 'a': impl Iterator<Item = impl Trait<u32>>
+    306..307 'b': impl Trait<u64>
+    311..314 'bar': fn bar() -> (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
+    311..316 'bar()': (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
+    322..323 'a': impl Iterator<Item = impl Trait<u32>>
+    322..330 'a.next()': impl Trait<u32>
+    322..336 'a.next().foo()': u32
+    342..343 'b': impl Trait<u64>
+    342..349 'b.foo()': u64
+    359..365 '(c, d)': (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+    360..361 'c': impl Iterator<Item = impl Trait<u128>>
+    363..364 'd': impl Trait<u128>
+    368..371 'baz': fn baz<u128>(u128) -> (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+    368..378 'baz(1u128)': (impl Iterator<Item = impl Trait<u128>>, impl Trait<u128>)
+    372..377 '1u128': u128
+    384..385 'c': impl Iterator<Item = impl Trait<u128>>
+    384..392 'c.next()': impl Trait<u128>
+    384..398 'c.next().foo()': u128
+    404..405 'd': impl Trait<u128>
+    404..411 'd.foo()': u128
     "###
     );
 }
@@ -1718,33 +1808,33 @@ fn test() {
 }
 "#),
         @r###"
-65..69 'self': &Self
-166..170 'self': Self
-172..176 'args': Args
-240..244 'self': &Foo
-255..257 '{}': ()
-335..336 'f': F
-355..357 '{}': ()
-444..690 '{     ...o(); }': ()
-454..459 'lazy1': Lazy<Foo, fn() -> T>
-476..485 'Lazy::new': fn new<Foo, fn() -> T>(fn() -> T) -> Lazy<Foo, fn() -> T>
-476..493 'Lazy::...| Foo)': Lazy<Foo, fn() -> T>
-486..492 '|| Foo': || -> T
-489..492 'Foo': Foo
-503..505 'r1': {unknown}
-508..513 'lazy1': Lazy<Foo, fn() -> T>
-508..519 'lazy1.foo()': {unknown}
-561..576 'make_foo_fn_ptr': fn() -> Foo
-592..603 'make_foo_fn': fn make_foo_fn() -> Foo
-613..618 'lazy2': Lazy<Foo, fn() -> T>
-635..644 'Lazy::new': fn new<Foo, fn() -> T>(fn() -> T) -> Lazy<Foo, fn() -> T>
-635..661 'Lazy::...n_ptr)': Lazy<Foo, fn() -> T>
-645..660 'make_foo_fn_ptr': fn() -> Foo
-671..673 'r2': {unknown}
-676..681 'lazy2': Lazy<Foo, fn() -> T>
-676..687 'lazy2.foo()': {unknown}
-550..552 '{}': ()
-"###
+    65..69 'self': &Self
+    166..170 'self': Self
+    172..176 'args': Args
+    240..244 'self': &Foo
+    255..257 '{}': ()
+    335..336 'f': F
+    355..357 '{}': ()
+    444..690 '{     ...o(); }': ()
+    454..459 'lazy1': Lazy<Foo, || -> Foo>
+    476..485 'Lazy::new': fn new<Foo, || -> Foo>(|| -> Foo) -> Lazy<Foo, || -> Foo>
+    476..493 'Lazy::...| Foo)': Lazy<Foo, || -> Foo>
+    486..492 '|| Foo': || -> Foo
+    489..492 'Foo': Foo
+    503..505 'r1': usize
+    508..513 'lazy1': Lazy<Foo, || -> Foo>
+    508..519 'lazy1.foo()': usize
+    561..576 'make_foo_fn_ptr': fn() -> Foo
+    592..603 'make_foo_fn': fn make_foo_fn() -> Foo
+    613..618 'lazy2': Lazy<Foo, fn() -> Foo>
+    635..644 'Lazy::new': fn new<Foo, fn() -> Foo>(fn() -> Foo) -> Lazy<Foo, fn() -> Foo>
+    635..661 'Lazy::...n_ptr)': Lazy<Foo, fn() -> Foo>
+    645..660 'make_foo_fn_ptr': fn() -> Foo
+    671..673 'r2': {unknown}
+    676..681 'lazy2': Lazy<Foo, fn() -> Foo>
+    676..687 'lazy2.foo()': {unknown}
+    550..552 '{}': ()
+    "###
     );
 }
 
@@ -2758,12 +2848,12 @@ fn test() {
 fn integer_range_iterate() {
     let t = type_at(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 fn test() {
     for x in 0..100 { x<|>; }
 }
 
-//- /std.rs crate:std
+//- /core.rs crate:core
 pub mod ops {
     pub struct Range<Idx> {
         pub start: Idx,

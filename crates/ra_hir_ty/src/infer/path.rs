@@ -95,7 +95,7 @@ impl<'a> InferenceContext<'a> {
         // self_subst is just for the parent
         let parent_substs = self_subst.unwrap_or_else(Substs::empty);
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
-        let substs = Ty::substs_from_path(&ctx, path, typable);
+        let substs = Ty::substs_from_path(&ctx, path, typable, true);
         let full_substs = Substs::builder(substs.len())
             .use_parent_substs(&parent_substs)
             .fill(substs.0[parent_substs.len()..].iter().cloned())
@@ -141,6 +141,7 @@ impl<'a> InferenceContext<'a> {
                     def,
                     resolved_segment,
                     remaining_segments_for_ty,
+                    true,
                 );
                 if let Ty::Unknown = ty {
                     return None;

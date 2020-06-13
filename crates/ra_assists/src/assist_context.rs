@@ -1,5 +1,7 @@
 //! See `AssistContext`
 
+use std::mem;
+
 use algo::find_covering_element;
 use hir::Semantics;
 use ra_db::{FileId, FileRange};
@@ -170,13 +172,32 @@ impl Assists {
 
 pub(crate) struct AssistBuilder {
     edit: TextEditBuilder,
-    file: FileId,
+    file_id: FileId,
     is_snippet: bool,
+    edits: Vec<SourceFileEdit>,
 }
 
 impl AssistBuilder {
-    pub(crate) fn new(file: FileId) -> AssistBuilder {
-        AssistBuilder { edit: TextEditBuilder::default(), file, is_snippet: false }
+    pub(crate) fn new(file_id: FileId) -> AssistBuilder {
+        AssistBuilder {
+            edit: TextEditBuilder::default(),
+            file_id,
+            is_snippet: false,
+            edits: Vec::new(),
+        }
+    }
+
+    pub(crate) fn edit_file(&mut self, file_id: FileId) {
+        self.file_id = file_id;
+    }
+
+    fn commit(&mut self) {
+        let edit = mem::take(&mut self.edit).finish();
+        if !edit.is_empty() {
+            let new_edit = SourceFileEdit { file_id: self.file_id, edit };
+            assert!(!self.edits.iter().any(|it| it.file_id == new_edit.file_id));
+            self.edits.push(new_edit);
+        }
     }
 
     /// Remove specified `range` of text.
@@ -234,21 +255,15 @@ impl AssistBuilder {
         algo::diff(&node, &new).into_text_edit(&mut self.edit)
     }
 
-    // FIXME: better API
-    pub(crate) fn set_file(&mut self, assist_file: FileId) {
-        self.file = assist_file;
-    }
-
     // FIXME: kill this API
     /// Get access to the raw `TextEditBuilder`.
     pub(crate) fn text_edit_builder(&mut self) -> &mut TextEditBuilder {
         &mut self.edit
     }
 
-    fn finish(self) -> SourceChange {
-        let edit = self.edit.finish();
-        let source_file_edit = SourceFileEdit { file_id: self.file, edit };
-        let mut res: SourceChange = source_file_edit.into();
+    fn finish(mut self) -> SourceChange {
+        self.commit();
+        let mut res: SourceChange = mem::take(&mut self.edits).into();
         if self.is_snippet {
             res.is_snippet = true;
         }

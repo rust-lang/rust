@@ -15,6 +15,7 @@ use std::{
 };
 
 pub use ra_cfg::CfgOptions;
+use stdx::split1;
 
 pub use relative_path::{RelativePath, RelativePathBuf};
 pub use rustc_hash::FxHashMap;
@@ -330,11 +331,6 @@ fn parse_meta(meta: &str) -> FixtureMeta {
     }
 
     FixtureMeta::File(FileMeta { path, crate_name: krate, deps, edition, cfg, env })
-}
-
-fn split1(haystack: &str, delim: char) -> Option<(&str, &str)> {
-    let idx = haystack.find(delim)?;
-    Some((&haystack[..idx], &haystack[idx + delim.len_utf8()..]))
 }
 
 /// Adjusts the indentation of the first line to the minimum indentation of the rest of the lines.

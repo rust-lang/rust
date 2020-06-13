@@ -7,16 +7,17 @@ use crate::{
     project_root, rust_files, Result,
 };
 
+pub fn generate_assists_tests(mode: Mode) -> Result<()> {
+    let assists = Assist::collect()?;
+    generate_tests(&assists, mode)
+}
+
 pub fn generate_assists_docs(mode: Mode) -> Result<()> {
     let assists = Assist::collect()?;
-    generate_tests(&assists, mode)?;
-
     let contents = assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
     let contents = contents.trim().to_string() + "\n";
     let dst = project_root().join("docs/user/generated_assists.adoc");
-    codegen::update(&dst, &contents, mode)?;
-
-    Ok(())
+    codegen::update(&dst, &contents, mode)
 }
 
 #[derive(Debug)]

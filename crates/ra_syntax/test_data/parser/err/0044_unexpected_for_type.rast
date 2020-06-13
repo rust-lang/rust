@@ -1,0 +1,240 @@
+SOURCE_FILE@0..239
+  TYPE_ALIAS_DEF@0..30
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..11
+      IDENT@5..11 "ForRef"
+    WHITESPACE@11..12 " "
+    EQ@12..13 "="
+    WHITESPACE@13..14 " "
+    FOR_TYPE@14..29
+      FOR_KW@14..17 "for"
+      TYPE_PARAM_LIST@17..21
+        L_ANGLE@17..18 "<"
+        LIFETIME_PARAM@18..20
+          LIFETIME@18..20 "\'a"
+        R_ANGLE@20..21 ">"
+      WHITESPACE@21..22 " "
+      REFERENCE_TYPE@22..29
+        AMP@22..23 "&"
+        LIFETIME@23..25 "\'a"
+        WHITESPACE@25..26 " "
+        PATH_TYPE@26..29
+          PATH@26..29
+            PATH_SEGMENT@26..29
+              NAME_REF@26..29
+                IDENT@26..29 "u32"
+    SEMICOLON@29..30 ";"
+  WHITESPACE@30..31 "\n"
+  TYPE_ALIAS_DEF@31..64
+    TYPE_KW@31..35 "type"
+    WHITESPACE@35..36 " "
+    NAME@36..42
+      IDENT@36..42 "ForTup"
+    WHITESPACE@42..43 " "
+    EQ@43..44 "="
+    WHITESPACE@44..45 " "
+    FOR_TYPE@45..63
+      FOR_KW@45..48 "for"
+      TYPE_PARAM_LIST@48..52
+        L_ANGLE@48..49 "<"
+        LIFETIME_PARAM@49..51
+          LIFETIME@49..51 "\'a"
+        R_ANGLE@51..52 ">"
+      WHITESPACE@52..53 " "
+      TUPLE_TYPE@53..63
+        L_PAREN@53..54 "("
+        REFERENCE_TYPE@54..61
+          AMP@54..55 "&"
+          LIFETIME@55..57 "\'a"
+          WHITESPACE@57..58 " "
+          PATH_TYPE@58..61
+            PATH@58..61
+              PATH_SEGMENT@58..61
+                NAME_REF@58..61
+                  IDENT@58..61 "u32"
+        COMMA@61..62 ","
+        R_PAREN@62..63 ")"
+    SEMICOLON@63..64 ";"
+  WHITESPACE@64..65 "\n"
+  TYPE_ALIAS_DEF@65..95
+    TYPE_KW@65..69 "type"
+    WHITESPACE@69..70 " "
+    NAME@70..78
+      IDENT@70..78 "ForSlice"
+    WHITESPACE@78..79 " "
+    EQ@79..80 "="
+    WHITESPACE@80..81 " "
+    FOR_TYPE@81..94
+      FOR_KW@81..84 "for"
+      TYPE_PARAM_LIST@84..88
+        L_ANGLE@84..85 "<"
+        LIFETIME_PARAM@85..87
+          LIFETIME@85..87 "\'a"
+        R_ANGLE@87..88 ">"
+      WHITESPACE@88..89 " "
+      SLICE_TYPE@89..94
+        L_BRACK@89..90 "["
+        PATH_TYPE@90..93
+          PATH@90..93
+            PATH_SEGMENT@90..93
+              NAME_REF@90..93
+                IDENT@90..93 "u32"
+        R_BRACK@93..94 "]"
+    SEMICOLON@94..95 ";"
+  WHITESPACE@95..96 "\n"
+  TYPE_ALIAS_DEF@96..149
+    TYPE_KW@96..100 "type"
+    WHITESPACE@100..101 " "
+    NAME@101..109
+      IDENT@101..109 "ForForFn"
+    WHITESPACE@109..110 " "
+    EQ@110..111 "="
+    WHITESPACE@111..112 " "
+    FOR_TYPE@112..148
+      FOR_KW@112..115 "for"
+      TYPE_PARAM_LIST@115..119
+        L_ANGLE@115..116 "<"
+        LIFETIME_PARAM@116..118
+          LIFETIME@116..118 "\'a"
+        R_ANGLE@118..119 ">"
+      WHITESPACE@119..120 " "
+      FOR_TYPE@120..148
+        FOR_KW@120..123 "for"
+        TYPE_PARAM_LIST@123..127
+          L_ANGLE@123..124 "<"
+          LIFETIME_PARAM@124..126
+            LIFETIME@124..126 "\'b"
+          R_ANGLE@126..127 ">"
+        WHITESPACE@127..128 " "
+        FN_POINTER_TYPE@128..148
+          FN_KW@128..130 "fn"
+          PARAM_LIST@130..148
+            L_PAREN@130..131 "("
+            PARAM@131..138
+              REFERENCE_TYPE@131..138
+                AMP@131..132 "&"
+                LIFETIME@132..134 "\'a"
+                WHITESPACE@134..135 " "
+                PATH_TYPE@135..138
+                  PATH@135..138
+                    PATH_SEGMENT@135..138
+                      NAME_REF@135..138
+                        IDENT@135..138 "i32"
+            COMMA@138..139 ","
+            WHITESPACE@139..140 " "
+            PARAM@140..147
+              REFERENCE_TYPE@140..147
+                AMP@140..141 "&"
+                LIFETIME@141..143 "\'b"
+                WHITESPACE@143..144 " "
+                PATH_TYPE@144..147
+                  PATH@144..147
+                    PATH_SEGMENT@144..147
+                      NAME_REF@144..147
+                        IDENT@144..147 "i32"
+            R_PAREN@147..148 ")"
+    SEMICOLON@148..149 ";"
+  WHITESPACE@149..150 "\n"
+  FN_DEF@150..238
+    FN_KW@150..152 "fn"
+    WHITESPACE@152..153 " "
+    NAME@153..164
+      IDENT@153..164 "for_for_for"
+    TYPE_PARAM_LIST@164..167
+      L_ANGLE@164..165 "<"
+      TYPE_PARAM@165..166
+        NAME@165..166
+          IDENT@165..166 "T"
+      R_ANGLE@166..167 ">"
+    PARAM_LIST@167..169
+      L_PAREN@167..168 "("
+      R_PAREN@168..169 ")"
+    WHITESPACE@169..170 "\n"
+    WHERE_CLAUSE@170..234
+      WHERE_KW@170..175 "where"
+      WHITESPACE@175..180 "\n    "
+      WHERE_PRED@180..233
+        FOR_KW@180..183 "for"
+        TYPE_PARAM_LIST@183..187
+          L_ANGLE@183..184 "<"
+          LIFETIME_PARAM@184..186
+            LIFETIME@184..186 "\'a"
+          R_ANGLE@186..187 ">"
+        WHITESPACE@187..188 " "
+        FOR_TYPE@188..227
+          FOR_KW@188..191 "for"
+          TYPE_PARAM_LIST@191..195
+            L_ANGLE@191..192 "<"
+            LIFETIME_PARAM@192..194
+              LIFETIME@192..194 "\'b"
+            R_ANGLE@194..195 ">"
+          WHITESPACE@195..196 " "
+          FOR_TYPE@196..227
+            FOR_KW@196..199 "for"
+            TYPE_PARAM_LIST@199..203
+              L_ANGLE@199..200 "<"
+              LIFETIME_PARAM@200..202
+                LIFETIME@200..202 "\'c"
+              R_ANGLE@202..203 ">"
+            WHITESPACE@203..204 " "
+            FN_POINTER_TYPE@204..227
+              FN_KW@204..206 "fn"
+              PARAM_LIST@206..227
+                L_PAREN@206..207 "("
+                PARAM@207..212
+                  REFERENCE_TYPE@207..212
+                    AMP@207..208 "&"
+                    LIFETIME@208..210 "\'a"
+                    WHITESPACE@210..211 " "
+                    PATH_TYPE@211..212
+                      PATH@211..212
+                        PATH_SEGMENT@211..212
+                          NAME_REF@211..212
+                            IDENT@211..212 "T"
+                COMMA@212..213 ","
+                WHITESPACE@213..214 " "
+                PARAM@214..219
+                  REFERENCE_TYPE@214..219
+                    AMP@214..215 "&"
+                    LIFETIME@215..217 "\'b"
+                    WHITESPACE@217..218 " "
+                    PATH_TYPE@218..219
+                      PATH@218..219
+                        PATH_SEGMENT@218..219
+                          NAME_REF@218..219
+                            IDENT@218..219 "T"
+                COMMA@219..220 ","
+                WHITESPACE@220..221 " "
+                PARAM@221..226
+                  REFERENCE_TYPE@221..226
+                    AMP@221..222 "&"
+                    LIFETIME@222..224 "\'c"
+                    WHITESPACE@224..225 " "
+                    PATH_TYPE@225..226
+                      PATH@225..226
+                        PATH_SEGMENT@225..226
+                          NAME_REF@225..226
+                            IDENT@225..226 "T"
+                R_PAREN@226..227 ")"
+        COLON@227..228 ":"
+        WHITESPACE@228..229 " "
+        TYPE_BOUND_LIST@229..233
+          TYPE_BOUND@229..233
+            PATH_TYPE@229..233
+              PATH@229..233
+                PATH_SEGMENT@229..233
+                  NAME_REF@229..233
+                    IDENT@229..233 "Copy"
+      COMMA@233..234 ","
+    WHITESPACE@234..235 "\n"
+    BLOCK_EXPR@235..238
+      L_CURLY@235..236 "{"
+      WHITESPACE@236..237 "\n"
+      R_CURLY@237..238 "}"
+  WHITESPACE@238..239 "\n"
+error 21..21: expected a function pointer or path
+error 52..52: expected a function pointer or path
+error 88..88: expected a function pointer or path
+error 119..119: expected a function pointer or path
+error 195..195: expected a function pointer or path

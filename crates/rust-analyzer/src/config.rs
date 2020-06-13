@@ -11,15 +11,14 @@ use std::{ffi::OsString, path::PathBuf};
 
 use lsp_types::ClientCapabilities;
 use ra_flycheck::FlycheckConfig;
-use ra_ide::{AssistConfig, CompletionConfig, InlayHintsConfig};
-use ra_project_model::CargoConfig;
+use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
+use ra_project_model::{CargoConfig, JsonProject, ProjectManifest};
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]
 pub struct Config {
     pub client_caps: ClientCapsConfig,
 
-    pub with_sysroot: bool,
     pub publish_diagnostics: bool,
     pub lru_capacity: Option<usize>,
     pub proc_macro_srv: Option<(PathBuf, Vec<OsString>)>,
@@ -35,6 +34,28 @@ pub struct Config {
     pub assist: AssistConfig,
     pub call_info_full: bool,
     pub lens: LensConfig,
+    pub hover: HoverConfig,
+
+    pub with_sysroot: bool,
+    pub linked_projects: Vec<LinkedProject>,
+}
+
+#[derive(Debug, Clone)]
+pub enum LinkedProject {
+    ProjectManifest(ProjectManifest),
+    JsonProject(JsonProject),
+}
+
+impl From<ProjectManifest> for LinkedProject {
+    fn from(v: ProjectManifest) -> Self {
+        LinkedProject::ProjectManifest(v)
+    }
+}
+
+impl From<JsonProject> for LinkedProject {
+    fn from(v: JsonProject) -> Self {
+        LinkedProject::JsonProject(v)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -103,6 +124,8 @@ pub struct ClientCapsConfig {
     pub code_action_literals: bool,
     pub work_done_progress: bool,
     pub code_action_group: bool,
+    pub resolve_code_action: bool,
+    pub hover_actions: bool,
 }
 
 impl Default for Config {
@@ -122,8 +145,9 @@ impl Default for Config {
             check: Some(FlycheckConfig::CargoCommand {
                 command: "check".to_string(),
                 all_targets: true,
-                all_features: true,
+                all_features: false,
                 extra_args: Vec::new(),
+                features: Vec::new(),
             }),
 
             inlay_hints: InlayHintsConfig {
@@ -141,6 +165,8 @@ impl Default for Config {
             assist: AssistConfig::default(),
             call_info_full: true,
             lens: LensConfig::default(),
+            hover: HoverConfig::default(),
+            linked_projects: Vec::new(),
         }
     }
 }
@@ -209,13 +235,14 @@ impl Config {
                 }
                 // otherwise configure command customizations
                 _ => {
-                    if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets, all_features })
+                    if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets, all_features, features })
                         = &mut self.check
                     {
                         set(value, "/checkOnSave/extraArgs", extra_args);
                         set(value, "/checkOnSave/command", command);
                         set(value, "/checkOnSave/allTargets", all_targets);
-                        set(value, "/checkOnSave/allFeatures", all_features);
+                        *all_features = get(value, "/checkOnSave/allFeatures").unwrap_or(self.cargo.all_features);
+                        *features = get(value, "/checkOnSave/features").unwrap_or(self.cargo.features.clone());
                     }
                 }
             };
@@ -238,6 +265,32 @@ impl Config {
             set(value, "/lens/implementations", &mut self.lens.impementations);
         } else {
             self.lens = LensConfig::NO_LENS;
+        }
+
+        if let Some(linked_projects) = get::<Vec<ManifestOrJsonProject>>(value, "/linkedProjects") {
+            if !linked_projects.is_empty() {
+                self.linked_projects.clear();
+                for linked_project in linked_projects {
+                    let linked_project = match linked_project {
+                        ManifestOrJsonProject::Manifest(it) => match ProjectManifest::from_manifest_file(it) {
+                            Ok(it) => it.into(),
+                            Err(_) => continue,
+                        }
+                        ManifestOrJsonProject::JsonProject(it) => it.into(),
+                    };
+                    self.linked_projects.push(linked_project);
+                }
+            }
+        }
+
+        let mut use_hover_actions = false;
+        set(value, "/hoverActions/enable", &mut use_hover_actions);
+        if use_hover_actions {
+            set(value, "/hoverActions/implementations", &mut self.hover.implementations);
+            set(value, "/hoverActions/run", &mut self.hover.run);
+            set(value, "/hoverActions/debug", &mut self.hover.debug);
+        } else {
+            self.hover = HoverConfig::NO_ACTIONS;
         }
 
         log::info!("Config::update() = {:#?}", self);
@@ -293,13 +346,22 @@ impl Config {
 
         self.assist.allow_snippets(false);
         if let Some(experimental) = &caps.experimental {
-            let snippet_text_edit =
-                experimental.get("snippetTextEdit").and_then(|it| it.as_bool()) == Some(true);
+            let get_bool =
+                |index: &str| experimental.get(index).and_then(|it| it.as_bool()) == Some(true);
+
+            let snippet_text_edit = get_bool("snippetTextEdit");
             self.assist.allow_snippets(snippet_text_edit);
 
-            let code_action_group =
-                experimental.get("codeActionGroup").and_then(|it| it.as_bool()) == Some(true);
-            self.client_caps.code_action_group = code_action_group
+            self.client_caps.code_action_group = get_bool("codeActionGroup");
+            self.client_caps.resolve_code_action = get_bool("resolveCodeAction");
+            self.client_caps.hover_actions = get_bool("hoverActions");
         }
     }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum ManifestOrJsonProject {
+    Manifest(PathBuf),
+    JsonProject(JsonProject),
 }

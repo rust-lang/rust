@@ -97,6 +97,30 @@ Invoking code action at this position will yield two code actions for importing 
 * Is a fixed two-level structure enough?
 * Should we devise a general way to encode custom interaction protocols for GUI refactorings?
 
+## Lazy assists with `ResolveCodeAction`
+
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/787
+
+**Client Capability** `{ "resolveCodeAction": boolean }`
+
+If this capability is set, the assists will be computed lazily. Thus `CodeAction` returned from the server will only contain `id` but not `edit` or `command` fields. The only exclusion from the rule is the diagnostic edits.
+
+After the client got the id, it should then call `experimental/resolveCodeAction` command on the server and provide the following payload:
+
+```typescript
+interface ResolveCodeActionParams {
+    id: string;
+    codeActionParams: lc.CodeActionParams;
+}
+```
+
+As a result of the command call the client will get the respective workspace edit (`lc.WorkspaceEdit`).
+
+### Unresolved Questions
+
+* Apply smarter filtering for ids?
+* Upon `resolveCodeAction` command only call the assits which should be resolved and not all of them?
+
 ## Parent Module
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/1002
@@ -311,6 +335,50 @@ Moreover, it would be cool if editors didn't need to implement even basic langua
   This is how `SelectionRange` request works.
 * Alternatively, should we perhaps flag certain `SelectionRange`s as being brace pairs?
 
+## Runnables
+
+**Issue:** https://github.com/microsoft/language-server-protocol/issues/944
+
+**Server Capability:** `{ "runnables": { "kinds": string[] } }`
+
+This request is send from client to server to get the list of things that can be run (tests, binaries, `cargo check -p`).
+
+**Method:** `experimental/runnables`
+
+**Request:**
+
+```typescript
+interface RunnablesParams {
+    textDocument: TextDocumentIdentifier;
+    /// If null, compute runnables for the whole file.
+    position?: Position;
+}
+```
+
+**Response:** `Runnable[]`
+
+```typescript
+interface Runnable {
+    label: string;
+    /// If this Runnable is associated with a specific function/module, etc, the location of this item
+    location?: LocationLink;
+    /// Running things is necessary technology specific, `kind` needs to be advertised via server capabilities,
+    // the type of `args` is specific to `kind`. The actual running is handled by the client.
+    kind: string;
+    args: any;
+}
+```
+
+rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look like this:
+
+```typescript
+{
+    workspaceRoot?: string;
+    cargoArgs: string[];
+    executableArgs: string[];
+}
+```
+
 ## Analyzer Status
 
 **Method:** `rust-analyzer/analyzerStatus`
@@ -400,38 +468,40 @@ interface InlayHint {
 }
 ```
 
-## Runnables
+## Hover Actions
 
-**Method:** `rust-analyzer/runnables`
+**Client Capability:** `{ "hoverActions": boolean }`
 
-This request is send from client to server to get the list of things that can be run (tests, binaries, `cargo check -p`).
-Note that we plan to move this request to `experimental/runnables`, as it is not really Rust-specific, but the current API is not necessary the right one.
-Upstream issue: https://github.com/microsoft/language-server-protocol/issues/944
-
-**Request:**
+If this capability is set, `Hover` request returned from the server might contain an additional field, `actions`:
 
 ```typescript
-interface RunnablesParams {
-    textDocument: TextDocumentIdentifier;
-    /// If null, compute runnables for the whole file.
-    position?: Position;
+interface Hover {
+    ...
+    actions?: CommandLinkGroup[];
+}
+
+interface CommandLink extends Command {
+    /**
+     * A tooltip for the command, when represented in the UI.
+     */
+    tooltip?: string;
+}
+
+interface CommandLinkGroup {
+    title?: string;
+    commands: CommandLink[];
 }
 ```
 
-**Response:** `Runnable[]`
-
-```typescript
-interface Runnable {
-    /// The range this runnable is applicable for.
-    range: lc.Range;
-    /// The label to show in the UI.
-    label: string;
-    /// The following fields describe a process to spawn.
-    bin: string;
-    args: string[];
-    /// Args for cargo after `--`.
-    extraArgs: string[];
-    env: { [key: string]: string };
-    cwd: string | null;
-}
+Such actions on the client side are appended to a hover bottom as command links:
+```
+  +-----------------------------+
+  | Hover content               |
+  |                             |
+  +-----------------------------+
+  | _Action1_ | _Action2_       |  <- first group, no TITLE
+  +-----------------------------+
+  | TITLE _Action1_ | _Action2_ |  <- second group
+  +-----------------------------+
+  ...
 ```

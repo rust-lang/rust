@@ -238,7 +238,7 @@
                 },
                 "rust-analyzer.cargo.allFeatures": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Activate all available features"
                 },
                 "rust-analyzer.cargo.features": {
@@ -318,9 +318,23 @@
                     "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)"
                 },
                 "rust-analyzer.checkOnSave.allFeatures": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Check with all features (will be passed as `--all-features`)"
+                    "type": [
+                        "null",
+                        "boolean"
+                    ],
+                    "default": null,
+                    "markdownDescription": "Check with all features (will be passed as `--all-features`). Defaults to `rust-analyzer.cargo.allFeatures`."
+                },
+                "rust-analyzer.checkOnSave.features": {
+                    "type": [
+                        "null",
+                        "array"
+                    ],
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": null,
+                    "description": "List of features to activate. Defaults to `rust-analyzer.cargo.features`."
                 },
                 "rust-analyzer.inlayHints.enable": {
                     "type": "boolean",
@@ -462,17 +476,53 @@
                     "default": true
                 },
                 "rust-analyzer.lens.run": {
-                    "markdownDescription": "Whether to show Run lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "markdownDescription": "Whether to show `Run` lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
                     "type": "boolean",
                     "default": true
                 },
                 "rust-analyzer.lens.debug": {
-                    "markdownDescription": "Whether to show Debug lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "markdownDescription": "Whether to show `Debug` lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
                     "type": "boolean",
                     "default": true
                 },
                 "rust-analyzer.lens.implementations": {
-                    "markdownDescription": "Whether to show Implementations lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "markdownDescription": "Whether to show `Implementations` lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.hoverActions.enable": {
+                    "description": "Whether to show HoverActions in Rust files.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.hoverActions.implementations": {
+                    "markdownDescription": "Whether to show `Implementations` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.hoverActions.run": {
+                    "markdownDescription": "Whether to show `Run` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.hoverActions.debug": {
+                    "markdownDescription": "Whether to show `Debug` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "rust-analyzer.linkedProjects": {
+                    "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set of projects.  \nElements must be paths pointing to Cargo.toml, rust-project.json, or JSON objects in rust-project.json format",
+                    "type": "array",
+                    "items": {
+                        "type": [
+                            "string",
+                            "object"
+                        ]
+                    },
+                    "default": null
+                },
+                "rust-analyzer.withSysroot": {
+                    "markdownDescription": "Internal config for debugging, disables loading of sysroot crates",
                     "type": "boolean",
                     "default": true
                 }

@@ -10,6 +10,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .string_literal     { color: #CC9393; }
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
+.function.unsafe    { color: #BC8383; }
+.operator.unsafe    { color: #BC8383; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
@@ -82,7 +84,9 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">let</span> <span class="variable declaration mutable">y</span> = &<span class="keyword">mut</span> <span class="variable mutable">x</span>;
     <span class="keyword">let</span> <span class="variable declaration">z</span> = &<span class="variable mutable">y</span>;
 
-    <span class="variable mutable">y</span>;
+    <span class="keyword">let</span> <span class="struct">Foo</span> { <span class="field">x</span>: <span class="variable declaration">z</span>, <span class="field">y</span> } = <span class="struct">Foo</span> { <span class="field">x</span>: <span class="variable">z</span>, <span class="field">y</span> };
+
+    <span class="variable">y</span>;
 }
 
 <span class="keyword">enum</span> <span class="enum declaration">Option</span>&lt;<span class="type_param declaration">T</span>&gt; {

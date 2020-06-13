@@ -76,6 +76,19 @@ impl ModPath {
         }
     }
 
+    /// Returns the number of segments in the path (counting special segments like `$crate` and
+    /// `super`).
+    pub fn len(&self) -> usize {
+        self.segments.len()
+            + match self.kind {
+                PathKind::Plain => 0,
+                PathKind::Super(i) => i as usize,
+                PathKind::Crate => 1,
+                PathKind::Abs => 0,
+                PathKind::DollarCrate(_) => 1,
+            }
+    }
+
     pub fn is_ident(&self) -> bool {
         self.kind == PathKind::Plain && self.segments.len() == 1
     }
@@ -273,7 +286,7 @@ impl From<Name> for ModPath {
 impl Display for ModPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut first_segment = true;
-        let mut add_segment = |s| {
+        let mut add_segment = |s| -> fmt::Result {
             if !first_segment {
                 f.write_str("::")?;
             }
@@ -310,16 +323,16 @@ pub use hir_expand::name as __name;
 
 #[macro_export]
 macro_rules! __known_path {
-    (std::iter::IntoIterator) => {};
-    (std::result::Result) => {};
-    (std::ops::Range) => {};
-    (std::ops::RangeFrom) => {};
-    (std::ops::RangeFull) => {};
-    (std::ops::RangeTo) => {};
-    (std::ops::RangeToInclusive) => {};
-    (std::ops::RangeInclusive) => {};
-    (std::future::Future) => {};
-    (std::ops::Try) => {};
+    (core::iter::IntoIterator) => {};
+    (core::result::Result) => {};
+    (core::ops::Range) => {};
+    (core::ops::RangeFrom) => {};
+    (core::ops::RangeFull) => {};
+    (core::ops::RangeTo) => {};
+    (core::ops::RangeToInclusive) => {};
+    (core::ops::RangeInclusive) => {};
+    (core::future::Future) => {};
+    (core::ops::Try) => {};
     ($path:path) => {
         compile_error!("Please register your known path in the path module")
     };

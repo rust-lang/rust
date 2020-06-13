@@ -115,6 +115,7 @@ mod handlers {
     mod change_return_type_to_result;
     mod change_visibility;
     mod early_return;
+    mod extract_struct_from_enum_variant;
     mod fill_match_arms;
     mod fix_visibility;
     mod flip_binexpr;
@@ -155,6 +156,7 @@ mod handlers {
             change_return_type_to_result::change_return_type_to_result,
             change_visibility::change_visibility,
             early_return::convert_to_guarded_return,
+            extract_struct_from_enum_variant::extract_struct_from_enum_variant,
             fill_match_arms::fill_match_arms,
             fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,

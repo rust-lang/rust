@@ -1,61 +1,60 @@
-SOURCE_FILE@0..49
-  FN_DEF@0..48
+SOURCE_FILE@0..54
+  FN_DEF@0..53
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
-    NAME@3..7
-      IDENT@3..7 "test"
-    TYPE_PARAM_LIST@7..10
-      L_ANGLE@7..8 "<"
-      TYPE_PARAM@8..9
-        NAME@8..9
-          IDENT@8..9 "F"
-      R_ANGLE@9..10 ">"
-    PARAM_LIST@10..12
-      L_PAREN@10..11 "("
-      R_PAREN@11..12 ")"
-    WHITESPACE@12..13 "\n"
-    WHERE_CLAUSE@13..44
-      WHERE_KW@13..18 "where"
-      WHITESPACE@18..22 "\n   "
-      WHERE_PRED@22..44
-        FOR_TYPE@22..31
-          FOR_KW@22..25 "for"
-          TYPE_PARAM_LIST@25..29
-            L_ANGLE@25..26 "<"
-            LIFETIME_PARAM@26..28
-              LIFETIME@26..28 "\'a"
-            R_ANGLE@28..29 ">"
-          WHITESPACE@29..30 " "
-          PATH_TYPE@30..31
-            PATH@30..31
-              PATH_SEGMENT@30..31
-                NAME_REF@30..31
-                  IDENT@30..31 "F"
-        COLON@31..32 ":"
-        WHITESPACE@32..33 " "
-        TYPE_BOUND_LIST@33..44
-          TYPE_BOUND@33..44
-            PATH_TYPE@33..44
-              PATH@33..44
-                PATH_SEGMENT@33..44
-                  NAME_REF@33..35
-                    IDENT@33..35 "Fn"
-                  PARAM_LIST@35..44
-                    L_PAREN@35..36 "("
-                    PARAM@36..43
-                      REFERENCE_TYPE@36..43
-                        AMP@36..37 "&"
-                        LIFETIME@37..39 "\'a"
-                        WHITESPACE@39..40 " "
-                        PATH_TYPE@40..43
-                          PATH@40..43
-                            PATH_SEGMENT@40..43
-                              NAME_REF@40..43
-                                IDENT@40..43 "str"
-                    R_PAREN@43..44 ")"
-    WHITESPACE@44..45 "\n"
-    BLOCK_EXPR@45..48
-      L_CURLY@45..46 "{"
-      WHITESPACE@46..47 " "
-      R_CURLY@47..48 "}"
-  WHITESPACE@48..49 "\n"
+    NAME@3..12
+      IDENT@3..12 "for_trait"
+    TYPE_PARAM_LIST@12..15
+      L_ANGLE@12..13 "<"
+      TYPE_PARAM@13..14
+        NAME@13..14
+          IDENT@13..14 "F"
+      R_ANGLE@14..15 ">"
+    PARAM_LIST@15..17
+      L_PAREN@15..16 "("
+      R_PAREN@16..17 ")"
+    WHITESPACE@17..18 "\n"
+    WHERE_CLAUSE@18..49
+      WHERE_KW@18..23 "where"
+      WHITESPACE@23..27 "\n   "
+      WHERE_PRED@27..49
+        FOR_KW@27..30 "for"
+        TYPE_PARAM_LIST@30..34
+          L_ANGLE@30..31 "<"
+          LIFETIME_PARAM@31..33
+            LIFETIME@31..33 "\'a"
+          R_ANGLE@33..34 ">"
+        WHITESPACE@34..35 " "
+        PATH_TYPE@35..36
+          PATH@35..36
+            PATH_SEGMENT@35..36
+              NAME_REF@35..36
+                IDENT@35..36 "F"
+        COLON@36..37 ":"
+        WHITESPACE@37..38 " "
+        TYPE_BOUND_LIST@38..49
+          TYPE_BOUND@38..49
+            PATH_TYPE@38..49
+              PATH@38..49
+                PATH_SEGMENT@38..49
+                  NAME_REF@38..40
+                    IDENT@38..40 "Fn"
+                  PARAM_LIST@40..49
+                    L_PAREN@40..41 "("
+                    PARAM@41..48
+                      REFERENCE_TYPE@41..48
+                        AMP@41..42 "&"
+                        LIFETIME@42..44 "\'a"
+                        WHITESPACE@44..45 " "
+                        PATH_TYPE@45..48
+                          PATH@45..48
+                            PATH_SEGMENT@45..48
+                              NAME_REF@45..48
+                                IDENT@45..48 "str"
+                    R_PAREN@48..49 ")"
+    WHITESPACE@49..50 "\n"
+    BLOCK_EXPR@50..53
+      L_CURLY@50..51 "{"
+      WHITESPACE@51..52 " "
+      R_CURLY@52..53 "}"
+  WHITESPACE@53..54 "\n"

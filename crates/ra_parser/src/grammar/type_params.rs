@@ -191,10 +191,14 @@ fn where_predicate(p: &mut Parser) {
         }
         _ => {
             // test where_pred_for
-            // fn test<F>()
+            // fn for_trait<F>()
             // where
             //    for<'a> F: Fn(&'a str)
             // { }
+            if p.at(T![for]) {
+                types::for_binder(p);
+            }
+
             types::type_(p);
 
             if p.at(T![:]) {
