@@ -13,8 +13,8 @@ use ra_text_edit::Indel;
 
 use super::patterns::{
     has_bind_pat_parent, has_block_expr_parent, has_impl_as_prev_sibling, has_impl_parent,
-    has_ref_parent, has_trait_as_prev_sibling, has_trait_parent, if_is_prev, is_in_loop_body,
-    is_match_arm, unsafe_is_prev,
+    has_item_list_or_source_file_parent, has_ref_parent, has_trait_as_prev_sibling,
+    has_trait_parent, if_is_prev, is_in_loop_body, is_match_arm, unsafe_is_prev,
 };
 use crate::{call_info::ActiveParameter, completion::CompletionConfig, FilePosition};
 use test_utils::mark;
@@ -76,6 +76,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) trait_as_prev_sibling: bool,
     pub(super) impl_as_prev_sibling: bool,
     pub(super) is_match_arm: bool,
+    pub(super) has_item_list_or_source_file_parent: bool,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -145,6 +146,7 @@ impl<'a> CompletionContext<'a> {
             impl_as_prev_sibling: false,
             if_is_prev: false,
             is_match_arm: false,
+            has_item_list_or_source_file_parent: false,
         };
 
         let mut original_file = original_file.syntax().clone();
@@ -229,6 +231,8 @@ impl<'a> CompletionContext<'a> {
         self.impl_as_prev_sibling = has_impl_as_prev_sibling(syntax_element.clone());
         self.trait_as_prev_sibling = has_trait_as_prev_sibling(syntax_element.clone());
         self.is_match_arm = is_match_arm(syntax_element.clone());
+        self.has_item_list_or_source_file_parent =
+            has_item_list_or_source_file_parent(syntax_element.clone());
     }
 
     fn fill(

@@ -38,6 +38,14 @@ pub(crate) fn has_ref_parent(element: SyntaxElement) -> bool {
         .is_some()
 }
 
+pub(crate) fn has_item_list_or_source_file_parent(element: SyntaxElement) -> bool {
+    let ancestor = not_same_range_ancestor(element);
+    if !ancestor.is_some() {
+        return true;
+    }
+    ancestor.filter(|it| it.kind() == SOURCE_FILE || it.kind() == ITEM_LIST).is_some()
+}
+
 pub(crate) fn is_match_arm(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element.clone()).filter(|it| it.kind() == MATCH_ARM).is_some()
         && previous_sibling_or_ancestor_sibling(element)
@@ -139,8 +147,8 @@ fn previous_sibling_or_ancestor_sibling(element: SyntaxElement) -> Option<Syntax
 mod tests {
     use super::{
         has_bind_pat_parent, has_block_expr_parent, has_impl_as_prev_sibling, has_impl_parent,
-        has_ref_parent, has_trait_as_prev_sibling, has_trait_parent, if_is_prev, is_match_arm,
-        unsafe_is_prev,
+        has_item_list_or_source_file_parent, has_ref_parent, has_trait_as_prev_sibling,
+        has_trait_parent, if_is_prev, is_match_arm, unsafe_is_prev,
     };
     use crate::completion::test_utils::check_pattern_is_applicable;
 
@@ -202,5 +210,15 @@ mod tests {
     #[test]
     fn test_is_match_arm() {
         check_pattern_is_applicable(r"fn my_fn() { match () { () => m<|> } }", is_match_arm);
+    }
+
+    #[test]
+    fn test_has_source_file_parent() {
+        check_pattern_is_applicable(r"i<|>", has_item_list_or_source_file_parent);
+    }
+
+    #[test]
+    fn test_has_item_list_parent() {
+        check_pattern_is_applicable(r"impl { f<|> }", has_item_list_or_source_file_parent);
     }
 }

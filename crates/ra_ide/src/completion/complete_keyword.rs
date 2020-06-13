@@ -66,48 +66,83 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         return;
     }
     if ctx.unsafe_is_prev {
-        add_keyword(ctx, acc, "fn", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
+        add_keyword(
+            ctx,
+            acc,
+            "fn",
+            "fn $0() {}",
+            ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent,
+        );
         add_keyword(
             ctx,
             acc,
             "trait",
             "trait $0 {}",
-            (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+            (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+                || ctx.block_expr_parent,
         );
         add_keyword(
             ctx,
             acc,
             "impl",
             "impl $0 {}",
-            (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+            (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+                || ctx.block_expr_parent,
         );
         return;
     }
-    add_keyword(ctx, acc, "fn", "fn $0() {}", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(
+        ctx,
+        acc,
+        "fn",
+        "fn $0() {}",
+        ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent,
+    );
     add_keyword(
         ctx,
         acc,
         "use",
         "use ",
-        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+            || ctx.block_expr_parent,
     );
     add_keyword(
         ctx,
         acc,
         "impl",
         "impl $0 {}",
-        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+            || ctx.block_expr_parent,
     );
     add_keyword(
         ctx,
         acc,
         "trait",
         "trait $0 {}",
-        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+            || ctx.block_expr_parent,
     );
-    add_keyword(ctx, acc, "enum", "enum $0 {}", ctx.is_new_item && !has_trait_or_impl_parent);
-    add_keyword(ctx, acc, "struct", "struct $0 {}", ctx.is_new_item && !has_trait_or_impl_parent);
-    add_keyword(ctx, acc, "union", "union $0 {}", ctx.is_new_item && !has_trait_or_impl_parent);
+    add_keyword(
+        ctx,
+        acc,
+        "enum",
+        "enum $0 {}",
+        ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent,
+    );
+    add_keyword(
+        ctx,
+        acc,
+        "struct",
+        "struct $0 {}",
+        ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent,
+    );
+    add_keyword(
+        ctx,
+        acc,
+        "union",
+        "union $0 {}",
+        ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent,
+    );
     add_keyword(ctx, acc, "match", "match $0 {}", ctx.block_expr_parent || ctx.is_match_arm);
     add_keyword(ctx, acc, "loop", "loop {$0}", ctx.block_expr_parent || ctx.is_match_arm);
     add_keyword(ctx, acc, "while", "while $0 {}", ctx.block_expr_parent);
@@ -127,37 +162,58 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         acc,
         "mod",
         "mod $0 {}",
-        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+            || ctx.block_expr_parent,
     );
     add_keyword(ctx, acc, "mut", "mut ", ctx.bind_pat_parent || ctx.ref_pat_parent);
-    add_keyword(ctx, acc, "const", "const ", ctx.is_new_item || ctx.block_expr_parent);
-    add_keyword(ctx, acc, "type", "type ", ctx.is_new_item || ctx.block_expr_parent);
+    add_keyword(
+        ctx,
+        acc,
+        "const",
+        "const ",
+        ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent,
+    );
+    add_keyword(
+        ctx,
+        acc,
+        "type",
+        "type ",
+        ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent,
+    );
     add_keyword(
         ctx,
         acc,
         "static",
         "static ",
-        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+            || ctx.block_expr_parent,
     );
     add_keyword(
         ctx,
         acc,
         "extern",
         "extern ",
-        (ctx.is_new_item && !has_trait_or_impl_parent) || ctx.block_expr_parent,
+        (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
+            || ctx.block_expr_parent,
     );
     add_keyword(
         ctx,
         acc,
         "unsafe",
         "unsafe ",
-        ctx.is_new_item || ctx.block_expr_parent || ctx.is_match_arm,
+        ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent || ctx.is_match_arm,
     );
     add_keyword(ctx, acc, "continue", "continue;", ctx.in_loop_body && ctx.can_be_stmt);
     add_keyword(ctx, acc, "break", "break;", ctx.in_loop_body && ctx.can_be_stmt);
     add_keyword(ctx, acc, "continue", "continue", ctx.in_loop_body && !ctx.can_be_stmt);
     add_keyword(ctx, acc, "break", "break", ctx.in_loop_body && !ctx.can_be_stmt);
-    add_keyword(ctx, acc, "pub", "pub ", ctx.is_new_item && !ctx.has_trait_parent);
+    add_keyword(
+        ctx,
+        acc,
+        "pub",
+        "pub ",
+        ctx.has_item_list_or_source_file_parent && !ctx.has_trait_parent,
+    );
 
     if !ctx.is_trivial_path {
         return;
@@ -221,6 +277,31 @@ mod tests {
         [
             "kw self",
             "kw super",
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_keywords_at_source_file_level() {
+        assert_debug_snapshot!(
+            get_keyword_completions(r"m<|>"),
+            @r###"
+        [
+            "kw const",
+            "kw enum",
+            "kw extern",
+            "kw fn",
+            "kw impl",
+            "kw mod",
+            "kw pub",
+            "kw static",
+            "kw struct",
+            "kw trait",
+            "kw type",
+            "kw union",
+            "kw unsafe",
+            "kw use",
         ]
         "###
         );
