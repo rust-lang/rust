@@ -135,9 +135,9 @@ dependencies = [
 
 [[package]]
 name = "backtrace-sys"
-version = "0.1.35"
+version = "0.1.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7de8aba10a69c8e8d7622c5710229485ec32e9d55fdad160ea559c086fdcd118"
+checksum = "18fbebbe1c9d1f383a9cc7e8ccdb471b91c8d024ee9c2ca5b5346121fe8b4399"
 dependencies = [
  "cc",
  "compiler_builtins",
@@ -292,7 +292,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.45.0"
+version = "0.45.1"
 dependencies = [
  "anyhow",
  "atty",
@@ -4397,7 +4397,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.4.14"
+version = "1.4.16"
 dependencies = [
  "annotate-snippets",
  "bytecount",
