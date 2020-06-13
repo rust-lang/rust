@@ -183,7 +183,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[derive(RustcEncodable, RustcDecodable, HashStable)]
 pub enum ConstraintCategory {
-    Return,
+    Return(ReturnConstraint),
     Yield,
     UseAsConst,
     UseAsStatic,
@@ -199,6 +199,7 @@ pub enum ConstraintCategory {
     SizedBound,
     Assignment,
     OpaqueType,
+    ClosureUpvar(hir::HirId),
 
     /// A "boring" constraint (caused by the given location) is one that
     /// the user probably doesn't want to see described in diagnostics,
@@ -214,6 +215,13 @@ pub enum ConstraintCategory {
 
     /// A constraint that doesn't correspond to anything the user sees.
     Internal,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(RustcEncodable, RustcDecodable, HashStable)]
+pub enum ReturnConstraint {
+    Normal,
+    ClosureUpvar(hir::HirId),
 }
 
 /// The subject of a `ClosureOutlivesRequirement` -- that is, the thing

@@ -21,10 +21,13 @@ LL |                    *y = 1;
 error: captured variable cannot escape `FnMut` closure body
   --> $DIR/borrowck-describe-lvalue.rs:264:16
    |
+LL |           let mut x = 0;
+   |               ----- variable defined here
 LL |              || {
    |               - inferred to be a `FnMut` closure
 LL | /                || {
 LL | |                    let y = &mut x;
+   | |                                 - variable captured here
 LL | |                    &mut x;
 LL | |                    *y = 1;
 LL | |                    drop(y);
