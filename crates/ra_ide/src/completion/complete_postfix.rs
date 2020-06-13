@@ -91,7 +91,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
             &dot_receiver,
             "if",
             "if expr {}",
-            &format!("if {} {{$0}}", receiver_text),
+            &format!("if {} {{\n    $0\n}}", receiver_text),
         )
         .add_to(acc);
         postfix_snippet(
@@ -100,7 +100,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
             &dot_receiver,
             "while",
             "while expr {}",
-            &format!("while {} {{\n$0\n}}", receiver_text),
+            &format!("while {} {{\n    $0\n}}", receiver_text),
         )
         .add_to(acc);
     }
@@ -283,7 +283,7 @@ mod tests {
                 label: "if",
                 source_range: 89..89,
                 delete: 85..89,
-                insert: "if bar {$0}",
+                insert: "if bar {\n    $0\n}",
                 detail: "if expr {}",
             },
             CompletionItem {
@@ -318,7 +318,7 @@ mod tests {
                 label: "while",
                 source_range: 89..89,
                 delete: 85..89,
-                insert: "while bar {\n$0\n}",
+                insert: "while bar {\n    $0\n}",
                 detail: "while expr {}",
             },
         ]
