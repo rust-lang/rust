@@ -1198,6 +1198,15 @@ fn compare_projection_bounds<'tcx>(
 
     let param_env = tcx.param_env(impl_ty.def_id);
 
+    // Given
+    //
+    // impl<A, B> Foo<u32> for (A, B) {
+    //     type Bar<C> =...
+    // }
+    //
+    // - `impl_substs` would be `[A, B, C]`
+    // - `rebased_substs` would be `[(A, B), u32, C]`, combining the substs from
+    //    the *trait* with the generic associated type parameters.
     let impl_ty_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
     let rebased_substs =
         impl_ty_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
