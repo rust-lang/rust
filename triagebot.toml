@@ -42,6 +42,7 @@ Hey Windows Group! This bug has been identified as a good "Windows candidate".
 In case it's useful, here are some [instructions] for tackling these sorts of
 bugs. Maybe take a look?
 Thanks! <3
+
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/windows.html
 """
 label = "O-windows"
@@ -52,6 +53,7 @@ Hey ARM Group! This bug has been identified as a good "ARM candidate".
 In case it's useful, here are some [instructions] for tackling these sorts of
 bugs. Maybe take a look?
 Thanks! <3
+
 [instructions]: https://rustc-dev-guide.rust-lang.org/notification-groups/arm.html
 """
 label = "O-ARM"
