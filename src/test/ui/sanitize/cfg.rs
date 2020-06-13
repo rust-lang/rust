@@ -2,8 +2,10 @@
 // the `#[cfg(sanitize = "option")]` attribute is configured.
 
 // needs-sanitizer-support
-// only-linux
-// only-x86_64
+// needs-sanitizer-address
+// needs-sanitizer-leak
+// needs-sanitizer-memory
+// needs-sanitizer-thread
 // check-pass
 // revisions: address leak memory thread
 //[address]compile-flags: -Zsanitizer=address --cfg address

@@ -11,7 +11,7 @@
 // would occasionally fail, making test flaky.
 //
 // needs-sanitizer-support
-// only-x86_64
+// needs-sanitizer-thread
 //
 // compile-flags: -Z sanitizer=thread -O
 //
