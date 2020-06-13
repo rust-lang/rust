@@ -986,7 +986,7 @@ pub trait PrettyPrinter<'tcx>:
 
                 let ui_str = ui.name_str();
                 if data == max {
-                    p!(write("std::{}::MAX", ui_str))
+                    p!(write("{}::MAX", ui_str))
                 } else {
                     if print_ty { p!(write("{}{}", data, ui_str)) } else { p!(write("{}", data)) }
                 };
@@ -999,8 +999,8 @@ pub trait PrettyPrinter<'tcx>:
 
                 let i_str = i.name_str();
                 match data {
-                    d if d == min => p!(write("std::{}::MIN", i_str)),
-                    d if d == max => p!(write("std::{}::MAX", i_str)),
+                    d if d == min => p!(write("{}::MIN", i_str)),
+                    d if d == max => p!(write("{}::MAX", i_str)),
                     _ => {
                         let data = sign_extend(data, size) as i128;
                         if print_ty {
