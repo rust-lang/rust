@@ -15,10 +15,6 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     // Declare function
     let (name, sig) = get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
     let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
-    let mut debug_context = cx
-        .debug_context
-        .as_mut()
-        .map(|debug_context| FunctionDebugContext::new(debug_context, instance, func_id, &name));
 
     // Make FunctionBuilder
     let context = &mut cx.cached_context;
@@ -122,11 +118,12 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
 
     // Define debuginfo for function
     let isa = cx.module.isa();
+    let debug_context = &mut cx.debug_context;
     let unwind_context = &mut cx.unwind_context;
     tcx.sess.time("generate debug info", || {
-        debug_context
-            .as_mut()
-            .map(|x| x.define(context, isa, &source_info_set, local_map));
+        if let Some(debug_context) = debug_context {
+            debug_context.define_function(instance, func_id, &name, isa, context, &source_info_set, local_map);
+        }
         unwind_context.add_function(func_id, &context, isa);
     });
 

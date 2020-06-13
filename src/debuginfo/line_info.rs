@@ -119,21 +119,21 @@ impl<'tcx> DebugContext<'tcx> {
             AttributeValue::Udata(loc.col.to_usize() as u64),
         );
     }
-}
 
-impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     pub(super) fn create_debug_lines(
         &mut self,
-        context: &Context,
         isa: &dyn cranelift_codegen::isa::TargetIsa,
+        symbol: usize,
+        entry_id: UnitEntryId,
+        context: &Context,
+        function_span: Span,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) -> CodeOffset {
-        let tcx = self.debug_context.tcx;
-        let line_program = &mut self.debug_context.dwarf.unit.line_program;
+        let tcx = self.tcx;
+        let line_program = &mut self.dwarf.unit.line_program;
         let func = &context.func;
 
-        let line_strings = &mut self.debug_context.dwarf.line_strings;
-        let function_span = self.mir.span;
+        let line_strings = &mut self.dwarf.line_strings;
         let mut last_span = None;
         let mut last_file = None;
         let mut create_row_for_span = |line_program: &mut LineProgram, span: Span| {
@@ -189,7 +189,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         };
 
         line_program.begin_sequence(Some(Address::Symbol {
-            symbol: self.symbol,
+            symbol,
             addend: 0,
         }));
 
@@ -202,7 +202,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                     let source_info = *source_info_set.get_index(loc.bits() as usize).unwrap();
                     create_row_for_span(line_program, source_info.span);
                 } else {
-                    create_row_for_span(line_program, self.mir.span);
+                    create_row_for_span(line_program, function_span);
                 }
                 func_end = end;
             }
@@ -223,7 +223,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                         let source_info = *source_info_set.get_index(srcloc.bits() as usize).unwrap();
                         create_row_for_span(line_program, source_info.span);
                     } else {
-                        create_row_for_span(line_program, self.mir.span);
+                        create_row_for_span(line_program, function_span);
                     }
                     func_end = offset + size;
                 }
@@ -233,18 +233,17 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
 
         assert_ne!(func_end, 0);
 
-        let entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
+        let entry = self.dwarf.unit.get_mut(entry_id);
         entry.set(
             gimli::DW_AT_low_pc,
             AttributeValue::Address(Address::Symbol {
-                symbol: self.symbol,
+                symbol,
                 addend: 0,
             }),
         );
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(func_end as u64));
 
-        self.debug_context
-            .emit_location(self.entry_id, self.mir.span);
+        self.emit_location(entry_id, function_span);
 
         func_end
     }

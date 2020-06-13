@@ -233,34 +233,44 @@ impl<'tcx> DebugContext<'tcx> {
 
         type_id
     }
-}
 
-pub(crate) struct FunctionDebugContext<'a, 'tcx> {
-    debug_context: &'a mut DebugContext<'tcx>,
-    entry_id: UnitEntryId,
-    symbol: usize,
-    instance: Instance<'tcx>,
-    mir: &'tcx mir::Body<'tcx>,
-}
+    fn define_local(&mut self, scope: UnitEntryId, name: String, ty: Ty<'tcx>) -> UnitEntryId {
+        let dw_ty = self.dwarf_ty(ty);
 
-impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
-    pub(crate) fn new(
-        debug_context: &'a mut DebugContext<'tcx>,
+        let var_id = self
+            .dwarf
+            .unit
+            .add(scope, gimli::DW_TAG_variable);
+        let var_entry = self.dwarf.unit.get_mut(var_id);
+
+        var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
+        var_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(dw_ty));
+
+        var_id
+    }
+
+    pub(crate) fn define_function(
+        &mut self,
         instance: Instance<'tcx>,
         func_id: FuncId,
         name: &str,
-    ) -> Self {
-        let mir = debug_context.tcx.instance_mir(instance.def);
+        isa: &dyn TargetIsa,
+        context: &Context,
+        source_info_set: &indexmap::IndexSet<SourceInfo>,
+        local_map: FxHashMap<mir::Local, CPlace<'tcx>>,
+    ) {
+        let symbol = func_id.as_u32() as usize;
+        let mir = self.tcx.instance_mir(instance.def);
 
-        // FIXME: add to appropriate scope intead of root
-        let scope = debug_context.dwarf.unit.root();
+        // FIXME: add to appropriate scope instead of root
+        let scope = self.dwarf.unit.root();
 
-        let entry_id = debug_context
+        let entry_id = self
             .dwarf
             .unit
             .add(scope, gimli::DW_TAG_subprogram);
-        let entry = debug_context.dwarf.unit.get_mut(entry_id);
-        let name_id = debug_context.dwarf.strings.add(name);
+        let entry = self.dwarf.unit.get_mut(entry_id);
+        let name_id = self.dwarf.strings.add(name);
         // Gdb requires DW_AT_name. Otherwise the DW_TAG_subprogram is skipped.
         entry.set(
             gimli::DW_AT_name,
@@ -271,46 +281,14 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             AttributeValue::StringRef(name_id),
         );
 
-        FunctionDebugContext {
-            debug_context,
-            entry_id,
-            symbol: func_id.as_u32() as usize,
-            instance,
-            mir,
-        }
-    }
+        let end = self.create_debug_lines(isa, symbol, entry_id, context, mir.span, source_info_set);
 
-    fn define_local(&mut self, name: String, ty: Ty<'tcx>) -> UnitEntryId {
-        let dw_ty = self.debug_context.dwarf_ty(ty);
-
-        let var_id = self
-            .debug_context
-            .dwarf
-            .unit
-            .add(self.entry_id, gimli::DW_TAG_variable);
-        let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
-
-        var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
-        var_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(dw_ty));
-
-        var_id
-    }
-
-    pub(crate) fn define(
-        &mut self,
-        context: &Context,
-        isa: &dyn TargetIsa,
-        source_info_set: &indexmap::IndexSet<SourceInfo>,
-        local_map: FxHashMap<mir::Local, CPlace<'tcx>>,
-    ) {
-        let end = self.create_debug_lines(context, isa, source_info_set);
-
-        self.debug_context
+        self
             .unit_range_list
             .0
             .push(Range::StartLength {
                 begin: Address::Symbol {
-                    symbol: self.symbol,
+                    symbol,
                     addend: 0,
                 },
                 length: u64::from(end),
@@ -320,10 +298,10 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             return; // Not yet implemented for the AArch64 backend.
         }
 
-        let func_entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
+        let func_entry = self.dwarf.unit.get_mut(entry_id);
         // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.
         func_entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(Address::Symbol {
-            symbol: self.symbol,
+            symbol,
             addend: 0,
         }));
         // Using Udata for DW_AT_high_pc requires at least DWARF4
@@ -340,11 +318,11 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             };
             let name = format!("{}{}", base_name, i);
 
-            let dw_ty = self.debug_context.dwarf_ty_for_clif_ty(param.value_type);
+            let dw_ty = self.dwarf_ty_for_clif_ty(param.value_type);
             let loc = translate_loc(isa, context.func.locations[val], &context.func.stack_slots).unwrap();
 
-            let arg_id = self.debug_context.dwarf.unit.add(self.entry_id, gimli::DW_TAG_formal_parameter);
-            let var_entry = self.debug_context.dwarf.unit.get_mut(arg_id);
+            let arg_id = self.dwarf.unit.add(entry_id, gimli::DW_TAG_formal_parameter);
+            let var_entry = self.dwarf.unit.get_mut(arg_id);
 
             var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
             var_entry.set(gimli::DW_AT_type, AttributeValue::UnitRef(dw_ty));
@@ -355,17 +333,18 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         if false {
             let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
 
-            for (local, _local_decl) in self.mir.local_decls.iter_enumerated() {
-                let ty = self.debug_context.tcx.subst_and_normalize_erasing_regions(
-                    self.instance.substs,
+            for (local, _local_decl) in mir.local_decls.iter_enumerated() {
+                let ty = self.tcx.subst_and_normalize_erasing_regions(
+                    instance.substs,
                     ty::ParamEnv::reveal_all(),
-                    &self.mir.local_decls[local].ty,
+                    &mir.local_decls[local].ty,
                 );
-                let var_id = self.define_local(format!("{:?}", local), ty);
+                let var_id = self.define_local(entry_id, format!("{:?}", local), ty);
 
                 let location = place_location(
                     self,
                     isa,
+                    symbol,
                     context,
                     &local_map,
                     &value_labels_ranges,
@@ -375,7 +354,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                     },
                 );
 
-                let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
+                let var_entry = self.dwarf.unit.get_mut(var_id);
                 var_entry.set(gimli::DW_AT_location, location);
             }
         }
@@ -384,9 +363,10 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     }
 }
 
-fn place_location<'a, 'tcx>(
-    func_debug_ctx: &mut FunctionDebugContext<'a, 'tcx>,
+fn place_location<'tcx>(
+    debug_context: &mut DebugContext<'tcx>,
     isa: &dyn TargetIsa,
+    symbol: usize,
     context: &Context,
     local_map: &FxHashMap<mir::Local, CPlace<'tcx>>,
     #[allow(rustc::default_hash_types)]
@@ -404,18 +384,18 @@ fn place_location<'a, 'tcx>(
                         .iter()
                         .map(|value_loc_range| Location::StartEnd {
                             begin: Address::Symbol {
-                                symbol: func_debug_ctx.symbol,
+                                symbol,
                                 addend: i64::from(value_loc_range.start),
                             },
                             end: Address::Symbol {
-                                symbol: func_debug_ctx.symbol,
+                                symbol,
                                 addend: i64::from(value_loc_range.end),
                             },
                             data: translate_loc(isa, value_loc_range.loc, &context.func.stack_slots).unwrap(),
                         })
                         .collect(),
                 );
-                let loc_list_id = func_debug_ctx.debug_context.dwarf.unit.locations.add(loc_list);
+                let loc_list_id = debug_context.dwarf.unit.locations.add(loc_list);
 
                 AttributeValue::LocationListRef(loc_list_id)
             } else {
