@@ -190,6 +190,12 @@ rustc_queries! {
             no_hash
         }
 
+        query mir_drops_elaborated_and_const_checked(key: LocalDefId) -> Steal<mir::Body<'tcx>> {
+            storage(ArenaCacheSelector<'tcx>)
+            no_hash
+            desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
+
         query mir_validated(key: LocalDefId) ->
             (
                 Steal<mir::Body<'tcx>>,

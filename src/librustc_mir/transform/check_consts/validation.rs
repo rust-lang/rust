@@ -40,7 +40,7 @@ pub struct Qualifs<'mir, 'tcx> {
 }
 
 impl Qualifs<'mir, 'tcx> {
-    fn indirectly_mutable(
+    pub fn indirectly_mutable(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -68,7 +68,7 @@ impl Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    fn needs_drop(
+    pub fn needs_drop(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -95,7 +95,7 @@ impl Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary.
-    fn has_mut_interior(
+    pub fn has_mut_interior(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -232,30 +232,15 @@ impl Validator<'mir, 'tcx> {
         self.qualifs.in_return_place(self.ccx)
     }
 
-    /// Emits an error at the given `span` if an expression cannot be evaluated in the current
-    /// context.
-    pub fn check_op_spanned<O>(&mut self, op: O, span: Span)
-    where
-        O: NonConstOp,
-    {
-        debug!("check_op: op={:?}", op);
-
-        if op.is_allowed_in_item(self) {
-            return;
-        }
-
-        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-            self.tcx.sess.miri_unleashed_feature(span, O::feature_gate());
-            return;
-        }
-
-        op.emit_error(self, span);
-    }
-
     /// Emits an error if an expression cannot be evaluated in the current context.
     pub fn check_op(&mut self, op: impl NonConstOp) {
-        let span = self.span;
-        self.check_op_spanned(op, span)
+        ops::non_const(self.ccx, op, self.span);
+    }
+
+    /// Emits an error at the given `span` if an expression cannot be evaluated in the current
+    /// context.
+    pub fn check_op_spanned(&mut self, op: impl NonConstOp, span: Span) {
+        ops::non_const(self.ccx, op, span);
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
@@ -577,6 +562,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             // projections that cannot be `NeedsDrop`.
             TerminatorKind::Drop { location: dropped_place, .. }
             | TerminatorKind::DropAndReplace { location: dropped_place, .. } => {
+                // If we are checking live drops after drop-elaboration, don't emit duplicate
+                // errors here.
+                if super::post_drop_elaboration::checking_enabled(self.tcx) {
+                    return;
+                }
+
                 let mut err_span = self.span;
 
                 // Check to see if the type of this place can ever have a drop impl. If not, this
