@@ -367,7 +367,7 @@ impl DroplessArena {
     /// current memory chunk. Returns `None` if there is no free space left to
     /// satisfy the request.
     #[inline]
-    fn alloc_raw_without_grow(&self, bytes: usize, align: usize) -> Option<&mut [u8]> {
+    fn alloc_raw_without_grow(&self, bytes: usize, align: usize) -> Option<*mut u8> {
         let ptr = self.ptr.get() as usize;
         let end = self.end.get() as usize;
         // The allocation request fits into the current chunk iff:
@@ -383,14 +383,14 @@ impl DroplessArena {
         let new_ptr = aligned.checked_add(bytes)?;
         if new_ptr <= end {
             self.ptr.set(new_ptr as *mut u8);
-            unsafe { Some(slice::from_raw_parts_mut(aligned as *mut u8, bytes)) }
+            Some(aligned as *mut u8)
         } else {
             None
         }
     }
 
     #[inline]
-    pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
+    pub fn alloc_raw(&self, bytes: usize, align: usize) -> *mut u8 {
         assert!(bytes != 0);
         loop {
             if let Some(a) = self.alloc_raw_without_grow(bytes, align) {
@@ -406,7 +406,7 @@ impl DroplessArena {
     pub fn alloc<T>(&self, object: T) -> &mut T {
         assert!(!mem::needs_drop::<T>());
 
-        let mem = self.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut _ as *mut T;
+        let mem = self.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut T;
 
         unsafe {
             // Write into uninitialized memory.
@@ -431,13 +431,11 @@ impl DroplessArena {
         assert!(mem::size_of::<T>() != 0);
         assert!(!slice.is_empty());
 
-        let mem = self.alloc_raw(slice.len() * mem::size_of::<T>(), mem::align_of::<T>()) as *mut _
-            as *mut T;
+        let mem = self.alloc_raw(slice.len() * mem::size_of::<T>(), mem::align_of::<T>()) as *mut T;
 
         unsafe {
-            let arena_slice = slice::from_raw_parts_mut(mem, slice.len());
-            arena_slice.copy_from_slice(slice);
-            arena_slice
+            mem.copy_from_nonoverlapping(slice.as_ptr(), slice.len());
+            slice::from_raw_parts_mut(mem, slice.len())
         }
     }
 
@@ -480,7 +478,7 @@ impl DroplessArena {
                     return &mut [];
                 }
                 let size = len.checked_mul(mem::size_of::<T>()).unwrap();
-                let mem = self.alloc_raw(size, mem::align_of::<T>()) as *mut _ as *mut T;
+                let mem = self.alloc_raw(size, mem::align_of::<T>()) as *mut T;
                 unsafe { self.write_from_iter(iter, len, mem) }
             }
             (_, _) => {
@@ -495,7 +493,7 @@ impl DroplessArena {
                         let len = vec.len();
                         let start_ptr = self
                             .alloc_raw(len * mem::size_of::<T>(), mem::align_of::<T>())
-                            as *mut _ as *mut T;
+                            as *mut T;
                         vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
                         vec.set_len(0);
                         slice::from_raw_parts_mut(start_ptr, len)
@@ -539,8 +537,7 @@ pub struct DropArena {
 impl DropArena {
     #[inline]
     pub unsafe fn alloc<T>(&self, object: T) -> &mut T {
-        let mem =
-            self.arena.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut _ as *mut T;
+        let mem = self.arena.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut T;
         // Write into uninitialized memory.
         ptr::write(mem, object);
         let result = &mut *mem;
@@ -563,7 +560,7 @@ impl DropArena {
         let start_ptr = self
             .arena
             .alloc_raw(len.checked_mul(mem::size_of::<T>()).unwrap(), mem::align_of::<T>())
-            as *mut _ as *mut T;
+            as *mut T;
 
         let mut destructors = self.destructors.borrow_mut();
         // Reserve space for the destructors so we can't panic while adding them
