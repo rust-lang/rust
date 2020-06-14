@@ -1222,7 +1222,11 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                     movability == hir::Movability::Movable,
                 )
             }
-            _ => bug!(),
+            _ => {
+                tcx.sess
+                    .delay_span_bug(body.span, &format!("unexpected generator type {}", gen_ty));
+                return;
+            }
         };
 
         // Compute GeneratorState<yield_ty, return_ty>
