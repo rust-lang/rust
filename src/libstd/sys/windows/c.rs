@@ -669,6 +669,7 @@ if #[cfg(not(target_vendor = "uwp"))] {
     pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
     pub const TOKEN_READ: DWORD = 0x20008;
+    pub const ENABLE_LINE_INPUT: DWORD = 0x0002;
 
     extern "system" {
         #[link_name = "SystemFunction036"]
@@ -688,6 +689,8 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
         pub fn GetConsoleMode(hConsoleHandle: HANDLE,
                               lpMode: LPDWORD) -> BOOL;
+        pub fn SetConsoleMode(hConsoleHandle: HANDLE,
+                              lpMode: DWORD) -> BOOL;
         // Allowed but unused by UWP
         pub fn OpenProcessToken(ProcessHandle: HANDLE,
                                 DesiredAccess: DWORD,

@@ -1,5 +1,6 @@
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
+use crate::sys::cvt;
 use crate::sys::fd::FileDesc;
 
 pub struct Stdin(());
@@ -9,6 +10,16 @@ pub struct Stderr(());
 impl Stdin {
     pub fn new() -> io::Result<Stdin> {
         Ok(Stdin(()))
+    }
+    pub unsafe fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        let mut flags = libc::fcntl(libc::STDIN_FILENO, libc::F_GETFL);
+        if nonblocking {
+            flags |= libc::O_NONBLOCK;
+        } else {
+            flags &= !libc::O_NONBLOCK;
+        }
+        cvt(libc::fcntl(libc::STDIN_FILENO, libc::F_SETFL, flags))?;
+        Ok(())
     }
 }
 

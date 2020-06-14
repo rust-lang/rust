@@ -134,6 +134,28 @@ impl Stdin {
     pub fn new() -> io::Result<Stdin> {
         Ok(Stdin { surrogate: 0 })
     }
+    pub unsafe fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        let handle = get_handle(c::STD_INPUT_HANDLE)?;
+        let mut mode = 0;
+        if c::GetConsoleMode(handle, &mut mode) == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Cannot get console mode for the given handle",
+            ));
+        }
+        if nonblocking {
+            mode &= !c::ENABLE_LINE_INPUT;
+        } else {
+            mode |= c::ENABLE_LINE_INPUT;
+        }
+        if c::SetConsoleMode(handle, mode) == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Cannot set console mode for the given handle",
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl io::Read for Stdin {

@@ -97,6 +97,13 @@ impl Read for StdinRaw {
         Initializer::nop()
     }
 }
+impl StdinRaw {
+    #[cfg(any(unix, windows))]
+    #[stable(since = "1.46.0", feature = "stdin_nonblocking")]
+    pub unsafe fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        self.0.set_nonblocking(nonblocking)
+    }
+}
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
@@ -365,6 +372,33 @@ impl Stdin {
     pub fn read_line(&self, buf: &mut String) -> io::Result<usize> {
         self.lock().read_line(buf)
     }
+
+    /// Set the `stdin` in non-blocking mode.
+    ///
+    /// It is useful in case you're playing with termcaps. However, please note that it is
+    /// unsafe because it'll modify the behaviour of all other stdin.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::io::{self, Read};
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut buffer = String::new();
+    ///     let stdin = io::stdin();
+    ///     let mut handle = stdin.lock();
+    ///
+    ///     handle.set_nonblocking(true)?;
+    ///     handle.read_to_string(&mut buffer)?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(unix, windows))]
+    #[stable(since = "1.46.0", feature = "stdin_nonblocking")]
+    pub unsafe fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        self.lock().set_nonblocking(nonblocking)
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -436,6 +470,38 @@ impl BufRead for StdinLock<'_> {
 impl fmt::Debug for StdinLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("StdinLock { .. }")
+    }
+}
+
+impl StdinLock<'_> {
+    /// Set the `stdin` in non-blocking mode.
+    ///
+    /// It is useful in case you're playing with termcaps. However, please note that it is
+    /// unsafe because it'll modify the behaviour of all other stdin.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::io::{self, Read};
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut buffer = String::new();
+    ///     let stdin = io::stdin();
+    ///     let mut handle = stdin.lock();
+    ///
+    ///     handle.set_nonblocking(true)?;
+    ///     handle.read_to_string(&mut buffer)?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(unix, windows))]
+    #[stable(since = "1.46.0", feature = "stdin_nonblocking")]
+    pub unsafe fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        match self.inner.get_ref() {
+            Maybe::Real(ref stdin) => stdin.set_nonblocking(nonblocking),
+            Maybe::Fake => Ok(()),
+        }
     }
 }
 
