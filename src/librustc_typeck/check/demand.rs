@@ -833,7 +833,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We now know that converting either the lhs or rhs is fallible. Before we
                     // suggest a fallible conversion, check if the value can never fit in the
                     // expected type.
-                    let msg = format!("`{}` can never fit into `{}`", src, expected_ty);
+                    let msg = format!("`{}` cannot fit into type `{}`", src, expected_ty);
                     err.span_note(expr.span, &msg);
                     return;
                 } else if in_const_context {

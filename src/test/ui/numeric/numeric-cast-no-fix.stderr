@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     x_usize > -1_isize;
    |               ^^^^^^^^ expected `usize`, found `isize`
    |
-note: `-1_isize` can never fit into `usize`
+note: `-1_isize` cannot fit into type `usize`
   --> $DIR/numeric-cast-no-fix.rs:10:15
    |
 LL |     x_usize > -1_isize;
@@ -16,7 +16,7 @@ error[E0308]: mismatched types
 LL |     x_u128 > -1_isize;
    |              ^^^^^^^^ expected `u128`, found `isize`
    |
-note: `-1_isize` can never fit into `u128`
+note: `-1_isize` cannot fit into type `u128`
   --> $DIR/numeric-cast-no-fix.rs:12:14
    |
 LL |     x_u128 > -1_isize;
@@ -28,7 +28,7 @@ error[E0308]: mismatched types
 LL |     x_u64 > -1_isize;
    |             ^^^^^^^^ expected `u64`, found `isize`
    |
-note: `-1_isize` can never fit into `u64`
+note: `-1_isize` cannot fit into type `u64`
   --> $DIR/numeric-cast-no-fix.rs:14:13
    |
 LL |     x_u64 > -1_isize;
@@ -40,7 +40,7 @@ error[E0308]: mismatched types
 LL |     x_u32 > -1_isize;
    |             ^^^^^^^^ expected `u32`, found `isize`
    |
-note: `-1_isize` can never fit into `u32`
+note: `-1_isize` cannot fit into type `u32`
   --> $DIR/numeric-cast-no-fix.rs:16:13
    |
 LL |     x_u32 > -1_isize;
@@ -52,7 +52,7 @@ error[E0308]: mismatched types
 LL |     x_u16 > -1_isize;
    |             ^^^^^^^^ expected `u16`, found `isize`
    |
-note: `-1_isize` can never fit into `u16`
+note: `-1_isize` cannot fit into type `u16`
   --> $DIR/numeric-cast-no-fix.rs:18:13
    |
 LL |     x_u16 > -1_isize;
