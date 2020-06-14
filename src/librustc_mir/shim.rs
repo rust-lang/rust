@@ -32,13 +32,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 
     let mut result = match instance {
         ty::InstanceDef::Item(..) => bug!("item {:?} passed to make_shim", instance),
-        ty::InstanceDef::VtableShim(def_id) => build_call_shim(
-            tcx,
-            instance,
-            Some(Adjustment::DerefMove),
-            CallKind::Direct(def_id),
-            None,
-        ),
+        ty::InstanceDef::VtableShim(def_id) => {
+            build_call_shim(tcx, instance, Some(Adjustment::Deref), CallKind::Direct(def_id), None)
+        }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
             // FIXME(eddyb) support generating shims for a "shallow type",
             // e.g. `Foo<_>` or `[_]` instead of requiring a fully monomorphic
@@ -136,7 +132,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 enum Adjustment {
     Identity,
     Deref,
-    DerefMove,
     RefMut,
 }
 
@@ -701,8 +696,7 @@ fn build_call_shim<'tcx>(
 
     let rcvr = rcvr_adjustment.map(|rcvr_adjustment| match rcvr_adjustment {
         Adjustment::Identity => Operand::Move(rcvr_place()),
-        Adjustment::Deref => Operand::Move(tcx.mk_place_deref(rcvr_place())), // Can't copy `&mut`
-        Adjustment::DerefMove => Operand::Move(tcx.mk_place_deref(rcvr_place())),
+        Adjustment::Deref => Operand::Move(tcx.mk_place_deref(rcvr_place())),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
             let ref_rcvr = local_decls.push(
