@@ -220,21 +220,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;
                 if borrow {
-                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
-                        let mutbl = match mutbl {
-                            hir::Mutability::Not => AutoBorrowMutability::Not,
-                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                                // For initial two-phase borrow
-                                // deployment, conservatively omit
-                                // overloaded function call ops.
-                                allow_two_phase_borrow: AllowTwoPhase::No,
-                            },
-                        };
-                        autoref = Some(Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
-                            target: method.sig.inputs()[0],
-                        });
-                    }
+                    // Check for &self vs &mut self in the method signature. Since this is either
+                    // the Fn or FnMut trait, it should be one of those.
+                    let (region, mutbl) = if let ty::Ref(r, _, mutbl) = method.sig.inputs()[0].kind
+                    {
+                        (r, mutbl)
+                    } else {
+                        span_bug!(call_expr.span, "input to call/call_mut is not a ref?");
+                    };
+
+                    let mutbl = match mutbl {
+                        hir::Mutability::Not => AutoBorrowMutability::Not,
+                        hir::Mutability::Mut => AutoBorrowMutability::Mut {
+                            // For initial two-phase borrow
+                            // deployment, conservatively omit
+                            // overloaded function call ops.
+                            allow_two_phase_borrow: AllowTwoPhase::No,
+                        },
+                    };
+                    autoref = Some(Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                        target: method.sig.inputs()[0],
+                    });
                 }
                 return Some((autoref, method));
             }
