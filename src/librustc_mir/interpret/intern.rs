@@ -93,7 +93,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
             // in the value the dangling reference lies.
             // The `delay_span_bug` ensures that we don't forget such a check in validation.
             if tcx.get_global_alloc(alloc_id).is_none() {
-                tcx.sess.delay_span_bug(ecx.root_span, "tried to intern dangling pointer");
+                tcx.sess.delay_span_bug(ecx.tcx.span, "tried to intern dangling pointer");
             }
             // treat dangling pointers like other statics
             // just to stop trying to recurse into them
@@ -111,7 +111,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     if let InternMode::Static(mutability) = mode {
         // For this, we need to take into account `UnsafeCell`. When `ty` is `None`, we assume
         // no interior mutability.
-        let frozen = ty.map_or(true, |ty| ty.is_freeze(ecx.tcx, ecx.param_env, ecx.root_span));
+        let frozen = ty.map_or(true, |ty| ty.is_freeze(*ecx.tcx, ecx.param_env, ecx.tcx.span));
         // For statics, allocation mutability is the combination of the place mutability and
         // the type mutability.
         // The entire allocation needs to be mutable if it contains an `UnsafeCell` anywhere.
@@ -174,7 +174,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                     // they caused.  It also helps us to find cases where const-checking
                     // failed to prevent an `UnsafeCell` (but as `ignore_interior_mut_in_const`
                     // shows that part is not airtight).
-                    mutable_memory_in_const(self.ecx.tcx_at(), "`UnsafeCell`");
+                    mutable_memory_in_const(self.ecx.tcx, "`UnsafeCell`");
                 }
                 // We are crossing over an `UnsafeCell`, we can mutate again. This means that
                 // References we encounter inside here are interned as pointing to mutable
@@ -192,7 +192,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
     fn visit_value(&mut self, mplace: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         // Handle Reference types, as these are the only relocations supported by const eval.
         // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
-        let tcx = self.ecx.tcx.at(self.ecx.root_span);
+        let tcx = self.ecx.tcx;
         let ty = mplace.layout.ty;
         if let ty::Ref(_, referenced_ty, ref_mutability) = ty.kind {
             let value = self.ecx.read_immediate(mplace.into())?;
@@ -253,8 +253,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                         // caused (by somehow getting a mutable reference in a `const`).
                         if ref_mutability == Mutability::Mut {
                             match referenced_ty.kind {
-                                ty::Array(_, n)
-                                    if n.eval_usize(self.ecx.tcx, self.ecx.param_env) == 0 => {}
+                                ty::Array(_, n) if n.eval_usize(*tcx, self.ecx.param_env) == 0 => {}
                                 ty::Slice(_)
                                     if mplace.meta.unwrap_meta().to_machine_usize(self.ecx)?
                                         == 0 => {}
@@ -358,7 +357,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             Ok(()) => {}
             Err(error) => {
                 ecx.tcx.sess.delay_span_bug(
-                    ecx.root_span,
+                    ecx.tcx.span,
                     "error during interning should later cause validation failure",
                 );
                 // Some errors shouldn't come up because creating them causes
@@ -407,7 +406,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
                     // such as `const CONST_RAW: *const Vec<i32> = &Vec::new() as *const _;`.
                     ecx.tcx
                         .sess
-                        .span_err(ecx.root_span, "untyped pointers are not allowed in constant");
+                        .span_err(ecx.tcx.span, "untyped pointers are not allowed in constant");
                     // For better errors later, mark the allocation as immutable.
                     alloc.mutability = Mutability::Not;
                 }
@@ -422,11 +421,11 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
             // Codegen does not like dangling pointers, and generally `tcx` assumes that
             // all allocations referenced anywhere actually exist. So, make sure we error here.
-            ecx.tcx.sess.span_err(ecx.root_span, "encountered dangling pointer in final constant");
+            ecx.tcx.sess.span_err(ecx.tcx.span, "encountered dangling pointer in final constant");
         } else if ecx.tcx.get_global_alloc(alloc_id).is_none() {
             // We have hit an `AllocId` that is neither in local or global memory and isn't
             // marked as dangling by local memory.  That should be impossible.
-            span_bug!(ecx.root_span, "encountered unknown alloc id {:?}", alloc_id);
+            span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
     }
 }

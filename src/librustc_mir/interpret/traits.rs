@@ -36,10 +36,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         let methods = if let Some(poly_trait_ref) = poly_trait_ref {
-            let trait_ref = poly_trait_ref.with_self_ty(self.tcx, ty);
+            let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
             let trait_ref = self.tcx.erase_regions(&trait_ref);
 
-            self.tcx_at().vtable_methods(trait_ref)
+            self.tcx.vtable_methods(trait_ref)
         } else {
             &[]
         };
@@ -49,7 +49,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let size = layout.size.bytes();
         let align = layout.align.abi.bytes();
 
-        let tcx = self.tcx;
+        let tcx = *self.tcx;
         let ptr_size = self.pointer_size();
         let ptr_align = tcx.data_layout.pointer_align.abi;
         // /////////////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +142,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // to determine the type.
         let drop_instance = self.memory.get_fn(drop_fn)?.as_instance()?;
         trace!("Found drop fn: {:?}", drop_instance);
-        let fn_sig = drop_instance.ty_env(self.tcx, self.param_env).fn_sig(self.tcx);
+        let fn_sig = drop_instance.ty_env(*self.tcx, self.param_env).fn_sig(*self.tcx);
         let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, &fn_sig);
         // The drop function takes `*mut T` where `T` is the type being dropped, so get that.
         let args = fn_sig.inputs();

@@ -471,9 +471,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("eval_place_to_op: got {:?}", *op);
         // Sanity-check the type we ended up with.
         debug_assert!(mir_assign_valid_types(
-            self.tcx,
+            *self.tcx,
             self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
-                place.ty(&self.frame().body.local_decls, self.tcx).ty
+                place.ty(&self.frame().body.local_decls, *self.tcx).ty
             ))?,
             op.layout,
         ));
@@ -554,7 +554,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // documentation).
         let val_val = M::adjust_global_const(self, val_val)?;
         // Other cases need layout.
-        let layout = from_known_layout(self.tcx_at(), layout, || self.layout_of(val.ty))?;
+        let layout = from_known_layout(self.tcx, layout, || self.layout_of(val.ty))?;
         let op = match val_val {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.create_memory_alloc(alloc);
@@ -589,7 +589,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("read_discriminant_value {:#?}", op.layout);
 
         // Get type and layout of the discriminant.
-        let discr_layout = self.layout_of(op.layout.ty.discriminant_ty(self.tcx))?;
+        let discr_layout = self.layout_of(op.layout.ty.discriminant_ty(*self.tcx))?;
         trace!("discriminant type: {:?}", discr_layout.ty);
 
         // We use "discriminant" to refer to the value associated with a particular enum variant.
@@ -601,7 +601,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // rather confusing.
         let (tag_scalar_layout, tag_kind, tag_index) = match op.layout.variants {
             Variants::Single { index } => {
-                let discr = match op.layout.ty.discriminant_for_variant(self.tcx, index) {
+                let discr = match op.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     Some(discr) => {
                         // This type actually has discriminants.
                         assert_eq!(discr.ty, discr_layout.ty);
@@ -630,7 +630,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         //   may be a pointer. This is `tag_val.layout`; we just use it for sanity checks.
 
         // Get layout for tag.
-        let tag_layout = self.layout_of(tag_scalar_layout.value.to_int_ty(self.tcx))?;
+        let tag_layout = self.layout_of(tag_scalar_layout.value.to_int_ty(*self.tcx))?;
 
         // Read tag and sanity-check `tag_layout`.
         let tag_val = self.read_immediate(self.operand_field(op, tag_index)?)?;
@@ -651,12 +651,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Convert discriminant to variant index, and catch invalid discriminants.
                 let index = match op.layout.ty.kind {
                     ty::Adt(adt, _) => {
-                        adt.discriminants(self.tcx).find(|(_, var)| var.val == discr_bits)
+                        adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
                     ty::Generator(def_id, substs, _) => {
                         let substs = substs.as_generator();
                         substs
-                            .discriminants(def_id, self.tcx)
+                            .discriminants(def_id, *self.tcx)
                             .find(|(_, var)| var.val == discr_bits)
                     }
                     _ => bug!("tagged layout for non-adt non-generator"),

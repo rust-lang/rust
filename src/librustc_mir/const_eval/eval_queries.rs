@@ -27,7 +27,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     body: &'mir mir::Body<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
-    let tcx = ecx.tcx;
+    let tcx = *ecx.tcx;
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
@@ -214,7 +214,7 @@ fn validate_and_turn_into_const<'tcx>(
 
     val.map_err(|error| {
         let err = error_to_const_error(&ecx, error, None);
-        err.struct_error(ecx.tcx_at(), "it is undefined behavior to use this value", |mut diag| {
+        err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
             diag.note(note_on_undefined_behavior_error());
             diag.emit();
         })

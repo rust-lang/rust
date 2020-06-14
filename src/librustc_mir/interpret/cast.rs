@@ -56,7 +56,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         }
 
                         let instance = ty::Instance::resolve_for_fn_ptr(
-                            self.tcx,
+                            *self.tcx,
                             self.param_env,
                             def_id,
                             substs,
@@ -91,7 +91,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         }
 
                         let instance = ty::Instance::resolve_closure(
-                            self.tcx,
+                            *self.tcx,
                             def_id,
                             substs,
                             ty::ClosureKind::FnOnce,
@@ -140,7 +140,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Handle cast from a univariant (ZST) enum.
         match src.layout.variants {
             Variants::Single { index } => {
-                if let Some(discr) = src.layout.ty.discriminant_for_variant(self.tcx, index) {
+                if let Some(discr) = src.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     assert!(src.layout.is_zst());
                     let discr_layout = self.layout_of(discr.ty)?;
                     return Ok(self.cast_from_scalar(discr.val, discr_layout, cast_ty).into());
@@ -269,7 +269,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ptr = self.read_immediate(src)?.to_scalar()?;
                 // u64 cast is from usize to u64, which is always good
                 let val =
-                    Immediate::new_slice(ptr, length.eval_usize(self.tcx, self.param_env), self);
+                    Immediate::new_slice(ptr, length.eval_usize(*self.tcx, self.param_env), self);
                 self.write_immediate(val, dest)
             }
             (&ty::Dynamic(..), &ty::Dynamic(..)) => {

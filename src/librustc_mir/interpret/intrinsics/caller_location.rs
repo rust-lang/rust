@@ -25,7 +25,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     "find_closest_untracked_caller_location: checking frame {:?}",
                     frame.instance
                 );
-                !frame.instance.def.requires_caller_location(self.tcx)
+                !frame.instance.def.requires_caller_location(*self.tcx)
             })
             // Assert that there is always such a frame.
             .unwrap();
@@ -58,7 +58,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let loc_ty = self
             .tcx
             .type_of(self.tcx.require_lang_item(PanicLocationLangItem, None))
-            .subst(self.tcx, self.tcx.mk_substs([self.tcx.lifetimes.re_erased.into()].iter()));
+            .subst(*self.tcx, self.tcx.mk_substs([self.tcx.lifetimes.re_erased.into()].iter()));
         let loc_layout = self.layout_of(loc_ty).unwrap();
         let location = self.allocate(loc_layout, MemoryKind::CallerLocation);
 
