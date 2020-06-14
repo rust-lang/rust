@@ -351,6 +351,40 @@ mod tests {
     }
 
     #[test]
+    fn partial_fill_bind_pat() {
+        check_assist(
+            fill_match_arms,
+            r#"
+            enum A {
+                As,
+                Bs,
+                Cs(Option<i32>),
+            }
+            fn main() {
+                match A::As<|> {
+                    A::As(_) => {}
+                    a @ A::Bs(_) => {}
+                }
+            }
+            "#,
+            r#"
+            enum A {
+                As,
+                Bs,
+                Cs(Option<i32>),
+            }
+            fn main() {
+                match A::As {
+                    A::As(_) => {}
+                    a @ A::Bs(_) => {}
+                    $0A::Cs(_) => {}
+                }
+            }
+            "#,
+        );
+    }
+
+    #[test]
     fn fill_match_arms_empty_body() {
         check_assist(
             fill_match_arms,
