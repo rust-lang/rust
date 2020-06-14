@@ -9,7 +9,6 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
-use rustc_session::config::Sanitizer;
 use rustc_target::spec::abi::Abi;
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -232,24 +231,8 @@ impl Inliner<'tcx> {
 
         // Avoid inlining functions marked as no_sanitize if sanitizer is enabled,
         // since instrumentation might be enabled and performed on the caller.
-        match self.tcx.sess.opts.debugging_opts.sanitizer {
-            Some(Sanitizer::Address) => {
-                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_ADDRESS) {
-                    return false;
-                }
-            }
-            Some(Sanitizer::Memory) => {
-                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_MEMORY) {
-                    return false;
-                }
-            }
-            Some(Sanitizer::Thread) => {
-                if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_SANITIZE_THREAD) {
-                    return false;
-                }
-            }
-            Some(Sanitizer::Leak) => {}
-            None => {}
+        if self.tcx.sess.opts.debugging_opts.sanitizer.intersects(codegen_fn_attrs.no_sanitize) {
+            return false;
         }
 
         let hinted = match codegen_fn_attrs.inline {
