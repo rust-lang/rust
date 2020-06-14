@@ -150,15 +150,7 @@ impl TcpStream {
                 port,
             ),
             Ipv6(ref addr) => SocketAddr::new(
-                IpAddr::V6(Ipv6Addr::new(
-                    ((addr.0[0] as u16) << 8) | addr.0[1] as u16,
-                    ((addr.0[2] as u16) << 8) | addr.0[3] as u16,
-                    ((addr.0[4] as u16) << 8) | addr.0[5] as u16,
-                    ((addr.0[6] as u16) << 8) | addr.0[7] as u16,
-                    ((addr.0[8] as u16) << 8) | addr.0[9] as u16,
-                    ((addr.0[10] as u16) << 8) | addr.0[11] as u16,
-                    ((addr.0[12] as u16) << 8) | addr.0[13] as u16,
-                    ((addr.0[14] as u16) << 8) | addr.0[15] as u16)),
+                IpAddr::V6(Ipv6Addr::new(addr.0)),
                 port,
             ),
             _ => {
@@ -241,15 +233,7 @@ impl TcpListener {
                 port,
             ),
             Ipv6(ref addr) => SocketAddr::new(
-                IpAddr::V6(Ipv6Addr::new(
-                    ((addr.0[0] as u16) << 8) | addr.0[1] as u16,
-                    ((addr.0[2] as u16) << 8) | addr.0[3] as u16,
-                    ((addr.0[4] as u16) << 8) | addr.0[5] as u16,
-                    ((addr.0[6] as u16) << 8) | addr.0[7] as u16,
-                    ((addr.0[8] as u16) << 8) | addr.0[9] as u16,
-                    ((addr.0[10] as u16) << 8) | addr.0[11] as u16,
-                    ((addr.0[12] as u16) << 8) | addr.0[13] as u16,
-                    ((addr.0[14] as u16) << 8) | addr.0[15] as u16)),
+                IpAddr::V6(Ipv6Addr::new(addr.0)),
                 port,
             ),
             _ => {
