@@ -1,0 +1,50 @@
+error: malformed `link_name` attribute input
+  --> $DIR/issue-47725.rs:12:1
+   |
+LL | #[link_name]
+   | ^^^^^^^^^^^^ help: must be of the form: `#[link_name = "name"]`
+
+error: attribute should be applied to a foreign function or static
+  --> $DIR/issue-47725.rs:1:1
+   |
+LL | #[link_name = "foo"]
+   | ^^^^^^^^^^^^^^^^^^^^
+LL | struct Foo;
+   | ----------- not a foreign function or static
+
+error: attribute should be applied to a foreign function or static
+  --> $DIR/issue-47725.rs:4:1
+   |
+LL |   #[link_name = "foobar"]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | / extern "C" {
+LL | |     fn foo() -> u32;
+LL | | }
+   | |_- not a foreign function or static
+   |
+help: try `#[link(name = "foobar")]` instead
+  --> $DIR/issue-47725.rs:4:1
+   |
+LL | #[link_name = "foobar"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attribute should be applied to a foreign function or static
+  --> $DIR/issue-47725.rs:12:1
+   |
+LL |   #[link_name]
+   |   ^^^^^^^^^^^^
+...
+LL | / extern "C" {
+LL | |     fn bar() -> u32;
+LL | | }
+   | |_- not a foreign function or static
+   |
+help: try `#[link(name = "...")]` instead
+  --> $DIR/issue-47725.rs:12:1
+   |
+LL | #[link_name]
+   | ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

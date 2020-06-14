@@ -1,0 +1,18 @@
+error: attribute should be applied to a function
+  --> $DIR/issue-54044.rs:1:1
+   |
+LL | #[cold]
+   | ^^^^^^^
+LL | struct Foo;
+   | ----------- not a function
+
+error: attribute should be applied to a function
+  --> $DIR/issue-54044.rs:5:5
+   |
+LL |     #[cold]
+   |     ^^^^^^^
+LL |     5;
+   |     - not a function
+
+error: aborting due to 2 previous errors
+
