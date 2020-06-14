@@ -489,13 +489,19 @@ impl<'a> Builder<'a> {
             should_run = (desc.should_run)(should_run);
         }
         let mut help = String::from("Available paths:\n");
+        let mut add_path = |path: &Path| {
+            help.push_str(&format!("    ./x.py {} {}\n", subcommand, path.display()));
+        };
         for pathset in should_run.paths {
-            if let PathSet::Set(set) = pathset {
-                set.iter().for_each(|path| {
-                    help.push_str(
-                        format!("    ./x.py {} {}\n", subcommand, path.display()).as_str(),
-                    )
-                })
+            match pathset {
+                PathSet::Set(set) => {
+                    for path in set {
+                        add_path(&path);
+                    }
+                }
+                PathSet::Suite(path) => {
+                    add_path(&path.join("..."));
+                }
             }
         }
         Some(help)
