@@ -3,7 +3,7 @@ use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_errors::ErrorReported;
-use rustc_infer::traits::{TraitEngine, TraitEngineExt as _};
+use rustc_infer::traits::{PolyTraitObligation, TraitEngine, TraitEngineExt as _};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::{self, Binder, Const, ToPredicate, Ty, TypeFoldable};
@@ -20,6 +20,7 @@ use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
 use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::project::PolyProjectionObligation;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
@@ -318,65 +319,50 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         let infcx = self.selcx.infcx();
 
         match obligation.predicate.kint(infcx.tcx) {
-            ty::PredicateKint::ForAll(binder) => {
-                let (pred, _) = infcx.replace_bound_vars_with_placeholders(binder);
-                ProcessResult::Changed(mk_pending(vec![
-                    obligation.with(pred.to_predicate(infcx.tcx)),
-                ]))
-            }
+            ty::PredicateKint::ForAll(binder) => match binder.skip_binder() {
+                // Evaluation will discard candidates using the leak check.
+                // This means we need to pass it the bound version of our
+                // predicate.
+                rustc_middle::ty::PredicateKint::Trait(trait_ref, _constness) => {
+                    let trait_obligation = obligation.with(Binder::bind(*trait_ref));
+
+                    self.process_trait_obligation(
+                        obligation,
+                        trait_obligation,
+                        &mut pending_obligation.stalled_on,
+                    )
+                }
+                rustc_middle::ty::PredicateKint::Projection(projection) => {
+                    let project_obligation = obligation.with(Binder::bind(*projection));
+
+                    self.process_projection_obligation(
+                        project_obligation,
+                        &mut pending_obligation.stalled_on,
+                    )
+                }
+                rustc_middle::ty::PredicateKint::RegionOutlives(_)
+                | rustc_middle::ty::PredicateKint::TypeOutlives(_)
+                | rustc_middle::ty::PredicateKint::WellFormed(_)
+                | rustc_middle::ty::PredicateKint::ObjectSafe(_)
+                | rustc_middle::ty::PredicateKint::ClosureKind(..)
+                | rustc_middle::ty::PredicateKint::Subtype(_)
+                | rustc_middle::ty::PredicateKint::ConstEvaluatable(..)
+                | rustc_middle::ty::PredicateKint::ConstEquate(..)
+                | rustc_middle::ty::PredicateKint::ForAll(_) => {
+                    let (pred, _) = infcx.replace_bound_vars_with_placeholders(binder);
+                    ProcessResult::Changed(mk_pending(vec![
+                        obligation.with(pred.to_predicate(infcx.tcx)),
+                    ]))
+                }
+            },
             ty::PredicateKint::Trait(ref data, _) => {
                 let trait_obligation = obligation.with(Binder::dummy(*data));
 
-                if obligation.predicate.is_global() {
-                    // no type variables present, can use evaluation for better caching.
-                    // FIXME: consider caching errors too.
-                    if infcx.predicate_must_hold_considering_regions(&obligation) {
-                        debug!(
-                            "selecting trait `{:?}` at depth {} evaluated to holds",
-                            data, obligation.recursion_depth
-                        );
-                        return ProcessResult::Changed(vec![]);
-                    }
-                }
-
-                match self.selcx.select(&trait_obligation) {
-                    Ok(Some(impl_source)) => {
-                        debug!(
-                            "selecting trait `{:?}` at depth {} yielded Ok(Some)",
-                            data, obligation.recursion_depth
-                        );
-                        ProcessResult::Changed(mk_pending(impl_source.nested_obligations()))
-                    }
-                    Ok(None) => {
-                        debug!(
-                            "selecting trait `{:?}` at depth {} yielded Ok(None)",
-                            data, obligation.recursion_depth
-                        );
-
-                        // This is a bit subtle: for the most part, the
-                        // only reason we can fail to make progress on
-                        // trait selection is because we don't have enough
-                        // information about the types in the trait.
-                        pending_obligation.stalled_on =
-                            trait_ref_infer_vars(self.selcx, data.trait_ref);
-
-                        debug!(
-                            "process_predicate: pending obligation {:?} now stalled on {:?}",
-                            infcx.resolve_vars_if_possible(obligation),
-                            pending_obligation.stalled_on
-                        );
-
-                        ProcessResult::Unchanged
-                    }
-                    Err(selection_err) => {
-                        info!(
-                            "selecting trait `{:?}` at depth {} yielded Err",
-                            data, obligation.recursion_depth
-                        );
-
-                        ProcessResult::Error(CodeSelectionError(selection_err))
-                    }
-                }
+                self.process_trait_obligation(
+                    obligation,
+                    trait_obligation,
+                    &mut pending_obligation.stalled_on,
+                )
             }
 
             &ty::PredicateKint::RegionOutlives(data) => {
@@ -399,17 +385,11 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
             ty::PredicateKint::Projection(ref data) => {
                 let project_obligation = obligation.with(Binder::dummy(*data));
-                match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
-                    Ok(None) => {
-                        pending_obligation.stalled_on = trait_ref_infer_vars(
-                            self.selcx,
-                            data.projection_ty.trait_ref(infcx.tcx),
-                        );
-                        ProcessResult::Unchanged
-                    }
-                    Ok(Some(os)) => ProcessResult::Changed(mk_pending(os)),
-                    Err(e) => ProcessResult::Error(CodeProjectionError(e)),
-                }
+
+                self.process_projection_obligation(
+                    project_obligation,
+                    &mut pending_obligation.stalled_on,
+                )
             }
 
             &ty::PredicateKint::ObjectSafe(trait_def_id) => {
@@ -569,14 +549,96 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     }
 }
 
+impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
+    fn process_trait_obligation(
+        &mut self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_obligation: PolyTraitObligation<'tcx>,
+        stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
+    ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        let infcx = self.selcx.infcx();
+        if obligation.predicate.is_global() {
+            // no type variables present, can use evaluation for better caching.
+            // FIXME: consider caching errors too.
+            if infcx.predicate_must_hold_considering_regions(obligation) {
+                debug!(
+                    "selecting trait `{:?}` at depth {} evaluated to holds",
+                    obligation.predicate, obligation.recursion_depth
+                );
+                return ProcessResult::Changed(vec![]);
+            }
+        }
+
+        match self.selcx.select(&trait_obligation) {
+            Ok(Some(impl_source)) => {
+                debug!(
+                    "selecting trait `{:?}` at depth {} yielded Ok(Some)",
+                    trait_obligation.predicate, obligation.recursion_depth
+                );
+                ProcessResult::Changed(mk_pending(impl_source.nested_obligations()))
+            }
+            Ok(None) => {
+                debug!(
+                    "selecting trait `{:?}` at depth {} yielded Ok(None)",
+                    trait_obligation.predicate, obligation.recursion_depth
+                );
+
+                // This is a bit subtle: for the most part, the
+                // only reason we can fail to make progress on
+                // trait selection is because we don't have enough
+                // information about the types in the trait.
+                *stalled_on = trait_ref_infer_vars(
+                    self.selcx,
+                    trait_obligation.predicate.map_bound(|pred| pred.trait_ref),
+                );
+
+                debug!(
+                    "process_predicate: pending obligation {:?} now stalled on {:?}",
+                    infcx.resolve_vars_if_possible(obligation),
+                    stalled_on
+                );
+
+                ProcessResult::Unchanged
+            }
+            Err(selection_err) => {
+                info!(
+                    "selecting trait `{:?}` at depth {} yielded Err",
+                    trait_obligation.predicate, obligation.recursion_depth
+                );
+
+                ProcessResult::Error(CodeSelectionError(selection_err))
+            }
+        }
+    }
+
+    fn process_projection_obligation(
+        &mut self,
+        project_obligation: PolyProjectionObligation<'tcx>,
+        stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
+    ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
+            Ok(None) => {
+                *stalled_on = trait_ref_infer_vars(
+                    self.selcx,
+                    project_obligation.predicate.to_poly_trait_ref(self.selcx.tcx()),
+                );
+                ProcessResult::Unchanged
+            }
+            Ok(Some(os)) => ProcessResult::Changed(mk_pending(os)),
+            Err(e) => ProcessResult::Error(CodeProjectionError(e)),
+        }
+    }
+}
+
 /// Returns the set of inference variables contained in a trait ref.
 fn trait_ref_infer_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
-    trait_ref: ty::TraitRef<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Vec<TyOrConstInferVar<'tcx>> {
     selcx
         .infcx()
         .resolve_vars_if_possible(&trait_ref)
+        .skip_binder()
         .substs
         .iter()
         // FIXME(eddyb) try using `skip_current_subtree` to skip everything that
