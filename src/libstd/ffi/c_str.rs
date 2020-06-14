@@ -260,6 +260,32 @@ pub struct FromBytesWithNulError {
     kind: FromBytesWithNulErrorKind,
 }
 
+/// An error indicating that a nul byte was not in the expected position.
+///
+/// The vector used to create a [`CString`] must have one and only one nul byte,
+/// positioned at the end.
+///
+/// This error is created by the [`from_vec_with_nul`] method on [`CString`].
+/// See its documentation for more.
+///
+/// [`CString`]: struct.CString.html
+/// [`from_vec_with_nul`]: struct.CString.html#method.from_vec_with_nul
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cstring_from_vec_with_nul)]
+/// use std::ffi::{CString, FromVecWithNulError};
+///
+/// let _: FromVecWithNulError = CString::from_vec_with_nul(b"f\0oo".to_vec()).unwrap_err();
+/// ```
+#[derive(Clone, PartialEq, Eq, Debug)]
+#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+pub struct FromVecWithNulError {
+    error_kind: FromBytesWithNulErrorKind,
+    bytes: Vec<u8>,
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 enum FromBytesWithNulErrorKind {
     InteriorNul(usize),
@@ -272,6 +298,59 @@ impl FromBytesWithNulError {
     }
     fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
+    }
+}
+
+#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+impl FromVecWithNulError {
+    /// Returns a slice of [`u8`]s bytes that were attempted to convert to a [`CString`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(cstring_from_vec_with_nul)]
+    /// use std::ffi::CString;
+    ///
+    /// // Some invalid bytes in a vector
+    /// let bytes = b"f\0oo".to_vec();
+    ///
+    /// let value = CString::from_vec_with_nul(bytes.clone());
+    ///
+    /// assert_eq!(&bytes[..], value.unwrap_err().as_bytes());
+    /// ```
+    ///
+    /// [`CString`]: struct.CString.html
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes[..]
+    }
+
+    /// Returns the bytes that were attempted to convert to a [`CString`].
+    ///
+    /// This method is carefully constructed to avoid allocation. It will
+    /// consume the error, moving out the bytes, so that a copy of the bytes
+    /// does not need to be made.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(cstring_from_vec_with_nul)]
+    /// use std::ffi::CString;
+    ///
+    /// // Some invalid bytes in a vector
+    /// let bytes = b"f\0oo".to_vec();
+    ///
+    /// let value = CString::from_vec_with_nul(bytes.clone());
+    ///
+    /// assert_eq!(bytes, value.unwrap_err().into_bytes());
+    /// ```
+    ///
+    /// [`CString`]: struct.CString.html
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
     }
 }
 
@@ -1036,6 +1115,23 @@ impl fmt::Display for FromBytesWithNulError {
             write!(f, " at byte pos {}", pos)?;
         }
         Ok(())
+    }
+}
+
+#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+impl Error for FromVecWithNulError {}
+
+#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+impl fmt::Display for FromVecWithNulError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.error_kind {
+            FromBytesWithNulErrorKind::InteriorNul(pos) => {
+                write!(f, "data provided contains an interior nul byte at pos {}", pos)
+            }
+            FromBytesWithNulErrorKind::NotNulTerminated => {
+                write!(f, "data provided is not nul terminated")
+            }
+        }
     }
 }
 
