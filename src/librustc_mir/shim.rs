@@ -56,7 +56,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             let sig = tcx.erase_late_bound_regions(&ty.fn_sig(tcx));
             let arg_tys = sig.inputs();
 
-            build_call_shim(tcx, instance, Some(adjustment), CallKind::Indirect, Some(arg_tys))
+            build_call_shim(tcx, instance, Some(adjustment), CallKind::Indirect(ty), Some(arg_tys))
         }
         // We are generating a call back to our def-id, which the
         // codegen backend knows to turn to an actual call, be it
@@ -147,9 +147,9 @@ enum Adjustment {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-enum CallKind {
+enum CallKind<'tcx> {
     /// Call the `FnPtr` that was passed as the receiver.
-    Indirect,
+    Indirect(Ty<'tcx>),
 
     /// Call a known `FnDef`.
     Direct(DefId),
@@ -671,7 +671,7 @@ fn build_call_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
     rcvr_adjustment: Option<Adjustment>,
-    call_kind: CallKind,
+    call_kind: CallKind<'tcx>,
     untuple_args: Option<&[Ty<'tcx>]>,
 ) -> Body<'tcx> {
     debug!(
@@ -683,6 +683,29 @@ fn build_call_shim<'tcx>(
     let def_id = instance.def_id();
     let sig = tcx.fn_sig(def_id);
     let mut sig = tcx.erase_late_bound_regions(&sig);
+
+    if let CallKind::Indirect(fnty) = call_kind {
+        // `sig` determines our local decls, and thus the callee type in the `Call` terminator. This
+        // can only be an `FnDef` or `FnPtr`, but currently will be `Self` since the types come from
+        // the implemented `FnX` trait.
+
+        // Apply the opposite adjustment to the MIR input.
+        let mut inputs_and_output = sig.inputs_and_output.to_vec();
+
+        // Initial signature is `fn(&? Self, Args) -> Self::Output` where `Args` is a tuple of the
+        // fn arguments. `Self` may be passed via (im)mutable reference or by-value.
+        assert_eq!(inputs_and_output.len(), 3);
+
+        // `Self` is always the original fn type `ty`. The MIR call terminator is only defined for
+        // `FnDef` and `FnPtr` callees, not the `Self` type param.
+        let self_arg = &mut inputs_and_output[0];
+        *self_arg = match rcvr_adjustment.unwrap() {
+            Adjustment::Identity => fnty,
+            Adjustment::Deref => tcx.mk_imm_ptr(fnty),
+            Adjustment::RefMut => tcx.mk_mut_ptr(fnty),
+        };
+        sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+    }
 
     // FIXME(eddyb) avoid having this snippet both here and in
     // `Instance::fn_sig` (introduce `InstanceDef::fn_sig`?).
@@ -737,7 +760,7 @@ fn build_call_shim<'tcx>(
 
     let (callee, mut args) = match call_kind {
         // `FnPtr` call has no receiver. Args are untupled below.
-        CallKind::Indirect => (rcvr.unwrap(), vec![]),
+        CallKind::Indirect(_) => (rcvr.unwrap(), vec![]),
 
         // `FnDef` call with optional receiver.
         CallKind::Direct(def_id) => {
