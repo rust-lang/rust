@@ -52,6 +52,8 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// it's been assembled.
     type Output: Clone;
 
+    /// Whether this step is run by default as part of its respective phase.
+    /// `true` here can still be overwritten by `should_run` calling `default_condition`.
     const DEFAULT: bool = false;
 
     /// If true, then this rule should be skipped if --target was specified, but --host was not
