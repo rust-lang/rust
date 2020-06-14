@@ -18,6 +18,7 @@ pub enum NonStructuralMatchTy<'tcx> {
     Opaque,
     Generator,
     Projection,
+    Closure,
 }
 
 /// This method traverses the structure of `ty`, trying to find an
@@ -162,6 +163,10 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 self.found = Some(NonStructuralMatchTy::Generator);
                 return true; // Stop visiting.
             }
+            ty::Closure(..) => {
+                self.found = Some(NonStructuralMatchTy::Closure);
+                return true; // Stop visiting.
+            }
             ty::RawPtr(..) => {
                 // structural-match ignores substructure of
                 // `*const _`/`*mut _`, so skip `super_visit_with`.
@@ -211,7 +216,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 ty.super_visit_with(self);
                 return false;
             }
-            ty::Closure(..) | ty::Infer(_) | ty::Placeholder(_) | ty::Bound(..) => {
+            ty::Infer(_) | ty::Placeholder(_) | ty::Bound(..) => {
                 bug!("unexpected type during structural-match checking: {:?}", ty);
             }
             ty::Error => {
