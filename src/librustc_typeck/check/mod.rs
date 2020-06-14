@@ -3183,6 +3183,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
+        let autoborrow_mut = adj.iter().any(|adj| {
+            matches!(adj, &Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })),
+                ..
+            })
+        });
+
         match self.tables.borrow_mut().adjustments_mut().entry(expr.hir_id) {
             Entry::Vacant(entry) => {
                 entry.insert(adj);
@@ -3211,6 +3218,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 *entry.get_mut() = adj;
             }
+        }
+
+        // When there is an auto mutable borrow, it is equivalent to `&mut expr`,
+        // thus `expr` is ought to be typechecked with needs = [`Needs::MutPlace`].
+        // However in many cases it might not be checked this way originally, e.g.
+        // the receiver of a method call. We need to fix them up.
+        if autoborrow_mut {
+            self.convert_place_derefs_to_mutable(expr);
         }
     }
 

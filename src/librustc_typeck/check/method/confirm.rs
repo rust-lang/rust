@@ -119,11 +119,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         // Create the final `MethodCallee`.
         let callee = MethodCallee { def_id: pick.item.def_id, substs: all_substs, sig: method_sig };
-
-        if let Some(hir::Mutability::Mut) = pick.autoref {
-            self.convert_place_derefs_to_mutable(self.self_expr);
-        }
-
         ConfirmResult { callee, illegal_sized_bound }
     }
 
