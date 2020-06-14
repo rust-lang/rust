@@ -19,6 +19,12 @@ struct AsmArgs {
     options_spans: Vec<Span>,
 }
 
+impl AsmArgs {
+    fn option_is_set(&self, option: ast::InlineAsmOptions) -> bool {
+        (self.options & option) == option
+    }
+}
+
 fn parse_args<'a>(
     ecx: &mut ExtCtxt<'a>,
     sp: Span,
@@ -283,6 +289,23 @@ fn parse_args<'a>(
     Ok(args)
 }
 
+fn warn_duplicate_option<'a>(p: &mut Parser<'a>, span: Span) {
+    let mut warn = if let Ok(snippet) = p.sess.source_map().span_to_snippet(span) {
+        p.sess
+            .span_diagnostic
+            .struct_span_warn(span, &format!("the `{}` option was already provided", snippet))
+    } else {
+        p.sess.span_diagnostic.struct_span_warn(span, "this option was already provided")
+    };
+    warn.span_suggestion(
+        span,
+        "remove this option",
+        String::new(),
+        Applicability::MachineApplicable,
+    );
+    warn.emit();
+}
+
 fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), DiagnosticBuilder<'a>> {
     let span_start = p.prev_token.span;
 
@@ -290,20 +313,48 @@ fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), Diagn
 
     while !p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
         if p.eat(&token::Ident(sym::pure, false)) {
-            args.options |= ast::InlineAsmOptions::PURE;
+            if !args.option_is_set(ast::InlineAsmOptions::PURE) {
+                args.options |= ast::InlineAsmOptions::PURE;
+            } else {
+                warn_duplicate_option(p, p.prev_token.span);
+            }
         } else if p.eat(&token::Ident(sym::nomem, false)) {
-            args.options |= ast::InlineAsmOptions::NOMEM;
+            if !args.option_is_set(ast::InlineAsmOptions::NOMEM) {
+                args.options |= ast::InlineAsmOptions::NOMEM;
+            } else {
+                warn_duplicate_option(p, p.prev_token.span);
+            }
         } else if p.eat(&token::Ident(sym::readonly, false)) {
-            args.options |= ast::InlineAsmOptions::READONLY;
+            if !args.option_is_set(ast::InlineAsmOptions::READONLY) {
+                args.options |= ast::InlineAsmOptions::READONLY;
+            } else {
+                warn_duplicate_option(p, p.prev_token.span);
+            }
         } else if p.eat(&token::Ident(sym::preserves_flags, false)) {
-            args.options |= ast::InlineAsmOptions::PRESERVES_FLAGS;
+            if !args.option_is_set(ast::InlineAsmOptions::PRESERVES_FLAGS) {
+                args.options |= ast::InlineAsmOptions::PRESERVES_FLAGS;
+            } else {
+                warn_duplicate_option(p, p.prev_token.span);
+            }
         } else if p.eat(&token::Ident(sym::noreturn, false)) {
-            args.options |= ast::InlineAsmOptions::NORETURN;
+            if !args.option_is_set(ast::InlineAsmOptions::NORETURN) {
+                args.options |= ast::InlineAsmOptions::NORETURN;
+            } else {
+                warn_duplicate_option(p, p.prev_token.span);
+            }
         } else if p.eat(&token::Ident(sym::nostack, false)) {
-            args.options |= ast::InlineAsmOptions::NOSTACK;
+            if !args.option_is_set(ast::InlineAsmOptions::NOSTACK) {
+                args.options |= ast::InlineAsmOptions::NOSTACK;
+            } else {
+                warn_duplicate_option(p, p.prev_token.span);
+            }
         } else {
             p.expect(&token::Ident(sym::att_syntax, false))?;
-            args.options |= ast::InlineAsmOptions::ATT_SYNTAX;
+            if !args.option_is_set(ast::InlineAsmOptions::ATT_SYNTAX) {
+                args.options |= ast::InlineAsmOptions::ATT_SYNTAX;
+            } else {
+                warn_duplicate_option(p, p.prev_token.span);
+            }
         }
 
         // Allow trailing commas
