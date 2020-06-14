@@ -9,7 +9,6 @@ use rustc_middle::{
     },
     ty::{self, ParamEnv, TyCtxt},
 };
-use rustc_span::def_id::DefId;
 
 #[derive(Copy, Clone, Debug)]
 enum EdgeKind {
@@ -24,15 +23,14 @@ pub struct Validator {
 
 impl<'tcx> MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let def_id = source.def_id();
-        let param_env = tcx.param_env(def_id);
-        TypeChecker { when: &self.when, def_id, body, tcx, param_env }.visit_body(body);
+        let param_env = tcx.param_env(source.def_id());
+        TypeChecker { when: &self.when, source, body, tcx, param_env }.visit_body(body);
     }
 }
 
 struct TypeChecker<'a, 'tcx> {
     when: &'a str,
-    def_id: DefId,
+    source: MirSource<'tcx>,
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
@@ -47,7 +45,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             span,
             &format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.def_id,
+                self.source.instance,
                 self.when,
                 location,
                 msg.as_ref()
