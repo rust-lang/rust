@@ -234,18 +234,14 @@ pub struct NulError(usize, Vec<u8>);
 
 /// An error indicating that a nul byte was not in the expected position.
 ///
-/// The slice used to create a [`CStr`] or the vector used to create a
-/// [`CString`] must have one and only one nul byte, positioned at the end.
+/// The slice used to create a [`CStr`] must have one and only one nul byte,
+/// positioned at the end.
 ///
-/// This error is created by the
-/// [`from_bytes_with_nul`][`CStr::from_bytes_with_nul`] method on
-/// [`CStr`] or the [`from_vec_with_nul`][`CString::from_vec_with_nul`] method
-/// on [`CString`]. See their documentation for more.
+/// This error is created by the [`from_bytes_with_nul`] method on [`CStr`].
+/// See its documentation for more.
 ///
 /// [`CStr`]: struct.CStr.html
-/// [`CStr::from_bytes_with_nul`]: struct.CStr.html#method.from_bytes_with_nul
-/// [`CString`]: struct.CString.html
-/// [`CString::from_vec_with_nul`]: struct.CString.html#method.from_vec_with_nul
+/// [`from_bytes_with_nul`]: struct.CStr.html#method.from_bytes_with_nul
 ///
 /// # Examples
 ///
@@ -726,6 +722,7 @@ impl CString {
     /// # Example
     ///
     /// ```
+    /// #![feature(cstring_from_vec_with_nul)]
     /// use std::ffi::CString;
     /// assert_eq!(
     ///     unsafe { CString::from_vec_with_nul_unchecked(b"abc\0".to_vec()) },
@@ -753,27 +750,29 @@ impl CString {
     /// called without the ending nul byte.
     ///
     /// ```
+    /// #![feature(cstring_from_vec_with_nul)]
     /// use std::ffi::CString;
     /// assert_eq!(
     ///     CString::from_vec_with_nul(b"abc\0".to_vec())
     ///         .expect("CString::from_vec_with_nul failed"),
-    ///     CString::new(b"abc".to_vec())
+    ///     CString::new(b"abc".to_vec()).expect("CString::new failed")
     /// );
     /// ```
     ///
     /// A incorrectly formatted vector will produce an error.
     ///
     /// ```
-    /// use std::ffi::{CString, FromBytesWithNulError};
+    /// #![feature(cstring_from_vec_with_nul)]
+    /// use std::ffi::{CString, FromVecWithNulError};
     /// // Interior nul byte
-    /// let _: FromBytesWithNulError = CString::from_vec_with_nul(b"a\0bc".to_vec()).unwrap_err();
+    /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"a\0bc".to_vec()).unwrap_err();
     /// // No nul byte
-    /// let _: FromBytesWithNulError = CString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
+    /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
     /// ```
     ///
     /// [`new`]: #method.new
     #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-    pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromBytesWithNulError> {
+    pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromVecWithNulError> {
         let nul_pos = memchr::memchr(0, &v);
         match nul_pos {
             Some(nul_pos) if nul_pos + 1 == v.len() => {
@@ -781,8 +780,14 @@ impl CString {
                 // of the vec.
                 Ok(unsafe { Self::from_vec_with_nul_unchecked(v) })
             }
-            Some(nul_pos) => Err(FromBytesWithNulError::interior_nul(nul_pos)),
-            None => Err(FromBytesWithNulError::not_nul_terminated()),
+            Some(nul_pos) => Err(FromVecWithNulError {
+                error_kind: FromBytesWithNulErrorKind::InteriorNul(nul_pos),
+                bytes: v,
+            }),
+            None => Err(FromVecWithNulError {
+                error_kind: FromBytesWithNulErrorKind::NotNulTerminated,
+                bytes: v,
+            }),
         }
     }
 }
