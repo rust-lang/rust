@@ -31,12 +31,16 @@ impl<'tcx> MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let def_id = source.def_id();
         let param_env = tcx.param_env(def_id);
-        TypeChecker { when: &self.when, def_id, body, tcx, param_env }.visit_body(body);
+        let validating_shim =
+            if let ty::InstanceDef::Item(_) = source.instance { false } else { true };
+        TypeChecker { when: &self.when, def_id, body, tcx, param_env, validating_shim }
+            .visit_body(body);
     }
 }
 
 struct TypeChecker<'a, 'tcx> {
     when: &'a str,
+    validating_shim: bool,
     def_id: DefId,
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -92,9 +96,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_ty_callable(&self, location: Location, ty: Ty<'tcx>) {
         if let ty::FnPtr(..) | ty::FnDef(..) = ty.kind {
             // We have a `FnPtr` or `FnDef` which is trivially safe to call.
-        } else {
-            // FIXME(doctorn): call shims shouldn't reference unnormalized types, so
-            // this case should be removed.
+        } else if self.validating_shim {
+            // FIXME(#69925): we shouldn't be special-casing for call-shims as we'd hope they
+            // have concrete substs by this point.
             // We haven't got a `FnPtr` or `FnDef` but we are still safe to call it if it
             // implements `FnOnce` (as `Fn: FnMut` and `FnMut: FnOnce`).
             let fn_once_trait = self.tcx.require_lang_item(FnOnceTraitLangItem, None);
@@ -130,6 +134,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             });
+        } else {
+            self.fail(
+                location,
+                format!("encountered non-callable type {} in `Call` terminator", ty),
+            );
         }
     }
 }
