@@ -6,7 +6,10 @@ LL | enum Foo { X(Mutex<Option<Foo>>) }
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Foo` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
+   |
+LL | enum Foo { X(Box<Mutex<Option<Foo>>>) }
+   |              ^^^^                  ^
 
 error: aborting due to previous error
 

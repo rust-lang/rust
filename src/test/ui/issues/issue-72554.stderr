@@ -6,7 +6,10 @@ LL | pub enum ElemDerived {
 LL |     A(ElemDerived)
    |       ----------- recursive without indirection
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `ElemDerived` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `ElemDerived` representable
+   |
+LL |     A(Box<ElemDerived>)
+   |       ^^^^           ^
 
 error: aborting due to previous error
 
