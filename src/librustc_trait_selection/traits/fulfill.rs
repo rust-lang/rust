@@ -70,6 +70,9 @@ pub struct FulfillmentContext<'tcx> {
     // a snapshot (they don't *straddle* a snapshot, so there
     // is no trouble there).
     usable_in_snapshot: bool,
+
+    // See `SelectionContext::force_propagate_overflow`
+    rustdoc: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -93,6 +96,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             predicates: ObligationForest::new(),
             register_region_obligations: true,
             usable_in_snapshot: false,
+            rustdoc: false,
         }
     }
 
@@ -101,6 +105,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             predicates: ObligationForest::new(),
             register_region_obligations: true,
             usable_in_snapshot: true,
+            rustdoc: false,
         }
     }
 
@@ -109,6 +114,16 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             predicates: ObligationForest::new(),
             register_region_obligations: false,
             usable_in_snapshot: false,
+            rustdoc: false,
+        }
+    }
+
+    pub fn new_rustdoc() -> FulfillmentContext<'tcx> {
+        FulfillmentContext {
+            predicates: ObligationForest::new(),
+            register_region_obligations: false,
+            usable_in_snapshot: false,
+            rustdoc: true,
         }
     }
 
@@ -176,7 +191,11 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
         // FIXME(#20304) -- cache
 
-        let mut selcx = SelectionContext::new(infcx);
+        let mut selcx = if self.rustdoc {
+            SelectionContext::with_negative_and_force_overflow(infcx)
+        } else {
+            SelectionContext::new(infcx)
+        };
         let mut obligations = vec![];
         let normalized_ty = project::normalize_projection_type(
             &mut selcx,
@@ -229,7 +248,11 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
-        let mut selcx = SelectionContext::new(infcx);
+        let mut selcx = if self.rustdoc {
+            SelectionContext::with_negative_and_force_overflow(infcx)
+        } else {
+            SelectionContext::new(infcx)
+        };
         self.select(&mut selcx)
     }
 
