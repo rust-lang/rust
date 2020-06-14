@@ -136,8 +136,20 @@ fn is_variant_missing(existing_arms: &mut Vec<MatchArm>, var: &Pat) -> bool {
 }
 
 fn does_pat_match_variant(pat: &Pat, var: &Pat) -> bool {
-    let pat_head = pat.syntax().first_child().map(|node| node.text());
-    let var_head = var.syntax().first_child().map(|node| node.text());
+    let first_node_text = |pat: &Pat| pat.syntax().first_child().map(|node| node.text());
+
+    let pat_head = match pat {
+        Pat::BindPat(bind_pat) => {
+            if let Some(p) = bind_pat.pat() {
+                first_node_text(&p)
+            } else {
+                return false;
+            }
+        }
+        pat => first_node_text(pat),
+    };
+
+    let var_head = first_node_text(var);
 
     pat_head == var_head
 }
