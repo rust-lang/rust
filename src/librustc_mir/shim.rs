@@ -130,14 +130,28 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum Adjustment {
+    /// Pass the receiver as-is.
     Identity,
+
+    /// We get passed `&[mut] self` and call the target with `*self`.
+    ///
+    /// This either copies `self` (if `Self: Copy`, eg. for function items), or moves out of it
+    /// (for `VtableShim`, which effectively is passed `&own Self`).
     Deref,
+
+    /// We get passed `self: Self` and call the target with `&mut self`.
+    ///
+    /// In this case we need to ensure that the `Self` is dropped after the call, as the callee
+    /// won't do it for us.
     RefMut,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum CallKind {
+    /// Call the `FnPtr` that was passed as the receiver.
     Indirect,
+
+    /// Call a known `FnDef`.
     Direct(DefId),
 }
 
@@ -722,7 +736,10 @@ fn build_call_shim<'tcx>(
     });
 
     let (callee, mut args) = match call_kind {
+        // `FnPtr` call has no receiver. Args are untupled below.
         CallKind::Indirect => (rcvr.unwrap(), vec![]),
+
+        // `FnDef` call with optional receiver.
         CallKind::Direct(def_id) => {
             let ty = tcx.type_of(def_id);
             (
