@@ -425,6 +425,9 @@ extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef TM) {
   for (auto &Feature : FeatTable)
     printf("    %-*s - %s.\n", MaxFeatLen, Feature.Key, Feature.Desc);
   printf("\n");
+  // Rust specific target features
+  printf("    %-*s - %s.\n", MaxFeatLen, "crt-static", "Enables libraries with C Run-time Libraries(CRT) to be statically linked");
+  printf("\n");
 
   printf("Use +feature to enable a feature, or -feature to disable it.\n"
          "For example, rustc -C -target-cpu=mycpu -C "
