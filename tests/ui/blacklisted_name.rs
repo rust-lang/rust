@@ -14,8 +14,10 @@ fn main() {
     let foo = 42;
     let baz = 42;
     let quux = 42;
-    // Unlike these others, `bar` is considered an acceptable name to use.
+    // Unlike these others, `bar` is actually considered an acceptable name.
+    // Among many other legitimate uses, bar commonly refers to a period of time in music.
     // See https://github.com/rust-lang/rust-clippy/issues/5225.
+    let bar = 42;
 
     let food = 42;
     let foodstuffs = 42;
