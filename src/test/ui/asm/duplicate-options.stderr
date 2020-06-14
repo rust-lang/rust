@@ -1,0 +1,38 @@
+warning: the `nomem` option was already provided
+  --> $DIR/duplicate-options.rs:8:33
+   |
+LL |         asm!("", options(nomem, nomem));
+   |                                 ^^^^^ help: remove this option
+
+warning: the `att_syntax` option was already provided
+  --> $DIR/duplicate-options.rs:10:38
+   |
+LL |         asm!("", options(att_syntax, att_syntax));
+   |                                      ^^^^^^^^^^ help: remove this option
+
+warning: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:12:56
+   |
+LL |         asm!("", options(nostack, att_syntax), options(nostack));
+   |                                                        ^^^^^^^ help: remove this option
+
+warning: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:14:35
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                   ^^^^^^^ help: remove this option
+
+warning: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:14:53
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                                     ^^^^^^^ help: remove this option
+
+warning: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:14:71
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                                                       ^^^^^^^ help: remove this option
+
+warning: 6 warnings emitted
+
