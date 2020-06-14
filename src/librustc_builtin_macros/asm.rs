@@ -289,21 +289,24 @@ fn parse_args<'a>(
     Ok(args)
 }
 
-fn warn_duplicate_option<'a>(p: &mut Parser<'a>, span: Span) {
-    let mut warn = if let Ok(snippet) = p.sess.source_map().span_to_snippet(span) {
+fn err_duplicate_option<'a>(p: &mut Parser<'a>, span: Span) {
+    let mut err = if let Ok(snippet) = p.sess.source_map().span_to_snippet(span) {
         p.sess
             .span_diagnostic
-            .struct_span_warn(span, &format!("the `{}` option was already provided", snippet))
+            .struct_span_err(span, &format!("the `{}` option was already provided", snippet))
     } else {
-        p.sess.span_diagnostic.struct_span_warn(span, "this option was already provided")
+        p.sess.span_diagnostic.struct_span_err(span, "this option was already provided")
     };
-    warn.span_suggestion(
-        span,
-        "remove this option",
-        String::new(),
-        Applicability::MachineApplicable,
-    );
-    warn.emit();
+    err.span_help(span, "remove this option");
+    err.emit();
+}
+
+fn try_set_option<'a>(p: &mut Parser<'a>, args: &mut AsmArgs, option: ast::InlineAsmOptions) {
+    if !args.option_is_set(option) {
+        args.options |= option;
+    } else {
+        err_duplicate_option(p, p.prev_token.span);
+    }
 }
 
 fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), DiagnosticBuilder<'a>> {
@@ -313,48 +316,20 @@ fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), Diagn
 
     while !p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
         if p.eat(&token::Ident(sym::pure, false)) {
-            if !args.option_is_set(ast::InlineAsmOptions::PURE) {
-                args.options |= ast::InlineAsmOptions::PURE;
-            } else {
-                warn_duplicate_option(p, p.prev_token.span);
-            }
+            try_set_option(p, args, ast::InlineAsmOptions::PURE);
         } else if p.eat(&token::Ident(sym::nomem, false)) {
-            if !args.option_is_set(ast::InlineAsmOptions::NOMEM) {
-                args.options |= ast::InlineAsmOptions::NOMEM;
-            } else {
-                warn_duplicate_option(p, p.prev_token.span);
-            }
+            try_set_option(p, args, ast::InlineAsmOptions::NOMEM);
         } else if p.eat(&token::Ident(sym::readonly, false)) {
-            if !args.option_is_set(ast::InlineAsmOptions::READONLY) {
-                args.options |= ast::InlineAsmOptions::READONLY;
-            } else {
-                warn_duplicate_option(p, p.prev_token.span);
-            }
+            try_set_option(p, args, ast::InlineAsmOptions::READONLY);
         } else if p.eat(&token::Ident(sym::preserves_flags, false)) {
-            if !args.option_is_set(ast::InlineAsmOptions::PRESERVES_FLAGS) {
-                args.options |= ast::InlineAsmOptions::PRESERVES_FLAGS;
-            } else {
-                warn_duplicate_option(p, p.prev_token.span);
-            }
+            try_set_option(p, args, ast::InlineAsmOptions::PRESERVES_FLAGS);
         } else if p.eat(&token::Ident(sym::noreturn, false)) {
-            if !args.option_is_set(ast::InlineAsmOptions::NORETURN) {
-                args.options |= ast::InlineAsmOptions::NORETURN;
-            } else {
-                warn_duplicate_option(p, p.prev_token.span);
-            }
+            try_set_option(p, args, ast::InlineAsmOptions::NORETURN);
         } else if p.eat(&token::Ident(sym::nostack, false)) {
-            if !args.option_is_set(ast::InlineAsmOptions::NOSTACK) {
-                args.options |= ast::InlineAsmOptions::NOSTACK;
-            } else {
-                warn_duplicate_option(p, p.prev_token.span);
-            }
+            try_set_option(p, args, ast::InlineAsmOptions::NOSTACK);
         } else {
             p.expect(&token::Ident(sym::att_syntax, false))?;
-            if !args.option_is_set(ast::InlineAsmOptions::ATT_SYNTAX) {
-                args.options |= ast::InlineAsmOptions::ATT_SYNTAX;
-            } else {
-                warn_duplicate_option(p, p.prev_token.span);
-            }
+            try_set_option(p, args, ast::InlineAsmOptions::ATT_SYNTAX);
         }
 
         // Allow trailing commas

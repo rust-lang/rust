@@ -1,38 +1,74 @@
-warning: the `nomem` option was already provided
-  --> $DIR/duplicate-options.rs:8:33
+error: the `nomem` option was already provided
+  --> $DIR/duplicate-options.rs:7:33
    |
 LL |         asm!("", options(nomem, nomem));
-   |                                 ^^^^^ help: remove this option
+   |                                 ^^^^^
+   |
+help: remove this option
+  --> $DIR/duplicate-options.rs:7:33
+   |
+LL |         asm!("", options(nomem, nomem));
+   |                                 ^^^^^
 
-warning: the `att_syntax` option was already provided
+error: the `att_syntax` option was already provided
   --> $DIR/duplicate-options.rs:10:38
    |
 LL |         asm!("", options(att_syntax, att_syntax));
-   |                                      ^^^^^^^^^^ help: remove this option
+   |                                      ^^^^^^^^^^
+   |
+help: remove this option
+  --> $DIR/duplicate-options.rs:10:38
+   |
+LL |         asm!("", options(att_syntax, att_syntax));
+   |                                      ^^^^^^^^^^
 
-warning: the `nostack` option was already provided
-  --> $DIR/duplicate-options.rs:12:56
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:13:56
    |
 LL |         asm!("", options(nostack, att_syntax), options(nostack));
-   |                                                        ^^^^^^^ help: remove this option
+   |                                                        ^^^^^^^
+   |
+help: remove this option
+  --> $DIR/duplicate-options.rs:13:56
+   |
+LL |         asm!("", options(nostack, att_syntax), options(nostack));
+   |                                                        ^^^^^^^
 
-warning: the `nostack` option was already provided
-  --> $DIR/duplicate-options.rs:14:35
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:16:35
    |
 LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
-   |                                   ^^^^^^^ help: remove this option
-
-warning: the `nostack` option was already provided
-  --> $DIR/duplicate-options.rs:14:53
+   |                                   ^^^^^^^
+   |
+help: remove this option
+  --> $DIR/duplicate-options.rs:16:35
    |
 LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
-   |                                                     ^^^^^^^ help: remove this option
+   |                                   ^^^^^^^
 
-warning: the `nostack` option was already provided
-  --> $DIR/duplicate-options.rs:14:71
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:16:53
    |
 LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
-   |                                                                       ^^^^^^^ help: remove this option
+   |                                                     ^^^^^^^
+   |
+help: remove this option
+  --> $DIR/duplicate-options.rs:16:53
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                                     ^^^^^^^
 
-warning: 6 warnings emitted
+error: the `nostack` option was already provided
+  --> $DIR/duplicate-options.rs:16:71
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                                                       ^^^^^^^
+   |
+help: remove this option
+  --> $DIR/duplicate-options.rs:16:71
+   |
+LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
+   |                                                                       ^^^^^^^
+
+error: aborting due to 6 previous errors
 
