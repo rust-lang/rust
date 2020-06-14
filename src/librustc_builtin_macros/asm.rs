@@ -135,8 +135,7 @@ fn parse_args<'a>(
         } else if p.eat(&token::Ident(kw::Const, false)) {
             let expr = p.parse_expr()?;
             ast::InlineAsmOperand::Const { expr }
-        } else {
-            p.expect(&token::Ident(sym::sym, false))?;
+        } else if p.eat(&token::Ident(sym::sym, false)) {
             let expr = p.parse_expr()?;
             match expr.kind {
                 ast::ExprKind::Path(..) => {}
@@ -147,6 +146,8 @@ fn parse_args<'a>(
                 }
             }
             ast::InlineAsmOperand::Sym { expr }
+        } else {
+            return Err(p.expect_one_of(&[], &[]).unwrap_err());
         };
 
         let span = span_start.to(p.prev_token.span);
