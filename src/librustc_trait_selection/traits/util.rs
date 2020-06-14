@@ -302,7 +302,7 @@ pub fn get_vtable_index_of_object_method<N>(
 ) -> usize {
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.
-    // Skip over associated types and constants.
+    // Skip over associated types and constants, as those aren't stored in the vtable.
     let mut entries = object.vtable_base;
     for trait_item in tcx.associated_items(object.upcast_trait_ref.def_id()).in_definition_order() {
         if trait_item.def_id == method_def_id {

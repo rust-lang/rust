@@ -9,6 +9,11 @@ use rustc_macros::HashStable;
 
 use std::fmt;
 
+/// A monomorphized `InstanceDef`.
+///
+/// Monomorphization happens on-the-fly and no monomorphized MIR is ever created. Instead, this type
+/// simply couples a potentially generic `InstanceDef` with some substs, and codegen and const eval
+/// will do all required substitution as they run.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, Lift)]
 pub struct Instance<'tcx> {
@@ -18,10 +23,26 @@ pub struct Instance<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InstanceDef<'tcx> {
+    /// A user-defined callable item.
+    ///
+    /// This includes:
+    /// - `fn` items
+    /// - closures
+    /// - generators
     Item(DefId),
+
+    /// An intrinsic `fn` item (with `"rust-intrinsic"` or `"platform-intrinsic"` ABI).
+    ///
+    /// Alongside `Virtual`, this is the only `InstanceDef` that does not have its own callable MIR.
+    /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the
+    /// caller.
     Intrinsic(DefId),
 
-    /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
+    /// `<T as Trait>::method` where `method` receives unsizeable `self: Self` (part of the
+    /// `unsized_locals` feature).
+    ///
+    /// The generated shim will take `Self` via `*mut Self` - conceptually this is `&owned Self` -
+    /// and dereference the argument to call the original function.
     VtableShim(DefId),
 
     /// `fn()` pointer where the function itself cannot be turned into a pointer.
@@ -37,7 +58,8 @@ pub enum InstanceDef<'tcx> {
     /// (the definition of the function itself).
     ReifyShim(DefId),
 
-    /// `<fn() as FnTrait>::call_*`
+    /// `<fn() as FnTrait>::call_*` (generated `FnTrait` implementation for `fn()` pointers).
+    ///
     /// `DefId` is `FnTrait::call_*`.
     ///
     /// NB: the (`fn` pointer) type must currently be monomorphic to avoid double substitution
@@ -45,19 +67,22 @@ pub enum InstanceDef<'tcx> {
     // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     FnPtrShim(DefId, Ty<'tcx>),
 
-    /// `<dyn Trait as Trait>::fn`, "direct calls" of which are implicitly
-    /// codegen'd as virtual calls.
+    /// Dynamic dispatch to `<dyn Trait as Trait>::fn`.
     ///
-    /// NB: if this is reified to a `fn` pointer, a `ReifyShim` is used
-    /// (see `ReifyShim` above for more details on that).
+    /// This `InstanceDef` does not have callable MIR. Calls to `Virtual` instances must be
+    /// codegen'd as virtual calls through the vtable.
+    ///
+    /// If this is reified to a `fn` pointer, a `ReifyShim` is used (see `ReifyShim` above for more
+    /// details on that).
     Virtual(DefId, usize),
 
-    /// `<[mut closure] as FnOnce>::call_once`
-    ClosureOnceShim {
-        call_once: DefId,
-    },
+    /// `<[FnMut closure] as FnOnce>::call_once`.
+    ///
+    /// The `DefId` is the ID of the `call_once` method in `FnOnce`.
+    ClosureOnceShim { call_once: DefId },
 
     /// `core::ptr::drop_in_place::<T>`.
+    ///
     /// The `DefId` is for `core::ptr::drop_in_place`.
     /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop
     /// glue.
@@ -67,7 +92,12 @@ pub enum InstanceDef<'tcx> {
     // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
-    ///`<T as Clone>::clone` shim.
+    /// Compiler-generated `<T as Clone>::clone` implementation.
+    ///
+    /// For all types that automatically implement `Copy`, a trivial `Clone` impl is provided too.
+    /// Additionally, arrays, tuples, and closures get a `Clone` shim even if they aren't `Copy`.
+    ///
+    /// The `DefId` is for `Clone::clone`, the `Ty` is the type `T` with the builtin `Clone` impl.
     ///
     /// NB: the type must currently be monomorphic to avoid double substitution
     /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
