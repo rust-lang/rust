@@ -72,7 +72,7 @@
 #![doc = "2400"]
 #![cold]
 #![export_name = "2200"]
-// see issue-43106-gating-of-inline.rs
+// see issue-43106-gating-of-builtin-attrs-error.rs
 #![link()]
 #![link_name = "1900"]
 #![link_section = "1800"]
@@ -367,25 +367,6 @@ mod no_mangle {
     #[no_mangle] impl S { }
 }
 
-#[no_link]
-//~^ WARN unused attribute
-mod no_link {
-    mod inner { #![no_link] }
-    //~^ WARN unused attribute
-
-    #[no_link] fn f() { }
-    //~^ WARN unused attribute
-
-    #[no_link] struct S;
-    //~^ WARN unused attribute
-
-    #[no_link]type T = S;
-    //~^ WARN unused attribute
-
-    #[no_link] impl S { }
-    //~^ WARN unused attribute
-}
-
 #[should_panic]
 //~^ WARN unused attribute
 mod should_panic {
@@ -524,32 +505,6 @@ mod doc {
     #[doc = "2400"] impl S { }
 }
 
-#[cold]
-mod cold {
-    mod inner { #![cold] }
-
-    #[cold] fn f() { }
-
-    #[cold] struct S;
-
-    #[cold] type T = S;
-
-    #[cold] impl S { }
-}
-
-#[export_name = "2200"]
-mod export_name {
-    mod inner { #![export_name="2200"] }
-
-    #[export_name = "2200"] fn f() { }
-
-    #[export_name = "2200"] struct S;
-
-    #[export_name = "2200"] type T = S;
-
-    #[export_name = "2200"] impl S { }
-}
-
 // Note that this is a `check-pass` test, so it
 // will never invoke the linker. These are here nonetheless to point
 // out that we allow them at non-crate-level (though I do not know
@@ -566,32 +521,6 @@ mod link {
     #[link()] type T = S;
 
     #[link()] impl S { }
-}
-
-#[link_name = "1900"]
-mod link_name {
-    mod inner { #![link_name="1900"] }
-
-    #[link_name = "1900"] fn f() { }
-
-    #[link_name = "1900"] struct S;
-
-    #[link_name = "1900"] type T = S;
-
-    #[link_name = "1900"] impl S { }
-}
-
-#[link_section = "1800"]
-mod link_section {
-    mod inner { #![link_section="1800"] }
-
-    #[link_section = "1800"] fn f() { }
-
-    #[link_section = "1800"] struct S;
-
-    #[link_section = "1800"] type T = S;
-
-    #[link_section = "1800"] impl S { }
 }
 
 struct StructForDeprecated;

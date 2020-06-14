@@ -94,17 +94,26 @@ error: cannot use `#[inline(always)]` with `#[target_feature]`
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
-error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
-  --> $DIR/invalid-attribute.rs:86:5
+error: attribute should be applied to a function
+  --> $DIR/invalid-attribute.rs:82:5
+   |
+LL |       #[target_feature(enable = "sse2")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | /     unsafe {
+LL | |         foo();
+LL | |         bar();
+LL | |     }
+   | |_____- not a function
+
+error: attribute should be applied to a function
+  --> $DIR/invalid-attribute.rs:90:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
+LL |
 LL |     || {};
-   |     ----- not an `unsafe` function
-   |
-   = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
-   = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
+   |     ----- not a function
 
 error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
   --> $DIR/invalid-attribute.rs:74:5
@@ -118,6 +127,6 @@ LL |     fn foo() {}
    = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
    = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

@@ -71,6 +71,16 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_track_caller(&attr.span, attrs, span, target)
             } else if self.tcx.sess.check_name(attr, sym::doc) {
                 self.check_doc_alias(attr, hir_id, target)
+            } else if self.tcx.sess.check_name(attr, sym::cold) {
+                self.check_cold(&attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::link_name) {
+                self.check_link_name(&attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::no_link) {
+                self.check_no_link(&attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::export_name) {
+                self.check_export_name(&attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::link_section) {
+                self.check_link_section(&attr, span, target)
             } else {
                 true
             };
@@ -277,6 +287,99 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
+    /// Checks if `#[cold]` is applied to a non-function. Returns `true` if valid.
+    fn check_cold(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+        match target {
+            Target::Fn | Target::Method(..) | Target::ForeignFn => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute should be applied to a function")
+                    .span_label(*span, "not a function")
+                    .emit();
+                false
+            }
+        }
+    }
+
+    /// Checks if `#[link_name]` is applied to an item other than a foreign function or static. Returns `true` if valid.
+    fn check_link_name(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+        if target == Target::ForeignFn || target == Target::ForeignStatic {
+            true
+        } else {
+            let mut err = self.tcx.sess.struct_span_err(
+                attr.span,
+                "attribute should be applied to a foreign function or static",
+            );
+            err.span_label(*span, "not a foreign function or static");
+
+            // See issue #47725
+            if target == Target::ForeignMod {
+                if let Some(value) = attr.value_str() {
+                    err.span_help(
+                        attr.span,
+                        &format!(r#"try `#[link(name = "{}")]` instead"#, value),
+                    );
+                } else {
+                    err.span_help(attr.span, r#"try `#[link(name = "...")]` instead"#);
+                }
+            }
+
+            err.emit();
+            false
+        }
+    }
+
+    /// Checks if `#[no_link]` is applied to an `extern crate`. Returns `true` if valid.
+    fn check_no_link(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+        if target == Target::ExternCrate {
+            true
+        } else {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "attribute should be applied to an `extern crate` item")
+                .span_label(*span, "not an `extern crate` item")
+                .emit();
+            false
+        }
+    }
+
+    /// Checks if `#[export_name]` is applied to a function or static. Returns `true` if valid.
+    fn check_export_name(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+        match target {
+            Target::Static | Target::Fn | Target::Method(..) => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "attribute should be applied to a function or static",
+                    )
+                    .span_label(*span, "not a function or static")
+                    .emit();
+                false
+            }
+        }
+    }
+
+    /// Checks if `#[link_section]` is applied to a function or static. Returns `true` if valid.
+    fn check_link_section(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+        match target {
+            Target::Static | Target::Fn | Target::Method(..) => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "attribute should be applied to a function or static",
+                    )
+                    .span_label(*span, "not a function or static")
+                    .emit();
+                false
+            }
+        }
+    }
+
     /// Checks if the `#[repr]` attributes on `item` are valid.
     fn check_repr(
         &self,
@@ -421,10 +524,8 @@ impl CheckAttrVisitor<'tcx> {
     fn check_stmt_attributes(&self, stmt: &hir::Stmt<'_>) {
         // When checking statements ignore expressions, they will be checked later
         if let hir::StmtKind::Local(ref l) = stmt.kind {
+            self.check_attributes(l.hir_id, &l.attrs, &stmt.span, Target::Statement, None);
             for attr in l.attrs.iter() {
-                if self.tcx.sess.check_name(attr, sym::inline) {
-                    self.check_inline(l.hir_id, attr, &stmt.span, Target::Statement);
-                }
                 if self.tcx.sess.check_name(attr, sym::repr) {
                     self.emit_repr_error(
                         attr.span,
@@ -442,10 +543,8 @@ impl CheckAttrVisitor<'tcx> {
             hir::ExprKind::Closure(..) => Target::Closure,
             _ => Target::Expression,
         };
+        self.check_attributes(expr.hir_id, &expr.attrs, &expr.span, target, None);
         for attr in expr.attrs.iter() {
-            if self.tcx.sess.check_name(attr, sym::inline) {
-                self.check_inline(expr.hir_id, attr, &expr.span, target);
-            }
             if self.tcx.sess.check_name(attr, sym::repr) {
                 self.emit_repr_error(
                     attr.span,

@@ -79,13 +79,16 @@ impl Quux for Foo {
 }
 
 fn main() {
+    #[target_feature(enable = "sse2")]
+    //~^ ERROR attribute should be applied to a function
     unsafe {
         foo();
         bar();
     }
+    //~^^^^ NOTE not a function
+
     #[target_feature(enable = "sse2")]
-    //~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
-    //~| NOTE see issue #69098
+    //~^ ERROR attribute should be applied to a function
     || {};
-    //~^ NOTE not an `unsafe` function
+    //~^ NOTE not a function
 }
