@@ -11,7 +11,7 @@ use crate::tokenstream::TokenTree;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, Span, DUMMY_SP};
 use std::borrow::Cow;
@@ -784,6 +784,26 @@ impl Nonterminal {
             NtVis(vis) => vis.span,
             NtTT(tt) => tt.span(),
         }
+    }
+
+    /// This nonterminal looks like some specific enums from
+    /// `proc-macro-hack` and `procedural-masquerade` crates.
+    /// We need to maintain some special pretty-printing behavior for them due to incorrect
+    /// asserts in old versions of those crates and their wide use in the ecosystem.
+    /// See issue #73345 for more details.
+    /// FIXME: Remove this eventually.
+    pub fn pretty_printing_compatibility_hack(&self) -> bool {
+        if let NtItem(item) = self {
+            let name = item.ident.name;
+            if name == sym::ProceduralMasqueradeDummyType || name == sym::ProcMacroHack {
+                if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
+                    if let [variant] = &*enum_def.variants {
+                        return variant.ident.name == sym::Input;
+                    }
+                }
+            }
+        }
+        false
     }
 }
 

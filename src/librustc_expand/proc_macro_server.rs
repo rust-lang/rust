@@ -180,13 +180,17 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                 tt!(Punct::new('#', false))
             }
 
-            Interpolated(nt, flatten) => {
+            Interpolated(nt, _) => {
                 let stream = nt_to_tokenstream(&nt, sess, span);
                 TokenTree::Group(Group {
                     delimiter: Delimiter::None,
                     stream,
                     span: DelimSpan::from_single(span),
-                    flatten,
+                    flatten: if nt.pretty_printing_compatibility_hack() {
+                        FlattenGroup::Yes
+                    } else {
+                        FlattenGroup::No
+                    },
                 })
             }
 
