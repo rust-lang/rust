@@ -255,7 +255,8 @@ impl<'a> ShouldRun<'a> {
     pub fn all_krates(mut self, name: &str) -> Self {
         let mut set = BTreeSet::new();
         for krate in self.builder.in_tree_crates(name) {
-            set.insert(PathBuf::from(&krate.path));
+            let path = krate.local_path(self.builder);
+            set.insert(path);
         }
         self.paths.insert(PathSet::Set(set));
         self
@@ -263,7 +264,8 @@ impl<'a> ShouldRun<'a> {
 
     pub fn krate(mut self, name: &str) -> Self {
         for krate in self.builder.in_tree_crates(name) {
-            self.paths.insert(PathSet::one(&krate.path));
+            let path = krate.local_path(self.builder);
+            self.paths.insert(PathSet::one(path));
         }
         self
     }
