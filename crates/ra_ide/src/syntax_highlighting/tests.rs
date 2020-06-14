@@ -287,7 +287,13 @@ fn main() {
 fn test_highlight_doctest() {
     check_highlighting(
         r#"
+struct Foo {
+    bar: bool,
+}
+
 impl Foo {
+    pub const bar: bool = true;
+
     /// Constructs a new `Foo`.
     ///
     /// # Examples
@@ -297,7 +303,7 @@ impl Foo {
     /// let mut foo: Foo = Foo::new();
     /// ```
     pub const fn new() -> Foo {
-        Foo { }
+        Foo { bar: true }
     }
 
     /// `bar` method on `Foo`.
@@ -305,10 +311,14 @@ impl Foo {
     /// # Examples
     ///
     /// ```
+    /// use x::y;
+    ///
     /// let foo = Foo::new();
     ///
     /// // calls bar on foo
     /// assert!(foo.bar());
+    ///
+    /// let bar = foo.bar || Foo::bar;
     ///
     /// /* multi-line
     ///        comment */
@@ -330,7 +340,7 @@ impl Foo {
         .trim(),
         "crates/ra_ide/src/snapshots/highlight_doctest.html",
         false,
-    )
+    );
 }
 
 /// Highlights the code given by the `ra_fixture` argument, renders the

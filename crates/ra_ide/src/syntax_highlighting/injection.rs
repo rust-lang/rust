@@ -137,7 +137,7 @@ pub(super) fn highlight_doc_comment(
     let (analysis, tmp_file_id) = Analysis::from_single_file(text);
 
     stack.push();
-    for mut h in analysis.highlight(tmp_file_id).unwrap() {
+    for mut h in analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true)).unwrap() {
         // Determine start offset and end offset in case of multi-line ranges
         let mut start_offset = None;
         let mut end_offset = None;

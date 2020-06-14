@@ -19,7 +19,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         )
     }
 
-    let ranges = highlight(db, file_id, None);
+    let ranges = highlight(db, file_id, None, false);
     let text = parse.tree().syntax().to_string();
     let mut prev_pos = TextSize::from(0);
     let mut buf = String::new();
@@ -84,6 +84,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .variable           { color: #DCDCCC; }
 .format_specifier   { color: #CC696B; }
 .mutable            { text-decoration: underline; }
+.unresolved_reference { color: #FC5555; }
 
 .keyword            { color: #F0DFAF; font-weight: bold; }
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
