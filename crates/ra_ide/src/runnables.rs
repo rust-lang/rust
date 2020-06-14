@@ -428,7 +428,7 @@ mod tests {
                     name: "foo",
                     kind: FN_DEF,
                     focus_range: Some(
-                        56..59,
+                        22..29,
                     ),
                     container_name: None,
                     description: None,
@@ -495,7 +495,7 @@ mod tests {
                     name: "foo",
                     kind: FN_DEF,
                     focus_range: Some(
-                        97..100,
+                        51..58,
                     ),
                     container_name: None,
                     description: None,
