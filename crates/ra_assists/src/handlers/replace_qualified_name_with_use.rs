@@ -1,4 +1,4 @@
-use hir::{self, ModPath};
+use hir;
 use ra_syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SmolStr, SyntaxNode};
 
 use crate::{
@@ -50,13 +50,9 @@ pub(crate) fn replace_qualified_name_with_use(
 
             // Now that we've brought the name into scope, re-qualify all paths that could be
             // affected (that is, all paths inside the node we added the `use` to).
-            let hir_path = match hir::Path::from_ast(path.clone()) {
-                Some(p) => p,
-                None => return,
-            };
             let mut rewriter = SyntaxRewriter::default();
             let syntax = container.either(|l| l.syntax().clone(), |r| r.syntax().clone());
-            shorten_paths(&mut rewriter, syntax, hir_path.mod_path());
+            shorten_paths(&mut rewriter, syntax, path);
             builder.rewrite(rewriter);
         },
     )
@@ -83,7 +79,7 @@ fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
 }
 
 /// Adds replacements to `re` that shorten `path` in all descendants of `node`.
-fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: &ModPath) {
+fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: ast::Path) {
     for child in node.children() {
         match_ast! {
             match child {
@@ -94,45 +90,55 @@ fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path:
                 ast::Module(_it) => continue,
 
                 ast::Path(p) => {
-                    match maybe_replace_path(rewriter, &p, path) {
+                    match maybe_replace_path(rewriter, p.clone(), path.clone()) {
                         Some(()) => {},
-                        None => shorten_paths(rewriter, p.syntax().clone(), path),
+                        None => shorten_paths(rewriter, p.syntax().clone(), path.clone()),
                     }
                 },
-                _ => shorten_paths(rewriter, child, path),
+                _ => shorten_paths(rewriter, child, path.clone()),
             }
         }
     }
 }
 
 fn maybe_replace_path(
-    re: &mut SyntaxRewriter<'static>,
-    p: &ast::Path,
-    path: &ModPath,
+    rewriter: &mut SyntaxRewriter<'static>,
+    path: ast::Path,
+    target: ast::Path,
 ) -> Option<()> {
-    let hir_path = hir::Path::from_ast(p.clone())?;
-
-    if hir_path.mod_path() != path {
+    if !path_eq(path.clone(), target.clone()) {
         return None;
     }
 
-    // Replace path with its last "plain" segment.
-    let mut mod_path = hir_path.mod_path().clone();
-    let last = mod_path.segments.len() - 1;
-    mod_path.segments.swap(0, last);
-    mod_path.segments.truncate(1);
-    mod_path.kind = hir::PathKind::Plain;
-
-    let mut new_path = crate::ast_transform::path_to_ast(mod_path);
-
-    let type_args = p.segment().and_then(|s| s.type_arg_list());
-    if let Some(type_args) = type_args {
-        let last_segment = new_path.segment().unwrap();
-        new_path = new_path.with_segment(last_segment.with_type_args(type_args));
+    // Shorten `path`, leaving only its last segment.
+    if let Some(parent) = path.qualifier() {
+        rewriter.delete(parent.syntax());
+    }
+    if let Some(double_colon) = path.coloncolon_token() {
+        rewriter.delete(&double_colon);
     }
 
-    re.replace(p.syntax(), new_path.syntax());
     Some(())
+}
+
+fn path_eq(lhs: ast::Path, rhs: ast::Path) -> bool {
+    let mut lhs_curr = lhs;
+    let mut rhs_curr = rhs;
+    loop {
+        match (lhs_curr.segment(), rhs_curr.segment()) {
+            (Some(lhs), Some(rhs)) if lhs.syntax().text() == rhs.syntax().text() => (),
+            _ => return false,
+        }
+
+        match (lhs_curr.qualifier(), rhs_curr.qualifier()) {
+            (Some(lhs), Some(rhs)) => {
+                lhs_curr = lhs;
+                rhs_curr = rhs;
+            }
+            (None, None) => return true,
+            _ => return false,
+        }
+    }
 }
 
 #[cfg(test)]
