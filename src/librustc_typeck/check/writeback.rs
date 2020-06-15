@@ -4,10 +4,8 @@
 
 use crate::check::FnCtxt;
 
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefIdSet;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
@@ -67,10 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_user_provided_sigs();
         wbcx.visit_generator_interior_types();
 
-        let used_trait_imports = mem::replace(
-            &mut self.tables.borrow_mut().used_trait_imports,
-            Lrc::new(DefIdSet::default()),
-        );
+        let used_trait_imports = mem::take(&mut self.tables.borrow_mut().used_trait_imports);
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.tables.used_trait_imports = used_trait_imports;
 

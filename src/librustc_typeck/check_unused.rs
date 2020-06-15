@@ -1,14 +1,14 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 use rustc_span::{Span, Symbol};
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
-    let mut used_trait_imports = DefIdSet::default();
+    let mut used_trait_imports = FxHashSet::default();
     for &body_id in tcx.hir().krate().bodies.keys() {
         let item_def_id = tcx.hir().body_owner_def_id(body_id);
         let imports = tcx.used_trait_imports(item_def_id);
@@ -39,7 +39,7 @@ impl ItemLikeVisitor<'v> for CheckVisitor<'tcx> {
 
 struct CheckVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    used_trait_imports: DefIdSet,
+    used_trait_imports: FxHashSet<LocalDefId>,
 }
 
 impl CheckVisitor<'tcx> {
@@ -49,7 +49,7 @@ impl CheckVisitor<'tcx> {
             return;
         }
 
-        if self.used_trait_imports.contains(&def_id.to_def_id()) {
+        if self.used_trait_imports.contains(&def_id) {
             return;
         }
 

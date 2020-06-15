@@ -197,7 +197,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("used_trait_import: {:?}", import_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                 .unwrap()
-                .insert(import_id.to_def_id());
+                .insert(*import_id);
         }
 
         self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span);
@@ -461,7 +461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let used_trait_imports = Lrc::get_mut(&mut tables.used_trait_imports).unwrap();
             for import_id in pick.import_ids {
                 debug!("resolve_ufcs: used_trait_import: {:?}", import_id);
-                used_trait_imports.insert(import_id.to_def_id());
+                used_trait_imports.insert(import_id);
             }
         }
 
