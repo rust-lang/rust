@@ -651,7 +651,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             {
                 span_lint_and_sugg(
                     cx,
-                    IMPRECISE_FLOPS,
+                    SUBOPTIMAL_FLOPS,
                     expr.span,
                     "conversion to degrees can be done more accurately",
                     "consider using",
@@ -664,7 +664,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             {
                 span_lint_and_sugg(
                     cx,
-                    IMPRECISE_FLOPS,
+                    SUBOPTIMAL_FLOPS,
                     expr.span,
                     "conversion to radians can be done more accurately",
                     "consider using",
