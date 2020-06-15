@@ -579,7 +579,8 @@ fn highlight_element(
                 return None;
             }
 
-            // FIXME account for alignment... somehow
+            // FIXME This needs layout computation to be correct. It will highlight
+            // more than it should with the current implementation.
 
             Highlight::new(HighlightTag::Operator) | HighlightModifier::Unsafe
         }
