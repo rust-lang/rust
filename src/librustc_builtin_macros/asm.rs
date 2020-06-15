@@ -297,7 +297,7 @@ fn err_duplicate_option<'a>(p: &mut Parser<'a>, span: Span) {
     } else {
         p.sess.span_diagnostic.struct_span_err(span, "this option was already provided")
     };
-    err.span_help(span, "remove this option");
+    err.span_label(span, "remove this option");
     err.emit();
 }
 
