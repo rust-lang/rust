@@ -710,7 +710,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     segment.ident.name.hash(&mut self.s);
                 },
             },
-            TyKind::Def(_, arg_list) => {
+            TyKind::OpaqueDef(_, arg_list) => {
                 for arg in *arg_list {
                     match arg {
                         GenericArg::Lifetime(ref l) => self.hash_lifetime(l),
