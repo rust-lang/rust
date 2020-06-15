@@ -22,5 +22,13 @@ pub fn main() {
         asm!("{0}", inout(reg) b);
         asm!("{0} {1}", out(reg) _, inlateout(reg) b => _);
         asm!("", out("al") _, lateout("rbx") _);
+        asm!("inst1\ninst2");
+        asm!("inst1 {0}, 42\ninst2 {1}, 24", in(reg) a, out(reg) b);
+        asm!("inst2 {1}, 24\ninst1 {0}, 42", in(reg) a, out(reg) b);
+        asm!("inst1 {0}, 42\ninst2 {1}, 24", in(reg) a, out(reg) b);
+        asm!("inst1\ninst2");
+        asm!("inst1\ninst2");
+        asm!("inst1\n\tinst2");
+        asm!("inst1\ninst2\ninst3\ninst4");
     }
 }
