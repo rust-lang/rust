@@ -63,11 +63,11 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     main_id: DefId,
     config: MiriConfig,
 ) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>, MPlaceTy<'tcx, Tag>)> {
-    let tcx_at = tcx.at(rustc_span::source_map::DUMMY_SP);
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx = InterpCx::new(
-        tcx_at,
+        tcx,
+        rustc_span::source_map::DUMMY_SP,
         param_env,
         Evaluator::new(config.communicate, config.validate, layout_cx),
         MemoryExtra::new(
