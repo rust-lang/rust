@@ -241,3 +241,52 @@ fn iterator_drops() {
     }
     assert_eq!(i.get(), 5);
 }
+
+// This test does not work on targets without panic=unwind support.
+// To work around this problem, test is marked is should_panic, so it will
+// be automagically skipped on unsuitable targets, such as
+// wasm32-unknown-unkown.
+//
+// It means that we use panic for indicating success.
+#[test]
+#[should_panic(expected = "test succeeded")]
+fn array_default_impl_avoids_leaks_on_panic() {
+    use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
+    #[derive(Debug)]
+    struct Bomb(usize);
+
+    impl Default for Bomb {
+        fn default() -> Bomb {
+            if COUNTER.load(Relaxed) == 3 {
+                panic!("bomb limit exceeded");
+            }
+
+            COUNTER.fetch_add(1, Relaxed);
+            Bomb(COUNTER.load(Relaxed))
+        }
+    }
+
+    impl Drop for Bomb {
+        fn drop(&mut self) {
+            COUNTER.fetch_sub(1, Relaxed);
+        }
+    }
+
+    let res = std::panic::catch_unwind(|| <[Bomb; 5]>::default());
+    let panic_msg = match res {
+        Ok(_) => unreachable!(),
+        Err(p) => p.downcast::<&'static str>().unwrap(),
+    };
+    assert_eq!(*panic_msg, "bomb limit exceeded");
+    // check that all bombs are successfully dropped
+    assert_eq!(COUNTER.load(Relaxed), 0);
+    panic!("test succeeded")
+}
+
+#[test]
+fn empty_array_is_always_default() {
+    struct DoesNotImplDefault;
+
+    let _arr = <[DoesNotImplDefault; 0]>::default();
+}
