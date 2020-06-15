@@ -18,12 +18,12 @@ impl<'a> Test<'a> for Foo<'a> {
 }
 
 impl<'a> NoLifetime for Foo<'a> {
-    fn get<'p, T : Test<'a>>(&self) -> T {
+    fn get<'p, T: Test<'a> + From<Foo<'a>>>(&self) -> T {
     //~^ ERROR E0195
     //~| NOTE lifetimes do not match method in trait
         return *self as T;
         //~^ ERROR non-primitive cast: `Foo<'a>` as `T`
-        //~| NOTE an `as` expression can only be used to convert between primitive types.
+        //~| NOTE an `as` expression can only be used to convert between primitive types
     }
 }
 
