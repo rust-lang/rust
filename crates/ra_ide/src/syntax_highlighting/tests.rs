@@ -43,6 +43,12 @@ def_fn! {
     }
 }
 
+macro_rules! noop {
+    ($expr:expr) => {
+        $expr
+    }
+}
+
 // comment
 fn main() {
     println!("Hello, {}!", 92);
@@ -60,6 +66,8 @@ fn main() {
     for e in vec {
         // Do nothing
     }
+
+    noop!(noop!(1));
 
     let mut x = 42;
     let y = &mut x;

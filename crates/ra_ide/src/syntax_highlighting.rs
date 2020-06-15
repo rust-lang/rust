@@ -160,23 +160,25 @@ pub(crate) fn highlight(
             // Check if macro takes a format string and remember it for highlighting later.
             // The macros that accept a format string expand to a compiler builtin macros
             // `format_args` and `format_args_nl`.
-            if let Some(fmt_macro_call) = parent.parent().and_then(ast::MacroCall::cast) {
-                if let Some(name) =
-                    fmt_macro_call.path().and_then(|p| p.segment()).and_then(|s| s.name_ref())
-                {
-                    match name.text().as_str() {
-                        "format_args" | "format_args_nl" => {
-                            format_string = parent
-                                .children_with_tokens()
-                                .filter(|t| t.kind() != WHITESPACE)
-                                .nth(1)
-                                .filter(|e| {
-                                    ast::String::can_cast(e.kind())
-                                        || ast::RawString::can_cast(e.kind())
-                                })
-                        }
-                        _ => {}
+            if let Some(name) = parent
+                .parent()
+                .and_then(ast::MacroCall::cast)
+                .and_then(|mc| mc.path())
+                .and_then(|p| p.segment())
+                .and_then(|s| s.name_ref())
+            {
+                match name.text().as_str() {
+                    "format_args" | "format_args_nl" => {
+                        format_string = parent
+                            .children_with_tokens()
+                            .filter(|t| t.kind() != WHITESPACE)
+                            .nth(1)
+                            .filter(|e| {
+                                ast::String::can_cast(e.kind())
+                                    || ast::RawString::can_cast(e.kind())
+                            })
                     }
+                    _ => {}
                 }
             }
 
@@ -492,6 +494,9 @@ fn highlight_element(
             let mut h = Highlight::new(HighlightTag::Operator);
             h |= HighlightModifier::Unsafe;
             h
+        }
+        T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
+            Highlight::new(HighlightTag::Macro)
         }
 
         k if k.is_keyword() => {
