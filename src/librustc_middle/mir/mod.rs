@@ -76,7 +76,8 @@ pub enum MirPhase {
     Build = 0,
     Const = 1,
     Validated = 2,
-    Optimized = 3,
+    DropElab = 3,
+    Optimized = 4,
 }
 
 impl MirPhase {
