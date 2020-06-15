@@ -118,7 +118,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             "alternatively, add an explicit `'static` bound to this reference";
                         let plus_lt = format!(" + {}", lifetime_name);
                         match fn_return.kind {
-                            TyKind::Def(item_id, _) => {
+                            TyKind::OpaqueDef(item_id, _) => {
                                 let item = self.tcx().hir().item(item_id.id);
                                 let opaque = if let ItemKind::OpaqueTy(opaque) = &item.kind {
                                     opaque
