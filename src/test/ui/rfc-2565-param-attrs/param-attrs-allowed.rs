@@ -8,8 +8,8 @@ extern "C" {
         #[allow(unused_mut)] a: i32,
         #[cfg(something)] b: i32,
         #[cfg_attr(something, cfg(nothing))] c: i32,
-        #[deny(unused_mut)] d: i32,
-        #[forbid(unused_mut)] #[warn(unused_mut)] ...
+        #[forbid(unused_mut)] d: i32,
+        #[deny(unused_mut)] #[warn(unused_mut)] ...
     );
 }
 
@@ -17,16 +17,16 @@ type FnType = fn(
     #[allow(unused_mut)] a: i32,
     #[cfg(something)] b: i32,
     #[cfg_attr(something, cfg(nothing))] c: i32,
-    #[deny(unused_mut)] d: i32,
-    #[forbid(unused_mut)] #[warn(unused_mut)] e: i32
+    #[forbid(unused_mut)] d: i32,
+    #[deny(unused_mut)] #[warn(unused_mut)] e: i32
 );
 
 pub fn foo(
     #[allow(unused_mut)] a: i32,
     #[cfg(something)] b: i32,
     #[cfg_attr(something, cfg(nothing))] c: i32,
-    #[deny(unused_mut)] d: i32,
-    #[forbid(unused_mut)] #[warn(unused_mut)] _e: i32
+    #[forbid(unused_mut)] d: i32,
+    #[deny(unused_mut)] #[warn(unused_mut)] _e: i32
 ) {}
 
 // self
