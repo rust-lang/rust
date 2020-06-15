@@ -574,13 +574,7 @@ fn highlight_element(
             };
 
             let expr = field_expr.expr()?;
-            let ty = match sema.type_of_expr(&expr) {
-                Some(ty) => ty,
-                None => {
-                    println!("No type :(");
-                    return None;
-                }
-            };
+            let ty = sema.type_of_expr(&expr)?;
             if !ty.is_packed(db) {
                 return None;
             }

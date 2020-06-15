@@ -432,8 +432,8 @@ impl Struct {
         Type::from_def(db, self.id.lookup(db.upcast()).container.module(db.upcast()).krate, self.id)
     }
 
-    pub fn is_packed(self, db: &dyn HirDatabase) -> bool {
-        matches!(db.struct_data(self.id).repr, Some(ReprKind::Packed))
+    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprKind> {
+        db.struct_data(self.id).repr.clone()
     }
 
     fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
@@ -1266,7 +1266,7 @@ impl Type {
 
         let adt = adt_id.into();
         match adt {
-            Adt::Struct(s) => s.is_packed(db),
+            Adt::Struct(s) => matches!(s.repr(db), Some(ReprKind::Packed)),
             _ => false,
         }
     }
