@@ -35,7 +35,6 @@ impl Drop for Socket {
     }
 }
 
-
 #[derive(Clone)]
 pub struct TcpStream(Arc<Socket>);
 
