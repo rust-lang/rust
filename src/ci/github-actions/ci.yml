@@ -492,12 +492,6 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
             <<: *job-windows-xl
 
-          - name: x86_64-msvc-aux
-            env:
-              RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
-              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
-            <<: *job-windows-xl
-
           - name: x86_64-msvc-cargo
             env:
               SCRIPT: python x.py test src/tools/cargotest src/tools/cargo

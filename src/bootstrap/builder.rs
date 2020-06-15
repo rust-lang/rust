@@ -373,7 +373,6 @@ impl<'a> Builder<'a> {
                 test::UiFullDeps,
                 test::Rustdoc,
                 test::Pretty,
-                test::RunPassValgrindPretty,
                 test::Crate,
                 test::CrateLibrustc,
                 test::CrateRustdoc,
