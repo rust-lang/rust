@@ -4,10 +4,16 @@ error[E0382]: borrow of moved value: `some_vec`
 LL |     let some_vec = vec!["hi"];
    |         -------- move occurs because `some_vec` has type `std::vec::Vec<&str>`, which does not implement the `Copy` trait
 LL |     some_vec.into_iter();
-   |     -------- value moved here
+   |              ----------- `some_vec` moved due to this method call
 LL |     {
 LL |         println!("{:?}", some_vec);
    |                          ^^^^^^^^ value borrowed here after move
+   |
+note: this function consumes the receiver `self` by taking ownership of it, which moves `some_vec`
+  --> $SRC_DIR/libcore/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |                  ^^^^
 
 error: aborting due to previous error
 
