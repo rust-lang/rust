@@ -1,7 +1,7 @@
 //! Code related to processing overloaded binary and unary operators.
 
 use super::method::MethodCallee;
-use super::{FnCtxt, Needs};
+use super::FnCtxt;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -165,7 +165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // trait matching creating lifetime constraints that are too strict.
                 // e.g., adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
                 // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
-                let lhs_ty = self.check_expr_with_needs(lhs_expr, Needs::None);
+                let lhs_ty = self.check_expr(lhs_expr);
                 let fresh_var = self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: lhs_expr.span,
@@ -177,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // equivalence on the LHS of an assign-op like `+=`;
                 // overwritten or mutably-borrowed places cannot be
                 // coerced to a supertype.
-                self.check_expr_with_needs(lhs_expr, Needs::MutPlace)
+                self.check_expr(lhs_expr)
             }
         };
         let lhs_ty = self.resolve_vars_with_obligations(lhs_ty);

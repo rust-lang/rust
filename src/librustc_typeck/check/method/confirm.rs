@@ -1,7 +1,7 @@
 use super::{probe, MethodCallee};
 
 use crate::astconv::AstConv;
-use crate::check::{callee, FnCtxt, Needs};
+use crate::check::{callee, FnCtxt};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
 use rustc_hir as hir;
@@ -145,7 +145,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         };
         assert_eq!(n, pick.autoderefs);
 
-        let mut adjustments = autoderef.adjust_steps(self, Needs::None);
+        let mut adjustments = autoderef.adjust_steps(self);
 
         let mut target = autoderef.unambiguous_final_ty(self);
 

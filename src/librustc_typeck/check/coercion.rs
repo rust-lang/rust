@@ -51,7 +51,7 @@
 //! we may want to adjust precisely when coercions occur.
 
 use crate::astconv::AstConv;
-use crate::check::{FnCtxt, Needs};
+use crate::check::FnCtxt;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -421,9 +421,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return success(vec![], ty, obligations);
         }
 
-        let needs = Needs::maybe_mut_place(mutbl_b);
         let InferOk { value: mut adjustments, obligations: o } =
-            autoderef.adjust_steps_as_infer_ok(self, needs);
+            autoderef.adjust_steps_as_infer_ok(self);
         obligations.extend(o);
         obligations.extend(autoderef.into_obligations());
 
