@@ -89,17 +89,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
+        // Need to deref because overloaded place ops take self by-reference.
         let base_ty = self
             .tables
             .borrow()
-            .expr_adjustments(base_expr)
-            .last()
-            .map_or_else(|| self.node_ty(expr.hir_id), |adj| adj.target);
-        let base_ty = self.resolve_vars_if_possible(&base_ty);
-
-        // Need to deref because overloaded place ops take self by-reference.
-        let base_ty =
-            base_ty.builtin_deref(false).expect("place op takes something that is not a ref").ty;
+            .expr_ty_adjusted(base_expr)
+            .builtin_deref(false)
+            .expect("place op takes something that is not a ref")
+            .ty;
 
         let method = self.try_overloaded_place_op(expr.span, base_ty, arg_tys, Needs::MutPlace, op);
         let method = match method {
