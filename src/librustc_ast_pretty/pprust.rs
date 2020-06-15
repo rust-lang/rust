@@ -1818,7 +1818,7 @@ impl<'a> State<'a> {
             ast::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(func, &args[..]);
             }
-            ast::ExprKind::MethodCall(ref segment, ref args) => {
+            ast::ExprKind::MethodCall(ref segment, ref args, _) => {
                 self.print_expr_method_call(segment, &args[..]);
             }
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
@@ -2593,7 +2593,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_where_clause(&mut self, where_clause: &ast::WhereClause) {
-        if where_clause.predicates.is_empty() {
+        if where_clause.predicates.is_empty() && !where_clause.has_where_token {
             return;
         }
 
@@ -2739,7 +2739,11 @@ impl<'a> State<'a> {
         }
         let generics = ast::Generics {
             params: Vec::new(),
-            where_clause: ast::WhereClause { predicates: Vec::new(), span: rustc_span::DUMMY_SP },
+            where_clause: ast::WhereClause {
+                has_where_token: false,
+                predicates: Vec::new(),
+                span: rustc_span::DUMMY_SP,
+            },
             span: rustc_span::DUMMY_SP,
         };
         let header = ast::FnHeader { unsafety, ext, ..ast::FnHeader::default() };

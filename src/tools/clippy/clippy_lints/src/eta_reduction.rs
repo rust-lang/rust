@@ -71,7 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaReduction {
         }
 
         match expr.kind {
-            ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args) => {
+            ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) => {
                 for arg in args {
                     check_closure(cx, arg)
                 }
@@ -120,7 +120,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         );
 
         if_chain!(
-            if let ExprKind::MethodCall(ref path, _, ref args) = ex.kind;
+            if let ExprKind::MethodCall(ref path, _, ref args, _) = ex.kind;
 
             // Not the same number of arguments, there is no way the closure is the same as the function return;
             if args.len() == decl.inputs.len();

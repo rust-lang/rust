@@ -258,6 +258,9 @@ enum Elide {
     Exact(Region),
     /// Less or more than one lifetime were found, error on unspecified.
     Error(Vec<ElisionFailureInfo>),
+    /// Forbid lifetime elision inside of a larger scope where it would be
+    /// permitted. For example, in let position impl trait.
+    Forbid,
 }
 
 #[derive(Clone, Debug)]
@@ -396,15 +399,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let scope = Scope::Elision { elide: Elide::Exact(Region::Static), s: ROOT_SCOPE };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
-            hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(_), .. }) => {
-                // Currently opaque type declarations are just generated from `impl Trait`
-                // items. Doing anything on this node is irrelevant, as we currently don't need
-                // it.
+            hir::ItemKind::OpaqueTy(hir::OpaqueTy { .. }) => {
+                // Opaque types are visited when we visit the
+                // `TyKind::OpaqueDef`, so that they have the lifetimes from
+                // their parent opaque_ty in scope.
             }
             hir::ItemKind::TyAlias(_, ref generics)
-            | hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                impl_trait_fn: None, ref generics, ..
-            })
             | hir::ItemKind::Enum(_, ref generics)
             | hir::ItemKind::Struct(_, ref generics)
             | hir::ItemKind::Union(_, ref generics)
@@ -557,23 +557,35 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| this.visit_ty(&mt.ty));
             }
-            hir::TyKind::Def(item_id, lifetimes) => {
+            hir::TyKind::OpaqueDef(item_id, lifetimes) => {
                 // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
                 // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
                 // `type MyAnonTy<'b> = impl MyTrait<'b>;`
                 //                 ^                  ^ this gets resolved in the scope of
                 //                                      the opaque_ty generics
-                let (generics, bounds) = match self.tcx.hir().expect_item(item_id.id).kind {
+                let opaque_ty = self.tcx.hir().expect_item(item_id.id);
+                let (generics, bounds) = match opaque_ty.kind {
                     // Named opaque `impl Trait` types are reached via `TyKind::Path`.
                     // This arm is for `impl Trait` in the types of statics, constants and locals.
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: None, .. }) => {
                         intravisit::walk_ty(self, ty);
+
+                        // Elided lifetimes are not allowed in non-return
+                        // position impl Trait
+                        let scope = Scope::Elision { elide: Elide::Forbid, s: self.scope };
+                        self.with(scope, |_, this| {
+                            intravisit::walk_item(this, opaque_ty);
+                        });
+
                         return;
                     }
                     // RPIT (return position impl trait)
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { ref generics, bounds, .. }) => {
-                        (generics, bounds)
-                    }
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                        impl_trait_fn: Some(_),
+                        ref generics,
+                        bounds,
+                        ..
+                    }) => (generics, bounds),
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 };
 
@@ -795,43 +807,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     this.check_lifetime_params(old_scope, &generics.params);
                     this.visit_generics(generics);
                     this.visit_ty(ty);
-                });
-            }
-            OpaqueTy(bounds) => {
-                let generics = &impl_item.generics;
-                let mut index = self.next_early_index();
-                let mut next_early_index = index;
-                debug!("visit_ty: index = {}", index);
-                let lifetimes = generics
-                    .params
-                    .iter()
-                    .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
-                            Some(Region::early(&self.tcx.hir(), &mut index, param))
-                        }
-                        GenericParamKind::Type { .. } => {
-                            next_early_index += 1;
-                            None
-                        }
-                        GenericParamKind::Const { .. } => {
-                            next_early_index += 1;
-                            None
-                        }
-                    })
-                    .collect();
-
-                let scope = Scope::Binder {
-                    lifetimes,
-                    next_early_index,
-                    s: self.scope,
-                    track_lifetime_uses: true,
-                    opaque_type_parent: true,
-                };
-                self.with(scope, |_old_scope, this| {
-                    this.visit_generics(generics);
-                    for bound in bounds {
-                        this.visit_param_bound(bound);
-                    }
                 });
             }
             Const(_, _) => {
@@ -2367,6 +2342,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             }
                             break Some(e);
                         }
+                        Elide::Forbid => break None,
                     };
                     for lifetime_ref in lifetime_refs {
                         self.insert_lifetime(lifetime_ref, lifetime);
@@ -2667,8 +2643,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 // going to make a fresh name, so we cannot
                 // necessarily replace a single-use lifetime with
                 // `'_`.
-                Scope::Elision { elide: Elide::Exact(_), .. } => break false,
-                Scope::Elision { elide: Elide::Error(_), .. } => break false,
+                Scope::Elision {
+                    elide: Elide::Exact(_) | Elide::Error(_) | Elide::Forbid, ..
+                } => break false,
 
                 Scope::ObjectLifetimeDefault { s, .. } => scope = s,
             }

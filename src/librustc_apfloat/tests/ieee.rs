@@ -2997,8 +2997,8 @@ fn scalbn() {
     assert!(smallest_f64.scalbn(2099).is_infinite());
 
     // Test for integer overflows when adding to exponent.
-    assert!(smallest_f64.scalbn(-ExpInt::max_value()).is_pos_zero());
-    assert!(largest_f64.scalbn(ExpInt::max_value()).is_infinite());
+    assert!(smallest_f64.scalbn(-ExpInt::MAX).is_pos_zero());
+    assert!(largest_f64.scalbn(ExpInt::MAX).is_infinite());
 
     assert!(largest_denormal_f64.bitwise_eq(largest_denormal_f64.scalbn(0),));
     assert!(neg_largest_denormal_f64.bitwise_eq(neg_largest_denormal_f64.scalbn(0),));

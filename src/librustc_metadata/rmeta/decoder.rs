@@ -30,7 +30,7 @@ use rustc_middle::mir::{self, interpret, Body, Promoted};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::common::record_time;
-use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
+use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder, UseSpecializedDecodable};
 use rustc_session::Session;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -218,7 +218,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     }
 }
 
-impl<'a, 'tcx, T: Decodable> Lazy<T> {
+impl<'a, 'tcx, T: Decodable> Lazy<T, ()> {
     fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
@@ -226,7 +226,7 @@ impl<'a, 'tcx, T: Decodable> Lazy<T> {
     }
 }
 
-impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable> Lazy<[T]> {
+impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable> Lazy<[T], usize> {
     fn decode<M: Metadata<'a, 'tcx>>(
         self,
         metadata: M,
@@ -321,20 +321,20 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T> SpecializedDecoder<Lazy<T>> for DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx, T> SpecializedDecoder<Lazy<T, ()>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Lazy<T>, Self::Error> {
         self.read_lazy_with_meta(())
     }
 }
 
-impl<'a, 'tcx, T> SpecializedDecoder<Lazy<[T]>> for DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx, T> SpecializedDecoder<Lazy<[T], usize>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Lazy<[T]>, Self::Error> {
         let len = self.read_usize()?;
         if len == 0 { Ok(Lazy::empty()) } else { self.read_lazy_with_meta(len) }
     }
 }
 
-impl<'a, 'tcx, I: Idx, T> SpecializedDecoder<Lazy<Table<I, T>>> for DecodeContext<'a, 'tcx>
+impl<'a, 'tcx, I: Idx, T> SpecializedDecoder<Lazy<Table<I, T>, usize>> for DecodeContext<'a, 'tcx>
 where
     Option<T>: FixedSizeEncoding,
 {
@@ -515,8 +515,9 @@ impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T: Decodable> SpecializedDecoder<mir::ClearCrossCrate<T>>
-    for DecodeContext<'a, 'tcx>
+impl<'a, 'tcx, T> SpecializedDecoder<mir::ClearCrossCrate<T>> for DecodeContext<'a, 'tcx>
+where
+    mir::ClearCrossCrate<T>: UseSpecializedDecodable,
 {
     #[inline]
     fn specialized_decode(&mut self) -> Result<mir::ClearCrossCrate<T>, Self::Error> {
@@ -579,7 +580,6 @@ impl EntryKind {
             EntryKind::ConstParam => DefKind::ConstParam,
             EntryKind::OpaqueTy => DefKind::OpaqueTy,
             EntryKind::AssocType(_) => DefKind::AssocTy,
-            EntryKind::AssocOpaqueTy(_) => DefKind::AssocOpaqueTy,
             EntryKind::Mod(_) => DefKind::Mod,
             EntryKind::Variant(_) => DefKind::Variant,
             EntryKind::Trait(_) => DefKind::Trait,
@@ -1145,7 +1145,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 (ty::AssocKind::Fn, data.container, data.has_self)
             }
             EntryKind::AssocType(container) => (ty::AssocKind::Type, container, false),
-            EntryKind::AssocOpaqueTy(container) => (ty::AssocKind::OpaqueTy, container, false),
             _ => bug!("cannot get associated-item of `{:?}`", def_key),
         };
 
@@ -1317,13 +1316,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_fn_param_names(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> &'tcx [Symbol] {
+    fn get_fn_param_names(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> &'tcx [Ident] {
         let param_names = match self.kind(id) {
             EntryKind::Fn(data) | EntryKind::ForeignFn(data) => data.decode(self).param_names,
             EntryKind::AssocFn(data) => data.decode(self).fn_data.param_names,
             _ => Lazy::empty(),
         };
-        tcx.arena.alloc_from_iter(param_names.decode(self))
+        tcx.arena.alloc_from_iter(param_names.decode((self, tcx)))
     }
 
     fn exported_symbols(

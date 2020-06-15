@@ -159,14 +159,10 @@ impl AnnotateSnippetEmitterWriter {
                             // FIXME(#59346): Not really sure when `fold` should be true or false
                             fold: false,
                             annotations: annotations
-                                .into_iter()
+                                .iter()
                                 .map(|annotation| SourceAnnotation {
                                     range: (annotation.start_col, annotation.end_col),
-                                    label: annotation
-                                        .label
-                                        .as_ref()
-                                        .map(|s| s.as_str())
-                                        .unwrap_or_default(),
+                                    label: annotation.label.as_deref().unwrap_or_default(),
                                     annotation_type: annotation_type_for_level(*level),
                                 })
                                 .collect(),

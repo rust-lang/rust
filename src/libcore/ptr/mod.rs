@@ -1128,7 +1128,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
                 //
                 // Note, that we use wrapping operations here intentionally – the original formula
                 // uses e.g., subtraction `mod n`. It is entirely fine to do them `mod
-                // usize::max_value()` instead, because we take the result `mod n` at the end
+                // usize::MAX` instead, because we take the result `mod n` at the end
                 // anyway.
                 inverse = inverse.wrapping_mul(2usize.wrapping_sub(x.wrapping_mul(inverse)));
                 if going_mod >= m {
@@ -1193,7 +1193,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     }
 
     // Cannot be aligned at all.
-    usize::max_value()
+    usize::MAX
 }
 
 /// Compares raw pointers for equality.
@@ -1345,14 +1345,24 @@ macro_rules! fnptr_impls_safety_abi {
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Pointer::fmt(&(*self as *const ()), f)
+                // HACK: The intermediate cast as usize is required for AVR
+                // so that the address space of the source function pointer
+                // is preserved in the final function pointer.
+                //
+                // https://github.com/avr-rust/rust/issues/143
+                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
             }
         }
 
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Pointer::fmt(&(*self as *const ()), f)
+                // HACK: The intermediate cast as usize is required for AVR
+                // so that the address space of the source function pointer
+                // is preserved in the final function pointer.
+                //
+                // https://github.com/avr-rust/rust/issues/143
+                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
             }
         }
     }

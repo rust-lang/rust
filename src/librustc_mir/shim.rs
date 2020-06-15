@@ -460,6 +460,7 @@ impl CloneShimBuilder<'tcx> {
                 destination: Some((dest, next)),
                 cleanup: Some(cleanup),
                 from_hir_call: true,
+                fn_span: self.span,
             },
             false,
         );
@@ -788,6 +789,7 @@ fn build_call_shim<'tcx>(
                 None
             },
             from_hir_call: true,
+            fn_span: span,
         },
         false,
     );

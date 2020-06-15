@@ -1371,7 +1371,7 @@ pub struct Expr<'hir> {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr<'static>, 64);
+rustc_data_structures::static_assert_size!(Expr<'static>, 72);
 
 impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1568,12 +1568,14 @@ pub enum ExprKind<'hir> {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
+    /// The final `Span` represents the span of the function and arguments
+    /// (e.g. `foo::<Bar, Baz>(a, b, c, d)` in `x.foo::<Bar, Baz>(a, b, c, d)`
     ///
     /// To resolve the called method to a `DefId`, call [`type_dependent_def_id`] with
     /// the `hir_id` of the `MethodCall` node itself.
     ///
     /// [`type_dependent_def_id`]: ../ty/struct.TypeckTables.html#method.type_dependent_def_id
-    MethodCall(&'hir PathSegment<'hir>, Span, &'hir [Expr<'hir>]),
+    MethodCall(&'hir PathSegment<'hir>, Span, &'hir [Expr<'hir>], Span),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(&'hir [Expr<'hir>]),
     /// A binary operation (e.g., `a + b`, `a * b`).
@@ -1919,14 +1921,12 @@ pub enum ImplItemKind<'hir> {
     Fn(FnSig<'hir>, BodyId),
     /// An associated type.
     TyAlias(&'hir Ty<'hir>),
-    /// An associated `type = impl Trait`.
-    OpaqueTy(GenericBounds<'hir>),
 }
 
 impl ImplItemKind<'_> {
     pub fn namespace(&self) -> Namespace {
         match self {
-            ImplItemKind::OpaqueTy(..) | ImplItemKind::TyAlias(..) => Namespace::TypeNS,
+            ImplItemKind::TyAlias(..) => Namespace::TypeNS,
             ImplItemKind::Const(..) | ImplItemKind::Fn(..) => Namespace::ValueNS,
         }
     }
@@ -2016,13 +2016,13 @@ pub struct OpaqueTy<'hir> {
 /// From whence the opaque type came.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum OpaqueTyOrigin {
-    /// `type Foo = impl Trait;`
-    TypeAlias,
     /// `-> impl Trait`
     FnReturn,
     /// `async fn`
     AsyncFn,
-    /// Impl trait in bindings, consts, statics, bounds.
+    /// `let _: impl Trait = ...`
+    Binding,
+    /// Impl trait in type aliases, consts, statics, bounds.
     Misc,
 }
 
@@ -2048,12 +2048,12 @@ pub enum TyKind<'hir> {
     ///
     /// Type parameters may be stored in each `PathSegment`.
     Path(QPath<'hir>),
-    /// A type definition itself. This is currently only used for the `type Foo = impl Trait`
-    /// item that `impl Trait` in return position desugars to.
+    /// A opaque type definition itself. This is currently only used for the
+    /// `opaque type Foo: Trait` item that `impl Trait` in desugars to.
     ///
-    /// The generic argument list contains the lifetimes (and in the future possibly parameters)
-    /// that are actually bound on the `impl Trait`.
-    Def(ItemId, &'hir [GenericArg<'hir>]),
+    /// The generic argument list contains the lifetimes (and in the future
+    /// possibly parameters) that are actually bound on the `impl Trait`.
+    OpaqueDef(ItemId, &'hir [GenericArg<'hir>]),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(&'hir [PolyTraitRef<'hir>], Lifetime),
@@ -2614,7 +2614,6 @@ pub enum AssocItemKind {
     Const,
     Fn { has_self: bool },
     Type,
-    OpaqueTy,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]

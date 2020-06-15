@@ -59,7 +59,7 @@
                                            // mir::Constant
                                            // + span: $DIR/bad_op_div_by_zero.rs:5:14: 5:19
 -                                          // + literal: Const { ty: i32, val: Value(Scalar(0xffffffff)) }
--         _6 = Eq(const 1i32, const std::i32::MIN); // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
+-         _6 = Eq(const 1i32, const i32::MIN); // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
 +         _6 = const false;                // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
                                            // ty::Const

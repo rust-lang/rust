@@ -111,7 +111,7 @@ fn local_eligible_for_nrvo(body: &mut mir::Body<'_>) -> Option<Local> {
         copied_to_return_place = Some(returned_local);
     }
 
-    return copied_to_return_place;
+    copied_to_return_place
 }
 
 fn find_local_assigned_to_return_place(
@@ -136,7 +136,7 @@ fn find_local_assigned_to_return_place(
         }
     }
 
-    return None;
+    None
 }
 
 // If this statement is an assignment of an unprojected local to the return place,

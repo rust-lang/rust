@@ -619,19 +619,21 @@ impl Step for DebuggerScripts {
             cp_debugger_script("natvis/libcore.natvis");
             cp_debugger_script("natvis/libstd.natvis");
         } else {
-            cp_debugger_script("debugger_pretty_printers_common.py");
+            cp_debugger_script("rust_types.py");
 
             // gdb debugger scripts
             builder.install(&builder.src.join("src/etc/rust-gdb"), &sysroot.join("bin"), 0o755);
             builder.install(&builder.src.join("src/etc/rust-gdbgui"), &sysroot.join("bin"), 0o755);
 
             cp_debugger_script("gdb_load_rust_pretty_printers.py");
-            cp_debugger_script("gdb_rust_pretty_printing.py");
+            cp_debugger_script("gdb_lookup.py");
+            cp_debugger_script("gdb_providers.py");
 
             // lldb debugger scripts
             builder.install(&builder.src.join("src/etc/rust-lldb"), &sysroot.join("bin"), 0o755);
 
-            cp_debugger_script("lldb_rust_formatters.py");
+            cp_debugger_script("lldb_lookup.py");
+            cp_debugger_script("lldb_providers.py");
         }
     }
 }

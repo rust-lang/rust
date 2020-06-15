@@ -271,7 +271,7 @@ impl TcpStream {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
         let ret = cvt(unsafe {
             c::send(*self.inner.as_inner(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
         })?;
@@ -502,7 +502,7 @@ impl UdpSocket {
     }
 
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
         let (dstp, dstlen) = dst.into_inner();
         let ret = cvt(unsafe {
             c::sendto(
@@ -641,7 +641,7 @@ impl UdpSocket {
     }
 
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
         let ret = cvt(unsafe {
             c::send(*self.inner.as_inner(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
         })?;

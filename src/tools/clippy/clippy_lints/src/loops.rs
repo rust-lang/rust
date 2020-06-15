@@ -526,7 +526,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
             let pat = &arms[0].pat.kind;
             if let (
                 &PatKind::TupleStruct(ref qpath, ref pat_args, _),
-                &ExprKind::MethodCall(ref method_path, _, ref method_args),
+                &ExprKind::MethodCall(ref method_path, _, ref method_args, _),
             ) = (pat, &match_expr.kind)
             {
                 let iter_expr = &method_args[0];
@@ -654,7 +654,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
         | ExprKind::Struct(_, _, Some(ref e))
         | ExprKind::Repeat(ref e, _)
         | ExprKind::DropTemps(ref e) => never_loop_expr(e, main_loop_id),
-        ExprKind::Array(ref es) | ExprKind::MethodCall(_, _, ref es) | ExprKind::Tup(ref es) => {
+        ExprKind::Array(ref es) | ExprKind::MethodCall(_, _, ref es, _) | ExprKind::Tup(ref es) => {
             never_loop_expr_all(&mut es.iter(), main_loop_id)
         },
         ExprKind::Call(ref e, ref es) => never_loop_expr_all(&mut once(&**e).chain(es.iter()), main_loop_id),
@@ -806,7 +806,7 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
 
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     if_chain! {
-        if let ExprKind::MethodCall(method, _, args) = expr.kind;
+        if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
         if method.ident.name == sym!(clone);
         if args.len() == 1;
         if let Some(arg) = args.get(0);
@@ -915,7 +915,7 @@ fn build_manual_memcpy_suggestion<'a, 'tcx>(
 
     let print_limit = |end: &Expr<'_>, offset: Offset, var: &Expr<'_>| {
         if_chain! {
-            if let ExprKind::MethodCall(method, _, len_args) = end.kind;
+            if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
             if method.ident.name == sym!(len);
             if len_args.len() == 1;
             if let Some(arg) = len_args.get(0);
@@ -1190,7 +1190,7 @@ fn check_for_loop_range<'a, 'tcx>(
 
 fn is_len_call(expr: &Expr<'_>, var: Name) -> bool {
     if_chain! {
-        if let ExprKind::MethodCall(ref method, _, ref len_args) = expr.kind;
+        if let ExprKind::MethodCall(ref method, _, ref len_args, _) = expr.kind;
         if len_args.len() == 1;
         if method.ident.name == sym!(len);
         if let ExprKind::Path(QPath::Resolved(_, ref path)) = len_args[0].kind;
@@ -1244,7 +1244,7 @@ fn lint_iter_method(cx: &LateContext<'_, '_>, args: &[Expr<'_>], arg: &Expr<'_>,
 
 fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>, expr: &Expr<'_>) {
     let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
-    if let ExprKind::MethodCall(ref method, _, ref args) = arg.kind {
+    if let ExprKind::MethodCall(ref method, _, ref args, _) = arg.kind {
         // just the receiver, no arguments
         if args.len() == 1 {
             let method_name = &*method.ident.as_str();
@@ -1718,7 +1718,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             // a range index op
-            if let ExprKind::MethodCall(ref meth, _, ref args) = expr.kind;
+            if let ExprKind::MethodCall(ref meth, _, ref args, _) = expr.kind;
             if (meth.ident.name == sym!(index) && match_trait_method(self.cx, expr, &paths::INDEX))
                 || (meth.ident.name == sym!(index_mut) && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
             if !self.check(&args[1], &args[0], expr);
@@ -1776,7 +1776,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     self.visit_expr(expr);
                 }
             },
-            ExprKind::MethodCall(_, _, args) => {
+            ExprKind::MethodCall(_, _, args, _) => {
                 let def_id = self.cx.tables.type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
                     self.prefer_mutable = false;
@@ -2369,8 +2369,8 @@ const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
 fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, 'tcx>) {
     if_chain! {
-        if let ExprKind::MethodCall(ref method, _, ref args) = expr.kind;
-        if let ExprKind::MethodCall(ref chain_method, _, _) = args[0].kind;
+        if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
+        if let ExprKind::MethodCall(ref chain_method, _, _, _) = args[0].kind;
         if chain_method.ident.name == sym!(collect) && match_trait_method(cx, &args[0], &paths::ITERATOR);
         if let Some(ref generic_args) = chain_method.args;
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
@@ -2437,7 +2437,7 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
 
 fn shorten_span(expr: &Expr<'_>, target_fn_name: Symbol) -> Span {
     let mut current_expr = expr;
-    while let ExprKind::MethodCall(ref path, ref span, ref args) = current_expr.kind {
+    while let ExprKind::MethodCall(ref path, ref span, ref args, _) = current_expr.kind {
         if path.ident.name == target_fn_name {
             return expr.span.with_lo(span.lo());
         }

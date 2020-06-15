@@ -43,7 +43,7 @@ declare_lint_pass!(PathBufPushOverwrite => [PATH_BUF_PUSH_OVERWRITE]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathBufPushOverwrite {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
+            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
             if path.ident.name == sym!(push);
             if args.len() == 2;
             if match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(&args[0])), &paths::PATH_BUF);

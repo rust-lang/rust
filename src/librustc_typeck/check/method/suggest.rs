@@ -158,9 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let path = self.tcx.def_path_str(trait_ref.def_id);
 
                             let ty = match item.kind {
-                                ty::AssocKind::Const
-                                | ty::AssocKind::Type
-                                | ty::AssocKind::OpaqueTy => rcvr_ty,
+                                ty::AssocKind::Const | ty::AssocKind::Type => rcvr_ty,
                                 ty::AssocKind::Fn => self
                                     .tcx
                                     .fn_sig(item.def_id)

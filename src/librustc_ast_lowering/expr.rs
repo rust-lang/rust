@@ -9,7 +9,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
+use rustc_span::source_map::{respan, DesugaringKind, ForLoopLoc, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_target::asm;
 use std::collections::hash_map::Entry;
@@ -25,6 +25,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
+        let mut span = e.span;
         ensure_sufficient_stack(|| {
             let kind = match e.kind {
                 ExprKind::Box(ref inner) => hir::ExprKind::Box(self.lower_expr(inner)),
@@ -39,7 +40,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let f = self.lower_expr(f);
                     hir::ExprKind::Call(f, self.lower_exprs(args))
                 }
-                ExprKind::MethodCall(ref seg, ref args) => {
+                ExprKind::MethodCall(ref seg, ref args, span) => {
                     let hir_seg = self.arena.alloc(self.lower_path_segment(
                         e.span,
                         seg,
@@ -50,9 +51,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         None,
                     ));
                     let args = self.lower_exprs(args);
-                    hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args)
+                    hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args, span)
                 }
                 ExprKind::Binary(binop, ref lhs, ref rhs) => {
+                    span = self.mark_span_with_reason(DesugaringKind::Operator, e.span, None);
                     let binop = self.lower_binop(binop);
                     let lhs = self.lower_expr(lhs);
                     let rhs = self.lower_expr(rhs);
@@ -222,7 +224,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::Expr {
                 hir_id: self.lower_node_id(e.id),
                 kind,
-                span: e.span,
+                span,
                 attrs: e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
             }
         })
@@ -237,6 +239,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_binop(&mut self, b: BinOp) -> hir::BinOp {
+        let span = self.mark_span_with_reason(DesugaringKind::Operator, b.span, None);
         Spanned {
             node: match b.node {
                 BinOpKind::Add => hir::BinOpKind::Add,
@@ -258,7 +261,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 BinOpKind::Ge => hir::BinOpKind::Ge,
                 BinOpKind::Gt => hir::BinOpKind::Gt,
             },
-            span: b.span,
+            span,
         }
     }
 
@@ -1237,10 +1240,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                             ) => {
                                                 assert!(!*late);
                                                 let out_op_sp = if input { op_sp2 } else { op_sp };
-                                                let msg = &format!(
-                                                    "use `lateout` instead of \
-                                                     `out` to avoid conflict"
-                                                );
+                                                let msg = "use `lateout` instead of \
+                                                     `out` to avoid conflict";
                                                 err.span_help(out_op_sp, msg);
                                             }
                                             _ => {}
@@ -1362,9 +1363,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::Expr<'hir> {
+        let orig_head_span = head.span;
         // expand <head>
         let mut head = self.lower_expr_mut(head);
-        let desugared_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
+        let desugared_span = self.mark_span_with_reason(
+            DesugaringKind::ForLoop(ForLoopLoc::Head),
+            orig_head_span,
+            None,
+        );
         head.span = desugared_span;
 
         let iter = Ident::with_dummy_span(sym::iter);
@@ -1459,10 +1465,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);
 
+        let into_iter_span = self.mark_span_with_reason(
+            DesugaringKind::ForLoop(ForLoopLoc::IntoIter),
+            orig_head_span,
+            None,
+        );
+
         // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
         let into_iter_expr = {
             let into_iter_path = &[sym::iter, sym::IntoIterator, sym::into_iter];
-            self.expr_call_std_path(desugared_span, into_iter_path, arena_vec![self; head])
+            self.expr_call_std_path(into_iter_span, into_iter_path, arena_vec![self; head])
         };
 
         let match_expr = self.arena.alloc(self.expr_match(

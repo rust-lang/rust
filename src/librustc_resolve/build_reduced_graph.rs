@@ -746,12 +746,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(_, _, _, ref ty) => {
-                let def_kind = match ty.as_deref().and_then(|ty| ty.kind.opaque_top_hack()) {
-                    None => DefKind::TyAlias,
-                    Some(_) => DefKind::OpaqueTy,
-                };
-                let res = Res::Def(def_kind, self.r.definitions.local_def_id(item.id).to_def_id());
+            ItemKind::TyAlias(..) => {
+                let res = Res::Def(
+                    DefKind::TyAlias,
+                    self.r.definitions.local_def_id(item.id).to_def_id(),
+                );
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
@@ -917,8 +916,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 | DefKind::ForeignTy
                 | DefKind::OpaqueTy
                 | DefKind::TraitAlias
-                | DefKind::AssocTy
-                | DefKind::AssocOpaqueTy,
+                | DefKind::AssocTy,
                 _,
             )
             | Res::PrimTy(..)

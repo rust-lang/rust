@@ -14,7 +14,7 @@ use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
@@ -228,7 +228,6 @@ impl<'hir> Map<'hir> {
                 ImplItemKind::Const(..) => DefKind::AssocConst,
                 ImplItemKind::Fn(..) => DefKind::AssocFn,
                 ImplItemKind::TyAlias(..) => DefKind::AssocTy,
-                ImplItemKind::OpaqueTy(..) => DefKind::AssocOpaqueTy,
             },
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
@@ -335,6 +334,16 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn enclosing_body_owner(&self, hir_id: HirId) -> HirId {
+        for (parent, _) in self.parent_iter(hir_id) {
+            if let Some(body) = self.maybe_body_owned_by(parent) {
+                return self.body_owner(body);
+            }
+        }
+
+        bug!("no `enclosing_body_owner` for hir_id `{}`", hir_id);
+    }
+
     /// Returns the `HirId` that corresponds to the definition of
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
@@ -362,6 +371,13 @@ impl<'hir> Map<'hir> {
                 "body_owned_by: {} has no associated body",
                 self.node_to_string(id)
             );
+        })
+    }
+
+    pub fn body_param_names(&self, id: BodyId) -> impl Iterator<Item = Ident> + 'hir {
+        self.body(id).params.iter().map(|arg| match arg.pat.kind {
+            PatKind::Binding(_, _, ident, _) => ident,
+            _ => Ident::new(kw::Invalid, rustc_span::DUMMY_SP),
         })
     }
 
@@ -537,18 +553,8 @@ impl<'hir> Map<'hir> {
 
     /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
-    pub fn is_const_context(&self, hir_id: HirId) -> bool {
-        let parent_id = self.get_parent_item(hir_id);
-        match self.get(parent_id) {
-            Node::Item(&Item { kind: ItemKind::Const(..) | ItemKind::Static(..), .. })
-            | Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. })
-            | Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. })
-            | Node::AnonConst(_) => true,
-            Node::Item(&Item { kind: ItemKind::Fn(ref sig, ..), .. }) => {
-                sig.header.constness == Constness::Const
-            }
-            _ => false,
-        }
+    pub fn is_inside_const_context(&self, hir_id: HirId) -> bool {
+        self.body_const_context(self.local_def_id(self.enclosing_body_owner(hir_id))).is_some()
     }
 
     /// Whether `hir_id` corresponds to a `mod` or a crate.
@@ -672,6 +678,8 @@ impl<'hir> Map<'hir> {
             if let Node::Item(Item {
                 kind:
                     ItemKind::Fn(..)
+                    | ItemKind::Const(..)
+                    | ItemKind::Static(..)
                     | ItemKind::Mod(..)
                     | ItemKind::Enum(..)
                     | ItemKind::Struct(..)
@@ -700,11 +708,7 @@ impl<'hir> Map<'hir> {
                 return CRATE_HIR_ID;
             }
             match self.get(scope) {
-                Node::Item(Item {
-                    kind: ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }),
-                    ..
-                })
-                | Node::Block(_) => {}
+                Node::Block(_) => {}
                 _ => break,
             }
         }
@@ -1024,9 +1028,6 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
             ImplItemKind::Fn(..) => format!("method {} in {}{}", ii.ident, path_str(), id_str),
             ImplItemKind::TyAlias(_) => {
                 format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
-            }
-            ImplItemKind::OpaqueTy(_) => {
-                format!("assoc opaque type {} in {}{}", ii.ident, path_str(), id_str)
             }
         },
         Some(Node::TraitItem(ti)) => {

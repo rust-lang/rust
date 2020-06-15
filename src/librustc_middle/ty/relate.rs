@@ -250,8 +250,8 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
                 &b.item_def_id,
             )))
         } else {
-            let ty = relation.relate(&a.ty, &b.ty)?;
-            let substs = relation.relate(&a.substs, &b.substs)?;
+            let ty = relation.relate_with_variance(ty::Invariant, &a.ty, &b.ty)?;
+            let substs = relation.relate_with_variance(ty::Invariant, &a.substs, &b.substs)?;
             Ok(ty::ExistentialProjection { item_def_id: a.item_def_id, substs, ty })
         }
     }
@@ -508,16 +508,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
-    let eagerly_eval = |x: &'tcx ty::Const<'tcx>| {
-        // FIXME(eddyb) this doesn't account for lifetime inference variables
-        // being erased by `eval`, *nor* for the polymorphic aspect of `eval`.
-        // That is, we could always use `eval` and it will just return the
-        // old value back if it doesn't succeed.
-        if !x.val.needs_infer() {
-            return x.eval(tcx, relation.param_env()).val;
-        }
-        x.val
-    };
+    let eagerly_eval = |x: &'tcx ty::Const<'tcx>| x.eval(tcx, relation.param_env()).val;
 
     // FIXME(eddyb) doesn't look like everything below checks that `a.ty == b.ty`.
     // We could probably always assert it early, as `const` generic parameters

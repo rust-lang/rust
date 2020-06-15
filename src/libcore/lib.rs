@@ -145,7 +145,6 @@
 #![feature(associated_type_bounds)]
 #![feature(const_type_id)]
 #![feature(const_caller_location)]
-#![feature(option_zip)]
 #![feature(no_niche)] // rust-lang/rust#68303
 
 #[prelude_import]

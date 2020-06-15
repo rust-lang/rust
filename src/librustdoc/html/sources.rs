@@ -126,7 +126,7 @@ impl<'a> SourceCollector<'a> {
             &self.scx.themes,
         );
         self.scx.fs.write(&cur, v.as_bytes())?;
-        self.scx.local_sources.insert(p.clone(), href);
+        self.scx.local_sources.insert(p, href);
         Ok(())
     }
 }

@@ -441,6 +441,9 @@ impl Session {
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_note_without_error(sp, msg)
     }
+    pub fn struct_note_without_error(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        self.diagnostic().struct_note_without_error(msg)
+    }
 
     pub fn diagnostic(&self) -> &rustc_errors::Handler {
         &self.parse_sess.span_diagnostic

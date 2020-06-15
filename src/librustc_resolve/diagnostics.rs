@@ -629,6 +629,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
+        parent_scope: &ParentScope<'a>,
         start_module: Module<'a>,
         crate_name: Ident,
         filter_fn: FilterFn,
@@ -655,7 +656,11 @@ impl<'a> Resolver<'a> {
                 }
 
                 // collect results based on the filter function
-                if ident.name == lookup_ident.name && ns == namespace {
+                // avoid suggesting anything from the same module in which we are resolving
+                if ident.name == lookup_ident.name
+                    && ns == namespace
+                    && !ptr::eq(in_module, parent_scope.module)
+                {
                     let res = name_binding.res();
                     if filter_fn(res) {
                         // create the path
@@ -680,7 +685,9 @@ impl<'a> Resolver<'a> {
                                 Res::Def(DefKind::Ctor(..), did) => this.parent(did),
                                 _ => res.opt_def_id(),
                             };
-                            candidates.push(ImportSuggestion { did, descr: res.descr(), path });
+                            if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
+                                candidates.push(ImportSuggestion { did, descr: res.descr(), path });
+                            }
                         }
                     }
                 }
@@ -722,6 +729,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
+        parent_scope: &ParentScope<'a>,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
     where
@@ -730,6 +738,7 @@ impl<'a> Resolver<'a> {
         let mut suggestions = self.lookup_import_candidates_from_module(
             lookup_ident,
             namespace,
+            parent_scope,
             self.graph_root,
             Ident::with_dummy_span(kw::Crate),
             &filter_fn,
@@ -754,6 +763,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(self.lookup_import_candidates_from_module(
                         lookup_ident,
                         namespace,
+                        parent_scope,
                         crate_root,
                         ident,
                         &filter_fn,

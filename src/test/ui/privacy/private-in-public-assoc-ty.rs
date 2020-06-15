@@ -9,7 +9,9 @@ mod m {
     trait PrivTr {}
     impl PrivTr for Priv {}
     pub trait PubTrAux1<T> {}
-    pub trait PubTrAux2 { type A; }
+    pub trait PubTrAux2 {
+        type A;
+    }
     impl<T> PubTrAux1<T> for u8 {}
     impl PubTrAux2 for u8 {
         type A = Priv;
@@ -41,8 +43,9 @@ mod m {
 
         type Exist = impl PrivTr;
         //~^ ERROR private trait `m::PrivTr` in public interface
-        //~| ERROR private trait `m::PrivTr` in public interface
-        fn infer_exist() -> Self::Exist { Priv }
+        fn infer_exist() -> Self::Exist {
+            Priv
+        }
     }
 }
 

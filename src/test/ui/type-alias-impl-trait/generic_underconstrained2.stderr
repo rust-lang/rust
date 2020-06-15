@@ -11,10 +11,10 @@ LL | type Underconstrained2<T: std::fmt::Debug> = impl 'static;
    |                                              ^^^^^^^^^^^^
 
 error[E0277]: `U` doesn't implement `std::fmt::Debug`
-  --> $DIR/generic_underconstrained2.rs:5:1
+  --> $DIR/generic_underconstrained2.rs:5:45
    |
 LL | type Underconstrained<T: std::fmt::Debug> = impl 'static;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |                                             ^^^^^^^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
 ...
 LL |     5u32
    |     ---- this returned value is of type `u32`
@@ -27,10 +27,10 @@ LL | fn underconstrained<U: std::fmt::Debug>(_: U) -> Underconstrained<U> {
    |                      ^^^^^^^^^^^^^^^^^
 
 error[E0277]: `V` doesn't implement `std::fmt::Debug`
-  --> $DIR/generic_underconstrained2.rs:14:1
+  --> $DIR/generic_underconstrained2.rs:14:46
    |
 LL | type Underconstrained2<T: std::fmt::Debug> = impl 'static;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `V` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |                                              ^^^^^^^^^^^^ `V` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
 ...
 LL |     5u32
    |     ---- this returned value is of type `u32`

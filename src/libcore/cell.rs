@@ -778,18 +778,13 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// An example of panic:
     ///
-    /// ```
+    /// ```should_panic
     /// use std::cell::RefCell;
-    /// use std::thread;
     ///
-    /// let result = thread::spawn(move || {
-    ///    let c = RefCell::new(5);
-    ///    let m = c.borrow_mut();
+    /// let c = RefCell::new(5);
     ///
-    ///    let b = c.borrow(); // this causes a panic
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// let m = c.borrow_mut();
+    /// let b = c.borrow(); // this causes a panic
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -858,18 +853,13 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// An example of panic:
     ///
-    /// ```
+    /// ```should_panic
     /// use std::cell::RefCell;
-    /// use std::thread;
     ///
-    /// let result = thread::spawn(move || {
-    ///    let c = RefCell::new(5);
-    ///    let m = c.borrow();
+    /// let c = RefCell::new(5);
+    /// let m = c.borrow();
     ///
-    ///    let b = c.borrow_mut(); // this causes a panic
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// let b = c.borrow_mut(); // this causes a panic
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1163,8 +1153,8 @@ impl<'b> BorrowRef<'b> {
             // Incrementing borrow can result in a non-reading value (<= 0) in these cases:
             // 1. It was < 0, i.e. there are writing borrows, so we can't allow a read borrow
             //    due to Rust's reference aliasing rules
-            // 2. It was isize::max_value() (the max amount of reading borrows) and it overflowed
-            //    into isize::min_value() (the max amount of writing borrows) so we can't allow
+            // 2. It was isize::MAX (the max amount of reading borrows) and it overflowed
+            //    into isize::MIN (the max amount of writing borrows) so we can't allow
             //    an additional read borrow because isize can't represent so many read borrows
             //    (this can only happen if you mem::forget more than a small constant amount of
             //    `Ref`s, which is not good practice)
@@ -1172,7 +1162,7 @@ impl<'b> BorrowRef<'b> {
         } else {
             // Incrementing borrow can result in a reading value (> 0) in these cases:
             // 1. It was = 0, i.e. it wasn't borrowed, and we are taking the first read borrow
-            // 2. It was > 0 and < isize::max_value(), i.e. there were read borrows, and isize
+            // 2. It was > 0 and < isize::MAX, i.e. there were read borrows, and isize
             //    is large enough to represent having one more read borrow
             borrow.set(b);
             Some(BorrowRef { borrow })
@@ -1198,7 +1188,7 @@ impl Clone for BorrowRef<'_> {
         debug_assert!(is_reading(borrow));
         // Prevent the borrow counter from overflowing into
         // a writing borrow.
-        assert!(borrow != isize::max_value());
+        assert!(borrow != isize::MAX);
         self.borrow.set(borrow + 1);
         BorrowRef { borrow: self.borrow }
     }
@@ -1489,7 +1479,7 @@ impl<'b> BorrowRefMut<'b> {
         let borrow = self.borrow.get();
         debug_assert!(is_writing(borrow));
         // Prevent the borrow counter from underflowing.
-        assert!(borrow != isize::min_value());
+        assert!(borrow != isize::MIN);
         self.borrow.set(borrow - 1);
         BorrowRefMut { borrow: self.borrow }
     }

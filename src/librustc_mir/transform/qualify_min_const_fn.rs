@@ -368,7 +368,14 @@ fn check_terminator(
             Err((span, "const fn generators are unstable".into()))
         }
 
-        TerminatorKind::Call { func, args, from_hir_call: _, destination: _, cleanup: _ } => {
+        TerminatorKind::Call {
+            func,
+            args,
+            from_hir_call: _,
+            destination: _,
+            cleanup: _,
+            fn_span: _,
+        } => {
             let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(def_id, _) = fn_ty.kind {
                 if !crate::const_eval::is_min_const_fn(tcx, def_id) {

@@ -5,10 +5,10 @@ LL | pub static mut B: () = unsafe { A = 1; };
    |                                 ^^^^^ modifying a static's initial value from another static's initializer
 
 error[E0391]: cycle detected when const-evaluating `C`
-  --> $DIR/write-to-static-mut-in-static.rs:5:34
+  --> $DIR/write-to-static-mut-in-static.rs:5:1
    |
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
-   |                                  ^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires const-evaluating `C`...
   --> $DIR/write-to-static-mut-in-static.rs:5:1

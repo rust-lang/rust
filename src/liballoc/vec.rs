@@ -2779,16 +2779,22 @@ impl<'a, T> Drain<'a, T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(vec_drain_as_slice)]
     /// let mut vec = vec!['a', 'b', 'c'];
     /// let mut drain = vec.drain(..);
     /// assert_eq!(drain.as_slice(), &['a', 'b', 'c']);
     /// let _ = drain.next().unwrap();
     /// assert_eq!(drain.as_slice(), &['b', 'c']);
     /// ```
-    #[unstable(feature = "vec_drain_as_slice", reason = "recently added", issue = "58957")]
+    #[stable(feature = "vec_drain_as_slice", since = "1.46.0")]
     pub fn as_slice(&self) -> &[T] {
         self.iter.as_slice()
+    }
+}
+
+#[stable(feature = "vec_drain_as_slice", since = "1.46.0")]
+impl<'a, T> AsRef<[T]> for Drain<'a, T> {
+    fn as_ref(&self) -> &[T] {
+        self.as_slice()
     }
 }
 

@@ -651,12 +651,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Convert discriminant to variant index, and catch invalid discriminants.
                 let index = match op.layout.ty.kind {
                     ty::Adt(adt, _) => {
-                        adt.discriminants(self.tcx.tcx).find(|(_, var)| var.val == discr_bits)
+                        adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
                     ty::Generator(def_id, substs, _) => {
                         let substs = substs.as_generator();
                         substs
-                            .discriminants(def_id, self.tcx.tcx)
+                            .discriminants(def_id, *self.tcx)
                             .find(|(_, var)| var.val == discr_bits)
                     }
                     _ => bug!("tagged layout for non-adt non-generator"),

@@ -288,7 +288,8 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         // Derives are not included when `invocations` are collected, so we have to add them here.
         let parent_scope = &ParentScope { derives, ..parent_scope };
-        let (ext, res) = self.smart_resolve_macro_path(path, kind, parent_scope, force)?;
+        let node_id = self.lint_node_id(eager_expansion_root);
+        let (ext, res) = self.smart_resolve_macro_path(path, kind, parent_scope, node_id, force)?;
 
         let span = invoc.span();
         invoc_id.set_expn_data(ext.expn_data(
@@ -336,6 +337,10 @@ impl<'a> base::Resolver for Resolver<'a> {
         for (_, &(node_id, span)) in self.unused_macros.iter() {
             self.lint_buffer.buffer_lint(UNUSED_MACROS, node_id, span, "unused macro definition");
         }
+    }
+
+    fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId {
+        self.definitions.lint_node_id(expn_id)
     }
 
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool {
@@ -390,6 +395,7 @@ impl<'a> Resolver<'a> {
         path: &ast::Path,
         kind: MacroKind,
         parent_scope: &ParentScope<'a>,
+        node_id: NodeId,
         force: bool,
     ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
         let (ext, res) = match self.resolve_macro_path(path, Some(kind), parent_scope, true, force)
@@ -430,7 +436,7 @@ impl<'a> Resolver<'a> {
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
         };
 
-        self.check_stability_and_deprecation(&ext, path);
+        self.check_stability_and_deprecation(&ext, path, node_id);
 
         Ok(if ext.macro_kind() != kind {
             let expected = kind.descr_expected();
@@ -984,13 +990,17 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn check_stability_and_deprecation(&mut self, ext: &SyntaxExtension, path: &ast::Path) {
+    fn check_stability_and_deprecation(
+        &mut self,
+        ext: &SyntaxExtension,
+        path: &ast::Path,
+        node_id: NodeId,
+    ) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
             if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
                 let feature = stability.feature;
                 if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
-                    let node_id = ast::CRATE_NODE_ID;
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler =
                         |lint, span, msg: &_| lint_buffer.buffer_lint(lint, node_id, span, msg);

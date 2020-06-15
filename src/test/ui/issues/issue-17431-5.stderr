@@ -2,11 +2,14 @@ error[E0072]: recursive type `Bar` has infinite size
   --> $DIR/issue-17431-5.rs:5:1
    |
 LL | struct Bar<T> { x: Bar<Foo> , marker: marker::PhantomData<T> }
-   | ^^^^^^^^^^^^^   ----------- recursive without indirection
+   | ^^^^^^^^^^^^^      -------- recursive without indirection
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Bar` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Bar` representable
+   |
+LL | struct Bar<T> { x: Box<Bar<Foo>> , marker: marker::PhantomData<T> }
+   |                    ^^^^        ^
 
 error: aborting due to previous error
 

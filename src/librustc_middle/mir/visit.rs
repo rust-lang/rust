@@ -492,6 +492,7 @@ macro_rules! make_mir_visitor {
                         destination,
                         cleanup: _,
                         from_hir_call: _,
+                        fn_span: _
                     } => {
                         self.visit_operand(func, source_location);
                         for arg in args {
@@ -563,10 +564,10 @@ macro_rules! make_mir_visitor {
                                         );
                                     }
                                 }
-                                InlineAsmOperand::SymFn { value }
-                                | InlineAsmOperand::SymStatic { value } => {
+                                InlineAsmOperand::SymFn { value } => {
                                     self.visit_constant(value, source_location);
                                 }
+                                InlineAsmOperand::SymStatic { def_id: _ } => {}
                             }
                         }
                     }

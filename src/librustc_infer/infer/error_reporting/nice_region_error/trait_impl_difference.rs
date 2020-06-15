@@ -77,8 +77,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
             _ => {}
         }
-        let mut type_param_span: MultiSpan =
-            visitor.types.iter().cloned().collect::<Vec<_>>().into();
+        let mut type_param_span: MultiSpan = visitor.types.to_vec().into();
         for &span in &visitor.types {
             type_param_span.push_span_label(
                 span,

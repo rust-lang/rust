@@ -142,6 +142,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 destination,
                 cleanup: _,
                 from_hir_call: _,
+                fn_span: _,
             } => {
                 self.consume_operand(location, func);
                 for arg in args {
@@ -208,7 +209,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                             }
                         }
                         InlineAsmOperand::SymFn { value: _ }
-                        | InlineAsmOperand::SymStatic { value: _ } => {}
+                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }
                 }
             }

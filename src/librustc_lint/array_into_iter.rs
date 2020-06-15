@@ -24,7 +24,7 @@ declare_lint_pass!(
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIntoIter {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         // We only care about method call expressions.
-        if let hir::ExprKind::MethodCall(call, span, args) = &expr.kind {
+        if let hir::ExprKind::MethodCall(call, span, args, _) = &expr.kind {
             if call.ident.name != sym::into_iter {
                 return;
             }

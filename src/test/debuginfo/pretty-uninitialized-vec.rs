@@ -2,7 +2,7 @@
 // ignore-freebsd: gdb package too new
 // ignore-android: FIXME(#10381)
 // compile-flags:-g
-// min-gdb-version 7.7
+// min-gdb-version 8.1
 // min-lldb-version: 310
 
 // === GDB TESTS ===================================================================================
@@ -10,7 +10,7 @@
 // gdb-command: run
 
 // gdb-command: print vec
-// gdb-check:$1 = Vec<i32>(len: [...], cap: [...])[...]
+// gdb-check:$1 = Vec(size=[...])[...]
 
 
 #![allow(unused_variables)]

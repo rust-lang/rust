@@ -60,6 +60,43 @@ use crate::slice::memchr;
 /// The trait itself acts as a builder for an associated
 /// `Searcher` type, which does the actual work of finding
 /// occurrences of the pattern in a string.
+///
+/// Depending on the type of the pattern, the behaviour of methods like
+/// [`str::find`] and [`str::contains`] can change. The table below describes
+/// some of those behaviours.
+///
+/// | Pattern type             | Match condition                           |
+/// |--------------------------|-------------------------------------------|
+/// | `&str`                   | is substring                              |
+/// | `char`                   | is contained in string                    |
+/// | `&[char]`                | any char in slice is contained in string  |
+/// | `F: FnMut(char) -> bool` | `F` returns `true` for a char in string   |
+/// | `&&str`                  | is substring                              |
+/// | `&String`                | is substring                              |
+///
+/// # Examples
+/// ```
+/// // &str
+/// assert_eq!("abaaa".find("ba"), Some(1));
+/// assert_eq!("abaaa".find("bac"), None);
+///
+/// // char
+/// assert_eq!("abaaa".find('a'), Some(0));
+/// assert_eq!("abaaa".find('b'), Some(1));
+/// assert_eq!("abaaa".find('c'), None);
+///
+/// // &[char]
+/// assert_eq!("ab".find(&['b', 'a'][..]), Some(0));
+/// assert_eq!("abaaa".find(&['a', 'z'][..]), Some(0));
+/// assert_eq!("abaaa".find(&['c', 'd'][..]), None);
+///
+/// // FnMut(char) -> bool
+/// assert_eq!("abcdef_z".find(|ch| ch > 'd' && ch < 'y'), Some(4));
+/// assert_eq!("abcddd_z".find(|ch| ch > 'd' && ch < 'y'), None);
+/// ```
+///
+/// [`str::find`]: ../../../std/primitive.str.html#method.find
+/// [`str::contains`]: ../../../std/primitive.str.html#method.contains
 pub trait Pattern<'a>: Sized {
     /// Associated searcher for this pattern
     type Searcher: Searcher<'a>;
@@ -80,6 +117,15 @@ pub trait Pattern<'a>: Sized {
         matches!(self.into_searcher(haystack).next(), SearchStep::Match(0, _))
     }
 
+    /// Checks whether the pattern matches at the back of the haystack
+    #[inline]
+    fn is_suffix_of(self, haystack: &'a str) -> bool
+    where
+        Self::Searcher: ReverseSearcher<'a>,
+    {
+        matches!(self.into_searcher(haystack).next_back(), SearchStep::Match(_, j) if haystack.len() == j)
+    }
+
     /// Removes the pattern from the front of haystack, if it matches.
     #[inline]
     fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
@@ -94,15 +140,6 @@ pub trait Pattern<'a>: Sized {
         } else {
             None
         }
-    }
-
-    /// Checks whether the pattern matches at the back of the haystack
-    #[inline]
-    fn is_suffix_of(self, haystack: &'a str) -> bool
-    where
-        Self::Searcher: ReverseSearcher<'a>,
-    {
-        matches!(self.into_searcher(haystack).next_back(), SearchStep::Match(_, j) if haystack.len() == j)
     }
 
     /// Removes the pattern from the back of haystack, if it matches.

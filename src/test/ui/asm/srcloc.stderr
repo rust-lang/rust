@@ -70,5 +70,17 @@ note: instantiated into assembly here
 LL |     invalid_instruction
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+warning: scale factor without index register is ignored
+  --> $DIR/srcloc.rs:41:15
+   |
+LL |         asm!("movaps %xmm3, (%esi, 2)", options(att_syntax));
+   |               ^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:23
+   |
+LL |     movaps %xmm3, (%esi, 2)
+   |                          ^
+
+error: aborting due to 6 previous errors; 1 warning emitted
 

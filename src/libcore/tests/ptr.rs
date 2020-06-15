@@ -357,7 +357,7 @@ fn align_offset_weird_strides() {
 
     unsafe fn test_weird_stride<T>(ptr: *const T, align: usize) -> bool {
         let numptr = ptr as usize;
-        let mut expected = usize::max_value();
+        let mut expected = usize::MAX;
         // Naive but definitely correct way to find the *first* aligned element of stride::<T>.
         for el in 0..align {
             if (numptr + el * ::std::mem::size_of::<T>()) % align == 0 {

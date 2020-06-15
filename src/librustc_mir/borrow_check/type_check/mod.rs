@@ -55,6 +55,7 @@ use crate::borrow_check::{
     location::LocationTable,
     member_constraints::MemberConstraintSet,
     nll::ToRegionVid,
+    path_utils,
     region_infer::values::{
         LivenessValues, PlaceholderIndex, PlaceholderIndices, RegionValueElements,
     },
@@ -62,6 +63,7 @@ use crate::borrow_check::{
     renumber,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
+    Upvar,
 };
 
 macro_rules! span_mirbug {
@@ -132,6 +134,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
+    upvars: &[Upvar],
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut constraints = MirTypeckRegionConstraints {
@@ -162,6 +165,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         borrow_set,
         all_facts,
         constraints: &mut constraints,
+        upvars,
     };
 
     let opaque_type_values = type_check_internal(
@@ -577,7 +581,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         for constraint in constraints.outlives().iter() {
             let mut constraint = *constraint;
             constraint.locations = locations;
-            if let ConstraintCategory::Return
+            if let ConstraintCategory::Return(_)
             | ConstraintCategory::UseAsConst
             | ConstraintCategory::UseAsStatic = constraint.category
             {
@@ -827,6 +831,7 @@ struct BorrowCheckContext<'a, 'tcx> {
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    upvars: &'a [Upvar],
 }
 
 crate struct MirTypeckResults<'tcx> {
@@ -1420,7 +1425,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 ConstraintCategory::UseAsConst
                             }
                         } else {
-                            ConstraintCategory::Return
+                            ConstraintCategory::Return(ReturnConstraint::Normal)
                         }
                     }
                     Some(l) if !body.local_decls[l].is_user_variable() => {
@@ -1703,7 +1708,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 ConstraintCategory::UseAsConst
                             }
                         } else {
-                            ConstraintCategory::Return
+                            ConstraintCategory::Return(ReturnConstraint::Normal)
                         }
                     }
                     Some(l) if !body.local_decls[l].is_user_variable() => {
@@ -2489,6 +2494,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         let mut cursor = borrowed_place.projection.as_ref();
+        let tcx = self.infcx.tcx;
+        let field = path_utils::is_upvar_field_projection(
+            tcx,
+            &self.borrowck_context.upvars,
+            borrowed_place.as_ref(),
+            body,
+        );
+        let category = if let Some(field) = field {
+            ConstraintCategory::ClosureUpvar(self.borrowck_context.upvars[field.index()].var_hir_id)
+        } else {
+            ConstraintCategory::Boring
+        };
+
         while let [proj_base @ .., elem] = cursor {
             cursor = proj_base;
 
@@ -2496,7 +2514,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             match elem {
                 ProjectionElem::Deref => {
-                    let tcx = self.infcx.tcx;
                     let base_ty = Place::ty_from(borrowed_place.local, proj_base, body, tcx).ty;
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
@@ -2506,7 +2523,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 sup: ref_region.to_region_vid(),
                                 sub: borrow_region.to_region_vid(),
                                 locations: location.to_locations(),
-                                category: ConstraintCategory::Boring,
+                                category,
                             });
 
                             match mutbl {

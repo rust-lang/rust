@@ -139,11 +139,11 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
     let kind = match expr.kind {
         // Here comes the interesting stuff:
-        hir::ExprKind::MethodCall(_, method_span, ref args) => {
+        hir::ExprKind::MethodCall(_, method_span, ref args, fn_span) => {
             // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
             let expr = method_callee(cx, expr, method_span, None);
             let args = args.iter().map(|e| e.to_ref()).collect();
-            ExprKind::Call { ty: expr.ty, fun: expr.to_ref(), args, from_hir_call: true }
+            ExprKind::Call { ty: expr.ty, fun: expr.to_ref(), args, from_hir_call: true, fn_span }
         }
 
         hir::ExprKind::Call(ref fun, ref args) => {
@@ -170,6 +170,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                     fun: method.to_ref(),
                     args: vec![fun.to_ref(), tupled_args.to_ref()],
                     from_hir_call: true,
+                    fn_span: expr.span,
                 }
             } else {
                 let adt_data =
@@ -215,6 +216,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                         fun: fun.to_ref(),
                         args: args.to_ref(),
                         from_hir_call: true,
+                        fn_span: expr.span,
                     }
                 }
             }
@@ -465,25 +467,8 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                                     }
                                 }
 
-                                Res::Def(DefKind::Static, id) => {
-                                    ty = cx.tcx.static_ptr_ty(id);
-                                    let ptr = cx.tcx.create_static_alloc(id);
-                                    InlineAsmOperand::SymStatic {
-                                        expr: Expr {
-                                            ty,
-                                            temp_lifetime,
-                                            span: expr.span,
-                                            kind: ExprKind::StaticRef {
-                                                literal: ty::Const::from_scalar(
-                                                    cx.tcx,
-                                                    Scalar::Ptr(ptr.into()),
-                                                    ty,
-                                                ),
-                                                def_id: id,
-                                            },
-                                        }
-                                        .to_ref(),
-                                    }
+                                Res::Def(DefKind::Static, def_id) => {
+                                    InlineAsmOperand::SymStatic { def_id }
                                 }
 
                                 _ => {
@@ -1024,7 +1009,7 @@ fn overloaded_operator<'a, 'tcx>(
     args: Vec<ExprRef<'tcx>>,
 ) -> ExprKind<'tcx> {
     let fun = method_callee(cx, expr, expr.span, None);
-    ExprKind::Call { ty: fun.ty, fun: fun.to_ref(), args, from_hir_call: false }
+    ExprKind::Call { ty: fun.ty, fun: fun.to_ref(), args, from_hir_call: false, fn_span: expr.span }
 }
 
 fn overloaded_place<'a, 'tcx>(
@@ -1060,7 +1045,13 @@ fn overloaded_place<'a, 'tcx>(
         temp_lifetime,
         ty: ref_ty,
         span: expr.span,
-        kind: ExprKind::Call { ty: fun.ty, fun: fun.to_ref(), args, from_hir_call: false },
+        kind: ExprKind::Call {
+            ty: fun.ty,
+            fun: fun.to_ref(),
+            args,
+            from_hir_call: false,
+            fn_span: expr.span,
+        },
     };
 
     // construct and return a deref wrapper `*foo()`

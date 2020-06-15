@@ -27,10 +27,6 @@ LL | pass_dollar_crate!();
    | ^^^^^^^^^^^^^^^^^^^^^ not found in `$crate`
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider importing this struct
-   |
-LL | use ItemUse;
-   |
 
 error: aborting due to 4 previous errors
 

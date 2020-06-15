@@ -409,6 +409,7 @@ E0718: include_str!("./error_codes/E0718.md"),
 E0719: include_str!("./error_codes/E0719.md"),
 E0720: include_str!("./error_codes/E0720.md"),
 E0723: include_str!("./error_codes/E0723.md"),
+E0724: include_str!("./error_codes/E0724.md"),
 E0725: include_str!("./error_codes/E0725.md"),
 E0727: include_str!("./error_codes/E0727.md"),
 E0728: include_str!("./error_codes/E0728.md"),
@@ -440,6 +441,7 @@ E0754: include_str!("./error_codes/E0754.md"),
 E0758: include_str!("./error_codes/E0758.md"),
 E0760: include_str!("./error_codes/E0760.md"),
 E0761: include_str!("./error_codes/E0761.md"),
+E0762: include_str!("./error_codes/E0762.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -616,7 +618,6 @@ E0761: include_str!("./error_codes/E0761.md"),
     E0717, // rustc_promotable without stability attribute
 //  E0721, // `await` keyword
     E0722, // Malformed `#[optimize]` attribute
-    E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
     E0755, // `#[ffi_pure]` is only allowed on foreign functions

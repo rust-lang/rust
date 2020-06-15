@@ -2186,6 +2186,11 @@ impl<'tcx> TyS<'tcx> {
             }
         }
     }
+
+    /// Is this a zero-sized type?
+    pub fn is_zst(&'tcx self, tcx: TyCtxt<'tcx>, did: DefId) -> bool {
+        tcx.layout_of(tcx.param_env(did).and(self)).map(|layout| layout.is_zst()).unwrap_or(false)
+    }
 }
 
 /// Typed constant value.
@@ -2403,8 +2408,6 @@ impl<'tcx> Const<'tcx> {
         self.eval_bits(tcx, param_env, tcx.types.usize) as u64
     }
 }
-
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
 
 /// Represents a constant in Rust.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]

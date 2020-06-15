@@ -142,10 +142,6 @@ jobs:
         # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
         NO_LLVM_ASSERTIONS: 1
-      # MSVC aux tests
-      x86_64-msvc-aux:
-        RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
       x86_64-msvc-cargo:
         SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
         INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld

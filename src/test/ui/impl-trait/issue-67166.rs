@@ -4,8 +4,8 @@
 #![allow(incomplete_features)]
 
 pub fn run() {
-    let _foo: Box<impl Copy + '_> = Box::new(()); // FIXME: The error doesn't much make sense.
-    //~^ ERROR: opaque type expands to a recursive type
+    let _foo: Box<impl Copy + '_> = Box::new(());
+    //~^ ERROR: missing lifetime specifier
 }
 
 fn main() {}

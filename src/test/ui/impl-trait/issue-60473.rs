@@ -5,13 +5,11 @@
 
 struct A<'a>(&'a ());
 
-trait Trait<T> {
-}
+trait Trait<T> {}
 
-impl<T> Trait<T> for () {
-}
+impl<T> Trait<T> for () {}
 
 fn main() {
-    let x: impl Trait<A> = (); // FIXME: The error doesn't seem correct.
-    //~^ ERROR: opaque type expands to a recursive type
+    let x: impl Trait<A> = ();
+    //~^ ERROR: missing lifetime specifier
 }

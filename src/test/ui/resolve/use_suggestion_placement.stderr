@@ -26,11 +26,9 @@ error[E0412]: cannot find type `HashMap` in this scope
 LL |     type Dict<K, V> = HashMap<K, V>;
    |                       ^^^^^^^ not found in this scope
    |
-help: consider importing one of these items
+help: consider importing this struct
    |
 LL | use std::collections::HashMap;
-   |
-LL | use std::collections::hash_map::HashMap;
    |
 
 error: aborting due to 3 previous errors

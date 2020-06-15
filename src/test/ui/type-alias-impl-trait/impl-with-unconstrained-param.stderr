@@ -1,0 +1,15 @@
+error[E0282]: type annotations needed
+  --> $DIR/impl-with-unconstrained-param.rs:14:23
+   |
+LL |     fn f() -> Self::I {}
+   |                       ^^ cannot infer type for type parameter `T`
+
+error: could not find defining uses
+  --> $DIR/impl-with-unconstrained-param.rs:12:14
+   |
+LL |     type I = impl Sized;
+   |              ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

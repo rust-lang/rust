@@ -639,7 +639,7 @@ impl<'a> Parser<'a> {
                     ExprKind::Index(_, _) => "indexing",
                     ExprKind::Try(_) => "?",
                     ExprKind::Field(_, _) => "a field access",
-                    ExprKind::MethodCall(_, _) => "a method call",
+                    ExprKind::MethodCall(_, _, _) => "a method call",
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_) => "`.await`",
                     ExprKind::Err => return Ok(with_postfix),
@@ -865,6 +865,7 @@ impl<'a> Parser<'a> {
             return self.mk_await_expr(self_arg, lo);
         }
 
+        let fn_span_lo = self.token.span;
         let segment = self.parse_path_segment(PathStyle::Expr)?;
         self.check_trailing_angle_brackets(&segment, token::OpenDelim(token::Paren));
 
@@ -873,8 +874,9 @@ impl<'a> Parser<'a> {
             let mut args = self.parse_paren_expr_seq()?;
             args.insert(0, self_arg);
 
+            let fn_span = fn_span_lo.to(self.prev_token.span);
             let span = lo.to(self.prev_token.span);
-            Ok(self.mk_expr(span, ExprKind::MethodCall(segment, args), AttrVec::new()))
+            Ok(self.mk_expr(span, ExprKind::MethodCall(segment, args, fn_span), AttrVec::new()))
         } else {
             // Field access `expr.f`
             if let Some(args) = segment.args {

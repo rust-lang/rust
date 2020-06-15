@@ -12,6 +12,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
+use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
@@ -122,6 +123,42 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         }
     }
 
+    /// Resolves a string as a macro.
+    fn macro_resolve(&self, path_str: &str, parent_id: Option<hir::HirId>) -> Option<Res> {
+        let cx = self.cx;
+        let path = ast::Path::from_ident(Ident::from_str(path_str));
+        cx.enter_resolver(|resolver| {
+            if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
+                &path,
+                None,
+                &ParentScope::module(resolver.graph_root()),
+                false,
+                false,
+            ) {
+                if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
+                    return Some(res.map_id(|_| panic!("unexpected id")));
+                }
+            }
+            if let Some(res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
+                return Some(res.map_id(|_| panic!("unexpected id")));
+            }
+            if let Some(module_id) = parent_id.or(self.mod_ids.last().cloned()) {
+                let module_id = cx.tcx.hir().local_def_id(module_id);
+                if let Ok((_, res)) =
+                    resolver.resolve_str_path_error(DUMMY_SP, path_str, MacroNS, module_id)
+                {
+                    // don't resolve builtins like `#[derive]`
+                    if let Res::Def(..) = res {
+                        let res = res.map_id(|_| panic!("unexpected node_id"));
+                        return Some(res);
+                    }
+                }
+            } else {
+                debug!("attempting to resolve item without parent module: {}", path_str);
+            }
+            None
+        })
+    }
     /// Resolves a string as a path within a particular namespace. Also returns an optional
     /// URL fragment in the case of variants and methods.
     fn resolve(
@@ -371,6 +408,22 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     }
 }
 
+/// Check for resolve collisions between a trait and its derive
+///
+/// These are common and we should just resolve to the trait in that case
+fn is_derive_trait_collision<T>(ns: &PerNS<Option<(Res, T)>>) -> bool {
+    if let PerNS {
+        type_ns: Some((Res::Def(DefKind::Trait, _), _)),
+        macro_ns: Some((Res::Def(DefKind::Macro(MacroKind::Derive), _), _)),
+        ..
+    } = *ns
+    {
+        true
+    } else {
+        false
+    }
+}
+
 impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let item_hir_id = if item.is_mod() {
@@ -451,7 +504,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             ..
                         },
                     ..
-                })) => segments.first().and_then(|seg| Some(seg.ident.to_string())),
+                })) => segments.first().map(|seg| seg.ident.to_string()),
                 Some(hir::Node::Item(hir::Item {
                     ident, kind: hir::ItemKind::Enum(..), ..
                 }))
@@ -532,6 +585,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 } else if link.starts_with("macro@") {
                     kind = Some(MacroNS);
                     link.trim_start_matches("macro@")
+                } else if link.starts_with("derive@") {
+                    kind = Some(MacroNS);
+                    link.trim_start_matches("derive@")
                 } else if link.ends_with('!') {
                     kind = Some(MacroNS);
                     link.trim_end_matches('!')
@@ -614,8 +670,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                     None => {
                         // Try everything!
-                        let candidates = PerNS {
-                            macro_ns: macro_resolve(cx, path_str)
+                        let mut candidates = PerNS {
+                            macro_ns: self
+                                .macro_resolve(path_str, base_node)
                                 .map(|res| (res, extra_fragment.clone())),
                             type_ns: match self.resolve(
                                 path_str,
@@ -668,10 +725,16 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             continue;
                         }
 
-                        let is_unambiguous = candidates.clone().present_items().count() == 1;
-                        if is_unambiguous {
+                        let len = candidates.clone().present_items().count();
+
+                        if len == 1 {
                             candidates.present_items().next().unwrap()
+                        } else if len == 2 && is_derive_trait_collision(&candidates) {
+                            candidates.type_ns.unwrap()
                         } else {
+                            if is_derive_trait_collision(&candidates) {
+                                candidates.macro_ns = None;
+                            }
                             ambiguity_error(
                                 cx,
                                 &item,
@@ -684,7 +747,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         }
                     }
                     Some(MacroNS) => {
-                        if let Some(res) = macro_resolve(cx, path_str) {
+                        if let Some(res) = self.macro_resolve(path_str, base_node) {
                             (res, extra_fragment)
                         } else {
                             resolution_failure(cx, &item, path_str, &dox, link_range);
@@ -725,28 +788,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         c
     }
-}
-
-/// Resolves a string as a macro.
-fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
-    let path = ast::Path::from_ident(Ident::from_str(path_str));
-    cx.enter_resolver(|resolver| {
-        if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
-            &path,
-            None,
-            &ParentScope::module(resolver.graph_root()),
-            false,
-            false,
-        ) {
-            if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
-                return Some(res.map_id(|_| panic!("unexpected id")));
-            }
-        }
-        if let Some(res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
-            return Some(res.map_id(|_| panic!("unexpected id")));
-        }
-        None
-    })
 }
 
 fn build_diagnostic(
@@ -916,7 +957,7 @@ fn ambiguity_error(
                             Res::Def(DefKind::AssocFn | DefKind::Fn, _) => {
                                 ("add parentheses", format!("{}()", path_str))
                             }
-                            Res::Def(DefKind::Macro(..), _) => {
+                            Res::Def(DefKind::Macro(MacroKind::Bang), _) => {
                                 ("add an exclamation mark", format!("{}!", path_str))
                             }
                             _ => {
@@ -930,6 +971,9 @@ fn ambiguity_error(
                                     (Res::Def(DefKind::Mod, _), _) => "module",
                                     (_, TypeNS) => "type",
                                     (_, ValueNS) => "value",
+                                    (Res::Def(DefKind::Macro(MacroKind::Derive), _), MacroNS) => {
+                                        "derive"
+                                    }
                                     (_, MacroNS) => "macro",
                                 };
 

@@ -8,9 +8,9 @@ use std::marker::DiscriminantKind;
 enum Signed {
     Zero = 0,
     Staircase = 0x01_02_03_04_05_06_07_08_09_0a_0b_0c_0d_0e_0f,
-    U64Limit = u64::max_value() as i128 + 1,
+    U64Limit = u64::MAX as i128 + 1,
     SmallNegative = -1,
-    BigNegative = i128::min_value(),
+    BigNegative = i128::MIN,
     Next,
 }
 
@@ -18,7 +18,7 @@ enum Signed {
 enum Unsigned {
     Zero = 0,
     Staircase = 0x01_02_03_04_05_06_07_08_09_0a_0b_0c_0d_0e_0f,
-    U64Limit = u64::max_value() as u128 + 1,
+    U64Limit = u64::MAX as u128 + 1,
     Next,
 }
 
@@ -32,13 +32,13 @@ where
 fn main() {
     discr(Signed::Zero, 0);
     discr(Signed::Staircase, 0x01_02_03_04_05_06_07_08_09_0a_0b_0c_0d_0e_0f);
-    discr(Signed::U64Limit, u64::max_value() as i128 + 1);
+    discr(Signed::U64Limit, u64::MAX as i128 + 1);
     discr(Signed::SmallNegative, -1);
-    discr(Signed::BigNegative, i128::min_value());
-    discr(Signed::Next, i128::min_value() + 1);
+    discr(Signed::BigNegative, i128::MIN);
+    discr(Signed::Next, i128::MIN + 1);
 
     discr(Unsigned::Zero, 0);
     discr(Unsigned::Staircase, 0x01_02_03_04_05_06_07_08_09_0a_0b_0c_0d_0e_0f);
-    discr(Unsigned::U64Limit, u64::max_value() as u128 + 1);
-    discr(Unsigned::Next, u64::max_value() as u128 + 2);
+    discr(Unsigned::U64Limit, u64::MAX as u128 + 1);
+    discr(Unsigned::Next, u64::MAX as u128 + 2);
 }

@@ -1530,7 +1530,6 @@ mod tests {
     use crate::sync::mpsc::{channel, Sender};
     use crate::thread::{self, ThreadId};
     use crate::time::Duration;
-    use crate::u32;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
     // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!

@@ -31,7 +31,9 @@ pub mod edition;
 use edition::Edition;
 pub mod hygiene;
 use hygiene::Transparency;
-pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, MacroKind, SyntaxContext};
+pub use hygiene::{
+    DesugaringKind, ExpnData, ExpnId, ExpnKind, ForLoopLoc, MacroKind, SyntaxContext,
+};
 pub mod def_id;
 use def_id::{CrateNum, DefId, LOCAL_CRATE};
 mod span_encoding;
@@ -726,10 +728,18 @@ pub fn with_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) ->
     f()
 }
 
+pub fn debug_with_source_map(
+    span: Span,
+    f: &mut fmt::Formatter<'_>,
+    source_map: &SourceMap,
+) -> fmt::Result {
+    write!(f, "{} ({:?})", source_map.span_to_string(span), span.ctxt())
+}
+
 pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     GLOBALS.with(|globals| {
         if let Some(source_map) = &*globals.source_map.borrow() {
-            write!(f, "{}", source_map.span_to_string(span))
+            debug_with_source_map(span, f, source_map)
         } else {
             f.debug_struct("Span")
                 .field("lo", &span.lo())
@@ -1250,7 +1260,7 @@ impl SourceFile {
             hasher.finish::<u128>()
         };
         let end_pos = start_pos.to_usize() + src.len();
-        assert!(end_pos <= u32::max_value() as usize);
+        assert!(end_pos <= u32::MAX as usize);
 
         let (lines, multibyte_chars, non_narrow_chars) =
             analyze_source_file::analyze_source_file(&src[..], start_pos);

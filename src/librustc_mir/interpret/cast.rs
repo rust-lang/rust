@@ -268,11 +268,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_immediate(src)?.to_scalar()?;
                 // u64 cast is from usize to u64, which is always good
-                let val = Immediate::new_slice(
-                    ptr,
-                    length.eval_usize(self.tcx.tcx, self.param_env),
-                    self,
-                );
+                let val =
+                    Immediate::new_slice(ptr, length.eval_usize(*self.tcx, self.param_env), self);
                 self.write_immediate(val, dest)
             }
             (&ty::Dynamic(..), &ty::Dynamic(..)) => {

@@ -185,7 +185,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_exprs(args);
             }
 
-            hir::ExprKind::MethodCall(.., ref args) => {
+            hir::ExprKind::MethodCall(.., ref args, _) => {
                 // callee.m(args)
                 self.consume_exprs(args);
             }

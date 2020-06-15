@@ -99,7 +99,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ManualAsyncFn {
 
 fn future_trait_ref<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &'tcx Ty<'tcx>) -> Option<&'tcx TraitRef<'tcx>> {
     if_chain! {
-        if let TyKind::Def(item_id, _) = ty.kind;
+        if let TyKind::OpaqueDef(item_id, _) = ty.kind;
         let item = cx.tcx.hir().item(item_id.id);
         if let ItemKind::OpaqueTy(opaque) = &item.kind;
         if opaque.bounds.len() == 1;

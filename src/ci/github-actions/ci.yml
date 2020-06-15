@@ -147,10 +147,6 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/install-msys2.sh
         <<: *step
 
-      - name: install MSYS2 packages
-        run: src/ci/scripts/install-msys2-packages.sh
-        <<: *step
-
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
         <<: *step
@@ -494,12 +490,6 @@ jobs:
               # FIXME(#59637)
               NO_DEBUG_ASSERTIONS: 1
               NO_LLVM_ASSERTIONS: 1
-            <<: *job-windows-xl
-
-          - name: x86_64-msvc-aux
-            env:
-              RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
-              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
             <<: *job-windows-xl
 
           - name: x86_64-msvc-cargo

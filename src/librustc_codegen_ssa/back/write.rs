@@ -1551,7 +1551,7 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
 
 enum SharedEmitterMessage {
     Diagnostic(Diagnostic),
-    InlineAsmError(u32, String, Option<(String, Vec<InnerSpan>)>),
+    InlineAsmError(u32, String, Level, Option<(String, Vec<InnerSpan>)>),
     AbortIfErrors,
     Fatal(String),
 }
@@ -1576,9 +1576,10 @@ impl SharedEmitter {
         &self,
         cookie: u32,
         msg: String,
+        level: Level,
         source: Option<(String, Vec<InnerSpan>)>,
     ) {
-        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg, source)));
+        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)));
     }
 
     pub fn fatal(&self, msg: &str) {
@@ -1631,16 +1632,21 @@ impl SharedEmitterMain {
                     }
                     handler.emit_diagnostic(&d);
                 }
-                Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, source)) => {
+                Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg);
 
+                    let mut err = match level {
+                        Level::Error => sess.struct_err(&msg),
+                        Level::Warning => sess.struct_warn(&msg),
+                        Level::Note => sess.struct_note_without_error(&msg),
+                        _ => bug!("Invalid inline asm diagnostic level"),
+                    };
+
                     // If the cookie is 0 then we don't have span information.
-                    let mut err = if cookie == 0 {
-                        sess.struct_err(&msg)
-                    } else {
+                    if cookie != 0 {
                         let pos = BytePos::from_u32(cookie);
                         let span = Span::with_root_ctxt(pos, pos);
-                        sess.struct_span_err(span, &msg)
+                        err.set_span(span);
                     };
 
                     // Point to the generated assembly if it is available.

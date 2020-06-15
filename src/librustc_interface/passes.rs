@@ -307,16 +307,21 @@ fn configure_and_expand_inner<'a>(
             ecx.check_unused_macros();
         });
 
-        let mut missing_fragment_specifiers: Vec<_> =
-            ecx.parse_sess.missing_fragment_specifiers.borrow().iter().cloned().collect();
-        missing_fragment_specifiers.sort();
+        let mut missing_fragment_specifiers: Vec<_> = ecx
+            .parse_sess
+            .missing_fragment_specifiers
+            .borrow()
+            .iter()
+            .map(|(span, node_id)| (*span, *node_id))
+            .collect();
+        missing_fragment_specifiers.sort_unstable_by_key(|(span, _)| *span);
 
         let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
 
-        for span in missing_fragment_specifiers {
+        for (span, node_id) in missing_fragment_specifiers {
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
             let msg = "missing fragment specifier";
-            resolver.lint_buffer().buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
+            resolver.lint_buffer().buffer_lint(lint, node_id, span, msg);
         }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
@@ -842,7 +847,11 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
 
     sess.time("MIR_effect_checking", || {
         for def_id in tcx.body_owners() {
-            mir::transform::check_unsafety::check_unsafety(tcx, def_id)
+            mir::transform::check_unsafety::check_unsafety(tcx, def_id);
+
+            if tcx.hir().body_const_context(def_id).is_some() {
+                tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
+            }
         }
     });
 

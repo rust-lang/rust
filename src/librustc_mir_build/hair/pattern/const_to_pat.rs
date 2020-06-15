@@ -80,7 +80,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
-        traits::type_marked_structural(self.id, self.span, &self.infcx, ty)
+        ty.is_structural_eq_shallow(self.infcx.tcx)
     }
 
     fn to_pat(
@@ -129,6 +129,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     }
                     traits::NonStructuralMatchTy::Generator => {
                         "generators cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTy::Closure => {
+                        "closures cannot be used in patterns".to_string()
                     }
                     traits::NonStructuralMatchTy::Param => {
                         bug!("use of a constant whose type is a parameter inside a pattern")

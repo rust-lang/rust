@@ -135,7 +135,7 @@ fn dump_matched_mir_node<'tcx, F>(
         }
         writeln!(file)?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
-        write_user_type_annotations(body, &mut file)?;
+        write_user_type_annotations(tcx, body, &mut file)?;
         write_mir_fn(tcx, source, body, &mut extra_data, &mut file)?;
         extra_data(PassWhere::AfterCFG, &mut file)?;
     };
@@ -351,7 +351,7 @@ fn write_extra<'tcx, F>(tcx: TyCtxt<'tcx>, write: &mut dyn Write, mut visit_op: 
 where
     F: FnMut(&mut ExtraComments<'tcx>),
 {
-    let mut extra_comments = ExtraComments { _tcx: tcx, comments: vec![] };
+    let mut extra_comments = ExtraComments { tcx, comments: vec![] };
     visit_op(&mut extra_comments);
     for comment in extra_comments.comments {
         writeln!(write, "{:A$} // {}", "", comment, A = ALIGN)?;
@@ -360,7 +360,7 @@ where
 }
 
 struct ExtraComments<'tcx> {
-    _tcx: TyCtxt<'tcx>, // don't need it now, but bet we will soon
+    tcx: TyCtxt<'tcx>,
     comments: Vec<String>,
 }
 
@@ -377,7 +377,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
         self.super_constant(constant, location);
         let Constant { span, user_ty, literal } = constant;
         self.push("mir::Constant");
-        self.push(&format!("+ span: {:?}", span));
+        self.push(&format!("+ span: {}", self.tcx.sess.source_map().span_to_string(*span)));
         if let Some(user_ty) = user_ty {
             self.push(&format!("+ user_ty: {:?}", user_ty));
         }
@@ -862,12 +862,22 @@ fn write_mir_sig(
     Ok(())
 }
 
-fn write_user_type_annotations(body: &Body<'_>, w: &mut dyn Write) -> io::Result<()> {
+fn write_user_type_annotations(
+    tcx: TyCtxt<'_>,
+    body: &Body<'_>,
+    w: &mut dyn Write,
+) -> io::Result<()> {
     if !body.user_type_annotations.is_empty() {
         writeln!(w, "| User Type Annotations")?;
     }
     for (index, annotation) in body.user_type_annotations.iter_enumerated() {
-        writeln!(w, "| {:?}: {:?} at {:?}", index.index(), annotation.user_ty, annotation.span)?;
+        writeln!(
+            w,
+            "| {:?}: {:?} at {}",
+            index.index(),
+            annotation.user_ty,
+            tcx.sess.source_map().span_to_string(annotation.span)
+        )?;
     }
     if !body.user_type_annotations.is_empty() {
         writeln!(w, "|")?;

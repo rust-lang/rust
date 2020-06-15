@@ -99,7 +99,7 @@ fn get_arm_identity_info<'a, 'tcx>(stmts: &'a [Statement<'tcx>]) -> Option<ArmId
     fn try_eat<'a, 'tcx>(
         stmt_iter: &mut StmtIter<'a, 'tcx>,
         test: impl Fn(&'a Statement<'tcx>) -> bool,
-        mut action: impl FnMut(usize, &'a Statement<'tcx>) -> (),
+        mut action: impl FnMut(usize, &'a Statement<'tcx>),
     ) {
         while stmt_iter.peek().map(|(_, stmt)| test(stmt)).unwrap_or(false) {
             let (idx, stmt) = stmt_iter.next().unwrap();
@@ -271,7 +271,7 @@ fn optimization_applies<'tcx>(
     }
 
     // Verify the assigment chain consists of the form b = a; c = b; d = c; etc...
-    if opt_info.field_tmp_assignments.len() == 0 {
+    if opt_info.field_tmp_assignments.is_empty() {
         trace!("NO: no assignments found");
     }
     let mut last_assigned_to = opt_info.field_tmp_assignments[0].1;
@@ -306,7 +306,11 @@ fn optimization_applies<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
-    fn run_pass(&self, _: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
+            return;
+        }
+
         trace!("running SimplifyArmIdentity on {:?}", source);
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for bb in basic_blocks {

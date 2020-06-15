@@ -1,11 +1,15 @@
-error[E0720]: opaque type expands to a recursive type
-  --> $DIR/issue-60473.rs:15:12
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-60473.rs:13:23
    |
-LL |     let x: impl Trait<A> = (); // FIXME: The error doesn't seem correct.
-   |            ^^^^^^^^^^^^^ expands to a recursive type
+LL |     let x: impl Trait<A> = ();
+   |                       ^ expected named lifetime parameter
    |
-   = note: type resolves to itself
+help: consider introducing a named lifetime parameter
+   |
+LL | fn main<'a>() {
+LL |     let x: impl Trait<A<'a>> = ();
+   |
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0720`.
+For more information about this error, try `rustc --explain E0106`.

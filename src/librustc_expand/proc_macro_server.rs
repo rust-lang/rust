@@ -582,10 +582,10 @@ impl server::Literal for Rustc<'_> {
         };
 
         // Bounds check the values, preventing addition overflow and OOB spans.
-        if start > u32::max_value() as usize
-            || end > u32::max_value() as usize
-            || (u32::max_value() - start as u32) < span.lo().to_u32()
-            || (u32::max_value() - end as u32) < span.lo().to_u32()
+        if start > u32::MAX as usize
+            || end > u32::MAX as usize
+            || (u32::MAX - start as u32) < span.lo().to_u32()
+            || (u32::MAX - end as u32) < span.lo().to_u32()
             || start >= end
             || end > length
         {

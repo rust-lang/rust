@@ -316,9 +316,6 @@ fn check_associated_item(
                     fcx.register_wf_obligation(ty.into(), span, code.clone());
                 }
             }
-            ty::AssocKind::OpaqueTy => {
-                // Do nothing: opaque types check themselves.
-            }
         }
 
         implied_bounds
@@ -804,14 +801,14 @@ fn check_where_clauses<'tcx, 'fcx>(
             traits::Obligation::new(cause, fcx.param_env, pred)
         });
 
-    let mut predicates = predicates.instantiate_identity(fcx.tcx);
+    let predicates = predicates.instantiate_identity(fcx.tcx);
 
-    if let Some((return_ty, span)) = return_ty {
-        let opaque_types = check_opaque_types(tcx, fcx, def_id.expect_local(), span, return_ty);
-        for _ in 0..opaque_types.len() {
-            predicates.spans.push(span);
+    if let Some((mut return_ty, span)) = return_ty {
+        if return_ty.has_infer_types_or_consts() {
+            fcx.select_obligations_where_possible(false, |_| {});
+            return_ty = fcx.resolve_vars_if_possible(&return_ty);
         }
-        predicates.predicates.extend(opaque_types);
+        check_opaque_types(tcx, fcx, def_id.expect_local(), span, return_ty);
     }
 
     let predicates = fcx.normalize_associated_types_in(span, &predicates);
@@ -883,119 +880,117 @@ fn check_opaque_types<'fcx, 'tcx>(
     fn_def_id: LocalDefId,
     span: Span,
     ty: Ty<'tcx>,
-) -> Vec<ty::Predicate<'tcx>> {
+) {
     trace!("check_opaque_types(ty={:?})", ty);
-    let mut substituted_predicates = Vec::new();
     ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
         ty_op: |ty| {
             if let ty::Opaque(def_id, substs) = ty.kind {
                 trace!("check_opaque_types: opaque_ty, {:?}, {:?}", def_id, substs);
                 let generics = tcx.generics_of(def_id);
-                // Only check named `impl Trait` types defined in this crate.
-                // FIXME(eddyb) is  `generics.parent.is_none()` correct? It seems
-                // potentially risky wrt associated types in `impl`s.
-                if generics.parent.is_none() && def_id.is_local() {
-                    let opaque_hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
-                    if may_define_opaque_type(tcx, fn_def_id, opaque_hir_id) {
-                        trace!("check_opaque_types: may define, generics={:#?}", generics);
-                        let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
-                        for (i, arg) in substs.iter().enumerate() {
-                            let arg_is_param = match arg.unpack() {
-                                GenericArgKind::Type(ty) => matches!(ty.kind, ty::Param(_)),
 
-                                GenericArgKind::Lifetime(region) => {
-                                    if let ty::ReStatic = region {
-                                        tcx.sess
-                                            .struct_span_err(
-                                                span,
-                                                "non-defining opaque type use in defining scope",
-                                            )
-                                            .span_label(
-                                                tcx.def_span(generics.param_at(i, tcx).def_id),
-                                                "cannot use static lifetime; use a bound lifetime \
+                let opaque_hir_id = if let Some(local_id) = def_id.as_local() {
+                    tcx.hir().as_local_hir_id(local_id)
+                } else {
+                    // Opaque types from other crates won't have defining uses in this crate.
+                    return ty;
+                };
+                if let hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(_), .. }) =
+                    tcx.hir().expect_item(opaque_hir_id).kind
+                {
+                    // No need to check return position impl trait (RPIT)
+                    // because for type and const parameters they are correct
+                    // by construction: we convert
+                    //
+                    // fn foo<P0..Pn>() -> impl Trait
+                    //
+                    // into
+                    //
+                    // type Foo<P0...Pn>
+                    // fn foo<P0..Pn>() -> Foo<P0...Pn>.
+                    //
+                    // For lifetime parameters we convert
+                    //
+                    // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
+                    //
+                    // into
+                    //
+                    // type foo::<'p0..'pn>::Foo<'q0..'qm>
+                    // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
+                    //
+                    // which would error here on all of the `'static` args.
+                    return ty;
+                }
+                if !may_define_opaque_type(tcx, fn_def_id, opaque_hir_id) {
+                    return ty;
+                }
+                trace!("check_opaque_types: may define, generics={:#?}", generics);
+                let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
+                for (i, arg) in substs.iter().enumerate() {
+                    let arg_is_param = match arg.unpack() {
+                        GenericArgKind::Type(ty) => matches!(ty.kind, ty::Param(_)),
+
+                        GenericArgKind::Lifetime(region) => {
+                            if let ty::ReStatic = region {
+                                tcx.sess
+                                    .struct_span_err(
+                                        span,
+                                        "non-defining opaque type use in defining scope",
+                                    )
+                                    .span_label(
+                                        tcx.def_span(generics.param_at(i, tcx).def_id),
+                                        "cannot use static lifetime; use a bound lifetime \
                                                  instead or remove the lifetime parameter from the \
                                                  opaque type",
-                                            )
-                                            .emit();
-                                        continue;
-                                    }
-
-                                    true
-                                }
-
-                                GenericArgKind::Const(ct) => {
-                                    matches!(ct.val, ty::ConstKind::Param(_))
-                                }
-                            };
-
-                            if arg_is_param {
-                                seen_params.entry(arg).or_default().push(i);
-                            } else {
-                                // Prevent `fn foo() -> Foo<u32>` from being defining.
-                                let opaque_param = generics.param_at(i, tcx);
-                                tcx.sess
-                                    .struct_span_err(
-                                        span,
-                                        "non-defining opaque type use in defining scope",
-                                    )
-                                    .span_note(
-                                        tcx.def_span(opaque_param.def_id),
-                                        &format!(
-                                            "used non-generic {} `{}` for generic parameter",
-                                            opaque_param.kind.descr(),
-                                            arg,
-                                        ),
                                     )
                                     .emit();
+                                continue;
                             }
-                        } // for (arg, param)
 
-                        for (_, indices) in seen_params {
-                            if indices.len() > 1 {
-                                let descr = generics.param_at(indices[0], tcx).kind.descr();
-                                let spans: Vec<_> = indices
-                                    .into_iter()
-                                    .map(|i| tcx.def_span(generics.param_at(i, tcx).def_id))
-                                    .collect();
-                                tcx.sess
-                                    .struct_span_err(
-                                        span,
-                                        "non-defining opaque type use in defining scope",
-                                    )
-                                    .span_note(spans, &format!("{} used multiple times", descr))
-                                    .emit();
-                            }
+                            true
                         }
-                    } // if may_define_opaque_type
 
-                    // Now register the bounds on the parameters of the opaque type
-                    // so the parameters given by the function need to fulfill them.
-                    //
-                    //     type Foo<T: Bar> = impl Baz + 'static;
-                    //     fn foo<U>() -> Foo<U> { .. *}
-                    //
-                    // becomes
-                    //
-                    //     type Foo<T: Bar> = impl Baz + 'static;
-                    //     fn foo<U: Bar>() -> Foo<U> { .. *}
-                    let predicates = tcx.predicates_of(def_id);
-                    trace!("check_opaque_types: may define, predicates={:#?}", predicates,);
-                    for &(pred, _) in predicates.predicates {
-                        let substituted_pred = pred.subst(fcx.tcx, substs);
-                        // Avoid duplication of predicates that contain no parameters, for example.
-                        if !predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
-                            substituted_predicates.push(substituted_pred);
-                        }
+                        GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
+                    };
+
+                    if arg_is_param {
+                        seen_params.entry(arg).or_default().push(i);
+                    } else {
+                        // Prevent `fn foo() -> Foo<u32>` from being defining.
+                        let opaque_param = generics.param_at(i, tcx);
+                        tcx.sess
+                            .struct_span_err(span, "non-defining opaque type use in defining scope")
+                            .span_note(
+                                tcx.def_span(opaque_param.def_id),
+                                &format!(
+                                    "used non-generic {} `{}` for generic parameter",
+                                    opaque_param.kind.descr(),
+                                    arg,
+                                ),
+                            )
+                            .emit();
                     }
-                } // if is_named_opaque_type
+                } // for (arg, param)
+
+                for (_, indices) in seen_params {
+                    if indices.len() > 1 {
+                        let descr = generics.param_at(indices[0], tcx).kind.descr();
+                        let spans: Vec<_> = indices
+                            .into_iter()
+                            .map(|i| tcx.def_span(generics.param_at(i, tcx).def_id))
+                            .collect();
+                        tcx.sess
+                            .struct_span_err(span, "non-defining opaque type use in defining scope")
+                            .span_note(spans, &format!("{} used multiple times", descr))
+                            .emit();
+                    }
+                }
             } // if let Opaque
             ty
         },
         lt_op: |lt| lt,
         ct_op: |ct| ct,
     });
-    substituted_predicates
 }
 
 const HELP_FOR_SELF_TYPE: &str = "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, \

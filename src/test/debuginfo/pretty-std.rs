@@ -61,6 +61,9 @@
 // lldb-command: print none
 // lldb-check:[...]$5 = None
 
+// lldb-command: print os_string
+// lldb-check:[...]$6 = "IAMA OS string 😃"[...]
+
 
 // === CDB TESTS ==================================================================================
 

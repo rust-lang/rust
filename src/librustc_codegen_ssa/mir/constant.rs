@@ -63,7 +63,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .tcx()
                     .destructure_const(ty::ParamEnv::reveal_all().and(&c))
                     .fields
-                    .into_iter()
+                    .iter()
                     .map(|field| {
                         if let Some(prim) = field.val.try_to_scalar() {
                             let layout = bx.layout_of(field_ty);

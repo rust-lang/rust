@@ -2623,15 +2623,7 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
 pub fn fence(order: Ordering) {
-    // On wasm32 it looks like fences aren't implemented in LLVM yet in that
-    // they will cause LLVM to abort. The wasm instruction set doesn't have
-    // fences right now. There's discussion online about the best way for tools
-    // to conventionally implement fences at
-    // https://github.com/WebAssembly/tool-conventions/issues/59. We should
-    // follow that discussion and implement a solution when one comes about!
-    #[cfg(not(target_arch = "wasm32"))]
     // SAFETY: using an atomic fence is safe.
     unsafe {
         match order {
