@@ -12,6 +12,7 @@ Work on rust-analyzer is sponsored by
 
 [<img src="https://user-images.githubusercontent.com/1711539/58105231-cf306900-7bee-11e9-83d8-9f1102e59d29.png" alt="Ferrous Systems" width="300">](https://ferrous-systems.com/)
 - [Mozilla](https://www.mozilla.org/en-US/)
+- [Embark Studios](https://embark-studios.com/)
 - [freiheit.com](https://www.freiheit.com)
 
 ## Quick Start
