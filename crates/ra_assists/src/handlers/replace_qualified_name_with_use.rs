@@ -5,7 +5,6 @@ use crate::{
     utils::{find_insert_use_container, insert_use_statement},
     AssistContext, AssistId, Assists,
 };
-use either::Either;
 
 // Assist: replace_qualified_name_with_use
 //
@@ -56,14 +55,8 @@ pub(crate) fn replace_qualified_name_with_use(
                 None => return,
             };
             let mut rewriter = SyntaxRewriter::default();
-            match container {
-                Either::Left(l) => {
-                    shorten_paths(&mut rewriter, l.syntax().clone(), hir_path.mod_path());
-                }
-                Either::Right(r) => {
-                    shorten_paths(&mut rewriter, r.syntax().clone(), hir_path.mod_path());
-                }
-            }
+            let syntax = container.either(|l| l.syntax().clone(), |r| r.syntax().clone());
+            shorten_paths(&mut rewriter, syntax, hir_path.mod_path());
             builder.rewrite(rewriter);
         },
     )
@@ -90,7 +83,7 @@ fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
 }
 
 /// Adds replacements to `re` that shorten `path` in all descendants of `node`.
-fn shorten_paths(re: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: &ModPath) {
+fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: &ModPath) {
     for child in node.children() {
         match_ast! {
             match child {
@@ -101,12 +94,12 @@ fn shorten_paths(re: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: &ModP
                 ast::Module(_it) => continue,
 
                 ast::Path(p) => {
-                    match maybe_replace_path(re, &p, path) {
+                    match maybe_replace_path(rewriter, &p, path) {
                         Some(()) => {},
-                        None => shorten_paths(re, p.syntax().clone(), path),
+                        None => shorten_paths(rewriter, p.syntax().clone(), path),
                     }
                 },
-                _ => shorten_paths(re, child, path),
+                _ => shorten_paths(rewriter, child, path),
             }
         }
     }
