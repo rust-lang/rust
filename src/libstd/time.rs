@@ -60,6 +60,21 @@ pub use core::time::Duration;
 /// }
 /// ```
 ///
+/// # OS-specific behaviors
+///
+/// An `Instant` is a wrapper around system-specific types and it may behave
+/// differently depending on the underlying operating system. For example,
+/// the following snippet is fine on Linux but panics on macOS:
+///
+/// ```no_run
+/// use std::time::{Instant, Duration};
+///
+/// let now = Instant::now();
+/// let max_nanoseconds = u64::MAX / 1_000_000_000;
+/// let duration = Duration::new(max_nanoseconds, 0);
+/// println!("{:?}", now + duration);
+/// ```
+///
 /// # Underlying System calls
 /// Currently, the following system calls are being used to get the current time using `now()`:
 ///
