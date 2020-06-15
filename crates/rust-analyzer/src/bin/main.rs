@@ -108,11 +108,11 @@ fn run_server() -> Result<()> {
             config.update(value);
         }
         config.update_caps(&initialize_params.capabilities);
+        let cwd = std::env::current_dir()?;
+        config.root_path =
+            initialize_params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
 
         if config.linked_projects.is_empty() {
-            let cwd = std::env::current_dir()?;
-            let root =
-                initialize_params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
             let workspace_roots = initialize_params
                 .workspace_folders
                 .map(|workspaces| {
@@ -122,7 +122,7 @@ fn run_server() -> Result<()> {
                         .collect::<Vec<_>>()
                 })
                 .filter(|workspaces| !workspaces.is_empty())
-                .unwrap_or_else(|| vec![root]);
+                .unwrap_or_else(|| vec![config.root_path.clone()]);
 
             config.linked_projects = ProjectManifest::discover_all(&workspace_roots)
                 .into_iter()
