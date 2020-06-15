@@ -50,10 +50,8 @@ fn expr_no_struct(p: &mut Parser) {
 }
 
 fn is_expr_stmt_attr_allowed(kind: SyntaxKind) -> bool {
-    match kind {
-        BIN_EXPR | RANGE_EXPR | IF_EXPR => false,
-        _ => true,
-    }
+    let forbid = matches!(kind, BIN_EXPR | RANGE_EXPR);
+    !forbid
 }
 
 pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {

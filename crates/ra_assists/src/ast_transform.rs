@@ -106,6 +106,7 @@ impl<'a> SubstituteTypeParams<'a> {
             _ => return None,
         };
         // FIXME: use `hir::Path::from_src` instead.
+        #[allow(deprecated)]
         let path = hir::Path::from_ast(path)?;
         let resolution = self.source_scope.resolve_hir_path(&path)?;
         match resolution {
@@ -150,6 +151,7 @@ impl<'a> QualifyPaths<'a> {
             return None;
         }
         // FIXME: use `hir::Path::from_src` instead.
+        #[allow(deprecated)]
         let hir_path = hir::Path::from_ast(p.clone());
         let resolution = self.source_scope.resolve_hir_path(&hir_path?)?;
         match resolution {

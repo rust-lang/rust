@@ -56,4 +56,3 @@ SOURCE_FILE@0..48
       R_CURLY@46..47 "}"
   WHITESPACE@47..48 "\n"
 error 24..24: attributes are not allowed on BIN_EXPR
-error 44..44: attributes are not allowed on IF_EXPR
