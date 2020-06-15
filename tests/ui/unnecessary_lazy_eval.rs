@@ -25,9 +25,12 @@ fn main() {
     let ext_arr: [usize; 1] = [2];
     let ext_str = SomeStruct { some_field: 10 };
 
-    // Should lint - Option
     let mut opt = Some(42);
     let ext_opt = Some(42);
+    let nested_opt = Some(Some(42));
+    let nested_tuple_opt = Some(Some((42, 43)));
+
+    // Should lint - Option
     let _ = opt.unwrap_or_else(|| 2);
     let _ = opt.unwrap_or_else(|| astronomers_pi);
     let _ = opt.unwrap_or_else(|| ext_str.some_field);
@@ -56,6 +59,9 @@ fn main() {
 
     // Should not lint - Option
     let _ = opt.unwrap_or_else(|| ext_str.return_some_field());
+    let _ = nested_opt.unwrap_or_else(|| Some(some_call()));
+    let _ = nested_tuple_opt.unwrap_or_else(|| Some((1, 2)));
+    let _ = nested_tuple_opt.unwrap_or_else(|| Some((some_call(), some_call())));
     let _ = opt.or_else(some_call);
     let _ = opt.or_else(|| some_call());
     let _: Result<usize, usize> = opt.ok_or_else(|| some_call());

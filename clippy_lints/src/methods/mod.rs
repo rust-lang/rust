@@ -2744,12 +2744,8 @@ fn lint_lazy_eval<'a, 'tcx>(
         paths.iter().any(|candidate| match_qpath(path, candidate))
     }
 
-    if let hir::ExprKind::Closure(_, _, eid, _, _) = args[1].kind {
-        let body = cx.tcx.hir().body(eid);
-        let ex = &body.value;
-        let params = &body.params;
-
-        let simplify = match ex.kind {
+    fn can_simplify(expr: &hir::Expr<'_>, params: &[hir::Param<'_>], variant_calls: bool) -> bool {
+        match expr.kind {
             // Closures returning literals can be unconditionally simplified
             hir::ExprKind::Lit(_) => true,
 
@@ -2767,15 +2763,16 @@ fn lint_lazy_eval<'a, 'tcx>(
             hir::ExprKind::Field(ref object, _) => !expr_uses_argument(object, params),
 
             // Paths can be simplified if the root is not the argument, this also covers None
-            hir::ExprKind::Path(_) => !expr_uses_argument(ex, params),
+            hir::ExprKind::Path(_) => !expr_uses_argument(expr, params),
 
             // Calls to Some, Ok, Err can be considered literals if they don't derive an argument
             hir::ExprKind::Call(ref func, ref args) => if_chain! {
-                if allow_variant_calls; // Disable lint when rules conflict with bind_instead_of_map
+                if variant_calls; // Disable lint when rules conflict with bind_instead_of_map
                 if let hir::ExprKind::Path(ref path) = func.kind;
                 if match_any_qpath(path, &[&["Some"], &["Ok"], &["Err"]]);
                 then {
-                    !args.iter().any(|arg| expr_uses_argument(arg, params))
+                    // Recursively check all arguments
+                    args.iter().all(|arg| can_simplify(arg, params, variant_calls))
                 } else {
                     false
                 }
@@ -2784,9 +2781,15 @@ fn lint_lazy_eval<'a, 'tcx>(
             // For anything more complex than the above, a closure is probably the right solution,
             // or the case is handled by an other lint
             _ => false,
-        };
+        }
+    }
 
-        if simplify {
+    if let hir::ExprKind::Closure(_, _, eid, _, _) = args[1].kind {
+        let body = cx.tcx.hir().body(eid);
+        let ex = &body.value;
+        let params = &body.params;
+
+        if can_simplify(ex, params, allow_variant_calls) {
             let msg = if is_option {
                 "unnecessary closure used to substitute value for `Option::None`"
             } else {
