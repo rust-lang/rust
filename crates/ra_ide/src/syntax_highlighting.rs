@@ -565,7 +565,7 @@ fn highlight_element(
                 _ => h,
             }
         }
-        REF_EXPR => {
+        T![&] => {
             let ref_expr = element.into_node().and_then(ast::RefExpr::cast)?;
             let expr = ref_expr.expr()?;
             let field_expr = match expr {

@@ -299,6 +299,23 @@ struct Packed {
     c: u32,
 }
 
+trait DoTheAutoref {
+    fn calls_autoref(&self);
+}
+
+struct NeedsAlign {
+    a: u16
+}
+
+#[repr(packed)]
+struct HasAligned {
+    a: NeedsAlign
+}
+
+impl DoTheAutoref for NeedsAlign {
+    fn calls_autored(&self) {}
+}
+
 fn main() {
     let x = &5 as *const usize;
     let u = Union { b: 0 };
@@ -317,6 +334,8 @@ fn main() {
         let a = &packed.a;
         let b = &packed.b;
         let c = &packed.c;
+        let h = HasAligned{ a: NeedsAlign { a: 1 } };
+        h.a.calls_autoref();
     }
 }
 "#
