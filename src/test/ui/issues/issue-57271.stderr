@@ -7,7 +7,10 @@ LL |     Class(ClassTypeSignature),
 LL |     Array(TypeSignature),
    |           ------------- recursive without indirection
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `ObjectType` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `ObjectType` representable
+   |
+LL |     Array(Box<TypeSignature>),
+   |           ^^^^             ^
 
 error[E0072]: recursive type `TypeSignature` has infinite size
   --> $DIR/issue-57271.rs:19:1
@@ -18,7 +21,10 @@ LL |     Base(BaseType),
 LL |     Object(ObjectType),
    |            ---------- recursive without indirection
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `TypeSignature` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `TypeSignature` representable
+   |
+LL |     Object(Box<ObjectType>),
+   |            ^^^^          ^
 
 error: aborting due to 2 previous errors
 
