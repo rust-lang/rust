@@ -1754,7 +1754,7 @@ Released 2018-09-13
 [`unnecessary_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_cast
 [`unnecessary_filter_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_filter_map
 [`unnecessary_fold`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_fold
-[`unnecessary_lazy_eval`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_lazy_eval
+[`unnecessary_lazy_evaluation`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_lazy_evaluation
 [`unnecessary_mut_passed`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_mut_passed
 [`unnecessary_operation`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_operation
 [`unnecessary_sort_by`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_sort_by
