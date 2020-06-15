@@ -342,6 +342,12 @@ There are two kinds of tests:
 The purpose of inline tests is not to achieve full coverage by test cases, but to explain to the reader of the code what each particular `if` and `match` is responsible for.
 If you are tempted to add a large inline test, it might be a good idea to leave only the simplest example in place, and move the test to a manual `parser/ok` test.
 
+To update test data, run with `UPDATE_EXPECTATIONS` variable:
+
+```bash
+env UPDATE_EXPECTATIONS=1 cargo qt
+```
+
 # Logging
 
 Logging is done by both rust-analyzer and VS Code, so it might be tricky to

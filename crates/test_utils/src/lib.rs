@@ -10,17 +10,17 @@
 pub mod mark;
 
 use std::{
-    fs,
+    env, fs,
     path::{Path, PathBuf},
 };
 
-pub use ra_cfg::CfgOptions;
+use serde_json::Value;
 use stdx::split1;
+use text_size::{TextRange, TextSize};
 
+pub use ra_cfg::CfgOptions;
 pub use relative_path::{RelativePath, RelativePathBuf};
 pub use rustc_hash::FxHashMap;
-use serde_json::Value;
-use text_size::{TextRange, TextSize};
 
 pub use difference::Changeset as __Changeset;
 
@@ -625,8 +625,6 @@ pub fn skip_slow_tests() -> bool {
     should_skip
 }
 
-const REWRITE: bool = false;
-
 /// Asserts that `expected` and `actual` strings are equal. If they differ only
 /// in trailing or leading whitespace the test won't fail and
 /// the contents of `actual` will be written to the file located at `path`.
@@ -642,7 +640,7 @@ fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
         fs::write(path, actual).unwrap();
         return;
     }
-    if REWRITE {
+    if env::var("UPDATE_EXPECTATIONS").is_ok() {
         println!("rewriting {}", pretty_path.display());
         fs::write(path, actual).unwrap();
         return;
