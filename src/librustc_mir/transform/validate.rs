@@ -96,11 +96,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_ty_callable(&self, location: Location, ty: Ty<'tcx>) {
         if let ty::FnPtr(..) | ty::FnDef(..) = ty.kind {
             // We have a `FnPtr` or `FnDef` which is trivially safe to call.
-        } else if self.validating_shim {
+            //
+            // By this point, calls to closures should already have been lowered to calls to
+            // `Fn*::call*` so we do not consider them callable.
+        } else if self.validating_shim && ty == self.tcx.types.self_param {
             // FIXME(#69925): we shouldn't be special-casing for call-shims as we'd hope they
             // have concrete substs by this point.
-            // We haven't got a `FnPtr` or `FnDef` but we are still safe to call it if it
-            // implements `FnOnce` (as `Fn: FnMut` and `FnMut: FnOnce`).
+            //
+            // We haven't got a `FnPtr` or `FnDef` but if we're looking at a MIR shim, this could
+            // be due to a `Self` type still hanging about. To avoid rejecting these shims we
+            // any type in MIR shims as callable so long as:
+            //     1. it's `Self`
+            //     2. it implements `FnOnce`
             let fn_once_trait = self.tcx.require_lang_item(FnOnceTraitLangItem, None);
             let item_def_id = self
                 .tcx
@@ -130,7 +137,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if !infcx.predicate_may_hold(&obligation) {
                     self.fail(
                         location,
-                        format!("encountered non-callable type {} in `Call` terminator", ty),
+                        format!(
+                            "encountered {} in `Call` terminator of shim \
+                            which does not implement `FnOnce`",
+                            ty,
+                        ),
                     );
                 }
             });
