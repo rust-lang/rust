@@ -20,12 +20,26 @@ pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
         {
             complete_derive(acc, ctx, token_tree)
         }
-        _ => complete_attribute_start(acc, ctx, attribute),
+        (_, Some(ast::AttrInput::TokenTree(token_tree))) => {
+            let token_tree_str = token_tree.to_string();
+            complete_attribute_start(
+                acc,
+                ctx,
+                attribute,
+                token_tree_str.starts_with('(') && token_tree_str.ends_with(')'),
+            )
+        }
+        _ => complete_attribute_start(acc, ctx, attribute, false),
     }
     Some(())
 }
 
-fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attribute: &ast::Attr) {
+fn complete_attribute_start(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+    attribute: &ast::Attr,
+    nested: bool,
+) {
     for attr_completion in ATTRIBUTES {
         let mut item = CompletionItem::new(
             CompletionKind::Attribute,
@@ -42,7 +56,9 @@ fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attr
         }
 
         if attribute.kind() == ast::AttrKind::Inner || !attr_completion.should_be_inner {
-            acc.add(item);
+            if (nested && attr_completion.should_be_inner) || !nested {
+                acc.add(item);
+            }
         }
     }
 }
@@ -54,33 +70,59 @@ struct AttrCompletion {
 }
 
 const ATTRIBUTES: &[AttrCompletion] = &[
-    AttrCompletion { label: "allow", snippet: Some("allow(${0:lint})"), should_be_inner: false },
     AttrCompletion {
-        label: "cfg_attr",
+        label: "allow(…)", snippet: Some("allow(${0:lint})"), should_be_inner: false
+    },
+    AttrCompletion {
+        label: "cfg_attr(…)",
         snippet: Some("cfg_attr(${1:predicate}, ${0:attr})"),
         should_be_inner: false,
     },
-    AttrCompletion { label: "cfg", snippet: Some("cfg(${0:predicate})"), should_be_inner: false },
-    AttrCompletion { label: "deny", snippet: Some("deny(${0:lint})"), should_be_inner: false },
     AttrCompletion {
-        label: "deprecated",
+        label: "cfg(…)",
+        snippet: Some("cfg(${0:predicate})"),
+        should_be_inner: false,
+    },
+    AttrCompletion { label: "deny(…)", snippet: Some("deny(${0:lint})"), should_be_inner: false },
+    AttrCompletion {
+        label: r#"deprecated = "…""#,
         snippet: Some(r#"deprecated = "${0:reason}""#),
         should_be_inner: false,
     },
     AttrCompletion {
-        label: "derive",
+        label: "derive(…)",
         snippet: Some(r#"derive(${0:Debug})"#),
         should_be_inner: false,
     },
-    AttrCompletion { label: "doc", snippet: Some(r#"doc = "${0:docs}""#), should_be_inner: false },
-    AttrCompletion { label: "feature", snippet: Some("feature(${0:flag})"), should_be_inner: true },
-    AttrCompletion { label: "forbid", snippet: Some("forbid(${0:lint})"), should_be_inner: false },
+    AttrCompletion {
+        label: r#"doc = "…""#,
+        snippet: Some(r#"doc = "${0:docs}""#),
+        should_be_inner: false,
+    },
+    AttrCompletion {
+        label: "feature(…)",
+        snippet: Some("feature(${0:flag})"),
+        should_be_inner: true,
+    },
+    AttrCompletion {
+        label: "forbid(…)",
+        snippet: Some("forbid(${0:lint})"),
+        should_be_inner: false,
+    },
     // FIXME: resolve through macro resolution?
     AttrCompletion { label: "global_allocator", snippet: None, should_be_inner: true },
-    AttrCompletion { label: "ignore", snippet: Some("ignore(${0:lint})"), should_be_inner: false },
-    AttrCompletion { label: "inline", snippet: Some("inline(${0:lint})"), should_be_inner: false },
     AttrCompletion {
-        label: "link_name",
+        label: "ignore(…)",
+        snippet: Some("ignore(${0:lint})"),
+        should_be_inner: false,
+    },
+    AttrCompletion {
+        label: "inline(…)",
+        snippet: Some("inline(${0:lint})"),
+        should_be_inner: false,
+    },
+    AttrCompletion {
+        label: r#"link_name = "…""#,
         snippet: Some(r#"link_name = "${0:symbol_name}""#),
         should_be_inner: false,
     },
@@ -88,7 +130,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     AttrCompletion { label: "macro_export", snippet: None, should_be_inner: false },
     AttrCompletion { label: "macro_use", snippet: None, should_be_inner: false },
     AttrCompletion {
-        label: "must_use",
+        label: r#"must_use = "…""#,
         snippet: Some(r#"must_use = "${0:reason}""#),
         should_be_inner: false,
     },
@@ -96,35 +138,39 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     AttrCompletion { label: "no_std", snippet: None, should_be_inner: true },
     AttrCompletion { label: "non_exhaustive", snippet: None, should_be_inner: false },
     AttrCompletion { label: "panic_handler", snippet: None, should_be_inner: true },
-    AttrCompletion { label: "path", snippet: Some("path =\"${0:path}\""), should_be_inner: false },
+    AttrCompletion {
+        label: "path = \"…\"",
+        snippet: Some("path =\"${0:path}\""),
+        should_be_inner: false,
+    },
     AttrCompletion { label: "proc_macro", snippet: None, should_be_inner: false },
     AttrCompletion { label: "proc_macro_attribute", snippet: None, should_be_inner: false },
     AttrCompletion {
-        label: "proc_macro_derive",
+        label: "proc_macro_derive(…)",
         snippet: Some("proc_macro_derive(${0:Trait})"),
         should_be_inner: false,
     },
     AttrCompletion {
-        label: "recursion_limit",
+        label: "recursion_limit = …",
         snippet: Some("recursion_limit = ${0:128}"),
         should_be_inner: true,
     },
-    AttrCompletion { label: "repr", snippet: Some("repr(${0:C})"), should_be_inner: false },
+    AttrCompletion { label: "repr(…)", snippet: Some("repr(${0:C})"), should_be_inner: false },
     AttrCompletion {
-        label: "should_panic",
+        label: "should_panic(…)",
         snippet: Some(r#"should_panic(expected = "${0:reason}")"#),
         should_be_inner: false,
     },
     AttrCompletion {
-        label: "target_feature",
+        label: r#"target_feature = "…""#,
         snippet: Some("target_feature = \"${0:feature}\""),
         should_be_inner: false,
     },
     AttrCompletion { label: "test", snippet: None, should_be_inner: false },
     AttrCompletion { label: "used", snippet: None, should_be_inner: false },
-    AttrCompletion { label: "warn", snippet: Some("warn(${0:lint})"), should_be_inner: false },
+    AttrCompletion { label: "warn(…)", snippet: Some("warn(${0:lint})"), should_be_inner: false },
     AttrCompletion {
-        label: "windows_subsystem",
+        label: r#"windows_subsystem = "…""#,
         snippet: Some(r#"windows_subsystem = "${0:subsystem}""#),
         should_be_inner: true,
     },
@@ -414,70 +460,70 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "allow",
+                label: "allow(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "allow(${0:lint})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "cfg",
+                label: "cfg(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "cfg(${0:predicate})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "cfg_attr",
+                label: "cfg_attr(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "cfg_attr(${1:predicate}, ${0:attr})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "deny",
+                label: "deny(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "deny(${0:lint})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "deprecated",
+                label: "deprecated = \"…\"",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "deprecated = \"${0:reason}\"",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "derive",
+                label: "derive(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "derive(${0:Debug})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "doc",
+                label: "doc = \"…\"",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "doc = \"${0:docs}\"",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "forbid",
+                label: "forbid(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "forbid(${0:lint})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "ignore",
+                label: "ignore(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "ignore(${0:lint})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "inline",
+                label: "inline(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "inline(${0:lint})",
@@ -491,7 +537,7 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "link_name",
+                label: "link_name = \"…\"",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "link_name = \"${0:symbol_name}\"",
@@ -512,7 +558,7 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "must_use",
+                label: "must_use = \"…\"",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "must_use = \"${0:reason}\"",
@@ -533,7 +579,7 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "path",
+                label: "path = \"…\"",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "path =\"${0:path}\"",
@@ -554,28 +600,28 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "proc_macro_derive",
+                label: "proc_macro_derive(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "proc_macro_derive(${0:Trait})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "repr",
+                label: "repr(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "repr(${0:C})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "should_panic",
+                label: "should_panic(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "should_panic(expected = \"${0:reason}\")",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "target_feature",
+                label: "target_feature = \"…\"",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "target_feature = \"${0:feature}\"",
@@ -596,13 +642,27 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "warn",
+                label: "warn(…)",
                 source_range: 19..19,
                 delete: 19..19,
                 insert: "warn(${0:lint})",
                 kind: Attribute,
             },
         ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_attribute_completion_inside_nested_attr() {
+        assert_debug_snapshot!(
+        do_attr_completion(
+                r"
+                #[allow(<|>)]
+                ",
+        ),
+            @r###"
+        []
         "###
         );
     }
@@ -618,63 +678,63 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "allow",
+                label: "allow(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "allow(${0:lint})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "cfg",
+                label: "cfg(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "cfg(${0:predicate})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "cfg_attr",
+                label: "cfg_attr(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "cfg_attr(${1:predicate}, ${0:attr})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "deny",
+                label: "deny(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "deny(${0:lint})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "deprecated",
+                label: "deprecated = \"…\"",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "deprecated = \"${0:reason}\"",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "derive",
+                label: "derive(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "derive(${0:Debug})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "doc",
+                label: "doc = \"…\"",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "doc = \"${0:docs}\"",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "feature",
+                label: "feature(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "feature(${0:flag})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "forbid",
+                label: "forbid(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "forbid(${0:lint})",
@@ -688,14 +748,14 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "ignore",
+                label: "ignore(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "ignore(${0:lint})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "inline",
+                label: "inline(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "inline(${0:lint})",
@@ -709,7 +769,7 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "link_name",
+                label: "link_name = \"…\"",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "link_name = \"${0:symbol_name}\"",
@@ -730,7 +790,7 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "must_use",
+                label: "must_use = \"…\"",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "must_use = \"${0:reason}\"",
@@ -765,7 +825,7 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "path",
+                label: "path = \"…\"",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "path =\"${0:path}\"",
@@ -786,35 +846,35 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "proc_macro_derive",
+                label: "proc_macro_derive(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "proc_macro_derive(${0:Trait})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "recursion_limit",
+                label: "recursion_limit = …",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "recursion_limit = ${0:128}",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "repr",
+                label: "repr(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "repr(${0:C})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "should_panic",
+                label: "should_panic(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "should_panic(expected = \"${0:reason}\")",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "target_feature",
+                label: "target_feature = \"…\"",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "target_feature = \"${0:feature}\"",
@@ -835,14 +895,14 @@ mod tests {
                 kind: Attribute,
             },
             CompletionItem {
-                label: "warn",
+                label: "warn(…)",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "warn(${0:lint})",
                 kind: Attribute,
             },
             CompletionItem {
-                label: "windows_subsystem",
+                label: "windows_subsystem = \"…\"",
                 source_range: 20..20,
                 delete: 20..20,
                 insert: "windows_subsystem = \"${0:subsystem}\"",
