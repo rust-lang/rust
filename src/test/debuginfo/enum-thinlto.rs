@@ -15,7 +15,8 @@
 // lldb-command:run
 
 // lldb-command:print *abc
-// lldbg-check:(enum_thinlto::ABC) $0 = ABC { }
+// lldbg-check:(enum_thinlto::ABC) $0 =
+// lldbr-check:(enum_thinlto::ABC) *abc = (x = 0, y = 8970181431921507452)
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

@@ -464,11 +464,13 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
 
     // Relevant pretty printer files
     let pretty_printer_files = [
-        "src/etc/debugger_pretty_printers_common.py",
+        "src/etc/rust_types.py",
         "src/etc/gdb_load_rust_pretty_printers.py",
-        "src/etc/gdb_rust_pretty_printing.py",
+        "src/etc/gdb_lookup.py",
+        "src/etc/gdb_providers.py",
         "src/etc/lldb_batchmode.py",
-        "src/etc/lldb_rust_formatters.py",
+        "src/etc/lldb_lookup.py",
+        "src/etc/lldb_providers.py",
     ];
     for file in &pretty_printer_files {
         let path = rust_src_dir.join(file);
