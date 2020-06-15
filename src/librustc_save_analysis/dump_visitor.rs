@@ -1102,7 +1102,6 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     impl_item.span,
                 );
             }
-            hir::ImplItemKind::OpaqueTy(..) => {}
             hir::ImplItemKind::TyAlias(ref ty) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
@@ -1380,7 +1379,7 @@ impl<'l, 'tcx> Visitor<'tcx> for DumpVisitor<'l, 'tcx> {
                     v.visit_expr(&map.body(anon_const.body).value)
                 });
             }
-            hir::TyKind::Def(item_id, _) => {
+            hir::TyKind::OpaqueDef(item_id, _) => {
                 let item = self.tcx.hir().item(item_id.id);
                 self.nest_tables(self.tcx.hir().local_def_id(item_id.id), |v| v.visit_item(item));
             }

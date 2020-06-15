@@ -407,7 +407,7 @@ impl<'a> State<'a> {
                     &f.param_names[..],
                 );
             }
-            hir::TyKind::Def(..) => {}
+            hir::TyKind::OpaqueDef(..) => self.s.word("/*impl Trait*/"),
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
             hir::TyKind::TraitObject(bounds, ref lifetime) => {
                 let mut first = true;
@@ -1002,12 +1002,6 @@ impl<'a> State<'a> {
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, &ii.generics, None, Some(ty));
-            }
-            hir::ImplItemKind::OpaqueTy(bounds) => {
-                self.word_space("type");
-                self.print_ident(ii.ident);
-                self.print_bounds("= impl", bounds);
-                self.s.word(";");
             }
         }
         self.ann.post(self, AnnNode::SubItem(ii.hir_id))

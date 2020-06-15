@@ -324,7 +324,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 let text = format!("[{}; {}]", nested_ty.text, expr);
                 Ok(replace_text(nested_ty, text))
             }
-            hir::TyKind::Def(item_id, _) => {
+            hir::TyKind::OpaqueDef(item_id, _) => {
                 let item = scx.tcx.hir().item(item_id.id);
                 item.make(offset, Some(item_id.id), scx)
             }

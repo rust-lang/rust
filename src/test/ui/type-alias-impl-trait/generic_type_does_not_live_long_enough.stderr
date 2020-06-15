@@ -13,16 +13,16 @@ LL |     let z: i32 = x;
    |            expected due to this
 ...
 LL | type WrongGeneric<T> = impl 'static;
-   | ------------------------------------ the found opaque type
+   |                        ------------ the found opaque type
    |
    = note:     expected type `i32`
-           found opaque type `WrongGeneric::<&{integer}>`
+           found opaque type `impl Sized`
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/generic_type_does_not_live_long_enough.rs:9:1
+  --> $DIR/generic_type_does_not_live_long_enough.rs:9:24
    |
 LL | type WrongGeneric<T> = impl 'static;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |                        ^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
 ...
 LL | fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
    |                  - help: consider adding an explicit lifetime bound...: `T: 'static`

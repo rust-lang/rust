@@ -308,7 +308,6 @@ enum EntryKind {
     Impl(Lazy<ImplData>),
     AssocFn(Lazy<AssocFnData>),
     AssocType(AssocContainer),
-    AssocOpaqueTy(AssocContainer),
     AssocConst(AssocContainer, mir::ConstQualifs, Lazy<RenderedConst>),
     TraitAlias,
 }

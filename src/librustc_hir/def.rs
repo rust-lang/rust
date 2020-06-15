@@ -54,15 +54,11 @@ pub enum DefKind {
     /// Refers to the variant itself, `DefKind::Ctor` refers to its constructor if it exists.
     Variant,
     Trait,
-    /// `type Foo = impl Bar;`
-    OpaqueTy,
     /// `type Foo = Bar;`
     TyAlias,
     ForeignTy,
     TraitAlias,
     AssocTy,
-    /// `type Foo = impl Bar;`
-    AssocOpaqueTy,
     TyParam,
 
     // Value namespace
@@ -83,6 +79,7 @@ pub enum DefKind {
     Use,
     ForeignMod,
     AnonConst,
+    OpaqueTy,
     Field,
     LifetimeParam,
     GlobalAsm,
@@ -115,7 +112,6 @@ impl DefKind {
             DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
             DefKind::AssocTy => "associated type",
-            DefKind::AssocOpaqueTy => "associated opaque type",
             DefKind::Union => "union",
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
@@ -143,7 +139,6 @@ impl DefKind {
         match *self {
             DefKind::AssocTy
             | DefKind::AssocConst
-            | DefKind::AssocOpaqueTy
             | DefKind::AssocFn
             | DefKind::Enum
             | DefKind::OpaqueTy
@@ -168,7 +163,6 @@ impl DefKind {
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::AssocTy
-            | DefKind::AssocOpaqueTy
             | DefKind::TyParam => ns == Namespace::TypeNS,
 
             DefKind::Fn
