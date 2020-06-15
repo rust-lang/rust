@@ -694,42 +694,6 @@ impl PartialEq for SocketAddrV6 {
             && self.inner.sin6_scope_id == other.inner.sin6_scope_id
     }
 }
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialEq<SocketAddrV4> for SocketAddr {
-    fn eq(&self, other: &SocketAddrV4) -> bool {
-        match self {
-            SocketAddr::V4(v4) => v4 == other,
-            SocketAddr::V6(_) => false,
-        }
-    }
-}
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialEq<SocketAddrV6> for SocketAddr {
-    fn eq(&self, other: &SocketAddrV6) -> bool {
-        match self {
-            SocketAddr::V4(_) => false,
-            SocketAddr::V6(v6) => v6 == other,
-        }
-    }
-}
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialEq<SocketAddr> for SocketAddrV4 {
-    fn eq(&self, other: &SocketAddr) -> bool {
-        match other {
-            SocketAddr::V4(v4) => self == v4,
-            SocketAddr::V6(_) => false,
-        }
-    }
-}
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialEq<SocketAddr> for SocketAddrV6 {
-    fn eq(&self, other: &SocketAddr) -> bool {
-        match other {
-            SocketAddr::V4(_) => false,
-            SocketAddr::V6(v6) => self == v6,
-        }
-    }
-}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for SocketAddrV4 {}
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1242,12 +1206,8 @@ mod tests {
         // equality
         assert_eq!(v4_1, v4_1);
         assert_eq!(v6_1, v6_1);
-        assert_eq!(v4_1, SocketAddr::V4(v4_1));
-        assert_eq!(v6_1, SocketAddr::V6(v6_1));
         assert_eq!(SocketAddr::V4(v4_1), SocketAddr::V4(v4_1));
         assert_eq!(SocketAddr::V6(v6_1), SocketAddr::V6(v6_1));
-        assert!(v4_1 != SocketAddr::V6(v6_1));
-        assert!(v6_1 != SocketAddr::V4(v4_1));
         assert!(v4_1 != v4_2);
         assert!(v6_1 != v6_2);
 
@@ -1268,5 +1228,10 @@ mod tests {
         assert!(v6_1 < v6_3);
         assert!(v4_3 > v4_1);
         assert!(v6_3 > v6_1);
+
+        // compare with an inferred right-hand side
+        assert_eq!(v4_1, "224.120.45.1:23456".parse().unwrap());
+        assert_eq!(v6_1, "[2001:db8:f00::1002]:23456".parse().unwrap());
+        assert_eq!(SocketAddr::V4(v4_1), "224.120.45.1:23456".parse().unwrap());
     }
 }

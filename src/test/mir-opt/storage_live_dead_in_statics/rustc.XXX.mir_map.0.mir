@@ -663,4 +663,8 @@ static XXX: &Foo = {
         StorageDead(_1);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:23:1: 23:2
         return;                          // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:1: 23:3
     }
+
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:1: 23:3
+    }
 }

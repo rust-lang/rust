@@ -82,7 +82,7 @@ fn main() -> () {
         Retag(_7);                       // scope 1 at $DIR/retag.rs:32:29: 32:35
         _6 = &mut (*_7);                 // scope 1 at $DIR/retag.rs:32:29: 32:35
         Retag([2phase] _6);              // scope 1 at $DIR/retag.rs:32:29: 32:35
-        _3 = const Test::foo(move _4, move _6) -> [return: bb1, unwind: bb7]; // scope 1 at $DIR/retag.rs:32:17: 32:36
+        _3 = const Test::foo(move _4, move _6) -> [return: bb2, unwind: bb3]; // scope 1 at $DIR/retag.rs:32:17: 32:36
                                          // ty::Const
                                          // + ty: for<'r, 'x> fn(&'r Test, &'x mut i32) -> &'x mut i32 {Test::foo}
                                          // + val: Value(Scalar(<ZST>))
@@ -91,15 +91,23 @@ fn main() -> () {
                                          // + literal: Const { ty: for<'r, 'x> fn(&'r Test, &'x mut i32) -> &'x mut i32 {Test::foo}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/retag.rs:29:1: 51:2
+    }
+
+    bb2: {
         Retag(_3);                       // scope 1 at $DIR/retag.rs:32:17: 32:36
         StorageDead(_6);                 // scope 1 at $DIR/retag.rs:32:35: 32:36
         StorageDead(_4);                 // scope 1 at $DIR/retag.rs:32:35: 32:36
         StorageDead(_7);                 // scope 1 at $DIR/retag.rs:32:36: 32:37
-        drop(_5) -> [return: bb2, unwind: bb8]; // scope 1 at $DIR/retag.rs:32:36: 32:37
+        drop(_5) -> [return: bb4, unwind: bb1]; // scope 1 at $DIR/retag.rs:32:36: 32:37
     }
 
-    bb2: {
+    bb3 (cleanup): {
+        drop(_5) -> bb1;                 // scope 1 at $DIR/retag.rs:32:36: 32:37
+    }
+
+    bb4: {
         StorageDead(_5);                 // scope 1 at $DIR/retag.rs:32:36: 32:37
         StorageLive(_8);                 // scope 2 at $DIR/retag.rs:33:13: 33:14
         StorageLive(_9);                 // scope 2 at $DIR/retag.rs:33:19: 33:20
@@ -151,10 +159,10 @@ fn main() -> () {
         Retag(_18);                      // scope 6 at $DIR/retag.rs:44:16: 44:18
         _17 = &(*_18);                   // scope 6 at $DIR/retag.rs:44:16: 44:18
         Retag(_17);                      // scope 6 at $DIR/retag.rs:44:16: 44:18
-        _15 = move _16(move _17) -> bb3; // scope 6 at $DIR/retag.rs:44:14: 44:19
+        _15 = move _16(move _17) -> bb5; // scope 6 at $DIR/retag.rs:44:14: 44:19
     }
 
-    bb3: {
+    bb5: {
         Retag(_15);                      // scope 6 at $DIR/retag.rs:44:14: 44:19
         StorageDead(_17);                // scope 6 at $DIR/retag.rs:44:18: 44:19
         StorageDead(_16);                // scope 6 at $DIR/retag.rs:44:18: 44:19
@@ -185,7 +193,7 @@ fn main() -> () {
         Retag(_23);                      // scope 7 at $DIR/retag.rs:47:21: 47:23
         _22 = &(*_23);                   // scope 7 at $DIR/retag.rs:47:21: 47:23
         Retag(_22);                      // scope 7 at $DIR/retag.rs:47:21: 47:23
-        _19 = const Test::foo_shr(move _20, move _22) -> [return: bb4, unwind: bb6]; // scope 7 at $DIR/retag.rs:47:5: 47:24
+        _19 = const Test::foo_shr(move _20, move _22) -> [return: bb6, unwind: bb7]; // scope 7 at $DIR/retag.rs:47:5: 47:24
                                          // ty::Const
                                          // + ty: for<'r, 'x> fn(&'r Test, &'x i32) -> &'x i32 {Test::foo_shr}
                                          // + val: Value(Scalar(<ZST>))
@@ -194,15 +202,19 @@ fn main() -> () {
                                          // + literal: Const { ty: for<'r, 'x> fn(&'r Test, &'x i32) -> &'x i32 {Test::foo_shr}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb4: {
+    bb6: {
         Retag(_19);                      // scope 7 at $DIR/retag.rs:47:5: 47:24
         StorageDead(_22);                // scope 7 at $DIR/retag.rs:47:23: 47:24
         StorageDead(_20);                // scope 7 at $DIR/retag.rs:47:23: 47:24
         StorageDead(_23);                // scope 7 at $DIR/retag.rs:47:24: 47:25
-        drop(_21) -> [return: bb5, unwind: bb8]; // scope 7 at $DIR/retag.rs:47:24: 47:25
+        drop(_21) -> [return: bb8, unwind: bb1]; // scope 7 at $DIR/retag.rs:47:24: 47:25
     }
 
-    bb5: {
+    bb7 (cleanup): {
+        drop(_21) -> bb1;                // scope 7 at $DIR/retag.rs:47:24: 47:25
+    }
+
+    bb8: {
         StorageDead(_21);                // scope 7 at $DIR/retag.rs:47:24: 47:25
         StorageDead(_19);                // scope 7 at $DIR/retag.rs:47:24: 47:25
         StorageLive(_25);                // scope 7 at $DIR/retag.rs:50:9: 50:11
@@ -223,17 +235,5 @@ fn main() -> () {
         StorageDead(_13);                // scope 1 at $DIR/retag.rs:51:1: 51:2
         StorageDead(_1);                 // scope 0 at $DIR/retag.rs:51:1: 51:2
         return;                          // scope 0 at $DIR/retag.rs:51:2: 51:2
-    }
-
-    bb6 (cleanup): {
-        drop(_21) -> bb8;                // scope 7 at $DIR/retag.rs:47:24: 47:25
-    }
-
-    bb7 (cleanup): {
-        drop(_5) -> bb8;                 // scope 1 at $DIR/retag.rs:32:36: 32:37
-    }
-
-    bb8 (cleanup): {
-        resume;                          // scope 0 at $DIR/retag.rs:29:1: 51:2
     }
 }
