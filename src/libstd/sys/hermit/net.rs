@@ -35,6 +35,9 @@ impl Drop for Socket {
     }
 }
 
+// Arc is used to count the number of used sockets.
+// Only if all sockets are released, the drop
+// method will close the socket.
 #[derive(Clone)]
 pub struct TcpStream(Arc<Socket>);
 
