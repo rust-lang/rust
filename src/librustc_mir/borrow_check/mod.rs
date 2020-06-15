@@ -216,6 +216,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         &mut flow_inits,
         &mdpe.move_data,
         &borrow_set,
+        &upvars,
     );
 
     // Dump MIR results into a file, if that is enabled. This let us
@@ -277,6 +278,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 move_data: &move_data,
                 location_table: &LocationTable::new(promoted_body),
                 movable_generator,
+                fn_self_span_reported: Default::default(),
                 locals_are_invalidated_at_exit,
                 access_place_error_reported: Default::default(),
                 reservation_error_reported: Default::default(),
@@ -310,6 +312,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         location_table,
         movable_generator,
         locals_are_invalidated_at_exit,
+        fn_self_span_reported: Default::default(),
         access_place_error_reported: Default::default(),
         reservation_error_reported: Default::default(),
         reservation_warnings: Default::default(),
@@ -486,6 +489,10 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     // but it is currently inconvenient to track down the `BorrowIndex`
     // at the time we detect and report a reservation error.
     reservation_error_reported: FxHashSet<Place<'tcx>>,
+    /// This fields keeps track of the `Span`s that we have
+    /// used to report extra information for `FnSelfUse`, to avoid
+    /// unnecessarily verbose errors.
+    fn_self_span_reported: FxHashSet<Span>,
     /// Migration warnings to be reported for #56254. We delay reporting these
     /// so that we can suppress the warning if there's a corresponding error
     /// for the activation of the borrow.
@@ -2308,30 +2315,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// be `self` in the current MIR, because that is the only time we directly access the fields
     /// of a closure type.
     pub fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<Field> {
-        let mut place_projection = place_ref.projection;
-        let mut by_ref = false;
-
-        if let [proj_base @ .., ProjectionElem::Deref] = place_projection {
-            place_projection = proj_base;
-            by_ref = true;
-        }
-
-        match place_projection {
-            [base @ .., ProjectionElem::Field(field, _ty)] => {
-                let tcx = self.infcx.tcx;
-                let base_ty = Place::ty_from(place_ref.local, base, self.body(), tcx).ty;
-
-                if (base_ty.is_closure() || base_ty.is_generator())
-                    && (!by_ref || self.upvars[field.index()].by_ref)
-                {
-                    Some(*field)
-                } else {
-                    None
-                }
-            }
-
-            _ => None,
-        }
+        path_utils::is_upvar_field_projection(self.infcx.tcx, &self.upvars, place_ref, self.body())
     }
 }
 

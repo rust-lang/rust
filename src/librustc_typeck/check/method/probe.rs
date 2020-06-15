@@ -795,6 +795,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
         // FIXME: do we want to commit to this behavior for param bounds?
+        debug!("assemble_inherent_candidates_from_param(param_ty={:?})", param_ty);
 
         let bounds =
             self.param_env.caller_bounds.iter().filter_map(|predicate| match predicate.kind() {
@@ -952,7 +953,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         import_ids: import_ids.clone(),
                         kind: TraitCandidate(new_trait_ref),
                     },
-                    true,
+                    false,
                 );
             });
         } else {

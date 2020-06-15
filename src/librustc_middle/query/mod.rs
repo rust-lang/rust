@@ -190,6 +190,12 @@ rustc_queries! {
             no_hash
         }
 
+        query mir_drops_elaborated_and_const_checked(key: LocalDefId) -> Steal<mir::Body<'tcx>> {
+            storage(ArenaCacheSelector<'tcx>)
+            no_hash
+            desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
+
         query mir_validated(key: LocalDefId) ->
             (
                 Steal<mir::Body<'tcx>>,
@@ -700,7 +706,7 @@ rustc_queries! {
     }
 
     Other {
-        query fn_arg_names(def_id: DefId) -> &'tcx [Symbol] {
+        query fn_arg_names(def_id: DefId) -> &'tcx [rustc_span::symbol::Ident] {
             desc { |tcx| "looking up function parameter names for `{}`", tcx.def_path_str(def_id) }
         }
         /// Gets the rendered value of the specified constant or associated constant.

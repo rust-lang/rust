@@ -4,9 +4,15 @@ error[E0382]: borrow of moved value: `start`
 LL |     let start = Mine{test:"Foo".to_string(), other_val:0};
    |         ----- move occurs because `start` has type `Mine`, which does not implement the `Copy` trait
 LL |     let end = Mine{other_val:1, ..start.make_string_bar()};
-   |                                   ----- value moved here
+   |                                         ----------------- `start` moved due to this method call
 LL |     println!("{}", start.test);
    |                    ^^^^^^^^^^ value borrowed here after move
+   |
+note: this function consumes the receiver `self` by taking ownership of it, which moves `start`
+  --> $DIR/walk-struct-literal-with.rs:7:28
+   |
+LL |     fn make_string_bar(mut self) -> Mine{
+   |                            ^^^^
 
 error: aborting due to previous error
 

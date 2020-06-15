@@ -56,6 +56,7 @@ pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
 where
     T: Generator<ResumeTy, Yield = ()>,
 {
+    #[rustc_diagnostic_item = "gen_future"]
     struct GenFuture<T: Generator<ResumeTy, Yield = ()>>(T);
 
     // We rely on the fact that async/await futures are immovable in order to create

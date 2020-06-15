@@ -14,7 +14,7 @@ use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
@@ -371,6 +371,13 @@ impl<'hir> Map<'hir> {
                 "body_owned_by: {} has no associated body",
                 self.node_to_string(id)
             );
+        })
+    }
+
+    pub fn body_param_names(&self, id: BodyId) -> impl Iterator<Item = Ident> + 'hir {
+        self.body(id).params.iter().map(|arg| match arg.pat.kind {
+            PatKind::Binding(_, _, ident, _) => ident,
+            _ => Ident::new(kw::Invalid, rustc_span::DUMMY_SP),
         })
     }
 

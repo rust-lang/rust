@@ -69,7 +69,7 @@ use crate::slice::memchr;
 /// |--------------------------|-------------------------------------------|
 /// | `&str`                   | is substring                              |
 /// | `char`                   | is contained in string                    |
-/// | `&[char]                 | any char in slice is contained in string  |
+/// | `&[char]`                | any char in slice is contained in string  |
 /// | `F: FnMut(char) -> bool` | `F` returns `true` for a char in string   |
 /// | `&&str`                  | is substring                              |
 /// | `&String`                | is substring                              |
@@ -117,6 +117,15 @@ pub trait Pattern<'a>: Sized {
         matches!(self.into_searcher(haystack).next(), SearchStep::Match(0, _))
     }
 
+    /// Checks whether the pattern matches at the back of the haystack
+    #[inline]
+    fn is_suffix_of(self, haystack: &'a str) -> bool
+    where
+        Self::Searcher: ReverseSearcher<'a>,
+    {
+        matches!(self.into_searcher(haystack).next_back(), SearchStep::Match(_, j) if haystack.len() == j)
+    }
+
     /// Removes the pattern from the front of haystack, if it matches.
     #[inline]
     fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
@@ -131,15 +140,6 @@ pub trait Pattern<'a>: Sized {
         } else {
             None
         }
-    }
-
-    /// Checks whether the pattern matches at the back of the haystack
-    #[inline]
-    fn is_suffix_of(self, haystack: &'a str) -> bool
-    where
-        Self::Searcher: ReverseSearcher<'a>,
-    {
-        matches!(self.into_searcher(haystack).next_back(), SearchStep::Match(_, j) if haystack.len() == j)
     }
 
     /// Removes the pattern from the back of haystack, if it matches.

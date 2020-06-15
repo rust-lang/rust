@@ -19,7 +19,7 @@ use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::CrateDisambiguator;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, Span};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
@@ -326,7 +326,7 @@ struct ModData {
 struct FnData {
     asyncness: hir::IsAsync,
     constness: hir::Constness,
-    param_names: Lazy<[Symbol]>,
+    param_names: Lazy<[Ident]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
