@@ -199,7 +199,6 @@ impl RootDatabase {
             hir::db::InternEagerExpansionQuery
 
             // DefDatabase
-            hir::db::RawItemsQuery
             hir::db::CrateDefMapQueryQuery
             hir::db::StructDataQuery
             hir::db::UnionDataQuery

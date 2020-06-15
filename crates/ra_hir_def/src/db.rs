@@ -16,7 +16,7 @@ use crate::{
     import_map::ImportMap,
     item_tree::ItemTree,
     lang_item::{LangItemTarget, LangItems},
-    nameres::{raw::RawItems, CrateDefMap},
+    nameres::CrateDefMap,
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
     GenericDefId, ImplId, ImplLoc, ModuleId, StaticId, StaticLoc, StructId, StructLoc, TraitId,
     TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
@@ -46,9 +46,6 @@ pub trait InternDatabase: SourceDatabase {
 
 #[salsa::query_group(DefDatabaseStorage)]
 pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
-    #[salsa::invoke(RawItems::raw_items_query)]
-    fn raw_items(&self, file_id: HirFileId) -> Arc<RawItems>;
-
     #[salsa::invoke(ItemTree::item_tree_query)]
     fn item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;
 
