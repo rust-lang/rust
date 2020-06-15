@@ -618,7 +618,7 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 cx,
                 SUBOPTIMAL_FLOPS,
                 expr.span,
-                "division of logarithms can be calculated more efficiently and accurately",
+                "log base can be expressed more clearly",
                 "consider using",
                 format!("{}.log({})", Sugg::hir(cx, &largs[0], ".."), Sugg::hir(cx, &rargs[0], ".."),),
                 Applicability::MachineApplicable,

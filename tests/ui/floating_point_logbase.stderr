@@ -1,4 +1,4 @@
-error: division of logarithms can be calculated more efficiently and accurately
+error: log base can be expressed more clearly
   --> $DIR/floating_point_logbase.rs:7:13
    |
 LL |     let _ = x.ln() / y.ln();
@@ -6,19 +6,19 @@ LL |     let _ = x.ln() / y.ln();
    |
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
-error: division of logarithms can be calculated more efficiently and accurately
+error: log base can be expressed more clearly
   --> $DIR/floating_point_logbase.rs:8:13
    |
 LL |     let _ = x.log2() / y.log2();
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
-error: division of logarithms can be calculated more efficiently and accurately
+error: log base can be expressed more clearly
   --> $DIR/floating_point_logbase.rs:9:13
    |
 LL |     let _ = x.log10() / y.log10();
    |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
-error: division of logarithms can be calculated more efficiently and accurately
+error: log base can be expressed more clearly
   --> $DIR/floating_point_logbase.rs:10:13
    |
 LL |     let _ = x.log(5f32) / y.log(5f32);
