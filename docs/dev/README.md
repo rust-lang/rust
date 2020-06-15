@@ -236,6 +236,13 @@ struct Foo {
 }
 ```
 
+## Variable Naming
+
+We generally use boring and long names for local variables ([yay code completion](https://github.com/rust-analyzer/rust-analyzer/pull/4162#discussion_r417130973)).
+The default name is lowercased named of the type: `global_state: GlobalState`.
+Avoid ad-hoc acronyms and contractions, but use the ones that exist consistently (`db`, `ctx`, `acc`).
+The default name for "result of the function" local variable is `res`.
+
 ## Preconditions
 
 Function preconditions should generally be expressed in types and provided by the caller (rather than checked by callee):
