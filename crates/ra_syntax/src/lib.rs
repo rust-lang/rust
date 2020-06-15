@@ -51,7 +51,8 @@ pub use crate::{
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::SyntaxError,
     syntax_node::{
-        Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTreeBuilder,
+        Direction, NodeOrToken, SyntaxElement, SyntaxElementChildren, SyntaxNode,
+        SyntaxNodeChildren, SyntaxToken, SyntaxTreeBuilder,
     },
 };
 pub use ra_parser::{SyntaxKind, T};
