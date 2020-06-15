@@ -149,7 +149,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             "N",
         );
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
-        opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
+        let j_msg = format!(
+            "number of jobs to run in parallel; \
+             defaults to {} (this host's logical CPU count)",
+            num_cpus::get()
+        );
+        opts.optopt("j", "jobs", &j_msg, "JOBS");
         opts.optflag("h", "help", "print this help message");
         opts.optopt(
             "",
