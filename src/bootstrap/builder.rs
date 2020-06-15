@@ -97,9 +97,21 @@ struct StepDescription {
     name: &'static str,
 }
 
+/// Collection of paths used to match a task rule.
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub enum PathSet {
+    /// A collection of individual paths.
+    ///
+    /// These are generally matched as a path suffix. For example, a
+    /// command-line value of `libstd` will match if `src/libstd` is in the
+    /// set.
     Set(BTreeSet<PathBuf>),
+    /// A "suite" of paths.
+    ///
+    /// These can match as a path suffix (like `Set`), or as a prefix. For
+    /// example, a command-line value of `src/test/ui/abi/variadic-ffi.rs`
+    /// will match `src/test/ui`. A command-line value of `ui` would also
+    /// match `src/test/ui`.
     Suite(PathBuf),
 }
 
@@ -249,9 +261,15 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    // Unlike `krate` this will create just one pathset. As such, it probably shouldn't actually
-    // ever be used, but as we transition to having all rules properly handle passing krate(...) by
-    // actually doing something different for every crate passed.
+    /// Indicates it should run if the command-line selects the given crate or
+    /// any of its (local) dependencies.
+    ///
+    /// Compared to `krate`, this treats the dependencies as aliases for the
+    /// same job. Generally it is preferred to use `krate`, and treat each
+    /// individual path separately. For example `./x.py test src/liballoc`
+    /// (which uses `krate`) will test just `liballoc`. However, `./x.py check
+    /// src/liballoc` (which uses `all_krates`) will check all of `libtest`.
+    /// `all_krates` should probably be removed at some point.
     pub fn all_krates(mut self, name: &str) -> Self {
         let mut set = BTreeSet::new();
         for krate in self.builder.in_tree_crates(name) {
@@ -262,6 +280,10 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
+    /// Indicates it should run if the command-line selects the given crate or
+    /// any of its (local) dependencies.
+    ///
+    /// `make_run` will be called separately for each matching command-line path.
     pub fn krate(mut self, name: &str) -> Self {
         for krate in self.builder.in_tree_crates(name) {
             let path = krate.local_path(self.builder);
