@@ -1637,6 +1637,9 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
     }
 }
 
+// FIXME: terminology here should be aligned with `abi::TagEncoding`.
+// `OptimizedTag` is `TagEncoding::Niche`, `RegularTag` is `TagEncoding::Direct`.
+// `NoTag` should be removed; users should use `Option<EnumTagInfo>` instead.
 #[derive(Copy, Clone)]
 enum EnumTagInfo<'ll> {
     RegularTag { tag_field: Field, tag_type_metadata: &'ll DIType },
