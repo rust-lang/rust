@@ -433,7 +433,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
                 try_load_from_on_disk_cache_stream.extend(quote! {
                     ::rustc_middle::dep_graph::DepKind::#name => {
-                        if <#arg as DepNodeParams<TyCtxt<'_>>>::CAN_RECONSTRUCT_QUERY_KEY {
+                        if <#arg as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
                             debug_assert!($tcx.dep_graph
                                             .node_color($dep_node)
                                             .map(|c| c.is_green())
@@ -490,7 +490,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             // Add a match arm to force the query given the dep node
             dep_node_force_stream.extend(quote! {
                 ::rustc_middle::dep_graph::DepKind::#name => {
-                    if <#arg as DepNodeParams<TyCtxt<'_>>>::CAN_RECONSTRUCT_QUERY_KEY {
+                    if <#arg as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
                         if let Some(key) = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node) {
                             force_query::<crate::ty::query::queries::#name<'_>, _>(
                                 $tcx,
