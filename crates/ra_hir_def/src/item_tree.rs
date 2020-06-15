@@ -8,6 +8,7 @@ use hir_expand::{
 };
 use ra_arena::{Arena, Idx, RawId};
 use ra_syntax::{ast, match_ast};
+use test_utils::mark;
 
 use crate::{
     attr::Attrs,
@@ -693,7 +694,10 @@ impl Ctx {
                             .flat_map(|items| items.0)
                             .collect()
                     })
-                    .unwrap_or_default(),
+                    .unwrap_or_else(|| {
+                        mark::hit!(name_res_works_for_broken_modules);
+                        Vec::new()
+                    }),
             }
         };
         let ast_id = self.source_ast_id_map.ast_id(module);

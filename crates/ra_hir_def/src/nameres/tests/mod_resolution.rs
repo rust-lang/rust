@@ -20,8 +20,11 @@ fn name_res_works_for_broken_modules() {
         ",
     );
     assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮Baz: _
+crate
+Baz: _
+foo: t
+
+crate::foo
     "###);
 }
 
