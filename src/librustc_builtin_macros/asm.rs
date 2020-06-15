@@ -19,12 +19,6 @@ struct AsmArgs {
     options_spans: Vec<Span>,
 }
 
-impl AsmArgs {
-    fn option_is_set(&self, option: ast::InlineAsmOptions) -> bool {
-        (self.options & option) == option
-    }
-}
-
 fn parse_args<'a>(
     ecx: &mut ExtCtxt<'a>,
     sp: Span,
@@ -304,7 +298,7 @@ fn try_set_option<'a>(
     symbol: Symbol,
     option: ast::InlineAsmOptions,
 ) {
-    if !args.option_is_set(option) {
+    if !args.options.contains(option) {
         args.options |= option;
     } else {
         err_duplicate_option(p, symbol, p.prev_token.span);
