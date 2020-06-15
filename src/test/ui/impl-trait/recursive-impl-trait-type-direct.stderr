@@ -1,4 +1,4 @@
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-direct.rs:5:14
    |
 LL | fn test() -> impl Sized {

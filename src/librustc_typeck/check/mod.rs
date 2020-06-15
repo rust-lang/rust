@@ -1741,8 +1741,7 @@ fn get_owner_return_paths(
 /// If all the return expressions evaluate to `!`, then we explain that the error will go away
 /// after changing it. This can happen when a user uses `panic!()` or similar as a placeholder.
 fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
-    let mut err =
-        struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type to a concrete type");
+    let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
 
     let mut label = false;
     if let Some((hir_id, visitor)) = get_owner_return_paths(tcx, def_id) {
@@ -1751,7 +1750,6 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
             .returns
             .iter()
             .filter_map(|expr| tables.node_type_opt(expr.hir_id))
-            .map(|ty| tcx.infer_ctxt().enter(|infcx| infcx.resolve_vars_if_possible(&ty)))
             .all(|ty| matches!(ty.kind, ty::Never))
         {
             let spans = visitor
@@ -1782,9 +1780,6 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
                 .iter()
                 .filter_map(|e| tables.node_type_opt(e.hir_id).map(|t| (e.span, t)))
                 .filter(|(_, ty)| !matches!(ty.kind, ty::Never))
-                .map(|(sp, ty)| {
-                    (sp, tcx.infer_ctxt().enter(|infcx| infcx.resolve_vars_if_possible(&ty)))
-                })
             {
                 struct VisitTypes(Vec<DefId>);
                 impl<'tcx> ty::fold::TypeVisitor<'tcx> for VisitTypes {
@@ -1812,7 +1807,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
         }
     }
     if !label {
-        err.span_label(span, "cannot resolve to a concrete type");
+        err.span_label(span, "cannot resolve opaque type");
     }
     err.emit();
 }
@@ -1824,9 +1819,9 @@ fn binding_opaque_type_cycle_error(
     span: Span,
     partially_expanded_type: Ty<'tcx>,
 ) {
-    let mut err =
-        struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type to a concrete type");
-    err.span_label(span, "cannot resolve to a concrete type");
+    let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
+    err.span_label(span, "cannot resolve opaque type");
+    // Find the the owner that declared this `impl Trait` type.
     let hir_id = tcx.hir().as_local_hir_id(def_id);
     let mut prev_hir_id = hir_id;
     let mut hir_id = tcx.hir().get_parent_node(hir_id);
@@ -1855,15 +1850,12 @@ fn binding_opaque_type_cycle_error(
                 let hir_id = tcx.hir().as_local_hir_id(def_id);
                 let tables =
                     tcx.typeck_tables_of(tcx.hir().local_def_id(tcx.hir().get_parent_item(hir_id)));
-                let ty = tables.node_type_opt(expr.hir_id);
-                if let Some(ty) =
-                    tcx.infer_ctxt().enter(|infcx| infcx.resolve_vars_if_possible(&ty))
-                {
+                if let Some(ty) = tables.node_type_opt(expr.hir_id) {
                     err.span_label(
                         expr.span,
                         &format!(
                             "this is of type `{}`, which doesn't constrain \
-                                `{}` enough to arrive to a concrete type",
+                             `{}` enough to arrive to a concrete type",
                             ty, partially_expanded_type
                         ),
                     );

@@ -1,4 +1,4 @@
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:7:22
    |
 LL | fn option(i: i32) -> impl Sized {
@@ -9,7 +9,7 @@ LL |     if i < 0 { None } else { Some((option(i - 1), i)) }
    |                |
    |                returning here with type `std::option::Option<(impl Sized, i32)>`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:12:15
    |
 LL | fn tuple() -> impl Sized {
@@ -18,7 +18,7 @@ LL |
 LL |     (tuple(),)
    |     ---------- returning here with type `(impl Sized,)`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:17:15
    |
 LL | fn array() -> impl Sized {
@@ -27,7 +27,7 @@ LL |
 LL |     [array()]
    |     --------- returning here with type `[impl Sized; 1]`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:22:13
    |
 LL | fn ptr() -> impl Sized {
@@ -36,7 +36,7 @@ LL |
 LL |     &ptr() as *const _
    |     ------------------ returning here with type `*const impl Sized`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:27:16
    |
 LL | fn fn_ptr() -> impl Sized {
@@ -45,7 +45,7 @@ LL |
 LL |     fn_ptr as fn() -> _
    |     ------------------- returning here with type `fn() -> impl Sized`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:32:25
    |
 LL |   fn closure_capture() -> impl Sized {
@@ -56,7 +56,7 @@ LL | |         x;
 LL | |     }
    | |_____- returning here with type `[closure@$DIR/recursive-impl-trait-type-indirect.rs:35:5: 37:6 x:impl Sized]`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:40:29
    |
 LL |   fn closure_ref_capture() -> impl Sized {
@@ -67,7 +67,7 @@ LL | |         &x;
 LL | |     }
    | |_____- returning here with type `[closure@$DIR/recursive-impl-trait-type-indirect.rs:43:5: 45:6 x:impl Sized]`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:48:21
    |
 LL | fn closure_sig() -> impl Sized {
@@ -76,7 +76,7 @@ LL |
 LL |     || closure_sig()
    |     ---------------- returning here with type `[closure@$DIR/recursive-impl-trait-type-indirect.rs:50:5: 50:21]`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:53:23
    |
 LL | fn generator_sig() -> impl Sized {
@@ -85,7 +85,7 @@ LL |
 LL |     || generator_sig()
    |     ------------------ returning here with type `[closure@$DIR/recursive-impl-trait-type-indirect.rs:55:5: 55:23]`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:58:27
    |
 LL |   fn generator_capture() -> impl Sized {
@@ -97,7 +97,7 @@ LL | |         x;
 LL | |     }
    | |_____- returning here with type `[generator@$DIR/recursive-impl-trait-type-indirect.rs:61:5: 64:6 x:impl Sized {()}]`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:67:35
    |
 LL | fn substs_change<T: 'static>() -> impl Sized {
@@ -106,7 +106,7 @@ LL |
 LL |     (substs_change::<&T>(),)
    |     ------------------------ returning here with type `(impl Sized,)`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:72:24
    |
 LL |   fn generator_hold() -> impl Sized {
@@ -119,7 +119,7 @@ LL | |         x;
 LL | |     }
    | |_____- returning here with type `[generator@$DIR/recursive-impl-trait-type-indirect.rs:74:5: 78:6 {impl Sized, ()}]`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:86:26
    |
 LL | fn mutual_recursion() -> impl Sync {
@@ -131,7 +131,7 @@ LL |     mutual_recursion_b()
 LL | fn mutual_recursion_b() -> impl Sized {
    |                            ---------- returning this opaque type `impl Sized`
 
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:91:28
    |
 LL | fn mutual_recursion() -> impl Sync {

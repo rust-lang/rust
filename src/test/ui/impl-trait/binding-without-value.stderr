@@ -1,8 +1,8 @@
-error[E0720]: cannot resolve opaque type to a concrete type
+error[E0720]: cannot resolve opaque type
   --> $DIR/binding-without-value.rs:5:13
    |
 LL |     let _ : impl Copy;
-   |         -   ^^^^^^^^^ cannot resolve to a concrete type
+   |         -   ^^^^^^^^^ cannot resolve opaque type
    |         |
    |         this binding might not have a concrete type
    |
