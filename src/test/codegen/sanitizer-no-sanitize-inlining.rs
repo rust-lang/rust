@@ -13,7 +13,7 @@
 #![feature(no_sanitize)]
 
 // ASAN-LABEL: define void @test
-// ASAN:         tail call fastcc
+// ASAN:         call {{.*}} @random_inline
 // ASAN:       }
 //
 // LSAN-LABEL: define void @test
@@ -26,6 +26,7 @@ pub fn test(n: &mut u32) {
 
 #[no_sanitize(address)]
 #[inline]
+#[no_mangle]
 pub fn random_inline(n: &mut u32) {
     *n = 42;
 }
