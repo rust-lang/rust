@@ -152,10 +152,10 @@ mod tests {
     fn test_replace_add_use_no_anchor() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 std::fmt::Debug<|>
     ",
-            "
+            r"
 use std::fmt::Debug;
 
 Debug
@@ -166,13 +166,13 @@ Debug
     fn test_replace_add_use_no_anchor_with_item_below() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 std::fmt::Debug<|>
 
 fn main() {
 }
     ",
-            "
+            r"
 use std::fmt::Debug;
 
 Debug
@@ -187,13 +187,13 @@ fn main() {
     fn test_replace_add_use_no_anchor_with_item_above() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 fn main() {
 }
 
 std::fmt::Debug<|>
     ",
-            "
+            r"
 use std::fmt::Debug;
 
 fn main() {
@@ -208,10 +208,10 @@ Debug
     fn test_replace_add_use_no_anchor_2seg() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 std::fmt<|>::Debug
     ",
-            "
+            r"
 use std::fmt;
 
 fmt::Debug
@@ -223,13 +223,13 @@ fmt::Debug
     fn test_replace_add_use() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use stdx;
 
 impl std::fmt::Debug<|> for Foo {
 }
     ",
-            "
+            r"
 use stdx;
 use std::fmt::Debug;
 
@@ -243,11 +243,11 @@ impl Debug for Foo {
     fn test_replace_file_use_other_anchor() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 impl std::fmt::Debug<|> for Foo {
 }
     ",
-            "
+            r"
 use std::fmt::Debug;
 
 impl Debug for Foo {
@@ -260,11 +260,11 @@ impl Debug for Foo {
     fn test_replace_add_use_other_anchor_indent() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
     impl std::fmt::Debug<|> for Foo {
     }
     ",
-            "
+            r"
     use std::fmt::Debug;
 
     impl Debug for Foo {
@@ -277,13 +277,13 @@ impl Debug for Foo {
     fn test_replace_split_different() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt;
 
 impl std::io<|> for Foo {
 }
     ",
-            "
+            r"
 use std::{io, fmt};
 
 impl io for Foo {
@@ -296,13 +296,13 @@ impl io for Foo {
     fn test_replace_split_self_for_use() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt;
 
 impl std::fmt::Debug<|> for Foo {
 }
     ",
-            "
+            r"
 use std::fmt::{self, Debug, };
 
 impl Debug for Foo {
@@ -315,13 +315,13 @@ impl Debug for Foo {
     fn test_replace_split_self_for_target() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt::Debug;
 
 impl std::fmt<|> for Foo {
 }
     ",
-            "
+            r"
 use std::fmt::{self, Debug};
 
 impl fmt for Foo {
@@ -334,13 +334,13 @@ impl fmt for Foo {
     fn test_replace_add_to_nested_self_nested() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt::{Debug, nested::{Display}};
 
 impl std::fmt::nested<|> for Foo {
 }
 ",
-            "
+            r"
 use std::fmt::{Debug, nested::{Display, self}};
 
 impl nested for Foo {
@@ -353,13 +353,13 @@ impl nested for Foo {
     fn test_replace_add_to_nested_self_already_included() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt::{Debug, nested::{self, Display}};
 
 impl std::fmt::nested<|> for Foo {
 }
 ",
-            "
+            r"
 use std::fmt::{Debug, nested::{self, Display}};
 
 impl nested for Foo {
@@ -372,13 +372,13 @@ impl nested for Foo {
     fn test_replace_add_to_nested_nested() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt::{Debug, nested::{Display}};
 
 impl std::fmt::nested::Debug<|> for Foo {
 }
 ",
-            "
+            r"
 use std::fmt::{Debug, nested::{Display, Debug}};
 
 impl Debug for Foo {
@@ -391,13 +391,13 @@ impl Debug for Foo {
     fn test_replace_split_common_target_longer() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt::Debug;
 
 impl std::fmt::nested::Display<|> for Foo {
 }
 ",
-            "
+            r"
 use std::fmt::{nested::Display, Debug};
 
 impl Display for Foo {
@@ -410,13 +410,13 @@ impl Display for Foo {
     fn test_replace_split_common_use_longer() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt::nested::Debug;
 
 impl std::fmt::Display<|> for Foo {
 }
 ",
-            "
+            r"
 use std::fmt::{Display, nested::Debug};
 
 impl Display for Foo {
@@ -429,7 +429,7 @@ impl Display for Foo {
     fn test_replace_use_nested_import() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use crate::{
     ty::{Substs, Ty},
     AssocItem,
@@ -437,7 +437,7 @@ use crate::{
 
 fn foo() { crate::ty::lower<|>::trait_env() }
 ",
-            "
+            r"
 use crate::{
     ty::{Substs, Ty, lower},
     AssocItem,
@@ -452,13 +452,13 @@ fn foo() { lower::trait_env() }
     fn test_replace_alias() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt as foo;
 
 impl foo::Debug<|> for Foo {
 }
 ",
-            "
+            r"
 use std::fmt as foo;
 
 impl Debug for Foo {
@@ -471,7 +471,7 @@ impl Debug for Foo {
     fn test_replace_not_applicable_one_segment() {
         check_assist_not_applicable(
             replace_qualified_name_with_use,
-            "
+            r"
 impl foo<|> for Foo {
 }
 ",
@@ -482,7 +482,7 @@ impl foo<|> for Foo {
     fn test_replace_not_applicable_in_use() {
         check_assist_not_applicable(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt<|>;
 ",
         );
@@ -492,14 +492,14 @@ use std::fmt<|>;
     fn test_replace_add_use_no_anchor_in_mod_mod() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 mod foo {
     mod bar {
         std::fmt::Debug<|>
     }
 }
     ",
-            "
+            r"
 mod foo {
     mod bar {
         use std::fmt::Debug;
@@ -515,14 +515,14 @@ mod foo {
     fn inserts_imports_after_inner_attributes() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 #![allow(dead_code)]
 
 fn main() {
     std::fmt::Debug<|>
 }
     ",
-            "
+            r"
 #![allow(dead_code)]
 use std::fmt::Debug;
 
@@ -537,13 +537,13 @@ fn main() {
     fn replaces_all_affected_paths() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 fn main() {
     std::fmt::Debug<|>;
     let x: std::fmt::Debug = std::fmt::Debug;
 }
     ",
-            "
+            r"
 use std::fmt::Debug;
 
 fn main() {
@@ -558,7 +558,7 @@ fn main() {
     fn replaces_all_affected_paths_mod() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 mod m {
     fn f() {
         std::fmt::Debug<|>;
@@ -573,7 +573,7 @@ fn f() {
     std::fmt::Debug;
 }
     ",
-            "
+            r"
 mod m {
     use std::fmt::Debug;
 
@@ -597,7 +597,7 @@ fn f() {
     fn does_not_replace_in_submodules() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 fn main() {
     std::fmt::Debug<|>;
 }
@@ -608,7 +608,7 @@ mod sub {
     }
 }
     ",
-            "
+            r"
 use std::fmt::Debug;
 
 fn main() {
@@ -628,14 +628,14 @@ mod sub {
     fn does_not_replace_in_use() {
         check_assist(
             replace_qualified_name_with_use,
-            "
+            r"
 use std::fmt::Display;
 
 fn main() {
     std::fmt<|>;
 }
     ",
-            "
+            r"
 use std::fmt::{self, Display};
 
 fn main() {
