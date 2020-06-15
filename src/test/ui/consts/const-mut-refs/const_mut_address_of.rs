@@ -22,9 +22,9 @@ const fn baz(foo: &mut Foo)-> *mut usize {
 
 const _: () = {
     foo().bar();
-    //~^ ERROR references in constants may only refer to immutable values
+    //~^ ERROR mutable references are not allowed in constants
     baz(&mut foo());
-    //~^ ERROR references in constants may only refer to immutable values
+    //~^ ERROR mutable references are not allowed in constants
 };
 
 fn main() {}

@@ -29,9 +29,9 @@ const fn bazz(foo: &mut Foo) -> usize {
 
 fn main() {
     let _: [(); foo().bar()] = [(); 1];
-    //~^ ERROR references in constants may only refer to immutable values
+    //~^ ERROR mutable references are not allowed in constants
     let _: [(); baz(&mut foo())] = [(); 2];
-    //~^ ERROR references in constants may only refer to immutable values
+    //~^ ERROR mutable references are not allowed in constants
     let _: [(); bazz(&mut foo())] = [(); 3];
-    //~^ ERROR references in constants may only refer to immutable values
+    //~^ ERROR mutable references are not allowed in constants
 }

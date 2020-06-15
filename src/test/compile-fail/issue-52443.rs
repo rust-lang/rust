@@ -9,7 +9,7 @@ fn main() {
     [(); { for _ in 0usize.. {}; 0}];
     //~^ ERROR `for` is not allowed in a `const`
     //~| ERROR calls in constants are limited to constant functions
-    //~| ERROR references in constants may only refer to immutable values
+    //~| ERROR mutable references are not allowed in constants
     //~| ERROR calls in constants are limited to constant functions
     //~| ERROR evaluation of constant value failed
 }

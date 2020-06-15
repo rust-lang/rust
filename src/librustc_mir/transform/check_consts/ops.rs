@@ -216,17 +216,23 @@ impl NonConstOp for MutBorrow {
     }
 
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        let mut err = feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_mut_refs,
-            span,
-            &format!(
-                "references in {}s may only refer \
-                      to immutable values",
-                ccx.const_kind()
-            ),
-        );
-        err.span_label(span, format!("{}s require immutable values", ccx.const_kind()));
+        let mut err = if ccx.const_kind() == hir::ConstContext::ConstFn {
+            feature_err(
+                &ccx.tcx.sess.parse_sess,
+                sym::const_mut_refs,
+                span,
+                &format!("mutable references are not allowed in {}s", ccx.const_kind()),
+            )
+        } else {
+            struct_span_err!(
+                ccx.tcx.sess,
+                span,
+                E0019,
+                "mutable references are not allowed in {}s",
+                ccx.const_kind(),
+            )
+        };
+        err.span_label(span, "`&mut` is only allowed in `const fn`".to_string());
         if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "References in statics and constants may only refer \
