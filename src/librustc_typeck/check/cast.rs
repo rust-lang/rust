@@ -755,7 +755,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.span,
                     |err| {
                         err.build(&format!(
-                            "Cast `enum` implementing `Drop` `{}` to integer `{}`",
+                            "cannot cast enum `{}` into integer `{}` because it implements `Drop`",
                             self.expr_ty, self.cast_ty
                         ))
                         .emit();
