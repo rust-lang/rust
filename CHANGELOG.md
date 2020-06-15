@@ -1646,6 +1646,7 @@ Released 2018-09-13
 [`option_map_or_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_or_none
 [`option_map_unit_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_unit_fn
 [`option_option`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_option
+[`option_unwrap_or_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_unwrap_or_else
 [`or_fun_call`]: https://rust-lang.github.io/rust-clippy/master/index.html#or_fun_call
 [`out_of_bounds_indexing`]: https://rust-lang.github.io/rust-clippy/master/index.html#out_of_bounds_indexing
 [`overflow_check_conditional`]: https://rust-lang.github.io/rust-clippy/master/index.html#overflow_check_conditional
