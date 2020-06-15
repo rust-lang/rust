@@ -280,7 +280,7 @@ impl<'a> Linker for GccLinker<'a> {
     fn set_output_kind(&mut self, output_kind: LinkOutputKind, out_filename: &Path) {
         match output_kind {
             LinkOutputKind::DynamicNoPicExe => {
-                if !self.is_ld {
+                if !self.is_ld && self.sess.target.target.options.linker_is_gnu {
                     self.cmd.arg("-no-pie");
                 }
             }
@@ -291,7 +291,7 @@ impl<'a> Linker for GccLinker<'a> {
             LinkOutputKind::StaticNoPicExe => {
                 // `-static` works for both gcc wrapper and ld.
                 self.cmd.arg("-static");
-                if !self.is_ld {
+                if !self.is_ld && self.sess.target.target.options.linker_is_gnu {
                     self.cmd.arg("-no-pie");
                 }
             }
