@@ -2753,6 +2753,16 @@ fn lint_lazy_eval<'a, 'tcx>(
             // Closures returning literals can be unconditionally simplified
             hir::ExprKind::Lit(_) => true,
 
+            hir::ExprKind::Index(ref object, ref index) => {
+                // arguments are not being indexed into
+                if !expr_uses_argument(object, params) {
+                    // arguments are not used as index
+                    !expr_uses_argument(index, params)
+                } else {
+                    false
+                }
+            },
+
             // Reading fields can be simplified if the object is not an argument of the closure
             hir::ExprKind::Field(ref object, _) => !expr_uses_argument(object, params),
 
