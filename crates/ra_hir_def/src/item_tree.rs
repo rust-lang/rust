@@ -19,6 +19,7 @@ use crate::{
 };
 use ast::{AstNode, AttrsOwner, ModuleItemOwner, NameOwner, StructKind, TypeAscriptionOwner};
 use either::Either;
+use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use std::{
     ops::{Index, Range},
@@ -29,6 +30,10 @@ use std::{
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
     top_level: Vec<ModItem>,
+    top_attrs: Attrs,
+    attrs: FxHashMap<ModItem, Attrs>,
+    empty_attrs: Attrs,
+
     imports: Arena<Import>,
     functions: Arena<Function>,
     structs: Arena<Struct>,
@@ -48,12 +53,15 @@ pub struct ItemTree {
 
 impl ItemTree {
     pub fn item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
+        let _p = ra_prof::profile("item_tree_query");
         let syntax = if let Some(node) = db.parse_or_expand(file_id) {
             node
         } else {
             return Default::default();
         };
 
+        let hygiene = Hygiene::new(db.upcast(), file_id);
+        let mut top_attrs = None;
         let (macro_storage, file_storage);
         let item_owner = match_ast! {
             match syntax {
@@ -62,6 +70,7 @@ impl ItemTree {
                     &macro_storage as &dyn ModuleItemOwner
                 },
                 ast::SourceFile(file) => {
+                    top_attrs = Some(Attrs::new(&file, &hygiene));
                     file_storage = file;
                     &file_storage
                 },
@@ -70,13 +79,14 @@ impl ItemTree {
         };
 
         let map = db.ast_id_map(file_id);
-        let ctx = Ctx {
+        let mut ctx = Ctx {
             tree: ItemTree::default(),
-            hygiene: Hygiene::new(db.upcast(), file_id),
+            hygiene,
             file: file_id,
             source_ast_id_map: map,
             body_ctx: crate::body::LowerCtx::new(db, file_id),
         };
+        ctx.tree.top_attrs = top_attrs.unwrap_or_default();
         Arc::new(ctx.lower(item_owner))
     }
 
@@ -84,6 +94,15 @@ impl ItemTree {
     /// `ItemTree` was created from.
     pub fn top_level_items(&self) -> &[ModItem] {
         &self.top_level
+    }
+
+    /// Returns the inner attributes of the source file.
+    pub fn top_level_attrs(&self) -> &Attrs {
+        &self.top_attrs
+    }
+
+    pub fn attrs(&self, of: ModItem) -> &Attrs {
+        self.attrs.get(&of).unwrap_or(&self.empty_attrs)
     }
 }
 
@@ -140,7 +159,7 @@ pub struct Function {
     pub has_self_param: bool,
     pub params: Vec<TypeRef>,
     pub ret_type: TypeRef,
-    pub ast: FileAstId<ast::FnDef>,
+    pub ast_id: FileAstId<ast::FnDef>,
     // FIXME inner items
 }
 
@@ -151,7 +170,18 @@ pub struct Struct {
     pub visibility: RawVisibility,
     pub generic_params: generics::GenericParams,
     pub fields: Fields,
-    pub ast: FileAstId<ast::StructDef>,
+    pub ast_id: FileAstId<ast::StructDef>,
+    pub kind: StructDefKind,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum StructDefKind {
+    /// `struct S { ... }` - type namespace only.
+    Record,
+    /// `struct S(...);`
+    Tuple,
+    /// `struct S;`
+    Unit,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -161,6 +191,7 @@ pub struct Union {
     pub visibility: RawVisibility,
     pub generic_params: generics::GenericParams,
     pub fields: Fields,
+    pub ast_id: FileAstId<ast::UnionDef>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -170,6 +201,7 @@ pub struct Enum {
     pub visibility: RawVisibility,
     pub generic_params: generics::GenericParams,
     pub variants: Range<Idx<Variant>>,
+    pub ast_id: FileAstId<ast::EnumDef>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -178,6 +210,7 @@ pub struct Const {
     pub name: Option<Name>,
     pub visibility: RawVisibility,
     pub type_ref: TypeRef,
+    pub ast_id: FileAstId<ast::ConstDef>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -185,6 +218,7 @@ pub struct Static {
     pub name: Name,
     pub visibility: RawVisibility,
     pub type_ref: TypeRef,
+    pub ast_id: FileAstId<ast::StaticDef>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -194,6 +228,7 @@ pub struct Trait {
     pub generic_params: generics::GenericParams,
     pub auto: bool,
     pub items: Vec<AssocItem>,
+    pub ast_id: FileAstId<ast::TraitDef>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -203,6 +238,7 @@ pub struct Impl {
     pub target_type: TypeRef,
     pub is_negative: bool,
     pub items: Vec<AssocItem>,
+    pub ast_id: FileAstId<ast::ImplDef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -211,24 +247,31 @@ pub struct TypeAlias {
     pub visibility: RawVisibility,
     pub generic_params: generics::GenericParams,
     pub type_ref: Option<TypeRef>,
+    pub ast_id: FileAstId<ast::TypeAliasDef>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Mod {
     pub name: Name,
     pub visibility: RawVisibility,
-    pub items: Vec<ModItem>,
+    pub kind: ModKind,
+    pub ast_id: FileAstId<ast::Module>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum ModKind {
+    /// `mod m { ... }`
     Inline { items: Vec<ModItem> },
 
+    /// `mod m;`
     Outline {},
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct MacroCall {
+    /// For `macro_rules!` declarations, this is the name of the declared macro.
     pub name: Option<Name>,
+    /// Path to the called macro.
     pub path: ModPath,
     /// Has `#[macro_export]`.
     pub is_export: bool,
@@ -256,7 +299,7 @@ macro_rules! impl_froms {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum ModItem {
     Import(Idx<Import>),
     Function(Idx<Function>),
@@ -353,7 +396,8 @@ impl Ctx {
     }
 
     fn lower_mod_item(&mut self, item: &ast::ModuleItem) -> Option<ModItems> {
-        match item {
+        let attrs = Attrs::new(item, &self.hygiene);
+        let items = match item {
             ast::ModuleItem::StructDef(ast) => {
                 self.lower_struct(ast).map(|data| self.tree.structs.alloc(data).into())
             }
@@ -406,7 +450,15 @@ impl Ctx {
                     })
                     .collect::<SmallVec<_>>(),
             )),
+        };
+
+        if !attrs.is_empty() {
+            for item in items.iter().flat_map(|items| &items.0) {
+                self.tree.attrs.insert(*item, attrs.clone());
+            }
         }
+
+        items
     }
 
     fn lower_assoc_item(&mut self, item: &ast::AssocItem) -> Option<AssocItem> {
@@ -430,8 +482,13 @@ impl Ctx {
         let name = strukt.name()?.as_name();
         let generic_params = self.lower_generic_params(strukt);
         let fields = self.lower_fields(&strukt.kind());
-        let ast = self.source_ast_id_map.ast_id(strukt);
-        let res = Struct { name, attrs, visibility, generic_params, fields, ast };
+        let ast_id = self.source_ast_id_map.ast_id(strukt);
+        let kind = match strukt.kind() {
+            ast::StructKind::Record(_) => StructDefKind::Record,
+            ast::StructKind::Tuple(_) => StructDefKind::Tuple,
+            ast::StructKind::Unit => StructDefKind::Unit,
+        };
+        let res = Struct { name, attrs, visibility, generic_params, fields, ast_id, kind };
         Some(res)
     }
 
@@ -498,7 +555,8 @@ impl Ctx {
             }
             None => Fields::Record(self.next_field_idx()..self.next_field_idx()),
         };
-        let res = Union { name, attrs, visibility, generic_params, fields };
+        let ast_id = self.source_ast_id_map.ast_id(union);
+        let res = Union { name, attrs, visibility, generic_params, fields, ast_id };
         Some(res)
     }
 
@@ -511,7 +569,8 @@ impl Ctx {
             Some(variant_list) => self.lower_variants(variant_list),
             None => self.next_variant_idx()..self.next_variant_idx(),
         };
-        let res = Enum { name, attrs, visibility, generic_params, variants };
+        let ast_id = self.source_ast_id_map.ast_id(enum_);
+        let res = Enum { name, attrs, visibility, generic_params, variants, ast_id };
         Some(res)
     }
 
@@ -578,7 +637,7 @@ impl Ctx {
             ret_type
         };
 
-        let ast = self.source_ast_id_map.ast_id(func);
+        let ast_id = self.source_ast_id_map.ast_id(func);
         let res = Function {
             name,
             attrs,
@@ -587,7 +646,7 @@ impl Ctx {
             has_self_param,
             params,
             ret_type,
-            ast,
+            ast_id,
         };
         Some(res)
     }
@@ -597,7 +656,8 @@ impl Ctx {
         let type_ref = type_alias.type_ref().map(|it| self.lower_type_ref(&it));
         let visibility = self.lower_visibility(type_alias);
         let generic_params = self.lower_generic_params(type_alias);
-        let res = TypeAlias { name, visibility, generic_params, type_ref };
+        let ast_id = self.source_ast_id_map.ast_id(type_alias);
+        let res = TypeAlias { name, visibility, generic_params, type_ref, ast_id };
         Some(res)
     }
 
@@ -605,7 +665,8 @@ impl Ctx {
         let name = static_.name()?.as_name();
         let type_ref = self.lower_type_ref_opt(static_.ascribed_type());
         let visibility = self.lower_visibility(static_);
-        let res = Static { name, visibility, type_ref };
+        let ast_id = self.source_ast_id_map.ast_id(static_);
+        let res = Static { name, visibility, type_ref, ast_id };
         Some(res)
     }
 
@@ -613,19 +674,30 @@ impl Ctx {
         let name = konst.name().map(|it| it.as_name());
         let type_ref = self.lower_type_ref_opt(konst.ascribed_type());
         let visibility = self.lower_visibility(konst);
-        Const { name, visibility, type_ref }
+        let ast_id = self.source_ast_id_map.ast_id(konst);
+        Const { name, visibility, type_ref, ast_id }
     }
 
     fn lower_module(&mut self, module: &ast::Module) -> Option<Mod> {
         let name = module.name()?.as_name();
         let visibility = self.lower_visibility(module);
-        let items = module.item_list().map(move |list| {
-            list.items()
-                .flat_map(move |item| self.lower_mod_item(&item))
-                .flat_map(|items| items.0)
-                .collect()
-        });
-        Some(Mod { name, visibility, items: items.unwrap_or_default() })
+        let kind = if module.semicolon_token().is_some() {
+            ModKind::Outline {}
+        } else {
+            ModKind::Inline {
+                items: module
+                    .item_list()
+                    .map(|list| {
+                        list.items()
+                            .flat_map(|item| self.lower_mod_item(&item))
+                            .flat_map(|items| items.0)
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+            }
+        };
+        let ast_id = self.source_ast_id_map.ast_id(module);
+        Some(Mod { name, visibility, kind, ast_id })
     }
 
     fn lower_trait(&mut self, trait_def: &ast::TraitDef) -> Option<Trait> {
@@ -633,11 +705,19 @@ impl Ctx {
         let visibility = self.lower_visibility(trait_def);
         let generic_params = self.lower_generic_params(trait_def);
         let auto = trait_def.auto_token().is_some();
-        let items = trait_def.item_list().map(move |list| {
+        let items = trait_def.item_list().map(|list| {
             // FIXME: Does not handle macros
-            list.assoc_items().flat_map(move |item| self.lower_assoc_item(&item)).collect()
+            list.assoc_items().flat_map(|item| self.lower_assoc_item(&item)).collect()
         });
-        Some(Trait { name, visibility, generic_params, auto, items: items.unwrap_or_default() })
+        let ast_id = self.source_ast_id_map.ast_id(trait_def);
+        Some(Trait {
+            name,
+            visibility,
+            generic_params,
+            auto,
+            items: items.unwrap_or_default(),
+            ast_id,
+        })
     }
 
     fn lower_impl(&mut self, impl_def: &ast::ImplDef) -> Option<Impl> {
@@ -650,7 +730,8 @@ impl Ctx {
             .assoc_items()
             .filter_map(|item| self.lower_assoc_item(&item))
             .collect();
-        Some(Impl { generic_params, target_trait, target_type, is_negative, items })
+        let ast_id = self.source_ast_id_map.ast_id(impl_def);
+        Some(Impl { generic_params, target_trait, target_type, is_negative, items, ast_id })
     }
 
     fn lower_use(&mut self, use_item: &ast::UseItem) -> Vec<Import> {
