@@ -303,26 +303,22 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         if !res_did.is_local() && !is_no_inline {
             let attrs = clean::inline::load_attrs(self.cx, res_did);
             let self_is_hidden = attrs.lists(sym::doc).has_word(sym::hidden);
-            match res {
-                Res::Def(
-                    DefKind::Trait
-                    | DefKind::Struct
-                    | DefKind::Union
-                    | DefKind::Enum
-                    | DefKind::ForeignTy
-                    | DefKind::TyAlias,
-                    did,
-                ) if !self_is_hidden => {
-                    self.cx.renderinfo.get_mut().access_levels.map.insert(did, AccessLevel::Public);
-                }
-                Res::Def(DefKind::Mod, did) => {
-                    if !self_is_hidden {
-                        crate::visit_lib::LibEmbargoVisitor::new(self.cx).visit_mod(did);
+            if !self_is_hidden {
+                if let Res::Def(kind, did) = res {
+                    if kind == DefKind::Mod {
+                        crate::visit_lib::LibEmbargoVisitor::new(self.cx).visit_mod(did)
+                    } else {
+                        // All items need to be handled here in case someone wishes to link
+                        // to them with intra-doc links
+                        self.cx
+                            .renderinfo
+                            .get_mut()
+                            .access_levels
+                            .map
+                            .insert(did, AccessLevel::Public);
                     }
                 }
-                _ => {}
             }
-
             return false;
         }
 
