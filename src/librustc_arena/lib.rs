@@ -611,11 +611,7 @@ macro_rules! which_arena_for_type {
 
 #[macro_export]
 macro_rules! declare_arena {
-    // This macro has to take the same input as
-    // `impl_arena_allocatable_decoders` which requires a second version of
-    // each type. We ignore that type until we can fix
-    // `impl_arena_allocatable_decoders`.
-    ([], [$($a:tt $name:ident: $ty:ty, $_gen_ty:ty;)*], $tcx:lifetime) => {
+    ([], [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
         #[derive(Default)]
         pub struct Arena<$tcx> {
             pub dropless: $crate::DroplessArena,
