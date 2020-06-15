@@ -88,7 +88,7 @@ fn double_check<'a>(cx: &LateContext<'_, '_>, left: &'a Expr<'_>, right: &'a Exp
         let upper = check_upper_bound(l);
         let lower = check_lower_bound(r);
 
-        transpose(upper, lower).and_then(|(l, r)| l.combine(r, cx))
+        upper.zip(lower).and_then(|(l, r)| l.combine(r, cx))
     };
 
     upper_lower(left, right).or_else(|| upper_lower(right, left))
@@ -131,7 +131,10 @@ impl<'a> Conversion<'a> {
 
     /// Checks if the to-type is the same (if there is a type constraint)
     fn has_compatible_to_type(&self, other: &Self) -> bool {
-        transpose(self.to_type.as_ref(), other.to_type.as_ref()).map_or(true, |(l, r)| l == r)
+        match (self.to_type, other.to_type) {
+            (Some(l), Some(r)) => l == r,
+            _ => true,
+        }
     }
 
     /// Try to construct a new conversion if the conversion type is valid
@@ -319,14 +322,6 @@ fn int_ty_to_sym<'tcx>(path: &QPath<'_>) -> Option<&'tcx str> {
         } else {
             None
         }
-    }
-}
-
-/// (Option<T>, Option<U>) -> Option<(T, U)>
-fn transpose<T, U>(lhs: Option<T>, rhs: Option<U>) -> Option<(T, U)> {
-    match (lhs, rhs) {
-        (Some(l), Some(r)) => Some((l, r)),
-        _ => None,
     }
 }
 
