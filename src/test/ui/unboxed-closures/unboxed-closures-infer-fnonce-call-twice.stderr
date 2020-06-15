@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `tick`
   --> $DIR/unboxed-closures-infer-fnonce-call-twice.rs:10:5
    |
 LL |     tick();
-   |     ---- value moved here
+   |     ------ `tick` moved due to this call
 LL |     tick();
    |     ^^^^ value used here after move
    |
@@ -11,6 +11,11 @@ note: closure cannot be invoked more than once because it moves the variable `co
    |
 LL |     let tick = || mem::drop(counter);
    |                             ^^^^^^^
+note: this value implements `FnOnce`, which causes it to be moved when called
+  --> $DIR/unboxed-closures-infer-fnonce-call-twice.rs:9:5
+   |
+LL |     tick();
+   |     ^^^^
 
 error: aborting due to previous error
 

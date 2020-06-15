@@ -31,7 +31,9 @@ pub mod edition;
 use edition::Edition;
 pub mod hygiene;
 use hygiene::Transparency;
-pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, MacroKind, SyntaxContext};
+pub use hygiene::{
+    DesugaringKind, ExpnData, ExpnId, ExpnKind, ForLoopLoc, MacroKind, SyntaxContext,
+};
 pub mod def_id;
 use def_id::{CrateNum, DefId, LOCAL_CRATE};
 mod span_encoding;

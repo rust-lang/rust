@@ -11,7 +11,11 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::{
+    hygiene::{DesugaringKind, ForLoopLoc},
+    symbol::sym,
+    Span,
+};
 use rustc_target::abi::VariantIdx;
 
 use super::borrow_set::BorrowData;
@@ -33,6 +37,7 @@ crate use mutability_errors::AccessKind;
 crate use outlives_suggestion::OutlivesSuggestionBuilder;
 crate use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
 crate use region_name::{RegionName, RegionNameSource};
+use rustc_span::symbol::Ident;
 
 pub(super) struct IncludingDowncast(pub(super) bool);
 
@@ -529,33 +534,58 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 }
 
-// The span(s) associated to a use of a place.
+/// The span(s) associated to a use of a place.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(super) enum UseSpans {
-    // The access is caused by capturing a variable for a closure.
+    /// The access is caused by capturing a variable for a closure.
     ClosureUse {
-        // This is true if the captured variable was from a generator.
+        /// This is true if the captured variable was from a generator.
         generator_kind: Option<GeneratorKind>,
-        // The span of the args of the closure, including the `move` keyword if
-        // it's present.
+        /// The span of the args of the closure, including the `move` keyword if
+        /// it's present.
         args_span: Span,
-        // The span of the first use of the captured variable inside the closure.
+        /// The span of the first use of the captured variable inside the closure.
         var_span: Span,
+    },
+    /// The access is caused by using a variable as the receiver of a method
+    /// that takes 'self'
+    FnSelfUse {
+        /// The span of the variable being moved
+        var_span: Span,
+        /// The span of the method call on the variable
+        fn_call_span: Span,
+        /// The definition span of the method being called
+        fn_span: Span,
+        kind: FnSelfUseKind,
     },
     // This access has a single span associated to it: common case.
     OtherUse(Span),
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub(super) enum FnSelfUseKind {
+    /// A normal method call of the form `receiver.foo(a, b, c)`
+    Normal { self_arg: Ident, implicit_into_iter: bool },
+    /// A call to `FnOnce::call_once`, desugared from `my_closure(a, b, c)`
+    FnOnceCall,
+    /// A call to an operator trait, desuraged from operator syntax (e.g. `a << b`)
+    Operator { self_arg: Ident },
+}
+
 impl UseSpans {
     pub(super) fn args_or_use(self) -> Span {
         match self {
-            UseSpans::ClosureUse { args_span: span, .. } | UseSpans::OtherUse(span) => span,
+            UseSpans::ClosureUse { args_span: span, .. }
+            | UseSpans::FnSelfUse { var_span: span, .. }
+            | UseSpans::OtherUse(span) => span,
         }
     }
 
     pub(super) fn var_or_use(self) -> Span {
         match self {
-            UseSpans::ClosureUse { var_span: span, .. } | UseSpans::OtherUse(span) => span,
+            UseSpans::ClosureUse { var_span: span, .. }
+            | UseSpans::FnSelfUse { var_span: span, .. }
+            | UseSpans::OtherUse(span) => span,
         }
     }
 
@@ -624,6 +654,7 @@ impl UseSpans {
     {
         match self {
             closure @ UseSpans::ClosureUse { .. } => closure,
+            fn_self @ UseSpans::FnSelfUse { .. } => fn_self,
             UseSpans::OtherUse(_) => if_other(),
         }
     }
@@ -727,21 +758,100 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let StatementKind::Assign(box (_, Rvalue::Aggregate(ref kind, ref places))) = stmt.kind {
-            let def_id = match kind {
+            match kind {
                 box AggregateKind::Closure(def_id, _)
-                | box AggregateKind::Generator(def_id, _, _) => def_id,
-                _ => return OtherUse(stmt.source_info.span),
-            };
-
-            debug!("move_spans: def_id={:?} places={:?}", def_id, places);
-            if let Some((args_span, generator_kind, var_span)) =
-                self.closure_span(*def_id, moved_place, places)
-            {
-                return ClosureUse { generator_kind, args_span, var_span };
+                | box AggregateKind::Generator(def_id, _, _) => {
+                    debug!("move_spans: def_id={:?} places={:?}", def_id, places);
+                    if let Some((args_span, generator_kind, var_span)) =
+                        self.closure_span(*def_id, moved_place, places)
+                    {
+                        return ClosureUse { generator_kind, args_span, var_span };
+                    }
+                }
+                _ => {}
             }
         }
 
-        OtherUse(stmt.source_info.span)
+        let normal_ret = OtherUse(stmt.source_info.span);
+
+        // We are trying to find MIR of the form:
+        // ```
+        // _temp = _moved_val;
+        // ...
+        // FnSelfCall(_temp, ...)
+        // ```
+        //
+        // where `_moved_val` is the place we generated the move error for,
+        // `_temp` is some other local, and `FnSelfCall` is a function
+        // that has a `self` parameter.
+
+        let target_temp = match stmt.kind {
+            StatementKind::Assign(box (temp, _)) if temp.as_local().is_some() => {
+                temp.as_local().unwrap()
+            }
+            _ => return normal_ret,
+        };
+
+        debug!("move_spans: target_temp = {:?}", target_temp);
+
+        if let Some(Terminator { kind: TerminatorKind::Call { func, args, fn_span, .. }, .. }) =
+            &self.body[location.block].terminator
+        {
+            let mut method_did = None;
+            if let Operand::Constant(box Constant { literal: ty::Const { ty, .. }, .. }) = func {
+                if let ty::FnDef(def_id, _) = ty.kind {
+                    debug!("move_spans: fn = {:?}", def_id);
+                    if let Some(ty::AssocItem { fn_has_self_parameter, .. }) =
+                        self.infcx.tcx.opt_associated_item(def_id)
+                    {
+                        if *fn_has_self_parameter {
+                            method_did = Some(def_id);
+                        }
+                    }
+                }
+            }
+
+            let tcx = self.infcx.tcx;
+            let method_did = if let Some(did) = method_did { did } else { return normal_ret };
+
+            if let [Operand::Move(self_place), ..] = **args {
+                if self_place.as_local() == Some(target_temp) {
+                    let is_fn_once = tcx.parent(method_did) == tcx.lang_items().fn_once_trait();
+                    let fn_call_span = *fn_span;
+
+                    let self_arg = tcx.fn_arg_names(method_did)[0];
+
+                    let kind = if is_fn_once {
+                        FnSelfUseKind::FnOnceCall
+                    } else if fn_call_span.is_desugaring(DesugaringKind::Operator) {
+                        FnSelfUseKind::Operator { self_arg }
+                    } else {
+                        debug!(
+                            "move_spans: method_did={:?}, fn_call_span={:?}",
+                            method_did, fn_call_span
+                        );
+                        let implicit_into_iter = matches!(
+                            fn_call_span.desugaring_kind(),
+                            Some(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
+                        );
+                        FnSelfUseKind::Normal { self_arg, implicit_into_iter }
+                    };
+
+                    return FnSelfUse {
+                        var_span: stmt.source_info.span,
+                        fn_call_span,
+                        fn_span: self
+                            .infcx
+                            .tcx
+                            .sess
+                            .source_map()
+                            .guess_head_span(self.infcx.tcx.def_span(method_did)),
+                        kind,
+                    };
+                }
+            }
+        }
+        return normal_ret;
     }
 
     /// Finds the span of arguments of a closure (within `maybe_closure_span`)
