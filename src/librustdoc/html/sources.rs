@@ -1,10 +1,11 @@
 use crate::clean;
 use crate::docfs::PathError;
+use crate::error::Error;
 use crate::fold::DocFolder;
 use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::layout;
-use crate::html::render::{Error, SharedContext, BASIC_KEYWORDS};
+use crate::html::render::{SharedContext, BASIC_KEYWORDS};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileName;
 use std::ffi::OsStr;

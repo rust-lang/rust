@@ -12,7 +12,8 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use super::{plain_summary_line, shorten, Impl, IndexItem, IndexItemFunctionType, ItemType};
-use super::{Generic, RenderInfo, RenderType, TypeWithKind};
+use super::{Generic, RenderType, TypeWithKind};
+use crate::config::RenderInfo;
 
 /// Indicates where an external crate can be found.
 pub enum ExternalLocation {

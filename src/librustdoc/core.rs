@@ -32,8 +32,8 @@ use std::rc::Rc;
 
 use crate::clean;
 use crate::clean::{AttributesExt, MAX_DEF_ID};
+use crate::config::RenderInfo;
 use crate::config::{Options as RustdocOptions, RenderOptions};
-use crate::html::render::RenderInfo;
 use crate::passes::{self, Condition::*, ConditionalPass};
 
 pub use rustc_session::config::{CodegenOptions, DebuggingOptions, Input, Options};

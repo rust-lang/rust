@@ -30,9 +30,8 @@ use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
-use std::error;
 use std::ffi::OsStr;
-use std::fmt::{self, Formatter, Write};
+use std::fmt::{self, Write};
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -50,7 +49,6 @@ use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
-use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
@@ -60,9 +58,11 @@ use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, TypeKind};
-use crate::config::{OutputFormat, RenderOptions};
+use crate::config::RenderInfo;
+use crate::config::RenderOptions;
 use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
+use crate::error::Error;
 use crate::html::escape::Escape;
 use crate::html::format::fmt_impl_for_trait_page;
 use crate::html::format::Function;
@@ -88,55 +88,6 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
         if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { write!(f, "{}", v) }
     })
-}
-
-#[derive(Debug)]
-pub struct Error {
-    pub file: PathBuf,
-    pub error: String,
-}
-
-impl error::Error for Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let file = self.file.display().to_string();
-        if file.is_empty() {
-            write!(f, "{}", self.error)
-        } else {
-            write!(f, "\"{}\": {}", self.file.display(), self.error)
-        }
-    }
-}
-
-impl PathError for Error {
-    fn new<S, P: AsRef<Path>>(e: S, path: P) -> Error
-    where
-        S: ToString + Sized,
-    {
-        Error { file: path.as_ref().to_path_buf(), error: e.to_string() }
-    }
-}
-
-macro_rules! try_none {
-    ($e:expr, $file:expr) => {{
-        use std::io;
-        match $e {
-            Some(e) => e,
-            None => {
-                return Err(Error::new(io::Error::new(io::ErrorKind::Other, "not found"), $file));
-            }
-        }
-    }};
-}
-
-macro_rules! try_err {
-    ($e:expr, $file:expr) => {{
-        match $e {
-            Ok(e) => e,
-            Err(e) => return Err(Error::new(e, $file)),
-        }
-    }};
 }
 
 /// Major driving force in all rustdoc rendering. This contains information
@@ -258,20 +209,6 @@ impl Impl {
     fn trait_did(&self) -> Option<DefId> {
         self.inner_impl().trait_.def_id()
     }
-}
-
-/// Temporary storage for data obtained during `RustdocVisitor::clean()`.
-/// Later on moved into `CACHE_KEY`.
-#[derive(Default)]
-pub struct RenderInfo {
-    pub inlined: FxHashSet<DefId>,
-    pub external_paths: crate::core::ExternalPaths,
-    pub exact_paths: FxHashMap<DefId, Vec<String>>,
-    pub access_levels: AccessLevels<DefId>,
-    pub deref_trait_did: Option<DefId>,
-    pub deref_mut_trait_did: Option<DefId>,
-    pub owned_box_did: Option<DefId>,
-    pub output_format: Option<OutputFormat>,
 }
 
 // Helper structs for rendering items/sidebars and carrying along contextual
