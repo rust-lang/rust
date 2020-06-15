@@ -148,10 +148,13 @@ impl TcpStream {
                 IpAddr::V4(Ipv4Addr::new(addr.0[0], addr.0[1], addr.0[2], addr.0[3])),
                 port,
             ),
-            Ipv6(ref addr) => SocketAddr::new(IpAddr::V6(Ipv6Addr::new(addr.0)), port),
+            Ipv6(ref addr) => SocketAddr::new(
+                IpAddr::V6(Ipv6Addr::new(addr.0)),
+                port,
+            ),
             _ => {
                 return Err(io::Error::new(ErrorKind::Other, "peer_addr failed"));
-            }
+            },
         };
 
         Ok(saddr)
@@ -228,10 +231,13 @@ impl TcpListener {
                 IpAddr::V4(Ipv4Addr::new(addr.0[0], addr.0[1], addr.0[2], addr.0[3])),
                 port,
             ),
-            Ipv6(ref addr) => SocketAddr::new(IpAddr::V6(Ipv6Addr::new(addr.0)), port),
+            Ipv6(ref addr) => SocketAddr::new(
+                IpAddr::V6(Ipv6Addr::new(addr.0)),
+                port,
+            ),
             _ => {
                 return Err(io::Error::new(ErrorKind::Other, "accept failed"));
-            }
+            },
         };
 
         Ok((TcpStream(Arc::new(Socket(handle))), saddr))
