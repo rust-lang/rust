@@ -2,21 +2,27 @@ error[E0072]: recursive type `Baz` has infinite size
   --> $DIR/sized-cycle-note.rs:9:1
    |
 LL | struct Baz { q: Option<Foo> }
-   | ^^^^^^^^^^   -------------- recursive without indirection
+   | ^^^^^^^^^^      ----------- recursive without indirection
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Baz` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Baz` representable
+   |
+LL | struct Baz { q: Box<Option<Foo>> }
+   |                 ^^^^           ^
 
 error[E0072]: recursive type `Foo` has infinite size
   --> $DIR/sized-cycle-note.rs:11:1
    |
 LL | struct Foo { q: Option<Baz> }
-   | ^^^^^^^^^^   -------------- recursive without indirection
+   | ^^^^^^^^^^      ----------- recursive without indirection
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Foo` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
+   |
+LL | struct Foo { q: Box<Option<Baz>> }
+   |                 ^^^^           ^
 
 error: aborting due to 2 previous errors
 
