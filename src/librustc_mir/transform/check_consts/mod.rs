@@ -12,6 +12,7 @@ use rustc_middle::ty::{self, TyCtxt};
 pub use self::qualifs::Qualif;
 
 mod ops;
+pub mod post_drop_elaboration;
 pub mod qualifs;
 mod resolver;
 pub mod validation;
