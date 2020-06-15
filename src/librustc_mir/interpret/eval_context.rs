@@ -33,6 +33,8 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub machine: M,
 
     /// The results of the type checker, from rustc.
+    /// The span in this is the "root" of the evaluation, i.e., the const
+    /// we are evaluating (if this is CTFE).
     pub tcx: TyCtxtAt<'tcx>,
 
     /// Bounds in scope for polymorphic evaluations.
@@ -202,7 +204,7 @@ where
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
@@ -285,14 +287,15 @@ pub(super) fn from_known_layout<'tcx>(
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn new(
-        tcx: TyCtxtAt<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        root_span: Span,
         param_env: ty::ParamEnv<'tcx>,
         machine: M,
         memory_extra: M::MemoryExtra,
     ) -> Self {
         InterpCx {
             machine,
-            tcx,
+            tcx: tcx.at(root_span),
             param_env,
             memory: Memory::new(tcx, memory_extra),
             vtables: FxHashMap::default(),
@@ -300,9 +303,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn set_span(&mut self, span: Span) {
-        self.tcx.span = span;
-        self.memory.tcx.span = span;
+    pub fn cur_span(&self) -> Span {
+        self.stack()
+            .last()
+            .and_then(|f| f.current_source_info())
+            .map(|si| si.span)
+            .unwrap_or(self.tcx.span)
     }
 
     #[inline(always)]
@@ -385,7 +391,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(*self.tcx, self.param_env, DUMMY_SP)
+        ty.is_freeze(*self.tcx, self.param_env, self.tcx.span)
     }
 
     pub fn load_mir(
@@ -554,7 +560,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let size = size.align_to(align);
 
                 // Check if this brought us over the size limit.
-                if size.bytes() >= self.tcx.data_layout().obj_size_bound() {
+                if size.bytes() >= self.tcx.data_layout.obj_size_bound() {
                     throw_ub!(InvalidMeta("total size is bigger than largest supported object"));
                 }
                 Ok(Some((size, align)))
@@ -570,7 +576,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let elem = layout.field(self, 0)?;
 
                 // Make sure the slice is not too big.
-                let size = elem.size.checked_mul(len, &*self.tcx).ok_or_else(|| {
+                let size = elem.size.checked_mul(len, self).ok_or_else(|| {
                     err_ub!(InvalidMeta("slice is bigger than largest supported object"))
                 })?;
                 Ok(Some((size, elem.align.abi)))
