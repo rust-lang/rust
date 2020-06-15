@@ -1,23 +1,25 @@
+use std::collections::{HashMap, HashSet};
 use std::iter::once;
 
 use hir::{
-    Adt, AsAssocItem, AssocItemContainer, FieldSource, HasSource, HirDisplay, ModuleDef,
-    ModuleSource, Semantics, Documentation, AttrDef, Crate, ModPath, Hygiene
+    db::DefDatabase, Adt, AsAssocItem, AsName, AssocItemContainer, AttrDef, Crate, Documentation,
+    FieldSource, HasSource, HirDisplay, Hygiene, ItemInNs, ModPath, ModuleDef, ModuleSource,
+    Semantics, Module
 };
 use itertools::Itertools;
+use lazy_static::lazy_static;
+use maplit::{hashmap, hashset};
+use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
+use pulldown_cmark_to_cmark::cmark;
 use ra_db::SourceDatabase;
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
 };
-use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, SyntaxNode, TokenAtOffset, ast::Path};
-use ra_hir_def::{item_scope::ItemInNs, db::DefDatabase, resolver::HasResolver};
-use ra_tt::{Literal, Ident, Punct, TokenTree, Leaf};
-use ra_hir_expand::name::AsName;
-use maplit::{hashset, hashmap};
-
-use comrak::{parse_document,format_commonmark, ComrakOptions, Arena};
-use comrak::nodes::NodeValue;
+use ra_syntax::{
+    ast, ast::Path, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, TokenAtOffset,
+};
+use ra_tt::{Ident, Leaf, Literal, Punct, TokenTree};
 use url::Url;
 
 use crate::{
@@ -389,80 +391,143 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
     }
 }
 
+// Rewrites a markdown document, resolving links using `callback` and additionally striping prefixes/suffixes on link titles.
+fn map_links<'e>(
+    events: impl Iterator<Item = Event<'e>>,
+    callback: impl Fn(&str, &str) -> String,
+) -> impl Iterator<Item = Event<'e>> {
+    let mut in_link = false;
+    let mut link_text = CowStr::Borrowed("");
+    events.map(move |evt| match evt {
+        Event::Start(Tag::Link(..)) => {
+            in_link = true;
+            evt
+        }
+        Event::End(Tag::Link(link_type, target, _)) => {
+            in_link = false;
+            let target = callback(&target, &link_text);
+            Event::End(Tag::Link(link_type, CowStr::Boxed(target.into()), CowStr::Borrowed("")))
+        }
+        Event::Text(s) if in_link => {
+            link_text = s.clone();
+            Event::Text(CowStr::Boxed(strip_prefixes_suffixes(&s).into()))
+        }
+        Event::Code(s) if in_link => {
+            link_text = s.clone();
+            Event::Code(CowStr::Boxed(strip_prefixes_suffixes(&s).into()))
+        }
+        _ => evt,
+    })
+}
+
 /// Rewrite documentation links in markdown to point to local documentation/docs.rs
 fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> Option<String> {
-    let arena = Arena::new();
-    let doc = parse_document(&arena, markdown, &ComrakOptions::default());
+    let doc = Parser::new_with_broken_link_callback(
+        markdown,
+        Options::empty(),
+        Some(&|label, _| Some((/*url*/ label.to_string(), /*title*/ label.to_string()))),
+    );
 
-    iter_nodes(doc, &|node| {
-        match &mut node.data.borrow_mut().value {
-            &mut NodeValue::Link(ref mut link) => {
-                match Url::parse(&String::from_utf8(link.url.clone()).unwrap()) {
-                    // If this is a valid absolute URL don't touch it
-                    Ok(_) => (),
-                    // Otherwise there are two main possibilities
-                    // path-based links: `../../module/struct.MyStruct.html`
-                    // module-based links (AKA intra-doc links): `super::super::module::MyStruct`
-                    Err(_) => {
-                        let link_str = String::from_utf8(link.url.clone()).unwrap();
-                        let link_text = String::from_utf8(link.title.clone()).unwrap();
-                        let resolved = try_resolve_intra(db, definition, &link_text, &link_str)
-                            .or_else(|| try_resolve_path(db, definition, &link_str));
+    let doc = map_links(doc, |target, title: &str| {
+        match Url::parse(target) {
+            // If this is a valid absolute URL don't touch it
+            Ok(_) => target.to_string(),
+            // Otherwise there are two main possibilities
+            // path-based links: `../../module/struct.MyStruct.html`
+            // module-based links (AKA intra-doc links): `super::super::module::MyStruct`
+            Err(_) => {
+                let resolved = try_resolve_intra(db, definition, title, &target)
+                    .or_else(|| try_resolve_path(db, definition, &target));
 
-                        if let Some(resolved) = resolved {
-                            link.url = resolved.as_bytes().to_vec();
-                        }
-
-                    }
+                if let Some(resolved) = resolved {
+                    resolved
+                } else {
+                    target.to_string()
                 }
-            },
-            _ => ()
+            }
         }
     });
-    let mut out = Vec::new();
-    format_commonmark(doc, &ComrakOptions::default(), &mut out).ok()?;
-    Some(String::from_utf8(out).unwrap().trim().to_string())
+    let mut out = String::new();
+    cmark(doc, &mut out, None).ok();
+    Some(out)
 }
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 enum Namespace {
     Types,
     Values,
-    Macros
+    Macros,
 }
+
+lazy_static!(
+    /// Map of namespaces to identifying prefixes and suffixes as defined by RFC1946.
+    static ref NS_MAP: HashMap<Namespace, (HashSet<&'static str>, HashSet<&'static str>)> = hashmap!{
+        Namespace::Types => (hashset!{"type", "struct", "enum", "mod", "trait", "union", "module"}, hashset!{}),
+        Namespace::Values => (hashset!{"value", "function", "fn", "method", "const", "static", "mod", "module"}, hashset!{"()"}),
+        Namespace::Macros => (hashset!{"macro"}, hashset!{"!"})
+    };
+);
 
 impl Namespace {
     /// Extract the specified namespace from an intra-doc-link if one exists.
     fn from_intra_spec(s: &str) -> Option<Self> {
-        let ns_map = hashmap!{
-            Self::Types => (hashset!{"type", "struct", "enum", "mod", "trait", "union", "module"}, hashset!{}),
-            Self::Values => (hashset!{"value", "function", "fn", "method", "const", "static", "mod", "module"}, hashset!{"()"}),
-            Self::Macros => (hashset!{"macro"}, hashset!{"!"})
-        };
-
-        ns_map
+        NS_MAP
             .iter()
             .filter(|(_ns, (prefixes, suffixes))| {
-                prefixes.iter().map(|prefix| s.starts_with(prefix) && s.chars().nth(prefix.len()+1).map(|c| c == '@' || c == ' ').unwrap_or(false)).any(|cond| cond) ||
-                suffixes.iter().map(|suffix| s.starts_with(suffix) && s.chars().nth(suffix.len()+1).map(|c| c == '@' || c == ' ').unwrap_or(false)).any(|cond| cond)
+                prefixes
+                    .iter()
+                    .map(|prefix| {
+                        s.starts_with(prefix)
+                            && s.chars()
+                                .nth(prefix.len() + 1)
+                                .map(|c| c == '@' || c == ' ')
+                                .unwrap_or(false)
+                    })
+                    .any(|cond| cond)
+                    || suffixes
+                        .iter()
+                        .map(|suffix| {
+                            s.starts_with(suffix)
+                                && s.chars()
+                                    .nth(suffix.len() + 1)
+                                    .map(|c| c == '@' || c == ' ')
+                                    .unwrap_or(false)
+                        })
+                        .any(|cond| cond)
             })
             .map(|(ns, (_, _))| *ns)
             .next()
     }
 }
 
+// Strip prefixes, suffixes, and inline code marks from the given string.
+fn strip_prefixes_suffixes(mut s: &str) -> &str {
+    s = s.trim_matches('`');
+    NS_MAP.iter().for_each(|(_, (prefixes, suffixes))| {
+        prefixes.iter().for_each(|prefix| s = s.trim_start_matches(prefix));
+        suffixes.iter().for_each(|suffix| s = s.trim_end_matches(suffix));
+    });
+    s.trim_start_matches("@").trim()
+}
+
 /// Try to resolve path to local documentation via intra-doc-links (i.e. `super::gateway::Shard`).
 ///
 /// See [RFC1946](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md).
-fn try_resolve_intra(db: &RootDatabase, definition: &Definition, link_text: &str, link_target: &str) -> Option<String> {
-    eprintln!("try_resolve_intra");
-
+fn try_resolve_intra(
+    db: &RootDatabase,
+    definition: &Definition,
+    link_text: &str,
+    link_target: &str,
+) -> Option<String> {
     // Set link_target for implied shortlinks
-    let link_target = if link_target.is_empty() {
-        link_text.trim_matches('`')
-    } else {
-        link_target
-    };
+    let link_target =
+        if link_target.is_empty() { link_text.trim_matches('`') } else { link_target };
+
+    // Namespace disambiguation
+    let namespace = Namespace::from_intra_spec(link_target);
+
+    // Strip prefixes/suffixes
+    let link_target = strip_prefixes_suffixes(link_target);
 
     // Parse link as a module path
     // This expects a full document, which a single path isn't, but we can just ignore the errors.
@@ -473,17 +538,17 @@ fn try_resolve_intra(db: &RootDatabase, definition: &Definition, link_text: &str
     // Resolve it relative to symbol's location (according to the RFC this should consider small scopes
     let resolver = definition.resolver(db)?;
 
-    // Namespace disambiguation
-    let namespace = Namespace::from_intra_spec(link_target);
-
     let resolved = resolver.resolve_module_path_in_items(db, &modpath);
     let (defid, namespace) = match namespace {
         // TODO: .or(resolved.macros)
-        None => resolved.types.map(|t| (t.0, Namespace::Types)).or(resolved.values.map(|t| (t.0, Namespace::Values)))?,
+        None => resolved
+            .types
+            .map(|t| (t.0, Namespace::Types))
+            .or(resolved.values.map(|t| (t.0, Namespace::Values)))?,
         Some(ns @ Namespace::Types) => (resolved.types?.0, ns),
         Some(ns @ Namespace::Values) => (resolved.values?.0, ns),
         // TODO:
-        Some(Namespace::Macros) => None?
+        Some(Namespace::Macros) => None?,
     };
 
     // Get the filepath of the final symbol
@@ -494,23 +559,28 @@ fn try_resolve_intra(db: &RootDatabase, definition: &Definition, link_text: &str
         Namespace::Types => ItemInNs::Types(defid),
         Namespace::Values => ItemInNs::Values(defid),
         // TODO:
-        Namespace::Macros => None?
+        Namespace::Macros => None?,
     };
     let import_map = db.import_map(krate.into());
     let path = import_map.path_of(ns)?;
 
     Some(
         get_doc_url(db, &krate)?
-            .join(&format!("{}/", krate.display_name(db)?)).ok()?
-            .join(&path.segments.iter().map(|name| format!("{}", name)).join("/")).ok()?
-            .join(&get_symbol_filename(db, &Definition::ModuleDef(def))?).ok()?
-            .into_string()
+            .join(&format!("{}/", krate.display_name(db)?))
+            .ok()?
+            .join(&path.segments.iter().map(|name| format!("{}", name)).join("/"))
+            .ok()?
+            .join(&get_symbol_filename(db, &Definition::ModuleDef(def))?)
+            .ok()?
+            .into_string(),
     )
 }
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
 fn try_resolve_path(db: &RootDatabase, definition: &Definition, link: &str) -> Option<String> {
-    eprintln!("try_resolve_path");
+    if !link.contains("#") && !link.contains(".html") {
+        return None;
+    }
     let ns = if let Definition::ModuleDef(moddef) = definition {
         ItemInNs::Types(moddef.clone().into())
     } else {
@@ -522,11 +592,15 @@ fn try_resolve_path(db: &RootDatabase, definition: &Definition, link: &str) -> O
     // TODO: It should be possible to fall back to not-necessarilly-public paths if we can't find a public one,
     // then hope rustdoc was run locally with `--document-private-items`
     let base = import_map.path_of(ns)?;
-    let base = once(format!("{}", krate.display_name(db)?)).chain(base.segments.iter().map(|name| format!("{}", name))).join("/");
+    let base = once(format!("{}", krate.display_name(db)?))
+        .chain(base.segments.iter().map(|name| format!("{}", name)))
+        .join("/");
 
     get_doc_url(db, &krate)
         .and_then(|url| url.join(&base).ok())
-        .and_then(|url| get_symbol_filename(db, definition).as_deref().map(|f| url.join(f).ok()).flatten())
+        .and_then(|url| {
+            get_symbol_filename(db, definition).as_deref().map(|f| url.join(f).ok()).flatten()
+        })
         .and_then(|url| url.join(link).ok())
         .map(|url| url.into_string())
 }
@@ -566,29 +640,23 @@ fn get_symbol_filename(db: &RootDatabase, definition: &Definition) -> Option<Str
             ModuleDef::Adt(adt) => match adt {
                 Adt::Struct(s) => format!("struct.{}.html", s.name(db)),
                 Adt::Enum(e) => format!("enum.{}.html", e.name(db)),
-                Adt::Union(u) => format!("union.{}.html", u.name(db))
+                Adt::Union(u) => format!("union.{}.html", u.name(db)),
             },
             ModuleDef::Module(_) => "index.html".to_string(),
             ModuleDef::Trait(t) => format!("trait.{}.html", t.name(db)),
             ModuleDef::TypeAlias(t) => format!("type.{}.html", t.name(db)),
             ModuleDef::BuiltinType(t) => format!("primitive.{}.html", t.as_name()),
             ModuleDef::Function(f) => format!("fn.{}.html", f.name(db)),
-            ModuleDef::EnumVariant(ev) => format!("enum.{}.html#variant.{}", ev.parent_enum(db).name(db), ev.name(db)),
+            ModuleDef::EnumVariant(ev) => {
+                format!("enum.{}.html#variant.{}", ev.parent_enum(db).name(db), ev.name(db))
+            }
             ModuleDef::Const(c) => format!("const.{}.html", c.name(db)?),
             // TODO: Check this is the right prefix
-            ModuleDef::Static(s) => format!("static.{}.html", s.name(db)?)
+            ModuleDef::Static(s) => format!("static.{}.html", s.name(db)?),
         },
         Definition::Macro(m) => format!("macro.{}.html", m.name(db)?),
-        _ => None?
+        _ => None?,
     })
-}
-
-fn iter_nodes<'a, F>(node: &'a comrak::nodes::AstNode<'a>, f: &F)
-    where F : Fn(&'a comrak::nodes::AstNode<'a>) {
-    f(node);
-    for c in node.children() {
-        iter_nodes(c, f);
-    }
 }
 
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
@@ -614,12 +682,11 @@ mod tests {
     use crate::mock_analysis::analysis_and_position;
 
     fn trim_markup(s: &str) -> String {
-        s
-            .replace("``` rust", "```rust")
-            .replace("-----", "___")
-            .replace("\n\n___\n\n", "\n___\n\n")
+        s.trim()
+            .replace("````", "```")
+            .replace("---", "___")
             .replace("\\<-", "<-")
-            .trim_start_matches("test\n```\n\n")
+            .replace("```\n\n___", "```\n___")
             .trim_start_matches("```rust\n")
             .trim_start_matches("test\n```\n\n```rust\n")
             .trim_end_matches("\n```")
@@ -873,7 +940,10 @@ fn main() {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()).as_deref(), Some("test::Option\n```\n\n```rust\nSome"));
+        assert_eq!(
+            trim_markup_opt(hover.info.first()).as_deref(),
+            Some("test::Option\n```\n\n```rust\nSome")
+        );
 
         let (analysis, position) = analysis_and_position(
             "
@@ -1408,7 +1478,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             /// [Foo](struct.Foo.html)
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"]
+            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
         );
     }
 
@@ -1421,7 +1491,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             /// [Foo](Foo)
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"]
+            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
         );
     }
 
@@ -1434,7 +1504,20 @@ fn func(foo: i32) { if true { <|>foo; }; }
             /// [Foo]
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"]
+            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_shortlink_code() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [`Foo`]
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"],
         );
     }
 
@@ -1448,7 +1531,75 @@ fn func(foo: i32) { if true { <|>foo; }; }
             /// [Foo()]
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"]
+            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_shortlink_namspaced_code() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [`struct Foo`]
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_shortlink_namspaced_code_with_at() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [`struct@Foo`]
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link_reference() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [my Foo][foo]
+            ///
+            /// [foo]: Foo
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[my Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
+        );
+    }
+
+    #[test]
+    fn test_hover_external_url() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [external](https://www.google.com)
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[external](https://www.google.com)"],
+        );
+    }
+
+    // Check that we don't rewrite links which we can't identify
+    #[test]
+    fn test_hover_unknown_target() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub struct Foo;
+            /// [baz](Baz)
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[baz](Baz)"],
         );
     }
 

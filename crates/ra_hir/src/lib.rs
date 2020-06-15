@@ -66,12 +66,14 @@ pub use hir_def::{
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
     docs::Documentation,
+    item_scope::ItemInNs,
     nameres::ModuleSource,
     path::{ModPath, Path, PathKind},
     type_ref::Mutability,
 };
 pub use hir_expand::{
-    hygiene::Hygiene, name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId,
-    MacroFile, Origin,
+    hygiene::Hygiene,
+    name::{AsName, Name},
+    HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, Origin,
 };
 pub use hir_ty::{display::HirDisplay, CallableDef};

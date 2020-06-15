@@ -17,9 +17,11 @@ itertools = "0.9.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
 rand = { version = "0.7.3", features = ["small_rng"] }
-comrak = "0.7.0"
 url = "*"
 maplit = "*"
+lazy_static = "*"
+pulldown-cmark-to-cmark = "4.0.2"
+pulldown-cmark = "0.7.0"
 
 stdx = { path = "../stdx" }
 
@@ -36,7 +38,6 @@ ra_ssr = { path = "../ra_ssr" }
 ra_project_model = { path = "../ra_project_model" }
 ra_hir_def = { path = "../ra_hir_def" }
 ra_tt = { path = "../ra_tt" }
-ra_hir_expand = { path = "../ra_hir_expand" }
 ra_parser = { path = "../ra_parser" }
 
 # ra_ide should depend only on the top-level `hir` package. if you need
