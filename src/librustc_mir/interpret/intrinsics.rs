@@ -347,7 +347,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let index = u64::from(self.read_scalar(args[1])?.to_u32()?);
                 let elem = args[2];
                 let input = args[0];
-                let (len, e_ty) = input.layout.ty.simd_size_and_type(self.tcx.tcx);
+                let (len, e_ty) = input.layout.ty.simd_size_and_type(*self.tcx);
                 assert!(
                     index < len,
                     "Index `{}` must be in bounds of vector type `{}`: `[0, {})`",
@@ -374,7 +374,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::simd_extract => {
                 let index = u64::from(self.read_scalar(args[1])?.to_u32()?);
-                let (len, e_ty) = args[0].layout.ty.simd_size_and_type(self.tcx.tcx);
+                let (len, e_ty) = args[0].layout.ty.simd_size_and_type(*self.tcx);
                 assert!(
                     index < len,
                     "index `{}` is out-of-bounds of vector type `{}` with length `{}`",

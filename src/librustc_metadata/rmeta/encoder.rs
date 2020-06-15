@@ -27,7 +27,7 @@ use rustc_middle::mir::{self, interpret};
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::{self as ty_codec, TyEncoder};
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
-use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
+use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder, UseSpecializedEncodable};
 use rustc_session::config::CrateType;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -93,13 +93,13 @@ impl<'tcx> Encoder for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<T>> for EncodeContext<'tcx> {
+impl<'tcx, T> SpecializedEncoder<Lazy<T, ()>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<T>) -> Result<(), Self::Error> {
         self.emit_lazy_distance(*lazy)
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
+impl<'tcx, T> SpecializedEncoder<Lazy<[T], usize>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<[T]>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
         if lazy.meta == 0 {
@@ -109,7 +109,7 @@ impl<'tcx, T> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>>> for EncodeContext<'tcx>
+impl<'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>, usize>> for EncodeContext<'tcx>
 where
     Option<T>: FixedSizeEncoding,
 {
@@ -228,8 +228,13 @@ impl<'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'tcx> {
-    fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
+impl<'a, 'b, 'tcx> SpecializedEncoder<&'a ty::TyS<'b>> for EncodeContext<'tcx>
+where
+    &'a ty::TyS<'b>: UseSpecializedEncodable,
+{
+    fn specialized_encode(&mut self, ty: &&'a ty::TyS<'b>) -> Result<(), Self::Error> {
+        debug_assert!(self.tcx.lift(ty).is_some());
+        let ty = unsafe { std::mem::transmute::<&&'a ty::TyS<'b>, &&'tcx ty::TyS<'tcx>>(ty) };
         ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
     }
 }
@@ -251,12 +256,19 @@ impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, Span)]> for EncodeContext<'tcx> {
+impl<'a, 'b, 'tcx> SpecializedEncoder<&'a [(ty::Predicate<'b>, Span)]> for EncodeContext<'tcx> {
     fn specialized_encode(
         &mut self,
-        predicates: &&'tcx [(ty::Predicate<'tcx>, Span)],
+        predicates: &&'a [(ty::Predicate<'b>, Span)],
     ) -> Result<(), Self::Error> {
-        ty_codec::encode_spanned_predicates(self, predicates, |ecx| &mut ecx.predicate_shorthands)
+        debug_assert!(self.tcx.lift(*predicates).is_some());
+        let predicates = unsafe {
+            std::mem::transmute::<
+                &&'a [(ty::Predicate<'b>, Span)],
+                &&'tcx [(ty::Predicate<'tcx>, Span)],
+            >(predicates)
+        };
+        ty_codec::encode_spanned_predicates(self, &predicates, |ecx| &mut ecx.predicate_shorthands)
     }
 }
 
@@ -266,7 +278,10 @@ impl<'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T: Encodable> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'tcx> {
+impl<'tcx, T> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'tcx>
+where
+    mir::ClearCrossCrate<T>: UseSpecializedEncodable,
+{
     fn specialized_encode(&mut self, _: &mir::ClearCrossCrate<T>) -> Result<(), Self::Error> {
         Ok(())
     }

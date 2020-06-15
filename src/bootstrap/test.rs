@@ -930,13 +930,6 @@ host_test!(UiFullDeps { path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-ful
 host_test!(Rustdoc { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" });
 
 host_test!(Pretty { path: "src/test/pretty", mode: "pretty", suite: "pretty" });
-test!(RunPassValgrindPretty {
-    path: "src/test/run-pass-valgrind/pretty",
-    mode: "pretty",
-    suite: "run-pass-valgrind",
-    default: false,
-    host: true
-});
 
 default_test!(RunMake { path: "src/test/run-make", mode: "run-make", suite: "run-make" });
 

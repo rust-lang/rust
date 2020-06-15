@@ -458,8 +458,39 @@ impl<T> ClearCrossCrate<T> {
     }
 }
 
-impl<T: Encodable> rustc_serialize::UseSpecializedEncodable for ClearCrossCrate<T> {}
-impl<T: Decodable> rustc_serialize::UseSpecializedDecodable for ClearCrossCrate<T> {}
+const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
+const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
+
+impl<T: Encodable> rustc_serialize::UseSpecializedEncodable for ClearCrossCrate<T> {
+    #[inline]
+    fn default_encode<E: rustc_serialize::Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+        match *self {
+            ClearCrossCrate::Clear => TAG_CLEAR_CROSS_CRATE_CLEAR.encode(e),
+            ClearCrossCrate::Set(ref val) => {
+                TAG_CLEAR_CROSS_CRATE_SET.encode(e)?;
+                val.encode(e)
+            }
+        }
+    }
+}
+impl<T: Decodable> rustc_serialize::UseSpecializedDecodable for ClearCrossCrate<T> {
+    #[inline]
+    fn default_decode<D>(d: &mut D) -> Result<ClearCrossCrate<T>, D::Error>
+    where
+        D: rustc_serialize::Decoder,
+    {
+        let discr = u8::decode(d)?;
+
+        match discr {
+            TAG_CLEAR_CROSS_CRATE_CLEAR => Ok(ClearCrossCrate::Clear),
+            TAG_CLEAR_CROSS_CRATE_SET => {
+                let val = T::decode(d)?;
+                Ok(ClearCrossCrate::Set(val))
+            }
+            _ => unreachable!(),
+        }
+    }
+}
 
 /// Grouped information about the source code origin of a MIR entity.
 /// Intended to be inspected by diagnostics and debuginfo.
@@ -1957,8 +1988,6 @@ impl<V, T> ProjectionElem<V, T> {
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
-
-impl<'tcx> Copy for PlaceElem<'tcx> {}
 
 // At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
 #[cfg(target_arch = "x86_64")]

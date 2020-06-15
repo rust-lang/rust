@@ -97,7 +97,7 @@ where
 
 pub fn encode_spanned_predicates<'tcx, E, C>(
     encoder: &mut E,
-    predicates: &'tcx [(ty::Predicate<'tcx>, Span)],
+    predicates: &[(ty::Predicate<'tcx>, Span)],
     cache: C,
 ) -> Result<(), E::Error>
 where
@@ -139,7 +139,7 @@ pub trait TyDecoder<'tcx>: Decoder {
 }
 
 #[inline]
-pub fn decode_arena_allocable<D, T: ArenaAllocatable + Decodable>(
+pub fn decode_arena_allocable<'tcx, D, T: ArenaAllocatable<'tcx> + Decodable>(
     decoder: &mut D,
 ) -> Result<&'tcx T, D::Error>
 where
@@ -149,7 +149,7 @@ where
 }
 
 #[inline]
-pub fn decode_arena_allocable_slice<D, T: ArenaAllocatable + Decodable>(
+pub fn decode_arena_allocable_slice<'tcx, D, T: ArenaAllocatable<'tcx> + Decodable>(
     decoder: &mut D,
 ) -> Result<&'tcx [T], D::Error>
 where
@@ -318,18 +318,38 @@ macro_rules! __impl_decoder_methods {
 macro_rules! impl_arena_allocatable_decoder {
     ([]$args:tt) => {};
     ([decode $(, $attrs:ident)*]
-     [[$DecoderName:ident [$($typaram:tt),*]], [$name:ident: $ty:ty], $tcx:lifetime]) => {
-        impl<$($typaram),*> SpecializedDecoder<&$tcx $ty> for $DecoderName<$($typaram),*> {
+     [[$DecoderName:ident [$($typaram:tt),*]], [$name:ident: $ty:ty, $gen_ty:ty], $tcx:lifetime]) => {
+         // FIXME(#36588): These impls are horribly unsound as they allow
+         // the caller to pick any lifetime for `'tcx`, including `'static`.
+        #[allow(unused_lifetimes)]
+        impl<'_x, '_y, '_z, '_w, '_a, $($typaram),*> SpecializedDecoder<&'_a $gen_ty>
+        for $DecoderName<$($typaram),*>
+        where &'_a $gen_ty: UseSpecializedDecodable
+        {
             #[inline]
-            fn specialized_decode(&mut self) -> Result<&$tcx $ty, Self::Error> {
-                decode_arena_allocable(self)
+            fn specialized_decode(&mut self) -> Result<&'_a $gen_ty, Self::Error> {
+                unsafe {
+                    std::mem::transmute::<
+                        Result<&$tcx $ty, Self::Error>,
+                        Result<&'_a $gen_ty, Self::Error>,
+                    >(decode_arena_allocable(self))
+                }
             }
         }
 
-        impl<$($typaram),*> SpecializedDecoder<&$tcx [$ty]> for $DecoderName<$($typaram),*> {
+        #[allow(unused_lifetimes)]
+        impl<'_x, '_y, '_z, '_w, '_a, $($typaram),*> SpecializedDecoder<&'_a [$gen_ty]>
+        for $DecoderName<$($typaram),*>
+        where &'_a [$gen_ty]: UseSpecializedDecodable
+        {
             #[inline]
-            fn specialized_decode(&mut self) -> Result<&$tcx [$ty], Self::Error> {
-                decode_arena_allocable_slice(self)
+            fn specialized_decode(&mut self) -> Result<&'_a [$gen_ty], Self::Error> {
+                unsafe {
+                    std::mem::transmute::<
+                        Result<&$tcx [$ty], Self::Error>,
+                        Result<&'_a [$gen_ty], Self::Error>,
+                    >(decode_arena_allocable_slice(self))
+                }
             }
         }
     };
@@ -340,9 +360,9 @@ macro_rules! impl_arena_allocatable_decoder {
 
 #[macro_export]
 macro_rules! impl_arena_allocatable_decoders {
-    ($args:tt, [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
+    ($args:tt, [$($a:tt $name:ident: $ty:ty, $gen_ty:ty;)*], $tcx:lifetime) => {
         $(
-            impl_arena_allocatable_decoder!($a [$args, [$name: $ty], $tcx]);
+            impl_arena_allocatable_decoder!($a [$args, [$name: $ty, $gen_ty], $tcx]);
         )*
     }
 }
@@ -352,14 +372,15 @@ macro_rules! implement_ty_decoder {
     ($DecoderName:ident <$($typaram:tt),*>) => {
         mod __ty_decoder_impl {
             use std::borrow::Cow;
+            use std::mem::transmute;
 
-            use rustc_serialize::{Decoder, SpecializedDecoder};
+            use rustc_serialize::{Decoder, SpecializedDecoder, UseSpecializedDecodable};
 
             use $crate::infer::canonical::CanonicalVarInfos;
             use $crate::ty;
             use $crate::ty::codec::*;
-            use $crate::ty::subst::SubstsRef;
-            use rustc_hir::def_id::{CrateNum};
+            use $crate::ty::subst::InternalSubsts;
+            use rustc_hir::def_id::CrateNum;
 
             use rustc_span::Span;
 
@@ -398,8 +419,7 @@ macro_rules! implement_ty_decoder {
             }
 
             // FIXME(#36588): These impls are horribly unsound as they allow
-            // the caller to pick any lifetime for `'tcx`, including `'static`,
-            // by using the unspecialized proxies to them.
+            // the caller to pick any lifetime for `'tcx`, including `'static`.
 
             rustc_hir::arena_types!(impl_arena_allocatable_decoders, [$DecoderName [$($typaram),*]], 'tcx);
             arena_types!(impl_arena_allocatable_decoders, [$DecoderName [$($typaram),*]], 'tcx);
@@ -411,90 +431,98 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<ty::Ty<'tcx>>
-            for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<ty::Ty<'tcx>, Self::Error> {
-                    decode_ty(self)
+            impl<'_x, '_y, $($typaram),*> SpecializedDecoder<&'_x ty::TyS<'_y>>
+            for $DecoderName<$($typaram),*>
+            where &'_x ty::TyS<'_y>: UseSpecializedDecodable
+            {
+                fn specialized_decode(&mut self) -> Result<&'_x ty::TyS<'_y>, Self::Error> {
+                    unsafe { transmute::<Result<ty::Ty<'tcx>, Self::Error>, Result<&'_x ty::TyS<'_y>, Self::Error>>(decode_ty(self)) }
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx [(ty::Predicate<'tcx>, Span)]>
-            for $DecoderName<$($typaram),*> {
+            impl<'_x, '_y, $($typaram),*> SpecializedDecoder<&'_x [(ty::Predicate<'_y>, Span)]>
+            for $DecoderName<$($typaram),*>
+            where &'_x [(ty::Predicate<'_y>, Span)]: UseSpecializedDecodable {
                 fn specialized_decode(&mut self)
-                                      -> Result<&'tcx [(ty::Predicate<'tcx>, Span)], Self::Error> {
-                    decode_spanned_predicates(self)
+                                      -> Result<&'_x [(ty::Predicate<'_y>, Span)], Self::Error>
+                {
+                    unsafe { transmute(decode_spanned_predicates(self)) }
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<SubstsRef<'tcx>>
-            for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<SubstsRef<'tcx>, Self::Error> {
-                    decode_substs(self)
+            impl<'_x, '_y, $($typaram),*> SpecializedDecoder<&'_x InternalSubsts<'_y>>
+            for $DecoderName<$($typaram),*>
+            where &'_x InternalSubsts<'_y>: UseSpecializedDecodable {
+                fn specialized_decode(&mut self) -> Result<&'_x InternalSubsts<'_y>, Self::Error> {
+                    unsafe { transmute(decode_substs(self)) }
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<$crate::mir::Place<'tcx>>
+            impl<'_x, $($typaram),*> SpecializedDecoder<$crate::mir::Place<'_x>>
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(
                     &mut self
-                ) -> Result<$crate::mir::Place<'tcx>, Self::Error> {
-                    decode_place(self)
+                ) -> Result<$crate::mir::Place<'_x>, Self::Error> {
+                    unsafe { transmute(decode_place(self)) }
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<ty::Region<'tcx>>
+            impl<'_x, $($typaram),*> SpecializedDecoder<ty::Region<'_x>>
             for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<ty::Region<'tcx>, Self::Error> {
-                    decode_region(self)
+                fn specialized_decode(&mut self) -> Result<ty::Region<'_x>, Self::Error> {
+                    unsafe { transmute(decode_region(self)) }
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx ty::List<ty::Ty<'tcx>>>
-            for $DecoderName<$($typaram),*> {
+            impl<'_x, '_y, '_z, $($typaram),*> SpecializedDecoder<&'_x ty::List<&'_y ty::TyS<'_z>>>
+            for $DecoderName<$($typaram),*>
+            where &'_x ty::List<&'_y ty::TyS<'_z>>: UseSpecializedDecodable {
                 fn specialized_decode(&mut self)
-                                      -> Result<&'tcx ty::List<ty::Ty<'tcx>>, Self::Error> {
-                    decode_ty_slice(self)
+                                      -> Result<&'_x ty::List<&'_y ty::TyS<'_z>>, Self::Error> {
+                    unsafe { transmute(decode_ty_slice(self)) }
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx ty::AdtDef>
+            impl<'_x, $($typaram),*> SpecializedDecoder<&'_x ty::AdtDef>
             for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<&'tcx ty::AdtDef, Self::Error> {
-                    decode_adt_def(self)
+                fn specialized_decode(&mut self) -> Result<&'_x ty::AdtDef, Self::Error> {
+                    unsafe { transmute(decode_adt_def(self)) }
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>
+            impl<'_x, '_y, $($typaram),*> SpecializedDecoder<&'_x ty::List<ty::ExistentialPredicate<'_y>>>
+            for $DecoderName<$($typaram),*>
+            where &'_x ty::List<ty::ExistentialPredicate<'_y>>: UseSpecializedDecodable {
+                fn specialized_decode(&mut self)
+                    -> Result<&'_x ty::List<ty::ExistentialPredicate<'_y>>, Self::Error> {
+                        unsafe { transmute(decode_existential_predicate_slice(self)) }
+                }
+            }
+
+            impl<'_x, $($typaram),*> SpecializedDecoder<CanonicalVarInfos<'_x>>
                 for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self)
-                    -> Result<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>, Self::Error> {
-                    decode_existential_predicate_slice(self)
+                    -> Result<CanonicalVarInfos<'_x>, Self::Error> {
+                        unsafe { transmute(decode_canonical_var_infos(self)) }
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<CanonicalVarInfos<'tcx>>
-                for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self)
-                    -> Result<CanonicalVarInfos<'tcx>, Self::Error> {
-                    decode_canonical_var_infos(self)
+            impl<'_x, '_y, $($typaram),*> SpecializedDecoder<&'_x $crate::ty::Const<'_y>>
+            for $DecoderName<$($typaram),*>
+            where &'_x $crate::ty::Const<'_y>: UseSpecializedDecodable {
+                fn specialized_decode(&mut self) -> Result<&'_x ty::Const<'_y>, Self::Error> {
+                    unsafe { transmute(decode_const(self)) }
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx $crate::ty::Const<'tcx>>
-            for $DecoderName<$($typaram),*> {
-                fn specialized_decode(&mut self) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
-                    decode_const(self)
-                }
-            }
-
-            impl<$($typaram),*> SpecializedDecoder<&'tcx $crate::mir::interpret::Allocation>
+            impl<'_x, $($typaram),*> SpecializedDecoder<&'_x $crate::mir::interpret::Allocation>
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(
                     &mut self
-                ) -> Result<&'tcx $crate::mir::interpret::Allocation, Self::Error> {
-                    decode_allocation(self)
+                ) -> Result<&'_x $crate::mir::interpret::Allocation, Self::Error> {
+                    unsafe { transmute(decode_allocation(self)) }
                 }
             }
         }
-    }
+    };
 }

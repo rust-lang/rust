@@ -128,7 +128,7 @@ macro_rules! define_dep_nodes {
                             // tuple args
                             $({
                                 return <$tuple_arg_ty as DepNodeParams<TyCtxt<'_>>>
-                                    ::CAN_RECONSTRUCT_QUERY_KEY;
+                                    ::can_reconstruct_query_key();
                             })*
 
                             true
@@ -304,7 +304,10 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 ]);
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         tcx.def_path_hash(*self).0
@@ -320,7 +323,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         self.to_def_id().to_fingerprint(tcx)
@@ -336,7 +342,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
@@ -353,7 +362,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        false
+    }
 
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full
@@ -375,7 +387,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        false
+    }
 
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full

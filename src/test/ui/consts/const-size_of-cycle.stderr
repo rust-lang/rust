@@ -17,8 +17,8 @@ LL |     bytes: [u8; std::mem::size_of::<Foo>()]
 note: ...which requires const-evaluating `std::mem::size_of`...
   --> $SRC_DIR/libcore/mem/mod.rs:LL:COL
    |
-LL |     intrinsics::size_of::<T>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub const fn size_of<T>() -> usize {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `std::intrinsics::size_of`...
   --> $SRC_DIR/libcore/intrinsics.rs:LL:COL
    |

@@ -111,7 +111,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     if let InternMode::Static(mutability) = mode {
         // For this, we need to take into account `UnsafeCell`. When `ty` is `None`, we assume
         // no interior mutability.
-        let frozen = ty.map_or(true, |ty| ty.is_freeze(ecx.tcx.tcx, ecx.param_env, ecx.tcx.span));
+        let frozen = ty.map_or(true, |ty| ty.is_freeze(*ecx.tcx, ecx.param_env, ecx.tcx.span));
         // For statics, allocation mutability is the combination of the place mutability and
         // the type mutability.
         // The entire allocation needs to be mutable if it contains an `UnsafeCell` anywhere.
@@ -253,8 +253,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                         // caused (by somehow getting a mutable reference in a `const`).
                         if ref_mutability == Mutability::Mut {
                             match referenced_ty.kind {
-                                ty::Array(_, n)
-                                    if n.eval_usize(tcx.tcx, self.ecx.param_env) == 0 => {}
+                                ty::Array(_, n) if n.eval_usize(*tcx, self.ecx.param_env) == 0 => {}
                                 ty::Slice(_)
                                     if mplace.meta.unwrap_meta().to_machine_usize(self.ecx)?
                                         == 0 => {}

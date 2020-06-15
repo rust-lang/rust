@@ -6,7 +6,10 @@ LL | enum E2<T> { V2(E2<E1>, marker::PhantomData<T>), }
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `E2` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `E2` representable
+   |
+LL | enum E2<T> { V2(Box<E2<E1>>, marker::PhantomData<T>), }
+   |                 ^^^^      ^
 
 error: aborting due to previous error
 

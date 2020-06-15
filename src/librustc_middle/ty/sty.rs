@@ -2409,8 +2409,6 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
-impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
-
 /// Represents a constant in Rust.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 #[derive(HashStable)]

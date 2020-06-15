@@ -56,7 +56,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, T>>
     where
         T: Debug + TypeFoldable<'tcx>,
-        Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable,
+        Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
         let canonical_result = self.canonicalize_response(&query_response);

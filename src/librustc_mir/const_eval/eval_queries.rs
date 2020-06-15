@@ -27,7 +27,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     body: &'mir mir::Body<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
-    let tcx = ecx.tcx.tcx;
+    let tcx = *ecx.tcx;
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
@@ -81,13 +81,14 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
 pub(super) fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
-    span: Span,
+    root_span: Span,
     param_env: ty::ParamEnv<'tcx>,
     can_access_statics: bool,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
     InterpCx::new(
-        tcx.at(span),
+        tcx,
+        root_span,
         param_env,
         CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
         MemoryExtra { can_access_statics },
@@ -163,7 +164,7 @@ pub(super) fn op_to_const<'tcx>(
                         0,
                     ),
                 };
-                let len = b.to_machine_usize(&ecx.tcx.tcx).unwrap();
+                let len = b.to_machine_usize(ecx).unwrap();
                 let start = start.try_into().unwrap();
                 let len: usize = len.try_into().unwrap();
                 ConstValue::Slice { data, start, end: start + len }
@@ -212,7 +213,7 @@ fn validate_and_turn_into_const<'tcx>(
     })();
 
     val.map_err(|error| {
-        let err = error_to_const_error(&ecx, error);
+        let err = error_to_const_error(&ecx, error, None);
         err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
             diag.note(note_on_undefined_behavior_error());
             diag.emit();
@@ -299,9 +300,9 @@ pub fn const_eval_raw_provider<'tcx>(
 
     let is_static = tcx.is_static(def_id);
 
-    let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = InterpCx::new(
-        tcx.at(span),
+        tcx,
+        tcx.def_span(cid.instance.def_id()),
         key.param_env,
         CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
         MemoryExtra { can_access_statics: is_static },
@@ -311,12 +312,15 @@ pub fn const_eval_raw_provider<'tcx>(
     res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body))
         .map(|place| RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
         .map_err(|error| {
-            let err = error_to_const_error(&ecx, error);
+            let err = error_to_const_error(&ecx, error, None);
             // errors in statics are always emitted as fatal errors
             if is_static {
                 // Ensure that if the above error was either `TooGeneric` or `Reported`
                 // an error must be reported.
-                let v = err.report_as_error(ecx.tcx, "could not evaluate static initializer");
+                let v = err.report_as_error(
+                    ecx.tcx.at(ecx.cur_span()),
+                    "could not evaluate static initializer",
+                );
 
                 // If this is `Reveal:All`, then we need to make sure an error is reported but if
                 // this is `Reveal::UserFacing`, then it's expected that we could get a
@@ -372,13 +376,16 @@ pub fn const_eval_raw_provider<'tcx>(
                         // anything else (array lengths, enum initializers, constant patterns) are
                         // reported as hard errors
                         } else {
-                            err.report_as_error(ecx.tcx, "evaluation of constant value failed")
+                            err.report_as_error(
+                                ecx.tcx.at(ecx.cur_span()),
+                                "evaluation of constant value failed",
+                            )
                         }
                     }
                 }
             } else {
                 // use of broken constant from other crate
-                err.report_as_error(ecx.tcx, "could not evaluate constant")
+                err.report_as_error(ecx.tcx.at(ecx.cur_span()), "could not evaluate constant")
             }
         })
 }

@@ -313,7 +313,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let param_env = tcx.param_env(def_id).with_reveal_all();
 
         let span = tcx.def_span(def_id);
-        let mut ecx = InterpCx::new(tcx.at(span), param_env, ConstPropMachine::new(), ());
+        let mut ecx = InterpCx::new(tcx, span, param_env, ConstPropMachine::new(), ());
         let can_const_prop = CanConstProp::check(body);
 
         let ret = ecx
@@ -404,9 +404,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         match self.ecx.eval_const_to_op(c.literal, None) {
             Ok(op) => Some(op),
             Err(error) => {
-                // Make sure errors point at the constant.
-                self.ecx.set_span(c.span);
-                let err = error_to_const_error(&self.ecx, error);
+                let tcx = self.ecx.tcx.at(c.span);
+                let err = error_to_const_error(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal.val {
                         // Promoteds must lint and not error as the user didn't ask for them
@@ -418,17 +417,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
                         // generic functions using associated constants of the generic parameters.
-                        err.report_as_lint(
-                            self.ecx.tcx,
-                            "erroneous constant used",
-                            lint_root,
-                            Some(c.span),
-                        );
+                        err.report_as_lint(tcx, "erroneous constant used", lint_root, Some(c.span));
                     } else {
-                        err.report_as_error(self.ecx.tcx, "erroneous constant used");
+                        err.report_as_error(tcx, "erroneous constant used");
                     }
                 } else {
-                    err.report_as_error(self.ecx.tcx, "erroneous constant used");
+                    err.report_as_error(tcx, "erroneous constant used");
                 }
                 None
             }
@@ -852,7 +846,6 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         trace!("visit_statement: {:?}", statement);
         let source_info = statement.source_info;
-        self.ecx.set_span(source_info.span);
         self.source_info = Some(source_info);
         if let StatementKind::Assign(box (place, ref mut rval)) = statement.kind {
             let place_ty: Ty<'tcx> = place.ty(&self.local_decls, self.tcx).ty;
@@ -865,7 +858,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         if let Some(value) = self.get_const(place) {
                             if self.should_const_prop(value) {
                                 trace!("replacing {:?} with {:?}", rval, value);
-                                self.replace_with_const(rval, value, statement.source_info);
+                                self.replace_with_const(rval, value, source_info);
                                 if can_const_prop == ConstPropMode::FullConstProp
                                     || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
                                 {
@@ -928,7 +921,6 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
         let source_info = terminator.source_info;
-        self.ecx.set_span(source_info.span);
         self.source_info = Some(source_info);
         self.super_terminator(terminator, location);
         match &mut terminator.kind {

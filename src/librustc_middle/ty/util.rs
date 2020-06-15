@@ -705,6 +705,7 @@ impl<'tcx> ty::TyS<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
+    // FIXME: use `TyCtxtAt` instead of separate `Span`.
     pub fn is_freeze(
         &'tcx self,
         tcx: TyCtxt<'tcx>,
@@ -878,7 +879,15 @@ impl<'tcx> ty::TyS<'tcx> {
                     // Find non representable fields with their spans
                     fold_repr(def.all_fields().map(|field| {
                         let ty = field.ty(tcx, substs);
-                        let span = tcx.hir().span_if_local(field.did).unwrap_or(sp);
+                        let span = match field
+                            .did
+                            .as_local()
+                            .map(|id| tcx.hir().as_local_hir_id(id))
+                            .and_then(|id| tcx.hir().find(id))
+                        {
+                            Some(hir::Node::Field(field)) => field.ty.span,
+                            _ => sp,
+                        };
                         match is_type_structurally_recursive(
                             tcx,
                             span,

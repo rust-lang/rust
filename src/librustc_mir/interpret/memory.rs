@@ -14,7 +14,7 @@ use std::ptr;
 
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::ty::{self, query::TyCtxtAt, Instance, ParamEnv};
+use rustc_middle::ty::{self, Instance, ParamEnv, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
@@ -115,7 +115,7 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub extra: M::MemoryExtra,
 
     /// Lets us implement `HasDataLayout`, which is awfully convenient.
-    pub tcx: TyCtxtAt<'tcx>,
+    pub tcx: TyCtxt<'tcx>,
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M> {
@@ -126,7 +126,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M>
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxtAt<'tcx>, extra: M::MemoryExtra) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, extra: M::MemoryExtra) -> Self {
         Memory {
             alloc_map: M::MemoryMap::default(),
             extra_fn_ptr_map: FxHashMap::default(),
@@ -425,7 +425,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// `M::tag_allocation`.
     fn get_global_alloc(
         memory_extra: &M::MemoryExtra,
-        tcx: TyCtxtAt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         id: AllocId,
         is_write: bool,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
@@ -455,7 +455,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     throw_unsup!(ReadForeignStatic(def_id))
                 }
                 trace!("get_global_alloc: Need to compute {:?}", def_id);
-                let instance = Instance::mono(tcx.tcx, def_id);
+                let instance = Instance::mono(tcx, def_id);
                 let gid = GlobalId { instance, promoted: None };
                 // Use the raw query here to break validation cycles. Later uses of the static
                 // will call the full query anyway.
@@ -664,14 +664,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
         // Cannot be a closure because it is generic in `Tag`, `Extra`.
         fn write_allocation_track_relocs<'tcx, Tag: Copy + fmt::Debug, Extra>(
-            tcx: TyCtxtAt<'tcx>,
+            tcx: TyCtxt<'tcx>,
             allocs_to_print: &mut VecDeque<AllocId>,
             alloc: &Allocation<Tag, Extra>,
         ) {
             for &(_, target_id) in alloc.relocations().values() {
                 allocs_to_print.push_back(target_id);
             }
-            pretty::write_allocation(tcx.tcx, alloc, &mut std::io::stderr()).unwrap();
+            pretty::write_allocation(tcx, alloc, &mut std::io::stderr()).unwrap();
         }
 
         allocs.sort();
@@ -820,7 +820,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 return Ok(());
             }
         };
-        let tcx = self.tcx.tcx;
+        let tcx = self.tcx;
         self.get_raw_mut(ptr.alloc_id)?.write_bytes(&tcx, ptr, src)
     }
 
@@ -846,7 +846,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 return Ok(());
             }
         };
-        let tcx = self.tcx.tcx;
+        let tcx = self.tcx;
         let allocation = self.get_raw_mut(ptr.alloc_id)?;
 
         for idx in 0..len {
@@ -888,7 +888,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let relocations =
             self.get_raw(src.alloc_id)?.prepare_relocation_copy(self, src, size, dest, length);
 
-        let tcx = self.tcx.tcx;
+        let tcx = self.tcx;
 
         // This checks relocation edges on the src.
         let src_bytes =
