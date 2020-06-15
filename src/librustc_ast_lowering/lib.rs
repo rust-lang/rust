@@ -32,8 +32,6 @@
 
 #![feature(array_value_iter)]
 #![feature(crate_visibility_modifier)]
-#![feature(marker_trait_attr)]
-#![feature(min_specialization)]
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
 
