@@ -80,9 +80,7 @@ impl<T> RawVec<T, Global> {
     ///
     /// # Panics
     ///
-    /// * Panics if the requested capacity exceeds `usize::MAX` bytes.
-    /// * Panics on 32-bit platforms if the requested capacity exceeds
-    ///   `isize::MAX` bytes.
+    /// Panics if the requested capacity exceeds `isize::MAX` bytes.
     ///
     /// # Aborts
     ///
@@ -249,9 +247,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     ///
     /// # Panics
     ///
-    /// * Panics if the requested capacity exceeds `usize::MAX` bytes.
-    /// * Panics on 32-bit platforms if the requested capacity exceeds
-    ///   `isize::MAX` bytes.
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Aborts
     ///
@@ -316,9 +312,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     ///
     /// # Panics
     ///
-    /// * Panics if the requested capacity exceeds `usize::MAX` bytes.
-    /// * Panics on 32-bit platforms if the requested capacity exceeds
-    ///   `isize::MAX` bytes.
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Aborts
     ///
