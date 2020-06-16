@@ -5,7 +5,7 @@ use super::FunctionCx;
 use crate::traits::*;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
@@ -40,25 +40,24 @@ struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     fx: &'mir FunctionCx<'a, 'tcx, Bx>,
     dominators: Dominators<mir::BasicBlock>,
     non_ssa_locals: BitSet<mir::Local>,
-    // The location of the first visited direct assignment to each
-    // local, or an invalid location (out of bounds `block` index).
-    first_assignment: IndexVec<mir::Local, Location>,
+
+    /// The location of the first visited direct assignment to each local.
+    first_assignment: IndexVec<mir::Local, Option<Location>>,
 }
 
 impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     fn new(fx: &'mir FunctionCx<'a, 'tcx, Bx>) -> Self {
-        let invalid_location = mir::BasicBlock::new(fx.mir.basic_blocks().len()).start_location();
         let dominators = fx.mir.dominators();
         let mut analyzer = LocalAnalyzer {
             fx,
             dominators,
             non_ssa_locals: BitSet::new_empty(fx.mir.local_decls.len()),
-            first_assignment: IndexVec::from_elem(invalid_location, &fx.mir.local_decls),
+            first_assignment: IndexVec::from_elem(None, &fx.mir.local_decls),
         };
 
         // Arguments get assigned to by means of the function being called
         for arg in fx.mir.args_iter() {
-            analyzer.first_assignment[arg] = mir::START_BLOCK.start_location();
+            analyzer.assign(arg, mir::START_BLOCK.start_location());
         }
 
         analyzer
@@ -73,12 +72,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     }
 
     fn first_assignment(&self, local: mir::Local) -> Option<Location> {
-        let location = self.first_assignment[local];
-        if location.block.index() < self.fx.mir.basic_blocks().len() {
-            Some(location)
-        } else {
-            None
-        }
+        self.first_assignment[local]
     }
 
     fn not_ssa(&mut self, local: mir::Local) {
@@ -87,10 +81,10 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     }
 
     fn assign(&mut self, local: mir::Local, location: Location) {
-        if self.first_assignment(local).is_some() {
+        if self.first_assignment[local].is_some() {
             self.not_ssa(local);
         } else {
-            self.first_assignment[local] = location;
+            self.first_assignment[local] = Some(location);
         }
     }
 
