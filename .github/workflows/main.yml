@@ -57,8 +57,6 @@ jobs:
       with:
         command: rustc
         args: --release -- -Zrun_dsymutil=no
-      env:
-        CARGO_INCREMENTAL: 1
 
     - name: Test
       run: |
