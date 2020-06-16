@@ -1,53 +1,53 @@
 error: the `nomem` option was already provided
-  --> $DIR/duplicate-options.rs:7:33
+  --> $DIR/duplicate-options.rs:8:33
    |
 LL |         asm!("", options(nomem, nomem));
    |                                 ^^^^^ help: remove this option
 
 error: the `att_syntax` option was already provided
-  --> $DIR/duplicate-options.rs:9:38
+  --> $DIR/duplicate-options.rs:10:38
    |
 LL |         asm!("", options(att_syntax, att_syntax));
    |                                      ^^^^^^^^^^ help: remove this option
 
 error: the `nostack` option was already provided
-  --> $DIR/duplicate-options.rs:11:56
+  --> $DIR/duplicate-options.rs:12:56
    |
 LL |         asm!("", options(nostack, att_syntax), options(nostack));
    |                                                        ^^^^^^^ help: remove this option
 
 error: the `nostack` option was already provided
-  --> $DIR/duplicate-options.rs:13:35
+  --> $DIR/duplicate-options.rs:14:35
    |
 LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
    |                                   ^^^^^^^ help: remove this option
 
 error: the `nostack` option was already provided
-  --> $DIR/duplicate-options.rs:13:53
+  --> $DIR/duplicate-options.rs:14:53
    |
 LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
    |                                                     ^^^^^^^ help: remove this option
 
 error: the `nostack` option was already provided
-  --> $DIR/duplicate-options.rs:13:71
+  --> $DIR/duplicate-options.rs:14:71
    |
 LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
    |                                                                       ^^^^^^^ help: remove this option
 
 error: the `noreturn` option was already provided
-  --> $DIR/duplicate-options.rs:20:33
+  --> $DIR/duplicate-options.rs:21:33
    |
 LL |             options(att_syntax, noreturn),
    |                                 ^^^^^^^^ help: remove this option
 
 error: the `nomem` option was already provided
-  --> $DIR/duplicate-options.rs:21:21
+  --> $DIR/duplicate-options.rs:22:21
    |
 LL |             options(nomem, nostack),
-   |                     ^^^^^ help: remove this option
+   |                     ^^^^^^ help: remove this option
 
 error: the `noreturn` option was already provided
-  --> $DIR/duplicate-options.rs:22:21
+  --> $DIR/duplicate-options.rs:23:21
    |
 LL |             options(noreturn),
    |                     ^^^^^^^^ help: remove this option

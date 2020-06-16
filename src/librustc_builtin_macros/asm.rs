@@ -288,7 +288,12 @@ fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
         .sess
         .span_diagnostic
         .struct_span_err(span, &format!("the `{}` option was already provided", symbol));
-    err.span_suggestion(span, "remove this option", String::new(), Applicability::Unspecified);
+    err.span_suggestion(
+        span,
+        "remove this option",
+        String::new(),
+        Applicability::MachineApplicable,
+    );
     err.emit();
 }
 
@@ -301,7 +306,11 @@ fn try_set_option<'a>(
     if !args.options.contains(option) {
         args.options |= option;
     } else {
-        err_duplicate_option(p, symbol, p.prev_token.span);
+        let mut span = p.prev_token.span;
+        if p.look_ahead(0, |t| t == &token::Comma) {
+            span = span.to(p.token.span);
+        }
+        err_duplicate_option(p, symbol, span);
     }
 }
 

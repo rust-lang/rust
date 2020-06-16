@@ -5,22 +5,22 @@
 
 fn main() {
     unsafe {
-        asm!("", options(nomem, nomem));
+        asm!("", options(nomem, ));
         //~^ ERROR the `nomem` option was already provided
-        asm!("", options(att_syntax, att_syntax));
+        asm!("", options(att_syntax, ));
         //~^ ERROR the `att_syntax` option was already provided
-        asm!("", options(nostack, att_syntax), options(nostack));
+        asm!("", options(nostack, att_syntax), options());
         //~^ ERROR the `nostack` option was already provided
-        asm!("", options(nostack, nostack), options(nostack), options(nostack));
+        asm!("", options(nostack, ), options(), options());
         //~^ ERROR the `nostack` option was already provided
         //~| ERROR the `nostack` option was already provided
         //~| ERROR the `nostack` option was already provided
         asm!(
             "",
             options(nomem, noreturn),
-            options(att_syntax, noreturn), //~ ERROR the `noreturn` option was already provided
-            options(nomem, nostack), //~ ERROR the `nomem` option was already provided
-            options(noreturn), //~ ERROR the `noreturn` option was already provided
+            options(att_syntax, ), //~ ERROR the `noreturn` option was already provided
+            options( nostack), //~ ERROR the `nomem` option was already provided
+            options(), //~ ERROR the `noreturn` option was already provided
         );
     }
 }
