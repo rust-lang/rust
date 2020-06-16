@@ -12,7 +12,7 @@ use rustc_middle::mir::visit::{
 };
 use rustc_middle::mir::{self, Location, TerminatorKind};
 use rustc_middle::ty;
-use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_target::abi::LayoutOf;
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -27,18 +27,8 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let ty = fx.monomorphize(&decl.ty);
         debug!("local {:?} has type `{}`", local, ty);
         let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
-        if fx.cx.is_backend_immediate(layout) {
-            // These sorts of types are immediates that we can store
-            // in an Value without an alloca.
-        } else if fx.cx.is_backend_scalar_pair(layout) {
-            // We allow pairs and uses of any of their 2 fields.
-        } else {
-            // These sorts of types require an alloca. Note that
-            // is_llvm_immediate() may *still* be true, particularly
-            // for newtypes, but we currently force some types
-            // (e.g., structs) into an alloca unconditionally, just so
-            // that we don't have to deal with having two pathways
-            // (gep vs extractvalue etc).
+
+        if ty_requires_alloca(&analyzer.fx, layout) {
             analyzer.not_ssa(local);
         }
     }
@@ -132,7 +122,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
 
                 if let mir::ProjectionElem::Field(..) = elem {
                     let layout = cx.spanned_layout_of(base_ty.ty, span);
-                    if cx.is_backend_immediate(layout) || cx.is_backend_scalar_pair(layout) {
+                    if self.ty_requires_alloca(layout) {
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
                         // which would trigger `not_ssa` on locals.
@@ -445,4 +435,15 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
     propagate(&mut result, mir);
     debug!("cleanup_kinds: result={:?}", result);
     result
+}
+
+/// Returns `true` if locals of this type need to be allocated on the stack.
+fn ty_requires_alloca<'a, 'tcx>(
+    fx: &FunctionCx<'a, 'tcx, impl BuilderMethods<'a, 'tcx>>,
+    ty: TyAndLayout<'tcx>,
+) -> bool {
+    // Currently, this returns `true` for ADTs that are otherwise small enough to qualify. For
+    // example, `struct Newtype(i32)`. This way, every type has a single way to extract data
+    // (gep, extractvalue, etc.).
+    !fx.cx.is_backend_immediate(ty) && !fx.cx.is_backend_scalar_pair(ty)
 }
