@@ -2662,6 +2662,13 @@ impl AsRef<Path> for Cow<'_, OsStr> {
     }
 }
 
+#[stable(feature = "cow_str_as_ref_path", since = "1.45.0")]
+impl AsRef<Path> for Cow<'_, str> {
+    fn as_ref(&self) -> &Path {
+        Path::new::<str>(self.as_ref())
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for OsString {
     fn as_ref(&self) -> &Path {
