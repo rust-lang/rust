@@ -362,7 +362,12 @@ impl PatStack {
         cx: &MatchCheckCtx,
         constructor: &Constructor,
     ) -> MatchCheckResult<Option<PatStack>> {
-        let result = match (self.head().as_pat(cx), constructor) {
+        if self.is_empty() {
+            return Ok(None);
+        }
+
+        let head_pat = self.head().as_pat(cx);
+        let result = match (head_pat, constructor) {
             (Pat::Tuple { args: ref pat_ids, ellipsis }, Constructor::Tuple { arity: _ }) => {
                 if ellipsis.is_some() {
                     // If there are ellipsis here, we should add the correct number of
@@ -531,7 +536,7 @@ impl Matrix {
     }
 
     fn heads(&self) -> Vec<PatIdOrWild> {
-        self.0.iter().map(|p| p.head()).collect()
+        self.0.iter().flat_map(|p| p.get_head()).collect()
     }
 
     /// Computes `D(self)` for each contained PatStack.
@@ -1986,6 +1991,25 @@ mod tests {
             fn test_fn() {
                 match loop {} {
                     Either::A => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn or_pattern_panic() {
+        let content = r"
+            pub enum Category {
+                Infinity,
+                Zero,
+            }
+
+            fn panic(a: Category, b: Category) {
+                match (a, b) {
+                    (Category::Zero | Category::Infinity, _) => {}
+                    (_, Category::Zero | Category::Infinity) => {}
                 }
             }
         ";
