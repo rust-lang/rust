@@ -189,8 +189,7 @@ fn validate_hir_id_for_typeck_tables(
         if hir_id.owner != hir_owner {
             ty::tls::with(|tcx| {
                 bug!(
-                    "node {} with HirId::owner {:?} cannot be placed in \
-                     TypeckTables with hir_owner {:?}",
+                    "node {} with HirId::owner {:?} cannot be placed in TypeckTables with hir_owner {:?}",
                     tcx.hir().node_to_string(hir_id),
                     hir_id.owner,
                     hir_owner
