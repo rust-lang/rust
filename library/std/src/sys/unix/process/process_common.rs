@@ -87,6 +87,7 @@ pub struct Command {
     gid: Option<gid_t>,
     saw_nul: bool,
     closures: Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>>,
+    groups: Option<Box<[gid_t]>>,
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
@@ -148,6 +149,7 @@ impl Command {
             gid: None,
             saw_nul,
             closures: Vec::new(),
+            groups: None,
             stdin: None,
             stdout: None,
             stderr: None,
@@ -182,6 +184,9 @@ impl Command {
     }
     pub fn gid(&mut self, id: gid_t) {
         self.gid = Some(id);
+    }
+    pub fn groups(&mut self, groups: &[gid_t]) {
+        self.groups = Some(Box::from(groups));
     }
 
     pub fn saw_nul(&self) -> bool {
@@ -225,6 +230,10 @@ impl Command {
     #[allow(dead_code)]
     pub fn get_gid(&self) -> Option<gid_t> {
         self.gid
+    }
+    #[allow(dead_code)]
+    pub fn get_groups(&self) -> Option<&[gid_t]> {
+        self.groups.as_deref()
     }
 
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {
