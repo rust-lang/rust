@@ -1622,6 +1622,7 @@ impl<T: Ord> Ord for WithOptParam<T> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    #[inline(always)]
     pub fn with_opt_param<T: IntoQueryParam<DefId> + Copy>(self, did: T) -> WithOptParam<T> {
         WithOptParam { did, param_did: self.const_param_of(did) }
     }

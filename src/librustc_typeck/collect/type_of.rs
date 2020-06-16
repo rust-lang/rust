@@ -17,6 +17,9 @@ use rustc_trait_selection::traits;
 use super::ItemCtxt;
 use super::{bad_placeholder_type, is_suggestable_infer_ty};
 
+/// Computes the relevant generic parameter for a potential generic const argument.
+///
+/// This should be called using the query `tcx.const_param_of`.
 pub(super) fn const_param_of(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     use hir::*;
 
@@ -127,7 +130,7 @@ pub(super) fn const_param_of(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
                     .nth(arg_index)
                     .map(|param| param.def_id)
             }
-            _ => return None,
+            _ => None,
         }
     } else {
         None

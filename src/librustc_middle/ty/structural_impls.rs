@@ -844,9 +844,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         Self {
             substs: self.substs.fold_with(folder),
             def: match self.def {
-                // We don't fold the param `DefId` here,
-                // as it should only be used for `type_of`.
-                Item(did, param_did) => Item(did.fold_with(folder), param_did),
+                Item(did, param_did) => Item(did.fold_with(folder), param_did.fold_with(folder)),
                 VtableShim(did) => VtableShim(did.fold_with(folder)),
                 ReifyShim(did) => ReifyShim(did.fold_with(folder)),
                 Intrinsic(did) => Intrinsic(did.fold_with(folder)),

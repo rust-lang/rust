@@ -89,8 +89,8 @@ rustc_queries! {
             desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
-        /// Computes the `DefId` of the corresponding const parameter of a const argument.
-        /// Returns `None` if `def_id` is not a const argument.
+        /// Computes the `DefId` of the corresponding const parameter in case the `key` is a
+        /// const argument and returns `None` otherwise.
         ///
         /// ```rust
         /// let a = foo::<7>();
@@ -98,6 +98,10 @@ rustc_queries! {
         ///
         /// fn foo<const N: usize>()
         /// //           ^ returns this `DefId`.
+        ///
+        /// fn bar() {
+        /// // ^ While calling `const_param_of` for other bodies returns `None`.
+        /// }
         /// ```
         query const_param_of(key: DefId) -> Option<DefId> {
             cache_on_disk_if { key.is_local() }

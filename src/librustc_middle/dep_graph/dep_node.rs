@@ -379,6 +379,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for ty::WithOptParam<DefId> {
         dep_node.extract_def_id(tcx).map(|def_id| tcx.with_opt_param(def_id))
     }
 }
+
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for ty::WithOptParam<LocalDefId> {
     #[inline]
     fn can_reconstruct_query_key() -> bool {
