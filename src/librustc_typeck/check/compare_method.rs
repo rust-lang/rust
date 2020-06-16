@@ -78,15 +78,16 @@ fn compare_predicate_entailment<'tcx>(
     // `regionck_item` expects.
     let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id.expect_local());
 
-    let cause = ObligationCause {
-        span: impl_m_span,
-        body_id: impl_m_hir_id,
-        code: ObligationCauseCode::CompareImplMethodObligation {
+    // We sometimes modify the span further down.
+    let mut cause = ObligationCause::new(
+        impl_m_span,
+        impl_m_hir_id,
+        ObligationCauseCode::CompareImplMethodObligation {
             item_name: impl_m.ident.name,
             impl_item_def_id: impl_m.def_id,
             trait_item_def_id: trait_m.def_id,
         },
-    };
+    );
 
     // This code is best explained by example. Consider a trait:
     //
@@ -280,7 +281,7 @@ fn compare_predicate_entailment<'tcx>(
                 &infcx, param_env, &terr, &cause, impl_m, impl_sig, trait_m, trait_sig,
             );
 
-            let cause = ObligationCause { span: impl_err_span, ..cause };
+            cause.make_mut().span = impl_err_span;
 
             let mut diag = struct_span_err!(
                 tcx.sess,
@@ -965,8 +966,11 @@ crate fn compare_const_impl<'tcx>(
         // Compute placeholder form of impl and trait const tys.
         let impl_ty = tcx.type_of(impl_c.def_id);
         let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
-        let mut cause = ObligationCause::misc(impl_c_span, impl_c_hir_id);
-        cause.code = ObligationCauseCode::CompareImplConstObligation;
+        let mut cause = ObligationCause::new(
+            impl_c_span,
+            impl_c_hir_id,
+            ObligationCauseCode::CompareImplConstObligation,
+        );
 
         // There is no "body" here, so just pass dummy id.
         let impl_ty =
@@ -992,7 +996,7 @@ crate fn compare_const_impl<'tcx>(
 
             // Locate the Span containing just the type of the offending impl
             match tcx.hir().expect_impl_item(impl_c_hir_id).kind {
-                ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
+                ImplItemKind::Const(ref ty, _) => cause.make_mut().span = ty.span,
                 _ => bug!("{:?} is not a impl const", impl_c),
             }
 
@@ -1095,15 +1099,15 @@ fn compare_type_predicate_entailment(
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_ty_hir_id = tcx.hir().as_local_hir_id(impl_ty.def_id.expect_local());
-    let cause = ObligationCause {
-        span: impl_ty_span,
-        body_id: impl_ty_hir_id,
-        code: ObligationCauseCode::CompareImplTypeObligation {
+    let cause = ObligationCause::new(
+        impl_ty_span,
+        impl_ty_hir_id,
+        ObligationCauseCode::CompareImplTypeObligation {
             item_name: impl_ty.ident.name,
             impl_item_def_id: impl_ty.def_id,
             trait_item_def_id: trait_ty.def_id,
         },
-    };
+    );
 
     debug!("compare_type_predicate_entailment: trait_to_impl_substs={:?}", trait_to_impl_substs);
 
