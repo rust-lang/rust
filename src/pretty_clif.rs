@@ -203,16 +203,22 @@ impl<B: Backend + 'static> FunctionCx<'_, '_, B> {
 pub(crate) fn write_clif_file<'tcx>(
     tcx: TyCtxt<'tcx>,
     postfix: &str,
+    isa: Option<&dyn cranelift_codegen::isa::TargetIsa>,
     instance: Instance<'tcx>,
-    func: &cranelift_codegen::ir::Function,
+    context: &cranelift_codegen::Context,
     mut clif_comments: &CommentWriter,
-    value_ranges: Option<&cranelift_codegen::ValueLabelsRanges>,
 ) {
+    use std::io::Write;
+
     if !cfg!(debug_assertions) && !tcx.sess.opts.output_types.contains_key(&OutputType::LlvmAssembly) {
         return;
     }
 
-    use std::io::Write;
+    let value_ranges = isa.map(|isa| {
+        context
+            .build_value_labels_ranges(isa)
+            .expect("value location ranges")
+    });
 
     let symbol_name = tcx.symbol_name(instance).name.as_str();
     let clif_file_name = format!(
@@ -227,12 +233,12 @@ pub(crate) fn write_clif_file<'tcx>(
     cranelift_codegen::write::decorate_function(
         &mut clif_comments,
         &mut clif,
-        &func,
+        &context.func,
         &DisplayFunctionAnnotations {
             isa: Some(&*crate::build_isa(
                 tcx.sess, true, /* PIC doesn't matter here */
             )),
-            value_ranges,
+            value_ranges: value_ranges.as_ref(),
         },
     )
     .unwrap();

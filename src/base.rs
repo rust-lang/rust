@@ -73,7 +73,14 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let local_map = fx.local_map;
     let cold_blocks = fx.cold_blocks;
 
-    crate::pretty_clif::write_clif_file(cx.tcx, "unopt", instance, &context.func, &clif_comments, None);
+    crate::pretty_clif::write_clif_file(
+        cx.tcx,
+        "unopt",
+        None,
+        instance,
+        &context,
+        &clif_comments,
+    );
 
     // Verify function
     verify_func(tcx, &clif_comments, &context.func);
@@ -101,20 +108,14 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     );
 
     // Write optimized function to file for debugging
-    {
-        let value_ranges = context
-            .build_value_labels_ranges(cx.module.isa())
-            .expect("value location ranges");
-
-        crate::pretty_clif::write_clif_file(
-            cx.tcx,
-            "opt",
-            instance,
-            &context.func,
-            &clif_comments,
-            Some(&value_ranges),
-        );
-    }
+    crate::pretty_clif::write_clif_file(
+        cx.tcx,
+        "opt",
+        Some(cx.module.isa()),
+        instance,
+        &context,
+        &clif_comments,
+    );
 
     // Define debuginfo for function
     let isa = cx.module.isa();
