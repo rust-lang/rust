@@ -403,7 +403,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 #[track_caller]
 pub fn panic(_msg: &str) -> ! {
     unsafe {
-        libc::puts("Panicking\n\0" as *const str as *const u8);
+        libc::puts("Panicking\n\0" as *const str as *const i8);
         intrinsics::abort();
     }
 }
@@ -502,9 +502,10 @@ pub mod intrinsics {
 }
 
 pub mod libc {
-    #[link(name = "c")]
+    #[cfg_attr(not(windows), link(name = "c"))]
+    #[cfg_attr(windows, link(name = "msvcrt"))]
     extern "C" {
-        pub fn puts(s: *const u8) -> i32;
+        pub fn puts(s: *const i8) -> i32;
         pub fn printf(format: *const i8, ...) -> i32;
         pub fn malloc(size: usize) -> *mut u8;
         pub fn free(ptr: *mut u8);

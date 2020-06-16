@@ -12,7 +12,7 @@ extern crate mini_core;
 use mini_core::*;
 use mini_core::libc::*;
 
-unsafe extern "C" fn my_puts(s: *const u8) {
+unsafe extern "C" fn my_puts(s: *const i8) {
     puts(s);
 }
 
@@ -37,7 +37,7 @@ trait SomeTrait {
 impl SomeTrait for &'static str {
     fn object_safe(&self) {
         unsafe {
-            puts(*self as *const str as *const u8);
+            puts(*self as *const str as *const i8);
         }
     }
 }
@@ -52,7 +52,7 @@ struct NoisyDropInner;
 impl Drop for NoisyDrop {
     fn drop(&mut self) {
         unsafe {
-            puts(self.text as *const str as *const u8);
+            puts(self.text as *const str as *const i8);
         }
     }
 }
@@ -60,7 +60,7 @@ impl Drop for NoisyDrop {
 impl Drop for NoisyDropInner {
     fn drop(&mut self) {
         unsafe {
-            puts("Inner got dropped!\0" as *const str as *const u8);
+            puts("Inner got dropped!\0" as *const str as *const i8);
         }
     }
 }
@@ -82,9 +82,9 @@ fn start<T: Termination + 'static>(
     argv: *const *const u8,
 ) -> isize {
     if argc == 3 {
-        unsafe { puts(*argv); }
-        unsafe { puts(*((argv as usize + intrinsics::size_of::<*const u8>()) as *const *const u8)); }
-        unsafe { puts(*((argv as usize + 2 * intrinsics::size_of::<*const u8>()) as *const *const u8)); }
+        unsafe { puts(*argv as *const i8); }
+        unsafe { puts(*((argv as usize + intrinsics::size_of::<*const u8>()) as *const *const i8)); }
+        unsafe { puts(*((argv as usize + 2 * intrinsics::size_of::<*const u8>()) as *const *const i8)); }
     }
 
     main().report();
@@ -154,11 +154,11 @@ fn main() {
         printf("Hello %s\n\0" as *const str as *const i8, "printf\0" as *const str as *const i8);
 
         let hello: &[u8] = b"Hello\0" as &[u8; 6];
-        let ptr: *const u8 = hello as *const [u8] as *const u8;
+        let ptr: *const i8 = hello as *const [u8] as *const i8;
         puts(ptr);
 
         let world: Box<&str> = box "World!\0";
-        puts(*world as *const str as *const u8);
+        puts(*world as *const str as *const i8);
         world as Box<dyn SomeTrait>;
 
         assert_eq!(intrinsics::bitreverse(0b10101000u8), 0b00010101u8);
@@ -242,13 +242,13 @@ fn main() {
     assert_eq!(((|()| 42u8) as fn(()) -> u8)(()), 42);
 
     extern {
-        #[linkage = "weak"]
+        #[linkage = "extern_weak"]
         static ABC: *const u8;
     }
 
     {
         extern {
-            #[linkage = "weak"]
+            #[linkage = "extern_weak"]
             static ABC: *const u8;
         }
     }
@@ -351,7 +351,7 @@ fn test_tls() {
         // TLS of main thread must not have been changed by the other thread.
         assert_eq!(TLS, 42);
 
-        puts("TLS works!\n\0" as *const str as *const u8);
+        puts("TLS works!\n\0" as *const str as *const i8);
     }
 }
 
