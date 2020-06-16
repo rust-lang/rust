@@ -82,6 +82,11 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// and a negative impl
     allow_negative_impls: bool,
 
+    /// If `true`, propagate `OverflowError` instead of calling `report_overflow_error`,
+    /// regardless of `TraitQueryMode.` This is a hack used by `rustdoc` to avoid
+    /// aborting the compilation session when overflow occurs.
+    force_propagate_overflow: bool,
+
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
     /// rather than immediately reported because we do not have accurate spans.
@@ -174,6 +179,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
             query_mode: TraitQueryMode::Standard,
+            force_propagate_overflow: false,
         }
     }
 
@@ -185,21 +191,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
             query_mode: TraitQueryMode::Standard,
+            force_propagate_overflow: false,
         }
     }
 
-    pub fn with_negative(
+    /// Only for use by rustdoc
+    pub fn with_negative_and_force_overflow(
         infcx: &'cx InferCtxt<'cx, 'tcx>,
-        allow_negative_impls: bool,
     ) -> SelectionContext<'cx, 'tcx> {
-        debug!("with_negative({:?})", allow_negative_impls);
+        debug!("with_negative_and_force_overflow()");
         SelectionContext {
             infcx,
             freshener: infcx.freshener(),
             intercrate: false,
             intercrate_ambiguity_causes: None,
-            allow_negative_impls,
+            allow_negative_impls: true,
             query_mode: TraitQueryMode::Standard,
+            force_propagate_overflow: true,
         }
     }
 
@@ -215,6 +223,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
             query_mode,
+            force_propagate_overflow: false,
         }
     }
 
@@ -281,7 +290,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Err(SelectionError::Overflow) => {
                 // In standard mode, overflow must have been caught and reported
                 // earlier.
-                assert!(self.query_mode == TraitQueryMode::Canonical);
+                assert!(
+                    self.query_mode == TraitQueryMode::Canonical || self.force_propagate_overflow
+                );
                 return Err(SelectionError::Overflow);
             }
             Err(e) => {
@@ -295,7 +306,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match self.confirm_candidate(obligation, candidate) {
             Err(SelectionError::Overflow) => {
-                assert!(self.query_mode == TraitQueryMode::Canonical);
+                assert!(
+                    self.query_mode == TraitQueryMode::Canonical || self.force_propagate_overflow
+                );
                 Err(SelectionError::Overflow)
             }
             Err(e) => Err(e),
@@ -908,6 +921,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if !self.infcx.tcx.sess.recursion_limit().value_within_limit(obligation.recursion_depth) {
             match self.query_mode {
                 TraitQueryMode::Standard => {
+                    if self.force_propagate_overflow {
+                        return Err(OverflowError);
+                    }
                     self.infcx().report_overflow_error(error_obligation, true);
                 }
                 TraitQueryMode::Canonical => {
