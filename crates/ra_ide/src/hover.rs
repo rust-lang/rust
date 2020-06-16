@@ -589,11 +589,8 @@ fn try_resolve_path(db: &RootDatabase, definition: &Definition, link: &str) -> O
     let module = definition.module(db)?;
     let krate = module.krate();
     let import_map = db.import_map(krate.into());
-    // TODO: It should be possible to fall back to not-necessarilly-public paths if we can't find a public one,
-    // then hope rustdoc was run locally with `--document-private-items`
-    let base = import_map.path_of(ns)?;
     let base = once(format!("{}", krate.display_name(db)?))
-        .chain(base.segments.iter().map(|name| format!("{}", name)))
+        .chain(import_map.path_of(ns)?.segments.iter().map(|name| format!("{}", name)))
         .join("/");
 
     get_doc_url(db, &krate)
