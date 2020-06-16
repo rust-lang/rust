@@ -5,6 +5,7 @@ use super::*;
 
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
+use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{Region, RegionVid};
 
@@ -88,7 +89,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let trait_pred = ty::Binder::bind(trait_ref);
 
         let bail_out = tcx.infer_ctxt().enter(|infcx| {
-            let mut selcx = SelectionContext::with_negative(&infcx, true);
+            let mut selcx = SelectionContext::with_negative_and_force_overflow(&infcx);
             let result = selcx.select(&Obligation::new(
                 ObligationCause::dummy(),
                 orig_env,
@@ -186,11 +187,26 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             // At this point, we already have all of the bounds we need. FulfillmentContext is used
             // to store all of the necessary region/lifetime bounds in the InferContext, as well as
             // an additional sanity check.
-            let mut fulfill = FulfillmentContext::new();
+            let mut fulfill = FulfillmentContext::new_rustdoc();
             fulfill.register_bound(&infcx, full_env, ty, trait_did, ObligationCause::dummy());
-            fulfill.select_all_or_error(&infcx).unwrap_or_else(|e| {
-                panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, e)
-            });
+            if let Err(errs) = fulfill.select_all_or_error(&infcx) {
+                if errs.iter().all(|err| {
+                    matches!(
+                        err.code,
+                        FulfillmentErrorCode::CodeSelectionError(SelectionError::Overflow)
+                    )
+                }) {
+                    info!(
+                        "rustdoc: overflow occured when processing auto-trait {:?} for ty {:?}",
+                        trait_did, ty
+                    );
+                } else {
+                    panic!(
+                        "Failed to fulfill: {:?} {:?} {:?} : errors {:?}",
+                        ty, trait_did, orig_env, errs
+                    );
+                }
+            }
 
             let body_id_map: FxHashMap<_, _> = infcx
                 .inner
@@ -268,9 +284,10 @@ impl AutoTraitFinder<'tcx> {
         fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
         only_projections: bool,
     ) -> Option<(ty::ParamEnv<'tcx>, ty::ParamEnv<'tcx>)> {
+        debug!("evaluate_predicates: trait_did={:?} ty={:?}", trait_did, ty);
         let tcx = infcx.tcx;
 
-        let mut select = SelectionContext::with_negative(&infcx, true);
+        let mut select = SelectionContext::with_negative_and_force_overflow(&infcx);
 
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
@@ -290,9 +307,21 @@ impl AutoTraitFinder<'tcx> {
         while let Some(pred) = predicates.pop_front() {
             infcx.clear_caches();
 
-            if !already_visited.insert(pred) {
+            let mut _orig_values = OriginalQueryValues::default();
+            // Canonicalize the predicate before inserting it into our map.
+            // In some cases, we may repeatedly generate a predicate with fresh
+            // inference variables which is otherwise identical to an existing predicate.
+            // To avoid infinitely looping, we treat these predicates as equivalent
+            // for the purposes of determining when to stop.
+            //
+            // We check that our computed `ParamEnv` is sufficient using `FulfillmentContext`,
+            // so we should get an error if we skip over a necessary predicate.
+            let canonical_pred = infcx.canonicalize_query(&pred, &mut _orig_values);
+
+            if !already_visited.insert(canonical_pred) {
                 continue;
             }
+            debug!("evaluate_predicates: predicate={:?}", pred);
 
             // Call `infcx.resolve_vars_if_possible` to see if we can
             // get rid of any inference variables.
@@ -341,7 +370,7 @@ impl AutoTraitFinder<'tcx> {
                 &Ok(None) => {}
                 &Err(SelectionError::Unimplemented) => {
                     if self.is_param_no_infer(pred.skip_binder().trait_ref.substs) {
-                        already_visited.remove(&pred);
+                        already_visited.remove(&canonical_pred);
                         self.add_user_pred(
                             &mut user_computed_preds,
                             ty::PredicateKind::Trait(pred, hir::Constness::NotConst)
