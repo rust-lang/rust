@@ -55,6 +55,7 @@ static M512I: Type = Type::M512I;
 static M512D: Type = Type::M512D;
 static MMASK8: Type = Type::MMASK8;
 static MMASK16: Type = Type::MMASK16;
+static MM_CMPINT_ENUM: Type = Type::MM_CMPINT_ENUM;
 
 static TUPLE: Type = Type::Tuple;
 static CPUID: Type = Type::CpuidResult;
@@ -79,6 +80,7 @@ enum Type {
     M512I,
     MMASK8,
     MMASK16,
+    MM_CMPINT_ENUM,
     Tuple,
     CpuidResult,
     Never,
@@ -218,9 +220,6 @@ fn verify_all_signatures() {
                 "_mm256_undefined_si256",
                 "_bextr2_u32",
                 "_mm_tzcnt_32",
-                "_mm512_setzero_si512",
-                "_mm512_setr_epi32",
-                "_mm512_set1_epi64",
                 "_m_paddb",
                 "_m_paddw",
                 "_m_paddd",
@@ -460,6 +459,10 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             // The XML file names IFMA as "avx512ifma52", while Rust calls
             // it "avx512ifma".
             "avx512ifma52" => String::from("avx512ifma"),
+            // Some AVX512f intrinsics are also supported by Knight's Corner.
+            // The XML lists them as avx512f/kncni, but we are solely gating
+            // them behind avx512f since we don't have a KNC feature yet.
+            "avx512f/kncni" => String::from("avx512f"),
             // See: https://github.com/rust-lang/stdarch/issues/738
             // The intrinsics guide calls `f16c` `fp16c` in disagreement with
             // Intel's architecture manuals.
@@ -664,6 +667,7 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
 
         (&Type::MMASK8, "__mmask8") => {}
         (&Type::MMASK16, "__mmask16") => {}
+        (&Type::MM_CMPINT_ENUM, "_MM_CMPINT_ENUM") => {}
 
         // This is a macro (?) in C which seems to mutate its arguments, but
         // that means that we're taking pointers to arguments in rust

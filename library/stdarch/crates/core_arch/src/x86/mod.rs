@@ -350,6 +350,10 @@ pub type __mmask16 = u16;
 #[allow(non_camel_case_types)]
 pub type __mmask8 = u8;
 
+/// The `_MM_CMPINT_ENUM` type used to specify comparison operations in AVX-512 intrinsics.
+#[allow(non_camel_case_types)]
+pub type _MM_CMPINT_ENUM = i32;
+
 #[cfg(test)]
 mod test;
 #[cfg(test)]
@@ -506,8 +510,31 @@ impl m256iExt for __m256i {
 
 #[allow(non_camel_case_types)]
 #[unstable(feature = "stdimd_internal", issue = "none")]
+pub(crate) trait m256Ext: Sized {
+    fn as_m256(self) -> __m256;
+
+    #[inline]
+    fn as_f32x8(self) -> crate::core_arch::simd::f32x8 {
+        unsafe { transmute(self.as_m256()) }
+    }
+}
+
+impl m256Ext for __m256 {
+    #[inline]
+    fn as_m256(self) -> Self {
+        self
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[unstable(feature = "stdimd_internal", issue = "none")]
 pub(crate) trait m512iExt: Sized {
     fn as_m512i(self) -> __m512i;
+
+    #[inline]
+    fn as_u32x16(self) -> crate::core_arch::simd::u32x16 {
+        unsafe { transmute(self.as_m512i()) }
+    }
 
     #[inline]
     fn as_i32x16(self) -> crate::core_arch::simd::i32x16 {
@@ -528,6 +555,42 @@ pub(crate) trait m512iExt: Sized {
 impl m512iExt for __m512i {
     #[inline]
     fn as_m512i(self) -> Self {
+        self
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[unstable(feature = "stdimd_internal", issue = "none")]
+pub(crate) trait m512Ext: Sized {
+    fn as_m512(self) -> __m512;
+
+    #[inline]
+    fn as_f32x16(self) -> crate::core_arch::simd::f32x16 {
+        unsafe { transmute(self.as_m512()) }
+    }
+}
+
+impl m512Ext for __m512 {
+    #[inline]
+    fn as_m512(self) -> Self {
+        self
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[unstable(feature = "stdimd_internal", issue = "none")]
+pub(crate) trait m512dExt: Sized {
+    fn as_m512d(self) -> __m512d;
+
+    #[inline]
+    fn as_f64x8(self) -> crate::core_arch::simd::f64x8 {
+        unsafe { transmute(self.as_m512d()) }
+    }
+}
+
+impl m512dExt for __m512d {
+    #[inline]
+    fn as_m512d(self) -> Self {
         self
     }
 }

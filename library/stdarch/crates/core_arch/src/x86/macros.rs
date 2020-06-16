@@ -92,6 +92,22 @@ macro_rules! constify_imm2 {
     };
 }
 
+// For gather instructions, the only valid values for scale are 1, 2, 4 and 8.
+// This macro enforces that.
+#[allow(unused)]
+macro_rules! constify_imm8_gather {
+    ($imm8:expr, $expand:ident) => {
+        #[allow(overflowing_literals)]
+        match ($imm8) {
+            1 => $expand!(1),
+            2 => $expand!(2),
+            4 => $expand!(4),
+            8 => $expand!(8),
+            _ => panic!("Only 1, 2, 4, and 8 are valid values"),
+        }
+    };
+}
+
 #[cfg(test)]
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr, $eps:expr) => {{
