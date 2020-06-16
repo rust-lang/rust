@@ -12,6 +12,7 @@ fi
 
 HOST_TRIPLE=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
 TARGET_TRIPLE=$HOST_TRIPLE
+#TARGET_TRIPLE="x86_64-pc-windows-gnu"
 #TARGET_TRIPLE="aarch64-unknown-linux-gnu"
 
 linker=''
@@ -21,6 +22,9 @@ if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
       # We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
       linker='-Clinker=aarch64-linux-gnu-gcc'
       RUN_WRAPPER='qemu-aarch64 -L /usr/aarch64-linux-gnu'
+   elif [[ "$TARGET_TRIPLE" == "x86_64-pc-windows-gnu" ]]; then
+      # We are cross-compiling for Windows. Run tests in wine.
+      RUN_WRAPPER='wine'
    else
       echo "Unknown non-native platform"
    fi

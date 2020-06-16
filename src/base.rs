@@ -679,6 +679,17 @@ fn trans_stmt<'tcx>(
 
                     crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
                 }
+                // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
+                _ if fx.tcx.symbol_name(fx.instance).name.as_str().starts_with("___chkstk") => {
+                    crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
+                }
+                _ if fx.tcx.symbol_name(fx.instance).name.as_str() == "__alloca" => {
+                    crate::trap::trap_unimplemented(fx, "Alloca is not supported");
+                }
+                // Used in sys::windows::abort_internal
+                "int $$0x29" => {
+                    crate::trap::trap_unimplemented(fx, "Windows abort");
+                }
                 _ => unimpl_fatal!(fx.tcx, stmt.source_info.span, "Inline assembly is not supported"),
             }
         }
