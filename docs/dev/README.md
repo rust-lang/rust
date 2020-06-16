@@ -1,6 +1,6 @@
 # Contributing Quick Start
 
-Rust Analyzer is just a usual rust project, which is organized as a Cargo
+Rust Analyzer is an ordinary Rust project, which is organized as a Cargo
 workspace, builds on stable and doesn't depend on C libraries. So, just
 
 ```
@@ -65,7 +65,7 @@ directory).
 
 # Launching rust-analyzer
 
-Debugging language server can be tricky: LSP is rather chatty, so driving it
+Debugging the language server can be tricky: LSP is rather chatty, so driving it
 from the command line is not really feasible, driving it via VS Code requires
 interacting with two processes.
 
@@ -73,14 +73,14 @@ For this reason, the best way to see how rust-analyzer works is to find a
 relevant test and execute it (VS Code includes an action for running a single
 test).
 
-However, launching a VS Code instance with locally build language server is
+However, launching a VS Code instance with a locally built language server is
 possible. There's **"Run Extension (Debug Build)"** launch configuration for this.
 
 In general, I use one of the following workflows for fixing bugs and
 implementing features.
 
 If the problem concerns only internal parts of rust-analyzer (i.e. I don't need
-to touch `rust-analyzer` crate or TypeScript code), there is a unit-test for it.
+to touch the `rust-analyzer` crate or TypeScript code), there is a unit-test for it.
 So, I use **Rust Analyzer: Run** action in VS Code to run this single test, and
 then just do printf-driven development/debugging. As a sanity check after I'm
 done, I use `cargo xtask install --server` and **Reload Window** action in VS
@@ -88,8 +88,8 @@ Code to sanity check that the thing works as I expect.
 
 If the problem concerns only the VS Code extension, I use **Run Installed Extension**
 launch configuration from `launch.json`. Notably, this uses the usual
-`rust-analyzer` binary from `PATH`. For this it is important to have the following
-in `setting.json` file:
+`rust-analyzer` binary from `PATH`. For this, it is important to have the following
+in your `settings.json` file:
 ```json
 {
     "rust-analyzer.serverPath": "rust-analyzer"
@@ -107,7 +107,7 @@ things up, sometimes I open a temporary hello-world project which has
 `"rust-analyzer.withSysroot": false` in `.code/settings.json`. This flag causes
 rust-analyzer to skip loading the sysroot, which greatly reduces the amount of
 things rust-analyzer needs to do, and makes printf's more useful. Note that you
-should only use `eprint!` family of macros for debugging: stdout is used for LSP
+should only use the `eprint!` family of macros for debugging: stdout is used for LSP
 communication, and `print!` would break it.
 
 If I need to fix something simultaneously in the server and in the client, I
@@ -119,20 +119,20 @@ performance optimizations, or for bug minimization.
 
 # Code Style & Review Process
 
-Our approach to "clean code" is two fold:
+Our approach to "clean code" is two-fold:
 
 * We generally don't block PRs on style changes.
 * At the same time, all code in rust-analyzer is constantly refactored.
 
-It is explicitly OK for reviewer to flag only some nits in the PR, and than send a follow up cleanup PR for things which are easier to explain by example, cc-ing the original author.
-Sending small cleanup PRs (like rename a single local variable) is encouraged.
+It is explicitly OK for a reviewer to flag only some nits in the PR, and then send a follow-up cleanup PR for things which are easier to explain by example, cc-ing the original author.
+Sending small cleanup PRs (like renaming a single local variable) is encouraged.
 
 ## Scale of Changes
 
 Everyone knows that it's better to send small & focused pull requests.
 The problem is, sometimes you *have* to, eg, rewrite the whole compiler, and that just doesn't fit into a set of isolated PRs.
 
-The main thing too keep an eye on is the boundaries between various components.
+The main things to keep an eye on are the boundaries between various components.
 There are three kinds of changes:
 
 1. Internals of a single component are changed.
@@ -144,20 +144,20 @@ There are three kinds of changes:
    A good example here would be expansion of assist API, for example, to implement lazy assists or assists groups.
 
 3. A new dependency between components is introduced.
-   Specifically, you add a `pub use` reexport from another crate or you add a new line to `[dependencies]` section of `Cargo.toml`.
+   Specifically, you add a `pub use` reexport from another crate or you add a new line to the `[dependencies]` section of `Cargo.toml`.
    A good example here would be adding reference search capability to the assists crates.
 
 For the first group, the change is generally merged as long as:
 
 * it works for the happy case,
 * it has tests,
-* it doesn't panic for unhappy case.
+* it doesn't panic for the unhappy case.
 
 For the second group, the change would be subjected to quite a bit of scrutiny and iteration.
 The new API needs to be right (or at least easy to change later).
 The actual implementation doesn't matter that much.
 It's very important to minimize the amount of changed lines of code for changes of the second kind.
-Often, you start doing change of the first kind, only to realise that you need to elevate to a change of the second kind.
+Often, you start doing a change of the first kind, only to realise that you need to elevate to a change of the second kind.
 In this case, we'll probably ask you to split API changes into a separate PR.
 
 Changes of the third group should be pretty rare, so we don't specify any specific process for them.
@@ -239,7 +239,7 @@ struct Foo {
 ## Variable Naming
 
 We generally use boring and long names for local variables ([yay code completion](https://github.com/rust-analyzer/rust-analyzer/pull/4162#discussion_r417130973)).
-The default name is lowercased named of the type: `global_state: GlobalState`.
+The default name is a lowercased name of the type: `global_state: GlobalState`.
 Avoid ad-hoc acronyms and contractions, but use the ones that exist consistently (`db`, `ctx`, `acc`).
 The default name for "result of the function" local variable is `res`.
 
@@ -265,8 +265,8 @@ fn frobnicate(walrus: Option<Walrus>) {
 
 ## Premature Pessimization
 
-While we don't specifically optimize code yet, avoid writing the code which is slower than it needs to be.
-Don't allocate a `Vec` were an iterator would do, don't allocate strings needlessly.
+While we don't specifically optimize code yet, avoid writing code which is slower than it needs to be.
+Don't allocate a `Vec` where an iterator would do, don't allocate strings needlessly.
 
 ```rust
 // Good
@@ -305,7 +305,7 @@ always obvious from the low-level code.
 ## Incomplete syntax trees
 
 Syntax trees are by design incomplete and do not enforce well-formedness.
-If ast method returns an `Option`, it *can* be `None` at runtime, even if this is forbidden by the grammar.
+If an AST method returns an `Option`, it *can* be `None` at runtime, even if this is forbidden by the grammar.
 
 ## LSP independence
 
@@ -333,7 +333,7 @@ The results are 100% Rust specific though.
 
 ## Parser Tests
 
-Test for parser (`ra_parser`) live in `ra_syntax` crate (see `test_data` direcotory).
+Tests for the parser (`ra_parser`) live in the `ra_syntax` crate (see `test_data` directory).
 There are two kinds of tests:
 
 * Manually written test cases in `parser/ok` and `parser/err`
@@ -374,7 +374,7 @@ To log all communication between the server and the client, there are two choice
   [@DJMcNab](https://github.com/DJMcNab) for setting this awesome infra up!
 
 
-There's also two VS Code commands which might be of interest:
+There are also two VS Code commands which might be of interest:
 
 * `Rust Analyzer: Status` shows some memory-usage statistics. To take full
   advantage of it, you need to compile rust-analyzer with jemalloc support:
