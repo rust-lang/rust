@@ -10,41 +10,34 @@ pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     pred: ty::Predicate<'tcx>,
 ) -> ty::Predicate<'tcx> {
-    let kind = pred.kind();
+    let kind = pred.kint(tcx);
     let new = match kind {
-        &ty::PredicateKind::Trait(ref data, constness) => {
-            ty::PredicateKind::Trait(tcx.anonymize_late_bound_regions(data), constness)
+        ty::PredicateKint::ForAll(binder) => {
+            ty::PredicateKint::ForAll(tcx.anonymize_late_bound_regions(binder))
+        }
+        &ty::PredicateKint::Trait(data, constness) => ty::PredicateKint::Trait(data, constness),
+
+        &ty::PredicateKint::RegionOutlives(data) => ty::PredicateKint::RegionOutlives(data),
+
+        &ty::PredicateKint::TypeOutlives(data) => ty::PredicateKint::TypeOutlives(data),
+
+        &ty::PredicateKint::Projection(data) => ty::PredicateKint::Projection(data),
+
+        &ty::PredicateKint::WellFormed(data) => ty::PredicateKint::WellFormed(data),
+
+        &ty::PredicateKint::ObjectSafe(data) => ty::PredicateKint::ObjectSafe(data),
+
+        &ty::PredicateKint::ClosureKind(closure_def_id, closure_substs, kind) => {
+            ty::PredicateKint::ClosureKind(closure_def_id, closure_substs, kind)
         }
 
-        ty::PredicateKind::RegionOutlives(data) => {
-            ty::PredicateKind::RegionOutlives(tcx.anonymize_late_bound_regions(data))
+        &ty::PredicateKint::Subtype(data) => ty::PredicateKint::Subtype(data),
+
+        &ty::PredicateKint::ConstEvaluatable(def_id, substs) => {
+            ty::PredicateKint::ConstEvaluatable(def_id, substs)
         }
 
-        ty::PredicateKind::TypeOutlives(data) => {
-            ty::PredicateKind::TypeOutlives(tcx.anonymize_late_bound_regions(data))
-        }
-
-        ty::PredicateKind::Projection(data) => {
-            ty::PredicateKind::Projection(tcx.anonymize_late_bound_regions(data))
-        }
-
-        &ty::PredicateKind::WellFormed(data) => ty::PredicateKind::WellFormed(data),
-
-        &ty::PredicateKind::ObjectSafe(data) => ty::PredicateKind::ObjectSafe(data),
-
-        &ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
-            ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind)
-        }
-
-        ty::PredicateKind::Subtype(data) => {
-            ty::PredicateKind::Subtype(tcx.anonymize_late_bound_regions(data))
-        }
-
-        &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
-            ty::PredicateKind::ConstEvaluatable(def_id, substs)
-        }
-
-        ty::PredicateKind::ConstEquate(c1, c2) => ty::PredicateKind::ConstEquate(c1, c2),
+        &ty::PredicateKint::ConstEquate(c1, c2) => ty::PredicateKint::ConstEquate(c1, c2),
     };
 
     if new != *kind { new.to_predicate(tcx) } else { pred }
