@@ -12,8 +12,6 @@ test = { path = "./sysroot_src/src/libtest" }
 
 alloc_system = { path = "./alloc_system" }
 
-libc = { version = "=0.2.69", default-features = false } # FIXME rustc 1.45.0-nightly (7ebd87a7a 2020-05-08) ices on libc 0.2.70
-
 [patch.crates-io]
 rustc-std-workspace-core = { path = "./sysroot_src/src/tools/rustc-std-workspace-core" }
 rustc-std-workspace-alloc = { path = "./sysroot_src/src/tools/rustc-std-workspace-alloc" }
