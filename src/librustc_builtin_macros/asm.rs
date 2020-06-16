@@ -294,6 +294,14 @@ fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
         String::new(),
         Applicability::MachineApplicable,
     );
+    if p.look_ahead(0, |t| t == &token::Comma) {
+        err.tool_only_span_suggestion(
+            p.token.span,
+            "remove this comma",
+            String::new(),
+            Applicability::MachineApplicable,
+        );
+    }
     err.emit();
 }
 
@@ -306,11 +314,7 @@ fn try_set_option<'a>(
     if !args.options.contains(option) {
         args.options |= option;
     } else {
-        let mut span = p.prev_token.span;
-        if p.look_ahead(0, |t| t == &token::Comma) {
-            span = span.to(p.token.span);
-        }
-        err_duplicate_option(p, symbol, span);
+        err_duplicate_option(p, symbol, p.prev_token.span);
     }
 }
 
