@@ -475,7 +475,14 @@ fn highlight_element(
         }
 
         // Simple token-based highlighting
-        COMMENT => HighlightTag::Comment.into(),
+        COMMENT => {
+            let comment = element.into_token().and_then(ast::Comment::cast)?;
+            if comment.kind().doc.is_some() {
+                Highlight::from(HighlightTag::Comment) | HighlightModifier::Documentation
+            } else {
+                HighlightTag::Comment.into()
+            }
+        }
         STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => HighlightTag::StringLiteral.into(),
         ATTR => HighlightTag::Attribute.into(),
         INT_NUMBER | FLOAT_NUMBER => HighlightTag::NumericLiteral.into(),

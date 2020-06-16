@@ -7,7 +7,10 @@ use hir::Semantics;
 use ra_syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
 use stdx::SepBy;
 
-use crate::{call_info::ActiveParameter, Analysis, HighlightTag, HighlightedRange, RootDatabase};
+use crate::{
+    call_info::ActiveParameter, Analysis, Highlight, HighlightModifier, HighlightTag,
+    HighlightedRange, RootDatabase,
+};
 
 use super::HighlightedRangeStack;
 
@@ -118,7 +121,8 @@ pub(super) fn extract_doc_comments(
                     range.start(),
                     range.start() + TextSize::try_from(pos).unwrap(),
                 ),
-                highlight: HighlightTag::Comment.into(),
+                highlight: Highlight::from(HighlightTag::Comment)
+                    | HighlightModifier::Documentation,
                 binding_hash: None,
             });
             line_start += range.len() - TextSize::try_from(pos).unwrap();
