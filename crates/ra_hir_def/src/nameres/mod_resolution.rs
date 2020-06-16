@@ -44,7 +44,7 @@ impl ModDir {
         file_id: HirFileId,
         name: &Name,
         attr_path: Option<&SmolStr>,
-    ) -> Result<(FileId, ModDir), RelativePathBuf> {
+    ) -> Result<(FileId, ModDir), String> {
         let file_id = file_id.original_file(db.upcast());
 
         let mut candidate_files = Vec::new();
@@ -52,11 +52,11 @@ impl ModDir {
             Some(attr_path) => {
                 let base =
                     if self.root_non_dir_owner { self.path.parent().unwrap() } else { &self.path };
-                candidate_files.push(base.join(attr_path))
+                candidate_files.push(base.join(attr_path).to_string())
             }
             None => {
-                candidate_files.push(self.path.join(&format!("{}.rs", name)));
-                candidate_files.push(self.path.join(&format!("{}/mod.rs", name)));
+                candidate_files.push(self.path.join(&format!("{}.rs", name)).to_string());
+                candidate_files.push(self.path.join(&format!("{}/mod.rs", name)).to_string());
             }
         };
 

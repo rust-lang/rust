@@ -3,7 +3,7 @@
 //!
 //! It can be viewed as a dual for `AnalysisChange`.
 
-use ra_db::{FileId, RelativePathBuf, SourceRootId};
+use ra_db::FileId;
 use ra_text_edit::TextEdit;
 
 #[derive(Debug, Clone)]
@@ -44,8 +44,8 @@ impl From<Vec<SourceFileEdit>> for SourceChange {
 
 #[derive(Debug, Clone)]
 pub enum FileSystemEdit {
-    CreateFile { source_root: SourceRootId, path: RelativePathBuf },
-    MoveFile { src: FileId, dst_source_root: SourceRootId, dst_path: RelativePathBuf },
+    CreateFile { anchor: FileId, dst: String },
+    MoveFile { src: FileId, anchor: FileId, dst: String },
 }
 
 impl From<FileSystemEdit> for SourceChange {

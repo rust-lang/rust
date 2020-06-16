@@ -16,7 +16,7 @@ use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
 use ra_project_model::{ProcMacroClient, ProjectWorkspace};
-use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
+use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 use stdx::format_to;
 
@@ -298,9 +298,10 @@ impl GlobalStateSnapshot {
         self.vfs.read().file_line_endings(VfsFile(id.0))
     }
 
-    pub fn path_to_url(&self, root: SourceRootId, path: &RelativePathBuf) -> Url {
-        let base = self.vfs.read().root2path(VfsRoot(root.0));
-        let path = path.to_path(base);
+    pub fn anchored_path(&self, file_id: FileId, path: &str) -> Url {
+        let mut base = self.vfs.read().file2path(VfsFile(file_id.0));
+        base.pop();
+        let path = base.join(path);
         url_from_abs_path(&path)
     }
 
