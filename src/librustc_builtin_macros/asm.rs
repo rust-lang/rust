@@ -288,7 +288,7 @@ fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
         .sess
         .span_diagnostic
         .struct_span_err(span, &format!("the `{}` option was already provided", symbol));
-    err.span_label(span, "remove this option");
+    err.span_suggestion(span, "remove this option", String::new(), Applicability::Unspecified);
     err.emit();
 }
 

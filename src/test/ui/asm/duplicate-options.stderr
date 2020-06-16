@@ -2,37 +2,37 @@ error: the `nomem` option was already provided
   --> $DIR/duplicate-options.rs:7:33
    |
 LL |         asm!("", options(nomem, nomem));
-   |                                 ^^^^^ remove this option
+   |                                 ^^^^^ help: remove this option
 
 error: the `att_syntax` option was already provided
   --> $DIR/duplicate-options.rs:9:38
    |
 LL |         asm!("", options(att_syntax, att_syntax));
-   |                                      ^^^^^^^^^^ remove this option
+   |                                      ^^^^^^^^^^ help: remove this option
 
 error: the `nostack` option was already provided
   --> $DIR/duplicate-options.rs:11:56
    |
 LL |         asm!("", options(nostack, att_syntax), options(nostack));
-   |                                                        ^^^^^^^ remove this option
+   |                                                        ^^^^^^^ help: remove this option
 
 error: the `nostack` option was already provided
   --> $DIR/duplicate-options.rs:13:35
    |
 LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
-   |                                   ^^^^^^^ remove this option
+   |                                   ^^^^^^^ help: remove this option
 
 error: the `nostack` option was already provided
   --> $DIR/duplicate-options.rs:13:53
    |
 LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
-   |                                                     ^^^^^^^ remove this option
+   |                                                     ^^^^^^^ help: remove this option
 
 error: the `nostack` option was already provided
   --> $DIR/duplicate-options.rs:13:71
    |
 LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
-   |                                                                       ^^^^^^^ remove this option
+   |                                                                       ^^^^^^^ help: remove this option
 
 error: aborting due to 6 previous errors
 
