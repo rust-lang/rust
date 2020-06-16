@@ -23,6 +23,11 @@ pub trait CommandExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn gid(&mut self, id: u32) -> &mut process::Command;
 
+    /// Sets the supplementary group IDs for the calling process. Translates to
+    /// a `setgroups` call in the child process.
+    #[unstable(feature = "setgroups", issue = "38527", reason = "")]
+    fn groups(&mut self, groups: &[u32]) -> &mut process::Command;
+
     /// Schedules a closure to be run just before the `exec` function is
     /// invoked.
     ///
@@ -122,6 +127,11 @@ impl CommandExt for process::Command {
 
     fn gid(&mut self, id: u32) -> &mut process::Command {
         self.as_inner_mut().gid(id);
+        self
+    }
+
+    fn groups(&mut self, groups: &[u32]) -> &mut process::Command {
+        self.as_inner_mut().groups(groups);
         self
     }
 
