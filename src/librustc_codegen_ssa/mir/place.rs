@@ -10,7 +10,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Abi, Align, DiscriminantKind, FieldsShape, Int};
+use rustc_target::abi::{Abi, Align, FieldsShape, Int, TagEncoding};
 use rustc_target::abi::{LayoutOf, VariantIdx, Variants};
 
 #[derive(Copy, Clone, Debug)]
@@ -199,7 +199,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         if self.layout.abi.is_uninhabited() {
             return bx.cx().const_undef(cast_to);
         }
-        let (discr_scalar, discr_kind, discr_index) = match self.layout.variants {
+        let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
             Variants::Single { index } => {
                 let discr_val = self
                     .layout
@@ -208,33 +208,33 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     .map_or(index.as_u32() as u128, |discr| discr.val);
                 return bx.cx().const_uint_big(cast_to, discr_val);
             }
-            Variants::Multiple { ref discr, ref discr_kind, discr_index, .. } => {
-                (discr, discr_kind, discr_index)
+            Variants::Multiple { ref tag, ref tag_encoding, tag_field, .. } => {
+                (tag, tag_encoding, tag_field)
             }
         };
 
         // Read the tag/niche-encoded discriminant from memory.
-        let encoded_discr = self.project_field(bx, discr_index);
-        let encoded_discr = bx.load_operand(encoded_discr);
+        let tag = self.project_field(bx, tag_field);
+        let tag = bx.load_operand(tag);
 
         // Decode the discriminant (specifically if it's niche-encoded).
-        match *discr_kind {
-            DiscriminantKind::Tag => {
-                let signed = match discr_scalar.value {
+        match *tag_encoding {
+            TagEncoding::Direct => {
+                let signed = match tag_scalar.value {
                     // We use `i1` for bytes that are always `0` or `1`,
                     // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                     // let LLVM interpret the `i1` as signed, because
                     // then `i1 1` (i.e., `E::B`) is effectively `i8 -1`.
-                    Int(_, signed) => !discr_scalar.is_bool() && signed,
+                    Int(_, signed) => !tag_scalar.is_bool() && signed,
                     _ => false,
                 };
-                bx.intcast(encoded_discr.immediate(), cast_to, signed)
+                bx.intcast(tag.immediate(), cast_to, signed)
             }
-            DiscriminantKind::Niche { dataful_variant, ref niche_variants, niche_start } => {
+            TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
                 // Rebase from niche values to discriminants, and check
                 // whether the result is in range for the niche variants.
-                let niche_llty = bx.cx().immediate_backend_type(encoded_discr.layout);
-                let encoded_discr = encoded_discr.immediate();
+                let niche_llty = bx.cx().immediate_backend_type(tag.layout);
+                let tag = tag.immediate();
 
                 // We first compute the "relative discriminant" (wrt `niche_variants`),
                 // that is, if `n = niche_variants.end() - niche_variants.start()`,
@@ -248,9 +248,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 let relative_discr = if niche_start == 0 {
                     // Avoid subtracting `0`, which wouldn't work for pointers.
                     // FIXME(eddyb) check the actual primitive type here.
-                    encoded_discr
+                    tag
                 } else {
-                    bx.sub(encoded_discr, bx.cx().const_uint_big(niche_llty, niche_start))
+                    bx.sub(tag, bx.cx().const_uint_big(niche_llty, niche_start))
                 };
                 let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
                 let is_niche = {
@@ -312,8 +312,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             Variants::Single { index } => {
                 assert_eq!(index, variant_index);
             }
-            Variants::Multiple { discr_kind: DiscriminantKind::Tag, discr_index, .. } => {
-                let ptr = self.project_field(bx, discr_index);
+            Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } => {
+                let ptr = self.project_field(bx, tag_field);
                 let to =
                     self.layout.ty.discriminant_for_variant(bx.tcx(), variant_index).unwrap().val;
                 bx.store(
@@ -323,9 +323,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 );
             }
             Variants::Multiple {
-                discr_kind:
-                    DiscriminantKind::Niche { dataful_variant, ref niche_variants, niche_start },
-                discr_index,
+                tag_encoding:
+                    TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start },
+                tag_field,
                 ..
             } => {
                 if variant_index != dataful_variant {
@@ -339,7 +339,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                         bx.memset(self.llval, fill_byte, size, self.align, MemFlags::empty());
                     }
 
-                    let niche = self.project_field(bx, discr_index);
+                    let niche = self.project_field(bx, tag_field);
                     let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                     let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                     let niche_value = (niche_value as u128).wrapping_add(niche_start);

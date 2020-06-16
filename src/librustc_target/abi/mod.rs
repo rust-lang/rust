@@ -809,25 +809,30 @@ pub enum Variants {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single { index: VariantIdx },
 
-    /// Enum-likes with more than one inhabited variant: for each case there is
-    /// a struct, and they all have space reserved for the discriminant.
-    /// For enums this is the sole field of the layout.
+    /// Enum-likes with more than one inhabited variant: each variant comes with
+    /// a *discriminant* (usually the same as the variant index but the user can
+    /// assign explicit discriminant values).  That discriminant is encoded
+    /// as a *tag* on the machine.  The layout of each variant is
+    /// a struct, and they all have space reserved for the tag.
+    /// For enums, the tag is the sole field of the layout.
     Multiple {
-        discr: Scalar,
-        discr_kind: DiscriminantKind,
-        discr_index: usize,
+        tag: Scalar,
+        tag_encoding: TagEncoding,
+        tag_field: usize,
         variants: IndexVec<VariantIdx, Layout>,
     },
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub enum DiscriminantKind {
-    /// Integer tag holding the discriminant value itself.
-    Tag,
+pub enum TagEncoding {
+    /// The tag directly stores the discriminant, but possibly with a smaller layout
+    /// (so converting the tag to the discriminant can require sign extension).
+    Direct,
 
     /// Niche (values invalid for a type) encoding the discriminant:
-    /// the variant `dataful_variant` contains a niche at an arbitrary
-    /// offset (field `discr_index` of the enum), which for a variant with
+    /// Discriminant and variant index coincide.
+    /// The variant `dataful_variant` contains a niche at an arbitrary
+    /// offset (field `tag_field` of the enum), which for a variant with
     /// discriminant `d` is set to
     /// `(d - niche_variants.start).wrapping_add(niche_start)`.
     ///
