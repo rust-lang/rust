@@ -13,6 +13,6 @@ impl Drop for E {
 fn main() {
     let e = E::A;
     let i = e as u32;
-    //~^ ERROR Cast `enum` implementing `Drop` `E` to integer `u32`
+    //~^ ERROR cannot cast enum `E` into integer `u32` because it implements `Drop`
     //~| WARN this was previously accepted
 }
