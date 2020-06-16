@@ -16,5 +16,5 @@ impl From<NonNullary> for isize {
 
 fn main() {
     let v = NonNullary::Nullary;
-    let val = v as isize; //~ ERROR non-primitive cast: `NonNullary` as `isize` [E0605]
+    let val = isize::from(v); //~ ERROR non-primitive cast: `NonNullary` as `isize` [E0605]
 }

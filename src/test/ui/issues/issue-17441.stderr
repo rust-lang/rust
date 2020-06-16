@@ -16,7 +16,7 @@ error[E0620]: cast to unsized type: `std::boxed::Box<usize>` as `dyn std::fmt::D
 LL |     let _bar = Box::new(1_usize) as dyn std::fmt::Debug;
    |                ^^^^^^^^^^^^^^^^^^^^^-------------------
    |                                     |
-   |                                     help: try casting to a `Box` instead: `Box<dyn std::fmt::Debug>`
+   |                                     help: you can cast to a `Box` instead: `Box<dyn std::fmt::Debug>`
 
 error[E0620]: cast to unsized type: `usize` as `dyn std::fmt::Debug`
   --> $DIR/issue-17441.rs:8:16
