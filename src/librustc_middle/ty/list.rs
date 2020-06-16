@@ -55,7 +55,7 @@ impl<T: Copy> List<T> {
             .dropless
             .alloc_raw(size, cmp::max(mem::align_of::<T>(), mem::align_of::<usize>()));
         unsafe {
-            let result = &mut *(mem.as_mut_ptr() as *mut List<T>);
+            let result = &mut *(mem as *mut List<T>);
             // Write the length
             result.len = slice.len();
 

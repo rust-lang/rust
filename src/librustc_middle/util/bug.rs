@@ -3,34 +3,31 @@
 use crate::ty::{tls, TyCtxt};
 use rustc_span::{MultiSpan, Span};
 use std::fmt;
+use std::panic::Location;
 
 #[cold]
 #[inline(never)]
-pub fn bug_fmt(file: &'static str, line: u32, args: fmt::Arguments<'_>) -> ! {
+#[track_caller]
+pub fn bug_fmt(args: fmt::Arguments<'_>) -> ! {
     // this wrapper mostly exists so I don't have to write a fully
     // qualified path of None::<Span> inside the bug!() macro definition
-    opt_span_bug_fmt(file, line, None::<Span>, args);
+    opt_span_bug_fmt(None::<Span>, args, Location::caller());
 }
 
 #[cold]
 #[inline(never)]
-pub fn span_bug_fmt<S: Into<MultiSpan>>(
-    file: &'static str,
-    line: u32,
-    span: S,
-    args: fmt::Arguments<'_>,
-) -> ! {
-    opt_span_bug_fmt(file, line, Some(span), args);
+#[track_caller]
+pub fn span_bug_fmt<S: Into<MultiSpan>>(span: S, args: fmt::Arguments<'_>) -> ! {
+    opt_span_bug_fmt(Some(span), args, Location::caller());
 }
 
 fn opt_span_bug_fmt<S: Into<MultiSpan>>(
-    file: &'static str,
-    line: u32,
     span: Option<S>,
     args: fmt::Arguments<'_>,
+    location: &Location<'_>,
 ) -> ! {
     tls::with_opt(move |tcx| {
-        let msg = format!("{}:{}: {}", file, line, args);
+        let msg = format!("{}: {}", location, args);
         match (tcx, span) {
             (Some(tcx), Some(span)) => tcx.sess.diagnostic().span_bug(span, &msg),
             (Some(tcx), None) => tcx.sess.diagnostic().bug(&msg),

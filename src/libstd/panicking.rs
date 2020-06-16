@@ -201,8 +201,7 @@ fn default_hook(info: &PanicInfo<'_>) {
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
                     let _ = writeln!(
                         err,
-                        "note: run with `RUST_BACKTRACE=1` \
-                                           environment variable to display a backtrace"
+                        "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
                     );
                 }
             }
@@ -454,10 +453,7 @@ fn rust_panic_with_hook(
     // process real quickly as we don't want to try calling it again as it'll
     // probably just panic again.
     if panics > 2 {
-        util::dumb_print(format_args!(
-            "thread panicked while processing \
-                                       panic. aborting.\n"
-        ));
+        util::dumb_print(format_args!("thread panicked while processing panic. aborting.\n"));
         intrinsics::abort()
     }
 
@@ -489,10 +485,7 @@ fn rust_panic_with_hook(
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the thread cleanly.
-        util::dumb_print(format_args!(
-            "thread panicked while panicking. \
-                                       aborting.\n"
-        ));
+        util::dumb_print(format_args!("thread panicked while panicking. aborting.\n"));
         intrinsics::abort()
     }
 

@@ -147,10 +147,7 @@ impl TcpStream {
             .map_err(|_| io::Error::new(ErrorKind::Other, "peer_addr failed"))?;
 
         let saddr = match ipaddr {
-            Ipv4(ref addr) => SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(addr.0[0], addr.0[1], addr.0[2], addr.0[3])),
-                port,
-            ),
+            Ipv4(ref addr) => SocketAddr::new(IpAddr::V4(Ipv4Addr::from(addr.0)), port),
             Ipv6(ref addr) => SocketAddr::new(IpAddr::V6(Ipv6Addr::from(addr.0)), port),
             _ => {
                 return Err(io::Error::new(ErrorKind::Other, "peer_addr failed"));
@@ -227,10 +224,7 @@ impl TcpListener {
         let (handle, ipaddr, port) = abi::tcplistener::accept(self.0.port())
             .map_err(|_| io::Error::new(ErrorKind::Other, "accept failed"))?;
         let saddr = match ipaddr {
-            Ipv4(ref addr) => SocketAddr::new(
-                IpAddr::V4(Ipv4Addr::new(addr.0[0], addr.0[1], addr.0[2], addr.0[3])),
-                port,
-            ),
+            Ipv4(ref addr) => SocketAddr::new(IpAddr::V4(Ipv4Addr::from(addr.0)), port),
             Ipv6(ref addr) => SocketAddr::new(IpAddr::V6(Ipv6Addr::from(addr.0)), port),
             _ => {
                 return Err(io::Error::new(ErrorKind::Other, "accept failed"));
