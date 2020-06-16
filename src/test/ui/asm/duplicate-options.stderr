@@ -34,5 +34,23 @@ error: the `nostack` option was already provided
 LL |         asm!("", options(nostack, nostack), options(nostack), options(nostack));
    |                                                                       ^^^^^^^ help: remove this option
 
-error: aborting due to 6 previous errors
+error: the `noreturn` option was already provided
+  --> $DIR/duplicate-options.rs:20:33
+   |
+LL |             options(att_syntax, noreturn),
+   |                                 ^^^^^^^^ help: remove this option
+
+error: the `nomem` option was already provided
+  --> $DIR/duplicate-options.rs:21:21
+   |
+LL |             options(nomem, nostack),
+   |                     ^^^^^ help: remove this option
+
+error: the `noreturn` option was already provided
+  --> $DIR/duplicate-options.rs:22:21
+   |
+LL |             options(noreturn),
+   |                     ^^^^^^^^ help: remove this option
+
+error: aborting due to 9 previous errors
 

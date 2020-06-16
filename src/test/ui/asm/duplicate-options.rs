@@ -14,5 +14,12 @@ fn main() {
         //~^ ERROR the `nostack` option was already provided
         //~| ERROR the `nostack` option was already provided
         //~| ERROR the `nostack` option was already provided
+        asm!(
+            "",
+            options(nomem, noreturn),
+            options(att_syntax, noreturn), //~ ERROR the `noreturn` option was already provided
+            options(nomem, nostack), //~ ERROR the `nomem` option was already provided
+            options(noreturn), //~ ERROR the `noreturn` option was already provided
+        );
     }
 }
