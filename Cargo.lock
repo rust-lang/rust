@@ -1730,6 +1730,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "vfs"
+version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
+ "globset",
+ "jod-thread",
+ "paths",
+ "rustc-hash",
+ "walkdir",
+]
+
+[[package]]
 name = "walkdir"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
