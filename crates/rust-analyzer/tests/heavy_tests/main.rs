@@ -674,5 +674,5 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     });
 
     let value = res.get("contents").unwrap().get("value").unwrap().to_string();
-    assert_eq!(value, r#""```rust\nfoo::Bar\n```\n\n```rust\nfn bar()\n```""#)
+    assert_eq!(value, r#""\n````rust\nfoo::Bar\n````\n\n````rust\nfn bar()\n````""#)
 }
