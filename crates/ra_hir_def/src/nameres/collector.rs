@@ -20,7 +20,9 @@ use test_utils::mark;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    item_tree::{Import, ItemTree, MacroCall, Mod, ModItem, ModKind, StructDefKind},
+    item_tree::{
+        FileItemTreeId, Import, ItemTree, MacroCall, Mod, ModItem, ModKind, StructDefKind,
+    },
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
         BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
@@ -32,7 +34,6 @@ use crate::{
     FunctionLoc, ImplLoc, Intern, LocalModuleId, ModuleDefId, ModuleId, StaticLoc, StructLoc,
     TraitLoc, TypeAliasLoc, UnionLoc,
 };
-use ra_arena::Idx;
 
 pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
     let crate_graph = db.crate_graph();
@@ -107,7 +108,7 @@ impl PartialResolvedImport {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ImportDirective {
     module_id: LocalModuleId,
-    import_id: Idx<Import>,
+    import_id: FileItemTreeId<Import>,
     import: Import,
     status: PartialResolvedImport,
 }

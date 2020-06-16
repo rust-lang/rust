@@ -5,6 +5,10 @@ use ra_syntax::ast::{self, ModuleItemOwner};
 use smallvec::SmallVec;
 use std::sync::Arc;
 
+fn id<N: ItemTreeNode>(index: Idx<N>) -> FileItemTreeId<N> {
+    FileItemTreeId { index, _p: PhantomData }
+}
+
 struct ModItems(SmallVec<[ModItem; 1]>);
 
 impl<T> From<T> for ModItems
@@ -38,54 +42,54 @@ impl Ctx {
         let attrs = Attrs::new(item, &self.hygiene);
         let items = match item {
             ast::ModuleItem::StructDef(ast) => {
-                self.lower_struct(ast).map(|data| self.tree.structs.alloc(data).into())
+                self.lower_struct(ast).map(|data| id(self.tree.structs.alloc(data)).into())
             }
             ast::ModuleItem::UnionDef(ast) => {
-                self.lower_union(ast).map(|data| self.tree.unions.alloc(data).into())
+                self.lower_union(ast).map(|data| id(self.tree.unions.alloc(data)).into())
             }
             ast::ModuleItem::EnumDef(ast) => {
-                self.lower_enum(ast).map(|data| self.tree.enums.alloc(data).into())
+                self.lower_enum(ast).map(|data| id(self.tree.enums.alloc(data)).into())
             }
             ast::ModuleItem::FnDef(ast) => {
-                self.lower_function(ast).map(|data| self.tree.functions.alloc(data).into())
+                self.lower_function(ast).map(|data| id(self.tree.functions.alloc(data)).into())
             }
             ast::ModuleItem::TypeAliasDef(ast) => {
-                self.lower_type_alias(ast).map(|data| self.tree.type_aliases.alloc(data).into())
+                self.lower_type_alias(ast).map(|data| id(self.tree.type_aliases.alloc(data)).into())
             }
             ast::ModuleItem::StaticDef(ast) => {
-                self.lower_static(ast).map(|data| self.tree.statics.alloc(data).into())
+                self.lower_static(ast).map(|data| id(self.tree.statics.alloc(data)).into())
             }
             ast::ModuleItem::ConstDef(ast) => {
                 let data = self.lower_const(ast);
-                Some(self.tree.consts.alloc(data).into())
+                Some(id(self.tree.consts.alloc(data)).into())
             }
             ast::ModuleItem::Module(ast) => {
-                self.lower_module(ast).map(|data| self.tree.mods.alloc(data).into())
+                self.lower_module(ast).map(|data| id(self.tree.mods.alloc(data)).into())
             }
             ast::ModuleItem::TraitDef(ast) => {
-                self.lower_trait(ast).map(|data| self.tree.traits.alloc(data).into())
+                self.lower_trait(ast).map(|data| id(self.tree.traits.alloc(data)).into())
             }
             ast::ModuleItem::ImplDef(ast) => {
-                self.lower_impl(ast).map(|data| self.tree.impls.alloc(data).into())
+                self.lower_impl(ast).map(|data| id(self.tree.impls.alloc(data)).into())
             }
             ast::ModuleItem::UseItem(ast) => Some(ModItems(
                 self.lower_use(ast)
                     .into_iter()
-                    .map(|data| self.tree.imports.alloc(data).into())
+                    .map(|data| id(self.tree.imports.alloc(data)).into())
                     .collect::<SmallVec<_>>(),
             )),
             ast::ModuleItem::ExternCrateItem(ast) => {
-                self.lower_extern_crate(ast).map(|data| self.tree.imports.alloc(data).into())
+                self.lower_extern_crate(ast).map(|data| id(self.tree.imports.alloc(data)).into())
             }
             ast::ModuleItem::MacroCall(ast) => {
-                self.lower_macro_call(ast).map(|data| self.tree.macro_calls.alloc(data).into())
+                self.lower_macro_call(ast).map(|data| id(self.tree.macro_calls.alloc(data)).into())
             }
             ast::ModuleItem::ExternBlock(ast) => Some(ModItems(
                 self.lower_extern_block(ast)
                     .into_iter()
                     .map(|item| match item {
-                        Either::Left(func) => self.tree.functions.alloc(func).into(),
-                        Either::Right(statik) => self.tree.statics.alloc(statik).into(),
+                        Either::Left(func) => id(self.tree.functions.alloc(func)).into(),
+                        Either::Right(statik) => id(self.tree.statics.alloc(statik)).into(),
                     })
                     .collect::<SmallVec<_>>(),
             )),
@@ -103,14 +107,14 @@ impl Ctx {
     fn lower_assoc_item(&mut self, item: &ast::AssocItem) -> Option<AssocItem> {
         match item {
             ast::AssocItem::FnDef(ast) => {
-                self.lower_function(ast).map(|data| self.tree.functions.alloc(data).into())
+                self.lower_function(ast).map(|data| id(self.tree.functions.alloc(data)).into())
             }
             ast::AssocItem::TypeAliasDef(ast) => {
-                self.lower_type_alias(ast).map(|data| self.tree.type_aliases.alloc(data).into())
+                self.lower_type_alias(ast).map(|data| id(self.tree.type_aliases.alloc(data)).into())
             }
             ast::AssocItem::ConstDef(ast) => {
                 let data = self.lower_const(ast);
-                Some(self.tree.consts.alloc(data).into())
+                Some(id(self.tree.consts.alloc(data)).into())
             }
         }
     }

@@ -3,6 +3,9 @@
 mod lower;
 
 use std::{
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+    marker::PhantomData,
     ops::{Index, Range},
     sync::Arc,
 };
@@ -109,6 +112,68 @@ impl ItemTree {
     }
 }
 
+pub trait ItemTreeNode: Sized {
+    fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self;
+}
+
+pub struct FileItemTreeId<N: ItemTreeNode> {
+    index: Idx<N>,
+    _p: PhantomData<N>,
+}
+
+impl<N: ItemTreeNode> Clone for FileItemTreeId<N> {
+    fn clone(&self) -> Self {
+        Self { index: self.index, _p: PhantomData }
+    }
+}
+impl<N: ItemTreeNode> Copy for FileItemTreeId<N> {}
+
+impl<N: ItemTreeNode> PartialEq for FileItemTreeId<N> {
+    fn eq(&self, other: &FileItemTreeId<N>) -> bool {
+        self.index == other.index
+    }
+}
+impl<N: ItemTreeNode> Eq for FileItemTreeId<N> {}
+
+impl<N: ItemTreeNode> Hash for FileItemTreeId<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.index.hash(state)
+    }
+}
+
+impl<N: ItemTreeNode> fmt::Debug for FileItemTreeId<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.index.fmt(f)
+    }
+}
+
+pub type ItemTreeId<N> = InFile<FileItemTreeId<N>>;
+
+macro_rules! nodes {
+    ( $($node:ident in $fld:ident),+ $(,)? ) => { $(
+        impl ItemTreeNode for $node {
+            fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self {
+                &tree.$fld[index]
+            }
+        }
+    )+ };
+}
+
+nodes!(
+    Import in imports,
+    Function in functions,
+    Struct in structs,
+    Union in unions,
+    Enum in enums,
+    Const in consts,
+    Static in statics,
+    Trait in traits,
+    Impl in impls,
+    TypeAlias in type_aliases,
+    Mod in mods,
+    MacroCall in macro_calls,
+);
+
 macro_rules! impl_index {
     ( $($fld:ident: $t:ty),+ $(,)? ) => {
         $(
@@ -140,6 +205,13 @@ impl_index!(
     macro_calls: MacroCall,
     exprs: Expr,
 );
+
+impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
+    type Output = N;
+    fn index(&self, id: FileItemTreeId<N>) -> &N {
+        N::lookup(self, id.index)
+    }
+}
 
 /// A desugared `extern crate` or `use` import.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -304,48 +376,48 @@ macro_rules! impl_froms {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum ModItem {
-    Import(Idx<Import>),
-    Function(Idx<Function>),
-    Struct(Idx<Struct>),
-    Union(Idx<Union>),
-    Enum(Idx<Enum>),
-    Const(Idx<Const>),
-    Static(Idx<Static>),
-    Trait(Idx<Trait>),
-    Impl(Idx<Impl>),
-    TypeAlias(Idx<TypeAlias>),
-    Mod(Idx<Mod>),
-    MacroCall(Idx<MacroCall>),
+    Import(FileItemTreeId<Import>),
+    Function(FileItemTreeId<Function>),
+    Struct(FileItemTreeId<Struct>),
+    Union(FileItemTreeId<Union>),
+    Enum(FileItemTreeId<Enum>),
+    Const(FileItemTreeId<Const>),
+    Static(FileItemTreeId<Static>),
+    Trait(FileItemTreeId<Trait>),
+    Impl(FileItemTreeId<Impl>),
+    TypeAlias(FileItemTreeId<TypeAlias>),
+    Mod(FileItemTreeId<Mod>),
+    MacroCall(FileItemTreeId<MacroCall>),
 }
 
 impl_froms!(ModItem {
-    Import(Idx<Import>),
-    Function(Idx<Function>),
-    Struct(Idx<Struct>),
-    Union(Idx<Union>),
-    Enum(Idx<Enum>),
-    Const(Idx<Const>),
-    Static(Idx<Static>),
-    Trait(Idx<Trait>),
-    Impl(Idx<Impl>),
-    TypeAlias(Idx<TypeAlias>),
-    Mod(Idx<Mod>),
-    MacroCall(Idx<MacroCall>),
+    Import(FileItemTreeId<Import>),
+    Function(FileItemTreeId<Function>),
+    Struct(FileItemTreeId<Struct>),
+    Union(FileItemTreeId<Union>),
+    Enum(FileItemTreeId<Enum>),
+    Const(FileItemTreeId<Const>),
+    Static(FileItemTreeId<Static>),
+    Trait(FileItemTreeId<Trait>),
+    Impl(FileItemTreeId<Impl>),
+    TypeAlias(FileItemTreeId<TypeAlias>),
+    Mod(FileItemTreeId<Mod>),
+    MacroCall(FileItemTreeId<MacroCall>),
 });
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum AssocItem {
-    Function(Idx<Function>),
-    TypeAlias(Idx<TypeAlias>),
-    Const(Idx<Const>),
-    MacroCall(Idx<MacroCall>),
+    Function(FileItemTreeId<Function>),
+    TypeAlias(FileItemTreeId<TypeAlias>),
+    Const(FileItemTreeId<Const>),
+    MacroCall(FileItemTreeId<MacroCall>),
 }
 
 impl_froms!(AssocItem {
-    Function(Idx<Function>),
-    TypeAlias(Idx<TypeAlias>),
-    Const(Idx<Const>),
-    MacroCall(Idx<MacroCall>),
+    Function(FileItemTreeId<Function>),
+    TypeAlias(FileItemTreeId<TypeAlias>),
+    Const(FileItemTreeId<Const>),
+    MacroCall(FileItemTreeId<MacroCall>),
 });
 
 #[derive(Debug, Eq, PartialEq)]
