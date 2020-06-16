@@ -1399,3 +1399,70 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I }
 fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J }
 fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K }
 fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
+
+/// Create a `const` raw pointer to a place, without creating an intermediate reference.
+///
+/// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
+/// and points to initialized data. For cases where those requirements do not hold,
+/// raw pointers should be used instead. However, `&expr as *const _` creates a reference
+/// before casting it to a raw pointer, and that reference is subject to the same rules
+/// as all other references. This macro can create a raw pointer *without* creating
+/// a reference first.
+///
+/// # Example
+///
+/// ```
+/// #![feature(raw_ref_macros)]
+/// use std::ptr;
+///
+/// #[repr(packed)]
+/// struct Packed {
+///     f1: u8,
+///     f2: u16,
+/// }
+///
+/// let packed = Packed { f1: 1, f2: 2 };
+/// // `&packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
+/// let raw_f2 = ptr::raw_const!(packed.f2);
+/// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
+/// ```
+#[unstable(feature = "raw_ref_macros", issue = "73394")]
+#[rustc_macro_transparency = "semitransparent"]
+#[allow_internal_unstable(raw_ref_op)]
+pub macro raw_const($e:expr) {
+    &raw const $e
+}
+
+/// Create a `mut` raw pointer to a place, without creating an intermediate reference.
+///
+/// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
+/// and points to initialized data. For cases where those requirements do not hold,
+/// raw pointers should be used instead. However, `&mut expr as *mut _` creates a reference
+/// before casting it to a raw pointer, and that reference is subject to the same rules
+/// as all other references. This macro can create a raw pointer *without* creating
+/// a reference first.
+///
+/// # Example
+///
+/// ```
+/// #![feature(raw_ref_macros)]
+/// use std::ptr;
+///
+/// #[repr(packed)]
+/// struct Packed {
+///     f1: u8,
+///     f2: u16,
+/// }
+///
+/// let mut packed = Packed { f1: 1, f2: 2 };
+/// // `&mut packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
+/// let raw_f2 = ptr::raw_mut!(packed.f2);
+/// unsafe { raw_f2.write_unaligned(42); }
+/// assert_eq!({packed.f2}, 42); // `{...}` forces copying the field instead of creating a reference.
+/// ```
+#[unstable(feature = "raw_ref_macros", issue = "73394")]
+#[rustc_macro_transparency = "semitransparent"]
+#[allow_internal_unstable(raw_ref_op)]
+pub macro raw_mut($e:expr) {
+    &raw mut $e
+}
