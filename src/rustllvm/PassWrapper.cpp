@@ -425,9 +425,9 @@ extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef TM) {
   for (auto &Feature : FeatTable)
     printf("    %-*s - %s.\n", MaxFeatLen, Feature.Key, Feature.Desc);
   printf("Rust-specific features:\n");
-  printf("    %-*s - %s.\n", 
-    MaxFeatLen, 
-    "crt-static", 
+  printf("    %-*s - %s.\n",
+    MaxFeatLen,
+    "crt-static",
     "Enables libraries with C Run-time Libraries(CRT) to be statically linked"
   );
   printf("\n");
