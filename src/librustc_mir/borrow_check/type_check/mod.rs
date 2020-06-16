@@ -1558,8 +1558,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // no checks needed for these
             }
 
-            TerminatorKind::DropAndReplace { ref location, ref value, target: _, unwind: _ } => {
-                let place_ty = location.ty(body, tcx).ty;
+            TerminatorKind::DropAndReplace { ref place, ref value, target: _, unwind: _ } => {
+                let place_ty = place.ty(body, tcx).ty;
                 let rv_ty = value.ty(body, tcx);
 
                 let locations = term_location.to_locations();

@@ -34,10 +34,10 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads<'tcx> {
         self.tcx
     }
 
-    fn visit_terminator_kind(&mut self, kind: &mut TerminatorKind<'tcx>, location: Location) {
-        if let Some(unwind) = kind.unwind_mut() {
+    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
+        if let Some(unwind) = terminator.kind.unwind_mut() {
             unwind.take();
         }
-        self.super_terminator_kind(kind, location);
+        self.super_terminator(terminator, location);
     }
 }
