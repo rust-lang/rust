@@ -1497,11 +1497,20 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 if cx.access_levels.is_exported(impl_item.hir_id) {
                 // check missing trait implementations
                     for &(method_name, n_args, fn_header, self_kind, out_type, trait_name) in &TRAIT_METHODS {
+                        let no_lifetime_params = || {
+                            impl_item.generics.params.iter().filter(|p| match p.kind {
+                               hir::GenericParamKind::Lifetime { .. } => true,
+                               _ => false,
+                            }).count() == 0
+                        };
                         if name == method_name &&
                             sig.decl.inputs.len() == n_args &&
                             out_type.matches(cx, &sig.decl.output) &&
                             self_kind.matches(cx, self_ty, first_arg_ty) &&
-                            fn_header_equals(*fn_header, sig.header) {
+                            fn_header_equals(*fn_header, sig.header) &&
+                            // ignore methods with lifetime params, risk of false positive
+                            no_lifetime_params()
+                             {
                             span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
                                 "defining a method called `{}` on this type; consider implementing \
                                 the `{}` trait or choosing a less ambiguous name", name, trait_name));

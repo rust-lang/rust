@@ -10,6 +10,7 @@
     clippy::non_ascii_literal,
     clippy::new_without_default,
     clippy::needless_pass_by_value,
+    clippy::needless_lifetimes,
     clippy::print_stdout,
     clippy::must_use_candidate,
     clippy::use_self,
@@ -80,6 +81,10 @@ impl T {
     }
 
     fn new(self) -> Self {
+        unimplemented!();
+    }
+
+    pub fn next<'b>(&'b mut self) -> Option<&'b mut T> {
         unimplemented!();
     }
 }
