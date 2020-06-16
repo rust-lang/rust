@@ -89,8 +89,7 @@ impl Definition {
             }
             Definition::Macro(m) => Into::<ModuleId>::into(m.module(db)?).resolver(db),
             Definition::SelfType(imp) => Into::<ImplId>::into(imp.clone()).resolver(db),
-            // it's possible, read probable, that other arms of this are also unreachable
-            Definition::Local(_local) => unreachable!(),
+            Definition::Local(local) => Into::<DefWithBodyId>::into(local.parent(db)).resolver(db),
             Definition::TypeParam(tp) => Into::<ModuleId>::into(tp.module(db)).resolver(db),
         })
     }
