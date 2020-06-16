@@ -329,8 +329,12 @@ impl Foo {
     ///
     /// ```
     ///
-    /// ```
+    /// ```rust,no_run
     /// let foobar = Foo::new().bar();
+    /// ```
+    ///
+    /// ```sh
+    /// echo 1
     /// ```
     pub fn foo(&self) -> bool {
         true
