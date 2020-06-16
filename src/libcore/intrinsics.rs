@@ -1948,6 +1948,16 @@ extern "rust-intrinsic" {
     #[cfg(not(bootstrap))]
     #[lang = "count_code_region"]
     pub fn count_code_region(index: u32);
+
+    /// See documentation of `<*const T>::guaranteed_eq` for details.
+    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[cfg(not(bootstrap))]
+    pub fn ptr_guaranteed_eq<T>(ptr: *const T, other: *const T) -> bool;
+
+    /// See documentation of `<*const T>::guaranteed_ne` for details.
+    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[cfg(not(bootstrap))]
+    pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
 }
 
 // Some functions are defined here because they accidentally got made

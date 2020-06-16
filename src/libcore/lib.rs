@@ -87,6 +87,7 @@
 #![feature(const_generics)]
 #![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
+#![cfg_attr(not(bootstrap), feature(const_raw_ptr_comparison))]
 #![feature(const_result)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_slice_ptr_len)]
