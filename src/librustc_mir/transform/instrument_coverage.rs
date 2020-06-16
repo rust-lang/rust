@@ -57,6 +57,7 @@ pub fn instrument_coverage<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             destination: Some((Place::from(temp), new_block)),
             cleanup: None,
             from_hir_call: false,
+            fn_span: span,
         },
     );
 
