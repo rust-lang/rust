@@ -345,6 +345,7 @@ symbols! {
         from_method,
         from_ok,
         from_usize,
+        from_trait,
         fundamental,
         future,
         Future,
