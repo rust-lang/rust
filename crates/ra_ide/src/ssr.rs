@@ -27,11 +27,11 @@ impl std::error::Error for SsrError {}
 //
 // Search and replace with named wildcards that will match any expression.
 // The syntax for a structural search replace command is `<search_pattern> ==>> <replace_pattern>`.
-// A `$<name>:expr` placeholder in the search pattern will match any expression and `$<name>` will reference it in the replacement.
+// A `$<name>` placeholder in the search pattern will match any AST node and `$<name>` will reference it in the replacement.
 // Available via the command `rust-analyzer.ssr`.
 //
 // ```rust
-// // Using structural search replace command [foo($a:expr, $b:expr) ==>> ($a).foo($b)]
+// // Using structural search replace command [foo($a, $b) ==>> ($a).foo($b)]
 //
 // // BEFORE
 // String::from(foo(y + 5, z))
@@ -79,7 +79,7 @@ struct SsrPattern {
     vars: Vec<Var>,
 }
 
-/// represents an `$var` in an SSR query
+/// Represents a `$var` in an SSR query.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Var(String);
 
@@ -122,8 +122,7 @@ impl FromStr for SsrQuery {
         let mut pattern = it.next().expect("something").to_string();
 
         for part in it.map(split_by_var) {
-            let (var, var_type, remainder) = part?;
-            is_expr(var_type)?;
+            let (var, remainder) = part?;
             let new_var = create_name(var, &mut vars)?;
             pattern.push_str(new_var);
             pattern.push_str(remainder);
@@ -166,15 +165,11 @@ fn traverse(node: &SyntaxNode, go: &mut impl FnMut(&SyntaxNode) -> bool) {
     }
 }
 
-fn split_by_var(s: &str) -> Result<(&str, &str, &str), SsrError> {
-    let end_of_name = s.find(':').ok_or_else(|| SsrError("Use $<name>:expr".into()))?;
-    let name = &s[0..end_of_name];
+fn split_by_var(s: &str) -> Result<(&str, &str), SsrError> {
+    let end_of_name = s.find(|c| !char::is_ascii_alphanumeric(&c)).unwrap_or_else(|| s.len());
+    let name = &s[..end_of_name];
     is_name(name)?;
-    let type_begin = end_of_name + 1;
-    let type_length =
-        s[type_begin..].find(|c| !char::is_ascii_alphanumeric(&c)).unwrap_or_else(|| s.len());
-    let type_name = &s[type_begin..type_begin + type_length];
-    Ok((name, type_name, &s[type_begin + type_length..]))
+    Ok((name, &s[end_of_name..]))
 }
 
 fn is_name(s: &str) -> Result<(), SsrError> {
@@ -182,14 +177,6 @@ fn is_name(s: &str) -> Result<(), SsrError> {
         Ok(())
     } else {
         Err(SsrError("Name can contain only alphanumerics and _".into()))
-    }
-}
-
-fn is_expr(s: &str) -> Result<(), SsrError> {
-    if s == "expr" {
-        Ok(())
-    } else {
-        Err(SsrError("Only $<name>:expr is supported".into()))
     }
 }
 
@@ -450,7 +437,7 @@ mod tests {
 
     #[test]
     fn parser_happy_case() {
-        let result: SsrQuery = "foo($a:expr, $b:expr) ==>> bar($b, $a)".parse().unwrap();
+        let result: SsrQuery = "foo($a, $b) ==>> bar($b, $a)".parse().unwrap();
         assert_eq!(&result.pattern.pattern.text(), "foo(__search_pattern_a, __search_pattern_b)");
         assert_eq!(result.pattern.vars.len(), 2);
         assert_eq!(result.pattern.vars[0].0, "__search_pattern_a");
@@ -477,30 +464,9 @@ mod tests {
     }
 
     #[test]
-    fn parser_no_pattern_type() {
-        assert_eq!(parse_error_text("foo($a) ==>>"), "Parse error: Use $<name>:expr");
-    }
-
-    #[test]
-    fn parser_invalid_name() {
-        assert_eq!(
-            parse_error_text("foo($a+:expr) ==>>"),
-            "Parse error: Name can contain only alphanumerics and _"
-        );
-    }
-
-    #[test]
-    fn parser_invalid_type() {
-        assert_eq!(
-            parse_error_text("foo($a:ident) ==>>"),
-            "Parse error: Only $<name>:expr is supported"
-        );
-    }
-
-    #[test]
     fn parser_repeated_name() {
         assert_eq!(
-            parse_error_text("foo($a:expr, $a:expr) ==>>"),
+            parse_error_text("foo($a, $a) ==>>"),
             "Parse error: Name `a` repeats more than once"
         );
     }
@@ -517,7 +483,7 @@ mod tests {
 
     #[test]
     fn parse_match_replace() {
-        let query: SsrQuery = "foo($x:expr) ==>> bar($x)".parse().unwrap();
+        let query: SsrQuery = "foo($x) ==>> bar($x)".parse().unwrap();
         let input = "fn main() { foo(1+2); }";
 
         let code = SourceFile::parse(input).tree();
@@ -549,7 +515,7 @@ mod tests {
     #[test]
     fn ssr_function_to_method() {
         assert_ssr_transform(
-            "my_function($a:expr, $b:expr) ==>> ($a).my_method($b)",
+            "my_function($a, $b) ==>> ($a).my_method($b)",
             "loop { my_function( other_func(x, y), z + w) }",
             "loop { (other_func(x, y)).my_method(z + w) }",
         )
@@ -558,7 +524,7 @@ mod tests {
     #[test]
     fn ssr_nested_function() {
         assert_ssr_transform(
-            "foo($a:expr, $b:expr, $c:expr) ==>> bar($c, baz($a, $b))",
+            "foo($a, $b, $c) ==>> bar($c, baz($a, $b))",
             "fn main { foo  (x + value.method(b), x+y-z, true && false) }",
             "fn main { bar(true && false, baz(x + value.method(b), x+y-z)) }",
         )
@@ -567,7 +533,7 @@ mod tests {
     #[test]
     fn ssr_expected_spacing() {
         assert_ssr_transform(
-            "foo($x:expr) + bar() ==>> bar($x)",
+            "foo($x) + bar() ==>> bar($x)",
             "fn main() { foo(5) + bar() }",
             "fn main() { bar(5) }",
         );
@@ -576,7 +542,7 @@ mod tests {
     #[test]
     fn ssr_with_extra_space() {
         assert_ssr_transform(
-            "foo($x:expr  ) +    bar() ==>> bar($x)",
+            "foo($x  ) +    bar() ==>> bar($x)",
             "fn main() { foo(  5 )  +bar(   ) }",
             "fn main() { bar(5) }",
         );
@@ -585,7 +551,7 @@ mod tests {
     #[test]
     fn ssr_keeps_nested_comment() {
         assert_ssr_transform(
-            "foo($x:expr) ==>> bar($x)",
+            "foo($x) ==>> bar($x)",
             "fn main() { foo(other(5 /* using 5 */)) }",
             "fn main() { bar(other(5 /* using 5 */)) }",
         )
@@ -594,7 +560,7 @@ mod tests {
     #[test]
     fn ssr_keeps_comment() {
         assert_ssr_transform(
-            "foo($x:expr) ==>> bar($x)",
+            "foo($x) ==>> bar($x)",
             "fn main() { foo(5 /* using 5 */) }",
             "fn main() { bar(5)/* using 5 */ }",
         )
@@ -603,7 +569,7 @@ mod tests {
     #[test]
     fn ssr_struct_lit() {
         assert_ssr_transform(
-            "foo{a: $a:expr, b: $b:expr} ==>> foo::new($a, $b)",
+            "foo{a: $a, b: $b} ==>> foo::new($a, $b)",
             "fn main() { foo{b:2, a:1} }",
             "fn main() { foo::new(1, 2) }",
         )
@@ -612,7 +578,7 @@ mod tests {
     #[test]
     fn ssr_call_and_method_call() {
         assert_ssr_transform(
-            "foo::<'a>($a:expr, $b:expr)) ==>> foo2($a, $b)",
+            "foo::<'a>($a, $b)) ==>> foo2($a, $b)",
             "fn main() { get().bar.foo::<'a>(1); }",
             "fn main() { foo2(get().bar, 1); }",
         )
@@ -621,7 +587,7 @@ mod tests {
     #[test]
     fn ssr_method_call_and_call() {
         assert_ssr_transform(
-            "$o:expr.foo::<i32>($a:expr)) ==>> $o.foo2($a)",
+            "$o.foo::<i32>($a)) ==>> $o.foo2($a)",
             "fn main() { X::foo::<i32>(x, 1); }",
             "fn main() { x.foo2(1); }",
         )
