@@ -1,10 +1,10 @@
 error[E0605]: non-primitive cast: `NonNullary` as `isize`
-  --> $DIR/tag-variant-cast-non-nullary.rs:8:15
+  --> $DIR/tag-variant-cast-non-nullary.rs:19:15
    |
 LL |     let val = v as isize;
-   |               ^^^^^^^^^^
+   |               ^^^^^^^^^^ help: consider using the `From` trait instead: `isize::from(v)`
    |
-   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+   = note: an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
 error: aborting due to previous error
 

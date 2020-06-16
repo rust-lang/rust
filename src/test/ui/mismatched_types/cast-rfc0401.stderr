@@ -24,41 +24,31 @@ error[E0605]: non-primitive cast: `*const u8` as `&u8`
   --> $DIR/cast-rfc0401.rs:29:13
    |
 LL |     let _ = v as &u8;
-   |             ^^^^^^^^
-   |
-   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+   |             ^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
 error[E0605]: non-primitive cast: `*const u8` as `E`
   --> $DIR/cast-rfc0401.rs:30:13
    |
 LL |     let _ = v as E;
-   |             ^^^^^^
-   |
-   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+   |             ^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
 error[E0605]: non-primitive cast: `*const u8` as `fn()`
   --> $DIR/cast-rfc0401.rs:31:13
    |
 LL |     let _ = v as fn();
-   |             ^^^^^^^^^
-   |
-   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+   |             ^^^^^^^^^ invalid cast
 
 error[E0605]: non-primitive cast: `*const u8` as `(u32,)`
   --> $DIR/cast-rfc0401.rs:32:13
    |
 LL |     let _ = v as (u32,);
-   |             ^^^^^^^^^^^
-   |
-   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+   |             ^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
 error[E0605]: non-primitive cast: `std::option::Option<&*const u8>` as `*const u8`
   --> $DIR/cast-rfc0401.rs:33:13
    |
 LL |     let _ = Some(&v) as *const u8;
-   |             ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+   |             ^^^^^^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
 error[E0606]: casting `*const u8` as `f32` is invalid
   --> $DIR/cast-rfc0401.rs:35:13
@@ -102,7 +92,7 @@ error[E0604]: only `u8` can be cast as `char`, not `u32`
   --> $DIR/cast-rfc0401.rs:41:13
    |
 LL |     let _ = 0x61u32 as char;
-   |             ^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^ invalid cast
 
 error[E0606]: casting `bool` as `f32` is invalid
   --> $DIR/cast-rfc0401.rs:43:13

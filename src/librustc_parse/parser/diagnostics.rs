@@ -961,7 +961,7 @@ impl<'a> Parser<'a> {
             self.bump();
             let sp = self.prev_token.span;
             self.struct_span_err(sp, &msg)
-                .span_suggestion(sp, "change this to `;`", ";".to_string(), appl)
+                .span_suggestion_short(sp, "change this to `;`", ";".to_string(), appl)
                 .emit();
             return Ok(());
         } else if self.look_ahead(0, |t| {
