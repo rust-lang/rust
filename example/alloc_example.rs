@@ -18,16 +18,12 @@ extern "C" {
 
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
-    unsafe {
-        core::intrinsics::abort();
-    }
+    core::intrinsics::abort();
 }
 
 #[alloc_error_handler]
 fn alloc_error_handler(_: alloc::alloc::Layout) -> ! {
-    unsafe {
-        core::intrinsics::abort();
-    }
+    core::intrinsics::abort();
 }
 
 #[start]
