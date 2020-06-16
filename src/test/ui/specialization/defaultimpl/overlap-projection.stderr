@@ -1,4 +1,4 @@
-warning: the feature `specialization` is incomplete and may be unsafe to use and/or cause compiler crashes
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/overlap-projection.rs:7:12
    |
 LL | #![feature(specialization)]

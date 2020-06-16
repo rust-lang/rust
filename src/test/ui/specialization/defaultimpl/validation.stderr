@@ -8,7 +8,7 @@ LL | default impl S {}
    |
    = note: only trait implementations may be annotated with `default`
 
-warning: the feature `specialization` is incomplete and may be unsafe to use and/or cause compiler crashes
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/validation.rs:2:12
    |
 LL | #![feature(specialization)]

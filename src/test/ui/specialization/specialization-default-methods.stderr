@@ -1,4 +1,4 @@
-warning: the feature `specialization` is incomplete and may be unsafe to use and/or cause compiler crashes
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/specialization-default-methods.rs:3:12
    |
 LL | #![feature(specialization)]
