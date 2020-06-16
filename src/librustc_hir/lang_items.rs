@@ -242,6 +242,8 @@ language_item_table! {
 
     StartFnLangItem,             "start",              start_fn,                Target::Fn;
 
+    CountCodeRegionFnLangItem,   "count_code_region",  count_code_region_fn,    Target::Fn;
+
     EhPersonalityLangItem,       "eh_personality",     eh_personality,          Target::Fn;
     EhCatchTypeinfoLangItem,     "eh_catch_typeinfo",  eh_catch_typeinfo,       Target::Static;
 

@@ -5,6 +5,7 @@
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/Intrinsics.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
@@ -1362,6 +1363,11 @@ extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMValueRef Fn,
   ArrayRef<OperandBundleDef> Bundles = makeArrayRef(Bundle, Len);
   return wrap(unwrap(B)->CreateCall(
       unwrap(Fn), makeArrayRef(unwrap(Args), NumArgs), Bundles));
+}
+
+extern "C" LLVMValueRef LLVMRustGetInstrprofIncrementIntrinsic(LLVMModuleRef M) {
+  return wrap(llvm::Intrinsic::getDeclaration(unwrap(M),
+              (llvm::Intrinsic::ID)llvm::Intrinsic::instrprof_increment));
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,

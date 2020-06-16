@@ -548,6 +548,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(human_readable_cgu_names, true);
     tracked!(inline_in_all_cgus, Some(true));
     tracked!(insert_sideeffect, true);
+    tracked!(instrument_coverage, true);
     tracked!(instrument_mcount, true);
     tracked!(link_only, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
