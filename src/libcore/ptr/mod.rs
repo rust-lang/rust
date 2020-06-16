@@ -1426,7 +1426,7 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 /// let raw_f2 = ptr::raw_const!(packed.f2);
 /// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
 /// ```
-#[unstable(feature = "raw_ref_macros", issue = "none")]
+#[unstable(feature = "raw_ref_macros", issue = "73394")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
 pub macro raw_const($e:expr) {
@@ -1460,7 +1460,7 @@ pub macro raw_const($e:expr) {
 /// unsafe { raw_f2.write_unaligned(42); }
 /// assert_eq!({packed.f2}, 42); // `{...}` forces copying the field instead of creating a reference.
 /// ```
-#[unstable(feature = "raw_ref_macros", issue = "none")]
+#[unstable(feature = "raw_ref_macros", issue = "73394")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
 pub macro raw_mut($e:expr) {
