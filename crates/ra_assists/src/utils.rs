@@ -13,7 +13,7 @@ use rustc_hash::FxHashSet;
 
 use crate::assist_config::SnippetCap;
 
-pub(crate) use insert_use::insert_use_statement;
+pub(crate) use insert_use::{find_insert_use_container, insert_use_statement};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Cursor<'a> {
