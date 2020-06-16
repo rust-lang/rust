@@ -4,7 +4,7 @@
 
 use std::{
     io::Write as _,
-    process::{self, Stdio}
+    process::{self, Stdio},
 };
 
 use lsp_server::ErrorCode;

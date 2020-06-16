@@ -540,14 +540,14 @@ fn try_resolve_intra(
 
     let resolved = resolver.resolve_module_path_in_items(db, &modpath);
     let (defid, namespace) = match namespace {
-        // TODO: .or(resolved.macros)
+        // FIXME: .or(resolved.macros)
         None => resolved
             .types
             .map(|t| (t.0, Namespace::Types))
             .or(resolved.values.map(|t| (t.0, Namespace::Values)))?,
         Some(ns @ Namespace::Types) => (resolved.types?.0, ns),
         Some(ns @ Namespace::Values) => (resolved.values?.0, ns),
-        // TODO:
+        // FIXME:
         Some(Namespace::Macros) => None?,
     };
 
@@ -558,7 +558,7 @@ fn try_resolve_intra(
     let ns = match namespace {
         Namespace::Types => ItemInNs::Types(defid),
         Namespace::Values => ItemInNs::Values(defid),
-        // TODO:
+        // FIXME:
         Namespace::Macros => None?,
     };
     let import_map = db.import_map(krate.into());
@@ -603,7 +603,7 @@ fn try_resolve_path(db: &RootDatabase, definition: &Definition, link: &str) -> O
 }
 
 /// Try to get the root URL of the documentation of a crate.
-// TODO: Special case standard, core, alloc libraries
+// FIXME: Special case standard, core, alloc libraries
 fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
     // Look for #![doc(html_root_url = "...")]
     let attrs = db.attrs(AttrDef::from(krate.root_module(db)?).into());
@@ -621,7 +621,7 @@ fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
         }).next()
     } else {
         // Fallback to docs.rs
-        // TODO: Specify an exact version here (from Cargo.lock)
+        // FIXME: Specify an exact version here (from Cargo.lock)
         Some(format!("https://docs.rs/{}/*", krate.display_name(db)?))
     };
 
@@ -648,7 +648,6 @@ fn get_symbol_filename(db: &RootDatabase, definition: &Definition) -> Option<Str
                 format!("enum.{}.html#variant.{}", ev.parent_enum(db).name(db), ev.name(db))
             }
             ModuleDef::Const(c) => format!("const.{}.html", c.name(db)?),
-            // TODO: Check this is the right prefix
             ModuleDef::Static(s) => format!("static.{}.html", s.name(db)?),
         },
         Definition::Macro(m) => format!("macro.{}.html", m.name(db)?),

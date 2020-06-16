@@ -192,11 +192,11 @@ impl ModuleDef {
             ModuleDef::Function(m) => Some(m.name(db)),
             ModuleDef::Adt(m) => Some(m.name(db)),
             ModuleDef::EnumVariant(m) => Some(m.name(db)),
-            ModuleDef::Const(m) => {m.name(db)},
-            ModuleDef::Static(m) => {m.name(db)},
-            ModuleDef::Trait(m) => {Some(m.name(db))},
-            ModuleDef::TypeAlias(m) => {Some(m.name(db))},
-            ModuleDef::BuiltinType(m) => {Some(m.as_name())}
+            ModuleDef::Const(m) => m.name(db),
+            ModuleDef::Static(m) => m.name(db),
+            ModuleDef::Trait(m) => Some(m.name(db)),
+            ModuleDef::TypeAlias(m) => Some(m.name(db)),
+            ModuleDef::BuiltinType(m) => Some(m.as_name()),
         }
     }
 
@@ -205,13 +205,17 @@ impl ModuleDef {
             ModuleDef::Module(m) => Into::<ModuleId>::into(m.clone()).resolver(db),
             ModuleDef::Function(f) => Into::<FunctionId>::into(f.clone()).resolver(db),
             ModuleDef::Adt(adt) => Into::<AdtId>::into(adt.clone()).resolver(db),
-            ModuleDef::EnumVariant(ev) => Into::<GenericDefId>::into(Into::<GenericDef>::into(ev.clone())).resolver(db),
-            ModuleDef::Const(c) => Into::<GenericDefId>::into(Into::<GenericDef>::into(c.clone())).resolver(db),
+            ModuleDef::EnumVariant(ev) => {
+                Into::<GenericDefId>::into(Into::<GenericDef>::into(ev.clone())).resolver(db)
+            }
+            ModuleDef::Const(c) => {
+                Into::<GenericDefId>::into(Into::<GenericDef>::into(c.clone())).resolver(db)
+            }
             ModuleDef::Static(s) => Into::<StaticId>::into(s.clone()).resolver(db),
             ModuleDef::Trait(t) => Into::<TraitId>::into(t.clone()).resolver(db),
             ModuleDef::TypeAlias(t) => Into::<ModuleId>::into(t.module(db)).resolver(db),
-            // TODO: This should be a resolver relative to `std`
-            ModuleDef::BuiltinType(_t) => None?
+            // FIXME: This should be a resolver relative to `std/core`
+            ModuleDef::BuiltinType(_t) => None?,
         })
     }
 }

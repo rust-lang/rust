@@ -6,8 +6,9 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
+    db::{DefDatabase, HirDatabase},
     Field, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, Name, PathResolution,
-    Semantics, TypeParam, Visibility, db::{DefDatabase, HirDatabase},
+    Semantics, TypeParam, Visibility,
 };
 use ra_prof::profile;
 use ra_syntax::{
@@ -16,7 +17,7 @@ use ra_syntax::{
 };
 
 use crate::RootDatabase;
-use ra_hir_def::resolver::{Resolver, HasResolver};
+use ra_hir_def::resolver::{HasResolver, Resolver};
 
 // FIXME: a more precise name would probably be `Symbol`?
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -83,12 +84,14 @@ impl Definition {
         use ra_hir_def::*;
         Some(match self {
             Definition::ModuleDef(def) => def.resolver(db)?,
-            Definition::Field(field) => Into::<VariantId>::into(Into::<VariantDef>::into(field.parent_def(db))).resolver(db),
+            Definition::Field(field) => {
+                Into::<VariantId>::into(Into::<VariantDef>::into(field.parent_def(db))).resolver(db)
+            }
             Definition::Macro(m) => Into::<ModuleId>::into(m.module(db)?).resolver(db),
             Definition::SelfType(imp) => Into::<ImplId>::into(imp.clone()).resolver(db),
             // it's possible, read probable, that other arms of this are also unreachable
             Definition::Local(_local) => unreachable!(),
-            Definition::TypeParam(tp) => Into::<ModuleId>::into(tp.module(db)).resolver(db)
+            Definition::TypeParam(tp) => Into::<ModuleId>::into(tp.module(db)).resolver(db),
         })
     }
 }
