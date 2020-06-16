@@ -24,6 +24,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::{FnOnceTraitLangItem, GeneratorTraitLangItem};
+use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::util::IntTypeExt;
@@ -1146,7 +1147,7 @@ fn confirm_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     debug!("confirm_candidate(candidate={:?}, obligation={:?})", candidate, obligation);
 
-    match candidate {
+    let mut progress = match candidate {
         ProjectionTyCandidate::ParamEnv(poly_projection)
         | ProjectionTyCandidate::TraitDef(poly_projection) => {
             confirm_param_env_candidate(selcx, obligation, poly_projection)
@@ -1155,7 +1156,16 @@ fn confirm_candidate<'cx, 'tcx>(
         ProjectionTyCandidate::Select(impl_source) => {
             confirm_select_candidate(selcx, obligation, obligation_trait_ref, impl_source)
         }
+    };
+    // When checking for cycle during evaluation, we compare predicates with
+    // "syntactic" equality. Since normalization generally introduces a type
+    // with new region variables, we need to resolve them to existing variables
+    // when possible for this to work. See `auto-trait-projection-recursion.rs`
+    // for a case where this matters.
+    if progress.ty.has_infer_regions() {
+        progress.ty = OpportunisticRegionResolver::new(selcx.infcx()).fold_ty(progress.ty);
     }
+    progress
 }
 
 fn confirm_select_candidate<'cx, 'tcx>(
