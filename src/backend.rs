@@ -58,7 +58,7 @@ impl WriteDebugInfo for ObjectProduct {
         id: SectionId,
         data: Vec<u8>,
     ) -> (object::write::SectionId, object::write::SymbolId) {
-        let name = if self.object.format() == target_lexicon::BinaryFormat::Macho {
+        let name = if self.object.format() == object::BinaryFormat::MachO {
             id.name().replace('.', "__") // machO expects __debug_info instead of .debug_info
         } else {
             id.name().to_string()
@@ -109,8 +109,32 @@ impl Emit for ObjectProduct {
 
 pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> Vec<u8> {
     let triple = crate::build_isa(sess, true).triple().clone();
-    let mut metadata_object =
-        object::write::Object::new(triple.binary_format, triple.architecture);
+
+    let binary_format = match triple.binary_format {
+        target_lexicon::BinaryFormat::Elf => object::BinaryFormat::Elf,
+        target_lexicon::BinaryFormat::Coff => object::BinaryFormat::Coff,
+        target_lexicon::BinaryFormat::Macho => object::BinaryFormat::MachO,
+        target_lexicon::BinaryFormat::Wasm => sess.fatal("binary format wasm is unsupported"),
+        target_lexicon::BinaryFormat::Unknown => sess.fatal("binary format is unknown"),
+    };
+    let architecture = match triple.architecture {
+        target_lexicon::Architecture::I386
+        | target_lexicon::Architecture::I586
+        | target_lexicon::Architecture::I686 => object::Architecture::I386,
+        target_lexicon::Architecture::X86_64 => object::Architecture::X86_64,
+        target_lexicon::Architecture::Arm(_) => object::Architecture::Arm,
+        target_lexicon::Architecture::Aarch64(_) => object::Architecture::Aarch64,
+        architecture => sess.fatal(&format!(
+            "target architecture {:?} is unsupported",
+            architecture,
+        ))
+    };
+    let endian = match triple.endianness().unwrap() {
+        target_lexicon::Endianness::Little => object::Endianness::Little,
+        target_lexicon::Endianness::Big => object::Endianness::Big,
+    };
+
+    let mut metadata_object = object::write::Object::new(binary_format, architecture, endian);
     metadata_object.add_file_symbol(name.as_bytes().to_vec());
     f(&mut metadata_object);
     metadata_object.write().unwrap()
@@ -124,7 +148,7 @@ pub(crate) fn make_module(sess: &Session, name: String) -> Module<Backend> {
             crate::build_isa(sess, true),
             name + ".o",
             cranelift_module::default_libcall_names(),
-        ),
+        ).unwrap(),
     );
     module
 }
