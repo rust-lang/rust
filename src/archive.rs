@@ -220,14 +220,16 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         // Finalize archive
         std::mem::drop(builder);
 
-        // Run ranlib to be able to link the archive
-        let status = std::process::Command::new("ranlib")
-            .arg(self.config.dst)
-            .status()
-            .expect("Couldn't run ranlib");
+        if self.update_symbols {
+            // Run ranlib to be able to link the archive
+            let status = std::process::Command::new("ranlib")
+                .arg(self.config.dst)
+                .status()
+                .expect("Couldn't run ranlib");
 
-        if !status.success() {
-            self.config.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
+            if !status.success() {
+                self.config.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
+            }
         }
     }
 }
