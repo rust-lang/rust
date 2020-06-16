@@ -9,6 +9,7 @@
 
 use std::{ffi::OsString, path::PathBuf};
 
+use crate::diagnostics::DiagnosticsConfig;
 use lsp_types::ClientCapabilities;
 use ra_flycheck::FlycheckConfig;
 use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
@@ -20,6 +21,7 @@ pub struct Config {
     pub client_caps: ClientCapsConfig,
 
     pub publish_diagnostics: bool,
+    pub diagnostics: DiagnosticsConfig,
     pub lru_capacity: Option<usize>,
     pub proc_macro_srv: Option<(PathBuf, Vec<OsString>)>,
     pub files: FilesConfig,
@@ -136,6 +138,7 @@ impl Default for Config {
 
             with_sysroot: true,
             publish_diagnostics: true,
+            diagnostics: DiagnosticsConfig::default(),
             lru_capacity: None,
             proc_macro_srv: None,
             files: FilesConfig { watcher: FilesWatcher::Notify, exclude: Vec::new() },
@@ -184,6 +187,8 @@ impl Config {
 
         set(value, "/withSysroot", &mut self.with_sysroot);
         set(value, "/diagnostics/enable", &mut self.publish_diagnostics);
+        set(value, "/diagnostics/warningsAsInfo", &mut self.diagnostics.warnings_as_info);
+        set(value, "/diagnostics/warningsAsHint", &mut self.diagnostics.warnings_as_hint);
         set(value, "/lruCapacity", &mut self.lru_capacity);
         self.files.watcher = match get(value, "/files/watcher") {
             Some("client") => FilesWatcher::Client,

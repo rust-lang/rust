@@ -11,6 +11,12 @@ use crate::lsp_ext;
 pub type CheckFixes = Arc<HashMap<FileId, Vec<Fix>>>;
 
 #[derive(Debug, Default, Clone)]
+pub struct DiagnosticsConfig {
+    pub warnings_as_info: Vec<String>,
+    pub warnings_as_hint: Vec<String>,
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct DiagnosticCollection {
     pub native: HashMap<FileId, Vec<Diagnostic>>,
     pub check: HashMap<FileId, Vec<Diagnostic>>,

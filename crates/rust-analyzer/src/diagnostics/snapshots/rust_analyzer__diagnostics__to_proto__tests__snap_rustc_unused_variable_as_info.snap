@@ -1,0 +1,86 @@
+---
+source: crates/rust-analyzer/src/diagnostics/to_proto.rs
+expression: diag
+---
+[
+    MappedRustDiagnostic {
+        location: Location {
+            uri: "file:///test/driver/subcommand/repl.rs",
+            range: Range {
+                start: Position {
+                    line: 290,
+                    character: 8,
+                },
+                end: Position {
+                    line: 290,
+                    character: 11,
+                },
+            },
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 290,
+                    character: 8,
+                },
+                end: Position {
+                    line: 290,
+                    character: 11,
+                },
+            },
+            severity: Some(
+                Information,
+            ),
+            code: Some(
+                String(
+                    "unused_variables",
+                ),
+            ),
+            source: Some(
+                "rustc",
+            ),
+            message: "unused variable: `foo`\n#[warn(unused_variables)] on by default",
+            related_information: None,
+            tags: Some(
+                [
+                    Unnecessary,
+                ],
+            ),
+        },
+        fixes: [
+            CodeAction {
+                title: "consider prefixing with an underscore",
+                id: None,
+                group: None,
+                kind: Some(
+                    "quickfix",
+                ),
+                command: None,
+                edit: Some(
+                    SnippetWorkspaceEdit {
+                        changes: Some(
+                            {
+                                "file:///test/driver/subcommand/repl.rs": [
+                                    TextEdit {
+                                        range: Range {
+                                            start: Position {
+                                                line: 290,
+                                                character: 8,
+                                            },
+                                            end: Position {
+                                                line: 290,
+                                                character: 11,
+                                            },
+                                        },
+                                        new_text: "_foo",
+                                    },
+                                ],
+                            },
+                        ),
+                        document_changes: None,
+                    },
+                ),
+            },
+        ],
+    },
+]

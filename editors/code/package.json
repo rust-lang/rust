@@ -525,6 +525,24 @@
                     "markdownDescription": "Internal config for debugging, disables loading of sysroot crates",
                     "type": "boolean",
                     "default": true
+                },
+                "rust-analyzer.diagnostics.warningsAsInfo": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of warnings that should be displayed with info severity.\nThe warnings will be indicated by a blue squiggly underline in code and a blue icon in the problems panel.",
+                    "default": []
+                },
+                "rust-analyzer.diagnostics.warningsAsHint": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of warnings warnings that should be displayed with hint severity.\nThe warnings will be indicated by faded text or three dots in code and will not show up in te problems panel.",
+                    "default": []
                 }
             }
         },

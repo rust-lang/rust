@@ -734,6 +734,7 @@ fn on_check_task(
 
         CheckTask::AddDiagnostic { workspace_root, diagnostic } => {
             let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
+                &global_state.config.diagnostics,
                 &diagnostic,
                 &workspace_root,
             );
