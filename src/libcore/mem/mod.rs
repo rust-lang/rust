@@ -129,7 +129,7 @@ pub use crate::intrinsics::transmute;
 /// erring on the side of (double-)dropping.
 ///
 /// Also, `ManuallyDrop` prevents us from having to "touch" `v` after transferring the
-/// ownership to `s` - the final step of interacting with `v` to dispoe of it without
+/// ownership to `s` — the final step of interacting with `v` to dispose of it without
 /// running its destructor is entirely avoided.
 ///
 /// [drop]: fn.drop.html
