@@ -548,8 +548,8 @@ impl Step for Rustc {
         // Find dependencies for top level crates.
         let mut compiler_crates = HashSet::new();
         for root_crate in &["rustc_driver", "rustc_codegen_llvm", "rustc_codegen_ssa"] {
-            let interned_root_crate = INTERNER.intern_str(root_crate);
-            find_compiler_crates(builder, &interned_root_crate, &mut compiler_crates);
+            compiler_crates
+                .extend(builder.in_tree_crates(root_crate).into_iter().map(|krate| krate.name));
         }
 
         for krate in &compiler_crates {
@@ -561,22 +561,6 @@ impl Step for Rustc {
         }
 
         builder.run(&mut cargo.into());
-    }
-}
-
-fn find_compiler_crates(
-    builder: &Builder<'_>,
-    name: &Interned<String>,
-    crates: &mut HashSet<Interned<String>>,
-) {
-    // Add current crate.
-    crates.insert(*name);
-
-    // Look for dependencies.
-    for dep in builder.crates.get(name).unwrap().deps.iter() {
-        if builder.crates.get(dep).unwrap().is_local(builder) {
-            find_compiler_crates(builder, dep, crates);
-        }
     }
 }
 
