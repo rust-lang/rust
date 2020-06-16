@@ -4,21 +4,21 @@
 
 fn id<T>(t: T) -> impl Sized { t }
 
-fn recursive_id() -> impl Sized { //~ ERROR opaque type expands to a recursive type
+fn recursive_id() -> impl Sized { //~ ERROR cannot resolve opaque type
     id(recursive_id2())
 }
 
-fn recursive_id2() -> impl Sized { //~ ERROR opaque type expands to a recursive type
+fn recursive_id2() -> impl Sized { //~ ERROR cannot resolve opaque type
     id(recursive_id())
 }
 
 fn wrap<T>(t: T) -> impl Sized { (t,) }
 
-fn recursive_wrap() -> impl Sized { //~ ERROR opaque type expands to a recursive type
+fn recursive_wrap() -> impl Sized { //~ ERROR cannot resolve opaque type
     wrap(recursive_wrap2())
 }
 
-fn recursive_wrap2() -> impl Sized { //~ ERROR opaque type expands to a recursive type
+fn recursive_wrap2() -> impl Sized { //~ ERROR cannot resolve opaque type
     wrap(recursive_wrap())
 }
 
