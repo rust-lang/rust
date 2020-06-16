@@ -2,9 +2,12 @@ error[E0605]: non-primitive cast: `Self` as `&dyn std::ops::Index<usize, Output 
   --> $DIR/issue-22312.rs:11:24
    |
 LL |         let indexer = &(*self as &dyn Index<usize, Output = <Self as Index<usize>>::Output>);
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
    |
-   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+help: borrow the value for the cast to be valid
+   |
+LL |         let indexer = &(&*self as &dyn Index<usize, Output = <Self as Index<usize>>::Output>);
+   |                         ^
 
 error: aborting due to previous error
 
