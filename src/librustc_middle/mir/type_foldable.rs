@@ -27,11 +27,11 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 values: values.clone(),
                 targets: targets.clone(),
             },
-            Drop { ref location, target, unwind } => {
-                Drop { location: location.fold_with(folder), target, unwind }
+            Drop { ref place, target, unwind } => {
+                Drop { place: place.fold_with(folder), target, unwind }
             }
-            DropAndReplace { ref location, ref value, target, unwind } => DropAndReplace {
-                location: location.fold_with(folder),
+            DropAndReplace { ref place, ref value, target, unwind } => DropAndReplace {
+                place: place.fold_with(folder),
                 value: value.fold_with(folder),
                 target,
                 unwind,
@@ -97,9 +97,9 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             SwitchInt { ref discr, switch_ty, .. } => {
                 discr.visit_with(visitor) || switch_ty.visit_with(visitor)
             }
-            Drop { ref location, .. } => location.visit_with(visitor),
-            DropAndReplace { ref location, ref value, .. } => {
-                location.visit_with(visitor) || value.visit_with(visitor)
+            Drop { ref place, .. } => place.visit_with(visitor),
+            DropAndReplace { ref place, ref value, .. } => {
+                place.visit_with(visitor) || value.visit_with(visitor)
             }
             Yield { ref value, .. } => value.visit_with(visitor),
             Call { ref func, ref args, ref destination, .. } => {
