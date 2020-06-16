@@ -528,13 +528,13 @@ pub(crate) fn resource_op(
     file_system_edit: FileSystemEdit,
 ) -> lsp_types::ResourceOp {
     match file_system_edit {
-        FileSystemEdit::CreateFile { source_root, path } => {
-            let uri = snap.path_to_url(source_root, &path);
+        FileSystemEdit::CreateFile { anchor, dst } => {
+            let uri = snap.anchored_path(anchor, &dst);
             lsp_types::ResourceOp::Create(lsp_types::CreateFile { uri, options: None })
         }
-        FileSystemEdit::MoveFile { src, dst_source_root, dst_path } => {
+        FileSystemEdit::MoveFile { src, anchor, dst } => {
             let old_uri = snap.file_id_to_url(src);
-            let new_uri = snap.path_to_url(dst_source_root, &dst_path);
+            let new_uri = snap.anchored_path(anchor, &dst);
             lsp_types::ResourceOp::Rename(lsp_types::RenameFile { old_uri, new_uri, options: None })
         }
     }

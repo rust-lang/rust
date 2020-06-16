@@ -296,7 +296,6 @@ pub enum ModuleSource {
 
 mod diagnostics {
     use hir_expand::diagnostics::DiagnosticSink;
-    use ra_db::RelativePathBuf;
     use ra_syntax::{ast, AstPtr};
 
     use crate::{db::DefDatabase, diagnostics::UnresolvedModule, nameres::LocalModuleId, AstId};
@@ -306,7 +305,7 @@ mod diagnostics {
         UnresolvedModule {
             module: LocalModuleId,
             declaration: AstId<ast::Module>,
-            candidate: RelativePathBuf,
+            candidate: String,
         },
     }
 

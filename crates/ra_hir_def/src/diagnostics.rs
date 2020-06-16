@@ -3,7 +3,6 @@
 use std::any::Any;
 
 use hir_expand::diagnostics::Diagnostic;
-use ra_db::RelativePathBuf;
 use ra_syntax::{ast, AstPtr, SyntaxNodePtr};
 
 use hir_expand::{HirFileId, InFile};
@@ -12,7 +11,7 @@ use hir_expand::{HirFileId, InFile};
 pub struct UnresolvedModule {
     pub file: HirFileId,
     pub decl: AstPtr<ast::Module>,
-    pub candidate: RelativePathBuf,
+    pub candidate: String,
 }
 
 impl Diagnostic for UnresolvedModule {

@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::{ModuleSource, Semantics};
-use ra_db::{RelativePath, RelativePathBuf, SourceDatabaseExt};
+use ra_db::{RelativePathBuf, SourceDatabaseExt};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_node_at_offset, ast, ast::TypeAscriptionOwner, lex_single_valid_syntax_kind,
@@ -92,23 +92,14 @@ fn rename_mod(
             ModuleSource::SourceFile(..) => {
                 let mod_path: RelativePathBuf = sema.db.file_relative_path(file_id);
                 // mod is defined in path/to/dir/mod.rs
-                let dst_path = if mod_path.file_stem() == Some("mod") {
-                    mod_path
-                        .parent()
-                        .and_then(|p| p.parent())
-                        .or_else(|| Some(RelativePath::new("")))
-                        .map(|p| p.join(new_name).join("mod.rs"))
+                let dst = if mod_path.file_stem() == Some("mod") {
+                    format!("../{}/mod.rs", new_name)
                 } else {
-                    Some(mod_path.with_file_name(new_name).with_extension("rs"))
+                    format!("{}.rs", new_name)
                 };
-                if let Some(path) = dst_path {
-                    let move_file = FileSystemEdit::MoveFile {
-                        src: file_id,
-                        dst_source_root: sema.db.file_source_root(position.file_id),
-                        dst_path: path,
-                    };
-                    file_system_edits.push(move_file);
-                }
+                let move_file =
+                    FileSystemEdit::MoveFile { src: file_id, anchor: position.file_id, dst };
+                file_system_edits.push(move_file);
             }
             ModuleSource::Module(..) => {}
         }
@@ -623,16 +614,16 @@ mod tests {
     #[test]
     fn test_rename_mod() {
         let (analysis, position) = analysis_and_position(
-            "
-            //- /lib.rs
-            mod bar;
+            r#"
+//- /lib.rs
+mod bar;
 
-            //- /bar.rs
-            mod foo<|>;
+//- /bar.rs
+mod foo<|>;
 
-            //- /bar/foo.rs
-            // emtpy
-            ",
+//- /bar/foo.rs
+// emtpy
+            "#,
         );
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();
@@ -662,10 +653,10 @@ mod tests {
                             src: FileId(
                                 3,
                             ),
-                            dst_source_root: SourceRootId(
-                                0,
+                            anchor: FileId(
+                                2,
                             ),
-                            dst_path: "bar/foo2.rs",
+                            dst: "foo2.rs",
                         },
                     ],
                     is_snippet: false,
@@ -678,12 +669,12 @@ mod tests {
     #[test]
     fn test_rename_mod_in_dir() {
         let (analysis, position) = analysis_and_position(
-            "
-            //- /lib.rs
-            mod fo<|>o;
-            //- /foo/mod.rs
-            // emtpy
-            ",
+            r#"
+//- /lib.rs
+mod fo<|>o;
+//- /foo/mod.rs
+// emtpy
+            "#,
         );
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();
@@ -713,10 +704,10 @@ mod tests {
                             src: FileId(
                                 2,
                             ),
-                            dst_source_root: SourceRootId(
-                                0,
+                            anchor: FileId(
+                                1,
                             ),
-                            dst_path: "foo2/mod.rs",
+                            dst: "../foo2/mod.rs",
                         },
                     ],
                     is_snippet: false,
@@ -753,19 +744,19 @@ mod tests {
     #[test]
     fn test_rename_mod_filename_and_path() {
         let (analysis, position) = analysis_and_position(
-            "
-            //- /lib.rs
-            mod bar;
-            fn f() {
-                bar::foo::fun()
-            }
+            r#"
+//- /lib.rs
+mod bar;
+fn f() {
+    bar::foo::fun()
+}
 
-            //- /bar.rs
-            pub mod foo<|>;
+//- /bar.rs
+pub mod foo<|>;
 
-            //- /bar/foo.rs
-            // pub fn fun() {}
-            ",
+//- /bar/foo.rs
+// pub fn fun() {}
+            "#,
         );
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();
@@ -808,10 +799,10 @@ mod tests {
                             src: FileId(
                                 3,
                             ),
-                            dst_source_root: SourceRootId(
-                                0,
+                            anchor: FileId(
+                                2,
                             ),
-                            dst_path: "bar/foo2.rs",
+                            dst: "foo2.rs",
                         },
                     ],
                     is_snippet: false,

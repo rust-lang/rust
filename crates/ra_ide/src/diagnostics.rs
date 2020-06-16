@@ -11,7 +11,7 @@ use hir::{
     Semantics,
 };
 use itertools::Itertools;
-use ra_db::{RelativePath, SourceDatabase, SourceDatabaseExt};
+use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
@@ -57,14 +57,10 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     })
     .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
         let original_file = d.source().file_id.original_file(db);
-        let source_root = db.file_source_root(original_file);
-        let path = db
-            .file_relative_path(original_file)
-            .parent()
-            .unwrap_or_else(|| RelativePath::new(""))
-            .join(&d.candidate);
-        let fix =
-            Fix::new("Create module", FileSystemEdit::CreateFile { source_root, path }.into());
+        let fix = Fix::new(
+            "Create module",
+            FileSystemEdit::CreateFile { anchor: original_file, dst: d.candidate.clone() }.into(),
+        );
         res.borrow_mut().push(Diagnostic {
             range: sema.diagnostics_range(d).range,
             message: d.message(),
@@ -612,10 +608,10 @@ mod tests {
                             source_file_edits: [],
                             file_system_edits: [
                                 CreateFile {
-                                    source_root: SourceRootId(
-                                        0,
+                                    anchor: FileId(
+                                        1,
                                     ),
-                                    path: "foo.rs",
+                                    dst: "foo.rs",
                                 },
                             ],
                             is_snippet: false,
