@@ -9,4 +9,5 @@ fn main() {
     map(None);
 }
 
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR rustc.map.SimplifyLocals.diff

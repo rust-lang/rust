@@ -23,13 +23,15 @@
                                            // + ty: i32
                                            // + val: Value(Scalar(0x0000002a))
                                            // mir::Constant
-                                           // + span: $DIR/mutable_variable_aggregate_mut_ref.rs:5:18: 5:20
+-                                          // + span: $DIR/mutable_variable_aggregate_mut_ref.rs:5:18: 5:20
++                                          // + span: $DIR/mutable_variable_aggregate_mut_ref.rs:5:17: 5:25
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x0000002b))
                                            // mir::Constant
-                                           // + span: $DIR/mutable_variable_aggregate_mut_ref.rs:5:22: 5:24
+-                                          // + span: $DIR/mutable_variable_aggregate_mut_ref.rs:5:22: 5:24
++                                          // + span: $DIR/mutable_variable_aggregate_mut_ref.rs:5:17: 5:25
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x0000002b)) }
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_aggregate_mut_ref.rs:6:9: 6:10
           _2 = &mut _1;                    // scope 1 at $DIR/mutable_variable_aggregate_mut_ref.rs:6:13: 6:19
