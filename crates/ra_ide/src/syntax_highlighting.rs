@@ -44,6 +44,7 @@ pub(crate) fn highlight(
     db: &RootDatabase,
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
+    syntactic_name_ref_highlighting: bool,
 ) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
     let sema = Semantics::new(db);
@@ -104,6 +105,7 @@ pub(crate) fn highlight(
                     if let Some((highlight, binding_hash)) = highlight_element(
                         &sema,
                         &mut bindings_shadow_count,
+                        syntactic_name_ref_highlighting,
                         name.syntax().clone().into(),
                     ) {
                         stack.add(HighlightedRange {
@@ -200,9 +202,12 @@ pub(crate) fn highlight(
 
         let is_format_string = format_string.as_ref() == Some(&element_to_highlight);
 
-        if let Some((highlight, binding_hash)) =
-            highlight_element(&sema, &mut bindings_shadow_count, element_to_highlight.clone())
-        {
+        if let Some((highlight, binding_hash)) = highlight_element(
+            &sema,
+            &mut bindings_shadow_count,
+            syntactic_name_ref_highlighting,
+            element_to_highlight.clone(),
+        ) {
             stack.add(HighlightedRange { range, highlight, binding_hash });
             if let Some(string) =
                 element_to_highlight.as_token().cloned().and_then(ast::String::cast)
@@ -410,6 +415,7 @@ fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
 fn highlight_element(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
+    syntactic_name_ref_highlighting: bool,
     element: SyntaxElement,
 ) -> Option<(Highlight, Option<u64>)> {
     let db = sema.db;
@@ -463,6 +469,7 @@ fn highlight_element(
                     }
                     NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
                 },
+                None if syntactic_name_ref_highlighting => highlight_name_ref_by_syntax(name_ref),
                 None => HighlightTag::UnresolvedReference.into(),
             }
         }
@@ -609,6 +616,56 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         STATIC_DEF => HighlightTag::Static,
         ENUM_VARIANT => HighlightTag::EnumVariant,
         BIND_PAT => HighlightTag::Local,
+        _ => default,
+    };
+
+    tag.into()
+}
+
+fn highlight_name_ref_by_syntax(name: ast::NameRef) -> Highlight {
+    let default = HighlightTag::UnresolvedReference;
+
+    let parent = match name.syntax().parent() {
+        Some(it) => it,
+        _ => return default.into(),
+    };
+
+    let tag = match parent.kind() {
+        METHOD_CALL_EXPR => HighlightTag::Function,
+        FIELD_EXPR => HighlightTag::Field,
+        PATH_SEGMENT => {
+            let path = match parent.parent().and_then(ast::Path::cast) {
+                Some(it) => it,
+                _ => return default.into(),
+            };
+            let expr = match path.syntax().parent().and_then(ast::PathExpr::cast) {
+                Some(it) => it,
+                _ => {
+                    // within path, decide whether it is module or adt by checking for uppercase name
+                    return if name.text().chars().next().unwrap_or_default().is_uppercase() {
+                        HighlightTag::Struct
+                    } else {
+                        HighlightTag::Module
+                    }
+                    .into();
+                }
+            };
+            let parent = match expr.syntax().parent() {
+                Some(it) => it,
+                None => return default.into(),
+            };
+
+            match parent.kind() {
+                CALL_EXPR => HighlightTag::Function,
+                _ => {
+                    if name.text().chars().next().unwrap_or_default().is_uppercase() {
+                        HighlightTag::Struct
+                    } else {
+                        HighlightTag::Constant
+                    }
+                }
+            }
+        }
         _ => default,
     };
 

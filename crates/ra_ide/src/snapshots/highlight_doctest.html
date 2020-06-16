@@ -25,22 +25,29 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .variable           { color: #DCDCCC; }
 .format_specifier   { color: #CC696B; }
 .mutable            { text-decoration: underline; }
+.unresolved_reference { color: #FC5555; }
 
 .keyword            { color: #F0DFAF; font-weight: bold; }
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .control            { font-style: italic; }
 </style>
-<pre><code><span class="keyword">impl</span> <span class="unresolved_reference">Foo</span> {
+<pre><code><span class="keyword">struct</span> <span class="struct declaration">Foo</span> {
+    <span class="field declaration">bar</span>: <span class="builtin_type">bool</span>,
+}
+
+<span class="keyword">impl</span> <span class="struct">Foo</span> {
+    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="constant declaration">bar</span>: <span class="builtin_type">bool</span> = <span class="bool_literal">true</span>;
+
     <span class="comment">/// Constructs a new `Foo`.</span>
     <span class="comment">///</span>
     <span class="comment">/// # Examples</span>
     <span class="comment">///</span>
     <span class="comment">/// ```</span>
     <span class="comment">/// #</span> <span class="attribute">#![</span><span class="function attribute">allow</span><span class="attribute">(unused_mut)]</span>
-    <span class="comment">/// </span><span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">foo</span>: <span class="unresolved_reference">Foo</span> = <span class="unresolved_reference">Foo</span>::<span class="unresolved_reference">new</span>();
+    <span class="comment">/// </span><span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">foo</span>: <span class="struct">Foo</span> = <span class="struct">Foo</span>::<span class="function">new</span>();
     <span class="comment">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function declaration">new</span>() -&gt; <span class="unresolved_reference">Foo</span> {
-        <span class="unresolved_reference">Foo</span> { }
+    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function declaration">new</span>() -&gt; <span class="struct">Foo</span> {
+        <span class="struct">Foo</span> { <span class="field">bar</span>: <span class="bool_literal">true</span> }
     }
 
     <span class="comment">/// `bar` method on `Foo`.</span>
@@ -48,10 +55,14 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment">/// # Examples</span>
     <span class="comment">///</span>
     <span class="comment">/// ```</span>
-    <span class="comment">/// </span><span class="keyword">let</span> <span class="variable declaration">foo</span> = <span class="unresolved_reference">Foo</span>::<span class="unresolved_reference">new</span>();
+    <span class="comment">/// </span><span class="keyword">use</span> <span class="module">x</span>::<span class="module">y</span>;
+    <span class="comment">///</span>
+    <span class="comment">/// </span><span class="keyword">let</span> <span class="variable declaration">foo</span> = <span class="struct">Foo</span>::<span class="function">new</span>();
     <span class="comment">///</span>
     <span class="comment">/// </span><span class="comment">// calls bar on foo</span>
     <span class="comment">/// </span><span class="macro">assert!</span>(foo.bar());
+    <span class="comment">///</span>
+    <span class="comment">/// </span><span class="keyword">let</span> <span class="variable declaration">bar</span> = <span class="variable">foo</span>.<span class="field">bar</span> || <span class="struct">Foo</span>::<span class="constant">bar</span>;
     <span class="comment">///</span>
     <span class="comment">/// </span><span class="comment">/* multi-line
     </span><span class="comment">/// </span><span class="comment">       comment */</span>
@@ -63,7 +74,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment">/// ```</span>
     <span class="comment">///</span>
     <span class="comment">/// ```</span>
-    <span class="comment">/// </span><span class="keyword">let</span> <span class="variable declaration">foobar</span> = <span class="unresolved_reference">Foo</span>::<span class="unresolved_reference">new</span>().<span class="unresolved_reference">bar</span>();
+    <span class="comment">/// </span><span class="keyword">let</span> <span class="variable declaration">foobar</span> = <span class="struct">Foo</span>::<span class="function">new</span>().<span class="function">bar</span>();
     <span class="comment">/// ```</span>
     <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration">foo</span>(&<span class="self_keyword">self</span>) -&gt; <span class="builtin_type">bool</span> {
         <span class="bool_literal">true</span>
