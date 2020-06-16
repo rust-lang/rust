@@ -10,11 +10,9 @@ use std::process;
 use getopts::Options;
 
 use crate::builder::Builder;
-use crate::config::Config;
-use crate::metadata;
-use crate::{Build, DocTests};
-
 use crate::cache::{Interned, INTERNER};
+use crate::config::Config;
+use crate::{Build, DocTests};
 
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
@@ -444,8 +442,7 @@ Arguments:
         // All subcommands except `clean` can have an optional "Available paths" section
         if matches.opt_present("verbose") {
             let config = Config::parse(&["build".to_string()]);
-            let mut build = Build::new(config);
-            metadata::build(&mut build);
+            let build = Build::new(config);
 
             let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
             extra_help.push_str(maybe_rules_help.unwrap_or_default().as_str());
