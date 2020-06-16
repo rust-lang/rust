@@ -424,8 +424,7 @@ extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef TM) {
   printf("Available features for this target:\n");
   for (auto &Feature : FeatTable)
     printf("    %-*s - %s.\n", MaxFeatLen, Feature.Key, Feature.Desc);
-  printf("\n");
-  // Rust specific target features
+  printf("Rust-specific features:\n");
   printf("    %-*s - %s.\n", MaxFeatLen, "crt-static", "Enables libraries with C Run-time Libraries(CRT) to be statically linked");
   printf("\n");
 
