@@ -11,10 +11,11 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    /// Type-check `*oprnd_expr` with `oprnd_expr` type-checked already.
     pub(super) fn lookup_derefing(
         &self,
         expr: &hir::Expr<'_>,
-        oprnd: &'tcx hir::Expr<'tcx>,
+        oprnd_expr: &'tcx hir::Expr<'tcx>,
         oprnd_ty: Ty<'tcx>,
     ) -> Option<Ty<'tcx>> {
         if let Some(mt) = oprnd_ty.builtin_deref(true) {
@@ -25,7 +26,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let method = self.register_infer_ok_obligations(ok);
         if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind {
             self.apply_adjustments(
-                oprnd,
+                oprnd_expr,
                 vec![Adjustment {
                     kind: Adjust::Borrow(AutoBorrow::Ref(region, AutoBorrowMutability::Not)),
                     target: method.sig.inputs()[0],
@@ -39,6 +40,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Some(ty)
     }
 
+    /// Type-check `*base_expr[index_expr]` with `base_expr` and `index_expr` type-checked already.
     pub(super) fn lookup_indexing(
         &self,
         expr: &hir::Expr<'_>,

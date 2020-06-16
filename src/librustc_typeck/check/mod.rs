@@ -3219,10 +3219,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        // When there is an auto mutable borrow, it is equivalent to `&mut expr`,
-        // thus `expr` is ought to be typechecked with needs = [`Needs::MutPlace`].
-        // However in many cases it might not be checked this way originally, e.g.
-        // the receiver of a method call. We need to fix them up.
+        // If there is an mutable auto-borrow, it is equivalent to `&mut <expr>`.
+        // In this case implicit use of `Deref` and `Index` within `<expr>` should
+        // instead be `DerefMut` and `IndexMut`, so fix those up.
         if autoborrow_mut {
             self.convert_place_derefs_to_mutable(expr);
         }
