@@ -72,7 +72,6 @@
 #![feature(concat_idents)]
 #![feature(const_ascii_ctype_on_intrinsics)]
 #![feature(const_alloc_layout)]
-#![feature(const_discriminant)]
 #![feature(const_if_match)]
 #![feature(const_loop)]
 #![feature(const_checked_int_methods)]

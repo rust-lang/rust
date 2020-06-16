@@ -1914,7 +1914,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::discriminant`](../../std/mem/fn.discriminant.html)
-    #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
+    #[rustc_const_stable(feature = "const_discriminant", since = "1.46.0")]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
     /// Rust's "try catch" construct which invokes the function pointer `try_fn`

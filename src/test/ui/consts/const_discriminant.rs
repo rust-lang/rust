@@ -1,5 +1,4 @@
 // run-pass
-#![feature(const_discriminant)]
 #![allow(dead_code)]
 
 use std::mem::{discriminant, Discriminant};
@@ -20,6 +19,8 @@ const TEST_A: Discriminant<Test> = discriminant(&Test::A(5));
 const TEST_A_OTHER: Discriminant<Test> = discriminant(&Test::A(17));
 const TEST_B: Discriminant<Test> = discriminant(&Test::B);
 
+const TEST_TRIVIAL: Discriminant<u32> = discriminant(&42);
+
 enum Void {}
 
 enum SingleVariant {
@@ -37,4 +38,6 @@ fn main() {
     assert_ne!(TEST_B, discriminant(identity(&Test::C { a: 42, b: 7 })));
 
     assert_eq!(TEST_V, discriminant(identity(&SingleVariant::V)));
+
+    assert_eq!(TEST_TRIVIAL, discriminant(identity(&42)));
 }
