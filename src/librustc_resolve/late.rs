@@ -24,6 +24,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::TraitCandidate;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
@@ -2188,7 +2189,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         mut ident: Ident,
         ns: Namespace,
-    ) -> Vec<TraitCandidate<NodeId>> {
+    ) -> Vec<TraitCandidate> {
         debug!("(getting traits containing item) looking for '{}'", ident.name);
 
         let mut found_traits = Vec::new();
@@ -2233,7 +2234,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident: Ident,
         ns: Namespace,
         module: Module<'a>,
-        found_traits: &mut Vec<TraitCandidate<NodeId>>,
+        found_traits: &mut Vec<TraitCandidate>,
     ) {
         assert!(ns == TypeNS || ns == ValueNS);
         let mut traits = module.traits.borrow_mut();
@@ -2292,13 +2293,13 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         mut kind: &NameBindingKind<'_>,
         trait_name: Ident,
-    ) -> SmallVec<[NodeId; 1]> {
+    ) -> SmallVec<[LocalDefId; 1]> {
         let mut import_ids = smallvec![];
         while let NameBindingKind::Import { import, binding, .. } = kind {
             let id = self.r.definitions.local_def_id(import.id);
             self.r.maybe_unused_trait_imports.insert(id);
             self.r.add_to_glob_map(&import, trait_name);
-            import_ids.push(import.id);
+            import_ids.push(id);
             kind = &binding.kind;
         }
         import_ids
