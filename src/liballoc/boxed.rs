@@ -248,7 +248,7 @@ impl<T> Box<T> {
     #[unstable(feature = "box_into_boxed_slice", issue = "71582")]
     pub fn into_boxed_slice(boxed: Box<T>) -> Box<[T]> {
         // *mut T and *mut [T; 1] have the same size and alignment
-        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut [T; 1] as *mut [T]) }
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut [T; 1]) }
     }
 }
 
