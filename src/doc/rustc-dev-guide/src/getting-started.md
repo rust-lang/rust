@@ -140,7 +140,7 @@ the following settings:
 
 ### `./x.py` Intro
 
-`rustc` is a _bootstrapping_ compiler because it is written in Rust. Where do you
+`rustc` is a _bootstrapping_ compiler, which means that it is written in Rust. So where do you
 get the original compiler from? We use the current beta compiler
 to build the compiler. Then, we use that compiler to build itself. Thus,
 `rustc` has a 2-stage build. You can read more about bootstrapping
