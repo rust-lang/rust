@@ -942,20 +942,20 @@ fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     }
 }
 
-fn get_offset<'tcx>(
+fn get_details_from_idx<'tcx>(
     cx: &LateContext<'tcx>,
     idx: &Expr<'_>,
     starts: &[Start<'tcx>],
 ) -> Option<(StartKind<'tcx>, Offset)> {
-    fn extract_start<'tcx>(
+    fn get_start<'tcx>(
         cx: &LateContext<'tcx>,
-        expr: &Expr<'_>,
+        e: &Expr<'_>,
         starts: &[Start<'tcx>],
     ) -> Option<StartKind<'tcx>> {
-        starts.iter().find(|var| same_var(cx, expr, var.id)).map(|v| v.kind)
+        starts.iter().find(|var| same_var(cx, e, var.id)).map(|v| v.kind)
     }
 
-    fn extract_offset<'tcx>(
+    fn get_offset<'tcx>(
         cx: &LateContext<'tcx>,
         e: &Expr<'_>,
         starts: &[Start<'tcx>],
@@ -965,7 +965,7 @@ fn get_offset<'tcx>(
                 ast::LitKind::Int(x, _ty) => Some(MinifyingSugg::non_paren(x.to_string())),
                 _ => None,
             },
-            ExprKind::Path(..) if extract_start(cx, e, starts).is_none() => {
+            ExprKind::Path(..) if get_start(cx, e, starts).is_none() => {
                 // `e` is always non paren as it's a `Path`
                 Some(MinifyingSugg::non_paren(snippet(cx, e.span, "???")))
             },
@@ -976,21 +976,22 @@ fn get_offset<'tcx>(
     match idx.kind {
         ExprKind::Binary(op, lhs, rhs) => match op.node {
             BinOpKind::Add => {
-                let offset_opt = if let Some(s) = extract_start(cx, lhs, starts) {
-                    extract_offset(cx, rhs, starts).map(|o| (s, o))
-                } else if let Some(s) = extract_start(cx, rhs, starts) {
-                    extract_offset(cx, lhs, starts).map(|o| (s, o))
+                let offset_opt = if let Some(s) = get_start(cx, lhs, starts) {
+                    get_offset(cx, rhs, starts).map(|o| (s, o))
+                } else if let Some(s) = get_start(cx, rhs, starts) {
+                    get_offset(cx, lhs, starts).map(|o| (s, o))
                 } else {
                     None
                 };
 
                 offset_opt.map(|(s, o)| (s, Offset::positive(o)))
             },
-            BinOpKind::Sub => extract_start(cx, lhs, starts)
-                .and_then(|s| extract_offset(cx, rhs, starts).map(|o| (s, Offset::negative(o)))),
+            BinOpKind::Sub => {
+                get_start(cx, lhs, starts).and_then(|s| get_offset(cx, rhs, starts).map(|o| (s, Offset::negative(o))))
+            },
             _ => None,
         },
-        ExprKind::Path(..) => extract_start(cx, idx, starts).map(|s| (s, Offset::empty())),
+        ExprKind::Path(..) => get_start(cx, idx, starts).map(|s| (s, Offset::empty())),
         _ => None,
     }
 }
@@ -1196,8 +1197,8 @@ fn detect_manual_memcpy<'tcx>(
                             if let ExprKind::Index(base_right, idx_right) = rhs.kind;
                             if is_slice_like(cx, cx.typeck_results().expr_ty(base_left))
                                 && is_slice_like(cx, cx.typeck_results().expr_ty(base_right));
-                            if let Some((start_left, offset_left)) = get_offset(cx, &idx_left, &starts);
-                            if let Some((start_right, offset_right)) = get_offset(cx, &idx_right, &starts);
+                            if let Some((start_left, offset_left)) = get_details_from_idx(cx, &idx_left, &starts);
+                            if let Some((start_right, offset_right)) = get_details_from_idx(cx, &idx_right, &starts);
 
                             // Source and destination must be different
                             if var_def_id(cx, base_left) != var_def_id(cx, base_right);
