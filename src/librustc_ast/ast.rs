@@ -5,7 +5,7 @@
 //! additional metadata), and [`ItemKind`] (which represents a concrete type and contains
 //! information specific to the type of the item).
 //!
-//! Other module items that worth mentioning:
+//! Other module items worth mentioning:
 //! - [`Ty`] and [`TyKind`]: A parsed Rust type.
 //! - [`Expr`] and [`ExprKind`]: A parsed Rust expression.
 //! - [`Pat`] and [`PatKind`]: A parsed Rust pattern. Patterns are often dual to expressions.
