@@ -2,14 +2,14 @@ Version 1.44.1 (2020-06-18)
 ===========================
 
 * [rustfmt accepts rustfmt_skip in cfg_attr again.][73078]
-* [Fix fingerprinting for lld on Windows with dylib.][cargo/8290]
-* [Don't hash executable filenames on apple platforms.][cargo/8329]
+* [Don't hash executable filenames on apple platforms, fixing backtraces.][cargo/8329]
 * [Fix crashes when finding backtrace on macOS.][71397]
+* [Clippy applies lint levels into different files.][clippy/5356]
 
 [71397]: https://github.com/rust-lang/rust/issues/71397
 [73078]: https://github.com/rust-lang/rust/issues/73078
-[cargo/8290]: https://github.com/rust-lang/cargo/pull/8290
 [cargo/8329]: https://github.com/rust-lang/cargo/pull/8329
+[clippy/5356]: https://github.com/rust-lang/rust-clippy/issues/5356
 
 Version 1.44.0 (2020-06-04)
 ==========================
