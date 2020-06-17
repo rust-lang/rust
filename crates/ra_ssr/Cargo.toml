@@ -1,0 +1,19 @@
+[package]
+edition = "2018"
+name = "ra_ssr"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+license = "MIT OR Apache-2.0"
+description = "Structural search and replace of Rust code"
+repository = "https://github.com/rust-analyzer/rust-analyzer"
+
+[lib]
+doctest = false
+
+[dependencies]
+ra_text_edit = { path = "../ra_text_edit" }
+ra_syntax = { path = "../ra_syntax" }
+ra_db = { path = "../ra_db" }
+ra_ide_db = { path = "../ra_ide_db" }
+hir = { path = "../ra_hir", package = "ra_hir" }
+rustc-hash = "1.1.0"
