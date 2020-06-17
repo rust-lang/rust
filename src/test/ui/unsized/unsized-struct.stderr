@@ -11,6 +11,13 @@ LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
    |
    = help: the trait `std::marker::Sized` is not implemented for `T`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/unsized-struct.rs:4:12
+   |
+LL | struct Foo<T> { data: T }
+   |            ^          - ...if indirection was used here: `Box<T>`
+   |            |
+   |            this could be changed to `T: ?Sized`...
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/unsized-struct.rs:13:24

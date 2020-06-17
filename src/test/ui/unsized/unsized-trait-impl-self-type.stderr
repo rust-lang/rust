@@ -11,6 +11,13 @@ LL | impl<X: ?Sized> T3<X> for S5<X> {
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+help: you could relax the implicit `Sized` bound on `Y` if it were used through indirection like `&Y` or `Box<Y>`
+  --> $DIR/unsized-trait-impl-self-type.rs:8:11
+   |
+LL | struct S5<Y>(Y);
+   |           ^  - ...if indirection was used here: `Box<Y>`
+   |           |
+   |           this could be changed to `Y: ?Sized`...
 
 error: aborting due to previous error
 

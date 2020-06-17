@@ -9,6 +9,13 @@ LL | struct Vec<T> {
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::ops::Fn() + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/issue-23281.rs:8:12
+   |
+LL | struct Vec<T> {
+   |            ^ this could be changed to `T: ?Sized`...
+LL |     t: T,
+   |        - ...if indirection was used here: `Box<T>`
 
 error: aborting due to previous error
 

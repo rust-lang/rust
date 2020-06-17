@@ -26,7 +26,7 @@ use rustc_middle::ty::{
     TypeFoldable, WithConstness,
 };
 use rustc_session::DiagnosticMessageId;
-use rustc_span::{ExpnKind, Span, DUMMY_SP};
+use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -1740,10 +1740,36 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // Suggesting `T: ?Sized` is only valid in an ADT if `T` is only used in a
                     // borrow. `struct S<'a, T: ?Sized>(&'a T);` is valid, `struct S<T: ?Sized>(T);`
                     // is not.
-                    let mut visitor = FindTypeParam { param: param.name.ident().name, valid: true };
+                    let mut visitor = FindTypeParam {
+                        param: param.name.ident().name,
+                        invalid_spans: vec![],
+                        nested: false,
+                    };
                     visitor.visit_item(item);
-                    if !visitor.valid {
-                        continue;
+                    if !visitor.invalid_spans.is_empty() {
+                        let mut multispan: MultiSpan = param.span.into();
+                        multispan.push_span_label(
+                            param.span,
+                            format!("this could be changed to `{}: ?Sized`...", param.name.ident()),
+                        );
+                        for sp in visitor.invalid_spans {
+                            multispan.push_span_label(
+                                sp,
+                                format!(
+                                    "...if indirection was used here: `Box<{}>`",
+                                    param.name.ident(),
+                                ),
+                            );
+                        }
+                        err.span_help(
+                            multispan,
+                            &format!(
+                                "you could relax the implicit `Sized` bound on `{T}` if it were \
+                                 used through indirection like `&{T}` or `Box<{T}>`",
+                                T = param.name.ident(),
+                            ),
+                        );
+                        return;
                     }
                 }
                 _ => {}
@@ -1782,7 +1808,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 /// `param: ?Sized` would be a valid constraint.
 struct FindTypeParam {
     param: rustc_span::Symbol,
-    valid: bool,
+    invalid_spans: Vec<Span>,
+    nested: bool,
 }
 
 impl<'v> Visitor<'v> for FindTypeParam {
@@ -1794,15 +1821,24 @@ impl<'v> Visitor<'v> for FindTypeParam {
 
     fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
         match ty.kind {
-            hir::TyKind::Ptr(_) | hir::TyKind::Rptr(..) | hir::TyKind::TraitObject(..) => return,
+            hir::TyKind::Ptr(_) | hir::TyKind::Rptr(..) | hir::TyKind::TraitObject(..) => {}
             hir::TyKind::Path(hir::QPath::Resolved(None, path))
                 if path.segments.len() == 1 && path.segments[0].ident.name == self.param =>
             {
-                self.valid = false;
+                if !self.nested {
+                    self.invalid_spans.push(ty.span);
+                }
             }
-            _ => {}
+            hir::TyKind::Path(_) => {
+                let prev = self.nested;
+                self.nested = true;
+                hir::intravisit::walk_ty(self, ty);
+                self.nested = prev;
+            }
+            _ => {
+                hir::intravisit::walk_ty(self, ty);
+            }
         }
-        hir::intravisit::walk_ty(self, ty);
     }
 }
 
