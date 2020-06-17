@@ -82,33 +82,3 @@ jobs:
 #         INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
 #         SCRIPT: python x.py dist
 #         DEPLOY_ALT: 1
-
-- job: macOS
-  timeoutInMinutes: 600
-  pool:
-    vmImage: macos-10.15
-  steps:
-  - template: steps/run.yml
-  strategy:
-    matrix:
-      x86_64-apple:
-        SCRIPT: ./x.py test
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
-        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-        MACOSX_DEPLOYMENT_TARGET: 10.8
-        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
-        NO_LLVM_ASSERTIONS: 1
-        NO_DEBUG_ASSERTIONS: 1
-- job: Windows
-  timeoutInMinutes: 600
-  pool:
-    vmImage: 'vs2017-win2016'
-  steps:
-  - template: steps/run.yml
-  strategy:
-    matrix:
-      x86_64-msvc:
-        INITIAL_RUST_CONFIGURE_ARGS: >
-          --build=x86_64-pc-windows-msvc
-          --enable-profiler
-        SCRIPT: python x.py test
