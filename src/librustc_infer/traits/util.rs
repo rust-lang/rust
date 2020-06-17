@@ -234,16 +234,16 @@ impl Elaborator<'tcx> {
                                 if r.is_late_bound() {
                                     None
                                 } else {
-                                    Some(ty::PredicateKind::RegionOutlives(ty::Binder::dummy(
-                                        ty::OutlivesPredicate(r, r_min),
+                                    Some(ty::PredicateKint::RegionOutlives(ty::OutlivesPredicate(
+                                        r, r_min,
                                     )))
                                 }
                             }
 
                             Component::Param(p) => {
                                 let ty = tcx.mk_ty_param(p.index, p.name);
-                                Some(ty::PredicateKind::TypeOutlives(ty::Binder::dummy(
-                                    ty::OutlivesPredicate(ty, r_min),
+                                Some(ty::PredicateKint::TypeOutlives(ty::OutlivesPredicate(
+                                    ty, r_min,
                                 )))
                             }
 

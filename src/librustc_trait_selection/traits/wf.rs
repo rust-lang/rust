@@ -316,7 +316,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     traits::Obligation::new(
                         new_cause,
                         param_env,
-                        ty::PredicateKind::WellFormed(arg).to_predicate(tcx),
+                        ty::PredicateKint::WellFormed(arg).to_predicate(tcx),
                     )
                 }),
         );

@@ -3612,7 +3612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_predicate(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::PredicateKind::WellFormed(arg).to_predicate(self.tcx),
+            ty::PredicateKint::WellFormed(arg).to_predicate(self.tcx),
         ));
     }
 

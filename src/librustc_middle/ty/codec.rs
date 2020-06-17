@@ -39,7 +39,7 @@ impl<'tcx> EncodableWithShorthand for Ty<'tcx> {
 }
 
 impl<'tcx> EncodableWithShorthand for ty::Predicate<'tcx> {
-    type Variant = ty::PredicateKind<'tcx>;
+    type Variant = ty::PredicateKynd<'tcx>;
     fn variant(&self) -> &Self::Variant {
         self.kind()
     }
@@ -195,7 +195,7 @@ where
         })
     } else {
         let tcx = decoder.tcx();
-        Ok(tcx.mk_predicate(ty::PredicateKind::decode(decoder)?))
+        Ok(tcx.mk_predicate(ty::PredicateKynd::decode(decoder)?))
     }
 }
 
