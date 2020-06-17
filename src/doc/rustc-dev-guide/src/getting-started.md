@@ -77,14 +77,16 @@ recommend trying to build on a Raspberry Pi :P
 
 Building the compiler takes more than half an hour on my moderately powerful
 laptop. The first time you build the compiler, LLVM will also be built unless
-you use your system's LLVM (see below).
+you use your system's LLVM ([see below][configsec]).
+
+[configsec]: #configuring-the-compiler
 
 Like `cargo`, the build system will use as many cores as possible. Sometimes
 this can cause you to run low on memory. You can use `-j` to adjust the number
 concurrent jobs.
 
 Also, if you don't have too much free disk space, you may want to turn off
-incremental compilation (see the "Configuring" section below). This will make
+incremental compilation ([see below][configsec]). This will make
 compilation take longer, but will save a ton of space from the incremental
 caches.
 
@@ -92,7 +94,7 @@ caches.
 
 You can just do a normal git clone:
 
-```shell
+```sh
 git clone https://github.com/rust-lang/rust.git
 ```
 
@@ -107,9 +109,6 @@ git submodule update --init --recursive
 git submodule update
 ```
 
-**Pro tip**: if you contribute often, you may want to look at the git worktrees
-tip in [this chapter][suggested].
-
 ### Configuring the Compiler
 
 The compiler has a configuration file which contains a ton of settings. We will
@@ -120,7 +119,7 @@ this chapter for more info][config].
 
 In the top level of the repo:
 
-```shell
+```sh
 cp config.toml.example config.toml
 ```
 
@@ -134,13 +133,16 @@ the following settings:
   Also, it can consume a lot of disk space. This has the same effect as the
   `-i` or `--incremental` flags.
 - `llvm-config`: enables building with system LLVM. [See this chapter][sysllvm]
-  for more info. This avoids building LLVM, which can take a while.
+  for more info. This avoids building LLVM, which can take a while (45 minutes
+  on my laptop; others have reported 15 minutes or faster with incremental
+  compilation).
 
 [sysllvm]: ./building/suggested.html#building-with-system-llvm
 
 ### `./x.py` Intro
 
-`rustc` is a _bootstrapping_ compiler, which means that it is written in Rust and thus needs to be compiled by itself. So where do you
+`rustc` is a _bootstrapping_ compiler, which means that it is written in Rust
+and thus needs to be compiled by itself. So where do you
 get the original compiler from? We use the current beta compiler
 to build a new compiler. Then, we use that compiler to build itself. Thus,
 `rustc` has a 2-stage build. You can read more about bootstrapping
@@ -179,7 +181,7 @@ To build and test everything:
 
 For most contributions, you only need to build stage 1, which saves a lot of time:
 
-```shell
+```sh
 # Build the compiler (stage 1)
 ./x.py build --stage 1
 
@@ -216,7 +218,7 @@ While working on the compiler, it can be helpful to see if the code just
 compiles (similar to `cargo check`) without actually building it. You can do
 this with:
 
-```shell
+```sh
 ./x.py check
 ```
 
@@ -226,7 +228,7 @@ completes in a couple of minutes on my laptop.
 Finally, the CI ensures that the codebase is using consistent style. To format
 the code:
 
-```shell
+```sh
 # Actually format
 ./x.py fmt
 
@@ -237,7 +239,9 @@ the code:
 *Note*: we don't use stable `rustfmt`; we use a pinned version with a special
 config, so this may result in different style from normal `rustfmt` if you have
 format-on-save turned on. It's a good habit to run `./x.py fmt` before every
-commit, as this reduces conflicts later.
+commit, as this reduces conflicts later. The pinned verson is built under
+`build/<target>/stage0/bin/rustfmt`, so if you want, you can use it for a
+single file or for format-on-save in your editor, which can be faster than `./x.py fmt`.
 
 On last thing: you can use `RUSTC_LOG=XXX` to get debug logging. [Read more
 here][logging]. Notice the `C` in `RUSTC_LOG`. Other than that, it uses normal
@@ -347,8 +351,10 @@ writing `r? @user` (e.g. `r? @eddyb`) in either the original post or a followup
 comment.
 
 The reviewer may request some changes using the GitHub code review interface.
-They may also request special procedures (such as a crater run; see below) for
-some PRs.
+They may also request special procedures (such as a [crater] run; [see
+below][break]) for some PRs.
+
+[break]: #breaking-changes
 
 When the PR is ready to be merged, the reviewer will issue a command to
 `@bors`, the CI bot. Usually, this is `@bors r+` or `@bors r=@user` to approve
@@ -386,7 +392,7 @@ channels: stable, beta, and nightly.
 
 In order to implement a new feature, usually you will need to go through [the
 RFC process][rfc] to propose a design, have discussions, etc. In some cases,
-small features can be added with only an FCP (see below). If in doubt, ask the
+small features can be added with only an FCP ([see below][break]). If in doubt, ask the
 compiler, language, or libs team (whichever is most relevant).
 
 [rfc]: https://github.com/rust-lang/rfcs/blob/master/README.md
@@ -399,7 +405,8 @@ The feature then needs to be implemented behind a feature gate, which prevents
 it from being accidentally used.
 
 Finally, somebody may propose stabilizing the feature in an upcoming version of
-Rust. This requires a Final Comment Period (see below) to get the approval of the relevant teams.
+Rust. This requires a Final Comment Period ([see below][break]) to get the
+approval of the relevant teams.
 
 After that, the feature gate can be removed and the feature turned on for all users.
 
