@@ -8,7 +8,7 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Place, PlaceBase};
+use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceWithHirId, PlaceBase};
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
 pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &'a LateContext<'a, 'tcx>) -> Option<FxHashSet<HirId>> {
@@ -46,8 +46,8 @@ struct MutVarsDelegate {
 
 impl<'tcx> MutVarsDelegate {
     #[allow(clippy::similar_names)]
-    fn update(&mut self, cat: &Place<'tcx>) {
-        match cat.base {
+    fn update(&mut self, cat: &PlaceWithHirId<'tcx>) {
+        match cat.place.base {
             PlaceBase::Local(id) => {
                 self.used_mutably.insert(id);
             },
@@ -63,15 +63,15 @@ impl<'tcx> MutVarsDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
-    fn consume(&mut self, _: &Place<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, cmt: &Place<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
             self.update(&cmt)
         }
     }
 
-    fn mutate(&mut self, cmt: &Place<'tcx>) {
+    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>) {
         self.update(&cmt)
     }
 }
