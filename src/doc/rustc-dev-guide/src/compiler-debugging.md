@@ -164,6 +164,8 @@ your log filter, e.g. to get the logs for a specific module, you can run the
 compiler as `RUSTC_LOG=module::path rustc my-file.rs`. All `debug!` output will
 then appear in standard error.
 
+If you are developing rustdoc, use `RUSTDOC_LOG` instead.
+
 **Note that unless you use a very strict filter, the logger will emit a lot of
 output, so use the most specific module(s) you can (comma-separated if
 multiple)**. It's typically a good idea to pipe standard error to a file and
@@ -193,6 +195,12 @@ $ RUSTC_LOG=debug rustc +local my-file.rs 2>all-log
 # log rather than a `debug!` log so it will work on the official
 # compilers.
 $ RUSTC_LOG=rustc_trans=info rustc +local my-file.rs
+
+# This will show the output of all `info!` calls made by rustdoc or any rustc library it calls.
+$ RUSTDOC_LOG=info rustdoc +local my-file.rs
+
+# This will only show `debug!` calls made by rustdoc directly, not any `librustc*` crate.
+$ RUSTDOC_LOG=rustdoc rustdoc +local my-file.rs
 ```
 
 ### How to keep or remove `debug!` and `trace!` calls from the resulting binary

@@ -232,6 +232,11 @@ expect in various situations. These tests also use a supplementary script,
 XPath notation to get a precise look at the output. The full description of all
 the commands available to rustdoc tests is in `htmldocck.py`.
 
+To use multiple crates in a rustdoc test, add `// aux-build:filename.rs`
+to the top of the test file. `filename.rs` should be placed in an `auxiliary`
+directory relative to the test file with the comment. If you need to build
+docs for the auxiliary file, use `// build-aux-docs`.
+
 In addition, there are separate tests for the search index and rustdoc's
 ability to query it. The files in `src/test/rustdoc-js` each contain a
 different search query and the expected results, broken out by search tab.
@@ -240,3 +245,6 @@ runtime. These tests don't have as thorough of a writeup, but a broad example
 that features results in all tabs can be found in `basic.js`. The basic idea is
 that you match a given `QUERY` with a set of `EXPECTED` results, complete with
 the full item path of each item.
+
+You can run tests using the name of the folder. For example,
+`x.py test --stage 1 src/test/rustdoc` will run the output tests using a stage1 rustdoc.
