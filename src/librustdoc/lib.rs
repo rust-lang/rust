@@ -165,9 +165,8 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optmulti(
                 "",
                 "passes",
-                "list of passes to also run, you might want \
-                        to pass it multiple times; a value of `list` \
-                        will print available passes",
+                "list of passes to also run, you might want to pass it multiple times; a value of \
+                        `list` will print available passes",
                 "PASSES",
             )
         }),
@@ -248,8 +247,8 @@ fn opts() -> Vec<RustcOptGroup> {
                 "e",
                 "extend-css",
                 "To add some CSS rules with a given file to generate doc with your \
-                      own theme. However, your theme might break if the rustdoc's generated HTML \
-                      changes, so be careful!",
+                        own theme. However, your theme might break if the rustdoc's generated HTML \
+                        changes, so be careful!",
                 "PATH",
             )
         }),
@@ -262,7 +261,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "playground-url",
                 "URL to send code snippets to, may be reset by --markdown-playground-url \
-                      or `#![doc(html_playground_url=...)]`",
+                        or `#![doc(html_playground_url=...)]`",
                 "URL",
             )
         }),
@@ -276,8 +275,7 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optflag(
                 "",
                 "sort-modules-by-appearance",
-                "sort modules by where they appear in the \
-                                                         program, rather than alphabetically",
+                "sort modules by where they appear in the program, rather than alphabetically",
             )
         }),
         stable("theme", |o| {
@@ -358,7 +356,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "static-root-path",
                 "Path string to force loading static files from in output pages. \
-                      If not set, uses combinations of '../' to reach the documentation root.",
+                        If not set, uses combinations of '../' to reach the documentation root.",
                 "PATH",
             )
         }),
