@@ -8,8 +8,8 @@ use ra_syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
 use stdx::SepBy;
 
 use crate::{
-    call_info::ActiveParameter, Analysis, Highlight, HighlightModifier, HighlightTag,
-    HighlightedRange, RootDatabase,
+    call_info::ActiveParameter, Analysis, HighlightModifier, HighlightTag, HighlightedRange,
+    RootDatabase,
 };
 
 use super::HighlightedRangeStack;
@@ -121,8 +121,7 @@ pub(super) fn extract_doc_comments(
                     range.start(),
                     range.start() + TextSize::try_from(pos).unwrap(),
                 ),
-                highlight: Highlight::from(HighlightTag::Comment)
-                    | HighlightModifier::Documentation,
+                highlight: HighlightTag::Comment | HighlightModifier::Documentation,
                 binding_hash: None,
             });
             line_start += range.len() - TextSize::try_from(pos).unwrap();
@@ -168,6 +167,8 @@ pub(super) fn highlight_doc_comment(
                 h.range.start() + start_offset,
                 h.range.end() + end_offset.unwrap_or(start_offset),
             );
+
+            h.highlight |= HighlightModifier::Documentation;
             stack.add(h);
         }
     }
