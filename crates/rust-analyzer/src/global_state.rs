@@ -33,20 +33,16 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> Option<Flycheck> {
     // FIXME: Figure out the multi-workspace situation
-    workspaces
-        .iter()
-        .find_map(|w| match w {
-            ProjectWorkspace::Cargo { cargo, .. } => Some(cargo),
-            ProjectWorkspace::Json { .. } => None,
-        })
-        .map(|cargo| {
+    workspaces.iter().find_map(|w| match w {
+        ProjectWorkspace::Cargo { cargo, .. } => {
             let cargo_project_root = cargo.workspace_root().to_path_buf();
             Some(Flycheck::new(config.clone(), cargo_project_root))
-        })
-        .unwrap_or_else(|| {
+        }
+        ProjectWorkspace::Json { .. } => {
             log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
             None
-        })
+        }
+    })
 }
 
 /// `GlobalState` is the primary mutable state of the language server
