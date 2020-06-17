@@ -526,27 +526,31 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
         unsubstituted_region_constraints.iter().map(move |constraint| {
             let constraint = substitute_value(self.tcx, result_subst, constraint);
-            let ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
 
-            Obligation::new(
-                cause.clone(),
-                param_env,
-                match k1.unpack() {
-                    GenericArgKind::Lifetime(r1) => ty::PredicateKind::RegionOutlives(
-                        ty::Binder::bind(ty::OutlivesPredicate(r1, r2)),
-                    )
-                    .to_predicate(self.tcx),
-                    GenericArgKind::Type(t1) => ty::PredicateKind::TypeOutlives(ty::Binder::bind(
-                        ty::OutlivesPredicate(t1, r2),
-                    ))
-                    .to_predicate(self.tcx),
-                    GenericArgKind::Const(..) => {
-                        // Consts cannot outlive one another, so we don't expect to
-                        // ecounter this branch.
-                        span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
-                    }
-                },
-            )
+            let to_predicate = |ty::OutlivesPredicate(k1, r2): ty::OutlivesPredicate<
+                GenericArg<'tcx>,
+                ty::Region<'tcx>,
+            >| match k1.unpack() {
+                GenericArgKind::Lifetime(r1) => self.tcx.intern_predicate_kint(
+                    ty::PredicateKint::RegionOutlives(ty::OutlivesPredicate(r1, r2)),
+                ),
+                GenericArgKind::Type(t1) => self.tcx.intern_predicate_kint(
+                    ty::PredicateKint::TypeOutlives(ty::OutlivesPredicate(t1, r2)),
+                ),
+                GenericArgKind::Const(..) => {
+                    // Consts cannot outlive one another, so we don't expect to
+                    // ecounter this branch.
+                    span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
+                }
+            };
+
+            let predicate = if let Some(constraint) = constraint.no_bound_vars() {
+                to_predicate(constraint).to_predicate(self.tcx)
+            } else {
+                ty::PredicateKint::ForAll(constraint.map_bound(to_predicate)).to_predicate(self.tcx)
+            };
+
+            Obligation::new(cause.clone(), param_env, predicate)
         })
     }
 
