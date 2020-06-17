@@ -233,7 +233,7 @@ pub struct Segment {
     id: Option<NodeId>,
     /// Signals whether this `PathSegment` has generic arguments. Used to avoid providing
     /// nonsensical suggestions.
-    has_args: bool,
+    has_generic_args: bool,
 }
 
 impl Segment {
@@ -242,7 +242,7 @@ impl Segment {
     }
 
     fn from_ident(ident: Ident) -> Segment {
-        Segment { ident, id: None, has_args: false }
+        Segment { ident, id: None, has_generic_args: false }
     }
 
     fn names_to_string(segments: &[Segment]) -> String {
@@ -252,7 +252,7 @@ impl Segment {
 
 impl<'a> From<&'a ast::PathSegment> for Segment {
     fn from(seg: &'a ast::PathSegment) -> Segment {
-        Segment { ident: seg.ident, id: Some(seg.id), has_args: seg.args.is_some() }
+        Segment { ident: seg.ident, id: Some(seg.id), has_generic_args: seg.args.is_some() }
     }
 }
 
@@ -2019,7 +2019,7 @@ impl<'a> Resolver<'a> {
             path, opt_ns, record_used, path_span, crate_lint,
         );
 
-        for (i, &Segment { ident, id, has_args: _ }) in path.iter().enumerate() {
+        for (i, &Segment { ident, id, has_generic_args: _ }) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?} {:?}", i, ident, id);
             let record_segment_res = |this: &mut Self, res| {
                 if record_used {

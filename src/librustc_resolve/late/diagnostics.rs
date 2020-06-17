@@ -920,7 +920,9 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         path: &[Segment],
     ) -> Option<(Span, &'static str, String, Applicability)> {
         let (ident, span) = match path {
-            [segment] if !segment.has_args => (segment.ident.to_string(), segment.ident.span),
+            [segment] if !segment.has_generic_args => {
+                (segment.ident.to_string(), segment.ident.span)
+            }
             _ => return None,
         };
         let mut iter = ident.chars().map(|c| c.is_uppercase());
