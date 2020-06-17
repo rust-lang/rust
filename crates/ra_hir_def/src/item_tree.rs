@@ -112,8 +112,17 @@ impl ItemTree {
     }
 }
 
-pub trait ItemTreeNode: Sized {
+/// Trait implemented by all nodes in the item tree.
+pub trait ItemTreeNode: Clone {
+    /// Looks up an instance of `Self` in an item tree.
     fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self;
+}
+
+/// Trait for item tree nodes that allow accessing the original AST node.
+pub trait ItemTreeSource: ItemTreeNode {
+    type Source: AstNode;
+
+    fn ast_id(&self) -> FileAstId<Self::Source>;
 }
 
 pub struct FileItemTreeId<N: ItemTreeNode> {
@@ -174,6 +183,32 @@ nodes!(
     MacroCall in macro_calls,
 );
 
+macro_rules! source {
+    ( $($node:ident -> $ast:path),+ $(,)? ) => { $(
+        impl ItemTreeSource for $node {
+            type Source = $ast;
+
+            fn ast_id(&self) -> FileAstId<Self::Source> {
+                self.ast_id
+            }
+        }
+    )+ };
+}
+
+source! {
+    Function -> ast::FnDef,
+    Struct -> ast::StructDef,
+    Union -> ast::UnionDef,
+    Enum -> ast::EnumDef,
+    Const -> ast::ConstDef,
+    Static -> ast::StaticDef,
+    Trait -> ast::TraitDef,
+    Impl -> ast::ImplDef,
+    TypeAlias -> ast::TypeAliasDef,
+    Mod -> ast::Module,
+    MacroCall -> ast::MacroCall,
+}
+
 macro_rules! impl_index {
     ( $($fld:ident: $t:ty),+ $(,)? ) => {
         $(
@@ -225,7 +260,7 @@ pub struct Import {
     pub is_macro_use: bool,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Function {
     pub name: Name,
     pub attrs: Attrs,
@@ -238,7 +273,7 @@ pub struct Function {
     // FIXME inner items
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Struct {
     pub name: Name,
     pub attrs: Attrs,
@@ -249,7 +284,7 @@ pub struct Struct {
     pub kind: StructDefKind,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum StructDefKind {
     /// `struct S { ... }` - type namespace only.
     Record,
@@ -259,7 +294,7 @@ pub enum StructDefKind {
     Unit,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Union {
     pub name: Name,
     pub attrs: Attrs,
@@ -269,7 +304,7 @@ pub struct Union {
     pub ast_id: FileAstId<ast::UnionDef>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Enum {
     pub name: Name,
     pub attrs: Attrs,
@@ -279,7 +314,7 @@ pub struct Enum {
     pub ast_id: FileAstId<ast::EnumDef>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Const {
     /// const _: () = ();
     pub name: Option<Name>,
@@ -288,7 +323,7 @@ pub struct Const {
     pub ast_id: FileAstId<ast::ConstDef>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Static {
     pub name: Name,
     pub visibility: RawVisibility,
@@ -296,7 +331,7 @@ pub struct Static {
     pub ast_id: FileAstId<ast::StaticDef>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibility,
@@ -306,7 +341,7 @@ pub struct Trait {
     pub ast_id: FileAstId<ast::TraitDef>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Impl {
     pub generic_params: GenericParams,
     pub target_trait: Option<TypeRef>,
@@ -325,7 +360,7 @@ pub struct TypeAlias {
     pub ast_id: FileAstId<ast::TypeAliasDef>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Mod {
     pub name: Name,
     pub visibility: RawVisibility,
@@ -333,7 +368,7 @@ pub struct Mod {
     pub ast_id: FileAstId<ast::Module>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ModKind {
     /// `mod m { ... }`
     Inline { items: Vec<ModItem> },
@@ -342,7 +377,7 @@ pub enum ModKind {
     Outline {},
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MacroCall {
     /// For `macro_rules!` declarations, this is the name of the declared macro.
     pub name: Option<Name>,
@@ -359,7 +394,7 @@ pub struct MacroCall {
 
 // NB: There's no `FileAstId` for `Expr`. The only case where this would be useful is for array
 // lengths, but we don't do much with them yet.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Expr;
 
 macro_rules! impl_froms {
@@ -390,6 +425,25 @@ pub enum ModItem {
     MacroCall(FileItemTreeId<MacroCall>),
 }
 
+impl ModItem {
+    pub fn as_assoc_item(&self) -> Option<AssocItem> {
+        match self {
+            ModItem::Import(_)
+            | ModItem::Struct(_)
+            | ModItem::Union(_)
+            | ModItem::Enum(_)
+            | ModItem::Static(_)
+            | ModItem::Trait(_)
+            | ModItem::Impl(_)
+            | ModItem::Mod(_) => None,
+            ModItem::MacroCall(call) => Some(AssocItem::MacroCall(*call)),
+            ModItem::Const(konst) => Some(AssocItem::Const(*konst)),
+            ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(*alias)),
+            ModItem::Function(func) => Some(AssocItem::Function(*func)),
+        }
+    }
+}
+
 impl_froms!(ModItem {
     Import(FileItemTreeId<Import>),
     Function(FileItemTreeId<Function>),
@@ -405,7 +459,7 @@ impl_froms!(ModItem {
     MacroCall(FileItemTreeId<MacroCall>),
 });
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum AssocItem {
     Function(FileItemTreeId<Function>),
     TypeAlias(FileItemTreeId<TypeAlias>),
