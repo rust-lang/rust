@@ -283,6 +283,10 @@ fn parse_args<'a>(
     Ok(args)
 }
 
+/// Report a duplicate option error.
+///
+/// This function must be called immediately after the option token is parsed.
+/// Otherwise, the suggestion will be incorrect.
 fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
     let mut err = p
         .sess
@@ -305,6 +309,11 @@ fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
     err.emit();
 }
 
+/// Try to set the provided option in the provided `AsmArgs`.
+/// If it is already set, report a duplicate option error.
+///
+/// This function must be called immediately after the option token is parsed.
+/// Otherwise, the error will not point to the correct spot.
 fn try_set_option<'a>(
     p: &mut Parser<'a>,
     args: &mut AsmArgs,
