@@ -107,8 +107,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 cv.ty, structural
             );
 
+            // This can occur because const qualification treats all associated constants as
+            // opaque, whereas `search_for_structural_match_violation` tries to monomorphize them
+            // before it runs. See #73431 for an example.
             if structural.is_none() && mir_structural_match_violation {
-                bug!("MIR const-checker found novel structural match violation");
+                warn!("MIR const-checker found novel structural match violation");
+                return inlined_const_as_pat;
             }
 
             if let Some(non_sm_ty) = structural {
