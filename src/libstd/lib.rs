@@ -298,6 +298,7 @@
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(raw)]
+#![feature(raw_ref_macros)]
 #![feature(renamed_spin_loop)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
