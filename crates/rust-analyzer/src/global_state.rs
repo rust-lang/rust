@@ -15,7 +15,7 @@ use ra_flycheck::{Flycheck, FlycheckConfig};
 use ra_ide::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
-use ra_project_model::{ProcMacroClient, ProjectWorkspace};
+use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsTask, Watch};
 use relative_path::RelativePathBuf;
 use stdx::format_to;
@@ -28,7 +28,7 @@ use crate::{
     vfs_glob::{Glob, RustPackageFilterBuilder},
     LspError, Result,
 };
-use ra_db::ExternSourceId;
+use ra_db::{CrateId, ExternSourceId};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> Option<Flycheck> {
@@ -290,10 +290,6 @@ impl GlobalStateSnapshot {
         file_id_to_url(&self.vfs.read(), id)
     }
 
-    pub fn file_id_to_path(&self, id: FileId) -> PathBuf {
-        self.vfs.read().file2path(VfsFile(id.0))
-    }
-
     pub fn file_line_endings(&self, id: FileId) -> LineEndings {
         self.vfs.read().file_line_endings(VfsFile(id.0))
     }
@@ -303,6 +299,20 @@ impl GlobalStateSnapshot {
         base.pop();
         let path = base.join(path);
         url_from_abs_path(&path)
+    }
+
+    pub(crate) fn cargo_target_for_crate_root(
+        &self,
+        crate_id: CrateId,
+    ) -> Option<(&CargoWorkspace, Target)> {
+        let file_id = self.analysis().crate_root(crate_id).ok()?;
+        let path = self.vfs.read().file2path(VfsFile(file_id.0));
+        self.workspaces.iter().find_map(|ws| match ws {
+            ProjectWorkspace::Cargo { cargo, .. } => {
+                cargo.target_by_root(&path).map(|it| (cargo, it))
+            }
+            ProjectWorkspace::Json { .. } => None,
+        })
     }
 
     pub fn status(&self) -> String {
