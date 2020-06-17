@@ -212,8 +212,8 @@ pub(crate) fn highlight(
             if let Some(string) =
                 element_to_highlight.as_token().cloned().and_then(ast::String::cast)
             {
-                stack.push();
                 if is_format_string {
+                    stack.push();
                     string.lex_format_specifier(|piece_range, kind| {
                         if let Some(highlight) = highlight_format_specifier(kind) {
                             stack.add(HighlightedRange {
@@ -223,13 +223,27 @@ pub(crate) fn highlight(
                             });
                         }
                     });
+                    stack.pop();
                 }
-                stack.pop();
+                // Highlight escape sequences
+                if let Some(char_ranges) = string.char_ranges() {
+                    stack.push();
+                    for (piece_range, _) in char_ranges.iter().filter(|(_, char)| char.is_ok()) {
+                        if string.text()[piece_range.start().into()..].starts_with('\\') {
+                            stack.add(HighlightedRange {
+                                range: piece_range + range.start(),
+                                highlight: HighlightTag::EscapeSequence.into(),
+                                binding_hash: None,
+                            });
+                        }
+                    }
+                    stack.pop_and_inject(false);
+                }
             } else if let Some(string) =
                 element_to_highlight.as_token().cloned().and_then(ast::RawString::cast)
             {
-                stack.push();
                 if is_format_string {
+                    stack.push();
                     string.lex_format_specifier(|piece_range, kind| {
                         if let Some(highlight) = highlight_format_specifier(kind) {
                             stack.add(HighlightedRange {
@@ -239,8 +253,8 @@ pub(crate) fn highlight(
                             });
                         }
                     });
+                    stack.pop();
                 }
-                stack.pop();
             }
         }
     }

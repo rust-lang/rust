@@ -45,6 +45,7 @@ define_semantic_token_types![
     (UNION, "union"),
     (UNRESOLVED_REFERENCE, "unresolvedReference"),
     (FORMAT_SPECIFIER, "formatSpecifier"),
+    (ESCAPE_SEQUENCE, "escapeSequence"),
 ];
 
 macro_rules! define_semantic_token_modifiers {

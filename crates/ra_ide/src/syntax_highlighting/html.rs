@@ -85,6 +85,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .format_specifier   { color: #CC696B; }
 .mutable            { text-decoration: underline; }
 .unresolved_reference { color: #FC5555; }
+.escape_sequence    { color: #94BFF3; }
 
 .keyword            { color: #F0DFAF; font-weight: bold; }
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }

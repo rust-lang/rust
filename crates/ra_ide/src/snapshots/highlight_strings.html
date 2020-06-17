@@ -26,6 +26,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .format_specifier   { color: #CC696B; }
 .mutable            { text-decoration: underline; }
 .unresolved_reference { color: #FC5555; }
+.escape_sequence    { color: #94BFF3; }
 
 .keyword            { color: #F0DFAF; font-weight: bold; }
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
@@ -83,6 +84,10 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
     <span class="macro">println!</span>(<span class="string_literal">r"Hello, </span><span class="format_specifier">{</span><span class="format_specifier">}</span><span class="string_literal">!"</span>, <span class="string_literal">"world"</span>);
 
-    <span class="macro">println!</span>(<span class="string_literal">"</span><span class="format_specifier">{</span><span class="variable">\x41</span><span class="format_specifier">}</span><span class="string_literal">"</span>, A = <span class="numeric_literal">92</span>);
+    <span class="comment">// escape sequences</span>
+    <span class="macro">println!</span>(<span class="string_literal">"Hello</span><span class="escape_sequence">\n</span><span class="string_literal">World"</span>);
+    <span class="macro">println!</span>(<span class="string_literal">"</span><span class="escape_sequence">\u{48}</span><span class="escape_sequence">\x65</span><span class="escape_sequence">\x6C</span><span class="escape_sequence">\x6C</span><span class="escape_sequence">\x6F</span><span class="string_literal"> World"</span>);
+
+    <span class="macro">println!</span>(<span class="string_literal">"</span><span class="format_specifier">{</span><span class="escape_sequence">\x41</span><span class="format_specifier">}</span><span class="string_literal">"</span>, A = <span class="numeric_literal">92</span>);
     <span class="macro">println!</span>(<span class="string_literal">"</span><span class="format_specifier">{</span><span class="variable">ничоси</span><span class="format_specifier">}</span><span class="string_literal">"</span>, ничоси = <span class="numeric_literal">92</span>);
 }</code></pre>
