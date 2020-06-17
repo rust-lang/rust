@@ -34,7 +34,7 @@ error: byte constant must be ASCII. Use a \xHH escape for a non-ASCII byte
 LL |     b'é';
    |       ^
 
-error: unterminated byte constant
+error[E0763]: unterminated byte constant
   --> $DIR/byte-literals.rs:11:6
    |
 LL |     b'a
@@ -42,3 +42,4 @@ LL |     b'a
 
 error: aborting due to 7 previous errors
 
+For more information about this error, try `rustc --explain E0763`.

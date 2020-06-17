@@ -339,8 +339,15 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start + BytePos(1), suffix_start, "unterminated byte constant")
-                        .raise()
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start + BytePos(1), suffix_start),
+                            "unterminated byte constant",
+                            error_code!(E0763),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
                 (token::Byte, Mode::Byte, 2, 1) // b' '
             }
