@@ -109,9 +109,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
             // This can occur because const qualification treats all associated constants as
             // opaque, whereas `search_for_structural_match_violation` tries to monomorphize them
-            // before it runs. See #73431 for an example.
+            // before it runs.
+            //
+            // FIXME(#73448): Find a way to bring const qualification into parity with
+            // `search_for_structural_match_violation`.
             if structural.is_none() && mir_structural_match_violation {
-                warn!("MIR const-checker found novel structural match violation");
+                warn!("MIR const-checker found novel structural match violation. See #73448.");
                 return inlined_const_as_pat;
             }
 
