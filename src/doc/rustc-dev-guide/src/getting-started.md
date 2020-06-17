@@ -2,7 +2,7 @@
 
 This documentation is _not_ intended to be comprehensive; it is meant to be a
 quick guide for the most useful things. For more information, [see this
-chapter](./building/how-to-build-and-run.md).
+chapter on how to build and run the compiler](./building/how-to-build-and-run.md).
 
 ## Asking Questions
 
@@ -77,7 +77,7 @@ recommend trying to build on a Raspberry Pi :P
 
 Building the compiler takes more than half an hour on my moderately powerful
 laptop. The first time you build the compiler, LLVM will also be built unless
-you use system LLVM (see below).
+you use your system's LLVM (see below).
 
 Like `cargo`, the build system will use as many cores as possible. Sometimes
 this can cause you to run low on memory. You can use `-j` to adjust the number
@@ -140,16 +140,16 @@ the following settings:
 
 ### `./x.py` Intro
 
-`rustc` is a _bootstrapping_ compiler, which means that it is written in Rust. So where do you
+`rustc` is a _bootstrapping_ compiler, which means that it is written in Rust and thus needs to be compiled by itself. So where do you
 get the original compiler from? We use the current beta compiler
-to build the compiler. Then, we use that compiler to build itself. Thus,
+to build a new compiler. Then, we use that compiler to build itself. Thus,
 `rustc` has a 2-stage build. You can read more about bootstrapping
-[here][boot], but you don't need more to contribute.
+[here][boot], but you don't need to know much more to contribute.
 
 [boot]: ./building/bootstrapping.md
 
 We have a special tool `./x.py` that drives this process. It is used for
-compiling the compiler, the standard libraries, and `rustdoc`. It is also used
+building the compiler, the standard libraries, and `rustdoc`. It is also used
 for driving CI and building the final release artifacts.
 
 Unfortunately, a proper 2-stage build takes a long time depending on your
