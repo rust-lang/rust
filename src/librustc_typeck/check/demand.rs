@@ -834,7 +834,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // suggest a fallible conversion, check if the value can never fit in the
                     // expected type.
                     let msg = format!("`{}` cannot fit into type `{}`", src, expected_ty);
-                    err.span_note(expr.span, &msg);
+                    err.note(&msg);
                     return;
                 } else if in_const_context {
                     // Do not recommend `into` or `try_into` in const contexts.
