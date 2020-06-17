@@ -246,6 +246,10 @@ fn main() {
 
     println!(r"Hello, {}!", "world");
 
+    // escape sequences
+    println!("Hello\nWorld");
+    println!("\u{48}\x65\x6C\x6C\x6F World");
+
     println!("{\x41}", A = 92);
     println!("{ничоси}", ничоси = 92);
 }"#
