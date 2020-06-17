@@ -26,7 +26,34 @@ LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                ^^^^^^^^^^^^^^
 
 error: lifetime may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:12:69
+  --> $DIR/must_outlive_least_region_or_bound.rs:9:46
+   |
+LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
+   |               -                              ^ returning this value requires that `'1` must outlive `'static`
+   |               |
+   |               let's call the lifetime of this reference `'1`
+   |
+   = help: consider replacing `'1` with `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/must_outlive_least_region_or_bound.rs:12:55
+   |
+LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
+   |              -- lifetime `'a` defined here            ^ returning this value requires that `'a` must outlive `'static`
+   |
+   = help: consider replacing `'a` with `'static`
+   = help: consider replacing `'a` with `'static`
+
+error[E0621]: explicit lifetime required in the type of `x`
+  --> $DIR/must_outlive_least_region_or_bound.rs:15:41
+   |
+LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
+   |               ----                      ^ lifetime `'a` required
+   |               |
+   |               help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
+
+error: lifetime may not live long enough
+  --> $DIR/must_outlive_least_region_or_bound.rs:33:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |               -- lifetime `'a` defined here                         ^ returning this value requires that `'a` must outlive `'static`
@@ -35,7 +62,7 @@ LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    = help: consider replacing `'a` with `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:17:61
+  --> $DIR/must_outlive_least_region_or_bound.rs:38:61
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
    |                          --  -- lifetime `'b` defined here  ^^^^^^^^^^^^^^^^ opaque type requires that `'b` must outlive `'a`
@@ -45,13 +72,14 @@ LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32
    = help: consider adding the following bound: `'b: 'a`
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:22:51
+  --> $DIR/must_outlive_least_region_or_bound.rs:43:51
    |
 LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                                   ^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: 'static`...
 
-error: aborting due to 5 previous errors
+error: aborting due to 8 previous errors
 
-For more information about this error, try `rustc --explain E0310`.
+Some errors have detailed explanations: E0310, E0621.
+For more information about an error, try `rustc --explain E0310`.
