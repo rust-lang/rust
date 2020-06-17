@@ -26,7 +26,6 @@ pub fn target() -> TargetResult {
             code_model: Some(CodeModel::Medium),
             emit_debug_gdb_scripts: false,
             abi_blacklist: super::riscv_base::abi_blacklist(),
-            eliminate_frame_pointer: false,
             ..Default::default()
         },
     })
