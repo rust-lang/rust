@@ -374,7 +374,7 @@ options := "options(" option *["," option] [","] ")"
 asm := "asm!(" format_string *("," [ident "="] operand) ["," options] [","] ")"
 ```
 
-The macro will initially be supported only on ARM, AArch64, x86, x86-64 and RISC-V targets. Support for more targets may be added in the future. The compiler will emit an error if `asm!` is used on an unsupported target.
+The macro will initially be supported only on ARM, AArch64, Hexagon, x86, x86-64 and RISC-V targets. Support for more targets may be added in the future. The compiler will emit an error if `asm!` is used on an unsupported target.
 
 [format-syntax]: https://doc.rust-lang.org/std/fmt/#syntax
 
@@ -388,7 +388,7 @@ Explicit register operands cannot be used by placeholders in the template string
 
 The exact assembly code syntax is target-specific and opaque to the compiler except for the way operands are substituted into the template string to form the code passed to the assembler.
 
-The 4 targets specified in this RFC (x86, ARM, AArch64, RISC-V) all use the assembly code syntax of the GNU assembler (GAS). On x86, the `.intel_syntax noprefix` mode of GAS is used by default. On ARM, the `.syntax unified` mode is used. These targets impose an additional restriction on the assembly code: any assembler state (e.g. the current section which can be changed with `.section`) must be restored to its original value at the end of the asm string. Assembly code that does not conform to the GAS syntax will result in assembler-specific behavior.
+The 5 targets specified in this RFC (x86, ARM, AArch64, RISC-V, Hexagon) all use the assembly code syntax of the GNU assembler (GAS). On x86, the `.intel_syntax noprefix` mode of GAS is used by default. On ARM, the `.syntax unified` mode is used. These targets impose an additional restriction on the assembly code: any assembler state (e.g. the current section which can be changed with `.section`) must be restored to its original value at the end of the asm string. Assembly code that does not conform to the GAS syntax will result in assembler-specific behavior.
 
 [rfc-2795]: https://github.com/rust-lang/rfcs/pull/2795
 
@@ -475,6 +475,7 @@ Here is the list of currently supported register classes:
 | NVPTX | `reg64` | None\* | `l` |
 | RISC-V | `reg` | `x1`, `x[5-7]`, `x[9-15]`, `x[16-31]` (non-RV32E) | `r` |
 | RISC-V | `freg` | `f[0-31]` | `f` |
+| Hexagon | `reg` | `r[0-28]` | `r` |
 
 > **Note**: On x86 we treat `reg_byte` differently from `reg` because the compiler can allocate `al` and `ah` separately whereas `reg` reserves the whole register.
 >
@@ -509,6 +510,7 @@ Each register class has constraints on which value types they can be used with. 
 | RISC-V64 | `reg` | None | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
 | RISC-V | `freg` | `f` | `f32` |
 | RISC-V | `freg` | `d` | `f64` |
+| Hexagon | `reg` | None | `i8`, `i16`, `i32`, `f32` |
 
 > **Note**: For the purposes of the above table pointers, function pointers and `isize`/`usize` are treated as the equivalent integer type (`i16`/`i32`/`i64` depending on the target).
 
@@ -565,13 +567,16 @@ Some registers have multiple names. These are all treated by the compiler as ide
 | RISC-V | `f[10-17]` | `fa[0-7]` |
 | RISC-V | `f[18-27]` | `fs[2-11]` |
 | RISC-V | `f[28-31]` | `ft[8-11]` |
+| Hexagon | `r29` | `sp` |
+| Hexagon | `r30` | `fr` |
+| Hexagon | `r31` | `lr` |
 
 Some registers cannot be used for input or output operands:
 
 | Architecture | Unsupported register | Reason |
 | ------------ | -------------------- | ------ |
 | All | `sp` | The stack pointer must be restored to its original value at the end of an asm code block. |
-| All | `bp` (x86), `r11` (ARM), `x29` (AArch64), `x8` (RISC-V) | The frame pointer cannot be used as an input or output. |
+| All | `bp` (x86), `r11` (ARM), `x29` (AArch64), `x8` (RISC-V), `fr` (Hexagon) | The frame pointer cannot be used as an input or output. |
 | x86 | `k0` | This is a constant zero register which can't be modified. |
 | x86 | `ip` | This is the program counter, not a real register. |
 | x86 | `mm[0-7]` | MMX registers are not currently supported (but may be in the future). |
@@ -580,6 +585,7 @@ Some registers cannot be used for input or output operands:
 | ARM | `pc` | This is the program counter, not a real register. |
 | RISC-V | `x0` | This is a constant zero register which can't be modified. |
 | RISC-V | `gp`, `tp` | These registers are reserved and cannot be used as inputs or outputs. |
+| Hexagon | `lr` | This is the link register which cannot be used as an input or output. |
 
 ## Template modifiers
 
@@ -625,6 +631,7 @@ The supported modifiers are a subset of LLVM's (and GCC's) [asm template argumen
 | NVPTX | `reg64` | None | `rd0` | None |
 | RISC-V | `reg` | None | `x1` | None |
 | RISC-V | `freg` | None | `f0` | None |
+| Hexagon | `reg` | None | `r0` | None |
 
 > Notes:
 > - on ARM `e` / `f`: this prints the low or high doubleword register name of a NEON quad (128-bit) register.
