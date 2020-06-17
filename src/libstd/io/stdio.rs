@@ -655,6 +655,9 @@ impl Write for Stdout {
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
         self.lock().write_all_vectored(bufs)
     }
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        self.lock().write_fmt(args)
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for StdoutLock<'_> {
@@ -834,6 +837,9 @@ impl Write for Stderr {
     }
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
         self.lock().write_all_vectored(bufs)
+    }
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
+        self.lock().write_fmt(args)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
