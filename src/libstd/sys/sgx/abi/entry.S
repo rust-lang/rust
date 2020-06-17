@@ -177,6 +177,13 @@ sgx_entry:
     jz .Lskip_debug_init
     mov %r10,%gs:tcsls_debug_panic_buf_ptr
 .Lskip_debug_init:
+/*  reset cpu state */
+    mov %rdx, %r10
+    mov $-1, %rax
+    mov $-1, %rdx
+    xrstor .Lxsave_clear(%rip)
+    mov %r10, %rdx
+
 /*  check if returning from usercall */
     mov %gs:tcsls_last_rsp,%r11
     test %r11,%r11
