@@ -2,7 +2,8 @@ use crate::arena::Arena;
 
 use rustc_serialize::{Encodable, Encoder};
 
-use std::cmp::{self, Ordering};
+use std::alloc::Layout;
+use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter;
@@ -43,17 +44,9 @@ impl<T: Copy> List<T> {
         assert!(mem::size_of::<T>() != 0);
         assert!(!slice.is_empty());
 
-        // Align up the size of the len (usize) field
-        let align = mem::align_of::<T>();
-        let align_mask = align - 1;
-        let offset = mem::size_of::<usize>();
-        let offset = (offset + align_mask) & !align_mask;
-
-        let size = offset + slice.len() * mem::size_of::<T>();
-
-        let mem = arena
-            .dropless
-            .alloc_raw(size, cmp::max(mem::align_of::<T>(), mem::align_of::<usize>()));
+        let (layout, _offset) =
+            Layout::new::<usize>().extend(Layout::for_value::<[T]>(slice)).unwrap();
+        let mem = arena.dropless.alloc_raw(layout);
         unsafe {
             let result = &mut *(mem as *mut List<T>);
             // Write the length
