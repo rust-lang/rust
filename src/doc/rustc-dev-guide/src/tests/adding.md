@@ -136,6 +136,9 @@ Some examples of `X` in `ignore-X`:
 * Stage: `stage0`, `stage1`, `stage2`.
 * When cross compiling: `cross-compile`
 * When remote testing is used: `remote`
+* When debug-assertions are enabled: `debug`
+* When particular debuggers are being tested: `cdb`, `gdb`, `lldb`
+* Specific compare modes: `compare-mode-nll`, `compare-mode-polonius`
 
 ### Other Header Commands
 
@@ -204,8 +207,8 @@ Error annotations specify the errors that the compiler is expected to
 emit. They are "attached" to the line in source where the error is
 located. Error annotations are considered during tidy lints of line
 length and should be formatted according to tidy requirements. You may
-use an error message prefix sub-string if necessary to meet line length 
-requirements. Make sure that the text is long enough for the error 
+use an error message prefix sub-string if necessary to meet line length
+requirements. Make sure that the text is long enough for the error
 message to be self-documenting.
 
 The error annotation definition and source line definition association
@@ -216,7 +219,7 @@ is defined with the following set of idioms:
 * `~|`: Associates the following error level and message with the same
   line as the previous comment
 * `~^`: Associates the following error level and message with the
-  previous error annotation line. Each caret (`^`) that you add adds 
+  previous error annotation line. Each caret (`^`) that you add adds
   a line to this, so `~^^^` is three lines above the error annotation
   line.
 
@@ -242,8 +245,8 @@ fn main() {
 #### Positioned below error line
 
 Use the `//~^` idiom with number of carets in the string to indicate the
-number of lines above.  In the example below, the error line is four 
-lines above the error annotation line so four carets are included in 
+number of lines above.  In the example below, the error line is four
+lines above the error annotation line so four carets are included in
 the annotation.
 
 ```rust,ignore
@@ -259,7 +262,7 @@ fn main() {
 
 #### Use same error line as defined on error annotation line above
 
-Use the `//~|` idiom to define the same error line as 
+Use the `//~|` idiom to define the same error line as
 the error annotation line above:
 
 ```rust,ignore
@@ -360,12 +363,43 @@ you can even run the resulting program. Just add one of the following
 
 ### Normalization
 
-The normalization applied is aimed at eliminating output difference
-between platforms, mainly about filenames:
+The compiler output is normalized to eliminate output difference between
+platforms, mainly about filenames.
 
-- the test directory is replaced with `$DIR`
-- all backslashes (`\`) are converted to forward slashes (`/`) (for Windows)
-- all CR LF newlines are converted to LF
+The following strings replace their corresponding values:
+
+- `$DIR`: The directory where the test is defined.
+  - Example: `/path/to/rust/src/test/ui/error-codes`
+- `$SRC_DIR`: The root source directory.
+  - Example: `/path/to/rust/src`
+- `$TEST_BUILD_DIR`: The base directory where the test's output goes.
+  - Example: `/path/to/rust/build/x86_64-unknown-linux-gnu/test/ui`
+
+Additionally, the following changes are made:
+
+- Line and column numbers for paths in `$SRC_DIR` are replaced with `LL:CC`.
+  For example, `/path/to/rust/src/libcore/clone.rs:122:8` is replaced with
+  `$SRC_DIR/libcore/clone.rs:LL:COL`.
+
+  Note: The line and column numbers for `-->` lines pointing to the test are
+  *not* normalized, and left as-is. This ensures that the compiler continues
+  to point to the correct location, and keeps the stderr files readable.
+  Ideally all line/column information would be retained, but small changes to
+  the source causes large diffs, and more frequent merge conflicts and test
+  errors. See also `-Z ui-testing` below which applies additional line number
+  normalization.
+- `\t` is replaced with an actual tab character.
+- Error line annotations like `// ~ERROR some message` are removed.
+- Backslashes (`\`) are converted to forward slashes (`/`) within paths (using
+  a heuristic). This helps normalize differences with Windows-style paths.
+- CRLF newlines are converted to LF.
+
+Additionally, the compiler is run with the `-Z ui-testing` flag which causes
+the compiler itself to apply some changes to the diagnostic output to make it
+more suitable for UI testing. For example, it will anonymize line numbers in
+the output (line numbers prefixing each source line are replaced with `LL`).
+In extremely rare situations, this mode can be disabled with the header
+command `// compile-flags: -Z ui-testing=no`.
 
 Sometimes these built-in normalizations are not enough. In such cases, you
 may provide custom normalization rules using the header commands, e.g.
@@ -399,6 +433,6 @@ concrete usage example.
 [`main.stderr`]: https://github.com/rust-lang/rust/blob/master/src/test/ui/transmute/main.stderr
 
 Besides `normalize-stderr-32bit` and `-64bit`, one may use any target
-information or stage supported by `ignore-X` here as well (e.g.
+information or stage supported by [`ignore-X`](#ignoring-tests) here as well (e.g.
 `normalize-stderr-windows` or simply `normalize-stderr-test` for unconditional
 replacement).
