@@ -1947,7 +1947,7 @@ extern "rust-intrinsic" {
     /// generation.
     #[cfg(not(bootstrap))]
     #[lang = "count_code_region"]
-    pub fn count_code_region(_index: u32);
+    pub fn count_code_region(index: u32);
 }
 
 // Some functions are defined here because they accidentally got made
