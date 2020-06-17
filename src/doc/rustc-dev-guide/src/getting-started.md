@@ -129,9 +129,10 @@ Then, edit `config.toml`. You will need to search for, uncomment, and update
 the following settings:
 
 - `debug = true`: enables debug symbols and `debug!` logging, takes a bit longer to compile.
-- `incremental = true`: enables incremental compilation of the compiler itself.
-  This is turned off by default because it's technically unsound. Sometimes
-  this will cause weird crashes, but it can really speed things up.
+- `incremental = true`: enables incremental compilation of the compiler itself,
+  which can significantly speed things up.  This is turned off by default
+  because it's technically unsound; sometimes this will cause weird crashes.
+  Also, it can consume a lot of disk space.
 - `llvm-config`: enables building with system LLVM. [See this chapter][sysllvm]
   for more info. This avoids building LLVM, which can take a while.
 
