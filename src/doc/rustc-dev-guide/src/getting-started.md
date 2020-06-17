@@ -66,7 +66,6 @@ There are no hard hardware requirements, but building the compiler is
 computationally expensive, so a beefier machine will help, and I wouldn't
 recommend trying to build on a Raspberry Pi :P
 
-- x86 and ARM are both supported (TODO: confirm)
 - Recommended >=30GB of free disk space; otherwise, you will have to keep
   clearing incremental caches. More space is better, the compiler is a bit of a
   hog; it's a problem we are aware of.
@@ -125,14 +124,15 @@ In the top level of the repo:
 cp config.toml.example config.toml
 ```
 
-Then, edit `config.toml`. You will need to search for, uncomment, and update
+Then, edit `config.toml`. You may want to search for, uncomment, and update
 the following settings:
 
 - `debug = true`: enables debug symbols and `debug!` logging, takes a bit longer to compile.
 - `incremental = true`: enables incremental compilation of the compiler itself,
   which can significantly speed things up.  This is turned off by default
-  because it's technically unsound; sometimes this will cause weird crashes.
-  Also, it can consume a lot of disk space.
+  because it's technically unsound; sometimes it will cause weird crashes.
+  Also, it can consume a lot of disk space. This has the same effect as the
+  `-i` or `--incremental` flags.
 - `llvm-config`: enables building with system LLVM. [See this chapter][sysllvm]
   for more info. This avoids building LLVM, which can take a while.
 
@@ -140,19 +140,44 @@ the following settings:
 
 ### `./x.py` Intro
 
-`rustc` is a bootstrapping compiler because it is written in Rust. Where do you
+`rustc` is a _bootstrapping_ compiler because it is written in Rust. Where do you
 get the original compiler from? We use the current beta compiler
 to build the compiler. Then, we use that compiler to build itself. Thus,
-`rustc` has a 2-stage build.
+`rustc` has a 2-stage build. You can read more about bootstrapping
+[here][boot], but you don't need more to contribute.
+
+[boot]: ./building/bootstrapping.md
 
 We have a special tool `./x.py` that drives this process. It is used for
 compiling the compiler, the standard libraries, and `rustdoc`. It is also used
 for driving CI and building the final release artifacts.
 
+Unfortunately, a proper 2-stage build takes a long time depending on your
+hardware, but it is the only correct way to build everything (e.g. it's what
+the CI and release processes use). **However, in most cases, you can get by
+without a full 2-stage build**. In the following section, we give instructions
+for how to do "the correct thing", but then we also give various tips to speed
+things up.
+
 ### Building and Testing `rustc`
 
-For most contributions, you only need to build stage 1, which saves a lot of time.
-After updating `config.toml`, as mentioned above, you can use `./x.py`:
+To do a full 2-stage build of the whole compiler, you should run this (after
+updating `config.toml` as mentioned above):
+
+```sh
+./x.py build
+```
+
+In the process, this will also necessarily build the standard libraries, and it
+will build `rustdoc` (which doesn't take too long).
+
+To build and test everything:
+
+```sh
+./x.py test
+```
+
+For most contributions, you only need to build stage 1, which saves a lot of time:
 
 ```shell
 # Build the compiler (stage 1)
@@ -170,10 +195,16 @@ does not need to be rebuilt, which is usually true, which will save some time.
 However, if you are changing certain parts of the compiler, this may lead to
 weird errors. Feel free to ask on [zulip][z] if you are running into issues.
 
-To run the compiler's UI test suite (the bulk of the test suite):
+This runs a ton of tests and takes a long time to complete. If you are
+working on `rustc`, you can usually get by with only the [UI tests][uitests]. These
+test are mostly for the frontend of the compiler, so if you are working on LLVM
+or codegen, this shortcut will _not_ test your changes. You can read more about the
+different test suites [in this chapter][testing].
+
+[uitests]: ./tests/adding.html#ui
+[testing]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
 
 ```
-# UI tests
 # First build
 ./x.py test --stage 1 src/test/ui
 
@@ -181,22 +212,19 @@ To run the compiler's UI test suite (the bulk of the test suite):
 ./x.py test --stage 1 src/test/ui --keep-stage 1
 ```
 
-This will build the compiler first, if needed.
-
-This will be enough for most people. Notably, though, it mostly tests the
-compiler frontend, not codegen or debug info.  You can read more about the
-different test suites [in this chapter][testing].
-
-[testing]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
-
-If you only want to check that the compiler builds (without actually building
-it) you can run the following:
+While working on the compiler, it can be helpful to see if the code just
+compiles (similar to `cargo check`) without actually building it. You can do
+this with:
 
 ```shell
 ./x.py check
 ```
 
-To format the code:
+This command is really fast (relative to the other commands). It usually
+completes in a couple of minutes on my laptop.
+
+Finally, the CI ensures that the codebase is using consistent style. To format
+the code:
 
 ```shell
 # Actually format
@@ -206,15 +234,27 @@ To format the code:
 ./x.py fmt --check
 ```
 
-You can use `RUSTC_LOG=XXX` to get debug logging. [Read more here][logging].
+*Note*: we don't use stable `rustfmt`; we use a pinned version with a special
+config, so this may result in different style from normal `rustfmt` if you have
+format-on-save turned on. It's a good habit to run `./x.py fmt` before every
+commit, as this reduces conflicts later.
 
+On last thing: you can use `RUSTC_LOG=XXX` to get debug logging. [Read more
+here][logging]. Notice the `C` in `RUSTC_LOG`. Other than that, it uses normal
+[`env_logger`][envlog] syntax.
+
+[envlog]: https://crates.io/crates/env_logger
 [logging]: ./compiler-debugging.html#getting-logging-output
 
 ### Building and Testing `std`/`core`/`alloc`/`test`/`proc_macro`/etc.
 
-To contribute to `libstd`, you don't need to build the compiler unless you are
+As before, technically the proper way to build one of these libraries is to use
+the stage-2 compiler, which of course requires a 2-stage build, described above
+(`./x.py build`).
+
+In practice, though, you don't need to build the compiler unless you are
 planning to use a recently added nightly feature. Instead, you can just build
-stage 0.
+stage 0 (i.e. which basically just uses the current beta compiler).
 
 ```sh
 ./x.py build --stage 0 src/libstd
@@ -224,13 +264,16 @@ stage 0.
 ./x.py test --stage 0 src/libstd
 ```
 
+(The same works for `src/liballoc`, `src/libcore`, etc.)
+
 ### Building and Testing `rustdoc`
 
 `rustdoc` uses `rustc` internals (and, of course, the standard library), so you
 will have to build the compiler and `std` once before you can build `rustdoc`.
+As before, you can use `./x.py build` to do this.
 
-The following command will build all of them. Stage 1 should be sufficient,
-even though the release version will use the full 2-stage build.
+However, in practice, stage 1 should be sufficient. The first time you build,
+the stage-1 compiler will also be built.
 
 ```sh
 # First build
@@ -240,7 +283,11 @@ even though the release version will use the full 2-stage build.
 ./x.py build --stage 1 --keep-stage 1 src/tools/rustdoc
 ```
 
-You can also use `./x.py check` here to do a fast check build.
+As with the compiler, you can do a fast check build:
+
+```sh
+./x.py check
+```
 
 Rustdoc has two types of tests: content tests and UI tests.
 
@@ -421,5 +468,3 @@ master.
 - [The compiler's documentation (rustdocs)](https://doc.rust-lang.org/nightly/nightly-rustc/)
 - [The Forge](https://forge.rust-lang.org/) has more documentation about various procedures.
 - `#contribute`, `#compiler`, and `#rustdoc` on [Discord](https://discord.gg/rust-lang).
-
-TODO: am I missing any?
