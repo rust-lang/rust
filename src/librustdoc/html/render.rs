@@ -63,6 +63,7 @@ use crate::config::RenderOptions;
 use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
 use crate::error::Error;
+use crate::formats::{FormatRenderer, Renderer};
 use crate::html::escape::Escape;
 use crate::html::format::fmt_impl_for_trait_page;
 use crate::html::format::Function;
@@ -98,7 +99,7 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
 #[derive(Clone)]
-struct Context {
+crate struct Context {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
     pub current: Vec<String>,
@@ -113,6 +114,9 @@ struct Context {
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
     pub cache: Arc<Cache>,
+    pub parent: Rc<RefCell<Renderer>>,
+    all: Rc<RefCell<AllTypes>>,
+    pub errors: Arc<ErrorStorage>,
 }
 
 crate struct SharedContext {
@@ -390,148 +394,307 @@ pub fn initial_ids() -> Vec<String> {
     .collect()
 }
 
-/// Generates the documentation for `crate` into the directory `dst`
-pub fn run(
-    mut krate: clean::Crate,
-    options: RenderOptions,
-    renderinfo: RenderInfo,
-    diag: &rustc_errors::Handler,
-    edition: Edition,
-) -> Result<(), Error> {
-    // need to save a copy of the options for rendering the index page
-    let md_opts = options.clone();
-    let RenderOptions {
-        output,
-        external_html,
-        id_map,
-        playground_url,
-        sort_modules_alphabetically,
-        themes: style_files,
-        extension_css,
-        extern_html_root_urls,
-        resource_suffix,
-        static_root_path,
-        generate_search_filter,
-        document_private,
-        ..
-    } = options;
+impl FormatRenderer for Context {
+    type Output = Self;
 
-    let src_root = match krate.src {
-        FileName::Real(ref p) => match p.local_path().parent() {
-            Some(p) => p.to_path_buf(),
-            None => PathBuf::new(),
-        },
-        _ => PathBuf::new(),
-    };
-    let mut errors = Arc::new(ErrorStorage::new());
-    // If user passed in `--playground-url` arg, we fill in crate name here
-    let mut playground = None;
-    if let Some(url) = playground_url {
-        playground = Some(markdown::Playground { crate_name: Some(krate.name.clone()), url });
-    }
-    let mut layout = layout::Layout {
-        logo: String::new(),
-        favicon: String::new(),
-        external_html,
-        krate: krate.name.clone(),
-        css_file_extension: extension_css,
-        generate_search_filter,
-    };
-    let mut issue_tracker_base_url = None;
-    let mut include_sources = true;
+    /// Generates the documentation for `crate` into the directory `dst`
+    fn init(
+        mut krate: clean::Crate,
+        options: RenderOptions,
+        renderinfo: RenderInfo,
+        _diag: &rustc_errors::Handler,
+        edition: Edition,
+        parent: Rc<RefCell<Renderer>>,
+    ) -> Result<(Context, clean::Crate), Error> {
+        // need to save a copy of the options for rendering the index page
+        let md_opts = options.clone();
+        let RenderOptions {
+            output,
+            external_html,
+            id_map,
+            playground_url,
+            sort_modules_alphabetically,
+            themes: style_files,
+            extension_css,
+            extern_html_root_urls,
+            resource_suffix,
+            static_root_path,
+            generate_search_filter,
+            document_private,
+            ..
+        } = options;
 
-    // Crawl the crate attributes looking for attributes which control how we're
-    // going to emit HTML
-    if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
-        for attr in attrs.lists(sym::doc) {
-            match (attr.name_or_empty(), attr.value_str()) {
-                (sym::html_favicon_url, Some(s)) => {
-                    layout.favicon = s.to_string();
+        let src_root = match krate.src {
+            FileName::Real(ref p) => match p.local_path().parent() {
+                Some(p) => p.to_path_buf(),
+                None => PathBuf::new(),
+            },
+            _ => PathBuf::new(),
+        };
+        let errors = Arc::new(ErrorStorage::new());
+        // If user passed in `--playground-url` arg, we fill in crate name here
+        let mut playground = None;
+        if let Some(url) = playground_url {
+            playground = Some(markdown::Playground { crate_name: Some(krate.name.clone()), url });
+        }
+        let mut layout = layout::Layout {
+            logo: String::new(),
+            favicon: String::new(),
+            external_html,
+            krate: krate.name.clone(),
+            css_file_extension: extension_css,
+            generate_search_filter,
+        };
+        let mut issue_tracker_base_url = None;
+        let mut include_sources = true;
+
+        // Crawl the crate attributes looking for attributes which control how we're
+        // going to emit HTML
+        if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
+            for attr in attrs.lists(sym::doc) {
+                match (attr.name_or_empty(), attr.value_str()) {
+                    (sym::html_favicon_url, Some(s)) => {
+                        layout.favicon = s.to_string();
+                    }
+                    (sym::html_logo_url, Some(s)) => {
+                        layout.logo = s.to_string();
+                    }
+                    (sym::html_playground_url, Some(s)) => {
+                        playground = Some(markdown::Playground {
+                            crate_name: Some(krate.name.clone()),
+                            url: s.to_string(),
+                        });
+                    }
+                    (sym::issue_tracker_base_url, Some(s)) => {
+                        issue_tracker_base_url = Some(s.to_string());
+                    }
+                    (sym::html_no_source, None) if attr.is_word() => {
+                        include_sources = false;
+                    }
+                    _ => {}
                 }
-                (sym::html_logo_url, Some(s)) => {
-                    layout.logo = s.to_string();
-                }
-                (sym::html_playground_url, Some(s)) => {
-                    playground = Some(markdown::Playground {
-                        crate_name: Some(krate.name.clone()),
-                        url: s.to_string(),
-                    });
-                }
-                (sym::issue_tracker_base_url, Some(s)) => {
-                    issue_tracker_base_url = Some(s.to_string());
-                }
-                (sym::html_no_source, None) if attr.is_word() => {
-                    include_sources = false;
-                }
-                _ => {}
             }
         }
+        let mut scx = SharedContext {
+            collapsed: krate.collapsed,
+            src_root,
+            include_sources,
+            local_sources: Default::default(),
+            issue_tracker_base_url,
+            layout,
+            created_dirs: Default::default(),
+            sort_modules_alphabetically,
+            style_files,
+            resource_suffix,
+            static_root_path,
+            fs: DocFS::new(&errors),
+            edition,
+            codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
+            playground,
+        };
+
+        // Add the default themes to the `Vec` of stylepaths
+        //
+        // Note that these must be added before `sources::render` is called
+        // so that the resulting source pages are styled
+        //
+        // `light.css` is not disabled because it is the stylesheet that stays loaded
+        // by the browser as the theme stylesheet. The theme system (hackily) works by
+        // changing the href to this stylesheet. All other themes are disabled to
+        // prevent rule conflicts
+        scx.style_files.push(StylePath { path: PathBuf::from("light.css"), disabled: false });
+        scx.style_files.push(StylePath { path: PathBuf::from("dark.css"), disabled: true });
+        scx.style_files.push(StylePath { path: PathBuf::from("ayu.css"), disabled: true });
+
+        let dst = output;
+        scx.ensure_dir(&dst)?;
+        krate = sources::render(&dst, &mut scx, krate)?;
+        let (new_crate, index, cache) =
+            Cache::from_krate(renderinfo, document_private, &extern_html_root_urls, &dst, krate);
+        krate = new_crate;
+        let cache = Arc::new(cache);
+        let mut cx = Context {
+            current: Vec::new(),
+            dst,
+            render_redirect_pages: false,
+            id_map: Rc::new(RefCell::new(id_map)),
+            shared: Arc::new(scx),
+            cache: cache.clone(),
+            parent,
+            all: Rc::new(RefCell::new(AllTypes::new())),
+            errors,
+        };
+
+        // Freeze the cache now that the index has been built. Put an Arc into TLS
+        // for future parallelization opportunities
+        CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
+        CURRENT_DEPTH.with(|s| s.set(0));
+
+        // Write shared runs within a flock; disable thread dispatching of IO temporarily.
+        Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
+        write_shared(&cx, &krate, index, &md_opts)?;
+        Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
+        Ok((cx, krate))
     }
-    let mut scx = SharedContext {
-        collapsed: krate.collapsed,
-        src_root,
-        include_sources,
-        local_sources: Default::default(),
-        issue_tracker_base_url,
-        layout,
-        created_dirs: Default::default(),
-        sort_modules_alphabetically,
-        style_files,
-        resource_suffix,
-        static_root_path,
-        fs: DocFS::new(&errors),
-        edition,
-        codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
-        playground,
-    };
 
-    // Add the default themes to the `Vec` of stylepaths
-    //
-    // Note that these must be added before `sources::render` is called
-    // so that the resulting source pages are styled
-    //
-    // `light.css` is not disabled because it is the stylesheet that stays loaded
-    // by the browser as the theme stylesheet. The theme system (hackily) works by
-    // changing the href to this stylesheet. All other themes are disabled to
-    // prevent rule conflicts
-    scx.style_files.push(StylePath { path: PathBuf::from("light.css"), disabled: false });
-    scx.style_files.push(StylePath { path: PathBuf::from("dark.css"), disabled: true });
-    scx.style_files.push(StylePath { path: PathBuf::from("ayu.css"), disabled: true });
+    fn after_run(&mut self, diag: &rustc_errors::Handler) -> Result<(), Error> {
+        let nb_errors =
+            Arc::get_mut(&mut self.errors).map_or_else(|| 0, |errors| errors.write_errors(diag));
+        if nb_errors > 0 {
+            Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
+        } else {
+            Ok(())
+        }
+    }
 
-    let dst = output;
-    scx.ensure_dir(&dst)?;
-    krate = sources::render(&dst, &mut scx, krate)?;
-    let (new_crate, index, cache) =
-        Cache::from_krate(renderinfo, document_private, &extern_html_root_urls, &dst, krate);
-    krate = new_crate;
-    let cache = Arc::new(cache);
-    let mut cx = Context {
-        current: Vec::new(),
-        dst,
-        render_redirect_pages: false,
-        id_map: Rc::new(RefCell::new(id_map)),
-        shared: Arc::new(scx),
-        cache: cache.clone(),
-    };
+    fn after_krate(&mut self, krate: &clean::Crate) -> Result<(), Error> {
+        let final_file = self.dst.join(&krate.name).join("all.html");
+        let settings_file = self.dst.join("settings.html");
+        let crate_name = krate.name.clone();
 
-    // Freeze the cache now that the index has been built. Put an Arc into TLS
-    // for future parallelization opportunities
-    CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
-    CURRENT_DEPTH.with(|s| s.set(0));
+        let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
+        if !root_path.ends_with('/') {
+            root_path.push('/');
+        }
+        let mut page = layout::Page {
+            title: "List of all items in this crate",
+            css_class: "mod",
+            root_path: "../",
+            static_root_path: self.shared.static_root_path.as_deref(),
+            description: "List of all items in this crate",
+            keywords: BASIC_KEYWORDS,
+            resource_suffix: &self.shared.resource_suffix,
+            extra_scripts: &[],
+            static_extra_scripts: &[],
+        };
+        let sidebar = if let Some(ref version) = self.cache.crate_version {
+            format!(
+                "<p class='location'>Crate {}</p>\
+                     <div class='block version'>\
+                         <p>Version {}</p>\
+                     </div>\
+                     <a id='all-types' href='index.html'><p>Back to index</p></a>",
+                crate_name,
+                Escape(version),
+            )
+        } else {
+            String::new()
+        };
+        let all = self.all.replace(AllTypes::new());
+        let v = layout::render(
+            &self.shared.layout,
+            &page,
+            sidebar,
+            |buf: &mut Buffer| all.print(buf),
+            &self.shared.style_files,
+        );
+        self.shared.fs.write(&final_file, v.as_bytes())?;
 
-    // Write shared runs within a flock; disable thread dispatching of IO temporarily.
-    Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-    write_shared(&cx, &krate, index, &md_opts)?;
-    Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
+        // Generating settings page.
+        page.title = "Rustdoc settings";
+        page.description = "Settings of Rustdoc";
+        page.root_path = "./";
 
-    // And finally render the whole crate's documentation
-    let ret = cx.krate(krate);
-    let nb_errors = Arc::get_mut(&mut errors).map_or_else(|| 0, |errors| errors.write_errors(diag));
-    if ret.is_err() {
-        ret
-    } else if nb_errors > 0 {
-        Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
-    } else {
+        let mut style_files = self.shared.style_files.clone();
+        let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
+        style_files.push(StylePath { path: PathBuf::from("settings.css"), disabled: false });
+        let v = layout::render(
+            &self.shared.layout,
+            &page,
+            sidebar,
+            settings(
+                self.shared.static_root_path.as_deref().unwrap_or("./"),
+                &self.shared.resource_suffix,
+            ),
+            &style_files,
+        );
+        self.shared.fs.write(&settings_file, v.as_bytes())?;
+        Ok(())
+    }
+
+    fn mod_item_in(
+        &mut self,
+        item: &clean::Item,
+        item_name: &str,
+        module: &clean::Module,
+    ) -> Result<(), Error> {
+        // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
+        // if they contain impls for public types. These modules can also
+        // contain items such as publicly re-exported structures.
+        //
+        // External crates will provide links to these structures, so
+        // these modules are recursed into, but not rendered normally
+        // (a flag on the context).
+        if !self.render_redirect_pages {
+            self.render_redirect_pages = item.is_stripped();
+        }
+        let scx = &self.shared;
+        self.dst.push(item_name);
+        self.current.push(item_name.to_owned());
+
+        info!("Recursing into {}", self.dst.display());
+
+        let buf = self.render_item(item, false);
+        // buf will be empty if the module is stripped and there is no redirect for it
+        if !buf.is_empty() {
+            self.shared.ensure_dir(&self.dst)?;
+            let joint_dst = self.dst.join("index.html");
+            scx.fs.write(&joint_dst, buf.as_bytes())?;
+        }
+
+        // Render sidebar-items.js used throughout this module.
+        if !self.render_redirect_pages {
+            let items = self.build_sidebar_items(module);
+            let js_dst = self.dst.join("sidebar-items.js");
+            let v = format!("initSidebarItems({});", serde_json::to_string(&items).unwrap());
+            scx.fs.write(&js_dst, &v)?;
+        }
+        Ok(())
+    }
+
+    fn mod_item_out(&mut self) -> Result<(), Error> {
+        info!("Recursed; leaving {}", self.dst.display());
+
+        // Go back to where we were at
+        self.dst.pop();
+        self.current.pop();
+        Ok(())
+    }
+
+    fn item(&mut self, item: clean::Item) -> Result<(), Error> {
+        // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
+        // if they contain impls for public types. These modules can also
+        // contain items such as publicly re-exported structures.
+        //
+        // External crates will provide links to these structures, so
+        // these modules are recursed into, but not rendered normally
+        // (a flag on the context).
+        if !self.render_redirect_pages {
+            self.render_redirect_pages = item.is_stripped();
+        }
+
+        let buf = self.render_item(&item, true);
+        // buf will be empty if the item is stripped and there is no redirect for it
+        if !buf.is_empty() {
+            let name = item.name.as_ref().unwrap();
+            let item_type = item.type_();
+            let file_name = &item_path(item_type, name);
+            self.shared.ensure_dir(&self.dst)?;
+            let joint_dst = self.dst.join(file_name);
+            self.shared.fs.write(&joint_dst, buf.as_bytes())?;
+
+            if !self.render_redirect_pages {
+                self.all.borrow_mut().append(full_path(self, &item), &item_type);
+            }
+            // If the item is a macro, redirect from the old macro URL (with !)
+            // to the new one (without).
+            if item_type == ItemType::Macro {
+                let redir_name = format!("{}.{}!.html", item_type, name);
+                let redir_dst = self.dst.join(redir_name);
+                let v = layout::redirect(file_name);
+                self.shared.fs.write(&redir_dst, v.as_bytes())?;
+            }
+        }
         Ok(())
     }
 }
@@ -1291,92 +1454,6 @@ impl Context {
         "../".repeat(self.current.len())
     }
 
-    /// Main method for rendering a crate.
-    ///
-    /// This currently isn't parallelized, but it'd be pretty easy to add
-    /// parallelization to this function.
-    fn krate(self, mut krate: clean::Crate) -> Result<(), Error> {
-        let mut item = match krate.module.take() {
-            Some(i) => i,
-            None => return Ok(()),
-        };
-        let final_file = self.dst.join(&krate.name).join("all.html");
-        let settings_file = self.dst.join("settings.html");
-
-        let crate_name = krate.name.clone();
-        item.name = Some(krate.name);
-
-        let mut all = AllTypes::new();
-
-        {
-            // Render the crate documentation
-            let mut work = vec![(self.clone(), item)];
-
-            while let Some((mut cx, item)) = work.pop() {
-                cx.item(item, &mut all, |cx, item| work.push((cx.clone(), item)))?
-            }
-        }
-
-        let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
-        if !root_path.ends_with('/') {
-            root_path.push('/');
-        }
-        let mut page = layout::Page {
-            title: "List of all items in this crate",
-            css_class: "mod",
-            root_path: "../",
-            static_root_path: self.shared.static_root_path.as_deref(),
-            description: "List of all items in this crate",
-            keywords: BASIC_KEYWORDS,
-            resource_suffix: &self.shared.resource_suffix,
-            extra_scripts: &[],
-            static_extra_scripts: &[],
-        };
-        let sidebar = if let Some(ref version) = self.cache.crate_version {
-            format!(
-                "<p class='location'>Crate {}</p>\
-                     <div class='block version'>\
-                         <p>Version {}</p>\
-                     </div>\
-                     <a id='all-types' href='index.html'><p>Back to index</p></a>",
-                crate_name,
-                Escape(version),
-            )
-        } else {
-            String::new()
-        };
-        let v = layout::render(
-            &self.shared.layout,
-            &page,
-            sidebar,
-            |buf: &mut Buffer| all.print(buf),
-            &self.shared.style_files,
-        );
-        self.shared.fs.write(&final_file, v.as_bytes())?;
-
-        // Generating settings page.
-        page.title = "Rustdoc settings";
-        page.description = "Settings of Rustdoc";
-        page.root_path = "./";
-
-        let mut style_files = self.shared.style_files.clone();
-        let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
-        style_files.push(StylePath { path: PathBuf::from("settings.css"), disabled: false });
-        let v = layout::render(
-            &self.shared.layout,
-            &page,
-            sidebar,
-            settings(
-                self.shared.static_root_path.as_deref().unwrap_or("./"),
-                &self.shared.resource_suffix,
-            ),
-            &style_files,
-        );
-        self.shared.fs.write(&settings_file, v.as_bytes())?;
-
-        Ok(())
-    }
-
     fn render_item(&self, it: &clean::Item, pushname: bool) -> String {
         // A little unfortunate that this is done like this, but it sure
         // does make formatting *a lot* nicer.
@@ -1447,97 +1524,6 @@ impl Context {
                 String::new()
             }
         }
-    }
-
-    /// Non-parallelized version of rendering an item. This will take the input
-    /// item, render its contents, and then invoke the specified closure with
-    /// all sub-items which need to be rendered.
-    ///
-    /// The rendering driver uses this closure to queue up more work.
-    fn item<F>(&mut self, item: clean::Item, all: &mut AllTypes, mut f: F) -> Result<(), Error>
-    where
-        F: FnMut(&mut Context, clean::Item),
-    {
-        // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
-        // if they contain impls for public types. These modules can also
-        // contain items such as publicly re-exported structures.
-        //
-        // External crates will provide links to these structures, so
-        // these modules are recursed into, but not rendered normally
-        // (a flag on the context).
-        if !self.render_redirect_pages {
-            self.render_redirect_pages = item.is_stripped();
-        }
-
-        if item.is_mod() {
-            // modules are special because they add a namespace. We also need to
-            // recurse into the items of the module as well.
-            let name = item.name.as_ref().unwrap().to_string();
-            let scx = &self.shared;
-            if name.is_empty() {
-                panic!("Unexpected empty destination: {:?}", self.current);
-            }
-            let prev = self.dst.clone();
-            self.dst.push(&name);
-            self.current.push(name);
-
-            info!("Recursing into {}", self.dst.display());
-
-            let buf = self.render_item(&item, false);
-            // buf will be empty if the module is stripped and there is no redirect for it
-            if !buf.is_empty() {
-                self.shared.ensure_dir(&self.dst)?;
-                let joint_dst = self.dst.join("index.html");
-                scx.fs.write(&joint_dst, buf.as_bytes())?;
-            }
-
-            let m = match item.inner {
-                clean::StrippedItem(box clean::ModuleItem(m)) | clean::ModuleItem(m) => m,
-                _ => unreachable!(),
-            };
-
-            // Render sidebar-items.js used throughout this module.
-            if !self.render_redirect_pages {
-                let items = self.build_sidebar_items(&m);
-                let js_dst = self.dst.join("sidebar-items.js");
-                let v = format!("initSidebarItems({});", serde_json::to_string(&items).unwrap());
-                scx.fs.write(&js_dst, &v)?;
-            }
-
-            for item in m.items {
-                f(self, item);
-            }
-
-            info!("Recursed; leaving {}", self.dst.display());
-
-            // Go back to where we were at
-            self.dst = prev;
-            self.current.pop().unwrap();
-        } else if item.name.is_some() {
-            let buf = self.render_item(&item, true);
-            // buf will be empty if the item is stripped and there is no redirect for it
-            if !buf.is_empty() {
-                let name = item.name.as_ref().unwrap();
-                let item_type = item.type_();
-                let file_name = &item_path(item_type, name);
-                self.shared.ensure_dir(&self.dst)?;
-                let joint_dst = self.dst.join(file_name);
-                self.shared.fs.write(&joint_dst, buf.as_bytes())?;
-
-                if !self.render_redirect_pages {
-                    all.append(full_path(self, &item), &item_type);
-                }
-                // If the item is a macro, redirect from the old macro URL (with !)
-                // to the new one (without).
-                if item_type == ItemType::Macro {
-                    let redir_name = format!("{}.{}!.html", item_type, name);
-                    let redir_dst = self.dst.join(redir_name);
-                    let v = layout::redirect(file_name);
-                    self.shared.fs.write(&redir_dst, v.as_bytes())?;
-                }
-            }
-        }
-        Ok(())
     }
 
     fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<NameDoc>> {
