@@ -392,6 +392,7 @@ fn vec_slice_metadata(
             align: pointer_align,
             flags: DIFlags::FlagZero,
             discriminant: None,
+            source_info: None,
         },
         MemberDescription {
             name: "length".to_owned(),
@@ -401,6 +402,7 @@ fn vec_slice_metadata(
             align: usize_align,
             flags: DIFlags::FlagZero,
             discriminant: None,
+            source_info: None,
         },
     ];
 
@@ -508,6 +510,7 @@ fn trait_pointer_metadata(
             align: data_ptr_field.align.abi,
             flags: DIFlags::FlagArtificial,
             discriminant: None,
+            source_info: None,
         },
         MemberDescription {
             name: "vtable".to_owned(),
@@ -517,6 +520,7 @@ fn trait_pointer_metadata(
             align: vtable_field.align.abi,
             flags: DIFlags::FlagArtificial,
             discriminant: None,
+            source_info: None,
         },
     ];
 
@@ -1026,6 +1030,12 @@ impl MetadataCreationResult<'ll> {
     }
 }
 
+#[derive(Debug)]
+struct SourceInfo<'ll> {
+    file: &'ll DIFile,
+    line: u32,
+}
+
 /// Description of a type member, which can either be a regular field (as in
 /// structs or tuples) or an enum variant.
 #[derive(Debug)]
@@ -1037,6 +1047,7 @@ struct MemberDescription<'ll> {
     align: Align,
     flags: DIFlags,
     discriminant: Option<u64>,
+    source_info: Option<SourceInfo<'ll>>,
 }
 
 impl<'ll> MemberDescription<'ll> {
@@ -1045,14 +1056,18 @@ impl<'ll> MemberDescription<'ll> {
         cx: &CodegenCx<'ll, '_>,
         composite_type_metadata: &'ll DIScope,
     ) -> &'ll DIType {
+        let (file, line) = self
+            .source_info
+            .map(|info| (info.file, info.line))
+            .unwrap_or_else(|| (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER));
         unsafe {
             llvm::LLVMRustDIBuilderCreateVariantMemberType(
                 DIB(cx),
                 composite_type_metadata,
                 self.name.as_ptr().cast(),
                 self.name.len(),
-                unknown_file_metadata(cx),
-                UNKNOWN_LINE_NUMBER,
+                file,
+                line,
                 self.size.bits(),
                 self.align.bits() as u32,
                 self.offset.bits(),
@@ -1124,6 +1139,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                     align: field.align.abi,
                     flags: DIFlags::FlagZero,
                     discriminant: None,
+                    source_info: None,
                 }
             })
             .collect()
@@ -1185,6 +1201,7 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
                     align,
                     flags: DIFlags::FlagZero,
                     discriminant: None,
+                    source_info: None,
                 }
             })
             .collect()
@@ -1244,6 +1261,7 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
                     align: field.align.abi,
                     flags: DIFlags::FlagZero,
                     discriminant: None,
+                    source_info: None,
                 }
             })
             .collect()
@@ -1351,10 +1369,11 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
         let variant_info_for = |index: VariantIdx| match self.enum_type.kind {
             ty::Adt(adt, _) => VariantInfo::Adt(&adt.variants[index]),
-            ty::Generator(_, substs, _) => {
+            ty::Generator(def_id, substs, _) => {
                 let (generator_layout, generator_saved_local_names) =
                     generator_variant_info_data.as_ref().unwrap();
                 VariantInfo::Generator {
+                    def_id,
                     substs,
                     generator_layout: *generator_layout,
                     generator_saved_local_names,
@@ -1406,6 +1425,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     align: self.layout.align.abi,
                     flags: DIFlags::FlagZero,
                     discriminant: None,
+                    source_info: variant_info.source_info(cx),
                 }]
             }
             Variants::Multiple {
@@ -1462,6 +1482,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                 self.layout.ty.discriminant_for_variant(cx.tcx, i).unwrap().val
                                     as u64,
                             ),
+                            source_info: variant_info.source_info(cx),
                         }
                     })
                     .collect()
@@ -1527,7 +1548,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         self.layout.fields.offset(tag_field),
                         self.layout.field(cx, tag_field).size,
                     );
-                    variant_info_for(*niche_variants.start()).map_struct_name(|variant_name| {
+                    let variant_info = variant_info_for(*niche_variants.start());
+                    variant_info.map_struct_name(|variant_name| {
                         name.push_str(variant_name);
                     });
 
@@ -1540,6 +1562,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         align: variant.align.abi,
                         flags: DIFlags::FlagZero,
                         discriminant: None,
+                        source_info: variant_info.source_info(cx),
                     }]
                 } else {
                     variants
@@ -1589,6 +1612,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                 align: self.layout.align.abi,
                                 flags: DIFlags::FlagZero,
                                 discriminant: niche_value,
+                                source_info: variant_info.source_info(cx),
                             }
                         })
                         .collect()
@@ -1631,6 +1655,7 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
                     align,
                     flags: DIFlags::FlagZero,
                     discriminant: None,
+                    source_info: None,
                 }
             })
             .collect()
@@ -1651,6 +1676,7 @@ enum EnumTagInfo<'ll> {
 enum VariantInfo<'a, 'tcx> {
     Adt(&'tcx ty::VariantDef),
     Generator {
+        def_id: DefId,
         substs: SubstsRef<'tcx>,
         generator_layout: &'tcx GeneratorLayout<'tcx>,
         generator_saved_local_names: &'a IndexVec<mir::GeneratorSavedLocal, Option<Symbol>>,
@@ -1698,6 +1724,24 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
             _ => None,
         };
         field_name.map(|name| name.to_string()).unwrap_or_else(|| format!("__{}", i))
+    }
+
+    fn source_info(&self, cx: &CodegenCx<'ll, 'tcx>) -> Option<SourceInfo<'ll>> {
+        match self {
+            VariantInfo::Generator { def_id, variant_index, .. } => {
+                let span =
+                    cx.tcx.generator_layout(*def_id).variant_source_info[*variant_index].span;
+                if !span.is_dummy() {
+                    let loc = cx.lookup_debug_loc(span.lo());
+                    return Some(SourceInfo {
+                        file: file_metadata(cx, &loc.file, def_id.krate),
+                        line: loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
+                    });
+                }
+            }
+            _ => {}
+        }
+        None
     }
 }
 
@@ -1778,7 +1822,8 @@ fn prepare_enum_metadata(
     span: Span,
     outer_field_tys: Vec<Ty<'tcx>>,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
-    let enum_name = compute_debuginfo_type_name(cx.tcx, enum_type, false);
+    let tcx = cx.tcx;
+    let enum_name = compute_debuginfo_type_name(tcx, enum_type, false);
 
     let containing_scope = get_namespace_for_item(cx, enum_def_id);
     // FIXME: This should emit actual file metadata for the enum, but we
@@ -1792,7 +1837,7 @@ fn prepare_enum_metadata(
     let discriminant_type_metadata = |discr: Primitive| {
         let enumerators_metadata: Vec<_> = match enum_type.kind {
             ty::Adt(def, _) => def
-                .discriminants(cx.tcx)
+                .discriminants(tcx)
                 .zip(&def.variants)
                 .map(|((_, discr), v)| {
                     let name = v.ident.as_str();
@@ -1815,15 +1860,16 @@ fn prepare_enum_metadata(
                 .collect(),
             ty::Generator(_, substs, _) => substs
                 .as_generator()
-                .variant_range(enum_def_id, cx.tcx)
+                .variant_range(enum_def_id, tcx)
                 .map(|variant_index| {
+                    debug_assert_eq!(tcx.types.u32, substs.as_generator().discr_ty(tcx));
                     let name = substs.as_generator().variant_name(variant_index);
                     unsafe {
                         Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                             DIB(cx),
                             name.as_ptr().cast(),
                             name.len(),
-                            // Generators use u32 as discriminant type.
+                            // Generators use u32 as discriminant type, verified above.
                             variant_index.as_u32().into(),
                             true, // IsUnsigned
                         ))
@@ -1841,12 +1887,12 @@ fn prepare_enum_metadata(
             None => {
                 let (discriminant_size, discriminant_align) = (discr.size(cx), discr.align(cx));
                 let discriminant_base_type_metadata =
-                    type_metadata(cx, discr.to_ty(cx.tcx), rustc_span::DUMMY_SP);
+                    type_metadata(cx, discr.to_ty(tcx), rustc_span::DUMMY_SP);
 
                 let item_name;
                 let discriminant_name = match enum_type.kind {
                     ty::Adt(..) => {
-                        item_name = cx.tcx.item_name(enum_def_id).as_str();
+                        item_name = tcx.item_name(enum_def_id).as_str();
                         &*item_name
                     }
                     ty::Generator(..) => enum_name.as_str(),

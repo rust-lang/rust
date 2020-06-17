@@ -67,6 +67,10 @@ pub struct GeneratorLayout<'tcx> {
     /// be stored in multiple variants.
     pub variant_fields: IndexVec<VariantIdx, IndexVec<Field, GeneratorSavedLocal>>,
 
+    /// The source that led to each variant being created (usually, a yield or
+    /// await).
+    pub variant_source_info: IndexVec<VariantIdx, SourceInfo>,
+
     /// Which saved locals are storage-live at the same time. Locals that do not
     /// have conflicts with each other are allowed to overlap in the computed
     /// layout.
