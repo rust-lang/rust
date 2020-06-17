@@ -26,7 +26,7 @@ use test_utils::mark;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    generics,
+    generics::GenericParams,
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path},
     type_ref::{Mutability, TypeBound, TypeRef},
     visibility::RawVisibility,
@@ -230,7 +230,7 @@ pub struct Function {
     pub name: Name,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
-    pub generic_params: generics::GenericParams,
+    pub generic_params: GenericParams,
     pub has_self_param: bool,
     pub params: Vec<TypeRef>,
     pub ret_type: TypeRef,
@@ -243,7 +243,7 @@ pub struct Struct {
     pub name: Name,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
-    pub generic_params: generics::GenericParams,
+    pub generic_params: GenericParams,
     pub fields: Fields,
     pub ast_id: FileAstId<ast::StructDef>,
     pub kind: StructDefKind,
@@ -264,7 +264,7 @@ pub struct Union {
     pub name: Name,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
-    pub generic_params: generics::GenericParams,
+    pub generic_params: GenericParams,
     pub fields: Fields,
     pub ast_id: FileAstId<ast::UnionDef>,
 }
@@ -274,7 +274,7 @@ pub struct Enum {
     pub name: Name,
     pub attrs: Attrs,
     pub visibility: RawVisibility,
-    pub generic_params: generics::GenericParams,
+    pub generic_params: GenericParams,
     pub variants: Range<Idx<Variant>>,
     pub ast_id: FileAstId<ast::EnumDef>,
 }
@@ -300,7 +300,7 @@ pub struct Static {
 pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibility,
-    pub generic_params: generics::GenericParams,
+    pub generic_params: GenericParams,
     pub auto: bool,
     pub items: Vec<AssocItem>,
     pub ast_id: FileAstId<ast::TraitDef>,
@@ -308,7 +308,7 @@ pub struct Trait {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Impl {
-    pub generic_params: generics::GenericParams,
+    pub generic_params: GenericParams,
     pub target_trait: Option<TypeRef>,
     pub target_type: TypeRef,
     pub is_negative: bool,
@@ -320,7 +320,7 @@ pub struct Impl {
 pub struct TypeAlias {
     pub name: Name,
     pub visibility: RawVisibility,
-    pub generic_params: generics::GenericParams,
+    pub generic_params: GenericParams,
     pub type_ref: Option<TypeRef>,
     pub ast_id: FileAstId<ast::TypeAliasDef>,
 }

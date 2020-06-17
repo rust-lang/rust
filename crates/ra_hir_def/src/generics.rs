@@ -42,7 +42,7 @@ pub enum TypeParamProvenance {
 }
 
 /// Data about the generic parameters of a function, struct, impl, etc.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct GenericParams {
     pub types: Arena<TypeParamData>,
     // lifetimes: Arena<LocalLifetimeParamId, LifetimeParamData>,
@@ -156,7 +156,12 @@ impl GenericParams {
         (generics, InFile::new(file_id, sm))
     }
 
-    fn fill(&mut self, lower_ctx: &LowerCtx, sm: &mut SourceMap, node: &dyn TypeParamsOwner) {
+    pub(crate) fn fill(
+        &mut self,
+        lower_ctx: &LowerCtx,
+        sm: &mut SourceMap,
+        node: &dyn TypeParamsOwner,
+    ) {
         if let Some(params) = node.type_param_list() {
             self.fill_params(lower_ctx, sm, params)
         }
@@ -165,7 +170,7 @@ impl GenericParams {
         }
     }
 
-    fn fill_bounds(
+    pub(crate) fn fill_bounds(
         &mut self,
         lower_ctx: &LowerCtx,
         node: &dyn ast::TypeBoundsOwner,
@@ -229,7 +234,7 @@ impl GenericParams {
             .push(WherePredicate { target: WherePredicateTarget::TypeRef(type_ref), bound });
     }
 
-    fn fill_implicit_impl_trait_args(&mut self, type_ref: &TypeRef) {
+    pub(crate) fn fill_implicit_impl_trait_args(&mut self, type_ref: &TypeRef) {
         type_ref.walk(&mut |type_ref| {
             if let TypeRef::ImplTrait(bounds) = type_ref {
                 let param = TypeParamData {

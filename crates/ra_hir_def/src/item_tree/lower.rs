@@ -1,6 +1,12 @@
+//! AST -> `ItemTree` lowering code.
+
 use super::*;
-use crate::attr::Attrs;
+use crate::{
+    attr::Attrs,
+    generics::{GenericParams, TypeParamData, TypeParamProvenance},
+};
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
+use ra_arena::map::ArenaMap;
 use ra_syntax::ast::{self, ModuleItemOwner};
 use smallvec::SmallVec;
 use std::sync::Arc;
@@ -123,7 +129,7 @@ impl Ctx {
         let attrs = self.lower_attrs(strukt);
         let visibility = self.lower_visibility(strukt);
         let name = strukt.name()?.as_name();
-        let generic_params = self.lower_generic_params(strukt);
+        let generic_params = self.lower_generic_params(GenericsOwner::Struct, strukt);
         let fields = self.lower_fields(&strukt.kind());
         let ast_id = self.source_ast_id_map.ast_id(strukt);
         let kind = match strukt.kind() {
@@ -191,7 +197,7 @@ impl Ctx {
         let attrs = self.lower_attrs(union);
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
-        let generic_params = self.lower_generic_params(union);
+        let generic_params = self.lower_generic_params(GenericsOwner::Union, union);
         let fields = match union.record_field_def_list() {
             Some(record_field_def_list) => {
                 self.lower_fields(&StructKind::Record(record_field_def_list))
@@ -207,7 +213,7 @@ impl Ctx {
         let attrs = self.lower_attrs(enum_);
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
-        let generic_params = self.lower_generic_params(enum_);
+        let generic_params = self.lower_generic_params(GenericsOwner::Enum, enum_);
         let variants = match &enum_.variant_list() {
             Some(variant_list) => self.lower_variants(variant_list),
             None => self.next_variant_idx()..self.next_variant_idx(),
@@ -239,7 +245,6 @@ impl Ctx {
         let attrs = self.lower_attrs(func);
         let visibility = self.lower_visibility(func);
         let name = func.name()?.as_name();
-        let generic_params = self.lower_generic_params(func);
 
         let mut params = Vec::new();
         let mut has_self_param = false;
@@ -281,16 +286,17 @@ impl Ctx {
         };
 
         let ast_id = self.source_ast_id_map.ast_id(func);
-        let res = Function {
+        let mut res = Function {
             name,
             attrs,
             visibility,
-            generic_params,
+            generic_params: GenericParams::default(),
             has_self_param,
             params,
             ret_type,
             ast_id,
         };
+        res.generic_params = self.lower_generic_params(GenericsOwner::Function(&res), func);
         Some(res)
     }
 
@@ -298,7 +304,7 @@ impl Ctx {
         let name = type_alias.name()?.as_name();
         let type_ref = type_alias.type_ref().map(|it| self.lower_type_ref(&it));
         let visibility = self.lower_visibility(type_alias);
-        let generic_params = self.lower_generic_params(type_alias);
+        let generic_params = self.lower_generic_params(GenericsOwner::TypeAlias, type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
         let res = TypeAlias { name, visibility, generic_params, type_ref, ast_id };
         Some(res)
@@ -349,7 +355,7 @@ impl Ctx {
     fn lower_trait(&mut self, trait_def: &ast::TraitDef) -> Option<Trait> {
         let name = trait_def.name()?.as_name();
         let visibility = self.lower_visibility(trait_def);
-        let generic_params = self.lower_generic_params(trait_def);
+        let generic_params = self.lower_generic_params(GenericsOwner::Trait(trait_def), trait_def);
         let auto = trait_def.auto_token().is_some();
         let items = trait_def.item_list().map(|list| {
             // FIXME: Does not handle macros
@@ -367,7 +373,7 @@ impl Ctx {
     }
 
     fn lower_impl(&mut self, impl_def: &ast::ImplDef) -> Option<Impl> {
-        let generic_params = self.lower_generic_params(impl_def);
+        let generic_params = self.lower_generic_params(GenericsOwner::Impl, impl_def);
         let target_trait = impl_def.target_trait().map(|tr| self.lower_type_ref(&tr));
         let target_type = self.lower_type_ref(&impl_def.target_type()?);
         let is_negative = impl_def.excl_token().is_some();
@@ -465,10 +471,43 @@ impl Ctx {
 
     fn lower_generic_params(
         &mut self,
-        _item: &impl ast::TypeParamsOwner,
-    ) -> generics::GenericParams {
-        // TODO
-        generics::GenericParams { types: Arena::new(), where_predicates: Vec::new() }
+        owner: GenericsOwner<'_>,
+        node: &impl ast::TypeParamsOwner,
+    ) -> GenericParams {
+        let mut sm = &mut ArenaMap::default();
+        let mut generics = GenericParams::default();
+        match owner {
+            GenericsOwner::Function(func) => {
+                generics.fill(&self.body_ctx, sm, node);
+                // lower `impl Trait` in arguments
+                for param in &func.params {
+                    generics.fill_implicit_impl_trait_args(param);
+                }
+            }
+            GenericsOwner::Struct
+            | GenericsOwner::Enum
+            | GenericsOwner::Union
+            | GenericsOwner::TypeAlias => {
+                generics.fill(&self.body_ctx, sm, node);
+            }
+            GenericsOwner::Trait(trait_def) => {
+                // traits get the Self type as an implicit first type parameter
+                let self_param_id = generics.types.alloc(TypeParamData {
+                    name: Some(name![Self]),
+                    default: None,
+                    provenance: TypeParamProvenance::TraitSelf,
+                });
+                sm.insert(self_param_id, Either::Left(trait_def.clone()));
+                // add super traits as bounds on Self
+                // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
+                let self_param = TypeRef::Path(name![Self].into());
+                generics.fill_bounds(&self.body_ctx, trait_def, self_param);
+
+                generics.fill(&self.body_ctx, &mut sm, node);
+            }
+            GenericsOwner::Impl => {}
+        }
+        generics
     }
 
     fn lower_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
@@ -502,4 +541,17 @@ fn desugar_future_path(orig: TypeRef) -> Path {
     generic_args.push(Some(Arc::new(last)));
 
     Path::from_known_path(path, generic_args)
+}
+
+enum GenericsOwner<'a> {
+    /// We need access to the partially-lowered `Function` for lowering `impl Trait` in argument
+    /// position.
+    Function(&'a Function),
+    Struct,
+    Enum,
+    Union,
+    /// The `TraitDef` is needed to fill the source map for the implicit `Self` parameter.
+    Trait(&'a ast::TraitDef),
+    TypeAlias,
+    Impl,
 }
