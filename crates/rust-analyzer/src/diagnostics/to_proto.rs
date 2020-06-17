@@ -9,14 +9,24 @@ use lsp_types::{
 use ra_flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion};
 use stdx::format_to;
 
+use super::DiagnosticsConfig;
 use crate::{lsp_ext, to_proto::url_from_abs_path};
 
-/// Converts a Rust level string to a LSP severity
-fn map_level_to_severity(val: DiagnosticLevel) -> Option<DiagnosticSeverity> {
-    let res = match val {
+/// Determines the LSP severity from a diagnostic
+fn map_diagnostic_to_severity(
+    config: &DiagnosticsConfig,
+    val: &ra_flycheck::Diagnostic,
+) -> Option<DiagnosticSeverity> {
+    let res = match val.level {
         DiagnosticLevel::Ice => DiagnosticSeverity::Error,
         DiagnosticLevel::Error => DiagnosticSeverity::Error,
-        DiagnosticLevel::Warning => DiagnosticSeverity::Warning,
+        DiagnosticLevel::Warning => match &val.code {
+            Some(code) if config.warnings_as_hint.contains(&code.code) => DiagnosticSeverity::Hint,
+            Some(code) if config.warnings_as_info.contains(&code.code) => {
+                DiagnosticSeverity::Information
+            }
+            _ => DiagnosticSeverity::Warning,
+        },
         DiagnosticLevel::Note => DiagnosticSeverity::Information,
         DiagnosticLevel::Help => DiagnosticSeverity::Hint,
         DiagnosticLevel::Unknown => return None,
@@ -172,6 +182,7 @@ pub(crate) struct MappedRustDiagnostic {
 ///
 /// If the diagnostic has no primary span this will return `None`
 pub(crate) fn map_rust_diagnostic_to_lsp(
+    config: &DiagnosticsConfig,
     rd: &ra_flycheck::Diagnostic,
     workspace_root: &Path,
 ) -> Vec<MappedRustDiagnostic> {
@@ -180,7 +191,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         return Vec::new();
     }
 
-    let severity = map_level_to_severity(rd.level);
+    let severity = map_diagnostic_to_severity(config, rd);
 
     let mut source = String::from("rustc");
     let mut code = rd.code.as_ref().map(|c| c.code.clone());
@@ -328,7 +339,7 @@ mod tests {
         );
 
         let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
+        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -410,7 +421,183 @@ mod tests {
         );
 
         let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
+        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
+        insta::assert_debug_snapshot!(diag);
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn snap_rustc_unused_variable_as_info() {
+        let diag = parse_diagnostic(
+            r##"{
+    "message": "unused variable: `foo`",
+    "code": {
+        "code": "unused_variables",
+        "explanation": null
+    },
+    "level": "warning",
+    "spans": [
+        {
+            "file_name": "driver/subcommand/repl.rs",
+            "byte_start": 9228,
+            "byte_end": 9231,
+            "line_start": 291,
+            "line_end": 291,
+            "column_start": 9,
+            "column_end": 12,
+            "is_primary": true,
+            "text": [
+                {
+                    "text": "    let foo = 42;",
+                    "highlight_start": 9,
+                    "highlight_end": 12
+                }
+            ],
+            "label": null,
+            "suggested_replacement": null,
+            "suggestion_applicability": null,
+            "expansion": null
+        }
+    ],
+    "children": [
+        {
+            "message": "#[warn(unused_variables)] on by default",
+            "code": null,
+            "level": "note",
+            "spans": [],
+            "children": [],
+            "rendered": null
+        },
+        {
+            "message": "consider prefixing with an underscore",
+            "code": null,
+            "level": "help",
+            "spans": [
+                {
+                    "file_name": "driver/subcommand/repl.rs",
+                    "byte_start": 9228,
+                    "byte_end": 9231,
+                    "line_start": 291,
+                    "line_end": 291,
+                    "column_start": 9,
+                    "column_end": 12,
+                    "is_primary": true,
+                    "text": [
+                        {
+                            "text": "    let foo = 42;",
+                            "highlight_start": 9,
+                            "highlight_end": 12
+                        }
+                    ],
+                    "label": null,
+                    "suggested_replacement": "_foo",
+                    "suggestion_applicability": "MachineApplicable",
+                    "expansion": null
+                }
+            ],
+            "children": [],
+            "rendered": null
+        }
+    ],
+    "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
+    }"##,
+        );
+
+        let config = DiagnosticsConfig {
+            warnings_as_info: vec!["unused_variables".to_string()],
+            ..DiagnosticsConfig::default()
+        };
+
+        let workspace_root = Path::new("/test/");
+        let diag = map_rust_diagnostic_to_lsp(&config, &diag, workspace_root);
+        insta::assert_debug_snapshot!(diag);
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn snap_rustc_unused_variable_as_hint() {
+        let diag = parse_diagnostic(
+            r##"{
+    "message": "unused variable: `foo`",
+    "code": {
+        "code": "unused_variables",
+        "explanation": null
+    },
+    "level": "warning",
+    "spans": [
+        {
+            "file_name": "driver/subcommand/repl.rs",
+            "byte_start": 9228,
+            "byte_end": 9231,
+            "line_start": 291,
+            "line_end": 291,
+            "column_start": 9,
+            "column_end": 12,
+            "is_primary": true,
+            "text": [
+                {
+                    "text": "    let foo = 42;",
+                    "highlight_start": 9,
+                    "highlight_end": 12
+                }
+            ],
+            "label": null,
+            "suggested_replacement": null,
+            "suggestion_applicability": null,
+            "expansion": null
+        }
+    ],
+    "children": [
+        {
+            "message": "#[warn(unused_variables)] on by default",
+            "code": null,
+            "level": "note",
+            "spans": [],
+            "children": [],
+            "rendered": null
+        },
+        {
+            "message": "consider prefixing with an underscore",
+            "code": null,
+            "level": "help",
+            "spans": [
+                {
+                    "file_name": "driver/subcommand/repl.rs",
+                    "byte_start": 9228,
+                    "byte_end": 9231,
+                    "line_start": 291,
+                    "line_end": 291,
+                    "column_start": 9,
+                    "column_end": 12,
+                    "is_primary": true,
+                    "text": [
+                        {
+                            "text": "    let foo = 42;",
+                            "highlight_start": 9,
+                            "highlight_end": 12
+                        }
+                    ],
+                    "label": null,
+                    "suggested_replacement": "_foo",
+                    "suggestion_applicability": "MachineApplicable",
+                    "expansion": null
+                }
+            ],
+            "children": [],
+            "rendered": null
+        }
+    ],
+    "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
+    }"##,
+        );
+
+        let config = DiagnosticsConfig {
+            warnings_as_hint: vec!["unused_variables".to_string()],
+            ..DiagnosticsConfig::default()
+        };
+
+        let workspace_root = Path::new("/test/");
+        let diag = map_rust_diagnostic_to_lsp(&config, &diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -534,7 +721,7 @@ mod tests {
         );
 
         let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
+        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -654,7 +841,7 @@ mod tests {
         );
 
         let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
+        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -697,7 +884,7 @@ mod tests {
         );
 
         let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
+        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -968,7 +1155,7 @@ mod tests {
         );
 
         let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
+        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -1197,7 +1384,7 @@ mod tests {
         );
 
         let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
+        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 
@@ -1330,7 +1517,7 @@ mod tests {
         );
 
         let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&diag, workspace_root);
+        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
         insta::assert_debug_snapshot!(diag);
     }
 }

@@ -669,14 +669,11 @@ fn apply_document_changes(
     mut line_index: Cow<'_, LineIndex>,
     content_changes: Vec<TextDocumentContentChangeEvent>,
 ) {
-    // Remove when https://github.com/rust-analyzer/rust-analyzer/issues/4263 is fixed.
-    let backup_text = old_text.clone();
-    let backup_changes = content_changes.clone();
-
     // The changes we got must be applied sequentially, but can cross lines so we
     // have to keep our line index updated.
     // Some clients (e.g. Code) sort the ranges in reverse. As an optimization, we
     // remember the last valid line in the index and only rebuild it if needed.
+    // The VFS will normalize the end of lines to `\n`.
     enum IndexValid {
         All,
         UpToLineExclusive(u64),
@@ -700,19 +697,7 @@ fn apply_document_changes(
                 }
                 index_valid = IndexValid::UpToLineExclusive(range.start.line);
                 let range = from_proto::text_range(&line_index, range);
-                let mut text = old_text.to_owned();
-                match std::panic::catch_unwind(move || {
-                    text.replace_range(Range::<usize>::from(range), &change.text);
-                    text
-                }) {
-                    Ok(t) => *old_text = t,
-                    Err(e) => {
-                        eprintln!("Bug in incremental text synchronization. Please report the following output on https://github.com/rust-analyzer/rust-analyzer/issues/4263");
-                        dbg!(&backup_text);
-                        dbg!(&backup_changes);
-                        std::panic::resume_unwind(e);
-                    }
-                }
+                old_text.replace_range(Range::<usize>::from(range), &change.text);
             }
             None => {
                 *old_text = change.text;
@@ -734,6 +719,7 @@ fn on_check_task(
 
         CheckTask::AddDiagnostic { workspace_root, diagnostic } => {
             let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
+                &global_state.config.diagnostics,
                 &diagnostic,
                 &workspace_root,
             );

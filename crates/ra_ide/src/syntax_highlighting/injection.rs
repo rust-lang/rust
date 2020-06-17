@@ -53,6 +53,10 @@ pub(super) fn highlight_injection(
 /// Mapping from extracted documentation code to original code
 type RangesMap = BTreeMap<TextSize, TextSize>;
 
+const RUSTDOC_FENCE: &'static str = "```";
+const RUSTDOC_FENCE_TOKENS: &[&'static str] =
+    &["", "rust", "should_panic", "ignore", "no_run", "compile_fail", "edition2015", "edition2018"];
+
 /// Extracts Rust code from documentation comments as well as a mapping from
 /// the extracted source code back to the original source ranges.
 /// Lastly, a vector of new comment highlight ranges (spanning only the
@@ -67,6 +71,7 @@ pub(super) fn extract_doc_comments(
     // Mapping from extracted documentation code to original code
     let mut range_mapping: RangesMap = BTreeMap::new();
     let mut line_start = TextSize::try_from(prefix.len()).unwrap();
+    let mut is_codeblock = false;
     let mut is_doctest = false;
     // Replace the original, line-spanning comment ranges by new, only comment-prefix
     // spanning comment ranges.
@@ -76,8 +81,13 @@ pub(super) fn extract_doc_comments(
         .filter_map(|el| el.into_token().and_then(ast::Comment::cast))
         .filter(|comment| comment.kind().doc.is_some())
         .filter(|comment| {
-            if comment.text().contains("```") {
-                is_doctest = !is_doctest;
+            if let Some(idx) = comment.text().find(RUSTDOC_FENCE) {
+                is_codeblock = !is_codeblock;
+                // Check whether code is rust by inspecting fence guards
+                let guards = &comment.text()[idx + RUSTDOC_FENCE.len()..];
+                let is_rust =
+                    guards.split(',').all(|sub| RUSTDOC_FENCE_TOKENS.contains(&sub.trim()));
+                is_doctest = is_codeblock && is_rust;
                 false
             } else {
                 is_doctest
