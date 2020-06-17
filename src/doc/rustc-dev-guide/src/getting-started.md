@@ -60,7 +60,7 @@ advice.**][suggested]
 ### System Requirements
 
 [**See this chapter for detailed software requirements.**](./building/prerequisites.md)
-Most notably, you will need Python 2 to run `x.py`.
+Most notably, you will need Python 2 or 3 to run `x.py`.
 
 There are no hard hardware requirements, but building the compiler is
 computationally expensive, so a beefier machine will help, and I wouldn't
