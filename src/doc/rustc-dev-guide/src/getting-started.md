@@ -173,7 +173,11 @@ To run the compiler's UI test suite (the bulk of the test suite):
 
 ```
 # UI tests
-./x.py test --stage 1 src/test/ui [--keep-stage 1]
+# First build
+./x.py test --stage 1 src/test/ui
+
+# Subsequent builds
+./x.py test --stage 1 src/test/ui --keep-stage 1
 ```
 
 This will build the compiler first, if needed.
@@ -215,7 +219,9 @@ stage 0.
 ./x.py build --stage 0 src/libstd
 ```
 
-TODO: how to test?
+```sh
+./x.py test --stage 0 src/libstd
+```
 
 ### Building and Testing `rustdoc`
 
@@ -235,11 +241,22 @@ even though the release version will use the full 2-stage build.
 
 You can also use `./x.py check` here to do a fast check build.
 
-TODO: how to test?
+Rustdoc has two types of tests: content tests and UI tests.
+
+```sh
+# Content tests
+./x.py test --stage 1 src/test/rustdoc
+
+# UI tests
+./x.py test --stage 1 src/test/rustdoc-ui
+
+# Both at once
+./x.py test --stage 1 src/test/rustdoc*
+```
 
 ### Contributing code to other Rust projects
 
-There are a bunch of other projects that one can contribute too outside of the
+There are a bunch of other projects that you can contribute to outside of the
 `rust-lang/rust` repo, including `clippy`, `miri`, `chalk`, and many others.
 
 These repos might have their own contributing guidelines and procedures. Many
@@ -300,7 +317,7 @@ will be reviewed, approved, and merged. This includes most bug fixes,
 refactorings, and other user-invisible changes. The next few sections talk
 about exceptions to this rule.
 
-Also, note that is perfectly acceptable to open WIP PRs or GitHub [Draft
+Also, note that it is perfectly acceptable to open WIP PRs or GitHub [Draft
 PRs][draft]. Some people prefer to do this so they can get feedback along the
 way or share their code with a collaborator. Others do this so they can utilize
 the CI to build and test their PR (e.g. if you are developing on a laptop).
@@ -370,7 +387,7 @@ changes. Crater runs can take a few days to complete.
 ### Major Changes
 
 The compiler team has a special process for large changes, whether or not they
-cause breakage. This process is call Major Change Proposal (MCP). MCP is a
+cause breakage. This process is called a Major Change Proposal (MCP). MCP is a
 relatively lightweight mechanism for getting feedback on large changes to the
 compiler (as opposed to a full RFC or a design meeting with the team).
 
@@ -402,5 +419,6 @@ master.
 - [The t-compiler zulip][z]
 - [The compiler's documentation (rustdocs)](https://doc.rust-lang.org/nightly/nightly-rustc/)
 - [The Forge](https://forge.rust-lang.org/) has more documentation about various procedures.
+- `#contribute`, `#compiler`, and `#rustdoc` on [Discord](https://discord.gg/rust-lang).
 
 TODO: am I missing any?
