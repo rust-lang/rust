@@ -259,8 +259,6 @@ Here are a few other useful `x.py` commands. We'll cover some of them in detail
 in other sections:
 
 - Building things:
-  - `./x.py clean` – clean up the build directory (`rm -rf build` works too,
-    but then you have to rebuild LLVM)
   - `./x.py build --stage 1` – builds everything using the stage 1 compiler,
     not just up to `libstd`
   - `./x.py build` – builds the stage2 compiler
@@ -283,3 +281,5 @@ everything up then you only need to run one command!
 ```bash
 ./x.py clean
 ```
+
+`rm -rf build` works too, but then you have to rebuild LLVM.
