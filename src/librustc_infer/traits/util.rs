@@ -156,10 +156,10 @@ impl Elaborator<'tcx> {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations = predicates.predicates.iter().map(|(pred, span)| {
+                let obligations = predicates.predicates.iter().map(|&(pred, span)| {
                     predicate_obligation(
                         pred.subst_supertrait(tcx, &data.to_poly_trait_ref()),
-                        Some(*span),
+                        Some(span),
                     )
                 });
                 debug!("super_predicates: data={:?}", data);

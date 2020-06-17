@@ -1303,37 +1303,20 @@ impl<'tcx> Predicate<'tcx> {
         // this trick achieves that).
 
         let substs = trait_ref.skip_binder().substs;
-        let kind = self.kind();
-        let new = match kind {
-            &PredicateKind::Trait(ref binder, constness) => {
-                PredicateKind::Trait(binder.map_bound(|data| data.subst(tcx, substs)), constness)
-            }
-            PredicateKind::Subtype(binder) => {
-                PredicateKind::Subtype(binder.map_bound(|data| data.subst(tcx, substs)))
-            }
-            PredicateKind::RegionOutlives(binder) => {
-                PredicateKind::RegionOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
-            }
-            PredicateKind::TypeOutlives(binder) => {
-                PredicateKind::TypeOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
-            }
-            PredicateKind::Projection(binder) => {
-                PredicateKind::Projection(binder.map_bound(|data| data.subst(tcx, substs)))
-            }
-            &PredicateKind::WellFormed(data) => PredicateKind::WellFormed(data.subst(tcx, substs)),
-            &PredicateKind::ObjectSafe(trait_def_id) => PredicateKind::ObjectSafe(trait_def_id),
-            &PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
-                PredicateKind::ClosureKind(closure_def_id, closure_substs.subst(tcx, substs), kind)
-            }
-            &PredicateKind::ConstEvaluatable(def_id, const_substs) => {
-                PredicateKind::ConstEvaluatable(def_id, const_substs.subst(tcx, substs))
-            }
-            PredicateKind::ConstEquate(c1, c2) => {
-                PredicateKind::ConstEquate(c1.subst(tcx, substs), c2.subst(tcx, substs))
-            }
+        let kind = match self.kint(tcx) {
+            PredicateKint::ForAll(binder) => *binder.skip_binder(),
+            kind => kind,
         };
 
-        if new != *kind { new.to_predicate(tcx) } else { self }
+        let new = kind.subst(tcx, substs);
+
+        let rebound = if new.has_escaping_bound_vars() {
+            PredicateKint::ForAll(Binder::bind(tcx.intern_predicate_kint(new)))
+        } else {
+            new
+        };
+
+        if rebound != *kind { rebound.to_predicate(tcx) } else { self }
     }
 }
 
