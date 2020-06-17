@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 // Tests a variety of basic specialization scenarios and method
 // dispatch for them.

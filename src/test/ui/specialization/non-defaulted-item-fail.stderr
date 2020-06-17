@@ -1,5 +1,14 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/non-defaulted-item-fail.rs:1:12
+   |
+LL | #![feature(specialization, associated_type_defaults)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
 error[E0520]: `Ty` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/non-defaulted-item-fail.rs:29:5
+  --> $DIR/non-defaulted-item-fail.rs:30:5
    |
 LL | / impl<T> Foo for Box<T> {
 LL | |     type Ty = bool;
@@ -14,7 +23,7 @@ LL |       type Ty = Vec<()>;
    = note: to specialize, `Ty` in the parent `impl` must be marked `default`
 
 error[E0520]: `CONST` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/non-defaulted-item-fail.rs:31:5
+  --> $DIR/non-defaulted-item-fail.rs:32:5
    |
 LL | / impl<T> Foo for Box<T> {
 LL | |     type Ty = bool;
@@ -29,7 +38,7 @@ LL |       const CONST: u8 = 42;
    = note: to specialize, `CONST` in the parent `impl` must be marked `default`
 
 error[E0520]: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/non-defaulted-item-fail.rs:33:5
+  --> $DIR/non-defaulted-item-fail.rs:34:5
    |
 LL | / impl<T> Foo for Box<T> {
 LL | |     type Ty = bool;
@@ -44,7 +53,7 @@ LL |       fn foo(&self) -> bool { true }
    = note: to specialize, `foo` in the parent `impl` must be marked `default`
 
 error[E0520]: `Ty` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/non-defaulted-item-fail.rs:45:5
+  --> $DIR/non-defaulted-item-fail.rs:46:5
    |
 LL | impl<T> Foo for Vec<T> {}
    | ------------------------- parent `impl` is here
@@ -55,7 +64,7 @@ LL |     type Ty = Vec<()>;
    = note: to specialize, `Ty` in the parent `impl` must be marked `default`
 
 error[E0520]: `CONST` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/non-defaulted-item-fail.rs:47:5
+  --> $DIR/non-defaulted-item-fail.rs:48:5
    |
 LL | impl<T> Foo for Vec<T> {}
    | ------------------------- parent `impl` is here
@@ -66,7 +75,7 @@ LL |     const CONST: u8 = 42;
    = note: to specialize, `CONST` in the parent `impl` must be marked `default`
 
 error[E0520]: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/non-defaulted-item-fail.rs:49:5
+  --> $DIR/non-defaulted-item-fail.rs:50:5
    |
 LL | impl<T> Foo for Vec<T> {}
    | ------------------------- parent `impl` is here
@@ -76,6 +85,6 @@ LL |     fn foo(&self) -> bool { true }
    |
    = note: to specialize, `foo` in the parent `impl` must be marked `default`
 
-error: aborting due to 6 previous errors
+error: aborting due to 6 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0520`.

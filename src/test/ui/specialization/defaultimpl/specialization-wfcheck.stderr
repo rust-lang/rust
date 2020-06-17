@@ -1,3 +1,12 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-wfcheck.rs:3:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
 error[E0277]: the trait bound `U: std::cmp::Eq` is not satisfied
   --> $DIR/specialization-wfcheck.rs:7:17
    |
@@ -12,6 +21,6 @@ help: consider restricting type parameter `U`
 LL | default impl<U: std::cmp::Eq> Foo<'static, U> for () {}
    |               ^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

@@ -4,7 +4,7 @@
 // type parameters *and* rely on projections, and the type parameters are input
 // types on the trait.
 
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 trait Trait<T> {
     fn convert(&self) -> T;
