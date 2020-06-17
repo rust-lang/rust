@@ -1,5 +1,5 @@
 use crate::raw::{Bucket, RawDrain, RawIntoIter, RawIter, RawTable};
-use crate::CollectionAllocErr;
+use crate::TryReserveError;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash, Hasher};
@@ -181,11 +181,8 @@ pub enum DefaultHashBuilder {}
 /// ```
 /// use hashbrown::HashMap;
 ///
-/// let timber_resources: HashMap<&str, i32> =
-/// [("Norway", 100),
-///  ("Denmark", 50),
-///  ("Iceland", 10)]
-///  .iter().cloned().collect();
+/// let timber_resources: HashMap<&str, i32> = [("Norway", 100), ("Denmark", 50), ("Iceland", 10)]
+///     .iter().cloned().collect();
 /// // use the values stored in map
 /// ```
 pub struct HashMap<K, V, S = DefaultHashBuilder> {
@@ -262,6 +259,9 @@ impl<K, V, S> HashMap<K, V, S> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
     /// # Examples
     ///
     /// ```
@@ -272,6 +272,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// let mut map = HashMap::with_hasher(s);
     /// map.insert(1, 2);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_hasher(hash_builder: S) -> Self {
         Self {
@@ -291,6 +293,9 @@ impl<K, V, S> HashMap<K, V, S> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
     /// # Examples
     ///
     /// ```
@@ -301,6 +306,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
     /// map.insert(1, 2);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> Self {
         Self {
@@ -614,7 +621,7 @@ where
     /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         let hash_builder = &self.hash_builder;
         self.table
             .try_reserve(additional, |x| make_hash(hash_builder, &x.0))
@@ -1218,7 +1225,7 @@ impl<K, V> IterMut<'_, K, V> {
 
 /// An owning iterator over the entries of a `HashMap`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`HashMap`][`HashMap`]
+/// This `struct` is created by the [`into_iter`] method on [`HashMap`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: struct.HashMap.html#method.into_iter
@@ -2711,6 +2718,8 @@ where
     }
 }
 
+/// Inserts all new key-values from the iterator and replaces values with existing
+/// keys with new values returned from the iterator.
 impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
 where
     K: Eq + Hash,
@@ -2733,6 +2742,27 @@ where
             self.insert(k, v);
         });
     }
+
+    #[inline]
+    #[cfg(feature = "nightly")]
+    fn extend_one(&mut self, (k, v): (K, V)) {
+        self.insert(k, v);
+    }
+
+    #[inline]
+    #[cfg(feature = "nightly")]
+    fn extend_reserve(&mut self, additional: usize) {
+        // Keys may be already present or show multiple times in the iterator.
+        // Reserve the entire hint lower bound if the map is empty.
+        // Otherwise reserve half the hint (rounded up), so the map
+        // will only resize twice in the worst case.
+        let reserve = if self.is_empty() {
+            additional
+        } else {
+            (additional + 1) / 2
+        };
+        self.reserve(reserve);
+    }
 }
 
 impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
@@ -2744,6 +2774,18 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
+    }
+
+    #[inline]
+    #[cfg(feature = "nightly")]
+    fn extend_one(&mut self, (k, v): (&'a K, &'a V)) {
+        self.insert(*k, *v);
+    }
+
+    #[inline]
+    #[cfg(feature = "nightly")]
+    fn extend_reserve(&mut self, additional: usize) {
+        Extend::<(K, V)>::extend_reserve(self, additional);
     }
 }
 
@@ -2791,7 +2833,7 @@ mod test_map {
     use super::DefaultHashBuilder;
     use super::Entry::{Occupied, Vacant};
     use super::{HashMap, RawEntryMut};
-    use crate::CollectionAllocErr::*;
+    use crate::TryReserveError::*;
     use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::cell::RefCell;
     use std::usize;
@@ -3411,13 +3453,15 @@ mod test_map {
 
     #[test]
     fn test_from_iter() {
-        let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = [(1, 1), (2, 2), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
         let map: HashMap<_, _> = xs.iter().cloned().collect();
 
         for &(k, v) in &xs {
             assert_eq!(map.get(&k), Some(&v));
         }
+
+        assert_eq!(map.iter().len(), xs.len() - 1);
     }
 
     #[test]
@@ -3698,12 +3742,12 @@ mod test_map {
             panic!("usize::MAX should trigger an overflow!");
         }
 
-        if let Err(AllocErr { .. }) = empty_bytes.try_reserve(MAX_USIZE / 8) {
+        if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_USIZE / 8) {
         } else {
             // This may succeed if there is enough free memory. Attempt to
             // allocate a second hashmap to ensure the allocation will fail.
             let mut empty_bytes2: HashMap<u8, u8> = HashMap::new();
-            if let Err(AllocErr { .. }) = empty_bytes2.try_reserve(MAX_USIZE / 8) {
+            if let Err(AllocError { .. }) = empty_bytes2.try_reserve(MAX_USIZE / 8) {
             } else {
                 panic!("usize::MAX / 8 should trigger an OOM!");
             }

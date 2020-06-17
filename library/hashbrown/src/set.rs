@@ -1,4 +1,5 @@
-use crate::CollectionAllocErr;
+use crate::TryReserveError;
+use alloc::borrow::ToOwned;
 use core::borrow::Borrow;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
@@ -99,9 +100,9 @@ use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 /// use hashbrown::HashSet;
 ///
 /// fn main() {
-///     let viking_names: HashSet<&'static str> =
-///         [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
-///     // use the values stored in the set
+/// let viking_names: HashSet<&'static str> =
+///     [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
+/// // use the values stored in the set
 /// }
 /// ```
 ///
@@ -296,6 +297,10 @@ where
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
+    ///
     /// # Examples
     ///
     /// ```
@@ -306,6 +311,8 @@ where
     /// let mut set = HashSet::with_hasher(s);
     /// set.insert(2);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_hasher(hasher: S) -> Self {
         Self {
@@ -324,6 +331,9 @@ where
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
     /// # Examples
     ///
     /// ```
@@ -334,6 +344,8 @@ where
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
     /// set.insert(1);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         Self {
@@ -398,7 +410,7 @@ where
     /// set.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.map.try_reserve(additional)
     }
 
@@ -559,7 +571,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn union<'a>(&'a self, other: &'a Self) -> Union<'a, T, S> {
-        let (smaller, larger) = if self.len() <= other.len() {
+        let (smaller, larger) = if self.len() >= other.len() {
             (self, other)
         } else {
             (other, self)
@@ -645,6 +657,39 @@ where
             .raw_entry_mut()
             .from_key(&value)
             .or_insert(value, ())
+            .0
+    }
+
+    /// Inserts an owned copy of the given `value` into the set if it is not
+    /// present, then returns a reference to the value in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut set: HashSet<String> = ["cat", "dog", "horse"]
+    ///     .iter().map(|&pet| pet.to_owned()).collect();
+    ///
+    /// assert_eq!(set.len(), 3);
+    /// for &pet in &["cat", "dog", "fish"] {
+    ///     let value = set.get_or_insert_owned(pet);
+    ///     assert_eq!(value, pet);
+    /// }
+    /// assert_eq!(set.len(), 4); // a new "fish" was inserted
+    /// ```
+    #[inline]
+    pub fn get_or_insert_owned<Q: ?Sized>(&mut self, value: &Q) -> &T
+    where
+        T: Borrow<Q>,
+        Q: Hash + Eq + ToOwned<Owned = T>,
+    {
+        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
+        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
+        self.map
+            .raw_entry_mut()
+            .from_key(value)
+            .or_insert_with(|| (value.to_owned(), ()))
             .0
     }
 
@@ -929,6 +974,18 @@ where
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         self.map.extend(iter.into_iter().map(|k| (k, ())));
     }
+
+    #[inline]
+    #[cfg(feature = "nightly")]
+    fn extend_one(&mut self, k: T) {
+        self.map.insert(k, ());
+    }
+
+    #[inline]
+    #[cfg(feature = "nightly")]
+    fn extend_reserve(&mut self, additional: usize) {
+        Extend::<(T, ())>::extend_reserve(&mut self.map, additional);
+    }
 }
 
 impl<'a, T, S> Extend<&'a T> for HashSet<T, S>
@@ -940,12 +997,23 @@ where
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
+
+    #[inline]
+    #[cfg(feature = "nightly")]
+    fn extend_one(&mut self, k: &'a T) {
+        self.map.insert(*k, ());
+    }
+
+    #[inline]
+    #[cfg(feature = "nightly")]
+    fn extend_reserve(&mut self, additional: usize) {
+        Extend::<(T, ())>::extend_reserve(&mut self.map, additional);
+    }
 }
 
 impl<T, S> Default for HashSet<T, S>
 where
-    T: Eq + Hash,
-    S: BuildHasher + Default,
+    S: Default,
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1097,7 +1165,7 @@ pub struct Iter<'a, K> {
 
 /// An owning iterator over the items of a `HashSet`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`HashSet`][`HashSet`]
+/// This `struct` is created by the [`into_iter`] method on [`HashSet`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`HashSet`]: struct.HashSet.html
@@ -1734,13 +1802,15 @@ mod test_set {
 
     #[test]
     fn test_from_iter() {
-        let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let xs = [1, 2, 2, 3, 4, 5, 6, 7, 8, 9];
 
         let set: HashSet<_> = xs.iter().cloned().collect();
 
         for x in &xs {
             assert!(set.contains(x));
         }
+
+        assert_eq!(set.iter().len(), xs.len() - 1);
     }
 
     #[test]
