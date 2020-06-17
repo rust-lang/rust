@@ -652,9 +652,6 @@ impl Write for Stdout {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
     }
-    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
-        self.lock().write_fmt(args)
-    }
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
         self.lock().write_all_vectored(bufs)
     }
@@ -679,9 +676,6 @@ impl Write for StdoutLock<'_> {
     }
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
         self.inner.borrow_mut().write_all_vectored(bufs)
-    }
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        self.inner.borrow_mut().write_fmt(fmt)
     }
 }
 
@@ -838,9 +832,6 @@ impl Write for Stderr {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
     }
-    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
-        self.lock().write_fmt(args)
-    }
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
         self.lock().write_all_vectored(bufs)
     }
@@ -865,9 +856,6 @@ impl Write for StderrLock<'_> {
     }
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
         self.inner.borrow_mut().write_all_vectored(bufs)
-    }
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        self.inner.borrow_mut().write_fmt(fmt)
     }
 }
 
