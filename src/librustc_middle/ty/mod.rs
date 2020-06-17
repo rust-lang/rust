@@ -1302,7 +1302,7 @@ impl<'tcx> Predicate<'tcx> {
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
 
-        let substs = &trait_ref.skip_binder().substs;
+        let substs = trait_ref.skip_binder().substs;
         let kind = self.kind();
         let new = match kind {
             &PredicateKind::Trait(ref binder, constness) => {
@@ -1549,13 +1549,6 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&TraitRef<'tcx>> {
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
-            .to_predicate(tcx)
-    }
-}
-
-impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&PolyTraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
             .to_predicate(tcx)
