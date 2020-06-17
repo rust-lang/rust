@@ -88,33 +88,35 @@ pub fn predicate_obligations<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,
-    predicate: ty::Predicate<'tcx>,
+    predicate: &'tcx ty::PredicateKint<'tcx>,
     span: Span,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
 
-    // (*) ok to skip binders, because wf code is prepared for it
-    match predicate.kind() {
-        ty::PredicateKind::Trait(t, _) => {
-            wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
+    match predicate {
+        ty::PredicateKint::ForAll(binder) => {
+            // It's ok to skip the binder here because wf code is prepared for it
+            return predicate_obligations(infcx, param_env, body_id, *binder.skip_binder(), span);
         }
-        ty::PredicateKind::RegionOutlives(..) => {}
-        ty::PredicateKind::TypeOutlives(t) => {
-            wf.compute(t.skip_binder().0.into());
+        ty::PredicateKint::Trait(t, _) => {
+            wf.compute_trait_ref(&t.trait_ref, Elaborate::None);
         }
-        ty::PredicateKind::Projection(t) => {
-            let t = t.skip_binder(); // (*)
+        ty::PredicateKint::RegionOutlives(..) => {}
+        &ty::PredicateKint::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+            wf.compute(ty.into());
+        }
+        ty::PredicateKint::Projection(t) => {
             wf.compute_projection(t.projection_ty);
             wf.compute(t.ty.into());
         }
-        &ty::PredicateKind::WellFormed(arg) => {
+        &ty::PredicateKint::WellFormed(arg) => {
             wf.compute(arg);
         }
-        ty::PredicateKind::ObjectSafe(_) => {}
-        ty::PredicateKind::ClosureKind(..) => {}
-        ty::PredicateKind::Subtype(data) => {
-            wf.compute(data.skip_binder().a.into()); // (*)
-            wf.compute(data.skip_binder().b.into()); // (*)
+        ty::PredicateKint::ObjectSafe(_) => {}
+        ty::PredicateKint::ClosureKind(..) => {}
+        &ty::PredicateKint::Subtype(ty::SubtypePredicate { a, b, a_is_expected: _ }) => {
+            wf.compute(a.into());
+            wf.compute(b.into());
         }
         &ty::PredicateKind::ConstEvaluatable(def, substs) => {
             let obligations = wf.nominal_obligations(def.did, substs);
@@ -124,7 +126,7 @@ pub fn predicate_obligations<'a, 'tcx>(
                 wf.compute(arg);
             }
         }
-        &ty::PredicateKind::ConstEquate(c1, c2) => {
+        &ty::PredicateKint::ConstEquate(c1, c2) => {
             wf.compute(c1.into());
             wf.compute(c2.into());
         }
