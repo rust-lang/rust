@@ -2362,9 +2362,9 @@ macro_rules! __impl_slice_eq1 {
 __impl_slice_eq1! { [] Vec<A>, Vec<B>, }
 __impl_slice_eq1! { [] Vec<A>, &[B], }
 __impl_slice_eq1! { [] Vec<A>, &mut [B], }
+__impl_slice_eq1! { [] Cow<'_, [A]>, Vec<B>, A: Clone }
 __impl_slice_eq1! { [] Cow<'_, [A]>, &[B], A: Clone }
 __impl_slice_eq1! { [] Cow<'_, [A]>, &mut [B], A: Clone }
-__impl_slice_eq1! { [] Cow<'_, [A]>, Vec<B>, A: Clone }
 __impl_slice_eq1! { [const N: usize] Vec<A>, [B; N], [B; N]: LengthAtMost32 }
 __impl_slice_eq1! { [const N: usize] Vec<A>, &[B; N], [B; N]: LengthAtMost32 }
 
