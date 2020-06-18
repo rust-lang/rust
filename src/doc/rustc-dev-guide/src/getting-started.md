@@ -433,7 +433,8 @@ approval of the relevant teams.
 
 After that, the feature gate can be removed and the feature turned on for all users.
 
-[For more details on this process, see this chapter on implementing new features.](./implementing_new_features.md)
+For more details on this process, see [this chapter on implementing new
+features.](./implementing_new_features.md)
 
 ### Breaking Changes
 
