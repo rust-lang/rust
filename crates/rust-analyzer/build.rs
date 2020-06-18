@@ -5,7 +5,8 @@ use std::{env, path::PathBuf, process::Command};
 fn main() {
     set_rerun();
 
-    let rev = env::var("RUST_ANALYZER_REV").ok().or_else(rev).unwrap_or_else(|| "???????".to_string());
+    let rev =
+        env::var("RUST_ANALYZER_REV").ok().or_else(rev).unwrap_or_else(|| "???????".to_string());
     println!("cargo:rustc-env=REV={}", rev)
 }
 
