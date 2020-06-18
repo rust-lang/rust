@@ -583,10 +583,10 @@ pub const fn needs_drop<T>() -> bool {
 ///
 /// There is no guarantee that an all-zero byte-pattern represents a valid value
 /// of some type `T`. For example, the all-zero byte-pattern is not a valid value
-/// for reference types (`&T`, `&mut T`) and functions pointers. Using `zeroed` on
-/// such types on such types causes immediate [undefined behavior][ub] because
-/// [the Rust compiler assumes][inv] that there always is a valid value in a
-/// variable it considers initialized.
+/// for reference types (`&T`, `&mut T`) and functions pointers. Using `zeroed`
+/// on such types causes immediate [undefined behavior][ub] because [the Rust
+/// compiler assumes][inv] that there always is a valid value in a variable it
+/// considers initialized.
 ///
 /// This has the same effect as [`MaybeUninit::zeroed().assume_init()`][zeroed].
 /// It is useful for FFI sometimes, but should generally be avoided.
