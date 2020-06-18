@@ -4,7 +4,6 @@ use either::Either;
 use hir::{original_range, AssocItem, FieldSource, HasSource, InFile, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_ide_db::{defs::Definition, RootDatabase};
-use ra_syntax::ast::AstToken;
 use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,
@@ -159,13 +158,12 @@ impl NavigationTarget {
     ) -> NavigationTarget {
         let name =
             named.value.name().map(|it| it.text().clone()).unwrap_or_else(|| SmolStr::new("_"));
-        let focus_range = node.value.doc_comments().next().map(|it| it.syntax().text_range());
         let frange = original_range(db, node.map(|it| it.syntax()));
 
         NavigationTarget::from_syntax(
             frange.file_id,
             name,
-            focus_range,
+            None,
             frange.range,
             node.value.syntax().kind(),
         )

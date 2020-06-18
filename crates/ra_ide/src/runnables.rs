@@ -427,9 +427,7 @@ mod tests {
                     full_range: 22..64,
                     name: "foo",
                     kind: FN_DEF,
-                    focus_range: Some(
-                        22..29,
-                    ),
+                    focus_range: None,
                     container_name: None,
                     description: None,
                     docs: None,
@@ -494,9 +492,7 @@ mod tests {
                     full_range: 51..105,
                     name: "foo",
                     kind: FN_DEF,
-                    focus_range: Some(
-                        51..58,
-                    ),
+                    focus_range: None,
                     container_name: None,
                     description: None,
                     docs: None,
