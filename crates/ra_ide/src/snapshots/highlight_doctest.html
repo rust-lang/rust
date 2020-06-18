@@ -39,48 +39,48 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">impl</span> <span class="struct">Foo</span> {
     <span class="keyword">pub</span> <span class="keyword">const</span> <span class="constant declaration">bar</span>: <span class="builtin_type">bool</span> = <span class="bool_literal">true</span>;
 
-    <span class="comment">/// Constructs a new `Foo`.</span>
-    <span class="comment">///</span>
-    <span class="comment">/// # Examples</span>
-    <span class="comment">///</span>
-    <span class="comment">/// ```</span>
-    <span class="comment">/// #</span> <span class="attribute">#![</span><span class="function attribute">allow</span><span class="attribute">(unused_mut)]</span>
-    <span class="comment">/// </span><span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">foo</span>: <span class="struct">Foo</span> = <span class="struct">Foo</span>::<span class="function">new</span>();
-    <span class="comment">/// ```</span>
+    <span class="comment documentation">/// Constructs a new `Foo`.</span>
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// # Examples</span>
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// ```</span>
+    <span class="comment documentation">/// #</span> <span class="attribute">#![</span><span class="function attribute">allow</span><span class="attribute">(unused_mut)]</span>
+    <span class="comment documentation">/// </span><span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">foo</span>: <span class="struct">Foo</span> = <span class="struct">Foo</span>::<span class="function">new</span>();
+    <span class="comment documentation">/// ```</span>
     <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function declaration">new</span>() -&gt; <span class="struct">Foo</span> {
         <span class="struct">Foo</span> { <span class="field">bar</span>: <span class="bool_literal">true</span> }
     }
 
-    <span class="comment">/// `bar` method on `Foo`.</span>
-    <span class="comment">///</span>
-    <span class="comment">/// # Examples</span>
-    <span class="comment">///</span>
-    <span class="comment">/// ```</span>
-    <span class="comment">/// </span><span class="keyword">use</span> <span class="module">x</span>::<span class="module">y</span>;
-    <span class="comment">///</span>
-    <span class="comment">/// </span><span class="keyword">let</span> <span class="variable declaration">foo</span> = <span class="struct">Foo</span>::<span class="function">new</span>();
-    <span class="comment">///</span>
-    <span class="comment">/// </span><span class="comment">// calls bar on foo</span>
-    <span class="comment">/// </span><span class="macro">assert!</span>(foo.bar());
-    <span class="comment">///</span>
-    <span class="comment">/// </span><span class="keyword">let</span> <span class="variable declaration">bar</span> = <span class="variable">foo</span>.<span class="field">bar</span> || <span class="struct">Foo</span>::<span class="constant">bar</span>;
-    <span class="comment">///</span>
-    <span class="comment">/// </span><span class="comment">/* multi-line
-    </span><span class="comment">/// </span><span class="comment">       comment */</span>
-    <span class="comment">///</span>
-    <span class="comment">/// </span><span class="keyword">let</span> <span class="variable declaration">multi_line_string</span> = <span class="string_literal">"Foo
-    </span><span class="comment">/// </span><span class="string_literal">  bar
-    </span><span class="comment">/// </span><span class="string_literal">         "</span>;
-    <span class="comment">///</span>
-    <span class="comment">/// ```</span>
-    <span class="comment">///</span>
-    <span class="comment">/// ```rust,no_run</span>
-    <span class="comment">/// </span><span class="keyword">let</span> <span class="variable declaration">foobar</span> = <span class="struct">Foo</span>::<span class="function">new</span>().<span class="function">bar</span>();
-    <span class="comment">/// ```</span>
-    <span class="comment">///</span>
-    <span class="comment">/// ```sh</span>
-    <span class="comment">/// echo 1</span>
-    <span class="comment">/// ```</span>
+    <span class="comment documentation">/// `bar` method on `Foo`.</span>
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// # Examples</span>
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// ```</span>
+    <span class="comment documentation">/// </span><span class="keyword">use</span> <span class="module">x</span>::<span class="module">y</span>;
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// </span><span class="keyword">let</span> <span class="variable declaration">foo</span> = <span class="struct">Foo</span>::<span class="function">new</span>();
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// </span><span class="comment">// calls bar on foo</span>
+    <span class="comment documentation">/// </span><span class="macro">assert!</span>(foo.bar());
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// </span><span class="keyword">let</span> <span class="variable declaration">bar</span> = <span class="variable">foo</span>.<span class="field">bar</span> || <span class="struct">Foo</span>::<span class="constant">bar</span>;
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// </span><span class="comment">/* multi-line
+    </span><span class="comment documentation">/// </span><span class="comment">       comment */</span>
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// </span><span class="keyword">let</span> <span class="variable declaration">multi_line_string</span> = <span class="string_literal">"Foo
+    </span><span class="comment documentation">/// </span><span class="string_literal">  bar
+    </span><span class="comment documentation">/// </span><span class="string_literal">         "</span>;
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// ```</span>
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// ```rust,no_run</span>
+    <span class="comment documentation">/// </span><span class="keyword">let</span> <span class="variable declaration">foobar</span> = <span class="struct">Foo</span>::<span class="function">new</span>().<span class="function">bar</span>();
+    <span class="comment documentation">/// ```</span>
+    <span class="comment documentation">///</span>
+    <span class="comment documentation">/// ```sh</span>
+    <span class="comment documentation">/// echo 1</span>
+    <span class="comment documentation">/// ```</span>
     <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration">foo</span>(&<span class="self_keyword">self</span>) -&gt; <span class="builtin_type">bool</span> {
         <span class="bool_literal">true</span>
     }

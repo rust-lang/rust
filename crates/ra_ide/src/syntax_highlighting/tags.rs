@@ -56,6 +56,7 @@ pub enum HighlightModifier {
     /// `foo` in `fn foo(x: i32)` is a definition, `foo` in `foo(90 + 2)` is
     /// not.
     Definition,
+    Documentation,
     Mutable,
     Unsafe,
 }
@@ -108,6 +109,7 @@ impl HighlightModifier {
         HighlightModifier::Attribute,
         HighlightModifier::ControlFlow,
         HighlightModifier::Definition,
+        HighlightModifier::Documentation,
         HighlightModifier::Mutable,
         HighlightModifier::Unsafe,
     ];
@@ -117,6 +119,7 @@ impl HighlightModifier {
             HighlightModifier::Attribute => "attribute",
             HighlightModifier::ControlFlow => "control",
             HighlightModifier::Definition => "declaration",
+            HighlightModifier::Documentation => "documentation",
             HighlightModifier::Mutable => "mutable",
             HighlightModifier::Unsafe => "unsafe",
         }

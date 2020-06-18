@@ -331,6 +331,7 @@ fn semantic_token_type_and_modifiers(
         let modifier = match modifier {
             HighlightModifier::Attribute => semantic_tokens::ATTRIBUTE_MODIFIER,
             HighlightModifier::Definition => lsp_types::SemanticTokenModifier::DECLARATION,
+            HighlightModifier::Documentation => lsp_types::SemanticTokenModifier::DOCUMENTATION,
             HighlightModifier::ControlFlow => semantic_tokens::CONTROL_FLOW,
             HighlightModifier::Mutable => semantic_tokens::MUTABLE,
             HighlightModifier::Unsafe => semantic_tokens::UNSAFE,
