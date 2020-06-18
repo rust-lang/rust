@@ -2001,6 +2001,8 @@ where
                 }
 
                 let fields = match this.ty.kind {
+                    ty::Adt(def, _) if def.variants.is_empty() =>
+                        bug!("for_variant called on zero-variant enum"),
                     ty::Adt(def, _) => def.variants[variant_index].fields.len(),
                     _ => bug!(),
                 };

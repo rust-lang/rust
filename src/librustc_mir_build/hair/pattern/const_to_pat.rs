@@ -275,7 +275,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 PatKind::Variant {
                     adt_def,
                     substs,
-                    variant_index: destructured.variant,
+                    variant_index: destructured
+                        .variant
+                        .expect("destructed const of adt without variant id"),
                     subpatterns: field_pats(destructured.fields),
                 }
             }

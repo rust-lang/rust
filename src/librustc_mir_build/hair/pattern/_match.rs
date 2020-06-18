@@ -800,7 +800,11 @@ impl<'tcx> Constructor<'tcx> {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
             }
-            ConstantValue(c) => cx.tcx.destructure_const(cx.param_env.and(c)).variant,
+            ConstantValue(c) => cx
+                .tcx
+                .destructure_const(cx.param_env.and(c))
+                .variant
+                .expect("destructed const of adt without variant id"),
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt),
         }
     }
