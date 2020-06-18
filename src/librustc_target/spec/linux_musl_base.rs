@@ -1,5 +1,5 @@
 use crate::spec::crt_objects::{self, CrtObjectsFallback};
-use crate::spec::{LinkerFlavor, TargetOptions};
+use crate::spec::{LinkerFlavor, LldFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut base = super::linux_base::opts();
@@ -8,7 +8,11 @@ pub fn opts() -> TargetOptions {
     // `GNU_EH_FRAME` program header to executables generated, which is required
     // when unwinding to locate the unwinding information. I'm not sure why this
     // argument is *not* necessary for normal builds, but it can't hurt!
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-Wl,--eh-frame-hdr".to_string());
+    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-Wl,--eh-frame-hdr".to_string());
+    base.pre_link_args
+        .entry(LinkerFlavor::Lld(LldFlavor::Ld))
+        .or_default()
+        .push("--eh-frame-hdr".to_string());
 
     base.pre_link_objects_fallback = crt_objects::pre_musl_fallback();
     base.post_link_objects_fallback = crt_objects::post_musl_fallback();
