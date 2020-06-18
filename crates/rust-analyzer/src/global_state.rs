@@ -12,12 +12,9 @@ use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_flycheck::{Flycheck, FlycheckConfig};
-use ra_ide::{
-    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
-};
+use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, SourceRootId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsTask, Watch};
-use relative_path::RelativePathBuf;
 use stdx::format_to;
 
 use crate::{
@@ -191,32 +188,18 @@ impl GlobalState {
 
     /// Returns a vec of libraries
     /// FIXME: better API here
-    pub fn process_changes(
-        &mut self,
-        roots_scanned: &mut usize,
-    ) -> Option<Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)>> {
+    pub fn process_changes(&mut self, roots_scanned: &mut usize) -> bool {
         let changes = self.vfs.write().commit_changes();
         if changes.is_empty() {
-            return None;
+            return false;
         }
-        let mut libs = Vec::new();
         let mut change = AnalysisChange::new();
         for c in changes {
             match c {
                 VfsChange::AddRoot { root, files } => {
-                    let root_path = self.vfs.read().root2path(root);
-                    let is_local = self.local_roots.iter().any(|r| root_path.starts_with(r));
-                    if is_local {
-                        *roots_scanned += 1;
-                        for (file, path, text) in files {
-                            change.add_file(SourceRootId(root.0), FileId(file.0), path, text);
-                        }
-                    } else {
-                        let files = files
-                            .into_iter()
-                            .map(|(vfsfile, path, text)| (FileId(vfsfile.0), path, text))
-                            .collect();
-                        libs.push((SourceRootId(root.0), files));
+                    *roots_scanned += 1;
+                    for (file, path, text) in files {
+                        change.add_file(SourceRootId(root.0), FileId(file.0), path, text);
                     }
                 }
                 VfsChange::AddFile { root, file, path, text } => {
@@ -231,13 +214,7 @@ impl GlobalState {
             }
         }
         self.analysis_host.apply_change(change);
-        Some(libs)
-    }
-
-    pub fn add_lib(&mut self, data: LibraryData) {
-        let mut change = AnalysisChange::new();
-        change.add_library(data);
-        self.analysis_host.apply_change(change);
+        true
     }
 
     pub fn snapshot(&self) -> GlobalStateSnapshot {

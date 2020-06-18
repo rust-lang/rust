@@ -24,11 +24,10 @@ use lsp_types::{
     WorkDoneProgressReport,
 };
 use ra_flycheck::{CheckTask, Status};
-use ra_ide::{Canceled, FileId, LibraryData, LineIndex, SourceRootId};
+use ra_ide::{Canceled, FileId, LineIndex};
 use ra_prof::profile;
 use ra_project_model::{PackageRoot, ProjectWorkspace};
 use ra_vfs::{VfsTask, Watch};
-use relative_path::RelativePathBuf;
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
@@ -174,12 +173,10 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
 
     let pool = ThreadPool::default();
     let (task_sender, task_receiver) = unbounded::<Task>();
-    let (libdata_sender, libdata_receiver) = unbounded::<LibraryData>();
 
     log::info!("server initialized, serving requests");
     {
         let task_sender = task_sender;
-        let libdata_sender = libdata_sender;
         loop {
             log::trace!("selecting");
             let event = select! {
@@ -192,7 +189,6 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                     Ok(task) => Event::Vfs(task),
                     Err(RecvError) => return Err("vfs died".into()),
                 },
-                recv(libdata_receiver) -> data => Event::Lib(data.unwrap()),
                 recv(global_state.flycheck.as_ref().map_or(&never(), |it| &it.task_recv)) -> task => match task {
                     Ok(task) => Event::CheckWatcher(task),
                     Err(RecvError) => return Err("check watcher died".into()),
@@ -203,15 +199,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                     break;
                 };
             }
-            loop_turn(
-                &pool,
-                &task_sender,
-                &libdata_sender,
-                &connection,
-                &mut global_state,
-                &mut loop_state,
-                event,
-            )?;
+            loop_turn(&pool, &task_sender, &connection, &mut global_state, &mut loop_state, event)?;
         }
     }
     global_state.analysis_host.request_cancellation();
@@ -219,7 +207,6 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     task_receiver.into_iter().for_each(|task| {
         on_task(task, &connection.sender, &mut loop_state.pending_requests, &mut global_state)
     });
-    libdata_receiver.into_iter().for_each(drop);
     log::info!("...tasks have finished");
     log::info!("joining threadpool...");
     pool.join();
@@ -243,7 +230,6 @@ enum Event {
     Msg(Message),
     Task(Task),
     Vfs(VfsTask),
-    Lib(LibraryData),
     CheckWatcher(CheckTask),
 }
 
@@ -279,7 +265,6 @@ impl fmt::Debug for Event {
             Event::Msg(it) => fmt::Debug::fmt(it, f),
             Event::Task(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
-            Event::Lib(it) => fmt::Debug::fmt(it, f),
             Event::CheckWatcher(it) => fmt::Debug::fmt(it, f),
         }
     }
@@ -291,10 +276,6 @@ struct LoopState {
     pending_responses: FxHashSet<RequestId>,
     pending_requests: PendingRequests,
     subscriptions: Subscriptions,
-    // We try not to index more than MAX_IN_FLIGHT_LIBS libraries at the same
-    // time to always have a thread ready to react to input.
-    in_flight_libraries: usize,
-    pending_libraries: Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)>,
     workspace_loaded: bool,
     roots_progress_reported: Option<usize>,
     roots_scanned: usize,
@@ -315,7 +296,6 @@ impl LoopState {
 fn loop_turn(
     pool: &ThreadPool,
     task_sender: &Sender<Task>,
-    libdata_sender: &Sender<LibraryData>,
     connection: &Connection,
     global_state: &mut GlobalState,
     loop_state: &mut LoopState,
@@ -338,12 +318,6 @@ fn loop_turn(
         }
         Event::Vfs(task) => {
             global_state.vfs.write().handle_task(task);
-        }
-        Event::Lib(lib) => {
-            global_state.add_lib(lib);
-            global_state.maybe_collect_garbage();
-            loop_state.in_flight_libraries -= 1;
-            loop_state.roots_scanned += 1;
         }
         Event::CheckWatcher(task) => on_check_task(task, global_state, task_sender)?,
         Event::Msg(msg) => match msg {
@@ -390,36 +364,12 @@ fn loop_turn(
         },
     };
 
-    let mut state_changed = false;
-    if let Some(changes) = global_state.process_changes(&mut loop_state.roots_scanned) {
-        state_changed = true;
-        loop_state.pending_libraries.extend(changes);
-    }
-
-    let max_in_flight_libs = pool.max_count().saturating_sub(2).max(1);
-    while loop_state.in_flight_libraries < max_in_flight_libs {
-        let (root, files) = match loop_state.pending_libraries.pop() {
-            Some(it) => it,
-            None => break,
-        };
-
-        loop_state.in_flight_libraries += 1;
-        let sender = libdata_sender.clone();
-        pool.execute(move || {
-            log::info!("indexing {:?} ... ", root);
-            let data = LibraryData::prepare(root, files);
-            sender.send(data).unwrap();
-        });
-    }
+    let mut state_changed = global_state.process_changes(&mut loop_state.roots_scanned);
 
     let show_progress =
         !loop_state.workspace_loaded && global_state.config.client_caps.work_done_progress;
 
-    if !loop_state.workspace_loaded
-        && loop_state.roots_scanned == loop_state.roots_total
-        && loop_state.pending_libraries.is_empty()
-        && loop_state.in_flight_libraries == 0
-    {
+    if !loop_state.workspace_loaded && loop_state.roots_scanned == loop_state.roots_total {
         state_changed = true;
         loop_state.workspace_loaded = true;
         if let Some(flycheck) = &global_state.flycheck {
