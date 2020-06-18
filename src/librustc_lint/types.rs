@@ -15,7 +15,7 @@ use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use rustc_target::abi::{DiscriminantKind, Integer, LayoutOf, VariantIdx, Variants};
+use rustc_target::abi::{Integer, LayoutOf, TagEncoding, VariantIdx, Variants};
 use rustc_target::spec::abi::Abi;
 
 use log::debug;
@@ -1056,15 +1056,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
             };
             let (variants, tag) = match layout.variants {
                 Variants::Multiple {
-                    discr_kind: DiscriminantKind::Tag,
-                    ref discr,
+                    tag_encoding: TagEncoding::Direct,
+                    ref tag,
                     ref variants,
                     ..
-                } => (variants, discr),
+                } => (variants, tag),
                 _ => return,
             };
 
-            let discr_size = tag.value.size(&cx.tcx).bytes();
+            let tag_size = tag.value.size(&cx.tcx).bytes();
 
             debug!(
                 "enum `{}` is {} bytes large with layout:\n{:#?}",
@@ -1078,8 +1078,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                 .iter()
                 .zip(variants)
                 .map(|(variant, variant_layout)| {
-                    // Subtract the size of the enum discriminant.
-                    let bytes = variant_layout.size.bytes().saturating_sub(discr_size);
+                    // Subtract the size of the enum tag.
+                    let bytes = variant_layout.size.bytes().saturating_sub(tag_size);
 
                     debug!("- variant `{}` is {} bytes large", variant.ident, bytes);
                     bytes
