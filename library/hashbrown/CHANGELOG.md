@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.8.0] - 2020-06-18
+
+### Fixed
+- Marked `RawTable::par_iter` as `unsafe`. (#157)
+
+### Changed
+- Reduced the size of `HashMap`. (#159)
+- No longer create tables with a capacity of 1 element. (#162)
+- Removed `K: Eq + Hash` bounds on `retain`. (#163)
+- Pulled in `HashMap` changes from rust-lang/rust (#164):
+  - `extend_one` support on nightly.
+  - `CollectionAllocErr` renamed to `TryReserveError`.
+  - Added `HashSet::get_or_insert_owned`.
+  - `Default` for `HashSet` no longer requires `T: Eq + Hash` and `S: BuildHasher`.
+
 ## [v0.7.2] - 2020-04-27
 
 ### Added
@@ -196,7 +211,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.8.0...HEAD
+[v0.8.0]: https://github.com/rust-lang/hashbrown/compare/v0.7.2...v0.8.0
 [v0.7.2]: https://github.com/rust-lang/hashbrown/compare/v0.7.1...v0.7.2
 [v0.7.1]: https://github.com/rust-lang/hashbrown/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/rust-lang/hashbrown/compare/v0.6.3...v0.7.0
