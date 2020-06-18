@@ -203,8 +203,14 @@ pub enum TyKind<'tcx> {
 
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
-    Error,
+    Error(DelaySpanBugEmitted),
 }
+
+/// A type that is not publicly constructable. This prevents people from making `TyKind::Error`
+/// except through `tcx.err*()`.
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+#[derive(RustcEncodable, RustcDecodable, HashStable)]
+pub struct DelaySpanBugEmitted(pub(super) ());
 
 // `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
@@ -1984,7 +1990,7 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn has_concrete_skeleton(&self) -> bool {
         match self.kind {
-            Param(_) | Infer(_) | Error => false,
+            Param(_) | Infer(_) | Error(_) => false,
             _ => true,
         }
     }
@@ -2016,7 +2022,7 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             FnDef(def_id, substs) => tcx.fn_sig(def_id).subst(tcx, substs),
             FnPtr(f) => f,
-            Error => {
+            Error(_) => {
                 // ignore errors (#54954)
                 ty::Binder::dummy(FnSig::fake())
             }
@@ -2140,7 +2146,7 @@ impl<'tcx> TyS<'tcx> {
             // closure type is not yet known
             Bound(..) | Infer(_) => None,
 
-            Error => Some(ty::ClosureKind::Fn),
+            Error(_) => Some(ty::ClosureKind::Fn),
 
             _ => bug!("cannot convert type `{:?}` to a closure kind", self),
         }
@@ -2167,7 +2173,7 @@ impl<'tcx> TyS<'tcx> {
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
-            | ty::Error => true,
+            | ty::Error(_) => true,
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
 
@@ -2372,9 +2378,7 @@ impl<'tcx> Const<'tcx> {
                 // can leak through `val` into the const we return.
                 Ok(val) => Const::from_value(tcx, val, self.ty),
                 Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
-                Err(ErrorHandled::Reported(ErrorReported)) => {
-                    tcx.mk_const(ty::Const { val: ty::ConstKind::Error, ty: self.ty })
-                }
+                Err(ErrorHandled::Reported(ErrorReported)) => tcx.const_error(self.ty),
             }
         } else {
             self
@@ -2434,7 +2438,7 @@ pub enum ConstKind<'tcx> {
 
     /// A placeholder for a const which could not be computed; this is
     /// propagated to avoid useless error messages.
-    Error,
+    Error(DelaySpanBugEmitted),
 }
 
 #[cfg(target_arch = "x86_64")]

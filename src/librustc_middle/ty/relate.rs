@@ -354,7 +354,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             bug!("bound types encountered in super_relate_tys")
         }
 
-        (&ty::Error, _) | (_, &ty::Error) => Ok(tcx.types.err),
+        (&ty::Error(_), _) | (_, &ty::Error(_)) => Ok(tcx.ty_error()),
 
         (&ty::Never, _)
         | (&ty::Char, _)
@@ -524,7 +524,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
             bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
         }
 
-        (ty::ConstKind::Error, _) | (_, ty::ConstKind::Error) => Ok(ty::ConstKind::Error),
+        (ty::ConstKind::Error(d), _) | (_, ty::ConstKind::Error(d)) => Ok(ty::ConstKind::Error(d)),
 
         (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) if a_p.index == b_p.index => {
             return Ok(a);

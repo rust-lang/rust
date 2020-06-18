@@ -168,7 +168,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             ty::PredicateKind::WellFormed(arg) => match arg.unpack() {
                 GenericArgKind::Type(ty) => match ty.kind {
                     // These types are always WF.
-                    ty::Str | ty::Placeholder(..) | ty::Error | ty::Never => {
+                    ty::Str | ty::Placeholder(..) | ty::Error(_) | ty::Never => {
                         chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
                     }
 
@@ -376,7 +376,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             })
             .intern(interner),
             Infer(_infer) => unimplemented!(),
-            Error => unimplemented!(),
+            Error(_) => unimplemented!(),
         }
     }
 }

@@ -176,7 +176,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let ty::Adt(def, substs) = ty.kind {
             for field in def.all_fields() {
                 let field_ty = field.ty(self, substs);
-                if let Error = field_ty.kind {
+                if let Error(_) = field_ty.kind {
                     return true;
                 }
             }
@@ -731,7 +731,7 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(_)
             | ty::FnDef(..)
-            | ty::Error
+            | ty::Error(_)
             | ty::FnPtr(_) => true,
             ty::Tuple(_) => self.tuple_fields().all(Self::is_trivially_freeze),
             ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_freeze(),
@@ -826,7 +826,7 @@ impl<'tcx> ty::TyS<'tcx> {
             // called for known, fully-monomorphized types.
             Projection(_) | Opaque(..) | Param(_) | Bound(..) | Placeholder(_) | Infer(_) => false,
 
-            Foreign(_) | GeneratorWitness(..) | Error => false,
+            Foreign(_) | GeneratorWitness(..) | Error(_) => false,
         }
     }
 
@@ -1109,7 +1109,7 @@ pub fn needs_drop_components(
         // Foreign types can never have destructors.
         ty::Foreign(..) => Ok(SmallVec::new()),
 
-        ty::Dynamic(..) | ty::Error => Err(AlwaysRequiresDrop),
+        ty::Dynamic(..) | ty::Error(_) => Err(AlwaysRequiresDrop),
 
         ty::Slice(ty) => needs_drop_components(ty, target_layout),
         ty::Array(elem_ty, size) => {

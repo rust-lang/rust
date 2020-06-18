@@ -286,14 +286,14 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Projection(_) => "associated type".into(),
             ty::Param(p) => format!("type parameter `{}`", p).into(),
             ty::Opaque(..) => "opaque type".into(),
-            ty::Error => "type error".into(),
+            ty::Error(_) => "type error".into(),
         }
     }
 
     pub fn prefix_string(&self) -> Cow<'static, str> {
         match self.kind {
             ty::Infer(_)
-            | ty::Error
+            | ty::Error(_)
             | ty::Bool
             | ty::Char
             | ty::Int(_)

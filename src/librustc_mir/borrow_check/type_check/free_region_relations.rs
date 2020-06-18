@@ -264,7 +264,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                             .tcx
                             .sess
                             .delay_span_bug(DUMMY_SP, &format!("failed to normalize {:?}", ty));
-                        (self.infcx.tcx.types.err, None)
+                        (self.infcx.tcx.ty_error(), None)
                     });
                 let constraints2 = self.add_implied_bounds(ty);
                 normalized_inputs_and_output.push(ty);

@@ -192,7 +192,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::Float(..)
             | ty::Adt(..)
             | ty::Str
-            | ty::Error
+            | ty::Error(_)
             | ty::Array(..)
             | ty::Slice(..)
             | ty::RawPtr(..)
@@ -250,7 +250,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::ConstKind::Param(_)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Unevaluated(..)
-            | ty::ConstKind::Error => {}
+            | ty::ConstKind::Error(_) => {}
         }
 
         ct.super_fold_with(self)

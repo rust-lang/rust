@@ -509,7 +509,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
         let mut ty = self.tables.node_type(pat.hir_id);
 
-        if let ty::Error = ty.kind {
+        if let ty::Error(_) = ty.kind {
             // Avoid ICEs (e.g., #50577 and #50585).
             return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
         }
@@ -708,7 +708,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if adt_def.is_enum() {
                     let substs = match ty.kind {
                         ty::Adt(_, substs) | ty::FnDef(_, substs) => substs,
-                        ty::Error => {
+                        ty::Error(_) => {
                             // Avoid ICE (#50585)
                             return PatKind::Wild;
                         }
@@ -1051,7 +1051,7 @@ crate fn compare_const_vals<'tcx>(
     let b_bits = b.try_eval_bits(tcx, param_env, ty);
 
     if let (Some(a), Some(b)) = (a_bits, b_bits) {
-        use ::rustc_apfloat::Float;
+        use rustc_apfloat::Float;
         return match ty.kind {
             ty::Float(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);

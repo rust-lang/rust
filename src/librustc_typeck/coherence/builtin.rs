@@ -50,7 +50,7 @@ impl<'tcx> Checker<'tcx> {
 
 fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     // Destructors only work on nominal types.
-    if let ty::Adt(..) | ty::Error = tcx.type_of(impl_did).kind {
+    if let ty::Adt(..) | ty::Error(_) = tcx.type_of(impl_did).kind {
         return;
     }
 

@@ -248,7 +248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.types.never
                 } else {
                     // There was an error; make type-check fail.
-                    tcx.types.err
+                    tcx.ty_error()
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
@@ -284,7 +284,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Field(ref base, field) => self.check_field(expr, needs, &base, field),
             ExprKind::Index(ref base, ref idx) => self.check_expr_index(base, idx, needs, expr),
             ExprKind::Yield(ref value, ref src) => self.check_expr_yield(value, expr, src),
-            hir::ExprKind::Err => tcx.types.err,
+            hir::ExprKind::Err => tcx.ty_error(),
         }
     }
 
@@ -360,7 +360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             tcx.sess.parse_sess.expr_parentheses_needed(&mut err, *sp, None);
                         }
                         err.emit();
-                        oprnd_t = tcx.types.err;
+                        oprnd_t = tcx.ty_error();
                     }
                 }
                 hir::UnOp::UnNot => {
@@ -410,7 +410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tm = ty::TypeAndMut { ty, mutbl };
         match kind {
-            _ if tm.ty.references_error() => self.tcx.types.err,
+            _ if tm.ty.references_error() => self.tcx.ty_error(),
             hir::BorrowKind::Raw => {
                 self.check_named_place_expr(oprnd);
                 self.tcx.mk_ptr(tm)
@@ -476,11 +476,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = match res {
             Res::Err => {
                 self.set_tainted_by_errors();
-                tcx.types.err
+                tcx.ty_error()
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
                 report_unexpected_variant_res(tcx, res, expr.span);
-                tcx.types.err
+                tcx.ty_error()
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
@@ -560,11 +560,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(ctxt) => ctxt.coerce.as_ref().map(|coerce| coerce.expected_ty()),
                         None => {
                             // Avoid ICE when `break` is inside a closure (#65383).
-                            self.tcx.sess.delay_span_bug(
+                            return tcx.ty_error_with_message(
                                 expr.span,
                                 "break was outside loop, but no error was emitted",
                             );
-                            return tcx.types.err;
                         }
                     }
                 };
@@ -572,7 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // If the loop context is not a `loop { }`, then break with
                 // a value is illegal, and `opt_coerce_to` will be `None`.
                 // Just set expectation to error in that case.
-                let coerce_to = opt_coerce_to.unwrap_or(tcx.types.err);
+                let coerce_to = opt_coerce_to.unwrap_or_else(|| tcx.ty_error());
 
                 // Recurse without `enclosing_breakables` borrowed.
                 e_ty = self.check_expr_with_hint(e, coerce_to);
@@ -592,11 +591,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(ctxt) => ctxt,
                 None => {
                     // Avoid ICE when `break` is inside a closure (#65383).
-                    self.tcx.sess.delay_span_bug(
+                    return tcx.ty_error_with_message(
                         expr.span,
                         "break was outside loop, but no error was emitted",
                     );
-                    return tcx.types.err;
                 }
             };
 
@@ -649,14 +647,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // this can only happen if the `break` was not
             // inside a loop at all, which is caught by the
             // loop-checking pass.
-            self.tcx
-                .sess
-                .delay_span_bug(expr.span, "break was outside loop, but no error was emitted");
+            let err = self.tcx.ty_error_with_message(
+                expr.span,
+                "break was outside loop, but no error was emitted",
+            );
 
             // We still need to assign a type to the inner expression to
             // prevent the ICE in #43162.
             if let Some(ref e) = expr_opt {
-                self.check_expr_with_hint(e, tcx.types.err);
+                self.check_expr_with_hint(e, err);
 
                 // ... except when we try to 'break rust;'.
                 // ICE this expression in particular (see #43162).
@@ -666,8 +665,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
+
             // There was an error; make type-check fail.
-            tcx.types.err
+            err
         }
     }
 
@@ -803,7 +803,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
         if lhs_ty.references_error() || rhs_ty.references_error() {
-            self.tcx.types.err
+            self.tcx.ty_error()
         } else {
             self.tcx.mk_unit()
         }
@@ -957,7 +957,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Eagerly check for some obvious errors.
         if t_expr.references_error() || t_cast.references_error() {
-            self.tcx.types.err
+            self.tcx.ty_error()
         } else {
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
@@ -966,7 +966,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     deferred_cast_checks.push(cast_check);
                     t_cast
                 }
-                Err(ErrorReported) => self.tcx.types.err,
+                Err(ErrorReported) => self.tcx.ty_error(),
             }
         }
     }
@@ -1041,7 +1041,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if element_ty.references_error() {
-            return tcx.types.err;
+            return tcx.ty_error();
         }
 
         tcx.mk_ty(ty::Array(t, count))
@@ -1071,7 +1071,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let tuple = self.tcx.mk_tup(elt_ts_iter);
         if tuple.references_error() {
-            self.tcx.types.err
+            self.tcx.ty_error()
         } else {
             self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
             tuple
@@ -1092,7 +1092,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             variant_ty
         } else {
             self.check_struct_fields_on_error(fields, base_expr);
-            return self.tcx.types.err;
+            return self.tcx.ty_error();
         };
 
         let path_span = match *qpath {
@@ -1233,7 +1233,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name, span);
                 }
 
-                tcx.types.err
+                tcx.ty_error()
             };
 
             // Make sure to give a type to the field even if there's
@@ -1519,7 +1519,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .emit();
         }
 
-        self.tcx().types.err
+        self.tcx().ty_error()
     }
 
     fn ban_nonexisting_field(
@@ -1775,7 +1775,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     err.emit();
-                    self.tcx.types.err
+                    self.tcx.ty_error()
                 }
             }
         }
@@ -1887,7 +1887,7 @@ pub(super) fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
         ty::Char => "'a'",
         ty::Int(_) | ty::Uint(_) => "42",
         ty::Float(_) => "3.14159",
-        ty::Error | ty::Never => return None,
+        ty::Error(_) | ty::Never => return None,
         _ => "value",
     })
 }
