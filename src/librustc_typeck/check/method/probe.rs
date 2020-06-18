@@ -15,6 +15,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
+use rustc_hir::LangItemRecord;
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -694,8 +695,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
-    fn assemble_inherent_impl_for_primitive(&mut self, lang_def_id: Option<DefId>) {
-        if let Some(impl_def_id) = lang_def_id {
+    fn assemble_inherent_impl_for_primitive(&mut self, lang_record: LangItemRecord) {
+        if let LangItemRecord::Present(impl_def_id) = lang_record {
             self.assemble_inherent_impl_probe(impl_def_id);
         }
     }

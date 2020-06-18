@@ -1063,7 +1063,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 self.tcx.lang_items().fn_trait(),
                 self.tcx.lang_items().fn_mut_trait(),
             ]
-            .contains(&Some(did))
+            .iter()
+            .any(|it| it.has_def_id(did))
             {
                 let (span, span_type) = match &trait_ref.bound_generic_params {
                     [] => (trait_ref.span.shrink_to_lo(), ForLifetimeSpanType::BoundEmpty),

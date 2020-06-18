@@ -15,6 +15,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::LangItemRecord;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
@@ -1665,7 +1666,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             return None;
                         };
 
-                        if let Some(sized) = cx.tcx.lang_items().sized_trait() {
+                        if let LangItemRecord::Present(sized) = cx.tcx.lang_items().sized_trait() {
                             if trait_ref.def_id() == sized {
                                 has_sized = true;
                                 return None;

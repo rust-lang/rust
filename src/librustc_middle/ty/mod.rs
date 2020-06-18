@@ -30,7 +30,6 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
-use rustc_hir::lang_items::{FnMutTraitLangItem, FnOnceTraitLangItem, FnTraitLangItem};
 use rustc_hir::{Constness, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -2084,13 +2083,13 @@ impl<'tcx> AdtDef {
         if attr::contains_name(&attrs, sym::fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
-        if Some(did) == tcx.lang_items().phantom_data() {
+        if tcx.lang_items().phantom_data().has_def_id(did) {
             flags |= AdtFlags::IS_PHANTOM_DATA;
         }
-        if Some(did) == tcx.lang_items().owned_box() {
+        if tcx.lang_items().owned_box().has_def_id(did) {
             flags |= AdtFlags::IS_BOX;
         }
-        if Some(did) == tcx.lang_items().manually_drop() {
+        if tcx.lang_items().manually_drop().has_def_id(did) {
             flags |= AdtFlags::IS_MANUALLY_DROP;
         }
 
@@ -2432,9 +2431,9 @@ impl<'tcx> ClosureKind {
 
     pub fn trait_did(&self, tcx: TyCtxt<'tcx>) -> DefId {
         match *self {
-            ClosureKind::Fn => tcx.require_lang_item(FnTraitLangItem, None),
-            ClosureKind::FnMut => tcx.require_lang_item(FnMutTraitLangItem, None),
-            ClosureKind::FnOnce => tcx.require_lang_item(FnOnceTraitLangItem, None),
+            ClosureKind::Fn => tcx.lang_items().fn_trait().require(&tcx, None),
+            ClosureKind::FnMut => tcx.lang_items().fn_mut_trait().require(&tcx, None),
+            ClosureKind::FnOnce => tcx.lang_items().fn_once_trait().require(&tcx, None),
         }
     }
 

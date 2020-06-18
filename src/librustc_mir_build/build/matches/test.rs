@@ -362,8 +362,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
-        use rustc_hir::lang_items::EqTraitLangItem;
-
         let mut expect = self.literal_operand(source_info.span, value);
         let mut val = Operand::Copy(place);
 
@@ -417,7 +415,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
         };
 
-        let eq_def_id = self.hir.tcx().require_lang_item(EqTraitLangItem, None);
+        let eq_def_id = self.hir.tcx().lang_items().eq_trait().require(&self.hir.tcx(), None);
         let method = self.hir.trait_method(eq_def_id, sym::eq, deref_ty, &[deref_ty.into()]);
 
         let bool_ty = self.hir.bool_ty();

@@ -9,8 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit;
-use rustc_hir::lang_items::FnOnceTraitLangItem;
-use rustc_hir::{ExprKind, Node, QPath};
+use rustc_hir::{ExprKind, LangItemRecord, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::print::with_crate_prefix;
@@ -36,9 +35,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Closure(..) | ty::FnDef(..) | ty::FnPtr(_) => true,
             // If it's not a simple function, look for things which implement `FnOnce`.
             _ => {
-                let fn_once = match tcx.lang_items().require(FnOnceTraitLangItem) {
-                    Ok(fn_once) => fn_once,
-                    Err(..) => return false,
+                let fn_once = match tcx.lang_items().fn_once_trait() {
+                    LangItemRecord::Present(fn_once) => fn_once,
+                    _ => return false,
                 };
 
                 self.autoderef(span, ty).any(|(ty, _)| {
@@ -273,10 +272,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // There are methods that are defined on the primitive types and won't be
                     // found when exploring `all_traits`, but we also need them to be acurate on
                     // our suggestions (#47759).
-                    let fund_assoc = |opt_def_id: Option<DefId>| {
-                        opt_def_id
-                            .and_then(|id| self.associated_item(id, item_name, Namespace::ValueNS))
-                            .is_some()
+                    let fund_assoc = |lang_record: LangItemRecord| {
+                        if let LangItemRecord::Present(def_id) = lang_record {
+                            self.associated_item(def_id, item_name, Namespace::ValueNS).is_some()
+                        } else {
+                            false
+                        }
                     };
                     let lang_items = tcx.lang_items();
                     let found_candidate = candidates.next().is_some()

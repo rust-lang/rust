@@ -12,7 +12,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{HirIdSet, Node};
+use rustc_hir::{HirIdSet, LangItemRecord, Node};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy;
 use rustc_middle::ty::query::Providers;
@@ -394,7 +394,7 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet
     //         exported.
     reachable_context.worklist.extend(access_levels.map.iter().map(|(id, _)| *id));
     for item in tcx.lang_items().items().iter() {
-        if let Some(did) = *item {
+        if let LangItemRecord::Present(did) = *item {
             if let Some(hir_id) = did.as_local().map(|did| tcx.hir().as_local_hir_id(did)) {
                 reachable_context.worklist.push(hir_id);
             }

@@ -4,7 +4,6 @@ use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
 use rustc_errors::ErrorReported;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::lang_items::{DropInPlaceFnLangItem, FnOnceTraitLangItem};
 use rustc_macros::HashStable;
 
 use std::fmt;
@@ -364,7 +363,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
-        let def_id = tcx.require_lang_item(DropInPlaceFnLangItem, None);
+        let def_id = tcx.lang_items().drop_in_place_fn().require(&tcx, None);
         let substs = tcx.intern_substs(&[ty.into()]);
         Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
     }
@@ -375,7 +374,7 @@ impl<'tcx> Instance<'tcx> {
         substs: ty::SubstsRef<'tcx>,
     ) -> Instance<'tcx> {
         debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
-        let fn_once = tcx.require_lang_item(FnOnceTraitLangItem, None);
+        let fn_once = tcx.lang_items().fn_once_trait().require(&tcx, None);
         let call_once = tcx
             .associated_items(fn_once)
             .in_definition_order()

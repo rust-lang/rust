@@ -5,6 +5,7 @@ use crate::check::{callee, FnCtxt, Needs, PlaceOp};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
 use rustc_hir as hir;
+use rustc_hir::LangItemRecord;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCast};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -568,8 +569,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         predicates: &ty::InstantiatedPredicates<'tcx>,
     ) -> Option<Span> {
         let sized_def_id = match self.tcx.lang_items().sized_trait() {
-            Some(def_id) => def_id,
-            None => return None,
+            LangItemRecord::Present(def_id) => def_id,
+            _ => return None,
         };
 
         traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())

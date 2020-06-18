@@ -7,6 +7,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::LangItemRecord;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::{infer, traits};
 use rustc_middle::ty::adjustment::{
@@ -196,8 +197,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (self.tcx.lang_items().fn_once_trait(), Ident::from_str("call_once"), false),
         ] {
             let trait_def_id = match opt_trait_def_id {
-                Some(def_id) => def_id,
-                None => continue,
+                LangItemRecord::Present(def_id) => def_id,
+                _ => continue,
             };
 
             let opt_input_types = opt_arg_exprs.map(|arg_exprs| {

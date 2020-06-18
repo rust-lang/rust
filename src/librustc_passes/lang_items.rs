@@ -17,7 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::{extract, ITEM_REFS};
-use rustc_hir::{LangItem, LanguageItems, Target};
+use rustc_hir::{LangItem, LangItemRecord, LanguageItems, Target};
 
 use rustc_middle::ty::query::Providers;
 
@@ -87,7 +87,7 @@ impl LanguageItemCollector<'tcx> {
 
     fn collect_item(&mut self, item_index: usize, item_def_id: DefId) {
         // Check for duplicates.
-        if let Some(original_def_id) = self.items.items[item_index] {
+        if let LangItemRecord::Present(original_def_id) = self.items.items[item_index] {
             if original_def_id != item_def_id {
                 let name = LangItem::from_u32(item_index as u32).unwrap().name();
                 let mut err = match self.tcx.hir().span_if_local(item_def_id) {
@@ -138,7 +138,7 @@ impl LanguageItemCollector<'tcx> {
         }
 
         // Matched.
-        self.items.items[item_index] = Some(item_def_id);
+        self.items.items[item_index] = LangItemRecord::Present(item_def_id);
     }
 }
 

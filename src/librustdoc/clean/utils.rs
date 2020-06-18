@@ -13,6 +13,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::LangItemRecord;
 use rustc_middle::mir::interpret::{sign_extend, ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, Ty};
@@ -26,9 +27,14 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     let module = crate::visit_ast::RustdocVisitor::new(&mut cx).visit(krate);
 
     let mut r = cx.renderinfo.get_mut();
-    r.deref_trait_did = cx.tcx.lang_items().deref_trait();
-    r.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
-    r.owned_box_did = cx.tcx.lang_items().owned_box();
+    // FIXME(doctorn) think of a better way to handle this as we don't really want to have to
+    // convert to options like this.
+    let to_option = |lang_record| {
+        if let LangItemRecord::Present(def_id) = lang_record { Some(def_id) } else { None }
+    };
+    r.deref_trait_did = to_option(cx.tcx.lang_items().deref_trait());
+    r.deref_mut_trait_did = to_option(cx.tcx.lang_items().deref_mut_trait());
+    r.owned_box_did = to_option(cx.tcx.lang_items().owned_box());
 
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates().iter() {
@@ -386,14 +392,14 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
             Str => tcx.lang_items().str_impl(),
             Slice => tcx.lang_items().slice_impl(),
             Array => tcx.lang_items().slice_impl(),
-            Tuple => None,
-            Unit => None,
+            Tuple => return,
+            Unit => return,
             RawPointer => tcx.lang_items().const_ptr_impl(),
-            Reference => None,
-            Fn => None,
-            Never => None,
+            Reference => return,
+            Fn => return,
+            Never => return,
         };
-        if let Some(did) = did {
+        if let LangItemRecord::Present(did) = did {
             if !did.is_local() {
                 inline::build_impl(cx, did, None, ret);
             }

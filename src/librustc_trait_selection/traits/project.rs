@@ -23,7 +23,6 @@ use crate::traits::error_reporting::InferCtxtExt;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::{FnOnceTraitLangItem, GeneratorTraitLangItem};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::util::IntTypeExt;
@@ -1276,7 +1275,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
 
     let tcx = selcx.tcx();
 
-    let gen_def_id = tcx.require_lang_item(GeneratorTraitLangItem, None);
+    let gen_def_id = tcx.lang_items().gen_trait().require(&tcx, None);
 
     let predicate = super::util::generator_trait_ref_and_outputs(
         tcx,
@@ -1318,7 +1317,8 @@ fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
     let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
     let substs = tcx.mk_substs([self_ty.into()].iter());
 
-    let assoc_items = tcx.associated_items(tcx.lang_items().discriminant_kind_trait().unwrap());
+    let assoc_items =
+        tcx.associated_items(tcx.lang_items().discriminant_kind_trait().require(&tcx, None));
     // FIXME: emit an error if the trait definition is wrong
     let discriminant_def_id = assoc_items.in_definition_order().next().unwrap().def_id;
 
@@ -1394,7 +1394,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
     debug!("confirm_callable_candidate({:?},{:?})", obligation, fn_sig);
 
     // the `Output` associated type is declared on `FnOnce`
-    let fn_once_def_id = tcx.require_lang_item(FnOnceTraitLangItem, None);
+    let fn_once_def_id = tcx.lang_items().fn_once_trait().require(&tcx, None);
 
     let predicate = super::util::closure_trait_ref_and_return_type(
         tcx,

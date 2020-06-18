@@ -3,6 +3,7 @@ use super::{FnCtxt, Needs, PlaceOp};
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::LangItemRecord;
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
@@ -114,11 +115,14 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        // <ty as Deref>
-        let trait_ref = TraitRef {
-            def_id: tcx.lang_items().deref_trait()?,
-            substs: tcx.mk_substs_trait(ty, &[]),
+        let deref_trait = if let LangItemRecord::Present(def_id) = tcx.lang_items().deref_trait() {
+            def_id
+        } else {
+            return None;
         };
+
+        // <ty as Deref>
+        let trait_ref = TraitRef { def_id: deref_trait, substs: tcx.mk_substs_trait(ty, &[]) };
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
 

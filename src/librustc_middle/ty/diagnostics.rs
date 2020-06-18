@@ -94,7 +94,7 @@ pub fn suggest_constraining_type_param(
     let msg_restrict_type_further =
         format!("consider further restricting type parameter `{}`", param_name);
 
-    if def_id == tcx.lang_items().sized_trait() {
+    if def_id.map_or(false, |def_id| tcx.lang_items().sized_trait().has_def_id(def_id)) {
         // Type parameters are already `Sized` by default.
         err.span_label(param.span, &format!("this type parameter needs to be `{}`", constraint));
         return true;

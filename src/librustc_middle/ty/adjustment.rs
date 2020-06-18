@@ -2,7 +2,6 @@ use crate::ty::subst::SubstsRef;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::{DerefMutTraitLangItem, DerefTraitLangItem};
 use rustc_macros::HashStable;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
@@ -118,8 +117,8 @@ pub struct OverloadedDeref<'tcx> {
 impl<'tcx> OverloadedDeref<'tcx> {
     pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> (DefId, SubstsRef<'tcx>) {
         let trait_def_id = match self.mutbl {
-            hir::Mutability::Not => tcx.require_lang_item(DerefTraitLangItem, None),
-            hir::Mutability::Mut => tcx.require_lang_item(DerefMutTraitLangItem, None),
+            hir::Mutability::Not => tcx.lang_items().deref_trait().require(&tcx, None),
+            hir::Mutability::Mut => tcx.lang_items().deref_mut_trait().require(&tcx, None),
         };
         let method_def_id = tcx
             .associated_items(trait_def_id)

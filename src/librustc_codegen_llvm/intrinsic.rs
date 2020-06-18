@@ -17,6 +17,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_hir as hir;
+use rustc_hir::LangItemRecord;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
@@ -1009,11 +1010,11 @@ fn codegen_gnu_try(
         let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
         let vals = catch.landing_pad(lpad_ty, bx.eh_personality(), 1);
         let tydesc = match bx.tcx().lang_items().eh_catch_typeinfo() {
-            Some(tydesc) => {
+            LangItemRecord::Present(tydesc) => {
                 let tydesc = bx.get_static(tydesc);
                 bx.bitcast(tydesc, bx.type_i8p())
             }
-            None => bx.const_null(bx.type_i8p()),
+            _ => bx.const_null(bx.type_i8p()),
         };
         catch.add_clause(vals, tydesc);
         let ptr = catch.extract_value(vals, 0);

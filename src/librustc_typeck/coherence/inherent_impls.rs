@@ -11,6 +11,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::LangItemRecord;
 use rustc_middle::ty::{self, CrateInherentImpls, TyCtxt};
 
 use rustc_ast::ast;
@@ -86,7 +87,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                 self.check_primitive_impl(
                     def_id,
                     lang_items.str_impl(),
-                    lang_items.str_alloc_impl(),
+                    Some(lang_items.str_alloc_impl()),
                     "str",
                     "str",
                     item.span,
@@ -96,7 +97,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                 self.check_primitive_impl(
                     def_id,
                     lang_items.slice_u8_impl(),
-                    lang_items.slice_u8_alloc_impl(),
+                    Some(lang_items.slice_u8_alloc_impl()),
                     "slice_u8",
                     "[u8]",
                     item.span,
@@ -106,7 +107,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                 self.check_primitive_impl(
                     def_id,
                     lang_items.slice_impl(),
-                    lang_items.slice_alloc_impl(),
+                    Some(lang_items.slice_alloc_impl()),
                     "slice",
                     "[T]",
                     item.span,
@@ -280,7 +281,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                 self.check_primitive_impl(
                     def_id,
                     lang_items.f32_impl(),
-                    lang_items.f32_runtime_impl(),
+                    Some(lang_items.f32_runtime_impl()),
                     "f32",
                     "f32",
                     item.span,
@@ -290,7 +291,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                 self.check_primitive_impl(
                     def_id,
                     lang_items.f64_impl(),
-                    lang_items.f64_runtime_impl(),
+                    Some(lang_items.f64_runtime_impl()),
                     "f64",
                     "f64",
                     item.span,
@@ -345,17 +346,17 @@ impl InherentCollect<'tcx> {
     fn check_primitive_impl(
         &self,
         impl_def_id: LocalDefId,
-        lang_def_id: Option<DefId>,
-        lang_def_id2: Option<DefId>,
+        lang_record1: LangItemRecord,
+        lang_record2: Option<LangItemRecord>,
         lang: &str,
         ty: &str,
         span: Span,
     ) {
-        match (lang_def_id, lang_def_id2) {
-            (Some(lang_def_id), _) if lang_def_id == impl_def_id.to_def_id() => {
+        match (lang_record1, lang_record2) {
+            (lang_record, _) if lang_record.has_def_id(impl_def_id.to_def_id()) => {
                 // OK
             }
-            (_, Some(lang_def_id)) if lang_def_id == impl_def_id.to_def_id() => {
+            (_, Some(lang_record)) if lang_record.has_def_id(impl_def_id.to_def_id()) => {
                 // OK
             }
             _ => {

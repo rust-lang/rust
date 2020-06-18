@@ -4,6 +4,7 @@ use super::method::MethodCallee;
 use super::{FnCtxt, Needs};
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
+use rustc_hir::LangItemRecord;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
@@ -784,16 +785,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lhs_ty, op, opname, trait_did
         );
 
-        let method = trait_did.and_then(|trait_did| {
-            let opname = Ident::from_str(opname);
-            self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys))
-        });
+        let trait_did = if let LangItemRecord::Present(trait_did) = trait_did {
+            trait_did
+        } else {
+            return Err(());
+        };
+
+        let opname = Ident::from_str(opname);
+        let method = self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys));
 
         match method {
             Some(ok) => {
                 let method = self.register_infer_ok_obligations(ok);
                 self.select_obligations_where_possible(false, |_| {});
-
                 Ok(method)
             }
             None => Err(()),

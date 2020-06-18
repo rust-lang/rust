@@ -11,7 +11,6 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::lang_items;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::ty::TypeckTables;
 use rustc_middle::ty::{
@@ -1914,8 +1913,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(item_id) {
             let body = self.tcx.hir().body(body_id);
             if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
-                let future_trait =
-                    self.tcx.require_lang_item(lang_items::FutureTraitLangItem, None);
+                let future_trait = self.tcx.lang_items().future_trait().require(&self.tcx, None);
 
                 let self_ty = self.resolve_vars_if_possible(&trait_ref.self_ty());
 

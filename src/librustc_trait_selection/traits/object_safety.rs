@@ -16,6 +16,7 @@ use crate::traits::{self, Obligation, ObligationCause};
 use rustc_errors::{Applicability, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItemRecord;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, Subst};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor, WithConstness};
 use rustc_middle::ty::{Predicate, ToPredicate};
@@ -295,8 +296,8 @@ fn trait_has_sized_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
 
 fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let sized_def_id = match tcx.lang_items().sized_trait() {
-        Some(def_id) => def_id,
-        None => {
+        LangItemRecord::Present(def_id) => def_id,
+        _ => {
             return false; /* No Sized trait, can't require it! */
         }
     };
@@ -610,12 +611,13 @@ fn receiver_is_dispatchable<'tcx>(
     debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
 
     let traits = (tcx.lang_items().unsize_trait(), tcx.lang_items().dispatch_from_dyn_trait());
-    let (unsize_did, dispatch_from_dyn_did) = if let (Some(u), Some(cu)) = traits {
-        (u, cu)
-    } else {
-        debug!("receiver_is_dispatchable: Missing Unsize or DispatchFromDyn traits");
-        return false;
-    };
+    let (unsize_did, dispatch_from_dyn_did) =
+        if let (LangItemRecord::Present(u), LangItemRecord::Present(cu)) = traits {
+            (u, cu)
+        } else {
+            debug!("receiver_is_dispatchable: Missing Unsize or DispatchFromDyn traits");
+            return false;
+        };
 
     // the type `U` in the query
     // use a bogus type parameter to mimic a forall(U) query using u32::MAX for now.

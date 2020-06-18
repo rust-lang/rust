@@ -5,6 +5,7 @@ use crate::require_same_types;
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::LangItemRecord;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -88,15 +89,18 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let name = it.ident.as_str();
 
     let mk_va_list_ty = |mutbl| {
-        tcx.lang_items().va_list().map(|did| {
-            let region = tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0)));
-            let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
-            let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
-            (
-                tcx.mk_ref(tcx.mk_region(env_region), ty::TypeAndMut { ty: va_list_ty, mutbl }),
-                va_list_ty,
-            )
-        })
+        let did = if let LangItemRecord::Present(def_id) = tcx.lang_items().va_list() {
+            def_id
+        } else {
+            return None;
+        };
+        let region = tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0)));
+        let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+        let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
+        Some((
+            tcx.mk_ref(tcx.mk_region(env_region), ty::TypeAndMut { ty: va_list_ty, mutbl }),
+            va_list_ty,
+        ))
     };
 
     let (n_tps, inputs, output, unsafety) = if name.starts_with("atomic_") {
@@ -284,8 +288,9 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             "unlikely" => (0, vec![tcx.types.bool], tcx.types.bool),
 
             "discriminant_value" => {
-                let assoc_items =
-                    tcx.associated_items(tcx.lang_items().discriminant_kind_trait().unwrap());
+                let assoc_items = tcx.associated_items(
+                    tcx.lang_items().discriminant_kind_trait().require(&tcx, None),
+                );
                 let discriminant_def_id = assoc_items.in_definition_order().next().unwrap().def_id;
 
                 (

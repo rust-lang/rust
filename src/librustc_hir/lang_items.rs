@@ -47,44 +47,145 @@ macro_rules! language_item_table {
             }
         }
 
-        #[derive(HashStable_Generic)]
-        pub struct LanguageItems {
-            /// Mappings from lang items to their possibly found `DefId`s.
-            /// The index corresponds to the order in `LangItem`.
-            pub items: Vec<Option<DefId>>,
-            /// Lang items that were not found during collection.
-            pub missing: Vec<LangItem>,
+        pub trait MissingLangItemHandler {
+            fn span_fatal(&self, span: Span, msg: &str) -> !;
+
+            fn fatal(&self, msg: &str) -> !;
         }
 
-        impl LanguageItems {
-            /// Construct an empty collection of lang items and no missing ones.
-            pub fn new() -> Self {
-                fn init_none(_: LangItem) -> Option<DefId> { None }
+        /// Represents the presence or possibly lack-of a particular lang item.
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+        pub enum LangItemRecord {
+            /// The lang item is present and has been assigned this `DefId`.
+            Present(DefId),
+            /// The lang item is missing (we keep the variant representing the item around
+            /// in case we need it for error reporting etc.).
+            Missing(LangItem),
+        }
 
-                Self {
-                    items: vec![$(init_none($variant)),*],
-                    missing: Vec::new(),
+        // FIXME(doctorn) remove
+        impl PartialEq<Option<DefId>> for LangItemRecord {
+            fn eq(&self, rhs: &Option<DefId>) -> bool {
+                if let Some(def_id) = rhs {
+                    self.has_def_id(*def_id)
+                } else {
+                    false
+                }
+            }
+        }
+
+        // FIXME(doctorn) remove
+        impl PartialEq<LangItemRecord> for Option<DefId> {
+            fn eq(&self, rhs: &LangItemRecord) -> bool {
+                rhs == self
+            }
+        }
+
+        impl LangItemRecord {
+            pub fn has_def_id(self, def_id: DefId) -> bool {
+                match self {
+                    LangItemRecord::Present(assigned_id) if assigned_id == def_id => true,
+                    _ => false,
                 }
             }
 
-            /// Returns the mappings to the possibly found `DefId`s for each lang item.
-            pub fn items(&self) -> &[Option<DefId>] {
+            pub fn require<H: MissingLangItemHandler>(self, handler: &H, span: Option<Span>) -> DefId {
+                self.require_with(handler, span, |err| err.to_string())
+            }
+
+            pub fn require_with<H, F>(self, handler: &H, span: Option<Span>, err: F) -> DefId
+            where
+                H: MissingLangItemHandler,
+                F: Fn(&str) -> String,
+            {
+                match self {
+                    LangItemRecord::Present(assigned_id) => assigned_id,
+                    LangItemRecord::Missing(it) => {
+                        let msg = err(&format!("requires `{}` lang_item", it.name()));
+                        if let Some(span) = span {
+                            handler.span_fatal(span, &msg)
+                        } else {
+                            handler.fatal(&msg)
+                        }
+                    }
+                }
+            }
+
+            pub fn is_present(self) -> bool {
+                match self {
+                    LangItemRecord::Present(_) => true,
+                    _ => false,
+                }
+            }
+
+            pub fn is_missing(self) -> bool {
+                !self.is_present()
+            }
+
+            // FIXME(doctorn) remove
+            pub fn is_some(self) -> bool {
+                self.is_present()
+            }
+
+            // FIXME(doctorn) remove
+            pub fn is_none(self) -> bool {
+                self.is_missing()
+            }
+
+            pub fn is_local(self) -> bool {
+                match self {
+                    LangItemRecord::Present(assigned_id) => assigned_id.is_local(),
+                    _ => false,
+                }
+            }
+        }
+
+        #[derive(HashStable_Generic)]
+        pub struct LanguageItems {
+            /// Mappings from lang items to their corresponding record.
+            /// The index corresponds to the order in `LangItem`.
+            // FIXME(doctorn) use Box<[LangItemRecord; std::mem::num_variants::<LangItem>()]>
+            pub items: Vec<LangItemRecord>,
+        }
+
+        impl LanguageItems {
+            /// Construct an empty collection of lang items. We initially assume that all items are
+            /// missing.
+            pub fn new() -> Self {
+                fn init_missing(it: LangItem) -> LangItemRecord {
+                    LangItemRecord::Missing(it)
+                }
+
+                Self {
+                    items: vec![$(init_missing($variant)),*],
+                }
+            }
+
+            /// Returns the `LangItemRecord` of each lang item.
+            pub fn items(&self) -> &[LangItemRecord] {
                 &*self.items
             }
 
-            /// Requires that a given `LangItem` was bound and returns the corresponding `DefId`.
-            /// If it wasn't bound, e.g. due to a missing `#[lang = "<it.name()>"]`,
-            /// returns an error message as a string.
-            pub fn require(&self, it: LangItem) -> Result<DefId, String> {
-                self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
+            /// Returns the missing lang items.
+            pub fn missing(&self) -> impl Iterator<Item = LangItem> + '_ {
+                self.items.iter().copied().filter_map(|record| {
+                    match record {
+                        LangItemRecord::Missing(it) => Some(it),
+                        _ => None,
+                    }
+                })
+            }
+
+            /// Returns the `LangItemRecord` of a specific lang item.
+            pub fn get(&self, it: LangItem) -> LangItemRecord {
+                self.items[it as usize]
             }
 
             $(
-                /// Returns the corresponding `DefId` for the lang item
+                /// Returns the `LangItemRecord` for the lang item.
                 #[doc = $name]
-                /// if it exists.
                 #[allow(dead_code)]
-                pub fn $method(&self) -> Option<DefId> {
+                pub fn $method(&self) -> LangItemRecord {
                     self.items[$variant as usize]
                 }
             )*
@@ -104,6 +205,12 @@ macro_rules! language_item_table {
 }
 
 impl<CTX> HashStable<CTX> for LangItem {
+    fn hash_stable(&self, _: &mut CTX, hasher: &mut StableHasher) {
+        ::std::hash::Hash::hash(self, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for LangItemRecord {
     fn hash_stable(&self, _: &mut CTX, hasher: &mut StableHasher) {
         ::std::hash::Hash::hash(self, hasher);
     }

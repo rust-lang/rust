@@ -9,6 +9,7 @@ use rustc_hir::def::{
     PerNS, Res,
 };
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::LangItemRecord;
 use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
@@ -1065,7 +1066,7 @@ fn is_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
 
 fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<DefId> {
     let tcx = cx.tcx;
-    match path_str {
+    let lang_record = match path_str {
         "u8" => tcx.lang_items().u8_impl(),
         "u16" => tcx.lang_items().u16_impl(),
         "u32" => tcx.lang_items().u32_impl(),
@@ -1083,6 +1084,7 @@ fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<DefId> {
         "str" => tcx.lang_items().str_impl(),
         "bool" => tcx.lang_items().bool_impl(),
         "char" => tcx.lang_items().char_impl(),
-        _ => None,
-    }
+        _ => return None,
+    };
+    if let LangItemRecord::Present(def_id) = lang_record { Some(def_id) } else { None }
 }

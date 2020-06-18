@@ -37,7 +37,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathHash, Definitions};
-use rustc_hir::lang_items::{self, PanicLocationLangItem};
+use rustc_hir::lang_items::{self, LangItemRecord};
 use rustc_hir::{HirId, ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet, Node, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
@@ -1526,7 +1526,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn caller_location_ty(&self) -> Ty<'tcx> {
         self.mk_imm_ref(
             self.lifetimes.re_static,
-            self.type_of(self.require_lang_item(PanicLocationLangItem, None))
+            self.type_of(self.lang_items().panic_location().require(self, None))
                 .subst(*self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
         )
     }
@@ -2189,14 +2189,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem, None);
+        let def_id = self.lang_items().owned_box().require(&self, None);
         self.mk_generic_adt(def_id, ty)
     }
 
     #[inline]
     pub fn mk_lang_item(self, ty: Ty<'tcx>, item: lang_items::LangItem) -> Option<Ty<'tcx>> {
-        let def_id = self.lang_items().require(item).ok()?;
-        Some(self.mk_generic_adt(def_id, ty))
+        match self.lang_items().get(item) {
+            LangItemRecord::Present(def_id) => Some(self.mk_generic_adt(def_id, ty)),
+            _ => None,
+        }
     }
 
     #[inline]
@@ -2207,7 +2209,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_maybe_uninit(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = self.require_lang_item(lang_items::MaybeUninitLangItem, None);
+        let def_id = self.lang_items().maybe_uninit().require(&self, None);
         self.mk_generic_adt(def_id, ty)
     }
 
@@ -2748,6 +2750,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.has_panic_handler = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         // We want to check if the panic handler was defined in this crate
-        tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
+        tcx.lang_items().panic_impl().is_local()
     };
 }

@@ -10,35 +10,33 @@
 use crate::ty::{self, TyCtxt};
 
 use rustc_hir::def_id::DefId;
-use rustc_hir::LangItem;
+use rustc_hir::{LangItem, MissingLangItemHandler};
 use rustc_span::Span;
 use rustc_target::spec::PanicStrategy;
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Returns the `DefId` for a given `LangItem`.
-    /// If not found, fatally aborts compilation.
-    pub fn require_lang_item(&self, lang_item: LangItem, span: Option<Span>) -> DefId {
-        self.lang_items().require(lang_item).unwrap_or_else(|msg| {
-            if let Some(span) = span {
-                self.sess.span_fatal(span, &msg)
-            } else {
-                self.sess.fatal(&msg)
-            }
-        })
-    }
-
     pub fn fn_trait_kind_from_lang_item(&self, id: DefId) -> Option<ty::ClosureKind> {
         let items = self.lang_items();
-        match Some(id) {
-            x if x == items.fn_trait() => Some(ty::ClosureKind::Fn),
-            x if x == items.fn_mut_trait() => Some(ty::ClosureKind::FnMut),
-            x if x == items.fn_once_trait() => Some(ty::ClosureKind::FnOnce),
+        match id {
+            x if items.fn_trait().has_def_id(x) => Some(ty::ClosureKind::Fn),
+            x if items.fn_mut_trait().has_def_id(x) => Some(ty::ClosureKind::FnMut),
+            x if items.fn_once_trait().has_def_id(x) => Some(ty::ClosureKind::FnOnce),
             _ => None,
         }
     }
 
     pub fn is_weak_lang_item(&self, item_def_id: DefId) -> bool {
         self.lang_items().is_weak_lang_item(item_def_id)
+    }
+}
+
+impl<'tcx> MissingLangItemHandler for TyCtxt<'tcx> {
+    fn span_fatal(&self, span: Span, msg: &str) -> ! {
+        self.sess.span_fatal(span, msg)
+    }
+
+    fn fatal(&self, msg: &str) -> ! {
+        self.sess.fatal(msg)
     }
 }
 
@@ -52,8 +50,16 @@ pub fn whitelisted(tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
     // If we're not compiling with unwinding, we won't actually need these
     // symbols. Other panic runtimes ensure that the relevant symbols are
     // available to link things together, but they're never exercised.
-    if tcx.sess.panic_strategy() != PanicStrategy::Unwind {
-        return lang_item == LangItem::EhPersonalityLangItem;
+    if tcx.sess.panic_strategy() != PanicStrategy::Unwind
+        && lang_item == LangItem::EhPersonalityLangItem
+    {
+        return true;
+    }
+
+    // If we don't require an allocator then we don't require
+    // `#[alloc_error_handler]`.
+    if tcx.allocator_kind().is_none() && lang_item == LangItem::OomLangItem {
+        return true;
     }
 
     false

@@ -182,7 +182,6 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ConstValue};
@@ -580,7 +579,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::Rvalue::NullaryOp(mir::NullOp::Box, _) => {
                 let tcx = self.tcx;
                 let exchange_malloc_fn_def_id =
-                    tcx.require_lang_item(ExchangeMallocFnLangItem, None);
+                    tcx.lang_items().exchange_malloc_fn().require(&tcx, None);
                 let instance = Instance::mono(tcx, exchange_malloc_fn_def_id);
                 if should_monomorphize_locally(tcx, &instance) {
                     self.output.push(create_fn_mono_item(instance));
@@ -1066,10 +1065,7 @@ impl RootCollector<'_, 'v> {
             _ => return,
         };
 
-        let start_def_id = match self.tcx.lang_items().require(StartFnLangItem) {
-            Ok(s) => s,
-            Err(err) => self.tcx.sess.fatal(&err),
-        };
+        let start_def_id = self.tcx.lang_items().start_fn().require(&self.tcx, None);
         let main_ret_ty = self.tcx.fn_sig(main_def_id).output();
 
         // Given that `main()` has no arguments,

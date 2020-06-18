@@ -17,8 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
-use rustc_hir::lang_items::SizedTraitLangItem;
-use rustc_hir::{Constness, GenericArg, GenericArgs};
+use rustc_hir::{Constness, GenericArg, GenericArgs, LangItemRecord};
 use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{
     self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
@@ -1258,12 +1257,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        let kind_id = tcx.lang_items().require(SizedTraitLangItem);
+        let lang_record = tcx.lang_items().sized_trait();
         match unbound {
             Some(tpb) => {
                 // FIXME(#8559) currently requires the unbound to be built-in.
-                if let Ok(kind_id) = kind_id {
-                    if tpb.path.res != Res::Def(DefKind::Trait, kind_id) {
+                if let LangItemRecord::Present(def_id) = lang_record {
+                    if tpb.path.res != Res::Def(DefKind::Trait, def_id) {
                         tcx.sess.span_warn(
                             span,
                             "default bound relaxed for a type parameter, but \
@@ -1273,7 +1272,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 }
             }
-            _ if kind_id.is_ok() => {
+            _ if lang_record.is_present() => {
                 return false;
             }
             // No lang item for `Sized`, so we can't add it as a bound.
@@ -3143,13 +3142,15 @@ impl<'tcx> Bounds<'tcx> {
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         // If it could be sized, and is, add the `Sized` predicate.
         let sized_predicate = self.implicitly_sized.and_then(|span| {
-            tcx.lang_items().sized_trait().map(|sized| {
+            if let LangItemRecord::Present(def_id) = tcx.lang_items().sized_trait() {
                 let trait_ref = ty::Binder::bind(ty::TraitRef {
-                    def_id: sized,
+                    def_id,
                     substs: tcx.mk_substs_trait(param_ty, &[]),
                 });
-                (trait_ref.without_const().to_predicate(tcx), span)
-            })
+                Some((trait_ref.without_const().to_predicate(tcx), span))
+            } else {
+                None
+            }
         });
 
         sized_predicate

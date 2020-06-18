@@ -5,6 +5,7 @@ use crate::fold::DocFolder;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::LangItemRecord;
 use rustc_span::symbol::sym;
 
 pub const COLLECT_TRAIT_IMPLS: Pass = Pass {
@@ -66,7 +67,11 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
         lang_items.mut_slice_ptr_impl(),
     ];
 
-    for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
+    let present_primitive_impls = primitive_impls.iter().filter_map(|lang_record| {
+        if let LangItemRecord::Present(def_id) = lang_record { Some(*def_id) } else { None }
+    });
+
+    for def_id in present_primitive_impls {
         if !def_id.is_local() {
             inline::build_impl(cx, def_id, None, &mut new_items);
 

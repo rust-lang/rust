@@ -12,6 +12,7 @@ use rustc_data_structures::base_n;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::LangItemRecord;
 use rustc_middle::bug;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutError, TyAndLayout};
@@ -340,7 +341,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
-            Some(def_id) if !wants_msvc_seh(self.sess()) => self.get_fn_addr(
+            LangItemRecord::Present(def_id) if !wants_msvc_seh(self.sess()) => self.get_fn_addr(
                 ty::Instance::resolve(
                     tcx,
                     ty::ParamEnv::reveal_all(),

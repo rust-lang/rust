@@ -8,7 +8,6 @@ use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_apfloat::{ieee, Float, Round, Status};
-use rustc_hir::lang_items::ExchangeMallocFnLangItem;
 use rustc_middle::mir;
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -508,12 +507,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let llty_ptr = bx.cx().backend_type(box_layout);
 
                 // Allocate space:
-                let def_id = match bx.tcx().lang_items().require(ExchangeMallocFnLangItem) {
-                    Ok(id) => id,
-                    Err(s) => {
-                        bx.cx().sess().fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
-                    }
-                };
+                let def_id = bx.tcx().lang_items().exchange_malloc_fn().require_with(
+                    &bx.tcx(),
+                    None,
+                    |err| format!("allocation of `{}` {}", box_layout.ty, err),
+                );
+
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
                 let r = bx.cx().get_fn_addr(instance);
                 let call = bx.call(r, &[llsize, llalign], None);

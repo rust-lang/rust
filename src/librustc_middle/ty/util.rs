@@ -17,6 +17,7 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItemRecord;
 use rustc_macros::HashStable;
 use rustc_span::Span;
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
@@ -344,7 +345,10 @@ impl<'tcx> TyCtxt<'tcx> {
         adt_did: DefId,
         validate: &mut dyn FnMut(Self, DefId) -> Result<(), ErrorReported>,
     ) -> Option<ty::Destructor> {
-        let drop_trait = self.lang_items().drop_trait()?;
+        let drop_trait = match self.lang_items().drop_trait() {
+            LangItemRecord::Present(def_id) => def_id,
+            _ => return None,
+        };
         self.ensure().coherent_trait(drop_trait);
 
         let mut dtor_did = None;

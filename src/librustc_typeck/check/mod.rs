@@ -99,10 +99,10 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::lang_items::{
-    FutureTraitLangItem, PinTypeLangItem, SizedTraitLangItem, VaListTypeLangItem,
+use rustc_hir::lang_items::PinTypeLangItem;
+use rustc_hir::{
+    ExprKind, GenericArg, HirIdMap, Item, ItemKind, LangItemRecord, Node, PatKind, QPath,
 };
-use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_infer::infer;
@@ -1329,7 +1329,7 @@ fn check_fn<'a, 'tcx>(
     // (as it's created inside the body itself, not passed in from outside).
     let maybe_va_list = if fn_sig.c_variadic {
         let span = body.params.last().unwrap().span;
-        let va_list_did = tcx.require_lang_item(VaListTypeLangItem, Some(span));
+        let va_list_did = tcx.lang_items().va_list().require(&tcx, Some(span));
         let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
 
         Some(tcx.type_of(va_list_did).subst(tcx, &[region.into()]))
@@ -1430,7 +1430,7 @@ fn check_fn<'a, 'tcx>(
     fcx.demand_suptype(span, revealed_ret_ty, actual_return_ty);
 
     // Check that the main return type implements the termination trait.
-    if let Some(term_id) = tcx.lang_items().termination() {
+    if let LangItemRecord::Present(term_id) = tcx.lang_items().termination() {
         if let Some((def_id, EntryFnType::Main)) = tcx.entry_fn(LOCAL_CRATE) {
             let main_id = hir.as_local_hir_id(def_id);
             if main_id == fn_id {
@@ -1453,9 +1453,9 @@ fn check_fn<'a, 'tcx>(
     }
 
     // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
-    if let Some(panic_impl_did) = tcx.lang_items().panic_impl() {
+    if let LangItemRecord::Present(panic_impl_did) = tcx.lang_items().panic_impl() {
         if panic_impl_did == hir.local_def_id(fn_id).to_def_id() {
-            if let Some(panic_info_did) = tcx.lang_items().panic_info() {
+            if let LangItemRecord::Present(panic_info_did) = tcx.lang_items().panic_info() {
                 if declared_ret_ty.kind != ty::Never {
                     sess.span_err(decl.output.span(), "return type should be `!`");
                 }
@@ -1497,9 +1497,9 @@ fn check_fn<'a, 'tcx>(
     }
 
     // Check that a function marked as `#[alloc_error_handler]` has signature `fn(Layout) -> !`
-    if let Some(alloc_error_handler_did) = tcx.lang_items().oom() {
+    if let LangItemRecord::Present(alloc_error_handler_did) = tcx.lang_items().oom() {
         if alloc_error_handler_did == hir.local_def_id(fn_id).to_def_id() {
-            if let Some(alloc_layout_did) = tcx.lang_items().alloc_layout() {
+            if let LangItemRecord::Present(alloc_layout_did) = tcx.lang_items().alloc_layout() {
                 if declared_ret_ty.kind != ty::Never {
                     sess.span_err(decl.output.span(), "return type should be `!`");
                 }
@@ -3465,7 +3465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         code: traits::ObligationCauseCode<'tcx>,
     ) {
         if !ty.references_error() {
-            let lang_item = self.tcx.require_lang_item(SizedTraitLangItem, None);
+            let lang_item = self.tcx.lang_items().sized_trait().require(&self.tcx, None);
             self.require_type_meets(ty, span, code, lang_item);
         }
     }
@@ -3862,7 +3862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         None
     }
 
-    fn resolve_place_op(&self, op: PlaceOp, is_mut: bool) -> (Option<DefId>, Ident) {
+    fn resolve_place_op(&self, op: PlaceOp, is_mut: bool) -> (LangItemRecord, Ident) {
         let (tr, name) = match (op, is_mut) {
             (PlaceOp::Deref, false) => (self.tcx.lang_items().deref_trait(), sym::deref),
             (PlaceOp::Deref, true) => (self.tcx.lang_items().deref_mut_trait(), sym::deref_mut),
@@ -3885,7 +3885,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Try Mut first, if needed.
         let (mut_tr, mut_op) = self.resolve_place_op(op, true);
         let method = match (needs, mut_tr) {
-            (Needs::MutPlace, Some(trait_did)) => {
+            (Needs::MutPlace, LangItemRecord::Present(trait_did)) => {
                 self.lookup_method_in_trait(span, mut_op, trait_did, base_ty, Some(arg_tys))
             }
             _ => None,
@@ -3894,7 +3894,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Otherwise, fall back to the immutable version.
         let (imm_tr, imm_op) = self.resolve_place_op(op, false);
         match (method, imm_tr) {
-            (None, Some(trait_did)) => {
+            (None, LangItemRecord::Present(trait_did)) => {
                 self.lookup_method_in_trait(span, imm_op, trait_did, base_ty, Some(arg_tys))
             }
             (method, _) => method,
@@ -5286,9 +5286,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let pin_did = self.tcx.lang_items().pin_type();
         match expected.kind {
-            ty::Adt(def, _) if Some(def.did) != pin_did => return false,
+            ty::Adt(def, _) if !pin_did.has_def_id(def.did) => return false,
             // This guards the `unwrap` and `mk_box` below.
-            _ if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() => return false,
+            _ if pin_did.is_missing() || self.tcx.lang_items().owned_box().is_missing() => {
+                return false;
+            }
             _ => {}
         }
         let boxed_found = self.tcx.mk_box(found);
@@ -5449,7 +5451,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let sp = expr.span;
                 // Check for `Future` implementations by constructing a predicate to
                 // prove: `<T as Future>::Output == U`
-                let future_trait = self.tcx.require_lang_item(FutureTraitLangItem, Some(sp));
+                let future_trait =
+                    self.tcx.lang_items().future_trait().require(&self.tcx, Some(sp));
                 let item_def_id = self
                     .tcx
                     .associated_items(future_trait)

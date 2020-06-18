@@ -4,10 +4,7 @@
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::{
-    CoerceUnsizedTraitLangItem, DispatchFromDynTraitLangItem, UnsizeTraitLangItem,
-};
-use rustc_hir::ItemKind;
+use rustc_hir::{ItemKind, LangItemRecord};
 use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionckMode, TyCtxtInferExt};
@@ -34,11 +31,11 @@ struct Checker<'tcx> {
 }
 
 impl<'tcx> Checker<'tcx> {
-    fn check<F>(&self, trait_def_id: Option<DefId>, mut f: F) -> &Self
+    fn check<F>(&self, trait_record: LangItemRecord, mut f: F) -> &Self
     where
         F: FnMut(TyCtxt<'tcx>, LocalDefId),
     {
-        if Some(self.trait_def_id) == trait_def_id {
+        if trait_record.has_def_id(self.trait_def_id) {
             for &impl_id in self.tcx.hir().trait_impls(self.trait_def_id) {
                 let impl_def_id = self.tcx.hir().local_def_id(impl_id);
                 f(self.tcx, impl_def_id);
@@ -149,7 +146,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
     let impl_hir_id = tcx.hir().as_local_hir_id(impl_did);
     let span = tcx.hir().span(impl_hir_id);
 
-    let dispatch_from_dyn_trait = tcx.require_lang_item(DispatchFromDynTraitLangItem, Some(span));
+    let dispatch_from_dyn_trait =
+        tcx.lang_items().dispatch_from_dyn_trait().require(&tcx, Some(span));
 
     let source = tcx.type_of(impl_did);
     assert!(!source.has_escaping_bound_vars());
@@ -318,11 +316,12 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
     let impl_hir_id = tcx.hir().as_local_hir_id(impl_did.expect_local());
     let span = tcx.hir().span(impl_hir_id);
 
-    let coerce_unsized_trait = tcx.require_lang_item(CoerceUnsizedTraitLangItem, Some(span));
+    let coerce_unsized_trait = tcx.lang_items().coerce_unsized_trait().require(&tcx, Some(span));
 
-    let unsize_trait = tcx.lang_items().require(UnsizeTraitLangItem).unwrap_or_else(|err| {
-        tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
-    });
+    let unsize_trait = tcx
+        .lang_items()
+        .unsize_trait()
+        .require_with(&tcx, None, |err| format!("`CoerceUnsized` implementation {}", err));
 
     let source = tcx.type_of(impl_did);
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();

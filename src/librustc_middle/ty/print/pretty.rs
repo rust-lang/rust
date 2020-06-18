@@ -575,7 +575,8 @@ pub trait PrettyPrinter<'tcx>:
                     for predicate in bounds.predicates {
                         if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
                             // Don't print +Sized, but rather +?Sized if absent.
-                            if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {
+                            if self.tcx().lang_items().sized_trait().has_def_id(trait_ref.def_id())
+                            {
                                 is_sized = true;
                                 continue;
                             }

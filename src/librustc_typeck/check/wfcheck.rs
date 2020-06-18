@@ -7,8 +7,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
-use rustc_hir::lang_items;
-use rustc_hir::ItemKind;
+use rustc_hir::{ItemKind, LangItemRecord};
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
@@ -385,7 +384,7 @@ fn check_type_defn<'tcx, F>(
                 let last = idx == variant.fields.len() - 1;
                 fcx.register_bound(
                     field.ty,
-                    fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
+                    fcx.tcx.lang_items().sized_trait().require(&fcx.tcx, None),
                     traits::ObligationCause::new(
                         field.span,
                         fcx.body_id,
@@ -602,7 +601,7 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: hir::HirId, ty_span: Span, allow_fo
         if forbid_unsized {
             fcx.register_bound(
                 item_ty,
-                fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
+                fcx.tcx.lang_items().sized_trait().require(&fcx.tcx, None),
                 traits::ObligationCause::new(ty_span, fcx.body_id, traits::MiscObligation),
             );
         }
@@ -1107,7 +1106,7 @@ fn receiver_is_valid<'fcx, 'tcx>(
     // The first type is `receiver_ty`, which we know its not equal to `self_ty`; skip it.
     autoderef.next();
 
-    let receiver_trait_def_id = fcx.tcx.require_lang_item(lang_items::ReceiverTraitLangItem, None);
+    let receiver_trait_def_id = fcx.tcx.lang_items().receiver_trait().require(&fcx.tcx, None);
 
     // Keep dereferencing `receiver_ty` until we get to `self_ty`.
     loop {
@@ -1230,7 +1229,7 @@ fn report_bivariance(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) {
 
     let suggested_marker_id = tcx.lang_items().phantom_data();
     // Help is available only in presence of lang items.
-    let msg = if let Some(def_id) = suggested_marker_id {
+    let msg = if let LangItemRecord::Present(def_id) = suggested_marker_id {
         format!(
             "consider removing `{}`, referring to it in a field, or using a marker such as `{}`",
             param_name,

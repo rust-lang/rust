@@ -24,7 +24,7 @@ fn is_item_raw<'tcx>(
     item: lang_items::LangItem,
 ) -> bool {
     let (param_env, ty) = query.into_parts();
-    let trait_def_id = tcx.require_lang_item(item, None);
+    let trait_def_id = tcx.lang_items().get(item).require(&tcx, None);
     tcx.infer_ctxt().enter(|infcx| {
         traits::type_known_to_meet_bound_modulo_regions(
             &infcx,

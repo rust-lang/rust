@@ -92,16 +92,15 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             .map(|(wc, _)| wc.subst(self.tcx, &bound_vars))
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner)).collect();
 
-        let well_known =
-            if self.tcx.lang_items().sized_trait().map(|t| def_id == t).unwrap_or(false) {
-                Some(chalk_rust_ir::WellKnownTrait::SizedTrait)
-            } else if self.tcx.lang_items().copy_trait().map(|t| def_id == t).unwrap_or(false) {
-                Some(chalk_rust_ir::WellKnownTrait::CopyTrait)
-            } else if self.tcx.lang_items().clone_trait().map(|t| def_id == t).unwrap_or(false) {
-                Some(chalk_rust_ir::WellKnownTrait::CloneTrait)
-            } else {
-                None
-            };
+        let well_known = if self.tcx.lang_items().sized_trait().has_def_id(def_id) {
+            Some(chalk_rust_ir::WellKnownTrait::SizedTrait)
+        } else if self.tcx.lang_items().copy_trait().has_def_id(def_id) {
+            Some(chalk_rust_ir::WellKnownTrait::CopyTrait)
+        } else if self.tcx.lang_items().clone_trait().has_def_id(def_id) {
+            Some(chalk_rust_ir::WellKnownTrait::CloneTrait)
+        } else {
+            None
+        };
         Arc::new(chalk_rust_ir::TraitDatum {
             id: trait_id,
             binders: chalk_ir::Binders::new(
@@ -440,33 +439,13 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         well_known_trait: chalk_rust_ir::WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<RustInterner<'tcx>>> {
         use chalk_rust_ir::WellKnownTrait::*;
-        let t = match well_known_trait {
-            SizedTrait => self
-                .tcx
-                .lang_items()
-                .sized_trait()
-                .map(|t| chalk_ir::TraitId(RustDefId::Trait(t)))
-                .unwrap(),
-            CopyTrait => self
-                .tcx
-                .lang_items()
-                .copy_trait()
-                .map(|t| chalk_ir::TraitId(RustDefId::Trait(t)))
-                .unwrap(),
-            CloneTrait => self
-                .tcx
-                .lang_items()
-                .clone_trait()
-                .map(|t| chalk_ir::TraitId(RustDefId::Trait(t)))
-                .unwrap(),
-            DropTrait => self
-                .tcx
-                .lang_items()
-                .drop_trait()
-                .map(|t| chalk_ir::TraitId(RustDefId::Trait(t)))
-                .unwrap(),
+        let lang_record = match well_known_trait {
+            SizedTrait => self.tcx.lang_items().sized_trait(),
+            CopyTrait => self.tcx.lang_items().copy_trait(),
+            CloneTrait => self.tcx.lang_items().clone_trait(),
+            DropTrait => self.tcx.lang_items().drop_trait(),
         };
-        Some(t)
+        Some(chalk_ir::TraitId(RustDefId::Trait(lang_record.require(&self.tcx, None))))
     }
 }
 

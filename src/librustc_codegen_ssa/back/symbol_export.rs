@@ -5,7 +5,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::Node;
+use rustc_hir::{LangItemRecord, Node};
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
@@ -304,7 +304,9 @@ fn upstream_monomorphizations_provider(
             let (def_id, substs) = match *exported_symbol {
                 ExportedSymbol::Generic(def_id, substs) => (def_id, substs),
                 ExportedSymbol::DropGlue(ty) => {
-                    if let Some(drop_in_place_fn_def_id) = drop_in_place_fn_def_id {
+                    if let LangItemRecord::Present(drop_in_place_fn_def_id) =
+                        drop_in_place_fn_def_id
+                    {
                         (drop_in_place_fn_def_id, tcx.intern_substs(&[ty.into()]))
                     } else {
                         // `drop_in_place` in place does not exist, don't try
@@ -351,7 +353,7 @@ fn upstream_drop_glue_for_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     substs: SubstsRef<'tcx>,
 ) -> Option<CrateNum> {
-    if let Some(def_id) = tcx.lang_items().drop_in_place_fn() {
+    if let LangItemRecord::Present(def_id) = tcx.lang_items().drop_in_place_fn() {
         tcx.upstream_monomorphizations_for(def_id).and_then(|monos| monos.get(&substs).cloned())
     } else {
         None

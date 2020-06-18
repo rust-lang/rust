@@ -15,7 +15,7 @@ use rustc_hir::definitions::DefPathTable;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_hir::lang_items;
-use rustc_hir::{AnonConst, GenericParamKind};
+use rustc_hir::{AnonConst, GenericParamKind, LangItemRecord};
 use rustc_index::vec::Idx;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLib};
@@ -1155,7 +1155,7 @@ impl EncodeContext<'tcx> {
                 // "unsized info", else just store None
                 let coerce_unsized_info =
                     trait_ref.and_then(|t| {
-                        if Some(t.def_id) == self.tcx.lang_items().coerce_unsized_trait() {
+                        if self.tcx.lang_items().coerce_unsized_trait().has_def_id(t.def_id) {
                             Some(self.tcx.at(item.span).coerce_unsized_info(def_id))
                         } else {
                             None
@@ -1441,7 +1441,7 @@ impl EncodeContext<'tcx> {
         let lang_items = tcx.lang_items();
         let lang_items = lang_items.items().iter();
         self.lazy(lang_items.enumerate().filter_map(|(i, &opt_def_id)| {
-            if let Some(def_id) = opt_def_id {
+            if let LangItemRecord::Present(def_id) = opt_def_id {
                 if def_id.is_local() {
                     return Some((def_id.index, i));
                 }
@@ -1452,7 +1452,7 @@ impl EncodeContext<'tcx> {
 
     fn encode_lang_items_missing(&mut self) -> Lazy<[lang_items::LangItem]> {
         let tcx = self.tcx;
-        self.lazy(&tcx.lang_items().missing)
+        self.lazy(tcx.lang_items().missing())
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.

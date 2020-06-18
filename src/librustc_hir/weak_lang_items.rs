@@ -32,9 +32,7 @@ pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
 
 impl LanguageItems {
     pub fn is_weak_lang_item(&self, item_def_id: DefId) -> bool {
-        let did = Some(item_def_id);
-
-        $(self.$name() == did)||*
+        $(self.$name().has_def_id(item_def_id))||*
     }
 }
 
