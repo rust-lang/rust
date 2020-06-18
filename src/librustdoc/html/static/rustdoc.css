@@ -1089,7 +1089,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	border-style: solid;
 }
 
-.tooltip.compile_fail, .tooltip.ignore {
+.tooltip.compile_fail, .tooltip.should_panic, .tooltip.ignore {
 	font-weight: bold;
 	font-size: 20px;
 }
