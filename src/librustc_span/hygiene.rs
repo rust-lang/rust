@@ -105,8 +105,18 @@ impl ExpnId {
     }
 
     #[inline]
+    pub fn closest_ast_or_macro(self) -> ClosestAstOrMacro {
+        HygieneData::with(|data| data.closest_ast_or_macro(self))
+    }
+
+    #[inline]
     pub fn set_expn_data(self, expn_data: ExpnData) {
         HygieneData::with(|data| {
+            let closest = data.determine_closest_ast_or_macro(self, &expn_data);
+            let old_closest = &mut data.closest_ast_or_macro[self.0 as usize];
+            assert!(old_closest.is_none(), "closest ast/macro data reset for an expansion ID");
+            *old_closest = Some(closest);
+
             let old_expn_data = &mut data.expn_data[self.0 as usize];
             assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
             *old_expn_data = Some(expn_data);
@@ -149,6 +159,10 @@ crate struct HygieneData {
     /// between creation of an expansion ID and obtaining its data (e.g. macros are collected
     /// first and then resolved later), so we use an `Option` here.
     expn_data: Vec<Option<ExpnData>>,
+    /// Stores the computed `ClosestAstOrMacro` for each `ExpnId`. This is updated
+    /// at the same time as `expn_data`, and its contents it determined entirely
+    /// by the `ExpnData` - this field is just a cache.
+    closest_ast_or_macro: Vec<Option<ClosestAstOrMacro>>,
     syntax_context_data: Vec<SyntaxContextData>,
     syntax_context_map: FxHashMap<(SyntaxContext, ExpnId, Transparency), SyntaxContext>,
 }
@@ -162,6 +176,7 @@ impl HygieneData {
                 edition,
                 Some(DefId::local(CRATE_DEF_INDEX)),
             ))],
+            closest_ast_or_macro: vec![Some(ClosestAstOrMacro::None)],
             syntax_context_data: vec![SyntaxContextData {
                 outer_expn: ExpnId::root(),
                 outer_transparency: Transparency::Opaque,
@@ -178,9 +193,36 @@ impl HygieneData {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
 
+    fn determine_closest_ast_or_macro(
+        &self,
+        id: ExpnId,
+        expn_data: &ExpnData,
+    ) -> ClosestAstOrMacro {
+        match expn_data.kind {
+            ExpnKind::Macro(_, _) | ExpnKind::AstPass(_) => ClosestAstOrMacro::Expn(id),
+            ExpnKind::Desugaring(_) | ExpnKind::Root => {
+                // Avoid using `HygieneData` when construction root
+                // `ExpnData`
+                if expn_data.call_site.ctxt() == SyntaxContext::root() {
+                    ClosestAstOrMacro::None
+                } else {
+                    self.closest_ast_or_macro(self.outer_expn(expn_data.call_site.ctxt()))
+                }
+            }
+        }
+    }
+
+    fn closest_ast_or_macro(&self, expn_id: ExpnId) -> ClosestAstOrMacro {
+        self.closest_ast_or_macro[expn_id.0 as usize].as_ref().copied().unwrap()
+    }
+
     fn fresh_expn(&mut self, expn_data: Option<ExpnData>) -> ExpnId {
+        let expn_id = ExpnId(self.expn_data.len() as u32);
+        self.closest_ast_or_macro.push(
+            expn_data.as_ref().map(|data| self.determine_closest_ast_or_macro(expn_id, data)),
+        );
         self.expn_data.push(expn_data);
-        ExpnId(self.expn_data.len() as u32 - 1)
+        expn_id
     }
 
     fn expn_data(&self, expn_id: ExpnId) -> &ExpnData {
@@ -682,6 +724,22 @@ pub struct ExpnData {
     /// The `DefId` of the macro being invoked,
     /// if this `ExpnData` corresponds to a macro invocation
     pub macro_def_id: Option<DefId>,
+}
+
+/// The closest `ExpnKind::AstPass` or `ExpnKind::Macro` to an `ExpnData`.
+/// 'Closest' is determined by starting at the current `ExpnData`,
+/// and walking up the `call_site` tree. If an `ExpnData` with
+/// `Expn::AstPass` or `ExpnKind::Macro` is found, it is represented
+/// by `ClosestAstOrMacro::Expn(id)`, where `id` is the `EpxId` of
+/// the found `ExpnData`.
+///
+/// A `ClosestAstOrMacro` implies that no `ExpnKind::AstPass` or `ExpnKind::Macro`
+/// are found anywhere in the `call_site` tree - that is, there no macro
+/// expansions or ast pass expansions.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ClosestAstOrMacro {
+    None,
+    Expn(ExpnId),
 }
 
 impl ExpnData {

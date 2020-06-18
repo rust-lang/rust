@@ -7,8 +7,8 @@ use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
 use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::{DiagnosticMessageId, Session};
-use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
+use rustc_span::hygiene::{ClosestAstOrMacro, MacroKind};
+use rustc_span::source_map::{ExpnKind, MultiSpan};
 use rustc_span::{Span, Symbol};
 
 /// How a lint level was set.
@@ -337,16 +337,19 @@ pub fn struct_lint_level<'s, 'd>(
 /// This is used to test whether a lint should not even begin to figure out whether it should
 /// be reported on the current node.
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
-    let expn_data = span.ctxt().outer_expn_data();
-    match expn_data.kind {
-        ExpnKind::Root
-        | ExpnKind::Desugaring(DesugaringKind::ForLoop(_))
-        | ExpnKind::Desugaring(DesugaringKind::Operator) => false,
-        ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
-        ExpnKind::Macro(MacroKind::Bang, _) => {
-            // Dummy span for the `def_site` means it's an external macro.
-            expn_data.def_site.is_dummy() || sess.source_map().is_imported(expn_data.def_site)
+    match span.ctxt().outer_expn().closest_ast_or_macro() {
+        ClosestAstOrMacro::Expn(expn_id) => {
+            let data = expn_id.expn_data();
+            match data.kind {
+                ExpnKind::Macro(MacroKind::Bang, _) => {
+                    // Dummy span for the `def_site` means it's an external macro.
+                    data.def_site.is_dummy() || sess.source_map().is_imported(data.def_site)
+                }
+                ExpnKind::Macro(_, _) => true, // definitely a plugin
+                ExpnKind::AstPass(_) => true,  // well, it's "External"
+                _ => unreachable!("unexpected ExpnData {:?}", data),
+            }
         }
-        ExpnKind::Macro(..) => true, // definitely a plugin
+        ClosestAstOrMacro::None => false,
     }
 }
