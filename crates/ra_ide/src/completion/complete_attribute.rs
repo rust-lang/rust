@@ -22,24 +22,18 @@ pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
         }
         (_, Some(ast::AttrInput::TokenTree(token_tree))) => {
             let token_tree_str = token_tree.to_string();
-            complete_attribute_start(
-                acc,
-                ctx,
-                attribute,
-                token_tree_str.starts_with('(') && token_tree_str.ends_with(')'),
-            )
+            let nested = token_tree_str.starts_with('(') && token_tree_str.ends_with(')');
+
+            if !nested {
+                complete_attribute_start(acc, ctx, attribute);
+            }
         }
-        _ => complete_attribute_start(acc, ctx, attribute, false),
+        _ => complete_attribute_start(acc, ctx, attribute),
     }
     Some(())
 }
 
-fn complete_attribute_start(
-    acc: &mut Completions,
-    ctx: &CompletionContext,
-    attribute: &ast::Attr,
-    nested: bool,
-) {
+fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attribute: &ast::Attr) {
     for attr_completion in ATTRIBUTES {
         let mut item = CompletionItem::new(
             CompletionKind::Attribute,
@@ -56,9 +50,7 @@ fn complete_attribute_start(
         }
 
         if attribute.kind() == ast::AttrKind::Inner || !attr_completion.should_be_inner {
-            if (nested && attr_completion.should_be_inner) || !nested {
-                acc.add(item);
-            }
+            acc.add(item);
         }
     }
 }
