@@ -18,7 +18,7 @@ use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsTask, Watch};
 use stdx::format_to;
 
 use crate::{
-    config::Config,
+    config::{Config, FilesWatcher},
     diagnostics::{CheckFixes, DiagnosticCollection},
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
     to_proto::url_from_abs_path,
@@ -76,7 +76,6 @@ impl GlobalState {
         workspaces: Vec<ProjectWorkspace>,
         lru_capacity: Option<usize>,
         exclude_globs: &[Glob],
-        watch: Watch,
         config: Config,
     ) -> GlobalState {
         let mut change = AnalysisChange::new();
@@ -111,6 +110,7 @@ impl GlobalState {
 
         let (task_sender, task_receiver) = unbounded();
         let task_sender = Box::new(move |t| task_sender.send(t).unwrap());
+        let watch = Watch(matches!(config.files.watcher, FilesWatcher::Notify));
         let (mut vfs, vfs_roots) = Vfs::new(roots, task_sender, watch);
 
         let mut extern_source_roots = FxHashMap::default();

@@ -27,7 +27,7 @@ use ra_flycheck::{CheckTask, Status};
 use ra_ide::{Canceled, FileId, LineIndex};
 use ra_prof::profile;
 use ra_project_model::{PackageRoot, ProjectWorkspace};
-use ra_vfs::{VfsTask, Watch};
+use ra_vfs::VfsTask;
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
@@ -160,13 +160,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
             connection.sender.send(request.into()).unwrap();
         }
 
-        GlobalState::new(
-            workspaces,
-            config.lru_capacity,
-            &globs,
-            Watch(matches!(config.files.watcher, FilesWatcher::Notify)),
-            config,
-        )
+        GlobalState::new(workspaces, config.lru_capacity, &globs, config)
     };
 
     loop_state.roots_total = global_state.vfs.read().n_roots();
