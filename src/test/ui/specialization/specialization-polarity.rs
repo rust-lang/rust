@@ -2,7 +2,7 @@
 
 #![feature(optin_builtin_traits)]
 #![feature(negative_impls)]
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 auto trait Foo {}
 

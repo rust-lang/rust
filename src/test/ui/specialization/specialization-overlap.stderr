@@ -1,3 +1,12 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-overlap.rs:1:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
 error[E0119]: conflicting implementations of trait `Foo` for type `std::vec::Vec<_>`:
   --> $DIR/specialization-overlap.rs:5:1
    |
@@ -30,6 +39,6 @@ LL | impl<T: Clone> Qux for T {}
 LL | impl<T: Eq> Qux for T {}
    | ^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0119`.

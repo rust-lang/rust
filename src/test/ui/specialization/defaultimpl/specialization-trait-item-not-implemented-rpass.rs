@@ -3,7 +3,7 @@
 // Tests that we can combine a default impl that supplies one method with a
 // full impl that supplies the other, and they can invoke one another.
 
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 trait Foo {
     fn foo_one(&self) -> &'static str;

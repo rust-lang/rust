@@ -1,4 +1,4 @@
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 // check-pass
 
