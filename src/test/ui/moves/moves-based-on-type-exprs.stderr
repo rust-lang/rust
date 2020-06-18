@@ -104,15 +104,9 @@ error[E0382]: borrow of moved value: `x`
 LL |     let x = vec!["hi".to_string()];
    |         - move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
 LL |     let _y = x.into_iter().next().unwrap();
-   |                ----------- `x` moved due to this method call
+   |              - value moved here
 LL |     touch(&x);
    |           ^^ value borrowed here after move
-   |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `x`
-  --> $SRC_DIR/libcore/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:83:11
@@ -120,15 +114,9 @@ error[E0382]: borrow of moved value: `x`
 LL |     let x = vec!["hi".to_string()];
    |         - move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
 LL |     let _y = [x.into_iter().next().unwrap(); 1];
-   |                 ----------- `x` moved due to this method call
+   |               - value moved here
 LL |     touch(&x);
    |           ^^ value borrowed here after move
-   |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `x`
-  --> $SRC_DIR/libcore/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 
 error: aborting due to 11 previous errors
 

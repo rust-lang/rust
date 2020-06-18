@@ -505,7 +505,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // This is basically `force_bits`.
             let r_bits = r_bits.and_then(|r| r.to_bits_or_ptr(right_size, &self.tcx).ok());
             if r_bits.map_or(false, |b| b >= left_size_bits as u128) {
-                debug!("check_binary_op: reporting assert for {:?}", source_info);
                 self.report_assert_as_lint(
                     lint::builtin::ARITHMETIC_OVERFLOW,
                     source_info,

@@ -2,15 +2,10 @@ error[E0382]: use of moved value: `f`
   --> $DIR/issue-12127.rs:11:9
    |
 LL |         f();
-   |         --- `f` moved due to this call
+   |         - value moved here
 LL |         f();
    |         ^ value used here after move
    |
-note: this value implements `FnOnce`, which causes it to be moved when called
-  --> $DIR/issue-12127.rs:10:9
-   |
-LL |         f();
-   |         ^
    = note: move occurs because `f` has type `[closure@$DIR/issue-12127.rs:8:24: 8:41 x:std::boxed::Box<isize>]`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
