@@ -2,7 +2,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{BasicBlock, Body, Location, Place, Rvalue};
 use rustc_middle::mir::{BorrowKind, Mutability, Operand};
-use rustc_middle::mir::{InlineAsmOperand, TerminatorKind};
+use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
 
@@ -112,14 +112,14 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
         self.super_statement(statement, location);
     }
 
-    fn visit_terminator_kind(&mut self, kind: &TerminatorKind<'tcx>, location: Location) {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         self.check_activations(location);
 
-        match kind {
+        match &terminator.kind {
             TerminatorKind::SwitchInt { ref discr, switch_ty: _, values: _, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { location: drop_place, target: _, unwind: _ } => {
+            TerminatorKind::Drop { place: drop_place, target: _, unwind: _ } => {
                 self.access_place(
                     location,
                     *drop_place,
@@ -128,7 +128,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 );
             }
             TerminatorKind::DropAndReplace {
-                location: drop_place,
+                place: drop_place,
                 value: ref new_value,
                 target: _,
                 unwind: _,
@@ -222,7 +222,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
         }
 
-        self.super_terminator_kind(kind, location);
+        self.super_terminator(terminator, location);
     }
 }
 

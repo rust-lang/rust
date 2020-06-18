@@ -78,7 +78,7 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
         trace!("visit_terminator: terminator={:?} location={:?}", terminator, location);
 
         match &terminator.kind {
-            mir::TerminatorKind::Drop { location: dropped_place, .. } => {
+            mir::TerminatorKind::Drop { place: dropped_place, .. } => {
                 let dropped_ty = dropped_place.ty(self.body, self.tcx).ty;
                 if !NeedsDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
                     return;

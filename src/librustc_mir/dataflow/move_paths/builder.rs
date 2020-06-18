@@ -387,13 +387,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_init(place.as_ref(), InitKind::Deep);
             }
 
-            TerminatorKind::Drop { location, target: _, unwind: _ } => {
-                self.gather_move(location);
+            TerminatorKind::Drop { place, target: _, unwind: _ } => {
+                self.gather_move(place);
             }
-            TerminatorKind::DropAndReplace { location, ref value, .. } => {
-                self.create_move_path(location);
+            TerminatorKind::DropAndReplace { place, ref value, .. } => {
+                self.create_move_path(place);
                 self.gather_operand(value);
-                self.gather_init(location.as_ref(), InitKind::Deep);
+                self.gather_init(place.as_ref(), InitKind::Deep);
             }
             TerminatorKind::Call {
                 ref func,

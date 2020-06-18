@@ -64,8 +64,8 @@ fn add_moves_for_packed_drops_patch<'tcx>(
         let terminator = data.terminator();
 
         match terminator.kind {
-            TerminatorKind::Drop { location, .. }
-                if util::is_disaligned(tcx, body, param_env, location) =>
+            TerminatorKind::Drop { place, .. }
+                if util::is_disaligned(tcx, body, param_env, place) =>
             {
                 add_move_for_packed_drop(tcx, body, &mut patch, terminator, loc, data.is_cleanup);
             }
@@ -88,13 +88,13 @@ fn add_move_for_packed_drop<'tcx>(
     is_cleanup: bool,
 ) {
     debug!("add_move_for_packed_drop({:?} @ {:?})", terminator, loc);
-    let (location, target, unwind) = match terminator.kind {
-        TerminatorKind::Drop { ref location, target, unwind } => (location, target, unwind),
+    let (place, target, unwind) = match terminator.kind {
+        TerminatorKind::Drop { ref place, target, unwind } => (place, target, unwind),
         _ => unreachable!(),
     };
 
     let source_info = terminator.source_info;
-    let ty = location.ty(body, tcx).ty;
+    let ty = place.ty(body, tcx).ty;
     let temp = patch.new_temp(ty, terminator.source_info.span);
 
     let storage_dead_block = patch.new_block(BasicBlockData {
@@ -104,9 +104,9 @@ fn add_move_for_packed_drop<'tcx>(
     });
 
     patch.add_statement(loc, StatementKind::StorageLive(temp));
-    patch.add_assign(loc, Place::from(temp), Rvalue::Use(Operand::Move(*location)));
+    patch.add_assign(loc, Place::from(temp), Rvalue::Use(Operand::Move(*place)));
     patch.patch_terminator(
         loc.block,
-        TerminatorKind::Drop { location: Place::from(temp), target: storage_dead_block, unwind },
+        TerminatorKind::Drop { place: Place::from(temp), target: storage_dead_block, unwind },
     );
 }

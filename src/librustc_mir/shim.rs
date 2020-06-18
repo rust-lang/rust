@@ -582,7 +582,7 @@ impl CloneShimBuilder<'tcx> {
         self.block(
             vec![],
             TerminatorKind::Drop {
-                location: self.tcx.mk_place_index(dest, beg),
+                place: self.tcx.mk_place_index(dest, beg),
                 target: BasicBlock::new(8),
                 unwind: None,
             },
@@ -634,7 +634,7 @@ impl CloneShimBuilder<'tcx> {
                 self.block(
                     vec![],
                     TerminatorKind::Drop {
-                        location: previous_field,
+                        place: previous_field,
                         target: previous_cleanup,
                         unwind: None,
                     },
@@ -799,11 +799,7 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop {
-                location: rcvr_place(),
-                target: BasicBlock::new(2),
-                unwind: None,
-            },
+            TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(2), unwind: None },
             false,
         );
     }
@@ -814,11 +810,7 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop {
-                location: rcvr_place(),
-                target: BasicBlock::new(4),
-                unwind: None,
-            },
+            TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(4), unwind: None },
             true,
         );
 
