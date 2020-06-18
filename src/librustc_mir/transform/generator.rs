@@ -93,13 +93,13 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor<'tcx> {
         }
     }
 
-    fn visit_terminator_kind(&mut self, kind: &mut TerminatorKind<'tcx>, location: Location) {
-        match kind {
+    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
+        match terminator.kind {
             TerminatorKind::Return => {
                 // Do not replace the implicit `_0` access here, as that's not possible. The
                 // transform already handles `return` correctly.
             }
-            _ => self.super_terminator_kind(kind, location),
+            _ => self.super_terminator(terminator, location),
         }
     }
 }
@@ -835,8 +835,8 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut 
 
     for (block, block_data) in body.basic_blocks().iter_enumerated() {
         let (target, unwind, source_info) = match block_data.terminator() {
-            Terminator { source_info, kind: TerminatorKind::Drop { location, target, unwind } } => {
-                if let Some(local) = location.as_local() {
+            Terminator { source_info, kind: TerminatorKind::Drop { place, target, unwind } } => {
+                if let Some(local) = place.as_local() {
                     if local == SELF_ARG {
                         (target, unwind, source_info)
                     } else {
@@ -1102,11 +1102,8 @@ fn create_generator_resume_function<'tcx>(
 fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
-    let term = TerminatorKind::Drop {
-        location: Place::from(SELF_ARG),
-        target: return_block,
-        unwind: None,
-    };
+    let term =
+        TerminatorKind::Drop { place: Place::from(SELF_ARG), target: return_block, unwind: None };
     let source_info = SourceInfo::outermost(body.span);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
