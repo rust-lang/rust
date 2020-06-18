@@ -326,13 +326,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                      opportunistically resolved to {:?}",
                     vid, r
                 );
-                // micro-optimize -- avoid an interner look-up if the vid
-                // hasn't changed.
-                let r = if vid == resolved_vid {
-                    r
-                } else {
-                    self.tcx.mk_region(ty::ReVar(resolved_vid))
-                };
+                let r = self.tcx.reuse_or_mk_region(r, ty::ReVar(resolved_vid));
                 self.canonicalize_region_mode.canonicalize_free_region(self, r)
             }
 

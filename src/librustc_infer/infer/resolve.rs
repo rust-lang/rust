@@ -85,7 +85,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
                     .borrow_mut()
                     .unwrap_region_constraints()
                     .opportunistic_resolve_var(rid);
-                if resolved == rid { r } else { self.tcx().mk_region(ty::ReVar(resolved)) }
+                self.tcx().reuse_or_mk_region(r, ty::ReVar(resolved))
             }
             _ => r,
         }
