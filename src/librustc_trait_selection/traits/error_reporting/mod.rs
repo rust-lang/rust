@@ -1820,6 +1820,12 @@ impl<'v> Visitor<'v> for FindTypeParam {
     }
 
     fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
+        // We collect the spans of all uses of the "bare" type param, like in `field: T` or
+        // `field: (T, T)` where we could make `T: ?Sized` while skipping cases that are known to be
+        // valid like `field: &'a T` or `field: *mut T` and cases that *might* have further `Sized`
+        // obligations like `Box<T>` and `Vec<T>`, but we perform no extra analysis for those cases
+        // and suggest `T: ?Sized` regardless of their obligations. This is fine because the errors
+        // in that case should make what happened clear enough.
         match ty.kind {
             hir::TyKind::Ptr(_) | hir::TyKind::Rptr(..) | hir::TyKind::TraitObject(..) => {}
             hir::TyKind::Path(hir::QPath::Resolved(None, path))
