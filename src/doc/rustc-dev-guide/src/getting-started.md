@@ -163,6 +163,20 @@ things up.
 
 ### Building and Testing `rustc`
 
+Here is a summary of the different commands for reference, but you probably
+should still read the rest of the section:
+
+| Command | When to use it |
+| --- | --- |
+| `x.py check` | Quick check to see if things compile; rust-analyzer can run this automatically for you |
+| `x.py build --stage 1` | Build just the 1st stage of the compiler; this is faster than building stage 2 and usually good enough |
+| `x.py build --stage 1 --keep-stage 1` | Build the 1st stage of the compiler and skips rebuilding the library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
+| `x.py test --stage 1` | Run the test suite using the stage1 compiler (first build) |
+| `x.py test --stage 1 --keep-stage 1` | Run the test suite using the stage1 compiler (subsequent builds) |
+| `x.py test --stage 1 --bless [--keep-stage 1]` | Run the test suite using the stage1 compiler _and_ update expected test output. |
+| `x.py build` | Do a full 2-stage build. You almost never want to do this. |
+| `x.py test` | Do a full 2-stage build and run all tests. You almost never want to do this. |
+
 To do a full 2-stage build of the whole compiler, you should run this (after
 updating `config.toml` as mentioned above):
 
@@ -206,12 +220,19 @@ different test suites [in this chapter][testing].
 [uitests]: ./tests/adding.html#ui
 [testing]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
 
-```
+```sh
 # First build
 ./x.py test --stage 1 src/test/ui
 
 # Subsequent builds
 ./x.py test --stage 1 src/test/ui --keep-stage 1
+```
+
+If your changes impact test output, you can use `--bless` to automatically
+update the `.stderr` files of the affected tests:
+
+```sh
+./x.py test --stage 1 src/test/ui --keep-stage 1 --bless
 ```
 
 While working on the compiler, it can be helpful to see if the code just
@@ -223,7 +244,9 @@ this with:
 ```
 
 This command is really fast (relative to the other commands). It usually
-completes in a couple of minutes on my laptop.
+completes in a couple of minutes on my laptop. **A common workflow when working
+on the compiler is to make changes and repeatedly check with `./x.py check`.
+Then, run the tests as shown above when you think things should work.**
 
 Finally, the CI ensures that the codebase is using consistent style. To format
 the code:
@@ -447,10 +470,14 @@ relatively lightweight mechanism for getting feedback on large changes to the
 compiler (as opposed to a full RFC or a design meeting with the team).
 
 Example of things that might require MCPs include major refactorings, changes
-to important types, or important changes to how the compiler does something.
+to important types, or important changes to how the compiler does something, or
+smaller user-facing changes.
 
 **When in doubt, ask on [zulip][z]. It would be a shame to put a lot of work
-into a PR that ends up not getting merged!**
+into a PR that ends up not getting merged!** [See this document][mcpinfo] for
+more info on MCPs.
+
+[mcpinfo]: https://forge.rust-lang.org/compiler/mcp.html
 
 ### Performance
 
