@@ -1,4 +1,5 @@
 use crate::cmp;
+use crate::convert::TryFrom;
 use crate::io::{Error as IoError, IoSlice, IoSliceMut, Result as IoResult};
 use crate::sys::rand::rdrand64;
 use crate::time::Duration;
@@ -159,17 +160,11 @@ pub fn wait(event_mask: u64, mut timeout: u64) -> IoResult<u64> {
         // to make things work in other cases. Note that in the SGX threat
         // model the enclave runner which is serving the wait usercall is not
         // trusted to ensure accurate timeouts.
-        let base = cmp::max(1, timeout / 10) * 2 + 1;
-        let zero = base / 2;
-        match rdrand64() % base {
-            jitter if jitter > zero => {
-                timeout = timeout.checked_add(jitter - zero).unwrap_or(timeout)
-            }
-            jitter if jitter < zero => {
-                timeout = timeout.checked_sub(zero - jitter).unwrap_or(timeout)
-            }
-            _ => {}
-        };
+        if let Ok(timeout_signed) = i64::try_from(timeout) {
+            let tenth = 1 + timeout_signed / 10;
+            let deviation = (rdrand64() as i64).checked_rem(tenth).unwrap_or(0);
+            timeout = timeout_signed.saturating_add(deviation) as _;
+        }
         timeout = cmp::min(u64::MAX - 1, cmp::max(1, timeout));
     }
     unsafe { raw::wait(event_mask, timeout).from_sgx_result() }

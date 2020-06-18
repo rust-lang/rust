@@ -110,42 +110,75 @@ pub fn decode_error_kind(code: i32) -> ErrorKind {
     }
 }
 
-// This function makes an effort to sleep at least as long as `duration`.
-// Note that in general there is no guarantee about accuracy of time and
-// timeouts in SGX model. The enclave runner serving usercalls may lie about
-// current time and/or ignore timeout values.
+// This function makes an effort to wait for a non-spurious event at least as
+// long as `duration`. Note that in general there is no guarantee about accuracy
+// of time and timeouts in SGX model. The enclave runner serving usercalls may
+// lie about current time and/or ignore timeout values.
 //
-// Once the event is observed, `stop` will be used to determine whether or not
-// we should continue to wait.
+// Once the event is observed, `woken_up` will be used to determine whether or
+// not the event was spurious.
 //
 // FIXME: note these caveats in documentation of all public types that use this
 // function in their execution path.
-pub fn wait_timeout_sgx<F>(event_mask: u64, duration: crate::time::Duration, stop: F)
+pub fn wait_timeout_sgx<F>(event_mask: u64, duration: crate::time::Duration, woken_up: F)
 where
     F: Fn() -> bool,
 {
     use self::abi::usercalls;
     use crate::cmp;
     use crate::io::ErrorKind;
-    use crate::time::Instant;
+    use crate::time::{Duration, Instant};
 
-    let start = Instant::now();
-    let mut remaining = duration;
-    loop {
-        let timeout = cmp::min((u64::MAX - 1) as u128, remaining.as_nanos()) as u64;
+    // Calls the wait usercall and checks the result. Returns true if event was
+    // returned, and false if WouldBlock/TimedOut was returned.
+    // If duration is None, it will use WAIT_NO.
+    fn wait_checked(event_mask: u64, duration: Option<Duration>) -> bool {
+        let timeout = duration.map_or(usercalls::raw::WAIT_NO, |duration| {
+            cmp::min((u64::MAX - 1) as u128, duration.as_nanos()) as u64
+        });
         match usercalls::wait(event_mask, timeout) {
             Ok(eventset) => {
                 if event_mask == 0 {
                     rtabort!("expected usercalls::wait() to return Err, found Ok.");
                 }
                 rtassert!(eventset & event_mask == event_mask);
-                if stop() {
-                    return;
-                }
+                true
             }
             Err(e) => {
-                rtassert!(e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock)
+                rtassert!(e.kind() == ErrorKind::TimedOut || e.kind() == ErrorKind::WouldBlock);
+                false
             }
+        }
+    }
+
+    match wait_checked(event_mask, Some(duration)) {
+        false => return,              // timed out
+        true if woken_up() => return, // woken up
+        true => {}                    // spurious event
+    }
+
+    // Drain all cached events.
+    // Note that `event_mask != 0` is implied if we get here.
+    loop {
+        match wait_checked(event_mask, None) {
+            false => break,               // no more cached events
+            true if woken_up() => return, // woken up
+            true => {}                    // spurious event
+        }
+    }
+
+    // Continue waiting, but take note of time spent waiting so we don't wait
+    // forever. We intentionally don't call `Instant::now()` before this point
+    // to avoid the cost of the `insecure_time` usercall in case there are no
+    // spurious wakeups.
+
+    let start = Instant::now();
+    let mut remaining = duration;
+    loop {
+        match wait_checked(event_mask, Some(remaining)) {
+            false => return,              // timed out
+            true if woken_up() => return, // woken up
+            true => {}                    // spurious event
         }
         remaining = match duration.checked_sub(start.elapsed()) {
             Some(remaining) => remaining,
