@@ -586,6 +586,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     self.output.push(create_fn_mono_item(instance));
                 }
             }
+            mir::Rvalue::ThreadLocalRef(def_id) => {
+                assert!(self.tcx.is_thread_local_static(def_id));
+                let instance = Instance::mono(self.tcx, def_id);
+                if should_monomorphize_locally(self.tcx, &instance) {
+                    trace!("collecting thread-local static {:?}", def_id);
+                    self.output.push(MonoItem::Static(def_id));
+                }
+            }
             _ => { /* not interesting */ }
         }
 
