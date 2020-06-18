@@ -1837,7 +1837,7 @@ unsafe trait IsZero {
 }
 
 macro_rules! impl_is_zero {
-    ($t: ty, $is_zero: expr) => {
+    ($t:ty, $is_zero:expr) => {
         unsafe impl IsZero for $t {
             #[inline]
             fn is_zero(&self) -> bool {
