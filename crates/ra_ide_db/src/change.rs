@@ -9,22 +9,15 @@ use ra_db::{
     SourceRootId,
 };
 use ra_prof::{memory_usage, profile, Bytes};
-use ra_syntax::SourceFile;
-#[cfg(not(feature = "wasm"))]
-use rayon::prelude::*;
 use rustc_hash::FxHashMap;
 
-use crate::{
-    symbol_index::{SymbolIndex, SymbolsDatabase},
-    RootDatabase,
-};
+use crate::{symbol_index::SymbolsDatabase, RootDatabase};
 
 #[derive(Default)]
 pub struct AnalysisChange {
     new_roots: Vec<(SourceRootId, bool)>,
     roots_changed: FxHashMap<SourceRootId, RootChange>,
     files_changed: Vec<(FileId, Arc<String>)>,
-    libraries_added: Vec<LibraryData>,
     crate_graph: Option<CrateGraph>,
 }
 
@@ -39,9 +32,6 @@ impl fmt::Debug for AnalysisChange {
         }
         if !self.files_changed.is_empty() {
             d.field("files_changed", &self.files_changed.len());
-        }
-        if !self.libraries_added.is_empty() {
-            d.field("libraries_added", &self.libraries_added.len());
         }
         if self.crate_graph.is_some() {
             d.field("crate_graph", &self.crate_graph);
@@ -79,10 +69,6 @@ impl AnalysisChange {
         self.roots_changed.entry(root_id).or_default().removed.push(file);
     }
 
-    pub fn add_library(&mut self, data: LibraryData) {
-        self.libraries_added.push(data)
-    }
-
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         self.crate_graph = Some(graph);
     }
@@ -116,47 +102,6 @@ impl fmt::Debug for RootChange {
     }
 }
 
-pub struct LibraryData {
-    root_id: SourceRootId,
-    root_change: RootChange,
-    symbol_index: SymbolIndex,
-}
-
-impl fmt::Debug for LibraryData {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("LibraryData")
-            .field("root_id", &self.root_id)
-            .field("root_change", &self.root_change)
-            .field("n_symbols", &self.symbol_index.len())
-            .finish()
-    }
-}
-
-impl LibraryData {
-    pub fn prepare(
-        root_id: SourceRootId,
-        files: Vec<(FileId, RelativePathBuf, Arc<String>)>,
-    ) -> LibraryData {
-        let _p = profile("LibraryData::prepare");
-
-        #[cfg(not(feature = "wasm"))]
-        let iter = files.par_iter();
-        #[cfg(feature = "wasm")]
-        let iter = files.iter();
-
-        let symbol_index = SymbolIndex::for_files(iter.map(|(file_id, _, text)| {
-            let parse = SourceFile::parse(text);
-            (*file_id, parse)
-        }));
-        let mut root_change = RootChange::default();
-        root_change.added = files
-            .into_iter()
-            .map(|(file_id, path, text)| AddFile { file_id, path, text })
-            .collect();
-        LibraryData { root_id, root_change, symbol_index }
-    }
-}
-
 const GC_COOLDOWN: time::Duration = time::Duration::from_millis(100);
 
 impl RootDatabase {
@@ -171,6 +116,7 @@ impl RootDatabase {
         log::info!("apply_change {:?}", change);
         if !change.new_roots.is_empty() {
             let mut local_roots = Vec::clone(&self.local_roots());
+            let mut libraries = Vec::clone(&self.library_roots());
             for (root_id, is_local) in change.new_roots {
                 let root =
                     if is_local { SourceRoot::new_local() } else { SourceRoot::new_library() };
@@ -178,9 +124,12 @@ impl RootDatabase {
                 self.set_source_root_with_durability(root_id, Arc::new(root), durability);
                 if is_local {
                     local_roots.push(root_id);
+                } else {
+                    libraries.push(root_id)
                 }
             }
             self.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
+            self.set_library_roots_with_durability(Arc::new(libraries), Durability::HIGH);
         }
 
         for (root_id, root_change) in change.roots_changed {
@@ -191,24 +140,6 @@ impl RootDatabase {
             let source_root = self.source_root(source_root_id);
             let durability = durability(&source_root);
             self.set_file_text_with_durability(file_id, text, durability)
-        }
-        if !change.libraries_added.is_empty() {
-            let mut libraries = Vec::clone(&self.library_roots());
-            for library in change.libraries_added {
-                libraries.push(library.root_id);
-                self.set_source_root_with_durability(
-                    library.root_id,
-                    Arc::new(SourceRoot::new_library()),
-                    Durability::HIGH,
-                );
-                self.set_library_symbols_with_durability(
-                    library.root_id,
-                    Arc::new(library.symbol_index),
-                    Durability::HIGH,
-                );
-                self.apply_root_change(library.root_id, library.root_change);
-            }
-            self.set_library_roots_with_durability(Arc::new(libraries), Durability::HIGH);
         }
         if let Some(crate_graph) = change.crate_graph {
             self.set_crate_graph_with_durability(Arc::new(crate_graph), Durability::HIGH)

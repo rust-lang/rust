@@ -16,6 +16,7 @@ use ra_prof::{memory_usage, Bytes};
 use ra_syntax::{ast, Parse, SyntaxNode};
 
 use crate::FileId;
+use rustc_hash::FxHashMap;
 
 fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
     db.query(ra_db::ParseQuery).entries::<SyntaxTreeStats>()
@@ -123,20 +124,24 @@ struct LibrarySymbolsStats {
 
 impl fmt::Display for LibrarySymbolsStats {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} ({}) symbols", self.total, self.size,)
+        write!(fmt, "{} ({}) symbols", self.total, self.size)
     }
 }
 
-impl FromIterator<TableEntry<SourceRootId, Arc<SymbolIndex>>> for LibrarySymbolsStats {
+impl FromIterator<TableEntry<(), Arc<FxHashMap<SourceRootId, SymbolIndex>>>>
+    for LibrarySymbolsStats
+{
     fn from_iter<T>(iter: T) -> LibrarySymbolsStats
     where
-        T: IntoIterator<Item = TableEntry<SourceRootId, Arc<SymbolIndex>>>,
+        T: IntoIterator<Item = TableEntry<(), Arc<FxHashMap<SourceRootId, SymbolIndex>>>>,
     {
         let mut res = LibrarySymbolsStats::default();
         for entry in iter {
             let value = entry.value.unwrap();
-            res.total += value.len();
-            res.size += value.memory_size();
+            for symbols in value.values() {
+                res.total += symbols.len();
+                res.size += symbols.memory_size();
+            }
         }
         res
     }

@@ -82,7 +82,7 @@ pub use ra_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRootId,
 };
 pub use ra_ide_db::{
-    change::{AnalysisChange, LibraryData},
+    change::AnalysisChange,
     line_index::{LineCol, LineIndex},
     search::SearchScope,
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
