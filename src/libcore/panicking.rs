@@ -22,8 +22,7 @@
 #![allow(dead_code, missing_docs)]
 #![unstable(
     feature = "core_panic",
-    reason = "internal details of the implementation of the `panic!` \
-              and related macros",
+    reason = "internal details of the implementation of the `panic!` and related macros",
     issue = "none"
 )]
 

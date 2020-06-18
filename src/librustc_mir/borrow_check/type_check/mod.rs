@@ -1250,7 +1250,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 |infcx| {
                     let mut obligations = ObligationAccumulator::default();
 
-                    let dummy_body_id = ObligationCause::dummy().body_id;
+                    let dummy_body_id = hir::CRATE_HIR_ID;
                     let (output_ty, opaque_type_map) =
                         obligations.add(infcx.instantiate_opaque_types(
                             anon_owner_def_id,

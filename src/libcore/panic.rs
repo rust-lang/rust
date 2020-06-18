@@ -39,8 +39,7 @@ pub struct PanicInfo<'a> {
 impl<'a> PanicInfo<'a> {
     #[unstable(
         feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` \
-                         and related macros",
+        reason = "internal details of the implementation of the `panic!` and related macros",
         issue = "none"
     )]
     #[doc(hidden)]
@@ -55,8 +54,7 @@ impl<'a> PanicInfo<'a> {
 
     #[unstable(
         feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` \
-                         and related macros",
+        reason = "internal details of the implementation of the `panic!` and related macros",
         issue = "none"
     )]
     #[doc(hidden)]
@@ -244,8 +242,7 @@ impl<'a> Location<'a> {
 impl<'a> Location<'a> {
     #![unstable(
         feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` \
-                          and related macros",
+        reason = "internal details of the implementation of the `panic!` and related macros",
         issue = "none"
     )]
     #[doc(hidden)]

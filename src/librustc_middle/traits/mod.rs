@@ -20,7 +20,8 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
 
 use std::borrow::Cow;
-use std::fmt::Debug;
+use std::fmt;
+use std::ops::Deref;
 use std::rc::Rc;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
@@ -80,8 +81,39 @@ pub enum Reveal {
 }
 
 /// The reason why we incurred this obligation; used for error reporting.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+///
+/// As the happy path does not care about this struct, storing this on the heap
+/// ends up increasing performance.
+///
+/// We do not want to intern this as there are a lot of obligation causes which
+/// only live for a short period of time.
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ObligationCause<'tcx> {
+    /// `None` for `ObligationCause::dummy`, `Some` otherwise.
+    data: Option<Rc<ObligationCauseData<'tcx>>>,
+}
+
+const DUMMY_OBLIGATION_CAUSE_DATA: ObligationCauseData<'static> =
+    ObligationCauseData { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: MiscObligation };
+
+// Correctly format `ObligationCause::dummy`.
+impl<'tcx> fmt::Debug for ObligationCause<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ObligationCauseData::fmt(self, f)
+    }
+}
+
+impl Deref for ObligationCause<'tcx> {
+    type Target = ObligationCauseData<'tcx>;
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        self.data.as_deref().unwrap_or(&DUMMY_OBLIGATION_CAUSE_DATA)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ObligationCauseData<'tcx> {
     pub span: Span,
 
     /// The ID of the fn body that triggered this obligation. This is
@@ -102,15 +134,24 @@ impl<'tcx> ObligationCause<'tcx> {
         body_id: hir::HirId,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause { span, body_id, code }
+        ObligationCause { data: Some(Rc::new(ObligationCauseData { span, body_id, code })) }
     }
 
     pub fn misc(span: Span, body_id: hir::HirId) -> ObligationCause<'tcx> {
-        ObligationCause { span, body_id, code: MiscObligation }
+        ObligationCause::new(span, body_id, MiscObligation)
     }
 
+    pub fn dummy_with_span(span: Span) -> ObligationCause<'tcx> {
+        ObligationCause::new(span, hir::CRATE_HIR_ID, MiscObligation)
+    }
+
+    #[inline(always)]
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: MiscObligation }
+        ObligationCause { data: None }
+    }
+
+    pub fn make_mut(&mut self) -> &mut ObligationCauseData<'tcx> {
+        Rc::make_mut(self.data.get_or_insert_with(|| Rc::new(DUMMY_OBLIGATION_CAUSE_DATA)))
     }
 
     pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {

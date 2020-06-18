@@ -142,10 +142,12 @@ fn predicate_obligation<'tcx>(
     predicate: ty::Predicate<'tcx>,
     span: Option<Span>,
 ) -> PredicateObligation<'tcx> {
-    let mut cause = ObligationCause::dummy();
-    if let Some(span) = span {
-        cause.span = span;
-    }
+    let cause = if let Some(span) = span {
+        ObligationCause::dummy_with_span(span)
+    } else {
+        ObligationCause::dummy()
+    };
+
     Obligation { cause, param_env: ty::ParamEnv::empty(), recursion_depth: 0, predicate }
 }
 

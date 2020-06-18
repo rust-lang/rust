@@ -4338,6 +4338,8 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         }
     }
 
+    sidebar.push_str(&sidebar_assoc_items(it));
+
     sidebar.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
     if t.auto {
         sidebar.push_str(
@@ -4345,8 +4347,6 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
                 href=\"#synthetic-implementors\">Auto Implementors</a>",
         );
     }
-
-    sidebar.push_str(&sidebar_assoc_items(it));
 
     write!(buf, "<div class=\"block items\">{}</div>", sidebar)
 }
