@@ -42,15 +42,13 @@ error[E0604]: only `u8` can be cast as `char`, not `u32`
   --> $DIR/error-festival.rs:25:5
    |
 LL |     0u32 as char;
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^ invalid cast
 
 error[E0605]: non-primitive cast: `u8` as `std::vec::Vec<u8>`
   --> $DIR/error-festival.rs:29:5
    |
 LL |     x as Vec<u8>;
-   |     ^^^^^^^^^^^^
-   |
-   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+   |     ^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
 error[E0054]: cannot cast as `bool`
   --> $DIR/error-festival.rs:33:24
