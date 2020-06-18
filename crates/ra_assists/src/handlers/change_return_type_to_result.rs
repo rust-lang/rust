@@ -22,8 +22,12 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
     let fn_def = ret_type.syntax().parent().and_then(ast::FnDef::cast)?;
 
     let type_ref = &ret_type.type_ref()?;
-    if type_ref.syntax().text().to_string().starts_with("Result<") {
-        return None;
+    let ret_type_str = type_ref.syntax().text().to_string();
+    let first_part_ret_type = ret_type_str.splitn(2, '<').next();
+    if let Some(ret_type_first_part) = first_part_ret_type {
+        if ret_type_first_part.ends_with("Result") {
+            return None;
+        }
     }
 
     let block_expr = &fn_def.body()?;
@@ -291,6 +295,28 @@ mod tests {
             change_return_type_to_result,
             r#"fn foo() -> i32 {
                 let test = "test";<|>
+                return 42i32;
+            }"#,
+        );
+    }
+
+    #[test]
+    fn change_return_type_to_result_simple_return_type_already_result_std() {
+        check_assist_not_applicable(
+            change_return_type_to_result,
+            r#"fn foo() -> std::result::Result<i32<|>, String> {
+                let test = "test";
+                return 42i32;
+            }"#,
+        );
+    }
+
+    #[test]
+    fn change_return_type_to_result_simple_return_type_already_result() {
+        check_assist_not_applicable(
+            change_return_type_to_result,
+            r#"fn foo() -> Result<i32<|>, String> {
+                let test = "test";
                 return 42i32;
             }"#,
         );
