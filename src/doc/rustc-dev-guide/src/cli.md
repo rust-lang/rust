@@ -4,6 +4,9 @@ Command-line flags are documented in the [rustc book][cli-docs]. All *stable*
 flags should be documented there. Unstable flags should be documented in the
 [unstable book].
 
+See the [forge guide for new options] for details on the *procedure* for
+adding a new command-line argument.
+
 ## Guidelines
 
 - Flags should be orthogonal to each other. For example, if we'd have a
@@ -25,5 +28,6 @@ flags should be documented there. Unstable flags should be documented in the
   unstable-options` flag.
 
 [cli-docs]: https://doc.rust-lang.org/rustc/command-line-arguments.html
+[forge guide for new options]: https://forge.rust-lang.org/compiler/new_option.html
 [unstable book]: https://doc.rust-lang.org/nightly/unstable-book/
 [`parse_bool`]: https://github.com/rust-lang/rust/blob/e5335592e78354e33d798d20c04bcd677c1df62d/src/librustc_session/options.rs#L307-L313
