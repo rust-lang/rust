@@ -298,7 +298,7 @@ fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
         String::new(),
         Applicability::MachineApplicable,
     );
-    if p.look_ahead(0, |t| t == &token::Comma) {
+    if p.token.kind == token::Comma {
         err.tool_only_span_suggestion(
             p.token.span,
             "remove this comma",
