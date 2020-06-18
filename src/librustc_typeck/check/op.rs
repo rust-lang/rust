@@ -497,7 +497,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                self.tcx.types.err
+                self.tcx.ty_error()
             }
         };
 
@@ -709,7 +709,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     err.emit();
                 }
-                self.tcx.types.err
+                self.tcx.ty_error()
             }
         }
     }

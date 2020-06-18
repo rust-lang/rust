@@ -17,7 +17,7 @@ impl<'tcx> Value<'tcx> for &'_ TyS<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>) -> Self {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
-        unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(tcx.types.err) }
+        unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(tcx.ty_error()) }
     }
 }
 
@@ -33,7 +33,7 @@ impl<'tcx> Value<'tcx> for AdtSizedConstraint<'_> {
         // FIXME: Represent the above fact in the trait system somehow.
         unsafe {
             std::mem::transmute::<AdtSizedConstraint<'tcx>, AdtSizedConstraint<'_>>(
-                AdtSizedConstraint(tcx.intern_type_list(&[tcx.types.err])),
+                AdtSizedConstraint(tcx.intern_type_list(&[tcx.ty_error()])),
             )
         }
     }
