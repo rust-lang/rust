@@ -6,6 +6,7 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(64);
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
     base.stack_probes = true;
+    base.static_position_independent_executables = true;
 
     Ok(Target {
         llvm_target: "x86_64-unknown-linux-musl".to_string(),
