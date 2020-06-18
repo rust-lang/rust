@@ -243,7 +243,8 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
 #[derive(Debug)]
 enum Task {
     Respond(Response),
-    SendMessage(Message),
+    Notify(Notification),
+    SendRequest(Request),
     Diagnostic(DiagnosticTask),
 }
 
@@ -275,7 +276,7 @@ impl fmt::Debug for Event {
                     return debug_verbose_not(not, f);
                 }
             }
-            Event::Task(Task::SendMessage(Message::Notification(not))) => {
+            Event::Task(Task::Notify(not)) => {
                 if notification_is::<lsp_types::notification::PublishDiagnostics>(not) {
                     return debug_verbose_not(not, f);
                 }
@@ -463,7 +464,7 @@ fn on_progress_report(
                 token: lsp_types::ProgressToken::String(token.to_string()),
             },
         );
-        task_sender.send(Task::SendMessage(create_progress_req.into())).unwrap();
+        task_sender.send(Task::SendRequest(create_progress_req.into())).unwrap();
     };
 
     let (token, progress) = match report {
@@ -526,7 +527,7 @@ fn on_progress_report(
         value: lsp_types::ProgressParamsValue::WorkDone(progress),
     };
     let not = notification_new::<lsp_types::notification::Progress>(params);
-    task_sender.send(Task::SendMessage(not.into())).unwrap()
+    task_sender.send(Task::Notify(not.into())).unwrap()
 }
 
 fn on_task(
@@ -543,7 +544,8 @@ fn on_task(
                 msg_sender.send(response.into()).unwrap();
             }
         }
-        Task::SendMessage(msg) => msg_sender.send(msg).unwrap(),
+        Task::Notify(not) => msg_sender.send(not.into()).unwrap(),
+        Task::SendRequest(req) => msg_sender.send(req.into()).unwrap(),
         Task::Diagnostic(task) => on_diagnostic_task(task, msg_sender, state),
     }
 }
