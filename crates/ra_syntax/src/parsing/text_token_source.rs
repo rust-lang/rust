@@ -1,40 +1,35 @@
-//! FIXME: write short doc here
+//! See `TextTokenSource` docs.
 
-use ra_parser::Token as PToken;
 use ra_parser::TokenSource;
 
 use crate::{parsing::lexer::Token, SyntaxKind::EOF, TextRange, TextSize};
 
+/// Implementation of `ra_parser::TokenSource` that takes tokens from source code text.
 pub(crate) struct TextTokenSource<'t> {
     text: &'t str,
-    /// start position of each token(expect whitespace and comment)
+    /// token and its start position (non-whitespace/comment tokens)
     /// ```non-rust
     ///  struct Foo;
-    /// ^------^---
-    /// |      |  ^-
-    /// 0      7  10
+    ///  ^------^--^-
+    ///  |      |    \________
+    ///  |      \____         \
+    ///  |           \         |
+    ///  (struct, 0) (Foo, 7) (;, 10)
     /// ```
-    /// (token, start_offset): `[(struct, 0), (Foo, 7), (;, 10)]`
-    start_offsets: Vec<TextSize>,
-    /// non-whitespace/comment tokens
-    /// ```non-rust
-    /// struct Foo {}
-    /// ^^^^^^ ^^^ ^^
-    /// ```
-    /// tokens: `[struct, Foo, {, }]`
-    tokens: Vec<Token>,
+    /// `[(struct, 0), (Foo, 7), (;, 10)]`
+    token_offset_pairs: Vec<(Token, TextSize)>,
 
     /// Current token and position
-    curr: (PToken, usize),
+    curr: (ra_parser::Token, usize),
 }
 
 impl<'t> TokenSource for TextTokenSource<'t> {
-    fn current(&self) -> PToken {
+    fn current(&self) -> ra_parser::Token {
         self.curr.0
     }
 
-    fn lookahead_nth(&self, n: usize) -> PToken {
-        mk_token(self.curr.1 + n, &self.start_offsets, &self.tokens)
+    fn lookahead_nth(&self, n: usize) -> ra_parser::Token {
+        mk_token(self.curr.1 + n, &self.token_offset_pairs)
     }
 
     fn bump(&mut self) {
@@ -43,45 +38,47 @@ impl<'t> TokenSource for TextTokenSource<'t> {
         }
 
         let pos = self.curr.1 + 1;
-        self.curr = (mk_token(pos, &self.start_offsets, &self.tokens), pos);
+        self.curr = (mk_token(pos, &self.token_offset_pairs), pos);
     }
 
     fn is_keyword(&self, kw: &str) -> bool {
-        let pos = self.curr.1;
-        if pos >= self.tokens.len() {
-            return false;
-        }
-        let range = TextRange::at(self.start_offsets[pos], self.tokens[pos].len);
-        self.text[range] == *kw
+        self.token_offset_pairs
+            .get(self.curr.1)
+            .map(|(token, offset)| &self.text[TextRange::at(*offset, token.len)] == kw)
+            .unwrap_or(false)
     }
 }
 
-fn mk_token(pos: usize, start_offsets: &[TextSize], tokens: &[Token]) -> PToken {
-    let kind = tokens.get(pos).map(|t| t.kind).unwrap_or(EOF);
-    let is_jointed_to_next = if pos + 1 < start_offsets.len() {
-        start_offsets[pos] + tokens[pos].len == start_offsets[pos + 1]
-    } else {
-        false
+fn mk_token(pos: usize, token_offset_pairs: &[(Token, TextSize)]) -> ra_parser::Token {
+    let (kind, is_jointed_to_next) = match token_offset_pairs.get(pos) {
+        Some((token, offset)) => (
+            token.kind,
+            token_offset_pairs
+                .get(pos + 1)
+                .map(|(_, next_offset)| offset + token.len == *next_offset)
+                .unwrap_or(false),
+        ),
+        None => (EOF, false),
     };
-
-    PToken { kind, is_jointed_to_next }
+    ra_parser::Token { kind, is_jointed_to_next }
 }
 
 impl<'t> TextTokenSource<'t> {
     /// Generate input from tokens(expect comment and whitespace).
     pub fn new(text: &'t str, raw_tokens: &'t [Token]) -> TextTokenSource<'t> {
-        let mut tokens = Vec::new();
-        let mut start_offsets = Vec::new();
-        let mut len = 0.into();
-        for &token in raw_tokens.iter() {
-            if !token.kind.is_trivia() {
-                tokens.push(token);
-                start_offsets.push(len);
-            }
-            len += token.len;
-        }
+        let token_offset_pairs: Vec<_> = raw_tokens
+            .iter()
+            .filter_map({
+                let mut len = 0.into();
+                move |token| {
+                    let pair = if token.kind.is_trivia() { None } else { Some((*token, len)) };
+                    len += token.len;
+                    pair
+                }
+            })
+            .collect();
 
-        let first = mk_token(0, &start_offsets, &tokens);
-        TextTokenSource { text, start_offsets, tokens, curr: (first, 0) }
+        let first = mk_token(0, &token_offset_pairs);
+        TextTokenSource { text, token_offset_pairs, curr: (first, 0) }
     }
 }
