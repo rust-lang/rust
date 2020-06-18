@@ -6,7 +6,7 @@ and macro names. In this chapter, we show how this is actually done and more.
 
 In fact, we don't do full name resolution during macro expansion -- we only
 resolve imports and macros at that time. This is required to know what to even
-expand. Later, after we have the whole AST, we due full name resolution to
+expand. Later, after we have the whole AST, we do full name resolution to
 resolve all names in the crate. This happens in [`rustc_resolve::late`][late].
 Unlike during macro expansion, in this late expansion, we only need to try to
 resolve a name once, since no new names can be added. If we fail to resolve a
