@@ -485,6 +485,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             module_path.push(Segment {
                                 ident: Ident { name: kw::PathRoot, span: source.ident.span },
                                 id: Some(self.r.next_node_id()),
+                                has_generic_args: false,
                             });
                             source.ident.name = crate_name;
                         }
