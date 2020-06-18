@@ -1,0 +1,16 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/binding-without-value.rs:5:13
+   |
+LL |     let _ : impl Copy;
+   |         -   ^^^^^^^^^ cannot resolve opaque type
+   |         |
+   |         this binding might not have a concrete type
+   |
+help: set the binding to a value for a concrete type to be resolved
+   |
+LL |     let _ : impl Copy = /* value */;
+   |                       ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0720`.

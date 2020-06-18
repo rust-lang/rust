@@ -138,6 +138,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::opaque_types::{InferCtxtExt as _, OpaqueTypeDecl};
 use rustc_trait_selection::traits::error_reporting::recursive_type_with_infinite_size_error;
+use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -1710,6 +1711,173 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, 
     }
 }
 
+/// Given a `DefId` for an opaque type in return position, find its parent item's return
+/// expressions.
+fn get_owner_return_paths(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> Option<(hir::HirId, ReturnsVisitor<'tcx>)> {
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
+    let id = tcx.hir().get_parent_item(hir_id);
+    tcx.hir()
+        .find(id)
+        .map(|n| (id, n))
+        .and_then(|(hir_id, node)| node.body_id().map(|b| (hir_id, b)))
+        .map(|(hir_id, body_id)| {
+            let body = tcx.hir().body(body_id);
+            let mut visitor = ReturnsVisitor::default();
+            visitor.visit_body(body);
+            (hir_id, visitor)
+        })
+}
+
+/// Emit an error for recursive opaque types.
+///
+/// If this is a return `impl Trait`, find the item's return expressions and point at them. For
+/// direct recursion this is enough, but for indirect recursion also point at the last intermediary
+/// `impl Trait`.
+///
+/// If all the return expressions evaluate to `!`, then we explain that the error will go away
+/// after changing it. This can happen when a user uses `panic!()` or similar as a placeholder.
+fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
+    let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
+
+    let mut label = false;
+    if let Some((hir_id, visitor)) = get_owner_return_paths(tcx, def_id) {
+        let tables = tcx.typeck_tables_of(tcx.hir().local_def_id(hir_id));
+        if visitor
+            .returns
+            .iter()
+            .filter_map(|expr| tables.node_type_opt(expr.hir_id))
+            .all(|ty| matches!(ty.kind, ty::Never))
+        {
+            let spans = visitor
+                .returns
+                .iter()
+                .filter(|expr| tables.node_type_opt(expr.hir_id).is_some())
+                .map(|expr| expr.span)
+                .collect::<Vec<Span>>();
+            let span_len = spans.len();
+            if span_len == 1 {
+                err.span_label(spans[0], "this returned value is of `!` type");
+            } else {
+                let mut multispan: MultiSpan = spans.clone().into();
+                for span in spans {
+                    multispan
+                        .push_span_label(span, "this returned value is of `!` type".to_string());
+                }
+                err.span_note(multispan, "these returned values have a concrete \"never\" type");
+            }
+            err.help("this error will resolve once the item's body returns a concrete type");
+        } else {
+            let mut seen = FxHashSet::default();
+            seen.insert(span);
+            err.span_label(span, "recursive opaque type");
+            label = true;
+            for (sp, ty) in visitor
+                .returns
+                .iter()
+                .filter_map(|e| tables.node_type_opt(e.hir_id).map(|t| (e.span, t)))
+                .filter(|(_, ty)| !matches!(ty.kind, ty::Never))
+            {
+                struct VisitTypes(Vec<DefId>);
+                impl<'tcx> ty::fold::TypeVisitor<'tcx> for VisitTypes {
+                    fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+                        match t.kind {
+                            ty::Opaque(def, _) => {
+                                self.0.push(def);
+                                false
+                            }
+                            _ => t.super_visit_with(self),
+                        }
+                    }
+                }
+                let mut visitor = VisitTypes(vec![]);
+                ty.visit_with(&mut visitor);
+                for def_id in visitor.0 {
+                    let ty_span = tcx.def_span(def_id);
+                    if !seen.contains(&ty_span) {
+                        err.span_label(ty_span, &format!("returning this opaque type `{}`", ty));
+                        seen.insert(ty_span);
+                    }
+                    err.span_label(sp, &format!("returning here with type `{}`", ty));
+                }
+            }
+        }
+    }
+    if !label {
+        err.span_label(span, "cannot resolve opaque type");
+    }
+    err.emit();
+}
+
+/// Emit an error for recursive opaque types in a `let` binding.
+fn binding_opaque_type_cycle_error(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    span: Span,
+    partially_expanded_type: Ty<'tcx>,
+) {
+    let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
+    err.span_label(span, "cannot resolve opaque type");
+    // Find the the owner that declared this `impl Trait` type.
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
+    let mut prev_hir_id = hir_id;
+    let mut hir_id = tcx.hir().get_parent_node(hir_id);
+    while let Some(node) = tcx.hir().find(hir_id) {
+        match node {
+            hir::Node::Local(hir::Local {
+                pat,
+                init: None,
+                ty: Some(ty),
+                source: hir::LocalSource::Normal,
+                ..
+            }) => {
+                err.span_label(pat.span, "this binding might not have a concrete type");
+                err.span_suggestion_verbose(
+                    ty.span.shrink_to_hi(),
+                    "set the binding to a value for a concrete type to be resolved",
+                    " = /* value */".to_string(),
+                    Applicability::HasPlaceholders,
+                );
+            }
+            hir::Node::Local(hir::Local {
+                init: Some(expr),
+                source: hir::LocalSource::Normal,
+                ..
+            }) => {
+                let hir_id = tcx.hir().as_local_hir_id(def_id);
+                let tables =
+                    tcx.typeck_tables_of(tcx.hir().local_def_id(tcx.hir().get_parent_item(hir_id)));
+                if let Some(ty) = tables.node_type_opt(expr.hir_id) {
+                    err.span_label(
+                        expr.span,
+                        &format!(
+                            "this is of type `{}`, which doesn't constrain \
+                             `{}` enough to arrive to a concrete type",
+                            ty, partially_expanded_type
+                        ),
+                    );
+                }
+            }
+            _ => {}
+        }
+        if prev_hir_id == hir_id {
+            break;
+        }
+        prev_hir_id = hir_id;
+        hir_id = tcx.hir().get_parent_node(hir_id);
+    }
+    err.emit();
+}
+
+fn async_opaque_type_cycle_error(tcx: TyCtxt<'tcx>, span: Span) {
+    struct_span_err!(tcx.sess, span, E0733, "recursion in an `async fn` requires boxing")
+        .span_label(span, "recursive `async fn`")
+        .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
+        .emit();
+}
+
 /// Checks that an opaque type does not contain cycles.
 fn check_opaque_for_cycles<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -1720,21 +1888,12 @@ fn check_opaque_for_cycles<'tcx>(
 ) {
     if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id.to_def_id(), substs)
     {
-        if let hir::OpaqueTyOrigin::AsyncFn = origin {
-            struct_span_err!(tcx.sess, span, E0733, "recursion in an `async fn` requires boxing",)
-                .span_label(span, "recursive `async fn`")
-                .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
-                .emit();
-        } else {
-            let mut err =
-                struct_span_err!(tcx.sess, span, E0720, "opaque type expands to a recursive type",);
-            err.span_label(span, "expands to a recursive type");
-            if let ty::Opaque(..) = partially_expanded_type.kind {
-                err.note("type resolves to itself");
-            } else {
-                err.note(&format!("expanded type is `{}`", partially_expanded_type));
+        match origin {
+            hir::OpaqueTyOrigin::AsyncFn => async_opaque_type_cycle_error(tcx, span),
+            hir::OpaqueTyOrigin::Binding => {
+                binding_opaque_type_cycle_error(tcx, def_id, span, partially_expanded_type)
             }
-            err.emit();
+            _ => opaque_type_cycle_error(tcx, def_id, span),
         }
     }
 }
