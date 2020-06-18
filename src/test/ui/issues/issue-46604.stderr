@@ -1,4 +1,4 @@
-error[E0019]: mutable references are not allowed in statics
+error[E0764]: mutable references are not allowed in statics
   --> $DIR/issue-46604.rs:1:25
    |
 LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
@@ -12,5 +12,5 @@ LL |     buf[0]=2;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0019, E0594.
-For more information about an error, try `rustc --explain E0019`.
+Some errors have detailed explanations: E0594, E0764.
+For more information about an error, try `rustc --explain E0594`.

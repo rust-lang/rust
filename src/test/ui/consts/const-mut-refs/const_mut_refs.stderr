@@ -1,16 +1,16 @@
-error[E0019]: mutable references are not allowed in constants
+error[E0764]: mutable references are not allowed in constants
   --> $DIR/const_mut_refs.rs:31:17
    |
 LL |     let _: [(); foo().bar()] = [(); 1];
    |                 ^^^^^ `&mut` is only allowed in `const fn`
 
-error[E0019]: mutable references are not allowed in constants
+error[E0764]: mutable references are not allowed in constants
   --> $DIR/const_mut_refs.rs:33:21
    |
 LL |     let _: [(); baz(&mut foo())] = [(); 2];
    |                     ^^^^^^^^^^ `&mut` is only allowed in `const fn`
 
-error[E0019]: mutable references are not allowed in constants
+error[E0764]: mutable references are not allowed in constants
   --> $DIR/const_mut_refs.rs:35:22
    |
 LL |     let _: [(); bazz(&mut foo())] = [(); 3];
@@ -18,4 +18,4 @@ LL |     let _: [(); bazz(&mut foo())] = [(); 3];
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0019`.
+For more information about this error, try `rustc --explain E0764`.

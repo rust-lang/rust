@@ -1,4 +1,4 @@
-error[E0019]: mutable references are not allowed in constants
+error[E0764]: mutable references are not allowed in constants
   --> $DIR/projection_qualif.rs:10:27
    |
 LL |         let b: *mut u32 = &mut a;
@@ -23,5 +23,5 @@ LL |         unsafe { *b = 5; }
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0019, E0658.
+Some errors have detailed explanations: E0019, E0658, E0764.
 For more information about an error, try `rustc --explain E0019`.

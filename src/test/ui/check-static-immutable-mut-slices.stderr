@@ -1,4 +1,4 @@
-error[E0019]: mutable references are not allowed in statics
+error[E0764]: mutable references are not allowed in statics
   --> $DIR/check-static-immutable-mut-slices.rs:3:37
    |
 LL | static TEST: &'static mut [isize] = &mut [];
@@ -6,4 +6,4 @@ LL | static TEST: &'static mut [isize] = &mut [];
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0019`.
+For more information about this error, try `rustc --explain E0764`.

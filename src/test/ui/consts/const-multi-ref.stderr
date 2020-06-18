@@ -1,4 +1,4 @@
-error[E0019]: mutable references are not allowed in constants
+error[E0764]: mutable references are not allowed in constants
   --> $DIR/const-multi-ref.rs:6:13
    |
 LL |     let p = &mut a;
@@ -12,5 +12,5 @@ LL |     let p = &a;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0019, E0492.
-For more information about an error, try `rustc --explain E0019`.
+Some errors have detailed explanations: E0492, E0764.
+For more information about an error, try `rustc --explain E0492`.

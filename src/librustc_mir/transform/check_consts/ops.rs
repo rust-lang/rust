@@ -227,7 +227,7 @@ impl NonConstOp for MutBorrow {
             struct_span_err!(
                 ccx.tcx.sess,
                 span,
-                E0019,
+                E0764,
                 "mutable references are not allowed in {}s",
                 ccx.const_kind(),
             )
