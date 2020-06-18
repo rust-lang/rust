@@ -312,20 +312,16 @@ impl PatStack {
         Self(v)
     }
 
-    fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    fn head(&self) -> PatIdOrWild {
-        self.0[0]
-    }
-
     fn get_head(&self) -> Option<PatIdOrWild> {
         self.0.first().copied()
     }
 
+    fn tail(&self) -> &[PatIdOrWild] {
+        self.0.get(1..).unwrap_or(&[])
+    }
+
     fn to_tail(&self) -> PatStack {
-        Self::from_slice(&self.0[1..])
+        Self::from_slice(self.tail())
     }
 
     fn replace_head_with<I, T>(&self, pats: I) -> PatStack
@@ -347,7 +343,7 @@ impl PatStack {
     ///
     /// See the module docs and the associated documentation in rustc for details.
     fn specialize_wildcard(&self, cx: &MatchCheckCtx) -> Option<PatStack> {
-        if matches!(self.head().as_pat(cx), Pat::Wild) {
+        if matches!(self.get_head()?.as_pat(cx), Pat::Wild) {
             Some(self.to_tail())
         } else {
             None
@@ -362,11 +358,12 @@ impl PatStack {
         cx: &MatchCheckCtx,
         constructor: &Constructor,
     ) -> MatchCheckResult<Option<PatStack>> {
-        if self.is_empty() {
-            return Ok(None);
-        }
+        let head = match self.get_head() {
+            Some(head) => head,
+            None => return Ok(None),
+        };
 
-        let head_pat = self.head().as_pat(cx);
+        let head_pat = head.as_pat(cx);
         let result = match (head_pat, constructor) {
             (Pat::Tuple { args: ref pat_ids, ellipsis }, Constructor::Tuple { arity: _ }) => {
                 if ellipsis.is_some() {
@@ -394,7 +391,7 @@ impl PatStack {
             (Pat::Wild, constructor) => Some(self.expand_wildcard(cx, constructor)?),
             (Pat::Path(_), Constructor::Enum(constructor)) => {
                 // unit enum variants become `Pat::Path`
-                let pat_id = self.head().as_id().expect("we know this isn't a wild");
+                let pat_id = head.as_id().expect("we know this isn't a wild");
                 if !enum_variant_matches(cx, pat_id, *constructor) {
                     None
                 } else {
@@ -405,7 +402,7 @@ impl PatStack {
                 Pat::TupleStruct { args: ref pat_ids, ellipsis, .. },
                 Constructor::Enum(enum_constructor),
             ) => {
-                let pat_id = self.head().as_id().expect("we know this isn't a wild");
+                let pat_id = head.as_id().expect("we know this isn't a wild");
                 if !enum_variant_matches(cx, pat_id, *enum_constructor) {
                     None
                 } else {
@@ -445,7 +442,7 @@ impl PatStack {
                 }
             }
             (Pat::Record { args: ref arg_patterns, .. }, Constructor::Enum(e)) => {
-                let pat_id = self.head().as_id().expect("we know this isn't a wild");
+                let pat_id = head.as_id().expect("we know this isn't a wild");
                 if !enum_variant_matches(cx, pat_id, *e) {
                     None
                 } else {
@@ -491,7 +488,7 @@ impl PatStack {
     ) -> MatchCheckResult<PatStack> {
         assert_eq!(
             Pat::Wild,
-            self.head().as_pat(cx),
+            self.get_head().expect("expand_wildcard called on empty PatStack").as_pat(cx),
             "expand_wildcard must only be called on PatStack with wild at head",
         );
 
@@ -509,7 +506,6 @@ impl PatStack {
     }
 }
 
-#[derive(Debug)]
 /// A collection of PatStack.
 ///
 /// This type is modeled from the struct of the same name in `rustc`.
@@ -623,13 +619,16 @@ pub(crate) fn is_useful(
         _ => (),
     }
 
-    if v.is_empty() {
-        let result = if matrix.is_empty() { Usefulness::Useful } else { Usefulness::NotUseful };
+    let head = match v.get_head() {
+        Some(head) => head,
+        None => {
+            let result = if matrix.is_empty() { Usefulness::Useful } else { Usefulness::NotUseful };
 
-        return Ok(result);
-    }
+            return Ok(result);
+        }
+    };
 
-    if let Pat::Or(pat_ids) = v.head().as_pat(cx) {
+    if let Pat::Or(pat_ids) = head.as_pat(cx) {
         let mut found_unimplemented = false;
         let any_useful = pat_ids.iter().any(|&pat_id| {
             let v = PatStack::from_pattern(pat_id);
@@ -653,7 +652,7 @@ pub(crate) fn is_useful(
         };
     }
 
-    if let Some(constructor) = pat_constructor(cx, v.head())? {
+    if let Some(constructor) = pat_constructor(cx, head)? {
         let matrix = matrix.specialize_constructor(&cx, &constructor)?;
         let v = v
             .specialize_constructor(&cx, &constructor)?
@@ -854,10 +853,10 @@ mod tests {
     }
 
     pub(super) fn check_no_diagnostic(ra_fixture: &str) {
-        let diagnostic_count =
-            TestDB::with_single_file(ra_fixture).0.diagnostic::<MissingMatchArms>().1;
+        let (s, diagnostic_count) =
+            TestDB::with_single_file(ra_fixture).0.diagnostic::<MissingMatchArms>();
 
-        assert_eq!(0, diagnostic_count, "expected no diagnostic, found one");
+        assert_eq!(0, diagnostic_count, "expected no diagnostic, found one: {}", s);
     }
 
     #[test]
@@ -2009,6 +2008,28 @@ mod tests {
                 match (a, b) {
                     (Category::Zero | Category::Infinity, _) => {}
                     (_, Category::Zero | Category::Infinity) => {}
+                }
+            }
+        ",
+        );
+    }
+
+    #[test]
+    fn or_pattern_panic_2() {
+        // FIXME: This is a false positive, but the code used to cause a panic in the match checker,
+        // so this acts as a regression test for that.
+        check_diagnostic(
+            r"
+            pub enum Category {
+                Infinity,
+                Zero,
+            }
+
+            fn panic(a: Category, b: Category) {
+                match (a, b) {
+                    (Category::Infinity, Category::Infinity) | (Category::Zero, Category::Zero) => {}
+
+                    (Category::Infinity | Category::Zero, _) => {}
                 }
             }
         ",
