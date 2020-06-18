@@ -5,13 +5,12 @@ trait Foo {}
 impl<'a> Foo for &'a [u8] {}
 
 fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
-    let x: Box<dyn Foo + 'static> = Box::new(v);
-    //~^ ERROR explicit lifetime required in the type of `v` [E0621]
+    let x: Box<dyn Foo + 'static> = Box::new(v); //~ ERROR cannot infer an appropriate lifetime
     x
 }
 
 fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
-    Box::new(v) //~ ERROR explicit lifetime required in the type of `v` [E0621]
+    Box::new(v) //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn c(v: &[u8]) -> Box<dyn Foo> {
