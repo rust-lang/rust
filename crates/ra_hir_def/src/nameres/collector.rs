@@ -825,7 +825,10 @@ impl ModCollector<'_, '_> {
         let modules = &mut self.def_collector.def_map.modules;
         let res = modules.alloc(ModuleData::default());
         modules[res].parent = Some(self.module_id);
-        modules[res].origin = ModuleOrigin::not_sure_file(definition, declaration);
+        modules[res].origin = match definition {
+            None => ModuleOrigin::Inline { definition: declaration },
+            Some(definition) => ModuleOrigin::File { declaration, definition },
+        };
         for (name, mac) in modules[self.module_id].scope.collect_legacy_macros() {
             modules[res].scope.define_legacy_macro(name, mac)
         }

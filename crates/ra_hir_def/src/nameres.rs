@@ -119,13 +119,6 @@ impl Default for ModuleOrigin {
 }
 
 impl ModuleOrigin {
-    pub(crate) fn not_sure_file(file: Option<FileId>, declaration: AstId<ast::Module>) -> Self {
-        match file {
-            None => ModuleOrigin::Inline { definition: declaration },
-            Some(definition) => ModuleOrigin::File { declaration, definition },
-        }
-    }
-
     fn declaration(&self) -> Option<AstId<ast::Module>> {
         match self {
             ModuleOrigin::File { declaration: module, .. }
