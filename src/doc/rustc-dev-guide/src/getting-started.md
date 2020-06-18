@@ -323,7 +323,7 @@ feel comfortable jumping straight into the large `rust-lang/rust` codebase.
 The following tasks are doable without much background knowledge but are
 incredibly helpful:
 
-- [ICE-breakers Cleanup crew][iceb]: find minimal reproductions of ICEs, bisect
+- [Cleanup crew][iceb]: find minimal reproductions of ICEs, bisect
   regressions, etc. This is a way of helping that saves a ton of time for
   others to fix an error later.
 - Writing documentation: if you are feeling a bit more intrepid, you could try
@@ -357,7 +357,7 @@ below][break]) for some PRs.
 [break]: #breaking-changes
 
 When the PR is ready to be merged, the reviewer will issue a command to
-`@bors`, the CI bot. Usually, this is `@bors r+` or `@bors r=@user` to approve
+`@bors`, the CI bot. Usually, this is `@bors r+` or `@bors r=user` to approve
 a PR (there are few other commands, but they are less relevant here). This puts
 the PR in [bors's queue][bors] to be tested and merged. Be patient; this can take a
 while and the queue can sometimes be long. PRs are never merged by hand.
@@ -410,7 +410,7 @@ approval of the relevant teams.
 
 After that, the feature gate can be removed and the feature turned on for all users.
 
-[For more details on this process, see this chapter.](./implementing_new_features.md)
+[For more details on this process, see this chapter on implementing new features.](./implementing_new_features.md)
 
 ### Breaking Changes
 
@@ -428,7 +428,7 @@ discuss the issue and either accept, reject, or request changes on the PR.
 
 If the scale of breakage is large, a deprecation warning may be needed. This is
 a warning that the compiler will display to users whose code will break in the
-future.  After some time, an FCP can be used to move forward with the actual
+future. After some time, an FCP can be used to move forward with the actual
 breakage.
 
 If the scale of breakage is unknown, a team member or contributor may request a
@@ -449,7 +449,7 @@ compiler (as opposed to a full RFC or a design meeting with the team).
 Example of things that might require MCPs include major refactorings, changes
 to important types, or important changes to how the compiler does something.
 
-**When in doubt, ask on [zulip][z]. We would hate for you to put a lot of work
+**When in doubt, ask on [zulip][z]. It would be a shame to put a lot of work
 into a PR that ends up not getting merged!**
 
 ### Performance
