@@ -11,7 +11,7 @@
 //! In order to make an intrinsic usable at compile-time, one needs to copy the implementation
 //! from https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics.rs to
 //! `librustc_mir/interpret/intrinsics.rs` and add a
-//! `#[rustc_const_unstable(feature = "foo", issue = "01234")]` to the intrinsic.
+//! `#[rustc_const_unstable(feature = "foo2", issue = "01234")]` to the intrinsic.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
 //! the intrinsic's attribute must be `rustc_const_stable`, too. Such a change should not be done
@@ -1012,7 +1012,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::any::type_name`](../../std/any/fn.type_name.html)
-    #[rustc_const_unstable(feature = "const_type_name", issue = "none")]
+    #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This
@@ -1021,7 +1021,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::any::TypeId::of`](../../std/any/struct.TypeId.html#method.of)
-    #[rustc_const_unstable(feature = "const_type_id", issue = "none")]
+    #[rustc_const_unstable(feature = "const_type_id", issue = "41875")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
@@ -1931,7 +1931,7 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "none")]
+    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// Internal hook used by Miri to implement unwinding.
