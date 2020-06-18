@@ -13,7 +13,7 @@
 #![feature(no_sanitize)]
 
 // ASAN-LABEL: define void @test
-// ASAN:         tail call fastcc void @random_inline
+// ASAN:         call {{.*}} @random_inline
 // ASAN:       }
 //
 // LSAN-LABEL: define void @test

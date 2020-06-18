@@ -11,11 +11,21 @@ mod private {
     #[export_name = "BAR"]
     static BAR: u32 = 3;
 
-    // CHECK: void @foo()
+    // CHECK: void @a()
     #[no_mangle]
-    pub extern fn foo() {}
+    pub extern fn a() {}
 
-    // CHECK: void @bar()
-    #[export_name = "bar"]
-    extern fn bar() {}
+    // CHECK: void @b()
+    #[export_name = "b"]
+    extern fn b() {}
+
+    // CHECK: void @c()
+    #[export_name = "c"]
+    #[inline]
+    extern fn c() {}
+
+    // CHECK: void @d()
+    #[export_name = "d"]
+    #[inline(always)]
+    extern fn d() {}
 }
