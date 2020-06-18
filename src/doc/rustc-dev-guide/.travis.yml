@@ -14,6 +14,8 @@ install:
 - cargo install mdbook --version 0.3.7
 - cargo install mdbook-linkcheck --version 0.5.0
 script:
+- git checkout -b ci
+- git rebase origin/master
 - git log --oneline | head -n 10
 - mdbook build
 notifications:
@@ -30,7 +32,7 @@ deploy:
   fqdn: rustc-dev-guide.rust-lang.org
   on:
     branch: master
-    
+
 # Only build master branch on push
 branches:
   only:
