@@ -68,10 +68,7 @@ trait DefIdVisitor<'tcx> {
     }
 }
 
-struct DefIdVisitorSkeleton<'v, 'tcx, V>
-where
-    V: DefIdVisitor<'tcx> + ?Sized,
-{
+struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
     visited_opaque_tys: FxHashSet<DefId>,
     dummy: PhantomData<TyCtxt<'tcx>>,

@@ -1217,6 +1217,16 @@ pub enum PredicateKind<'tcx> {
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
 }
 
+impl<'tcx> PredicateKint<'tcx> {
+    /// Skips `PredicateKint::ForAll`.
+    pub fn ignore_qualifiers(&'tcx self) -> Binder<&'tcx PredicateKint<'tcx>> {
+        match self {
+            &PredicateKint::ForAll(binder) => binder,
+            pred => Binder::dummy(pred),
+        }
+    }
+}
+
 /// The crate outlives map is computed during typeck and contains the
 /// outlives of every item in the local crate. You should not use it
 /// directly, because to do so will make your pass dependent on the
@@ -1513,34 +1523,37 @@ impl ToPredicate<'tcx> for PredicateKint<'tcx> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        ty::PredicateKind::Trait(
-            ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.value }),
-            self.constness,
-        )
-        .to_predicate(tcx)
-    }
-}
-
-impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&TraitRef<'tcx>> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        ty::PredicateKind::Trait(
-            ty::Binder::dummy(ty::TraitPredicate { trait_ref: *self.value }),
-            self.constness,
-        )
-        .to_predicate(tcx)
+        ty::PredicateKint::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness)
+            .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
-            .to_predicate(tcx)
+        if let Some(trait_ref) = self.value.no_bound_vars() {
+            ty::PredicateKint::Trait(ty::TraitPredicate { trait_ref }, self.constness)
+        } else {
+            ty::PredicateKint::ForAll(self.value.map_bound(|trait_ref| {
+                tcx.intern_predicate_kint(ty::PredicateKint::Trait(
+                    ty::TraitPredicate { trait_ref },
+                    self.constness,
+                ))
+            }))
+        }
+        .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::RegionOutlives(self).to_predicate(tcx)
+        if let Some(outlives) = self.no_bound_vars() {
+            PredicateKint::RegionOutlives(outlives)
+        } else {
+            ty::PredicateKint::ForAll(self.map_bound(|outlives| {
+                tcx.intern_predicate_kint(PredicateKint::RegionOutlives(outlives))
+            }))
+        }
+        .to_predicate(tcx)
     }
 }
 

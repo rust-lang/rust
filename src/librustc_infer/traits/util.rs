@@ -3,7 +3,7 @@ use smallvec::smallvec;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::outlives::Component;
-use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, TyCtxt, WithConstness};
 use rustc_span::Span;
 
 pub fn anonymize_predicate<'tcx>(
@@ -330,8 +330,8 @@ impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToT
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(obligation) = self.base_iterator.next() {
-            if let ty::PredicateKind::Trait(data, _) = obligation.predicate.kind() {
-                return Some(data.to_poly_trait_ref());
+            if let Some(data) = obligation.predicate.to_opt_poly_trait_ref() {
+                return Some(data);
             }
         }
         None

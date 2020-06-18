@@ -28,7 +28,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPredicate, Ty,
-    TyCtxt, UserType, UserTypeAnnotationIndex,
+    TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness,
 };
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
@@ -2022,18 +2022,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         traits::ObligationCauseCode::RepeatVec(should_suggest),
                                     ),
                                     self.param_env,
-                                    ty::PredicateKind::Trait(
-                                        ty::Binder::bind(ty::TraitPredicate {
-                                            trait_ref: ty::TraitRef::new(
-                                                self.tcx().require_lang_item(
-                                                    CopyTraitLangItem,
-                                                    Some(self.last_span),
-                                                ),
-                                                tcx.mk_substs_trait(ty, &[]),
-                                            ),
-                                        }),
-                                        hir::Constness::NotConst,
-                                    )
+                                    ty::Binder::bind(ty::TraitRef::new(
+                                        self.tcx().require_lang_item(
+                                            CopyTraitLangItem,
+                                            Some(self.last_span),
+                                        ),
+                                        tcx.mk_substs_trait(ty, &[]),
+                                    ))
+                                    .without_const()
                                     .to_predicate(self.tcx()),
                                 ),
                                 &traits::SelectionError::Unimplemented,

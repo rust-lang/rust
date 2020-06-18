@@ -1202,13 +1202,15 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::fold::TypeFoldable;
-        use rustc_middle::ty::PredicateKind::*;
+        use rustc_middle::ty::PredicateKint::*;
 
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let predicates = cx.tcx.predicates_of(def_id);
             for &(predicate, span) in predicates.predicates {
-                let predicate_kind_name = match predicate.kind() {
+                // We don't actually look inside of the predicate,
+                // so it is safe to skip this binder here.
+                let predicate_kind_name = match predicate.kint(cx.tcx).ignore_qualifiers().skip_binder() {
                     Trait(..) => "Trait",
                     TypeOutlives(..) |
                     RegionOutlives(..) => "Lifetime",
@@ -1223,6 +1225,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Subtype(..) |
                     ConstEvaluatable(..) |
                     ConstEquate(..) => continue,
+                    ForAll(_) => bug!("unexpected predicate: {:?}", predicate)
                 };
                 if predicate.is_global() {
                     cx.struct_span_lint(TRIVIAL_BOUNDS, span, |lint| {
