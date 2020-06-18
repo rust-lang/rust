@@ -37,7 +37,7 @@ fn main() {
         TyKind::Bound(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Placeholder(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Infer(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Error => (), //~ ERROR usage of `ty::TyKind::<kind>`
+        TyKind::Error(_) => (), //~ ERROR usage of `ty::TyKind::<kind>`
     }
 
     if let ty::Int(int_ty) = kind {}

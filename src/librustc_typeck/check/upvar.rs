@@ -91,7 +91,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (closure_def_id, substs) = match ty.kind {
             ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
             ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
-            ty::Error => {
+            ty::Error(_) => {
                 // #51714: skip analysis when we have already encountered type errors
                 return;
             }

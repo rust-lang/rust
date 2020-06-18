@@ -135,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Generator(..)
             | ty::Adt(..)
             | ty::Never
-            | ty::Error => {
+            | ty::Error(_) => {
                 self.tcx
                     .sess
                     .delay_span_bug(span, &format!("`{:?}` should be sized but is not?", t));

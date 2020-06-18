@@ -46,7 +46,7 @@ use rustc_session::lint::{Level, Lint};
 use rustc_session::Session;
 use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 
@@ -145,7 +145,6 @@ pub struct CommonTypes<'tcx> {
     pub f64: Ty<'tcx>,
     pub never: Ty<'tcx>,
     pub self_param: Ty<'tcx>,
-    pub err: Ty<'tcx>,
 
     /// Dummy type used for the `Self` of a `TraitRef` created for converting
     /// a trait object, and which gets removed in `ExistentialTraitRef`.
@@ -803,7 +802,6 @@ impl<'tcx> CommonTypes<'tcx> {
             bool: mk(Bool),
             char: mk(Char),
             never: mk(Never),
-            err: mk(Error),
             isize: mk(Int(ast::IntTy::Isize)),
             i8: mk(Int(ast::IntTy::I8)),
             i16: mk(Int(ast::IntTy::I16)),
@@ -1140,6 +1138,31 @@ impl<'tcx> TyCtxt<'tcx> {
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames.clone()),
         }
+    }
+
+    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
+    #[track_caller]
+    pub fn ty_error(self) -> Ty<'tcx> {
+        self.ty_error_with_message(DUMMY_SP, "TyKind::Error constructed but no error reported")
+    }
+
+    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg to
+    /// ensure it gets used.
+    #[track_caller]
+    pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
+        self.sess.delay_span_bug(span, msg);
+        self.mk_ty(Error(super::sty::DelaySpanBugEmitted(())))
+    }
+
+    /// Like `err` but for constants.
+    #[track_caller]
+    pub fn const_error(self, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
+        self.sess
+            .delay_span_bug(DUMMY_SP, "ty::ConstKind::Error constructed but no error reported.");
+        self.mk_const(ty::Const {
+            val: ty::ConstKind::Error(super::sty::DelaySpanBugEmitted(())),
+            ty,
+        })
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {
@@ -1845,7 +1868,7 @@ macro_rules! sty_debug_print {
                     let variant = match t.kind {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
-                        ty::Error => /* unimportant */ continue,
+                        ty::Error(_) => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
                     let lt = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);

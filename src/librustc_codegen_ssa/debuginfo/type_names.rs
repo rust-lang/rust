@@ -195,7 +195,7 @@ pub fn push_debuginfo_type_name<'tcx>(
                 tcx.def_key(def_id).disambiguated_data.disambiguator
             ));
         }
-        ty::Error
+        ty::Error(_)
         | ty::Infer(_)
         | ty::Placeholder(..)
         | ty::Projection(..)

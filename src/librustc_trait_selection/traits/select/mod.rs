@@ -1569,7 +1569,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
-            | ty::Error => {
+            | ty::Error(_) => {
                 // safe for everything
                 Where(ty::Binder::dummy(Vec::new()))
             }
@@ -1613,7 +1613,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Infer(ty::FloatVar(_))
             | ty::FnDef(..)
             | ty::FnPtr(_)
-            | ty::Error => Where(ty::Binder::dummy(Vec::new())),
+            | ty::Error(_) => Where(ty::Binder::dummy(Vec::new())),
 
             ty::Uint(_)
             | ty::Int(_)
@@ -1690,7 +1690,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::FnDef(..)
             | ty::FnPtr(_)
             | ty::Str
-            | ty::Error
+            | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never
             | ty::Char => Vec::new(),

@@ -127,7 +127,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 // Some error in the
                                 // owner fn prevented us from populating
                                 // the `concrete_opaque_types` table.
-                                tcx.types.err
+                                tcx.ty_error()
                             } else {
                                 // We failed to resolve the opaque type or it
                                 // resolves to itself. Return the non-revealed
@@ -217,11 +217,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         })
                         | Node::TraitRef(&TraitRef { path, .. }) => &*path,
                         _ => {
-                            tcx.sess.delay_span_bug(
+                            return tcx.ty_error_with_message(
                                 DUMMY_SP,
                                 &format!("unexpected const parent path {:?}", parent_node),
                             );
-                            return tcx.types.err;
                         }
                     };
 
@@ -254,14 +253,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         }
                         Res::Def(_, def_id) => tcx.generics_of(def_id),
                         res => {
-                            tcx.sess.delay_span_bug(
+                            return tcx.ty_error_with_message(
                                 DUMMY_SP,
                                 &format!(
                                     "unexpected anon const res {:?} in path: {:?}",
                                     res, path,
                                 ),
-                            );
-                            return tcx.types.err;
+                                );
                         }
                     };
 
@@ -283,24 +281,21 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     } else {
                         // This is no generic parameter associated with the arg. This is
                         // probably from an extra arg where one is not needed.
-                        tcx.sess.delay_span_bug(
+                        tcx.ty_error_with_message(
                             DUMMY_SP,
                             &format!(
-                                "missing generic parameter for `AnonConst`, parent: {:?}, res: {:?}",
+                                "missing generic parameter for `AnonConst`, \
+                                 parent: {:?}, res: {:?}",
                                 parent_node, res
                             ),
-                        );
-                        tcx.types.err
+                        )
                     }
                 }
 
-                x => {
-                    tcx.sess.delay_span_bug(
-                        DUMMY_SP,
-                        &format!("unexpected const parent in type_of_def_id(): {:?}", x),
-                    );
-                    tcx.types.err
-                }
+                x => tcx.ty_error_with_message(
+                    DUMMY_SP,
+                    &format!("unexpected const parent in type_of_def_id(): {:?}", x),
+                ),
             }
         }
 
@@ -568,7 +563,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         None => {
             let span = tcx.def_span(def_id);
             tcx.sess.span_err(span, "could not find defining uses");
-            tcx.types.err
+            tcx.ty_error()
         }
     }
 }
@@ -605,7 +600,7 @@ fn let_position_impl_trait_type(tcx: TyCtxt<'_>, opaque_ty_id: LocalDefId) -> Ty
             if let Some(ErrorReported) = owner_tables.tainted_by_errors {
                 // Some error in the owner fn prevented us from populating the
                 // `concrete_opaque_types` table.
-                tcx.types.err
+                tcx.ty_error()
             } else {
                 // We failed to resolve the opaque type or it resolves to
                 // itself. Return the non-revealed type, which should result in
@@ -655,7 +650,7 @@ fn infer_placeholder_type(
         }
         None => {
             let mut diag = bad_placeholder_type(tcx, vec![span]);
-            if ty != tcx.types.err {
+            if !matches!(ty.kind, ty::Error(_)) {
                 diag.span_suggestion(
                     span,
                     "replace `_` with the correct type",

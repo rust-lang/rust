@@ -169,7 +169,7 @@ LL |         TyKind::Infer(..) => (),
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:40:9
    |
-LL |         TyKind::Error => (),
+LL |         TyKind::Error(_) => (),
    |         ^^^^^^ help: try using ty::<kind> directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
