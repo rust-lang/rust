@@ -2228,6 +2228,14 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     }
 }
 
+#[stable(feature = "char_to_string_specialization", since = "1.46.0")]
+impl ToString for char {
+    #[inline]
+    fn to_string(&self) -> String {
+        String::from(self.encode_utf8(&mut [0; 4]))
+    }
+}
+
 #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
 impl ToString for str {
     #[inline]
