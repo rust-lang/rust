@@ -556,6 +556,66 @@ impl<K, V, S> HashMap<K, V, S> {
         }
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` such that `f(&k,&mut v)` returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
+    /// map.retain(|&k, _| k % 2 == 0);
+    /// assert_eq!(map.len(), 4);
+    /// ```
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        // Here we only use `iter` as a temporary, preventing use-after-free
+        unsafe {
+            for item in self.table.iter() {
+                let &mut (ref key, ref mut value) = item.as_mut();
+                if !f(key, value) {
+                    // Erase the element from the table first since drop might panic.
+                    self.table.erase_no_drop(&item);
+                    item.drop();
+                }
+            }
+        }
+    }
+
+    /// Drains elements which are false under the given predicate,
+    /// and returns an iterator over the removed items.
+    ///
+    /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `false` out
+    /// into another iterator.
+    ///
+    /// When the returned DrainedFilter is dropped, the elements that don't satisfy
+    /// the predicate are dropped from the table.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
+    /// let drained = map.drain_filter(|&k, _| k % 2 == 0);
+    /// assert_eq!(drained.count(), 4);
+    /// assert_eq!(map.len(), 4);
+    /// ```
+    pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F>
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        DrainFilter {
+            f,
+            iter: unsafe { self.table.iter() },
+            table: &mut self.table,
+        }
+    }
+
     /// Clears the map, removing all key-value pairs. Keeps the allocated memory
     /// for reuse.
     ///
@@ -980,65 +1040,6 @@ where
             } else {
                 None
             }
-        }
-    }
-
-    /// Retains only the elements specified by the predicate.
-    ///
-    /// In other words, remove all pairs `(k, v)` such that `f(&k,&mut v)` returns `false`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
-    /// map.retain(|&k, _| k % 2 == 0);
-    /// assert_eq!(map.len(), 4);
-    /// ```
-    pub fn retain<F>(&mut self, mut f: F)
-    where
-        F: FnMut(&K, &mut V) -> bool,
-    {
-        // Here we only use `iter` as a temporary, preventing use-after-free
-        unsafe {
-            for item in self.table.iter() {
-                let &mut (ref key, ref mut value) = item.as_mut();
-                if !f(key, value) {
-                    // Erase the element from the table first since drop might panic.
-                    self.table.erase_no_drop(&item);
-                    item.drop();
-                }
-            }
-        }
-    }
-    /// Drains elements which are false under the given predicate,
-    /// and returns an iterator over the removed items.
-    ///
-    /// In other words, move all pairs `(k, v)` such that `f(&k,&mut v)` returns `false` out
-    /// into another iterator.
-    ///
-    /// When the returned DrainedFilter is dropped, the elements that don't satisfy
-    /// the predicate are dropped from the table.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashMap;
-    ///
-    /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
-    /// let drained = map.drain_filter(|&k, _| k % 2 == 0);
-    /// assert_eq!(drained.count(), 4);
-    /// assert_eq!(map.len(), 4);
-    /// ```
-    pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F>
-    where
-        F: FnMut(&K, &mut V) -> bool,
-    {
-        DrainFilter {
-            f,
-            iter: unsafe { self.table.iter() },
-            table: &mut self.table,
         }
     }
 }
