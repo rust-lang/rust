@@ -468,8 +468,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         item_name,
                                     ),
                                     vec![
-                                        (expr_span.shrink_to_lo(), '('.to_string()),
-                                        (expr_span.shrink_to_hi(), ')'.to_string()),
+                                        (expr_span.shrink_to_lo(), "(".to_string()),
+                                        (expr_span.shrink_to_hi(), ")".to_string()),
                                     ],
                                     Applicability::MachineApplicable,
                                 );

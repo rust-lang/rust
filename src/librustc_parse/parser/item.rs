@@ -1403,7 +1403,7 @@ impl<'a> Parser<'a> {
             };
             err.multipart_suggestion(
                 "change the delimiters to curly braces",
-                vec![(open, "{".to_string()), (close, '}'.to_string())],
+                vec![(open, "{".to_string()), (close, "}".to_string())],
                 Applicability::MaybeIncorrect,
             );
         } else {
@@ -1417,7 +1417,7 @@ impl<'a> Parser<'a> {
         err.span_suggestion(
             span.shrink_to_hi(),
             "add a semicolon",
-            ';'.to_string(),
+            ";".to_string(),
             Applicability::MaybeIncorrect,
         );
         err.emit();

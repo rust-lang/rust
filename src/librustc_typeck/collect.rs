@@ -464,7 +464,7 @@ fn get_new_lifetime_name<'tcx>(
 
     let a_to_z_repeat_n = |n| {
         (b'a'..=b'z').map(move |c| {
-            let mut s = '\''.to_string();
+            let mut s = "'".to_string();
             s.extend(std::iter::repeat(char::from(c)).take(n));
             s
         })
