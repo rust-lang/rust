@@ -19,7 +19,7 @@
         test,
         core_intrinsics,
         dropck_eyepatch,
-        specialization,
+        min_specialization,
         extend_one,
     )
 )]
