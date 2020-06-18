@@ -85,17 +85,17 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CratePredica
                 |(ty::OutlivesPredicate(kind1, region2), &span)| {
                     match kind1.unpack() {
                         GenericArgKind::Type(ty1) => Some((
-                            ty::PredicateKind::TypeOutlives(ty::Binder::bind(
-                                ty::OutlivesPredicate(ty1, region2),
-                            ))
-                            .to_predicate(tcx),
+                            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty1, region2))
+                                .to_predicate(tcx)
+                                .potentially_qualified(tcx, ty::PredicateKind::ForAll),
                             span,
                         )),
                         GenericArgKind::Lifetime(region1) => Some((
-                            ty::PredicateKind::RegionOutlives(ty::Binder::bind(
-                                ty::OutlivesPredicate(region1, region2),
+                            ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
+                                region1, region2,
                             ))
-                            .to_predicate(tcx),
+                            .to_predicate(tcx)
+                            .potentially_qualified(tcx, ty::PredicateKind::ForAll),
                             span,
                         )),
                         GenericArgKind::Const(_) => {

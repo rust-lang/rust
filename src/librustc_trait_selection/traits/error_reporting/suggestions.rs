@@ -1299,12 +1299,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // the type. The last generator (`outer_generator` below) has information about where the
         // bound was introduced. At least one generator should be present for this diagnostic to be
         // modified.
-        let (mut trait_ref, mut target_ty) = match obligation.predicate.kind() {
-            ty::PredicateKind::Trait(p, _) => {
-                (Some(p.skip_binder().trait_ref), Some(p.skip_binder().self_ty()))
-            }
-            _ => (None, None),
-        };
+        let (mut trait_ref, mut target_ty) =
+            match obligation.predicate.ignore_qualifiers(self.tcx).skip_binder().kind() {
+                ty::PredicateKind::Trait(p, _) => (Some(p.trait_ref), Some(p.self_ty())),
+                _ => (None, None),
+            };
         let mut generator = None;
         let mut outer_generator = None;
         let mut next_code = Some(&obligation.cause.code);

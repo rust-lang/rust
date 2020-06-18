@@ -29,9 +29,12 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
 
             // process predicates and convert to `RequiredPredicates` entry, see below
             for &(predicate, span) in predicates.predicates {
-                match predicate.kind() {
+                // TODO: forall
+                match predicate.ignore_qualifiers(tcx).skip_binder().kind() {
+                    ty::PredicateKind::ForAll(_) => bug!("unepected predicate: {:?}", predicate),
+
                     ty::PredicateKind::TypeOutlives(predicate) => {
-                        let OutlivesPredicate(ref ty, ref reg) = predicate.skip_binder();
+                        let OutlivesPredicate(ref ty, ref reg) = predicate;
                         insert_outlives_predicate(
                             tcx,
                             (*ty).into(),
@@ -42,7 +45,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                     }
 
                     ty::PredicateKind::RegionOutlives(predicate) => {
-                        let OutlivesPredicate(ref reg1, ref reg2) = predicate.skip_binder();
+                        let OutlivesPredicate(ref reg1, ref reg2) = predicate;
                         insert_outlives_predicate(
                             tcx,
                             (*reg1).into(),

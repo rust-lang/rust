@@ -465,7 +465,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             .iter()
             .filter(|p| {
                 !orig_bounds.contains(p)
-                    || match p.kind() {
+                    || match p.ignore_qualifiers().skip_binder().kind() {
                         ty::PredicateKind::Trait(pred, _) => pred.def_id() == sized_trait,
                         _ => false,
                     }

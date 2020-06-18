@@ -664,23 +664,25 @@ fn prune_cache_value_obligations<'a, 'tcx>(
     let mut obligations: Vec<_> = result
         .obligations
         .iter()
-        .filter(|obligation| match obligation.predicate.kind() {
-            // We found a `T: Foo<X = U>` predicate, let's check
-            // if `U` references any unresolved type
-            // variables. In principle, we only care if this
-            // projection can help resolve any of the type
-            // variables found in `result.value` -- but we just
-            // check for any type variables here, for fear of
-            // indirect obligations (e.g., we project to `?0`,
-            // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
-            // ?0>`).
-            ty::PredicateKind::Projection(ref data) => {
-                infcx.unresolved_type_vars(&data.ty()).is_some()
-            }
+        .filter(|obligation| {
+            match obligation.predicate.ignore_qualifiers(infcx.tcx).skip_binder().kind() {
+                // We found a `T: Foo<X = U>` predicate, let's check
+                // if `U` references any unresolved type
+                // variables. In principle, we only care if this
+                // projection can help resolve any of the type
+                // variables found in `result.value` -- but we just
+                // check for any type variables here, for fear of
+                // indirect obligations (e.g., we project to `?0`,
+                // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
+                // ?0>`).
+                &ty::PredicateKind::Projection(data) => {
+                    infcx.unresolved_type_vars(&ty::Binder::bind(data.ty)).is_some()
+                }
 
-            // We are only interested in `T: Foo<X = U>` predicates, whre
-            // `U` references one of `unresolved_type_vars`. =)
-            _ => false,
+                // We are only interested in `T: Foo<X = U>` predicates, whre
+                // `U` references one of `unresolved_type_vars`. =)
+                _ => false,
+            }
         })
         .cloned()
         .collect();
@@ -931,7 +933,11 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         debug!("assemble_candidates_from_predicates: predicate={:?}", predicate);
-        if let &ty::PredicateKind::Projection(data) = predicate.kind() {
+        // TODO: forall
+        if let &ty::PredicateKind::Projection(data) =
+            predicate.ignore_qualifiers(infcx.tcx).skip_binder().kind()
+        {
+            let data = ty::Binder::bind(data);
             let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;
 
             let is_match = same_def_id
@@ -1221,13 +1227,17 @@ fn confirm_object_candidate<'cx, 'tcx>(
 
         // select only those projections that are actually projecting an
         // item with the correct name
-        let env_predicates = env_predicates.filter_map(|o| match o.predicate.kind() {
-            &ty::PredicateKind::Projection(data)
-                if data.projection_def_id() == obligation.predicate.item_def_id =>
-            {
-                Some(data)
+
+        // TODO: forall
+        let env_predicates = env_predicates.filter_map(|o| {
+            match o.predicate.ignore_qualifiers(selcx.tcx()).skip_binder().kind() {
+                &ty::PredicateKind::Projection(data)
+                    if data.projection_ty.item_def_id == obligation.predicate.item_def_id =>
+                {
+                    Some(ty::Binder::bind(data))
+                }
+                _ => None,
             }
-            _ => None,
         });
 
         // select those with a relevant trait-ref

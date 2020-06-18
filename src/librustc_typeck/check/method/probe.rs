@@ -795,6 +795,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
+        let tcx = self.tcx;
         // FIXME: do we want to commit to this behavior for param bounds?
         debug!("assemble_inherent_candidates_from_param(param_ty={:?})", param_ty);
 

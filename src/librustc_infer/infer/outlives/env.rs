@@ -3,7 +3,7 @@ use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::OutlivesBound;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TyCtxt};
 
 use super::explicit_outlives_bounds;
 
@@ -69,7 +69,7 @@ pub struct OutlivesEnvironment<'tcx> {
 pub type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
 
 impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
-    pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
         let mut env = OutlivesEnvironment {
             param_env,
             free_region_map: Default::default(),
@@ -77,7 +77,7 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
             region_bound_pairs_accum: vec![],
         };
 
-        env.add_outlives_bounds(None, explicit_outlives_bounds(param_env));
+        env.add_outlives_bounds(None, explicit_outlives_bounds(tcx, param_env));
 
         env
     }

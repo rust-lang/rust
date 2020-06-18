@@ -87,16 +87,14 @@ where
     fn visit_predicates(&mut self, predicates: ty::GenericPredicates<'tcx>) -> bool {
         let ty::GenericPredicates { parent: _, predicates } = predicates;
         for (predicate, _span) in predicates {
-            match predicate.kind() {
-                ty::PredicateKind::Trait(poly_predicate, _) => {
-                    let ty::TraitPredicate { trait_ref } = poly_predicate.skip_binder();
+            // This visitor does not care about bound regions.
+            match predicate.ignore_qualifiers(self.def_id_visitor.tcx()).skip_binder().kind() {
+                &ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref }, _) => {
                     if self.visit_trait(trait_ref) {
                         return true;
                     }
                 }
-                ty::PredicateKind::Projection(poly_predicate) => {
-                    let ty::ProjectionPredicate { projection_ty, ty } =
-                        poly_predicate.skip_binder();
+                &ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
                     if ty.visit_with(self) {
                         return true;
                     }
@@ -104,8 +102,7 @@ where
                         return true;
                     }
                 }
-                ty::PredicateKind::TypeOutlives(poly_predicate) => {
-                    let ty::OutlivesPredicate(ty, _region) = poly_predicate.skip_binder();
+                &ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => {
                     if ty.visit_with(self) {
                         return true;
                     }

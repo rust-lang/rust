@@ -1154,8 +1154,10 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
 
         for predicate in &bounds.predicates {
-            if let ty::PredicateKind::Projection(projection) = predicate.kind() {
-                if projection.skip_binder().ty.references_error() {
+            if let ty::PredicateKind::Projection(projection) =
+                predicate.ignore_qualifiers(tcx).skip_binder().kind()
+            {
+                if projection.ty.references_error() {
                     // No point on adding these obligations since there's a type error involved.
                     return ty_var;
                 }
@@ -1252,7 +1254,7 @@ crate fn required_region_bounds(
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|obligation| {
             debug!("required_region_bounds(obligation={:?})", obligation);
-            match obligation.predicate.kind() {
+            match obligation.predicate.ignore_qualifiers(tcx).skip_binder().kind() {
                 ty::PredicateKind::Projection(..)
                 | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::Subtype(..)
@@ -1262,7 +1264,8 @@ crate fn required_region_bounds(
                 | ty::PredicateKind::RegionOutlives(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..) => None,
-                ty::PredicateKind::TypeOutlives(predicate) => {
+                ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", obligation),
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
                     // Search for a bound of the form `erased_self_ty
                     // : 'a`, but be wary of something like `for<'a>
                     // erased_self_ty : 'a` (we interpret a
@@ -1272,7 +1275,6 @@ crate fn required_region_bounds(
                     // it's kind of a moot point since you could never
                     // construct such an object, but this seems
                     // correct even if that code changes).
-                    let ty::OutlivesPredicate(ref t, ref r) = predicate.skip_binder();
                     if t == &erased_self_ty && !r.has_escaping_bound_vars() {
                         Some(*r)
                     } else {

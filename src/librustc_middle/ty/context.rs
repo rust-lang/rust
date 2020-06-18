@@ -20,8 +20,8 @@ use crate::ty::{
     self, query, AdtDef, AdtKind, BindingMode, BoundVar, CanonicalPolyFnSig, Const, ConstVid,
     DefIdTree, ExistentialPredicate, FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy,
     IntVar, IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind,
-    PredicateKint, ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
-    TyS, TyVar, TyVid, TypeAndMut,
+    ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar,
+    TyVid, TypeAndMut,
 };
 use rustc_ast::ast;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -79,7 +79,6 @@ pub struct CtxtInterners<'tcx> {
     region: InternedSet<'tcx, RegionKind>,
     existential_predicates: InternedSet<'tcx, List<ExistentialPredicate<'tcx>>>,
     predicate: InternedSet<'tcx, PredicateInner<'tcx>>,
-    predicate_kint: InternedSet<'tcx, PredicateKint<'tcx>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
@@ -99,7 +98,6 @@ impl<'tcx> CtxtInterners<'tcx> {
             existential_predicates: Default::default(),
             canonical_var_infos: Default::default(),
             predicate: Default::default(),
-            predicate_kint: Default::default(),
             predicates: Default::default(),
             projs: Default::default(),
             place_elems: Default::default(),
@@ -1617,7 +1615,6 @@ nop_lift! {type_; Ty<'a> => Ty<'tcx>}
 nop_lift! {region; Region<'a> => Region<'tcx>}
 nop_lift! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
 nop_lift! {predicate; &'a PredicateInner<'a> => &'tcx PredicateInner<'tcx>}
-nop_lift! {predicate_kint; &'a PredicateKint<'a> => &'tcx PredicateKint<'tcx>}
 
 nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {existential_predicates; ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
@@ -2030,8 +2027,8 @@ impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
     }
 }
 
-impl<'tcx> Borrow<PredicateKint<'tcx>> for Interned<'tcx, PredicateKint<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a PredicateKint<'tcx> {
+impl<'tcx> Borrow<PredicateKind<'tcx>> for Interned<'tcx, PredicateKind<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a PredicateKind<'tcx> {
         &self.0
     }
 }
@@ -2065,7 +2062,6 @@ macro_rules! direct_interners {
 direct_interners! {
     region: mk_region(RegionKind),
     const_: mk_const(Const<'tcx>),
-    predicate_kint: intern_predicate_kint(PredicateKint<'tcx>),
 }
 
 macro_rules! slice_interners {

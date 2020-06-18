@@ -247,6 +247,7 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
                 write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
             }
             ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
+            ty::PredicateKind::ForAll(binder) => write!(f, "ForAll({:?})", binder),
         }
     }
 }
@@ -478,20 +479,18 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
     type Lifted = ty::PredicateKind<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match *self {
-            ty::PredicateKind::Trait(ref binder, constness) => {
-                tcx.lift(binder).map(|binder| ty::PredicateKind::Trait(binder, constness))
+            ty::PredicateKind::Trait(ref data, constness) => {
+                tcx.lift(data).map(|data| ty::PredicateKind::Trait(data, constness))
             }
-            ty::PredicateKind::Subtype(ref binder) => {
-                tcx.lift(binder).map(ty::PredicateKind::Subtype)
+            ty::PredicateKind::Subtype(ref data) => tcx.lift(data).map(ty::PredicateKind::Subtype),
+            ty::PredicateKind::RegionOutlives(ref data) => {
+                tcx.lift(data).map(ty::PredicateKind::RegionOutlives)
             }
-            ty::PredicateKind::RegionOutlives(ref binder) => {
-                tcx.lift(binder).map(ty::PredicateKind::RegionOutlives)
+            ty::PredicateKind::TypeOutlives(ref data) => {
+                tcx.lift(data).map(ty::PredicateKind::TypeOutlives)
             }
-            ty::PredicateKind::TypeOutlives(ref binder) => {
-                tcx.lift(binder).map(ty::PredicateKind::TypeOutlives)
-            }
-            ty::PredicateKind::Projection(ref binder) => {
-                tcx.lift(binder).map(ty::PredicateKind::Projection)
+            ty::PredicateKind::Projection(ref data) => {
+                tcx.lift(data).map(ty::PredicateKind::Projection)
             }
             ty::PredicateKind::WellFormed(ty) => tcx.lift(&ty).map(ty::PredicateKind::WellFormed),
             ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
@@ -507,6 +506,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {
                 tcx.lift(&(c1, c2)).map(|(c1, c2)| ty::PredicateKind::ConstEquate(c1, c2))
+            }
+            ty::PredicateKind::ForAll(ref binder) => {
+                tcx.lift(binder).map(ty::PredicateKind::ForAll)
             }
         }
     }
@@ -1025,17 +1027,6 @@ pub(super) trait PredicateVisitor<'tcx>: TypeVisitor<'tcx> {
 impl<T: TypeVisitor<'tcx>> PredicateVisitor<'tcx> for T {
     default fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool {
         predicate.super_visit_with(self)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::PredicateKint<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let new = ty::PredicateKint::super_fold_with(self, folder);
-        folder.tcx().intern_predicate_kint(new)
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        ty::PredicateKint::super_visit_with(self, visitor)
     }
 }
 

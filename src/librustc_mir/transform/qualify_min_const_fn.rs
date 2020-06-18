@@ -24,7 +24,9 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
     loop {
         let predicates = tcx.predicates_of(current);
         for (predicate, _) in predicates.predicates {
-            match predicate.kind() {
+            // TODO: forall
+            match predicate.ignore_qualifiers(tcx).skip_binder().kind() {
+                ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", predicate),
                 ty::PredicateKind::RegionOutlives(_)
                 | ty::PredicateKind::TypeOutlives(_)
                 | ty::PredicateKind::WellFormed(_)
@@ -44,7 +46,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }
-                    match pred.skip_binder().self_ty().kind {
+                    match pred.self_ty().kind {
                         ty::Param(ref p) => {
                             // Allow `T: ?const Trait`
                             if constness == hir::Constness::NotConst

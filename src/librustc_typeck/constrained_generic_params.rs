@@ -180,11 +180,11 @@ pub fn setup_constraining_predicates<'tcx>(
         changed = false;
 
         for j in i..predicates.len() {
-            if let ty::PredicateKind::Projection(ref poly_projection) = predicates[j].0.kind() {
-                // Note that we can skip binder here because the impl
-                // trait ref never contains any late-bound regions.
-                let projection = poly_projection.skip_binder();
-
+            // Note that we don't have to care about binders here,
+            // as the impl trait ref never contains any late-bound regions.
+            if let ty::PredicateKind::Projection(projection) =
+                predicates[j].0.ignore_qualifiers(tcx).skip_binder().kind()
+            {
                 // Special case: watch out for some kind of sneaky attempt
                 // to project out an associated type defined by this very
                 // trait.

@@ -35,7 +35,9 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fast_reject;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
-use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
 use rustc_span::symbol::sym;
 
 use std::cell::{Cell, RefCell};
@@ -406,14 +408,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             None => self.check_recursion_limit(&obligation, &obligation)?,
         }
 
-        match obligation.predicate.kind() {
+        // TODO: forall
+        match obligation.predicate.ignore_qualifiers(self.tcx()).skip_binder().kind() {
+            ty::PredicateKind::ForAll(_) => {
+                bug!("unexpected predicate: {:?}", obligation.predicate)
+            }
             &ty::PredicateKind::Trait(t, _) => {
+                let t = ty::Binder::bind(t);
                 debug_assert!(!t.has_escaping_bound_vars());
                 let obligation = obligation.with(t);
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
 
             &ty::PredicateKind::Subtype(p) => {
+                let p = ty::Binder::bind(p);
                 // Does this code ever run?
                 match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
                     Some(Ok(InferOk { mut obligations, .. })) => {
@@ -456,6 +464,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             &ty::PredicateKind::Projection(data) => {
+                let data = ty::Binder::bind(data);
                 let project_obligation = obligation.with(data);
                 match project::poly_project_and_unify_type(self, &project_obligation) {
                     Ok(Some(mut subobligations)) => {
@@ -669,10 +678,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // if the regions match exactly.
             let cycle = stack.iter().skip(1).take_while(|s| s.depth >= cycle_depth);
             let tcx = self.tcx();
-            let cycle = cycle.map(|stack| {
-                ty::PredicateKind::Trait(stack.obligation.predicate, hir::Constness::NotConst)
-                    .to_predicate(tcx)
-            });
+            let cycle =
+                cycle.map(|stack| stack.obligation.predicate.without_const().to_predicate(tcx));
             if self.coinductive_match(cycle) {
                 debug!("evaluate_stack({:?}) --> recursive, coinductive", stack.fresh_trait_ref);
                 Some(EvaluatedToOk)
@@ -786,7 +793,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
-        let result = match predicate.kind() {
+        let result = match predicate.ignore_qualifiers(self.tcx()).skip_binder().kind() {
             ty::PredicateKind::Trait(ref data, _) => self.tcx().trait_is_auto(data.def_id()),
             _ => false,
         };

@@ -274,7 +274,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
 
         // Insert the facts we know from the predicates. Why? Why not.
         let param_env = self.param_env;
-        self.add_outlives_bounds(outlives::explicit_outlives_bounds(param_env));
+        self.add_outlives_bounds(outlives::explicit_outlives_bounds(self.infcx.tcx, param_env));
 
         // Finally:
         // - outlives is reflexive, so `'r: 'r` for every region `'r`

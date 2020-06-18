@@ -201,45 +201,31 @@ impl FlagComputation {
         }
     }
 
+    fn add_predicate(&mut self, pred: &ty::Predicate<'_>) {
+        self.add_flags(pred.inner.flags);
+        self.add_exclusive_binder(pred.inner.outer_exclusive_binder);
+    }
+
     fn add_predicate_kind(&mut self, kind: &ty::PredicateKind<'_>) {
         match kind {
             ty::PredicateKind::Trait(trait_pred, _constness) => {
-                let mut computation = FlagComputation::new();
-                computation.add_substs(trait_pred.skip_binder().trait_ref.substs);
-
-                self.add_bound_computation(computation);
+                self.add_substs(trait_pred.trait_ref.substs);
             }
-            ty::PredicateKind::RegionOutlives(poly_outlives) => {
-                let mut computation = FlagComputation::new();
-                let ty::OutlivesPredicate(a, b) = poly_outlives.skip_binder();
-                computation.add_region(a);
-                computation.add_region(b);
-
-                self.add_bound_computation(computation);
+            ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
+                self.add_region(a);
+                self.add_region(b);
             }
-            ty::PredicateKind::TypeOutlives(poly_outlives) => {
-                let mut computation = FlagComputation::new();
-                let ty::OutlivesPredicate(ty, region) = poly_outlives.skip_binder();
-                computation.add_ty(ty);
-                computation.add_region(region);
-
-                self.add_bound_computation(computation);
+            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, region)) => {
+                self.add_ty(ty);
+                self.add_region(region);
             }
-            ty::PredicateKind::Subtype(poly_subtype) => {
-                let mut computation = FlagComputation::new();
-                let ty::SubtypePredicate { a_is_expected: _, a, b } = poly_subtype.skip_binder();
-                computation.add_ty(a);
-                computation.add_ty(b);
-
-                self.add_bound_computation(computation);
+            ty::PredicateKind::Subtype(ty::SubtypePredicate { a_is_expected: _, a, b }) => {
+                self.add_ty(a);
+                self.add_ty(b);
             }
-            &ty::PredicateKind::Projection(projection) => {
-                let mut computation = FlagComputation::new();
-                let ty::ProjectionPredicate { projection_ty, ty } = projection.skip_binder();
-                computation.add_projection_ty(projection_ty);
-                computation.add_ty(ty);
-
-                self.add_bound_computation(computation);
+            ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
+                self.add_projection_ty(projection_ty);
+                self.add_ty(ty);
             }
             ty::PredicateKind::WellFormed(arg) => {
                 self.add_substs(slice::from_ref(arg));
@@ -254,6 +240,13 @@ impl FlagComputation {
             ty::PredicateKind::ConstEquate(expected, found) => {
                 self.add_const(expected);
                 self.add_const(found);
+            }
+            ty::PredicateKind::ForAll(binder) => {
+                let mut computation = FlagComputation::new();
+
+                computation.add_predicate(binder.skip_binder());
+
+                self.add_bound_computation(computation);
             }
         }
     }

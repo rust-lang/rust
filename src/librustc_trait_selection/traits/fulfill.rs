@@ -6,7 +6,7 @@ use rustc_errors::ErrorReported;
 use rustc_infer::traits::{PolyTraitObligation, TraitEngine, TraitEngineExt as _};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::{self, Binder, Const, ToPredicate, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Binder, Const, Ty, TypeFoldable};
 use std::marker::PhantomData;
 
 use super::project;
@@ -318,12 +318,12 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
-        match obligation.predicate.kint(infcx.tcx) {
-            ty::PredicateKint::ForAll(binder) => match binder.skip_binder() {
+        match obligation.predicate.kind() {
+            ty::PredicateKind::ForAll(binder) => match binder.skip_binder().kind() {
                 // Evaluation will discard candidates using the leak check.
                 // This means we need to pass it the bound version of our
                 // predicate.
-                rustc_middle::ty::PredicateKint::Trait(trait_ref, _constness) => {
+                ty::PredicateKind::Trait(trait_ref, _constness) => {
                     let trait_obligation = obligation.with(Binder::bind(*trait_ref));
 
                     self.process_trait_obligation(
@@ -332,7 +332,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         &mut pending_obligation.stalled_on,
                     )
                 }
-                rustc_middle::ty::PredicateKint::Projection(projection) => {
+                ty::PredicateKind::Projection(projection) => {
                     let project_obligation = obligation.with(Binder::bind(*projection));
 
                     self.process_projection_obligation(
@@ -340,22 +340,20 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         &mut pending_obligation.stalled_on,
                     )
                 }
-                rustc_middle::ty::PredicateKint::RegionOutlives(_)
-                | rustc_middle::ty::PredicateKint::TypeOutlives(_)
-                | rustc_middle::ty::PredicateKint::WellFormed(_)
-                | rustc_middle::ty::PredicateKint::ObjectSafe(_)
-                | rustc_middle::ty::PredicateKint::ClosureKind(..)
-                | rustc_middle::ty::PredicateKint::Subtype(_)
-                | rustc_middle::ty::PredicateKint::ConstEvaluatable(..)
-                | rustc_middle::ty::PredicateKint::ConstEquate(..)
-                | rustc_middle::ty::PredicateKint::ForAll(_) => {
+                ty::PredicateKind::RegionOutlives(_)
+                | ty::PredicateKind::TypeOutlives(_)
+                | ty::PredicateKind::WellFormed(_)
+                | ty::PredicateKind::ObjectSafe(_)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::Subtype(_)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::ForAll(_) => {
                     let (pred, _) = infcx.replace_bound_vars_with_placeholders(binder);
-                    ProcessResult::Changed(mk_pending(vec![
-                        obligation.with(pred.to_predicate(infcx.tcx)),
-                    ]))
+                    ProcessResult::Changed(mk_pending(vec![obligation.with(pred)]))
                 }
             },
-            ty::PredicateKint::Trait(ref data, _) => {
+            ty::PredicateKind::Trait(ref data, _) => {
                 let trait_obligation = obligation.with(Binder::dummy(*data));
 
                 self.process_trait_obligation(
@@ -365,14 +363,14 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 )
             }
 
-            &ty::PredicateKint::RegionOutlives(data) => {
+            &ty::PredicateKind::RegionOutlives(data) => {
                 match infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data)) {
                     Ok(()) => ProcessResult::Changed(vec![]),
                     Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
                 }
             }
 
-            ty::PredicateKint::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
+            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
                 if self.register_region_obligations {
                     self.selcx.infcx().register_region_obligation_with_cause(
                         t_a,
@@ -383,7 +381,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 ProcessResult::Changed(vec![])
             }
 
-            ty::PredicateKint::Projection(ref data) => {
+            ty::PredicateKind::Projection(ref data) => {
                 let project_obligation = obligation.with(Binder::dummy(*data));
 
                 self.process_projection_obligation(
@@ -392,7 +390,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 )
             }
 
-            &ty::PredicateKint::ObjectSafe(trait_def_id) => {
+            &ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 if !self.selcx.tcx().is_object_safe(trait_def_id) {
                     ProcessResult::Error(CodeSelectionError(Unimplemented))
                 } else {
@@ -400,7 +398,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            &ty::PredicateKint::ClosureKind(_, closure_substs, kind) => {
+            &ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
                 match self.selcx.infcx().closure_kind(closure_substs) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
@@ -413,7 +411,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            &ty::PredicateKint::WellFormed(arg) => {
+            &ty::PredicateKind::WellFormed(arg) => {
                 match wf::obligations(
                     self.selcx.infcx(),
                     obligation.param_env,
@@ -430,7 +428,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            &ty::PredicateKint::Subtype(subtype) => {
+            &ty::PredicateKind::Subtype(subtype) => {
                 match self.selcx.infcx().subtype_predicate(
                     &obligation.cause,
                     obligation.param_env,
@@ -456,7 +454,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            &ty::PredicateKint::ConstEvaluatable(def_id, substs) => {
+            &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                 match self.selcx.infcx().const_eval_resolve(
                     obligation.param_env,
                     def_id,
@@ -469,7 +467,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::PredicateKint::ConstEquate(c1, c2) => {
+            ty::PredicateKind::ConstEquate(c1, c2) => {
                 debug!("equating consts: c1={:?} c2={:?}", c1, c2);
 
                 let stalled_on = &mut pending_obligation.stalled_on;
