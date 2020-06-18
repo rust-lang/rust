@@ -1639,7 +1639,7 @@ impl<T: Default> Vec<T> {
     }
 }
 
-// This code generalises `extend_with_{element,default}`.
+// This code generalizes `extend_with_{element,default}`.
 trait ExtendWith<T> {
     fn next(&mut self) -> T;
     fn last(self) -> T;
