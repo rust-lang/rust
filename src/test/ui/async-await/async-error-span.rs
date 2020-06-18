@@ -5,7 +5,7 @@
 use std::future::Future;
 
 fn get_future() -> impl Future<Output = ()> {
-//~^ ERROR the trait bound `(): std::future::Future` is not satisfied
+//~^ ERROR `()` is not a future
     panic!()
 }
 
