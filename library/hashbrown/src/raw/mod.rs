@@ -1,6 +1,6 @@
 use crate::alloc::alloc::{alloc, dealloc, handle_alloc_error};
 use crate::scopeguard::guard;
-use crate::CollectionAllocErr;
+use crate::TryReserveError;
 use core::alloc::Layout;
 use core::hint;
 use core::iter::FusedIterator;
@@ -73,18 +73,18 @@ enum Fallibility {
 impl Fallibility {
     /// Error to return on capacity overflow.
     #[cfg_attr(feature = "inline-more", inline)]
-    fn capacity_overflow(self) -> CollectionAllocErr {
+    fn capacity_overflow(self) -> TryReserveError {
         match self {
-            Fallibility::Fallible => CollectionAllocErr::CapacityOverflow,
+            Fallibility::Fallible => TryReserveError::CapacityOverflow,
             Fallibility::Infallible => panic!("Hash table capacity overflow"),
         }
     }
 
     /// Error to return on allocation error.
     #[cfg_attr(feature = "inline-more", inline)]
-    fn alloc_err(self, layout: Layout) -> CollectionAllocErr {
+    fn alloc_err(self, layout: Layout) -> TryReserveError {
         match self {
-            Fallibility::Fallible => CollectionAllocErr::AllocErr { layout },
+            Fallibility::Fallible => TryReserveError::AllocError { layout },
             Fallibility::Infallible => handle_alloc_error(layout),
         }
     }
@@ -252,13 +252,15 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
 
     // Manual layout calculation since Layout methods are not yet stable.
     let ctrl_align = usize::max(mem::align_of::<T>(), Group::WIDTH);
-    let ctrl_offset = mem::size_of::<T>().checked_mul(buckets)?
-                      .checked_add(ctrl_align - 1)? & !(ctrl_align - 1);
+    let ctrl_offset = mem::size_of::<T>()
+        .checked_mul(buckets)?
+        .checked_add(ctrl_align - 1)?
+        & !(ctrl_align - 1);
     let len = ctrl_offset.checked_add(buckets + Group::WIDTH)?;
 
     Some((
         unsafe { Layout::from_size_align_unchecked(len, ctrl_align) },
-        ctrl_offset
+        ctrl_offset,
     ))
 }
 
@@ -398,7 +400,7 @@ impl<T> RawTable<T> {
     unsafe fn new_uninitialized(
         buckets: usize,
         fallability: Fallibility,
-    ) -> Result<Self, CollectionAllocErr> {
+    ) -> Result<Self, TryReserveError> {
         debug_assert!(buckets.is_power_of_two());
         let (layout, ctrl_offset) =
             calculate_layout::<T>(buckets).ok_or_else(|| fallability.capacity_overflow())?;
@@ -418,7 +420,7 @@ impl<T> RawTable<T> {
     fn try_with_capacity(
         capacity: usize,
         fallability: Fallibility,
-    ) -> Result<Self, CollectionAllocErr> {
+    ) -> Result<Self, TryReserveError> {
         if capacity == 0 {
             Ok(Self::new())
         } else {
@@ -665,7 +667,7 @@ impl<T> RawTable<T> {
         &mut self,
         additional: usize,
         hasher: impl Fn(&T) -> u64,
-    ) -> Result<(), CollectionAllocErr> {
+    ) -> Result<(), TryReserveError> {
         if additional > self.growth_left {
             self.reserve_rehash(additional, hasher, Fallibility::Fallible)
         } else {
@@ -681,7 +683,7 @@ impl<T> RawTable<T> {
         additional: usize,
         hasher: impl Fn(&T) -> u64,
         fallability: Fallibility,
-    ) -> Result<(), CollectionAllocErr> {
+    ) -> Result<(), TryReserveError> {
         let new_items = self
             .items
             .checked_add(additional)
@@ -810,7 +812,7 @@ impl<T> RawTable<T> {
         capacity: usize,
         hasher: impl Fn(&T) -> u64,
         fallability: Fallibility,
-    ) -> Result<(), CollectionAllocErr> {
+    ) -> Result<(), TryReserveError> {
         unsafe {
             debug_assert!(self.items <= capacity);
 
@@ -998,7 +1000,10 @@ impl<T> RawTable<T> {
         } else {
             let (layout, ctrl_offset) = calculate_layout::<T>(self.buckets())
                 .unwrap_or_else(|| unsafe { hint::unreachable_unchecked() });
-            Some((unsafe { NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)) }, layout))
+            Some((
+                unsafe { NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)) },
+                layout,
+            ))
         };
         mem::forget(self);
         alloc
@@ -1303,7 +1308,10 @@ impl<T> RawIterRange<T> {
                     self.data.next_n(Group::WIDTH).next_n(mid),
                     len - mid,
                 );
-                debug_assert_eq!(self.data.next_n(Group::WIDTH).next_n(mid).ptr, tail.data.ptr);
+                debug_assert_eq!(
+                    self.data.next_n(Group::WIDTH).next_n(mid).ptr,
+                    tail.data.ptr
+                );
                 debug_assert_eq!(self.end, tail.end);
                 self.end = self.next_ctrl.add(mid);
                 debug_assert_eq!(self.end.add(Group::WIDTH), tail.next_ctrl);

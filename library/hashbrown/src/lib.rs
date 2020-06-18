@@ -20,6 +20,7 @@
         core_intrinsics,
         dropck_eyepatch,
         specialization,
+        extend_one,
     )
 )]
 #![allow(
@@ -107,14 +108,15 @@ pub mod hash_set {
 pub use crate::map::HashMap;
 pub use crate::set::HashSet;
 
-/// Augments `AllocErr` with a `CapacityOverflow` variant.
+/// The error type for `try_reserve` methods.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum CollectionAllocErr {
+pub enum TryReserveError {
     /// Error due to the computed capacity exceeding the collection's maximum
     /// (usually `isize::MAX` bytes).
     CapacityOverflow,
-    /// Error due to the allocator.
-    AllocErr {
+
+    /// The memory allocator returned an error
+    AllocError {
         /// The layout of the allocation request that failed.
         layout: alloc::alloc::Layout,
     },
