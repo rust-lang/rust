@@ -824,7 +824,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     category:
                         category
                         @
-                        (ConstraintCategory::Return(_)
+                        (ConstraintCategory::Return
                         | ConstraintCategory::CallArgument
                         | ConstraintCategory::OpaqueType),
                     from_closure: false,
@@ -1147,7 +1147,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         opt_place_desc: Option<&String>,
     ) -> Option<DiagnosticBuilder<'cx>> {
         let return_kind = match category {
-            ConstraintCategory::Return(_) => "return",
+            ConstraintCategory::Return => "return",
             ConstraintCategory::Yield => "yield",
             _ => return None,
         };
@@ -1261,7 +1261,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
 
         let msg = match category {
-            ConstraintCategory::Return(_) | ConstraintCategory::OpaqueType => {
+            ConstraintCategory::Return | ConstraintCategory::OpaqueType => {
                 format!("{} is returned here", kind)
             }
             ConstraintCategory::CallArgument => {

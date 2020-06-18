@@ -39,7 +39,6 @@ use crate::borrow_check::{
     renumber,
     type_check::{self, MirTypeckRegionConstraints, MirTypeckResults},
     universal_regions::UniversalRegions,
-    Upvar,
 };
 
 crate type PoloniusOutput = Output<RustcFacts>;
@@ -167,7 +166,6 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    upvars: &[Upvar],
 ) -> NllOutput<'tcx> {
     let mut all_facts = AllFacts::enabled(infcx.tcx).then_some(AllFacts::default());
 
@@ -190,7 +188,6 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
             flow_inits,
             move_data,
             elements,
-            upvars,
         );
 
     if let Some(all_facts) = &mut all_facts {
