@@ -104,6 +104,8 @@ impl ExpnId {
         HygieneData::with(|data| data.expn_data(self).clone())
     }
 
+    /// Retrieves the `ClosestAstOrMacro` associated with this `ExpnId`
+    /// See `ClosestAstOrMacro` for more details
     #[inline]
     pub fn closest_ast_or_macro(self) -> ClosestAstOrMacro {
         HygieneData::with(|data| data.closest_ast_or_macro(self))
