@@ -168,7 +168,6 @@ pub(super) fn highlight_doc_comment(
                 h.range.end() + end_offset.unwrap_or(start_offset),
             );
 
-            h.highlight |= HighlightModifier::Documentation;
             stack.add(h);
         }
     }
