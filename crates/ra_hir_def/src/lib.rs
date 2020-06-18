@@ -159,7 +159,7 @@ pub struct TypeAliasId(salsa::InternId);
 type TypeAliasLoc = AssocItemLoc<ast::TypeAliasDef>;
 impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_alias);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ImplId(salsa::InternId);
 type ImplLoc = ItemLoc<ast::ImplDef>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);

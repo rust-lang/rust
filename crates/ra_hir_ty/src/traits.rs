@@ -5,9 +5,8 @@ use chalk_ir::cast::Cast;
 use hir_def::{expr::ExprId, DefWithBodyId, ImplId, TraitId, TypeAliasId};
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
-use rustc_hash::FxHashSet;
 
-use crate::{db::HirDatabase, method_resolution::TyFingerprint, DebruijnIndex};
+use crate::{db::HirDatabase, DebruijnIndex};
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 
@@ -34,34 +33,6 @@ struct ChalkContext<'a> {
 fn create_chalk_solver() -> chalk_solve::Solver<Interner> {
     let solver_choice = chalk_solve::SolverChoice::recursive();
     solver_choice.into_solver()
-}
-
-/// Collects impls for the given trait in the whole dependency tree of `krate`.
-pub(crate) fn impls_for_trait_query(
-    db: &dyn HirDatabase,
-    krate: CrateId,
-    trait_: TraitId,
-    self_ty_fp: Option<TyFingerprint>,
-) -> Arc<[ImplId]> {
-    // FIXME: We could be a lot smarter here - because of the orphan rules and
-    // the fact that the trait and the self type need to be in the dependency
-    // tree of a crate somewhere for an impl to exist, we could skip looking in
-    // a lot of crates completely
-    let mut impls = FxHashSet::default();
-    // We call the query recursively here. On the one hand, this means we can
-    // reuse results from queries for different crates; on the other hand, this
-    // will only ever get called for a few crates near the root of the tree (the
-    // ones the user is editing), so this may actually be a waste of memory. I'm
-    // doing it like this mainly for simplicity for now.
-    for dep in &db.crate_graph()[krate].dependencies {
-        impls.extend(db.impls_for_trait(dep.crate_id, trait_, self_ty_fp).iter());
-    }
-    let crate_impl_defs = db.impls_in_crate(krate);
-    match self_ty_fp {
-        Some(fp) => impls.extend(crate_impl_defs.lookup_impl_defs_for_trait_and_ty(trait_, fp)),
-        None => impls.extend(crate_impl_defs.lookup_impl_defs_for_trait(trait_)),
-    }
-    impls.into_iter().collect()
 }
 
 /// A set of clauses that we assume to be true. E.g. if we are inside this function:

@@ -38,18 +38,58 @@ impl TyFingerprint {
     }
 }
 
+/// A queryable and mergeable collection of impls.
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateImplDefs {
-    impls: FxHashMap<TyFingerprint, Vec<ImplId>>,
+    inherent_impls: FxHashMap<TyFingerprint, Vec<ImplId>>,
     impls_by_trait: FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Vec<ImplId>>>,
 }
 
 impl CrateImplDefs {
     pub(crate) fn impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<CrateImplDefs> {
         let _p = profile("impls_in_crate_query");
-        let mut res =
-            CrateImplDefs { impls: FxHashMap::default(), impls_by_trait: FxHashMap::default() };
+        let mut res = CrateImplDefs {
+            inherent_impls: FxHashMap::default(),
+            impls_by_trait: FxHashMap::default(),
+        };
+        res.fill(db, krate);
 
+        Arc::new(res)
+    }
+
+    /// Collects all impls from transitive dependencies of `krate` that may be used by `krate`.
+    ///
+    /// The full set of impls that can be used by `krate` is the returned map plus all the impls
+    /// from `krate` itself.
+    pub(crate) fn impls_from_deps_query(
+        db: &dyn HirDatabase,
+        krate: CrateId,
+    ) -> Arc<CrateImplDefs> {
+        // FIXME: This should take visibility and orphan rules into account to keep the result
+        // smaller.
+        let _p = profile("impls_from_deps_query");
+        let crate_graph = db.crate_graph();
+        let mut res = CrateImplDefs {
+            inherent_impls: FxHashMap::default(),
+            impls_by_trait: FxHashMap::default(),
+        };
+        let mut seen = FxHashSet::default();
+        let mut worklist = vec![krate];
+        while let Some(krate) = worklist.pop() {
+            if !seen.insert(krate) {
+                continue;
+            }
+
+            // No deduplication, since a) impls can't be reexported, b) we visit a crate only once
+            res.fill(db, krate);
+
+            worklist.extend(crate_graph[krate].dependencies.iter().map(|dep| dep.crate_id));
+        }
+
+        Arc::new(res)
+    }
+
+    fn fill(&mut self, db: &dyn HirDatabase, krate: CrateId) {
         let crate_def_map = db.crate_def_map(krate);
         for (_module_id, module_data) in crate_def_map.modules.iter() {
             for impl_id in module_data.scope.impls() {
@@ -57,7 +97,7 @@ impl CrateImplDefs {
                     Some(tr) => {
                         let self_ty = db.impl_self_ty(impl_id);
                         let self_ty_fp = TyFingerprint::for_impl(&self_ty.value);
-                        res.impls_by_trait
+                        self.impls_by_trait
                             .entry(tr.value.trait_)
                             .or_default()
                             .entry(self_ty_fp)
@@ -67,18 +107,17 @@ impl CrateImplDefs {
                     None => {
                         let self_ty = db.impl_self_ty(impl_id);
                         if let Some(self_ty_fp) = TyFingerprint::for_impl(&self_ty.value) {
-                            res.impls.entry(self_ty_fp).or_default().push(impl_id);
+                            self.inherent_impls.entry(self_ty_fp).or_default().push(impl_id);
                         }
                     }
                 }
             }
         }
-
-        Arc::new(res)
     }
+
     pub fn lookup_impl_defs(&self, ty: &Ty) -> impl Iterator<Item = ImplId> + '_ {
         let fingerprint = TyFingerprint::for_impl(ty);
-        fingerprint.and_then(|f| self.impls.get(&f)).into_iter().flatten().copied()
+        fingerprint.and_then(|f| self.inherent_impls.get(&f)).into_iter().flatten().copied()
     }
 
     pub fn lookup_impl_defs_for_trait(&self, tr: TraitId) -> impl Iterator<Item = ImplId> + '_ {
@@ -110,7 +149,7 @@ impl CrateImplDefs {
     }
 
     pub fn all_impls<'a>(&'a self) -> impl Iterator<Item = ImplId> + 'a {
-        self.impls
+        self.inherent_impls
             .values()
             .chain(self.impls_by_trait.values().flat_map(|m| m.values()))
             .flatten()
