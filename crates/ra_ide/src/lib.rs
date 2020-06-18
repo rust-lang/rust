@@ -443,13 +443,13 @@ impl Analysis {
 
     /// Computes syntax highlighting for the given file
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
-        self.with_db(|db| syntax_highlighting::highlight(db, file_id, None, false))
+        self.with_db(|db| syntax_highlighting::highlight(db, file_id, None, false, None))
     }
 
     /// Computes syntax highlighting for the given file range.
     pub fn highlight_range(&self, frange: FileRange) -> Cancelable<Vec<HighlightedRange>> {
         self.with_db(|db| {
-            syntax_highlighting::highlight(db, frange.file_id, Some(frange.range), false)
+            syntax_highlighting::highlight(db, frange.file_id, Some(frange.range), false, None)
         })
     }
 

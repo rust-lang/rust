@@ -57,6 +57,7 @@ pub enum HighlightModifier {
     /// not.
     Definition,
     Documentation,
+    Injected,
     Mutable,
     Unsafe,
 }
@@ -110,6 +111,7 @@ impl HighlightModifier {
         HighlightModifier::ControlFlow,
         HighlightModifier::Definition,
         HighlightModifier::Documentation,
+        HighlightModifier::Injected,
         HighlightModifier::Mutable,
         HighlightModifier::Unsafe,
     ];
@@ -120,6 +122,7 @@ impl HighlightModifier {
             HighlightModifier::ControlFlow => "control",
             HighlightModifier::Definition => "declaration",
             HighlightModifier::Documentation => "documentation",
+            HighlightModifier::Injected => "injected",
             HighlightModifier::Mutable => "mutable",
             HighlightModifier::Unsafe => "unsafe",
         }

@@ -47,9 +47,9 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// # Examples</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```</span>
-    <span class="comment documentation">/// #</span> <span class="attribute">#![</span><span class="function attribute">allow</span><span class="attribute">(unused_mut)]</span>
-    <span class="comment documentation">/// </span><span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">foo</span>: <span class="struct">Foo</span> = <span class="struct">Foo</span>::<span class="function">new</span>();
-    <span class="comment documentation">/// ```</span>
+    <span class="comment documentation">/// #</span> <span class="operator injected">#</span><span class="operator injected">!</span><span class="operator injected">[</span><span class="operator injected">allow</span><span class="operator injected">(</span><span class="operator injected">unused_mut</span><span class="operator injected">)</span><span class="operator injected">]</span><span class="operator injected">
+</span>    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="operator injected"> </span><span class="keyword injected">mut</span><span class="operator injected"> </span><span class="operator injected">foo</span><span class="operator injected">:</span><span class="operator injected"> </span><span class="operator injected">Foo</span><span class="operator injected"> </span><span class="operator injected">=</span><span class="operator injected"> </span><span class="operator injected">Foo</span><span class="operator injected">::</span><span class="operator injected">new</span><span class="operator injected">(</span><span class="operator injected">)</span><span class="operator injected">;</span><span class="operator injected">
+</span><span class="operator injected"> </span>   <span class="comment documentation">/// ```</span>
     <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function declaration">new</span>() -&gt; <span class="struct">Foo</span> {
         <span class="struct">Foo</span> { <span class="field">bar</span>: <span class="bool_literal">true</span> }
     }
@@ -59,27 +59,27 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// # Examples</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```</span>
-    <span class="comment documentation">/// </span><span class="keyword">use</span> <span class="module">x</span>::<span class="module">y</span>;
-    <span class="comment documentation">///</span>
-    <span class="comment documentation">/// </span><span class="keyword">let</span> <span class="variable declaration">foo</span> = <span class="struct">Foo</span>::<span class="function">new</span>();
-    <span class="comment documentation">///</span>
-    <span class="comment documentation">/// </span><span class="comment">// calls bar on foo</span>
-    <span class="comment documentation">/// </span><span class="macro">assert!</span>(foo.bar());
-    <span class="comment documentation">///</span>
-    <span class="comment documentation">/// </span><span class="keyword">let</span> <span class="variable declaration">bar</span> = <span class="variable">foo</span>.<span class="field">bar</span> || <span class="struct">Foo</span>::<span class="constant">bar</span>;
-    <span class="comment documentation">///</span>
-    <span class="comment documentation">/// </span><span class="comment">/* multi-line
-    </span><span class="comment documentation">/// </span><span class="comment">       comment */</span>
-    <span class="comment documentation">///</span>
-    <span class="comment documentation">/// </span><span class="keyword">let</span> <span class="variable declaration">multi_line_string</span> = <span class="string_literal">"Foo
-    </span><span class="comment documentation">/// </span><span class="string_literal">  bar
-    </span><span class="comment documentation">/// </span><span class="string_literal">         "</span>;
-    <span class="comment documentation">///</span>
-    <span class="comment documentation">/// ```</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">use</span><span class="operator injected"> </span><span class="operator injected">x</span><span class="operator injected">::</span><span class="operator injected">y</span><span class="operator injected">;</span><span class="operator injected">
+    </span><span class="comment documentation">///</span><span class="operator injected">
+</span>    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="operator injected"> </span><span class="operator injected">foo</span><span class="operator injected"> </span><span class="operator injected">=</span><span class="operator injected"> </span><span class="operator injected">Foo</span><span class="operator injected">::</span><span class="operator injected">new</span><span class="operator injected">(</span><span class="operator injected">)</span><span class="operator injected">;</span><span class="operator injected">
+    </span><span class="comment documentation">///</span><span class="operator injected">
+</span>    <span class="comment documentation">/// </span><span class="comment injected">// calls bar on foo</span><span class="operator injected">
+</span>    <span class="comment documentation">/// </span><span class="macro injected">assert!</span><span class="operator injected">(</span><span class="operator injected">foo</span><span class="operator injected">.</span><span class="operator injected">bar</span><span class="operator injected">(</span><span class="operator injected">)</span><span class="operator injected">)</span><span class="operator injected">;</span><span class="operator injected">
+    </span><span class="comment documentation">///</span><span class="operator injected">
+</span>    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="operator injected"> </span><span class="operator injected">bar</span><span class="operator injected"> </span><span class="operator injected">=</span><span class="operator injected"> </span><span class="operator injected">foo</span><span class="operator injected">.</span><span class="operator injected">bar</span><span class="operator injected"> </span><span class="operator injected">||</span><span class="operator injected"> </span><span class="operator injected">Foo</span><span class="operator injected">::</span><span class="operator injected">bar</span><span class="operator injected">;</span><span class="operator injected">
+    </span><span class="comment documentation">///</span><span class="operator injected">
+</span>    <span class="comment documentation">/// </span><span class="comment injected">/* multi-line
+    </span><span class="comment documentation">/// </span><span class="comment injected">       comment */</span><span class="operator injected">
+    </span><span class="comment documentation">///</span><span class="operator injected">
+</span>    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="operator injected"> </span><span class="operator injected">multi_line_string</span><span class="operator injected"> </span><span class="operator injected">=</span><span class="operator injected"> </span><span class="string_literal injected">"Foo
+    </span><span class="comment documentation">/// </span><span class="string_literal injected">  bar
+    </span><span class="comment documentation">/// </span><span class="string_literal injected">         "</span><span class="operator injected">;</span><span class="operator injected">
+    </span><span class="comment documentation">///</span><span class="operator injected">
+</span>    <span class="comment documentation">/// ```</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```rust,no_run</span>
-    <span class="comment documentation">/// </span><span class="keyword">let</span> <span class="variable declaration">foobar</span> = <span class="struct">Foo</span>::<span class="function">new</span>().<span class="function">bar</span>();
-    <span class="comment documentation">/// ```</span>
+    <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="operator injected"> </span><span class="operator injected">foobar</span><span class="operator injected"> </span><span class="operator injected">=</span><span class="operator injected"> </span><span class="operator injected">Foo</span><span class="operator injected">::</span><span class="operator injected">new</span><span class="operator injected">(</span><span class="operator injected">)</span><span class="operator injected">.</span><span class="operator injected">bar</span><span class="operator injected">(</span><span class="operator injected">)</span><span class="operator injected">;</span><span class="operator injected">
+</span><span class="operator injected"> </span>   <span class="comment documentation">/// ```</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```sh</span>
     <span class="comment documentation">/// echo 1</span>

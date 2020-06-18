@@ -7,6 +7,6 @@ use crate::{FileId, RootDatabase};
 
 pub(crate) fn prime_caches(db: &RootDatabase, files: Vec<FileId>) {
     for file in files {
-        let _ = crate::syntax_highlighting::highlight(db, file, None, false);
+        let _ = crate::syntax_highlighting::highlight(db, file, None, false, None);
     }
 }

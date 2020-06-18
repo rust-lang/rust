@@ -45,6 +45,7 @@ pub(crate) fn highlight(
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
     syntactic_name_ref_highlighting: bool,
+    default_tag: Option<HighlightTag>,
 ) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
     let sema = Semantics::new(db);
@@ -107,6 +108,7 @@ pub(crate) fn highlight(
                         &mut bindings_shadow_count,
                         syntactic_name_ref_highlighting,
                         name.syntax().clone().into(),
+                        default_tag,
                     ) {
                         stack.add(HighlightedRange {
                             range: name.syntax().text_range(),
@@ -206,6 +208,7 @@ pub(crate) fn highlight(
             &mut bindings_shadow_count,
             syntactic_name_ref_highlighting,
             element_to_highlight.clone(),
+            default_tag,
         ) {
             stack.add(HighlightedRange { range, highlight, binding_hash });
             if let Some(string) =
@@ -430,13 +433,14 @@ fn highlight_element(
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
     syntactic_name_ref_highlighting: bool,
     element: SyntaxElement,
+    default_tag: Option<HighlightTag>,
 ) -> Option<(Highlight, Option<u64>)> {
     let db = sema.db;
     let mut binding_hash = None;
     let highlight: Highlight = match element.kind() {
         FN_DEF => {
             bindings_shadow_count.clear();
-            return None;
+            default_tag?.into()
         }
 
         // Highlight definitions depending on the "type" of the definition.
@@ -515,12 +519,12 @@ fn highlight_element(
             let expr = prefix_expr.expr()?;
             let ty = sema.type_of_expr(&expr)?;
             if !ty.is_raw_ptr() {
-                return None;
+                default_tag?.into()
+            } else {
+                let mut h = Highlight::new(HighlightTag::Operator);
+                h |= HighlightModifier::Unsafe;
+                h
             }
-
-            let mut h = Highlight::new(HighlightTag::Operator);
-            h |= HighlightModifier::Unsafe;
-            h
         }
         T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
             Highlight::new(HighlightTag::Macro)
@@ -546,7 +550,7 @@ fn highlight_element(
             }
         }
 
-        _ => return None,
+        _ => default_tag?.into(),
     };
 
     return Some((highlight, binding_hash));

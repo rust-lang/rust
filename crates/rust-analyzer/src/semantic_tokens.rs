@@ -68,6 +68,7 @@ macro_rules! define_semantic_token_modifiers {
 define_semantic_token_modifiers![
     (CONSTANT, "constant"),
     (CONTROL_FLOW, "controlFlow"),
+    (INJECTED, "injected"),
     (MUTABLE, "mutable"),
     (UNSAFE, "unsafe"),
     (ATTRIBUTE_MODIFIER, "attribute"),
