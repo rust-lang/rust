@@ -1,6 +1,6 @@
 use std::cmp;
 
-use crate::utils::{is_copy, is_self_ty, snippet, span_lint_and_sugg};
+use crate::utils::{is_copy, is_self_ty, snippet, span_lint_and_sugg, in_macro};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -127,7 +127,7 @@ impl_lint_pass!(TriviallyCopyPassByRef => [TRIVIALLY_COPY_PASS_BY_REF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'_>) {
-        if item.span.from_expansion() {
+        if in_macro(item.span) {
             return;
         }
 
@@ -145,7 +145,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         span: Span,
         hir_id: HirId,
     ) {
-        if span.from_expansion() {
+        if in_macro(span) {
             return;
         }
 

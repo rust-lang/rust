@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Binary(op, ref left, ref right) = e.kind {
-            if e.span.from_expansion() {
+            if in_macro(e.span) {
                 return;
             }
             let macro_with_not_op = |expr_kind: &ExprKind<'_>| {

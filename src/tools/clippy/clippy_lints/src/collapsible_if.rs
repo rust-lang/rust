@@ -18,7 +18,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{snippet_block, snippet_block_with_applicability, span_lint_and_sugg, span_lint_and_then};
+use crate::utils::{snippet_block, snippet_block_with_applicability, span_lint_and_sugg, span_lint_and_then, in_macro};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -75,7 +75,7 @@ declare_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF]);
 
 impl EarlyLintPass for CollapsibleIf {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
-        if !expr.span.from_expansion() {
+        if !in_macro(expr.span) {
             check_if(cx, expr)
         }
     }
@@ -106,7 +106,7 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, else_: &ast::Expr) {
         if let ast::ExprKind::Block(ref block, _) = else_.kind;
         if !block_starts_with_comment(cx, block);
         if let Some(else_) = expr_block(block);
-        if !else_.span.from_expansion();
+        if !in_macro(else_.span);
         if let ast::ExprKind::If(..) = else_.kind;
         then {
             let mut applicability = Applicability::MachineApplicable;

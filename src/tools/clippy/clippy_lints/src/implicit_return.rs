@@ -1,8 +1,4 @@
-use crate::utils::{
-    fn_has_unsatisfiable_preds, match_def_path,
-    paths::{BEGIN_PANIC, BEGIN_PANIC_FMT},
-    snippet_opt, span_lint_and_then,
-};
+use crate::utils::{fn_has_unsatisfiable_preds, match_def_path, paths::{BEGIN_PANIC, BEGIN_PANIC_FMT}, snippet_opt, span_lint_and_then, in_macro};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -143,7 +139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
 
         // checking return type through MIR, HIR is not able to determine inferred closure return types
         // make sure it's not a macro
-        if !mir.return_ty().is_unit() && !span.from_expansion() {
+        if !mir.return_ty().is_unit() && !in_macro(span) {
             expr_match(cx, &body.value);
         }
     }

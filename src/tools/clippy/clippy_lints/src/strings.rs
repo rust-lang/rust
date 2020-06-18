@@ -8,7 +8,7 @@ use rustc_span::source_map::Spanned;
 use if_chain::if_chain;
 
 use crate::utils::SpanlessEq;
-use crate::utils::{get_parent_expr, is_allowed, is_type_diagnostic_item, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{get_parent_expr, is_allowed, is_type_diagnostic_item, span_lint, span_lint_and_sugg, walk_ptrs_ty, in_macro};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for string appends of the form `x = x + y` (without
@@ -187,7 +187,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                     );
                 } else if lit_content.as_str().is_ascii()
                     && lit_content.as_str().len() <= MAX_LENGTH_BYTE_STRING_LIT
-                    && !args[0].span.from_expansion()
+                    && !in_macro(args[0].span)
                 {
                     span_lint_and_sugg(
                         cx,

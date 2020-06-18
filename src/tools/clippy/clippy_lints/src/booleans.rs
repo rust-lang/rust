@@ -107,7 +107,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         }
 
         // prevent folding of `cfg!` macros and the like
-        if !e.span.from_expansion() {
+        if !in_macro(e.span) {
             match &e.kind {
                 ExprKind::Unary(UnOp::UnNot, inner) => return Ok(Bool::Not(box self.run(inner)?)),
                 ExprKind::Binary(binop, lhs, rhs) => match &binop.node {

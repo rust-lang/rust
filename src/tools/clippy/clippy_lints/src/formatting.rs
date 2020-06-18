@@ -1,4 +1,4 @@
-use crate::utils::{differing_macro_contexts, snippet_opt, span_lint_and_help, span_lint_and_note};
+use crate::utils::{differing_macro_contexts, snippet_opt, span_lint_and_help, span_lint_and_note, in_macro};
 use if_chain::if_chain;
 use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -129,7 +129,7 @@ impl EarlyLintPass for Formatting {
 /// Implementation of the `SUSPICIOUS_ASSIGNMENT_FORMATTING` lint.
 fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
     if let ExprKind::Assign(ref lhs, ref rhs, _) = expr.kind {
-        if !differing_macro_contexts(lhs.span, rhs.span) && !lhs.span.from_expansion() {
+        if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro(lhs.span) {
             let eq_span = lhs.span.between(rhs.span);
             if let ExprKind::Unary(op, ref sub_rhs) = rhs.kind {
                 if let Some(eq_snippet) = snippet_opt(cx, eq_span) {
@@ -159,7 +159,7 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
 fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
     if_chain! {
         if let ExprKind::Binary(ref binop, ref lhs, ref rhs) = expr.kind;
-        if !differing_macro_contexts(lhs.span, rhs.span) && !lhs.span.from_expansion();
+        if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro(lhs.span);
         // span between BinOp LHS and RHS
         let binop_span = lhs.span.between(rhs.span);
         // if RHS is a UnOp
@@ -201,7 +201,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::If(_, then, Some(else_)) = &expr.kind;
         if is_block(else_) || is_if(else_);
         if !differing_macro_contexts(then.span, else_.span);
-        if !then.span.from_expansion() && !in_external_macro(cx.sess, expr.span);
+        if !in_macro(then.span) && !in_external_macro(cx.sess, expr.span);
 
         // workaround for rust-lang/rust#43081
         if expr.span.lo().0 != 0 && expr.span.hi().0 != 0;
@@ -273,7 +273,7 @@ fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
 
 fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
     if !differing_macro_contexts(first.span, second.span)
-        && !first.span.from_expansion()
+        && !in_macro(first.span)
         && is_if(first)
         && (is_block(second) || is_if(second))
     {

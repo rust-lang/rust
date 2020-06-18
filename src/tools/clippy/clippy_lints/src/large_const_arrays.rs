@@ -1,5 +1,5 @@
 use crate::rustc_target::abi::LayoutOf;
-use crate::utils::span_lint_and_then;
+use crate::utils::{span_lint_and_then, in_macro};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
@@ -48,7 +48,7 @@ impl_lint_pass!(LargeConstArrays => [LARGE_CONST_ARRAYS]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeConstArrays {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
         if_chain! {
-            if !item.span.from_expansion();
+            if !in_macro(item.span);
             if let ItemKind::Const(hir_ty, _) = &item.kind;
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             if let ty::Array(element_type, cst) = ty.kind;

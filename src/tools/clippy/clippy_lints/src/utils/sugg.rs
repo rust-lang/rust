@@ -1,7 +1,7 @@
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::utils::{higher, snippet, snippet_opt, snippet_with_macro_callsite};
+use crate::utils::{higher, snippet, snippet_opt, snippet_with_macro_callsite, in_macro};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{ast, token};
 use rustc_ast_pretty::pprust::token_kind_to_string;
@@ -65,7 +65,7 @@ impl<'a> Sugg<'a> {
         default: &'a str,
         applicability: &mut Applicability,
     ) -> Self {
-        if *applicability != Applicability::Unspecified && expr.span.from_expansion() {
+        if *applicability != Applicability::Unspecified && in_macro(expr.span) {
             *applicability = Applicability::MaybeIncorrect;
         }
         Self::hir_opt(cx, expr).unwrap_or_else(|| {

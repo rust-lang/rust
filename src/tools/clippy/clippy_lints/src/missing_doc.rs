@@ -5,7 +5,7 @@
 // [`missing_doc`]: https://github.com/rust-lang/rust/blob/d6d05904697d89099b55da3331155392f1db9c00/src/librustc_lint/builtin.rs#L246
 //
 
-use crate::utils::span_lint;
+use crate::utils::{span_lint, in_macro};
 use if_chain::if_chain;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_ast::attr;
@@ -87,7 +87,7 @@ impl MissingDoc {
             return;
         }
 
-        if sp.from_expansion() {
+        if in_macro(sp) {
             return;
         }
 

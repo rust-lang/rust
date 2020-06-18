@@ -10,7 +10,7 @@ use rustc_span::source_map::Spanned;
 use std::cmp::Ordering;
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{get_parent_expr, is_integer_const, snippet, snippet_opt, span_lint, span_lint_and_then};
+use crate::utils::{get_parent_expr, is_integer_const, snippet, snippet_opt, span_lint, span_lint_and_then, in_macro};
 use crate::utils::{higher, SpanlessEq};
 
 declare_clippy_lint! {
@@ -175,7 +175,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         }) = higher::range(cx, expr);
         if let Some(y) = y_plus_one(cx, end);
         then {
-            let span = if expr.span.from_expansion() {
+            let span = if in_macro(expr.span) {
                 expr.span
                     .ctxt()
                     .outer_expn_data()

@@ -1,4 +1,4 @@
-use crate::utils::{get_parent_expr, higher, if_sequence, snippet, span_lint_and_note, span_lint_and_then};
+use crate::utils::{get_parent_expr, higher, if_sequence, snippet, span_lint_and_note, span_lint_and_then, in_macro};
 use crate::utils::{SpanlessEq, SpanlessHash};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Arm, Block, Expr, ExprKind, MatchSource, Pat, PatKind};
@@ -153,7 +153,7 @@ declare_lint_pass!(CopyAndPaste => [IFS_SAME_COND, SAME_FUNCTIONS_IN_IF_CONDITIO
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        if !expr.span.from_expansion() {
+        if !in_macro(expr.span) {
             // skip ifs directly in else, it will be checked in the parent if
             if let Some(expr) = get_parent_expr(cx, expr) {
                 if let Some((_, _, Some(ref else_expr))) = higher::if_block(&expr) {

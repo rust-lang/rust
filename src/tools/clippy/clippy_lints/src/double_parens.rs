@@ -1,4 +1,4 @@
-use crate::utils::span_lint;
+use crate::utils::{span_lint, in_macro};
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -41,7 +41,7 @@ declare_lint_pass!(DoubleParens => [DOUBLE_PARENS]);
 
 impl EarlyLintPass for DoubleParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if expr.span.from_expansion() {
+        if in_macro(expr.span) {
             return;
         }
 

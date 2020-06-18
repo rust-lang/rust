@@ -39,7 +39,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::Span;
 
-use crate::utils::{indent_of, snippet, snippet_block, span_lint_and_help};
+use crate::utils::{indent_of, snippet, snippet_block, span_lint_and_help, in_macro};
 
 declare_clippy_lint! {
     /// **What it does:** The lint checks for `if`-statements appearing in loops
@@ -120,7 +120,7 @@ declare_lint_pass!(NeedlessContinue => [NEEDLESS_CONTINUE]);
 
 impl EarlyLintPass for NeedlessContinue {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
-        if !expr.span.from_expansion() {
+        if !in_macro(expr.span) {
             check_and_warn(cx, expr);
         }
     }

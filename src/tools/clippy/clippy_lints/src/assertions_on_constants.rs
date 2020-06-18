@@ -1,5 +1,5 @@
 use crate::consts::{constant, Constant};
-use crate::utils::paths;
+use crate::utils::{paths, in_macro};
 use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, snippet_opt, span_lint_and_help};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
@@ -67,7 +67,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
         };
 
         if let Some(debug_assert_span) = is_expn_of(e.span, "debug_assert") {
-            if debug_assert_span.from_expansion() {
+            if in_macro(debug_assert_span) {
                 return;
             }
             if_chain! {
@@ -79,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                 }
             };
         } else if let Some(assert_span) = is_direct_expn_of(e.span, "assert") {
-            if assert_span.from_expansion() {
+            if in_macro(assert_span) {
                 return;
             }
             if let Some(assert_match) = match_assert_with_message(&cx, e) {

@@ -1,4 +1,4 @@
-use crate::utils::{get_item_name, higher, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{get_item_name, higher, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty, in_macro};
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -72,7 +72,7 @@ declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
-        if item.span.from_expansion() {
+        if in_macro(item.span) {
             return;
         }
 
@@ -88,7 +88,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
+        if in_macro(expr.span) {
             return;
         }
 

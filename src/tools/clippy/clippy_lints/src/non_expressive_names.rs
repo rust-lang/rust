@@ -1,4 +1,4 @@
-use crate::utils::{span_lint, span_lint_and_then};
+use crate::utils::{span_lint, span_lint_and_then, in_macro};
 use rustc_ast::ast::{
     Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, MacCall, Pat, PatKind,
 };
@@ -133,7 +133,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
     fn visit_pat(&mut self, pat: &'tcx Pat) {
         match pat.kind {
             PatKind::Ident(_, ident, _) => {
-                if !pat.span.from_expansion() {
+                if !in_macro(pat.span) {
                     self.check_ident(ident);
                 }
             },

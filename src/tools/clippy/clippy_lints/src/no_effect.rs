@@ -1,4 +1,4 @@
-use crate::utils::{has_drop, qpath_res, snippet_opt, span_lint, span_lint_and_sugg};
+use crate::utils::{has_drop, qpath_res, snippet_opt, span_lint, span_lint_and_sugg, in_macro};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
@@ -43,7 +43,7 @@ declare_clippy_lint! {
 }
 
 fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
-    if expr.span.from_expansion() {
+    if in_macro(expr.span) {
         return false;
     }
     match expr.kind {
@@ -95,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoEffect {
             } else if let Some(reduced) = reduce_expression(cx, expr) {
                 let mut snippet = String::new();
                 for e in reduced {
-                    if e.span.from_expansion() {
+                    if in_macro(e.span) {
                         return;
                     }
                     if let Some(snip) = snippet_opt(cx, e.span) {
@@ -120,7 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoEffect {
 }
 
 fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<Vec<&'a Expr<'a>>> {
-    if expr.span.from_expansion() {
+    if in_macro(expr.span) {
         return None;
     }
     match expr.kind {

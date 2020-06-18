@@ -27,7 +27,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 
 use crate::consts::{constant, Constant};
-use crate::utils::paths;
+use crate::utils::{paths, in_macro};
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_type_diagnostic_item,
     last_path_segment, match_def_path, match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral,
@@ -316,7 +316,7 @@ impl Types {
     /// local bindings should only be checked for the `BORROWED_BOX` lint.
     #[allow(clippy::too_many_lines)]
     fn check_ty(&mut self, cx: &LateContext<'_, '_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
-        if hir_ty.span.from_expansion() {
+        if in_macro(hir_ty.span) {
             return;
         }
         match hir_ty.kind {
@@ -604,7 +604,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Local(ref local) = stmt.kind {
             if is_unit(cx.tables.pat_ty(&local.pat)) {
-                if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
+                if in_external_macro(cx.sess(), stmt.span) || in_macro(local.pat.span) {
                     return;
                 }
                 if higher::is_from_for_desugar(local) {
@@ -683,7 +683,7 @@ declare_lint_pass!(UnitCmp => [UNIT_CMP]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) {
-        if expr.span.from_expansion() {
+        if in_macro(expr.span) {
             if let Some(callee) = expr.span.source_callee() {
                 if let ExpnKind::Macro(MacroKind::Bang, symbol) = callee.kind {
                     if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
@@ -756,7 +756,7 @@ declare_lint_pass!(UnitArg => [UNIT_ARG]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
+        if in_macro(expr.span) {
             return;
         }
 
@@ -1412,7 +1412,7 @@ fn fp_ty_mantissa_nbits(typ: Ty<'_>) -> u32 {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
+        if in_macro(expr.span) {
             return;
         }
         if let ExprKind::Cast(ref ex, _) = expr.kind {
@@ -1698,7 +1698,7 @@ impl<'a, 'tcx> TypeComplexity {
     }
 
     fn check_type(&self, cx: &LateContext<'_, '_>, ty: &hir::Ty<'_>) {
-        if ty.span.from_expansion() {
+        if in_macro(ty.span) {
             return;
         }
         let score = {
@@ -1800,7 +1800,7 @@ declare_lint_pass!(CharLitAsU8 => [CHAR_LIT_AS_U8]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if !expr.span.from_expansion();
+            if !in_macro(expr.span);
             if let ExprKind::Cast(e, _) = &expr.kind;
             if let ExprKind::Lit(l) = &e.kind;
             if let LitKind::Char(c) = l.node;
@@ -1971,7 +1971,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
 
         if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.kind {
             if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
-                if !expr.span.from_expansion() {
+                if !in_macro(expr.span) {
                     let msg = "this comparison involving the minimum or maximum element for this \
                                type contains a case that is always true or always false";
 

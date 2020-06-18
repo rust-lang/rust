@@ -1,4 +1,4 @@
-use crate::utils::{differing_macro_contexts, higher, snippet_block_with_applicability, span_lint, span_lint_and_sugg};
+use crate::utils::{differing_macro_contexts, higher, snippet_block_with_applicability, span_lint, span_lint_and_sugg, in_macro};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind};
@@ -55,7 +55,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
         if let ExprKind::Closure(_, _, eid, _, _) = expr.kind {
             let body = self.cx.tcx.hir().body(eid);
             let ex = &body.value;
-            if matches!(ex.kind, ExprKind::Block(_, _)) && !body.value.span.from_expansion() {
+            if matches!(ex.kind, ExprKind::Block(_, _)) && !in_macro(body.value.span) {
                 self.found_block = Some(ex);
                 return;
             }
@@ -83,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlocksInIfConditions {
                         if let Some(ex) = &block.expr {
                             // don't dig into the expression here, just suggest that they remove
                             // the block
-                            if expr.span.from_expansion() || differing_macro_contexts(expr.span, ex.span) {
+                            if in_macro(expr.span) || differing_macro_contexts(expr.span, ex.span) {
                                 return;
                             }
                             let mut applicability = Applicability::MachineApplicable;
@@ -108,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlocksInIfConditions {
                         }
                     } else {
                         let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
-                        if span.from_expansion() || differing_macro_contexts(expr.span, span) {
+                        if in_macro(span) || differing_macro_contexts(expr.span, span) {
                             return;
                         }
                         // move block higher

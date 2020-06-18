@@ -1,4 +1,4 @@
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{snippet_with_applicability, span_lint_and_sugg, in_macro};
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind, UnOp};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -49,7 +49,7 @@ declare_lint_pass!(Precedence => [PRECEDENCE]);
 
 impl EarlyLintPass for Precedence {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if expr.span.from_expansion() {
+        if in_macro(expr.span) {
             return;
         }
 

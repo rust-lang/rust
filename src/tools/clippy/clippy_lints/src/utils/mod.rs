@@ -43,7 +43,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Ty, TyCtxt, TypeFoldable};
-use rustc_span::hygiene::{ExpnKind, MacroKind};
+use rustc_span::hygiene::{ExpnKind, MacroKind, ClosestAstOrMacro};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
@@ -58,7 +58,11 @@ use crate::reexport::Name;
 /// from a macro and one isn't).
 #[must_use]
 pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
-    rhs.ctxt() != lhs.ctxt()
+    if lhs.ctxt() == rhs.ctxt() {
+        return false
+    };
+
+    lhs.ctxt().outer_expn().closest_ast_or_macro() != rhs.ctxt().outer_expn().closest_ast_or_macro()
 }
 
 /// Returns `true` if the given `NodeId` is inside a constant context
@@ -101,14 +105,9 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
 /// Returns `true` if this `span` was expanded by any macro.
 #[must_use]
 pub fn in_macro(span: Span) -> bool {
-    if span.from_expansion() {
-        if let ExpnKind::Desugaring(..) = span.ctxt().outer_expn_data().kind {
-            false
-        } else {
-            true
-        }
-    } else {
-        false
+    match span.ctxt().outer_expn().closest_ast_or_macro() {
+        ClosestAstOrMacro::Expn(_) => true,
+        ClosestAstOrMacro::None => false
     }
 }
 // If the snippet is empty, it's an attribute that was inserted during macro
@@ -380,7 +379,7 @@ pub fn method_calls<'tcx>(
     let mut current = expr;
     for _ in 0..max_depth {
         if let ExprKind::MethodCall(path, span, args, _) = &current.kind {
-            if args.iter().any(|e| e.span.from_expansion()) {
+            if args.iter().any(|e| in_macro(e.span)) {
                 break;
             }
             method_names.push(path.ident.name);
@@ -408,7 +407,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec
         // method chains are stored last -> first
         if let ExprKind::MethodCall(ref path, _, ref args, _) = current.kind {
             if path.ident.name.as_str() == *method_name {
-                if args.iter().any(|e| e.span.from_expansion()) {
+                if args.iter().any(|e| in_macro(e.span)) {
                     return None;
                 }
                 matched.push(&**args); // build up `matched` backwards
@@ -505,7 +504,7 @@ pub fn snippet_with_applicability<'a, T: LintContext>(
     default: &'a str,
     applicability: &mut Applicability,
 ) -> Cow<'a, str> {
-    if *applicability != Applicability::Unspecified && span.from_expansion() {
+    if *applicability != Applicability::Unspecified && in_macro(span) {
         *applicability = Applicability::MaybeIncorrect;
     }
     snippet_opt(cx, span).map_or_else(
@@ -661,7 +660,7 @@ pub fn expr_block<'a, T: LintContext>(
 ) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default, indent_relative_to);
     let string = option.unwrap_or_default();
-    if expr.span.from_expansion() {
+    if in_macro(expr.span) {
         Cow::Owned(format!("{{ {} }}", snippet_with_macro_callsite(cx, expr.span, default)))
     } else if let ExprKind::Block(_, _) = expr.kind {
         Cow::Owned(format!("{}{}", code, string))
@@ -833,7 +832,7 @@ pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr<'_>) -> bool {
 #[must_use]
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
-        if span.from_expansion() {
+        if in_macro(span) {
             let data = span.ctxt().outer_expn_data();
             let new_span = data.call_site;
 
@@ -861,7 +860,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// `is_direct_expn_of`.
 #[must_use]
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
-    if span.from_expansion() {
+    if in_macro(span) {
         let data = span.ctxt().outer_expn_data();
         let new_span = data.call_site;
 

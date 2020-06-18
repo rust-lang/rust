@@ -1,4 +1,4 @@
-use crate::utils::{get_parent_expr, implements_trait, snippet, span_lint_and_sugg};
+use crate::utils::{get_parent_expr, implements_trait, snippet, span_lint_and_sugg, in_macro};
 use if_chain::if_chain;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX, PREC_PREFIX};
 use rustc_errors::Applicability;
@@ -41,7 +41,7 @@ declare_lint_pass!(Dereferencing => [
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Dereferencing {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if !expr.span.from_expansion();
+            if !in_macro(expr.span);
             if let ExprKind::MethodCall(ref method_name, _, ref args, _) = &expr.kind;
             if args.len() == 1;
 

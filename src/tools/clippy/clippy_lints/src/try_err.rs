@@ -1,4 +1,4 @@
-use crate::utils::{match_qpath, paths, snippet, snippet_with_macro_callsite, span_lint_and_sugg};
+use crate::utils::{match_qpath, paths, snippet, snippet_with_macro_callsite, span_lint_and_sugg, in_macro};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
@@ -69,7 +69,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
 
             then {
                 let err_type = cx.tables.expr_ty(err_arg);
-                let origin_snippet = if err_arg.span.from_expansion() {
+                let origin_snippet = if in_macro(err_arg.span) {
                     snippet_with_macro_callsite(cx, err_arg.span, "_")
                 } else {
                     snippet(cx, err_arg.span, "_")

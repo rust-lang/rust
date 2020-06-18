@@ -1,6 +1,6 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
-use crate::utils::{camel_case, is_present_in_source};
+use crate::utils::{camel_case, is_present_in_source, in_macro};
 use crate::utils::{span_lint, span_lint_and_help};
 use rustc_ast::ast::{EnumDef, Item, ItemKind, VisibilityKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, Lint};
@@ -271,7 +271,7 @@ impl EarlyLintPass for EnumVariantNames {
         let item_name = item.ident.name.as_str();
         let item_name_chars = item_name.chars().count();
         let item_camel = to_camel_case(&item_name);
-        if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
+        if !in_macro(item.span) && is_present_in_source(cx, item.span) {
             if let Some(&(ref mod_name, ref mod_camel)) = self.modules.last() {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {

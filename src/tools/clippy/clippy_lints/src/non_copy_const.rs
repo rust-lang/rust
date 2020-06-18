@@ -13,7 +13,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
 
-use crate::utils::{in_constant, is_copy, qpath_res, span_lint_and_then};
+use crate::utils::{in_constant, is_copy, qpath_res, span_lint_and_then, in_macro};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for declaration of `const` items which is interior
@@ -119,7 +119,7 @@ fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, source: S
 
     let (lint, msg, span) = source.lint();
     span_lint_and_then(cx, lint, span, msg, |diag| {
-        if span.from_expansion() {
+        if in_macro(span) {
             return; // Don't give suggestions into macros.
         }
         match source {

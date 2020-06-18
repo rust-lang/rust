@@ -1,8 +1,5 @@
 use crate::utils::ptr::get_spans;
-use crate::utils::{
-    get_trait_def_id, implements_trait, is_copy, is_self, is_type_diagnostic_item, multispan_sugg, paths, snippet,
-    snippet_opt, span_lint_and_then,
-};
+use crate::utils::{get_trait_def_id, implements_trait, is_copy, is_self, is_type_diagnostic_item, multispan_sugg, paths, snippet, snippet_opt, span_lint_and_then, in_macro};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -75,7 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         span: Span,
         hir_id: HirId,
     ) {
-        if span.from_expansion() {
+        if in_macro(span) {
             return;
         }
 

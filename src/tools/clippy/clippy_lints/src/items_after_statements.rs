@@ -1,6 +1,6 @@
 //! lint when items are used after statements
 
-use crate::utils::span_lint;
+use crate::utils::{span_lint, in_macro};
 use rustc_ast::ast::{Block, ItemKind, StmtKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -53,7 +53,7 @@ declare_lint_pass!(ItemsAfterStatements => [ITEMS_AFTER_STATEMENTS]);
 
 impl EarlyLintPass for ItemsAfterStatements {
     fn check_block(&mut self, cx: &EarlyContext<'_>, item: &Block) {
-        if item.span.from_expansion() {
+        if in_macro(item.span) {
             return;
         }
 
@@ -67,7 +67,7 @@ impl EarlyLintPass for ItemsAfterStatements {
         // lint on all further items
         for stmt in stmts {
             if let StmtKind::Item(ref it) = *stmt {
-                if it.span.from_expansion() {
+                if in_macro(it.span) {
                     return;
                 }
                 if let ItemKind::MacroDef(..) = it.kind {

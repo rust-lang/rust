@@ -462,7 +462,7 @@ Here are some pointers to things you are likely going to need for every lint:
   is already in here (`implements_trait`, `match_path`, `snippet`, etc)
 * [Clippy diagnostics][diagnostics]
 * [The `if_chain` macro][if_chain]
-* [`from_expansion`][from_expansion] and [`in_external_macro`][in_external_macro]
+* [`in_macro`][in_macro] and [`in_external_macro`][in_external_macro]
 * [`Span`][span]
 * [`Applicability`][applicability]
 * [Common tools for writing lints](common_tools_writing_lints.md) helps with common operations
@@ -487,7 +487,7 @@ don't hesitate to ask on [Discord] or in the issue/PR.
 
 [utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/mod.rs
 [if_chain]: https://docs.rs/if_chain/*/if_chain/
-[from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
+[in_macro]: https://github.com/rust-lang/rust-clippy/blob/742706511c9f33c6a0d4380392e513e5249057e3/clippy_lints/src/utils/mod.rs#L101-L113
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/fn.in_external_macro.html
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 [applicability]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html

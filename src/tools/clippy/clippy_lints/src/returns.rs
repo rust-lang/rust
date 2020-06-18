@@ -8,7 +8,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;
 
-use crate::utils::{snippet_opt, span_lint_and_sugg, span_lint_and_then};
+use crate::utils::{snippet_opt, span_lint_and_sugg, span_lint_and_then, in_macro};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for return statements at the end of a block.
@@ -123,7 +123,7 @@ impl Return {
     fn emit_return_lint(cx: &EarlyContext<'_>, ret_span: Span, inner_span: Option<Span>, replacement: RetReplacement) {
         match inner_span {
             Some(inner_span) => {
-                if in_external_macro(cx.sess(), inner_span) || inner_span.from_expansion() {
+                if in_external_macro(cx.sess(), inner_span) || in_macro(inner_span) {
                     return;
                 }
 
@@ -171,7 +171,7 @@ impl EarlyLintPass for Return {
         if_chain! {
             if let ast::FnRetTy::Ty(ref ty) = kind.decl().output;
             if let ast::TyKind::Tup(ref vals) = ty.kind;
-            if vals.is_empty() && !ty.span.from_expansion() && get_def(span) == get_def(ty.span);
+            if vals.is_empty() && !in_macro(ty.span) && get_def(span) == get_def(ty.span);
             then {
                 lint_unneeded_unit_return(cx, ty, span);
             }
@@ -182,7 +182,7 @@ impl EarlyLintPass for Return {
         if_chain! {
             if let Some(ref stmt) = block.stmts.last();
             if let ast::StmtKind::Expr(ref expr) = stmt.kind;
-            if is_unit_expr(expr) && !stmt.span.from_expansion();
+            if is_unit_expr(expr) && !in_macro(stmt.span);
             then {
                 let sp = expr.span;
                 span_lint_and_sugg(
@@ -201,7 +201,7 @@ impl EarlyLintPass for Return {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         match e.kind {
             ast::ExprKind::Ret(Some(ref expr)) | ast::ExprKind::Break(_, Some(ref expr)) => {
-                if is_unit_expr(expr) && !expr.span.from_expansion() {
+                if is_unit_expr(expr) && !in_macro(expr.span) {
                     span_lint_and_sugg(
                         cx,
                         UNUSED_UNIT,
@@ -241,7 +241,7 @@ fn attr_is_cfg(attr: &ast::Attribute) -> bool {
 // get the def site
 #[must_use]
 fn get_def(span: Span) -> Option<Span> {
-    if span.from_expansion() {
+    if in_macro(span) {
         Some(span.ctxt().outer_expn_data().def_site)
     } else {
         None

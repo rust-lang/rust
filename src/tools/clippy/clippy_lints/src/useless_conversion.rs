@@ -1,7 +1,4 @@
-use crate::utils::{
-    is_type_diagnostic_item, match_def_path, match_trait_method, paths, snippet, snippet_with_macro_callsite,
-    span_lint_and_help, span_lint_and_sugg,
-};
+use crate::utils::{is_type_diagnostic_item, match_def_path, match_trait_method, paths, snippet, snippet_with_macro_callsite, span_lint_and_help, span_lint_and_sugg, in_macro};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, MatchSource};
@@ -42,7 +39,7 @@ impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
 #[allow(clippy::too_many_lines)]
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
-        if e.span.from_expansion() {
+        if in_macro(e.span) {
             return;
         }
 

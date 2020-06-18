@@ -6,7 +6,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
 use crate::consts::{constant_simple, Constant};
-use crate::utils::{clip, snippet, span_lint, unsext};
+use crate::utils::{clip, snippet, span_lint, unsext, in_macro};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for identity operations, e.g., `x + 0`.
@@ -30,7 +30,7 @@ declare_lint_pass!(IdentityOp => [IDENTITY_OP]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
-        if e.span.from_expansion() {
+        if in_macro(e.span) {
             return;
         }
         if let ExprKind::Binary(cmp, ref left, ref right) = e.kind {

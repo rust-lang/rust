@@ -1,4 +1,4 @@
-use crate::utils::paths;
+use crate::utils::{paths, in_macro};
 use crate::utils::{
     is_copy, is_type_diagnostic_item, match_trait_method, remove_blocks, snippet_with_applicability, span_lint_and_sugg,
 };
@@ -44,7 +44,7 @@ declare_lint_pass!(MapClone => [MAP_CLONE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) {
-        if e.span.from_expansion() {
+        if in_macro(e.span) {
             return;
         }
 

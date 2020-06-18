@@ -9,7 +9,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;
 
-use crate::utils::{is_type_diagnostic_item, snippet_opt, span_lint_and_help, LimitStack};
+use crate::utils::{is_type_diagnostic_item, snippet_opt, span_lint_and_help, LimitStack, in_macro};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for methods with high cognitive complexity.
@@ -51,7 +51,7 @@ impl CognitiveComplexity {
         body: &'tcx Body<'_>,
         body_span: Span,
     ) {
-        if body_span.from_expansion() {
+        if in_macro(body_span) {
             return;
         }
 

@@ -2,7 +2,7 @@
 //!
 //! This lint is **warn** by default
 
-use crate::utils::{snippet_with_applicability, span_lint_and_then};
+use crate::utils::{snippet_with_applicability, span_lint_and_then, in_macro};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, Mutability, Node, Pat, PatKind};
@@ -54,7 +54,7 @@ declare_lint_pass!(NeedlessBorrowedRef => [NEEDLESS_BORROWED_REFERENCE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
-        if pat.span.from_expansion() {
+        if in_macro(pat.span) {
             // OK, simple enough, lints doesn't check in macro.
             return;
         }

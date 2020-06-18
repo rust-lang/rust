@@ -1,6 +1,6 @@
 use crate::consts::constant;
 use crate::reexport::Name;
-use crate::utils::paths;
+use crate::utils::{paths, in_macro};
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
@@ -445,14 +445,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
             // we don't want to check expanded macros
             // this check is not at the top of the function
             // since higher::for_loop expressions are marked as expansions
-            if body.span.from_expansion() {
+            if in_macro(body.span) {
                 return;
             }
             check_for_loop(cx, pat, arg, body, expr);
         }
 
         // we don't want to check expanded macros
-        if expr.span.from_expansion() {
+        if in_macro(expr.span) {
             return;
         }
 

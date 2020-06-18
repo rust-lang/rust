@@ -1,10 +1,7 @@
 //! checks for attributes
 
 use crate::reexport::Name;
-use crate::utils::{
-    first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, without_block_comments,
-};
+use crate::utils::{first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_sugg, span_lint_and_then, without_block_comments, in_macro};
 use if_chain::if_chain;
 use rustc_ast::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
@@ -474,7 +471,7 @@ fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, exp
 }
 
 fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attribute]) {
-    if span.from_expansion() {
+    if in_macro(span) {
         return;
     }
 

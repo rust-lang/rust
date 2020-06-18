@@ -3,10 +3,7 @@ use rustc_hir::{ImplItem, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::{
-    get_trait_def_id, implements_trait, is_type_diagnostic_item, paths, return_ty, span_lint_and_help,
-    trait_ref_of_method, walk_ptrs_ty,
-};
+use crate::utils::{get_trait_def_id, implements_trait, is_type_diagnostic_item, paths, return_ty, span_lint_and_help, trait_ref_of_method, walk_ptrs_ty, in_macro};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for the definition of inherent methods with a signature of `to_string(&self) -> String`.
@@ -94,7 +91,7 @@ declare_lint_pass!(InherentToString => [INHERENT_TO_STRING, INHERENT_TO_STRING_S
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InherentToString {
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem<'_>) {
-        if impl_item.span.from_expansion() {
+        if in_macro(impl_item.span) {
             return;
         }
 

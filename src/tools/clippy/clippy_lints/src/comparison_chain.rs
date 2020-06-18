@@ -1,6 +1,4 @@
-use crate::utils::{
-    get_trait_def_id, if_sequence, implements_trait, parent_node_is_if_expr, paths, span_lint_and_help, SpanlessEq,
-};
+use crate::utils::{get_trait_def_id, if_sequence, implements_trait, parent_node_is_if_expr, paths, span_lint_and_help, SpanlessEq, in_macro};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -54,7 +52,7 @@ declare_lint_pass!(ComparisonChain => [COMPARISON_CHAIN]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ComparisonChain {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
+        if in_macro(expr.span) {
             return;
         }
 

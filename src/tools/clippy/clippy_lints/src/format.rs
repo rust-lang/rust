@@ -1,4 +1,4 @@
-use crate::utils::paths;
+use crate::utils::{paths, in_macro};
 use crate::utils::{
     is_expn_of, is_type_diagnostic_item, last_path_segment, match_def_path, match_function_call, snippet,
     span_lint_and_then, walk_ptrs_ty,
@@ -43,7 +43,7 @@ declare_lint_pass!(UselessFormat => [USELESS_FORMAT]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessFormat {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         let span = match is_expn_of(expr.span, "format") {
-            Some(s) if !s.from_expansion() => s,
+            Some(s) if !in_macro(s) => s,
             _ => return,
         };
 

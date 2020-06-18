@@ -1,4 +1,4 @@
-use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, paths, span_lint};
+use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, paths, span_lint, in_macro};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
@@ -124,9 +124,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
 
 fn get_outer_span(expr: &Expr<'_>) -> Span {
     if_chain! {
-        if expr.span.from_expansion();
+        if in_macro(expr.span);
         let first = expr.span.ctxt().outer_expn_data();
-        if first.call_site.from_expansion();
+        if in_macro(first.call_site);
         let second = first.call_site.ctxt().outer_expn_data();
         then {
             second.call_site

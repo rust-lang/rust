@@ -1,4 +1,4 @@
-use crate::utils::{is_type_diagnostic_item, iter_input_pats, method_chain_args, snippet, span_lint_and_then};
+use crate::utils::{is_type_diagnostic_item, iter_input_pats, method_chain_args, snippet, span_lint_and_then, in_macro};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -260,7 +260,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapUnit {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>) {
-        if stmt.span.from_expansion() {
+        if in_macro(stmt.span) {
             return;
         }
 

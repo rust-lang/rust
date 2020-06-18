@@ -95,7 +95,7 @@ pub(crate) trait BindInsteadOfMap {
                     return false;
                 }
 
-                let some_inner_snip = if inner_expr.span.from_expansion() {
+                let some_inner_snip = if in_macro(inner_expr.span) {
                     snippet_with_macro_callsite(cx, inner_expr.span, "_")
                 } else {
                     snippet(cx, inner_expr.span, "_")

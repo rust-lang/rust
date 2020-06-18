@@ -6,7 +6,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::span_lint_and_help;
+use crate::utils::{span_lint_and_help, in_macro};
 
 declare_clippy_lint! {
     /// **What it does:** Checks methods that contain a `self` argument but don't use it
@@ -41,7 +41,7 @@ declare_lint_pass!(UnusedSelf => [UNUSED_SELF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &ImplItem<'_>) {
-        if impl_item.span.from_expansion() {
+        if in_macro(impl_item.span) {
             return;
         }
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id);

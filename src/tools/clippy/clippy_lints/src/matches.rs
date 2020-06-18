@@ -912,7 +912,7 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>
         }));
 
         span_lint_and_then(cx, MATCH_REF_PATS, expr.span, title, |diag| {
-            if !expr.span.from_expansion() {
+            if !in_macro(expr.span) {
                 multispan_sugg(diag, msg, suggs);
             }
         });
@@ -996,7 +996,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms:
     let matched_vars = ex.span;
     let bind_names = arms[0].pat.span;
     let match_body = remove_blocks(&arms[0].body);
-    let mut snippet_body = if match_body.span.from_expansion() {
+    let mut snippet_body = if in_macro(match_body.span) {
         Sugg::hir_with_macro_callsite(cx, match_body, "..").to_string()
     } else {
         snippet_block(cx, match_body.span, "..", Some(expr.span)).to_string()
@@ -1006,7 +1006,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms:
     match match_body.kind {
         ExprKind::Block(block, _) => {
             // macro + expr_ty(body) == ()
-            if block.span.from_expansion() && cx.tables.expr_ty(&match_body).is_unit() {
+            if in_macro(block.span) && cx.tables.expr_ty(&match_body).is_unit() {
                 snippet_body.push(';');
             }
         },
