@@ -135,8 +135,8 @@ impl NavigationTarget {
         db: &RootDatabase,
         node: InFile<&dyn ast::NameOwner>,
     ) -> NavigationTarget {
-        //FIXME: use `_` instead of empty string
-        let name = node.value.name().map(|it| it.text().clone()).unwrap_or_default();
+        let name =
+            node.value.name().map(|it| it.text().clone()).unwrap_or_else(|| SmolStr::new("_"));
         let focus_range =
             node.value.name().map(|it| original_range(db, node.with_value(it.syntax())).range);
         let frange = original_range(db, node.map(|it| it.syntax()));
@@ -145,6 +145,25 @@ impl NavigationTarget {
             frange.file_id,
             name,
             focus_range,
+            frange.range,
+            node.value.syntax().kind(),
+        )
+    }
+
+    /// Allows `NavigationTarget` to be created from a `DocCommentsOwner` and a `NameOwner`
+    pub(crate) fn from_doc_commented(
+        db: &RootDatabase,
+        named: InFile<&dyn ast::NameOwner>,
+        node: InFile<&dyn ast::DocCommentsOwner>,
+    ) -> NavigationTarget {
+        let name =
+            named.value.name().map(|it| it.text().clone()).unwrap_or_else(|| SmolStr::new("_"));
+        let frange = original_range(db, node.map(|it| it.syntax()));
+
+        NavigationTarget::from_syntax(
+            frange.file_id,
+            name,
+            None,
             frange.range,
             node.value.syntax().kind(),
         )
