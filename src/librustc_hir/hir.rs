@@ -2726,6 +2726,18 @@ impl Node<'_> {
         }
     }
 
+    pub fn body_id(&self) -> Option<BodyId> {
+        match self {
+            Node::TraitItem(TraitItem {
+                kind: TraitItemKind::Fn(_, TraitFn::Provided(body_id)),
+                ..
+            })
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(_, body_id), .. })
+            | Node::Item(Item { kind: ItemKind::Fn(.., body_id), .. }) => Some(*body_id),
+            _ => None,
+        }
+    }
+
     pub fn generics(&self) -> Option<&Generics<'_>> {
         match self {
             Node::TraitItem(TraitItem { generics, .. })
