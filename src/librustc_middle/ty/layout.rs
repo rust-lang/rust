@@ -974,13 +974,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                             return Ok(tcx.intern_layout(Layout {
                                 variants: Variants::Multiple {
-                                    discr: niche_scalar,
-                                    discr_kind: DiscriminantKind::Niche {
+                                    tag: niche_scalar,
+                                    tag_encoding: TagEncoding::Niche {
                                         dataful_variant: i,
                                         niche_variants,
                                         niche_start,
                                     },
-                                    discr_index: 0,
+                                    tag_field: 0,
                                     variants: st,
                                 },
                                 fields: FieldsShape::Arbitrary {
@@ -1216,9 +1216,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 tcx.intern_layout(Layout {
                     variants: Variants::Multiple {
-                        discr: tag,
-                        discr_kind: DiscriminantKind::Tag,
-                        discr_index: 0,
+                        tag,
+                        tag_encoding: TagEncoding::Direct,
+                        tag_field: 0,
                         variants: layout_variants,
                     },
                     fields: FieldsShape::Arbitrary {
@@ -1399,15 +1399,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Build a prefix layout, including "promoting" all ineligible
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
-        let discr_index = substs.as_generator().prefix_tys().count();
+        let tag_index = substs.as_generator().prefix_tys().count();
 
         // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
         let max_discr = (info.variant_fields.len() - 1) as u128;
         let discr_int = Integer::fit_unsigned(max_discr);
         let discr_int_ty = discr_int.to_ty(tcx, false);
-        let discr = Scalar { value: Primitive::Int(discr_int, false), valid_range: 0..=max_discr };
-        let discr_layout = self.tcx.intern_layout(Layout::scalar(self, discr.clone()));
-        let discr_layout = TyAndLayout { ty: discr_int_ty, layout: discr_layout };
+        let tag = Scalar { value: Primitive::Int(discr_int, false), valid_range: 0..=max_discr };
+        let tag_layout = self.tcx.intern_layout(Layout::scalar(self, tag.clone()));
+        let tag_layout = TyAndLayout { ty: discr_int_ty, layout: tag_layout };
 
         let promoted_layouts = ineligible_locals
             .iter()
@@ -1418,7 +1418,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             .as_generator()
             .prefix_tys()
             .map(|ty| self.layout_of(ty))
-            .chain(iter::once(Ok(discr_layout)))
+            .chain(iter::once(Ok(tag_layout)))
             .chain(promoted_layouts)
             .collect::<Result<Vec<_>, _>>()?;
         let prefix = self.univariant_uninterned(
@@ -1441,7 +1441,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
                 // "outer" and "promoted" fields respectively.
-                let b_start = (discr_index + 1) as u32;
+                let b_start = (tag_index + 1) as u32;
                 let offsets_b = offsets.split_off(b_start as usize);
                 let offsets_a = offsets;
 
@@ -1558,9 +1558,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let layout = tcx.intern_layout(Layout {
             variants: Variants::Multiple {
-                discr,
-                discr_kind: DiscriminantKind::Tag,
-                discr_index,
+                tag: tag,
+                tag_encoding: TagEncoding::Direct,
+                tag_field: tag_index,
                 variants,
             },
             fields: outer_fields,
@@ -1680,7 +1680,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
             }
 
-            Variants::Multiple { ref discr, ref discr_kind, .. } => {
+            Variants::Multiple { ref tag, ref tag_encoding, .. } => {
                 debug!(
                     "print-type-size `{:#?}` adt general variants def {}",
                     layout.ty,
@@ -1702,8 +1702,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 record(
                     adt_kind.into(),
                     adt_packed,
-                    match discr_kind {
-                        DiscriminantKind::Tag => Some(discr.value.size(self)),
+                    match tag_encoding {
+                        TagEncoding::Direct => Some(tag.value.size(self)),
                         _ => None,
                     },
                     variant_infos,
@@ -2028,11 +2028,11 @@ where
 
     fn field(this: TyAndLayout<'tcx>, cx: &C, i: usize) -> C::TyAndLayout {
         let tcx = cx.tcx();
-        let discr_layout = |discr: &Scalar| -> C::TyAndLayout {
-            let layout = Layout::scalar(cx, discr.clone());
+        let tag_layout = |tag: &Scalar| -> C::TyAndLayout {
+            let layout = Layout::scalar(cx, tag.clone());
             MaybeResult::from(Ok(TyAndLayout {
                 layout: tcx.intern_layout(layout),
-                ty: discr.value.to_ty(tcx),
+                ty: tag.value.to_ty(tcx),
             }))
         };
 
@@ -2109,9 +2109,9 @@ where
                     .unwrap()
                     .nth(i)
                     .unwrap(),
-                Variants::Multiple { ref discr, discr_index, .. } => {
-                    if i == discr_index {
-                        return discr_layout(discr);
+                Variants::Multiple { ref tag, tag_field, .. } => {
+                    if i == tag_field {
+                        return tag_layout(tag);
                     }
                     substs.as_generator().prefix_tys().nth(i).unwrap()
                 }
@@ -2128,9 +2128,9 @@ where
                     Variants::Single { index } => def.variants[index].fields[i].ty(tcx, substs),
 
                     // Discriminant field for enums (where applicable).
-                    Variants::Multiple { ref discr, .. } => {
+                    Variants::Multiple { ref tag, .. } => {
                         assert_eq!(i, 0);
-                        return discr_layout(discr);
+                        return tag_layout(tag);
                     }
                 }
             }
@@ -2207,10 +2207,10 @@ where
                     // using more niches than just null (e.g., the first page of
                     // the address space, or unaligned pointers).
                     Variants::Multiple {
-                        discr_kind: DiscriminantKind::Niche { dataful_variant, .. },
-                        discr_index,
+                        tag_encoding: TagEncoding::Niche { dataful_variant, .. },
+                        tag_field,
                         ..
-                    } if this.fields.offset(discr_index) == offset => {
+                    } if this.fields.offset(tag_field) == offset => {
                         Some(this.for_variant(cx, dataful_variant))
                     }
                     _ => Some(this),

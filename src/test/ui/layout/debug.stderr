@@ -10,15 +10,15 @@ error: layout_of(E) = Layout {
         ],
     },
     variants: Multiple {
-        discr: Scalar {
+        tag: Scalar {
             value: Int(
                 I32,
                 false,
             ),
             valid_range: 0..=0,
         },
-        discr_kind: Tag,
-        discr_index: 0,
+        tag_encoding: Direct,
+        tag_field: 0,
         variants: [
             Layout {
                 fields: Arbitrary {
@@ -202,15 +202,15 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
         ],
     },
     variants: Multiple {
-        discr: Scalar {
+        tag: Scalar {
             value: Int(
                 I32,
                 false,
             ),
             valid_range: 0..=1,
         },
-        discr_kind: Tag,
-        discr_index: 0,
+        tag_encoding: Direct,
+        tag_field: 0,
         variants: [
             Layout {
                 fields: Arbitrary {
