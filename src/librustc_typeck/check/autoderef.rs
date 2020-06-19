@@ -1,5 +1,5 @@
 use super::method::MethodCallee;
-use super::{FnCtxt, Needs, PlaceOp};
+use super::{FnCtxt, PlaceOp};
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -170,14 +170,13 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     }
 
     /// Returns the adjustment steps.
-    pub fn adjust_steps(&self, fcx: &FnCtxt<'a, 'tcx>, needs: Needs) -> Vec<Adjustment<'tcx>> {
-        fcx.register_infer_ok_obligations(self.adjust_steps_as_infer_ok(fcx, needs))
+    pub fn adjust_steps(&self, fcx: &FnCtxt<'a, 'tcx>) -> Vec<Adjustment<'tcx>> {
+        fcx.register_infer_ok_obligations(self.adjust_steps_as_infer_ok(fcx))
     }
 
     pub fn adjust_steps_as_infer_ok(
         &self,
         fcx: &FnCtxt<'a, 'tcx>,
-        needs: Needs,
     ) -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
         let mut obligations = vec![];
         let targets = self.steps.iter().skip(1).map(|&(ty, _)| ty).chain(iter::once(self.cur_ty));
@@ -186,7 +185,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             .iter()
             .map(|&(source, kind)| {
                 if let AutoderefKind::Overloaded = kind {
-                    fcx.try_overloaded_deref(self.span, source, needs).and_then(
+                    fcx.try_overloaded_deref(self.span, source).and_then(
                         |InferOk { value: method, obligations: o }| {
                             obligations.extend(o);
                             if let ty::Ref(region, _, mutbl) = method.sig.output().kind {
@@ -266,8 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         base_ty: Ty<'tcx>,
-        needs: Needs,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        self.try_overloaded_place_op(span, base_ty, &[], needs, PlaceOp::Deref)
+        self.try_overloaded_place_op(span, base_ty, &[], PlaceOp::Deref)
     }
 }

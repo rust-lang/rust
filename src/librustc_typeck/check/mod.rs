@@ -79,6 +79,7 @@ pub mod intrinsic;
 pub mod method;
 mod op;
 mod pat;
+mod place_op;
 mod regionck;
 mod upvar;
 mod wfcheck;
@@ -114,7 +115,7 @@ use rustc_infer::infer::{InferCtxt, InferOk, InferResult, RegionVariableOrigin, 
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::query::Providers;
@@ -156,7 +157,6 @@ use std::slice;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
 
-use self::autoderef::Autoderef;
 use self::callee::DeferredCallResolution;
 use self::coercion::{CoerceMany, DynamicCoerceMany};
 use self::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
@@ -3333,6 +3333,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
+        let autoborrow_mut = adj.iter().any(|adj| {
+            matches!(adj, &Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })),
+                ..
+            })
+        });
+
         match self.tables.borrow_mut().adjustments_mut().entry(expr.hir_id) {
             Entry::Vacant(entry) => {
                 entry.insert(adj);
@@ -3361,6 +3368,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 *entry.get_mut() = adj;
             }
+        }
+
+        // If there is an mutable auto-borrow, it is equivalent to `&mut <expr>`.
+        // In this case implicit use of `Deref` and `Index` within `<expr>` should
+        // instead be `DerefMut` and `IndexMut`, so fix those up.
+        if autoborrow_mut {
+            self.convert_place_derefs_to_mutable(expr);
         }
     }
 
@@ -3751,154 +3765,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // method returns &T, but the type as visible to user is T, so deref
         ret_ty.builtin_deref(true).unwrap()
-    }
-
-    fn lookup_indexing(
-        &self,
-        expr: &hir::Expr<'_>,
-        base_expr: &'tcx hir::Expr<'tcx>,
-        base_ty: Ty<'tcx>,
-        idx_ty: Ty<'tcx>,
-        needs: Needs,
-    ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
-        // FIXME(#18741) -- this is almost but not quite the same as the
-        // autoderef that normal method probing does. They could likely be
-        // consolidated.
-
-        let mut autoderef = self.autoderef(base_expr.span, base_ty);
-        let mut result = None;
-        while result.is_none() && autoderef.next().is_some() {
-            result = self.try_index_step(expr, base_expr, &autoderef, needs, idx_ty);
-        }
-        autoderef.finalize(self);
-        result
-    }
-
-    /// To type-check `base_expr[index_expr]`, we progressively autoderef
-    /// (and otherwise adjust) `base_expr`, looking for a type which either
-    /// supports builtin indexing or overloaded indexing.
-    /// This loop implements one step in that search; the autoderef loop
-    /// is implemented by `lookup_indexing`.
-    fn try_index_step(
-        &self,
-        expr: &hir::Expr<'_>,
-        base_expr: &hir::Expr<'_>,
-        autoderef: &Autoderef<'a, 'tcx>,
-        needs: Needs,
-        index_ty: Ty<'tcx>,
-    ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
-        let adjusted_ty = autoderef.unambiguous_final_ty(self);
-        debug!(
-            "try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
-             index_ty={:?})",
-            expr, base_expr, adjusted_ty, index_ty
-        );
-
-        for &unsize in &[false, true] {
-            let mut self_ty = adjusted_ty;
-            if unsize {
-                // We only unsize arrays here.
-                if let ty::Array(element_ty, _) = adjusted_ty.kind {
-                    self_ty = self.tcx.mk_slice(element_ty);
-                } else {
-                    continue;
-                }
-            }
-
-            // If some lookup succeeds, write callee into table and extract index/element
-            // type from the method signature.
-            // If some lookup succeeded, install method in table
-            let input_ty = self.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::AutoDeref,
-                span: base_expr.span,
-            });
-            let method = self.try_overloaded_place_op(
-                expr.span,
-                self_ty,
-                &[input_ty],
-                needs,
-                PlaceOp::Index,
-            );
-
-            let result = method.map(|ok| {
-                debug!("try_index_step: success, using overloaded indexing");
-                let method = self.register_infer_ok_obligations(ok);
-
-                let mut adjustments = autoderef.adjust_steps(self, needs);
-                if let ty::Ref(region, _, r_mutbl) = method.sig.inputs()[0].kind {
-                    let mutbl = match r_mutbl {
-                        hir::Mutability::Not => AutoBorrowMutability::Not,
-                        hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                            // Indexing can be desugared to a method call,
-                            // so maybe we could use two-phase here.
-                            // See the documentation of AllowTwoPhase for why that's
-                            // not the case today.
-                            allow_two_phase_borrow: AllowTwoPhase::No,
-                        },
-                    };
-                    adjustments.push(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
-                        target: self
-                            .tcx
-                            .mk_ref(region, ty::TypeAndMut { mutbl: r_mutbl, ty: adjusted_ty }),
-                    });
-                }
-                if unsize {
-                    adjustments.push(Adjustment {
-                        kind: Adjust::Pointer(PointerCast::Unsize),
-                        target: method.sig.inputs()[0],
-                    });
-                }
-                self.apply_adjustments(base_expr, adjustments);
-
-                self.write_method_call(expr.hir_id, method);
-                (input_ty, self.make_overloaded_place_return_type(method).ty)
-            });
-            if result.is_some() {
-                return result;
-            }
-        }
-
-        None
-    }
-
-    fn resolve_place_op(&self, op: PlaceOp, is_mut: bool) -> (Option<DefId>, Ident) {
-        let (tr, name) = match (op, is_mut) {
-            (PlaceOp::Deref, false) => (self.tcx.lang_items().deref_trait(), sym::deref),
-            (PlaceOp::Deref, true) => (self.tcx.lang_items().deref_mut_trait(), sym::deref_mut),
-            (PlaceOp::Index, false) => (self.tcx.lang_items().index_trait(), sym::index),
-            (PlaceOp::Index, true) => (self.tcx.lang_items().index_mut_trait(), sym::index_mut),
-        };
-        (tr, Ident::with_dummy_span(name))
-    }
-
-    fn try_overloaded_place_op(
-        &self,
-        span: Span,
-        base_ty: Ty<'tcx>,
-        arg_tys: &[Ty<'tcx>],
-        needs: Needs,
-        op: PlaceOp,
-    ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        debug!("try_overloaded_place_op({:?},{:?},{:?},{:?})", span, base_ty, needs, op);
-
-        // Try Mut first, if needed.
-        let (mut_tr, mut_op) = self.resolve_place_op(op, true);
-        let method = match (needs, mut_tr) {
-            (Needs::MutPlace, Some(trait_did)) => {
-                self.lookup_method_in_trait(span, mut_op, trait_did, base_ty, Some(arg_tys))
-            }
-            _ => None,
-        };
-
-        // Otherwise, fall back to the immutable version.
-        let (imm_tr, imm_op) = self.resolve_place_op(op, false);
-        match (method, imm_tr) {
-            (None, Some(trait_did)) => {
-                self.lookup_method_in_trait(span, imm_op, trait_did, base_ty, Some(arg_tys))
-            }
-            (method, _) => method,
-        }
     }
 
     fn check_method_argument_types(
