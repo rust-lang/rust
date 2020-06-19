@@ -1905,7 +1905,7 @@ impl fmt::Display for InlineAsmTemplatePiece {
                     match c {
                         '{' => f.write_str("{{")?,
                         '}' => f.write_str("}}")?,
-                        _ => write!(f, "{}", c.escape_debug())?,
+                        _ => c.fmt(f)?,
                     }
                 }
                 Ok(())

@@ -178,7 +178,7 @@ pub struct Parser<'a> {
     /// Error messages accumulated during parsing
     pub errors: Vec<ParseError>,
     /// Current position of implicit positional argument pointer
-    curarg: usize,
+    pub curarg: usize,
     /// `Some(raw count)` when the string is "raw", used to position spans correctly
     style: Option<usize>,
     /// Start and end byte offset of every successfully parsed argument
@@ -243,11 +243,13 @@ impl<'a> Iterator for Parser<'a> {
                 _ => Some(String(self.string(pos))),
             }
         } else {
-            if self.is_literal && self.cur_line_start != self.input.len() {
+            if self.is_literal {
                 let start = self.to_span_index(self.cur_line_start);
                 let end = self.to_span_index(self.input.len());
-                self.line_spans.push(start.to(end));
-                self.cur_line_start = self.input.len();
+                let span = start.to(end);
+                if self.line_spans.last() != Some(&span) {
+                    self.line_spans.push(span);
+                }
             }
             None
         }

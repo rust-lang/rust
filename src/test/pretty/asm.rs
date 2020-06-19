@@ -16,5 +16,14 @@ pub fn main() {
         asm!("{name}", name = inout(reg) b);
         asm!("{} {}", out(reg) _, inlateout(reg) b => _);
         asm!("", out("al") _, lateout("rbx") _);
+        asm!("inst1", "inst2");
+        asm!("inst1 {}, 42", "inst2 {}, 24", in(reg) a, out(reg) b);
+        asm!("inst2 {1}, 24", "inst1 {0}, 42", in(reg) a, out(reg) b);
+        asm!("inst1 {}, 42", "inst2 {name}, 24", in(reg) a, name = out(reg) b);
+        asm!("inst1
+inst2");
+        asm!("inst1\ninst2");
+        asm!("inst1\n\tinst2");
+        asm!("inst1\ninst2", "inst3\ninst4");
     }
 }
