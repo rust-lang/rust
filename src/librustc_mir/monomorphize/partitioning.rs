@@ -454,17 +454,10 @@ fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibilit
 fn merge_codegen_units<'tcx>(
     tcx: TyCtxt<'tcx>,
     initial_partitioning: &mut PreInliningPartitioning<'tcx>,
-    mut target_cgu_count: usize,
+    target_cgu_count: usize,
 ) {
     assert!(target_cgu_count >= 1);
     let codegen_units = &mut initial_partitioning.codegen_units;
-
-    if tcx.is_compiler_builtins(LOCAL_CRATE) {
-        // Compiler builtins require some degree of control over how mono items
-        // are partitioned into compilation units. Provide it by keeping the
-        // original partitioning when compiling the compiler builtins crate.
-        target_cgu_count = codegen_units.len();
-    }
 
     // Note that at this point in time the `codegen_units` here may not be in a
     // deterministic order (but we know they're deterministically the same set).
