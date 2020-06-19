@@ -24,43 +24,28 @@ class CargoTaskProvider implements vscode.TaskProvider {
         this.config = config;
     }
 
-    provideTasks(): vscode.Task[] {
+    async provideTasks(): Promise<vscode.Task[]> {
         // Detect Rust tasks. Currently we do not do any actual detection
         // of tasks (e.g. aliases in .cargo/config) and just return a fixed
         // set of tasks that always exist. These tasks cannot be removed in
         // tasks.json - only tweaked.
 
-        const cargoPath = toolchain.cargoPath();
-
-        return [
+        const defs = [
             { command: 'build', group: vscode.TaskGroup.Build },
             { command: 'check', group: vscode.TaskGroup.Build },
             { command: 'test', group: vscode.TaskGroup.Test },
             { command: 'clean', group: vscode.TaskGroup.Clean },
             { command: 'run', group: undefined },
-        ]
-            .map(({ command, group }) => {
-                const vscodeTask = new vscode.Task(
-                    // The contents of this object end up in the tasks.json entries.
-                    {
-                        type: TASK_TYPE,
-                        command,
-                    },
-                    // The scope of the task - workspace or specific folder (global
-                    // is not supported).
-                    this.target,
-                    // The task name, and task source. These are shown in the UI as
-                    // `${source}: ${name}`, e.g. `rust: cargo build`.
-                    `cargo ${command}`,
-                    'rust',
-                    // What to do when this command is executed.
-                    new vscode.ShellExecution(cargoPath, [command]),
-                    // Problem matchers.
-                    ['$rustc'],
-                );
-                vscodeTask.group = group;
-                return vscodeTask;
-            });
+        ];
+
+        const tasks: vscode.Task[] = [];
+        for (const def of defs) {
+            const vscodeTask = await buildCargoTask(this.target, { type: TASK_TYPE, command: def.command }, `cargo ${def.command}`, [def.command], this.config.cargoRunner);
+            vscodeTask.group = def.group;
+            tasks.push(vscodeTask);
+        }
+
+        return tasks;
     }
 
     async resolveTask(task: vscode.Task): Promise<vscode.Task | undefined> {
@@ -73,38 +58,56 @@ class CargoTaskProvider implements vscode.TaskProvider {
         if (definition.type === TASK_TYPE && definition.command) {
             const args = [definition.command].concat(definition.args ?? []);
 
-            return await buildCargoTask(definition, task.name, args, this.config.cargoRunner);
+            return await buildCargoTask(this.target, definition, task.name, args, this.config.cargoRunner);
         }
 
         return undefined;
     }
 }
 
-export async function buildCargoTask(definition: CargoTaskDefinition, name: string, args: string[], customRunner?: string): Promise<vscode.Task> {
-    if (customRunner) {
-        const runnerCommand = `${customRunner}.createCargoTask`;
-        try {
-            const runnerArgs = { name, args, cwd: definition.cwd, env: definition.env, source: TASK_SOURCE };
-            const task = await vscode.commands.executeCommand(runnerCommand, runnerArgs);
+export async function buildCargoTask(
+    target: vscode.WorkspaceFolder,
+    definition: CargoTaskDefinition,
+    name: string,
+    args: string[],
+    customRunner?: string,
+    throwOnError: boolean = false
+): Promise<vscode.Task> {
 
-            if (task instanceof vscode.Task) {
-                return task;
-            } else if (task) {
-                log.debug("Invalid cargo task", task);
-                throw `Invalid task!`;
+    let exec: vscode.ShellExecution | undefined = undefined;
+
+    if (customRunner) {
+        const runnerCommand = `${customRunner}.buildShellExecution`;
+        try {
+            const runnerArgs = { kind: TASK_TYPE, args, cwd: definition.cwd, env: definition.env };
+            const customExec = await vscode.commands.executeCommand(runnerCommand, runnerArgs);
+            if (customExec) {
+                if (customExec instanceof vscode.ShellExecution) {
+                    exec = customExec as vscode.ShellExecution;
+                } else {
+                    log.debug("Invalid cargo ShellExecution", customExec);
+                    throw "Invalid cargo ShellExecution.";
+                }
             }
             // fallback to default processing
 
         } catch (e) {
-            throw `Cargo runner '${customRunner}' failed! ${e}`;
+            if (throwOnError) throw `Cargo runner '${customRunner}' failed! ${e}`;
+            // fallback to default processing
         }
+    }
+
+    if (!exec) {
+        exec = new vscode.ShellExecution(toolchain.cargoPath(), args, definition)
     }
 
     return new vscode.Task(
         definition,
+        target,
         name,
         TASK_SOURCE,
-        new vscode.ShellExecution(toolchain.cargoPath(), args, definition),
+        exec,
+        ['$rustc']
     );
 }
 

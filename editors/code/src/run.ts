@@ -116,7 +116,8 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         env: Object.assign({}, process.env as { [key: string]: string }, { "RUST_BACKTRACE": "short" }),
     };
 
-    const cargoTask = await tasks.buildCargoTask(definition, runnable.label, args, config.cargoRunner);
+    const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()
+    const cargoTask = await tasks.buildCargoTask(target, definition, runnable.label, args, config.cargoRunner, true);
     cargoTask.presentationOptions.clear = true;
 
     return cargoTask;
