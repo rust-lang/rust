@@ -391,7 +391,7 @@ pub fn build_impl(
         clean::GenericBound::TraitBound(polyt, _) => polyt.trait_,
         clean::GenericBound::Outlives(..) => unreachable!(),
     });
-    if trait_.def_id() == tcx.lang_items().deref_trait() {
+    if trait_.def_id().map_or(false, |id| tcx.lang_items().deref_trait().has_def_id(id)) {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
     if let Some(trait_did) = trait_.def_id() {

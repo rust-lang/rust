@@ -166,7 +166,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
         if let Some(def) = mplace.layout.ty.ty_adt_def() {
-            if Some(def.did) == self.ecx.tcx.lang_items().unsafe_cell_type() {
+            if self.ecx.tcx.lang_items().unsafe_cell_type().has_def_id(def.did) {
                 if self.mode == InternMode::ConstInner && !self.ignore_interior_mut_in_const {
                     // We do not actually make this memory mutable.  But in case the user
                     // *expected* it to be mutable, make sure we error.  This is just a

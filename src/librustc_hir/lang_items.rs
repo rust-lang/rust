@@ -63,24 +63,6 @@ macro_rules! language_item_table {
             Missing(LangItem),
         }
 
-        // FIXME(doctorn) remove
-        impl PartialEq<Option<DefId>> for LangItemRecord {
-            fn eq(&self, rhs: &Option<DefId>) -> bool {
-                if let Some(def_id) = rhs {
-                    self.has_def_id(*def_id)
-                } else {
-                    false
-                }
-            }
-        }
-
-        // FIXME(doctorn) remove
-        impl PartialEq<LangItemRecord> for Option<DefId> {
-            fn eq(&self, rhs: &LangItemRecord) -> bool {
-                rhs == self
-            }
-        }
-
         impl LangItemRecord {
             #[inline]
             pub fn has_def_id(self, def_id: DefId) -> bool {

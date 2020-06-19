@@ -69,8 +69,8 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         args: &[OpTy<'tcx>],
     ) -> InterpResult<'tcx> {
         let def_id = instance.def_id();
-        if Some(def_id) == self.tcx.lang_items().panic_fn()
-            || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
+        if self.tcx.lang_items().panic_fn().has_def_id(def_id)
+            || self.tcx.lang_items().begin_panic_fn().has_def_id(def_id)
         {
             // &'static str
             assert!(args.len() == 1);

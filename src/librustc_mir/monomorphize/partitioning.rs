@@ -340,7 +340,7 @@ fn mono_item_visibility(
     //        from the `main` symbol we'll generate later.
     //
     //        This may be fixable with a new `InstanceDef` perhaps? Unsure!
-    if tcx.lang_items().start_fn() == Some(def_id) {
+    if tcx.lang_items().start_fn().has_def_id(def_id) {
         *can_be_internalized = false;
         return Visibility::Hidden;
     }
@@ -734,7 +734,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
 
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 if tcx.sess.opts.incremental.is_some()
-                    && tcx.trait_id_of_impl(impl_def_id) == tcx.lang_items().drop_trait()
+                    && tcx.lang_items().drop_trait().has_def_id(impl_def_id)
                 {
                     // Put `Drop::drop` into the same cgu as `drop_in_place`
                     // since `drop_in_place` is the only thing that can

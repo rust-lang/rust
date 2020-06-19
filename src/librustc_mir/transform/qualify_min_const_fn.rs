@@ -40,7 +40,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                     bug!("subtype predicate on function: {:#?}", predicate)
                 }
                 &ty::PredicateKind::Trait(pred, constness) => {
-                    if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
+                    if tcx.lang_items().sized_trait().has_def_id(pred.def_id()) {
                         continue;
                     }
                     match pred.skip_binder().self_ty().kind {
@@ -130,7 +130,7 @@ fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> Mc
                             ));
                         }
                         ty::ExistentialPredicate::Trait(trait_ref) => {
-                            if Some(trait_ref.def_id) != tcx.lang_items().sized_trait() {
+                            if !tcx.lang_items().sized_trait().has_def_id(trait_ref.def_id) {
                                 return Err((
                                     span,
                                     "trait bounds other than `Sized` \

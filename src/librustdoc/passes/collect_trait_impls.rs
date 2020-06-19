@@ -91,7 +91,11 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     // scan through included items ahead of time to splice in Deref targets to the "valid" sets
     for it in &new_items {
         if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = it.inner {
-            if cleaner.keep_item(for_) && trait_.def_id() == cx.tcx.lang_items().deref_trait() {
+            if cleaner.keep_item(for_)
+                && trait_
+                    .def_id()
+                    .map_or(false, |id| cx.tcx.lang_items().deref_trait().has_def_id(id))
+            {
                 let target = items
                     .iter()
                     .find_map(|item| match item.inner {

@@ -83,7 +83,7 @@ impl Qualif for HasMutInterior {
     fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
-        Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()
+        cx.tcx.lang_items().unsafe_cell_type().has_def_id(adt.did)
     }
 }
 

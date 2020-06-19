@@ -2115,7 +2115,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
 
         // If this impl block is an implementation of the Deref trait, then we
         // need to try inlining the target's inherent impl blocks as well.
-        if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
+        if trait_.def_id().map_or(false, |id| cx.tcx.lang_items().deref_trait().has_def_id(id)) {
             build_deref_target_impls(cx, &items, &mut ret);
         }
 

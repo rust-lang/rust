@@ -114,7 +114,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         }
 
         ty::Adt(def, _) => {
-            if Some(def.did) == tcx.lang_items().manually_drop() {
+            if tcx.lang_items().manually_drop().has_def_id(def.did) {
                 // `ManuallyDrop` never has a dtor.
                 true
             } else {

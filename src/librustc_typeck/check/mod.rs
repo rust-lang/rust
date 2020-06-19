@@ -2392,7 +2392,7 @@ fn bounds_from_generic_predicates(
             ty::PredicateKind::Trait(trait_predicate, _) => {
                 let entry = types.entry(trait_predicate.skip_binder().self_ty()).or_default();
                 let def_id = trait_predicate.skip_binder().def_id();
-                if Some(def_id) != tcx.lang_items().sized_trait() {
+                if !tcx.lang_items().sized_trait().has_def_id(def_id) {
                     // Type params are `Sized` by default, do not add that restriction to the list
                     // if it is a positive requirement.
                     entry.push(trait_predicate.skip_binder().def_id());
@@ -4027,7 +4027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
         self.obligations_for_self_ty(self_ty)
-            .any(|(tr, _)| Some(tr.def_id()) == self.tcx.lang_items().sized_trait())
+            .any(|(tr, _)| self.tcx.lang_items().sized_trait().has_def_id(tr.def_id()))
     }
 
     /// Generic function that factors out common logic from function calls,

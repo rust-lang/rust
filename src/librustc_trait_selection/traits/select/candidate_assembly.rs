@@ -96,7 +96,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let def_id = obligation.predicate.def_id();
         let lang_items = self.tcx().lang_items();
 
-        if lang_items.copy_trait() == Some(def_id) {
+        if lang_items.copy_trait().has_def_id(def_id) {
             debug!("obligation self ty is {:?}", obligation.predicate.skip_binder().self_ty());
 
             // User-defined copy impls are permitted, but only for
@@ -106,18 +106,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // For other types, we'll use the builtin rules.
             let copy_conditions = self.copy_clone_conditions(obligation);
             self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates)?;
-        } else if lang_items.discriminant_kind_trait() == Some(def_id) {
+        } else if lang_items.discriminant_kind_trait().has_def_id(def_id) {
             // `DiscriminantKind` is automatically implemented for every type.
             candidates.vec.push(DiscriminantKindCandidate);
-        } else if lang_items.sized_trait() == Some(def_id) {
+        } else if lang_items.sized_trait().has_def_id(def_id) {
             // Sized is never implementable by end-users, it is
             // always automatically computed.
             let sized_conditions = self.sized_conditions(obligation);
             self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates)?;
-        } else if lang_items.unsize_trait() == Some(def_id) {
+        } else if lang_items.unsize_trait().has_def_id(def_id) {
             self.assemble_candidates_for_unsizing(obligation, &mut candidates);
         } else {
-            if lang_items.clone_trait() == Some(def_id) {
+            if lang_items.clone_trait().has_def_id(def_id) {
                 // Same builtin conditions as `Copy`, i.e., every type which has builtin support
                 // for `Copy` also has builtin support for `Clone`, and tuples/arrays of `Clone`
                 // types have builtin support for `Clone`.
@@ -213,7 +213,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
-        if self.tcx().lang_items().gen_trait() != Some(obligation.predicate.def_id()) {
+        if !self.tcx().lang_items().gen_trait().has_def_id(obligation.predicate.def_id()) {
             return Ok(());
         }
 
@@ -401,7 +401,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     candidates.ambiguous = true;
                 }
                 ty::Generator(_, _, movability)
-                    if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
+                    if self.tcx().lang_items().unpin_trait().has_def_id(def_id) =>
                 {
                     match movability {
                         hir::Movability::Static => {

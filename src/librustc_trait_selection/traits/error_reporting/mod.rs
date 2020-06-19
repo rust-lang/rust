@@ -285,7 +285,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         let is_from = format!("{}", trait_ref.print_only_trait_path())
                             .starts_with("std::convert::From<");
                         let is_unsize =
-                            { Some(trait_ref.def_id()) == self.tcx.lang_items().unsize_trait() };
+                            self.tcx.lang_items().unsize_trait().has_def_id(trait_ref.def_id());
                         let (message, note) = if is_try && is_from {
                             (
                                 Some(format!(
@@ -407,7 +407,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         self.suggest_semicolon_removal(&obligation, &mut err, span, &trait_ref);
                         self.note_version_mismatch(&mut err, &trait_ref);
 
-                        if Some(trait_ref.def_id()) == tcx.lang_items().try_trait() {
+                        if tcx.lang_items().try_trait().has_def_id(trait_ref.def_id()) {
                             self.suggest_await_before_try(&mut err, &obligation, &trait_ref, span);
                         }
 
@@ -1697,13 +1697,17 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         {
             if let (Some(generics), true) = (
                 self.tcx.hir().get_if_local(*item_def_id).as_ref().and_then(|n| n.generics()),
-                Some(pred.def_id()) == self.tcx.lang_items().sized_trait(),
+                self.tcx.lang_items().sized_trait().has_def_id(pred.def_id()),
             ) {
                 for param in generics.params {
                     if param.span == *span
                         && !param.bounds.iter().any(|bound| {
-                            bound.trait_ref().and_then(|trait_ref| trait_ref.trait_def_id())
-                                == self.tcx.lang_items().sized_trait()
+                            bound
+                                .trait_ref()
+                                .and_then(|trait_ref| trait_ref.trait_def_id())
+                                .map_or(false, |def_id| {
+                                    self.tcx.lang_items().sized_trait().has_def_id(def_id)
+                                })
                         })
                     {
                         let (span, separator) = match param.bounds {

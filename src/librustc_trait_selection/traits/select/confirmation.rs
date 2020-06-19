@@ -160,11 +160,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let lang_items = self.tcx().lang_items();
         let obligations = if has_nested {
             let trait_def = obligation.predicate.def_id();
-            let conditions = if Some(trait_def) == lang_items.sized_trait() {
+            let conditions = if lang_items.sized_trait().has_def_id(trait_def) {
                 self.sized_conditions(obligation)
-            } else if Some(trait_def) == lang_items.copy_trait() {
+            } else if lang_items.copy_trait().has_def_id(trait_def) {
                 self.copy_clone_conditions(obligation)
-            } else if Some(trait_def) == lang_items.clone_trait() {
+            } else if lang_items.clone_trait().has_def_id(trait_def) {
                 self.copy_clone_conditions(obligation)
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)

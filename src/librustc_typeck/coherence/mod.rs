@@ -45,11 +45,10 @@ fn enforce_trait_manually_implementable(
     impl_def_id: LocalDefId,
     trait_def_id: DefId,
 ) {
-    let did = Some(trait_def_id);
     let li = tcx.lang_items();
 
     // Disallow *all* explicit impls of `DiscriminantKind`, `Sized` and `Unsize` for now.
-    if did == li.discriminant_kind_trait() {
+    if li.discriminant_kind_trait().has_def_id(trait_def_id) {
         let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(
             tcx.sess,
@@ -62,7 +61,7 @@ fn enforce_trait_manually_implementable(
         return;
     }
 
-    if did == li.sized_trait() {
+    if li.sized_trait().has_def_id(trait_def_id) {
         let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(
             tcx.sess,
@@ -75,7 +74,7 @@ fn enforce_trait_manually_implementable(
         return;
     }
 
-    if did == li.unsize_trait() {
+    if li.unsize_trait().has_def_id(trait_def_id) {
         let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(
             tcx.sess,
@@ -109,11 +108,11 @@ fn enforce_trait_manually_implementable(
         }
     }
 
-    let trait_name = if did == li.fn_trait() {
+    let trait_name = if li.fn_trait().has_def_id(trait_def_id) {
         "Fn"
-    } else if did == li.fn_mut_trait() {
+    } else if li.fn_mut_trait().has_def_id(trait_def_id) {
         "FnMut"
-    } else if did == li.fn_once_trait() {
+    } else if li.fn_once_trait().has_def_id(trait_def_id) {
         "FnOnce"
     } else {
         return; // everything OK

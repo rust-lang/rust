@@ -716,7 +716,8 @@ impl GenericBound {
     pub fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
         use rustc_hir::TraitBoundModifier as TBM;
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
-            if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
+            if trait_.def_id().map_or(false, |id| cx.tcx.lang_items().sized_trait().has_def_id(id))
+            {
                 return true;
             }
         }

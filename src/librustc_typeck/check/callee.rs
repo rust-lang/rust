@@ -28,7 +28,7 @@ pub fn check_legal_trait_for_method_call(
     receiver: Option<Span>,
     trait_id: DefId,
 ) {
-    if tcx.lang_items().drop_trait() == Some(trait_id) {
+    if tcx.lang_items().drop_trait().has_def_id(trait_id) {
         let mut err = struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method");
         err.span_label(span, "explicit destructor calls not allowed");
 

@@ -245,7 +245,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             _ => None,
         };
         if let Some((def_id, args)) = check {
-            if Some(def_id) == self.fx.cx.tcx().lang_items().box_free_fn() {
+            if self.fx.cx.tcx().lang_items().box_free_fn().has_def_id(def_id) {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.

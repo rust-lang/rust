@@ -90,7 +90,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         } = &terminator.kind
         {
             debug!("add_moved_or_invoked_closure_note: id={:?}", id);
-            if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
+            if self
+                .infcx
+                .tcx
+                .parent(id)
+                .map_or(false, |id| self.infcx.tcx.lang_items().fn_once_trait().has_def_id(id))
+            {
                 let closure = match args.first() {
                     Some(Operand::Copy(ref place)) | Some(Operand::Move(ref place))
                         if target == place.local_or_deref_local() =>
@@ -725,12 +730,12 @@ impl BorrowedContentSource<'tcx> {
                 let trait_id = tcx.trait_of_item(def_id)?;
 
                 let lang_items = tcx.lang_items();
-                if Some(trait_id) == lang_items.deref_trait()
-                    || Some(trait_id) == lang_items.deref_mut_trait()
+                if lang_items.deref_trait().has_def_id(trait_id)
+                    || lang_items.deref_mut_trait().has_def_id(trait_id)
                 {
                     Some(BorrowedContentSource::OverloadedDeref(substs.type_at(0)))
-                } else if Some(trait_id) == lang_items.index_trait()
-                    || Some(trait_id) == lang_items.index_mut_trait()
+                } else if lang_items.index_trait().has_def_id(trait_id)
+                    || lang_items.index_mut_trait().has_def_id(trait_id)
                 {
                     Some(BorrowedContentSource::OverloadedIndex(substs.type_at(0)))
                 } else {
@@ -816,7 +821,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             if let [Operand::Move(self_place), ..] = **args {
                 if self_place.as_local() == Some(target_temp) {
-                    let is_fn_once = tcx.parent(method_did) == tcx.lang_items().fn_once_trait();
+                    let is_fn_once = tcx
+                        .parent(method_did)
+                        .map_or(false, |id| tcx.lang_items().fn_once_trait().has_def_id(id));
                     let fn_call_span = *fn_span;
 
                     let self_arg = tcx.fn_arg_names(method_did)[0];

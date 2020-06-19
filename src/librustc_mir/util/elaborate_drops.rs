@@ -446,7 +446,7 @@ where
         }
 
         let skip_contents =
-            adt.is_union() || Some(adt.did) == self.tcx().lang_items().manually_drop();
+            adt.is_union() || self.tcx().lang_items().manually_drop().has_def_id(adt.did);
         let contents_drop = if skip_contents {
             (self.succ, self.unwind)
         } else {

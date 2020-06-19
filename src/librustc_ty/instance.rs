@@ -35,7 +35,7 @@ fn resolve_instance<'tcx>(
                 debug!(" => intrinsic");
                 ty::InstanceDef::Intrinsic(def_id)
             }
-            ty::FnDef(def_id, substs) if Some(def_id) == tcx.lang_items().drop_in_place_fn() => {
+            ty::FnDef(def_id, substs) if tcx.lang_items().drop_in_place_fn().has_def_id(def_id) => {
                 let ty = substs.type_at(0);
 
                 if ty.needs_drop(tcx, param_env) {
@@ -210,7 +210,7 @@ fn resolve_associated_item<'tcx>(
             Some(Instance { def: ty::InstanceDef::Virtual(def_id, index), substs: rcvr_substs })
         }
         traits::ImplSourceBuiltin(..) => {
-            if Some(trait_ref.def_id) == tcx.lang_items().clone_trait() {
+            if tcx.lang_items().clone_trait().has_def_id(trait_ref.def_id) {
                 // FIXME(eddyb) use lang items for methods instead of names.
                 let name = tcx.item_name(def_id);
                 if name == sym::clone {
