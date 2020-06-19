@@ -344,6 +344,15 @@ impl Foo {
         true
     }
 }
+
+/// ```
+/// noop!(1);
+/// ```
+macro_rules! noop {
+    ($expr:expr) => {
+        $expr
+    }
+}
 "#
         .trim(),
         "crates/ra_ide/src/snapshots/highlight_doctest.html",

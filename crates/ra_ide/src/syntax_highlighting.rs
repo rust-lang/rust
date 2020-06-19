@@ -121,7 +121,6 @@ pub(crate) fn highlight(
                 assert!(current_macro_call == Some(mc));
                 current_macro_call = None;
                 format_string = None;
-                continue;
             }
             _ => (),
         }
@@ -150,7 +149,7 @@ pub(crate) fn highlight(
 
         let range = element.text_range();
 
-        let element_to_highlight = if current_macro_call.is_some() {
+        let element_to_highlight = if current_macro_call.is_some() && element.kind() != COMMENT {
             // Inside a macro -- expand it first
             let token = match element.clone().into_token() {
                 Some(it) if it.parent().kind() == TOKEN_TREE => it,
