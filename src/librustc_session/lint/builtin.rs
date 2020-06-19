@@ -17,6 +17,7 @@ declare_lint! {
         reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
         edition: None,
     };
+    crate_level_only
 }
 
 declare_lint! {
@@ -75,7 +76,8 @@ declare_lint! {
 declare_lint! {
     pub UNUSED_CRATE_DEPENDENCIES,
     Allow,
-    "crate dependencies that are never used"
+    "crate dependencies that are never used",
+    crate_level_only
 }
 
 declare_lint! {
@@ -166,7 +168,8 @@ declare_lint! {
 declare_lint! {
     pub UNKNOWN_CRATE_TYPES,
     Deny,
-    "unknown crate type found in `#[crate_type]` directive"
+    "unknown crate type found in `#[crate_type]` directive",
+    crate_level_only
 }
 
 declare_lint! {
@@ -339,7 +342,8 @@ declare_lint! {
 declare_lint! {
     pub ELIDED_LIFETIMES_IN_PATHS,
     Allow,
-    "hidden lifetime parameters in types are deprecated"
+    "hidden lifetime parameters in types are deprecated",
+    crate_level_only
 }
 
 declare_lint! {
@@ -459,6 +463,7 @@ declare_lint! {
         reference: "issue #52234 <https://github.com/rust-lang/rust/issues/52234>",
         edition: None,
     };
+    crate_level_only
 }
 
 declare_lint! {
