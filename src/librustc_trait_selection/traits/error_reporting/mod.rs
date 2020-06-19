@@ -15,6 +15,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
@@ -25,7 +26,7 @@ use rustc_middle::ty::{
     TypeFoldable, WithConstness,
 };
 use rustc_session::DiagnosticMessageId;
-use rustc_span::{ExpnKind, Span, DUMMY_SP};
+use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -1695,36 +1696,95 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        if let (
-            ty::PredicateKind::Trait(pred, _),
-            ObligationCauseCode::BindingObligation(item_def_id, span),
-        ) = (obligation.predicate.kind(), &obligation.cause.code)
-        {
-            if let (Some(generics), true) = (
-                self.tcx.hir().get_if_local(*item_def_id).as_ref().and_then(|n| n.generics()),
-                Some(pred.def_id()) == self.tcx.lang_items().sized_trait(),
-            ) {
-                for param in generics.params {
-                    if param.span == *span
-                        && !param.bounds.iter().any(|bound| {
-                            bound.trait_ref().and_then(|trait_ref| trait_ref.trait_def_id())
-                                == self.tcx.lang_items().sized_trait()
-                        })
-                    {
-                        let (span, separator) = match param.bounds {
-                            [] => (span.shrink_to_hi(), ":"),
-                            [.., bound] => (bound.span().shrink_to_hi(), " +"),
-                        };
-                        err.span_suggestion_verbose(
-                            span,
-                            "consider relaxing the implicit `Sized` restriction",
-                            format!("{} ?Sized", separator),
-                            Applicability::MachineApplicable,
+        let (pred, item_def_id, span) =
+            match (obligation.predicate.kind(), &obligation.cause.code.peel_derives()) {
+                (
+                    ty::PredicateKind::Trait(pred, _),
+                    ObligationCauseCode::BindingObligation(item_def_id, span),
+                ) => (pred, item_def_id, span),
+                _ => return,
+            };
+
+        let node = match (
+            self.tcx.hir().get_if_local(*item_def_id),
+            Some(pred.def_id()) == self.tcx.lang_items().sized_trait(),
+        ) {
+            (Some(node), true) => node,
+            _ => return,
+        };
+        let generics = match node.generics() {
+            Some(generics) => generics,
+            None => return,
+        };
+        for param in generics.params {
+            if param.span != *span
+                || param.bounds.iter().any(|bound| {
+                    bound.trait_ref().and_then(|trait_ref| trait_ref.trait_def_id())
+                        == self.tcx.lang_items().sized_trait()
+                })
+            {
+                continue;
+            }
+            match node {
+                hir::Node::Item(
+                    item
+                    @
+                    hir::Item {
+                        kind:
+                            hir::ItemKind::Enum(..)
+                            | hir::ItemKind::Struct(..)
+                            | hir::ItemKind::Union(..),
+                        ..
+                    },
+                ) => {
+                    // Suggesting `T: ?Sized` is only valid in an ADT if `T` is only used in a
+                    // borrow. `struct S<'a, T: ?Sized>(&'a T);` is valid, `struct S<T: ?Sized>(T);`
+                    // is not.
+                    let mut visitor = FindTypeParam {
+                        param: param.name.ident().name,
+                        invalid_spans: vec![],
+                        nested: false,
+                    };
+                    visitor.visit_item(item);
+                    if !visitor.invalid_spans.is_empty() {
+                        let mut multispan: MultiSpan = param.span.into();
+                        multispan.push_span_label(
+                            param.span,
+                            format!("this could be changed to `{}: ?Sized`...", param.name.ident()),
+                        );
+                        for sp in visitor.invalid_spans {
+                            multispan.push_span_label(
+                                sp,
+                                format!(
+                                    "...if indirection was used here: `Box<{}>`",
+                                    param.name.ident(),
+                                ),
+                            );
+                        }
+                        err.span_help(
+                            multispan,
+                            &format!(
+                                "you could relax the implicit `Sized` bound on `{T}` if it were \
+                                 used through indirection like `&{T}` or `Box<{T}>`",
+                                T = param.name.ident(),
+                            ),
                         );
                         return;
                     }
                 }
+                _ => {}
             }
+            let (span, separator) = match param.bounds {
+                [] => (span.shrink_to_hi(), ":"),
+                [.., bound] => (bound.span().shrink_to_hi(), " +"),
+            };
+            err.span_suggestion_verbose(
+                span,
+                "consider relaxing the implicit `Sized` restriction",
+                format!("{} ?Sized", separator),
+                Applicability::MachineApplicable,
+            );
+            return;
         }
     }
 
@@ -1741,6 +1801,50 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
         false
+    }
+}
+
+/// Look for type `param` in an ADT being used only through a reference to confirm that suggesting
+/// `param: ?Sized` would be a valid constraint.
+struct FindTypeParam {
+    param: rustc_span::Symbol,
+    invalid_spans: Vec<Span>,
+    nested: bool,
+}
+
+impl<'v> Visitor<'v> for FindTypeParam {
+    type Map = rustc_hir::intravisit::ErasedMap<'v>;
+
+    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
+        hir::intravisit::NestedVisitorMap::None
+    }
+
+    fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
+        // We collect the spans of all uses of the "bare" type param, like in `field: T` or
+        // `field: (T, T)` where we could make `T: ?Sized` while skipping cases that are known to be
+        // valid like `field: &'a T` or `field: *mut T` and cases that *might* have further `Sized`
+        // obligations like `Box<T>` and `Vec<T>`, but we perform no extra analysis for those cases
+        // and suggest `T: ?Sized` regardless of their obligations. This is fine because the errors
+        // in that case should make what happened clear enough.
+        match ty.kind {
+            hir::TyKind::Ptr(_) | hir::TyKind::Rptr(..) | hir::TyKind::TraitObject(..) => {}
+            hir::TyKind::Path(hir::QPath::Resolved(None, path))
+                if path.segments.len() == 1 && path.segments[0].ident.name == self.param =>
+            {
+                if !self.nested {
+                    self.invalid_spans.push(ty.span);
+                }
+            }
+            hir::TyKind::Path(_) => {
+                let prev = self.nested;
+                self.nested = true;
+                hir::intravisit::walk_ty(self, ty);
+                self.nested = prev;
+            }
+            _ => {
+                hir::intravisit::walk_ty(self, ty);
+            }
+        }
     }
 }
 
