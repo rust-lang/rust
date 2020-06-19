@@ -665,3 +665,31 @@ impl Foo<i64> {
     "###
     );
 }
+
+#[test]
+fn issue_4931() {
+    assert_snapshot!(
+        infer(r#"
+trait Div<T> {
+    type Output;
+}
+
+trait CheckedDiv: Div<()> {}
+
+trait PrimInt: CheckedDiv<Output = ()> {
+    fn pow(self);
+}
+
+fn check<T: PrimInt>(i: T) {
+    i.pow();
+}
+"#),
+        @r###"
+    118..122 'self': Self
+    149..150 'i': T
+    155..171 '{     ...w(); }': ()
+    161..162 'i': T
+    161..168 'i.pow()': ()
+    "###
+    );
+}

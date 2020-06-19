@@ -337,17 +337,17 @@ impl Ty {
                     TraitRef::from_resolved_path(ctx, trait_, resolved_segment, self_ty);
                 let ty = if remaining_segments.len() == 1 {
                     let segment = remaining_segments.first().unwrap();
-                    let associated_ty = associated_type_by_name_including_super_traits(
-                        ctx.db.upcast(),
-                        trait_ref.trait_,
+                    let found = associated_type_by_name_including_super_traits(
+                        ctx.db,
+                        trait_ref.clone(),
                         &segment.name,
                     );
-                    match associated_ty {
-                        Some(associated_ty) => {
+                    match found {
+                        Some((super_trait_ref, associated_ty)) => {
                             // FIXME handle type parameters on the segment
                             Ty::Projection(ProjectionTy {
                                 associated_ty,
-                                parameters: trait_ref.substs,
+                                parameters: super_trait_ref.substs,
                             })
                         }
                         None => {
@@ -706,17 +706,17 @@ fn assoc_type_bindings_from_type_bound<'a>(
         .flat_map(|segment| segment.args_and_bindings.into_iter())
         .flat_map(|args_and_bindings| args_and_bindings.bindings.iter())
         .flat_map(move |binding| {
-            let associated_ty = associated_type_by_name_including_super_traits(
-                ctx.db.upcast(),
-                trait_ref.trait_,
+            let found = associated_type_by_name_including_super_traits(
+                ctx.db,
+                trait_ref.clone(),
                 &binding.name,
             );
-            let associated_ty = match associated_ty {
+            let (super_trait_ref, associated_ty) = match found {
                 None => return SmallVec::<[GenericPredicate; 1]>::new(),
                 Some(t) => t,
             };
             let projection_ty =
-                ProjectionTy { associated_ty, parameters: trait_ref.substs.clone() };
+                ProjectionTy { associated_ty, parameters: super_trait_ref.substs.clone() };
             let mut preds = SmallVec::with_capacity(
                 binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
             );

@@ -143,13 +143,14 @@ pub(super) fn find_super_trait_path(
 }
 
 pub(super) fn associated_type_by_name_including_super_traits(
-    db: &dyn DefDatabase,
-    trait_: TraitId,
+    db: &dyn HirDatabase,
+    trait_ref: TraitRef,
     name: &Name,
-) -> Option<TypeAliasId> {
-    all_super_traits(db, trait_)
-        .into_iter()
-        .find_map(|t| db.trait_data(t).associated_type_by_name(name))
+) -> Option<(TraitRef, TypeAliasId)> {
+    all_super_trait_refs(db, trait_ref).into_iter().find_map(|t| {
+        let assoc_type = db.trait_data(t.trait_).associated_type_by_name(name)?;
+        Some((t, assoc_type))
+    })
 }
 
 pub(super) fn variant_data(db: &dyn DefDatabase, var: VariantId) -> Arc<VariantData> {
@@ -176,6 +177,7 @@ pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     Generics { def, params: db.generic_params(def), parent_generics }
 }
 
+#[derive(Debug)]
 pub(crate) struct Generics {
     def: GenericDefId,
     pub(crate) params: Arc<GenericParams>,
