@@ -9,7 +9,7 @@ use rustc_macros::HashStable;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Abi, Align, DiscriminantKind, FieldsShape};
+use rustc_target::abi::{Abi, Align, FieldsShape, TagEncoding};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
 
 use super::{
@@ -1045,7 +1045,8 @@ where
         MPlaceTy { mplace, layout }
     }
 
-    pub fn write_discriminant_index(
+    /// Writes the discriminant of the given variant.
+    pub fn write_discriminant(
         &mut self,
         variant_index: VariantIdx,
         dest: PlaceTy<'tcx, M::PointerTag>,
@@ -1061,9 +1062,9 @@ where
                 assert_eq!(index, variant_index);
             }
             Variants::Multiple {
-                discr_kind: DiscriminantKind::Tag,
-                discr: ref discr_layout,
-                discr_index,
+                tag_encoding: TagEncoding::Direct,
+                tag: ref tag_layout,
+                tag_field,
                 ..
             } => {
                 // No need to validate that the discriminant here because the
@@ -1075,17 +1076,17 @@ where
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
-                let size = discr_layout.value.size(self);
-                let discr_val = truncate(discr_val, size);
+                let size = tag_layout.value.size(self);
+                let tag_val = truncate(discr_val, size);
 
-                let discr_dest = self.place_field(dest, discr_index)?;
-                self.write_scalar(Scalar::from_uint(discr_val, size), discr_dest)?;
+                let tag_dest = self.place_field(dest, tag_field)?;
+                self.write_scalar(Scalar::from_uint(tag_val, size), tag_dest)?;
             }
             Variants::Multiple {
-                discr_kind:
-                    DiscriminantKind::Niche { dataful_variant, ref niche_variants, niche_start },
-                discr: ref discr_layout,
-                discr_index,
+                tag_encoding:
+                    TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start },
+                tag: ref tag_layout,
+                tag_field,
                 ..
             } => {
                 // No need to validate that the discriminant here because the
@@ -1098,19 +1099,19 @@ where
                         .checked_sub(variants_start)
                         .expect("overflow computing relative variant idx");
                     // We need to use machine arithmetic when taking into account `niche_start`:
-                    // discr_val = variant_index_relative + niche_start_val
-                    let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
-                    let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
+                    // tag_val = variant_index_relative + niche_start_val
+                    let tag_layout = self.layout_of(tag_layout.value.to_int_ty(*self.tcx))?;
+                    let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                     let variant_index_relative_val =
-                        ImmTy::from_uint(variant_index_relative, discr_layout);
-                    let discr_val = self.binary_op(
+                        ImmTy::from_uint(variant_index_relative, tag_layout);
+                    let tag_val = self.binary_op(
                         mir::BinOp::Add,
                         variant_index_relative_val,
                         niche_start_val,
                     )?;
                     // Write result.
-                    let niche_dest = self.place_field(dest, discr_index)?;
-                    self.write_immediate(*discr_val, niche_dest)?;
+                    let niche_dest = self.place_field(dest, tag_field)?;
+                    self.write_immediate(*tag_val, niche_dest)?;
                 }
             }
         }

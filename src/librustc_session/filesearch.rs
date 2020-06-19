@@ -41,6 +41,10 @@ impl<'a> FileSearch<'a> {
         make_target_lib_path(self.sysroot, self.triple)
     }
 
+    pub fn get_selfcontained_lib_path(&self) -> PathBuf {
+        self.get_lib_path().join("self-contained")
+    }
+
     pub fn search<F>(&self, mut pick: F)
     where
         F: FnMut(&SearchPathFile, PathKind) -> FileMatch,
@@ -94,7 +98,7 @@ impl<'a> FileSearch<'a> {
         p.push(RUST_LIB_DIR);
         p.push(&self.triple);
         p.push("bin");
-        vec![p]
+        vec![p.clone(), p.join("self-contained")]
     }
 }
 

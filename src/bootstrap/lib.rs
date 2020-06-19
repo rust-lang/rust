@@ -280,6 +280,17 @@ impl Crate {
     }
 }
 
+/// When building Rust various objects are handled differently.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DependencyType {
+    /// Libraries originating from proc-macros.
+    Host,
+    /// Typical Rust libraries.
+    Target,
+    /// Non Rust libraries and objects shipped to ease usage of certain targets.
+    TargetSelfContained,
+}
+
 /// The various "modes" of invoking Cargo.
 ///
 /// These entries currently correspond to the various output directories of the
@@ -1097,7 +1108,7 @@ impl Build {
         ret
     }
 
-    fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, bool)> {
+    fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, DependencyType)> {
         if self.config.dry_run {
             return Vec::new();
         }
@@ -1110,9 +1121,14 @@ impl Build {
             if part.is_empty() {
                 continue;
             }
-            let host = part[0] as char == 'h';
+            let dependency_type = match part[0] as char {
+                'h' => DependencyType::Host,
+                's' => DependencyType::TargetSelfContained,
+                't' => DependencyType::Target,
+                _ => unreachable!(),
+            };
             let path = PathBuf::from(t!(str::from_utf8(&part[1..])));
-            paths.push((path, host));
+            paths.push((path, dependency_type));
         }
         paths
     }

@@ -208,8 +208,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn aggregate_field_path_elem(&mut self, layout: TyAndLayout<'tcx>, field: usize) -> PathElem {
         // First, check if we are projecting to a variant.
         match layout.variants {
-            Variants::Multiple { discr_index, .. } => {
-                if discr_index == field {
+            Variants::Multiple { tag_field, .. } => {
+                if tag_field == field {
                     return match layout.ty.kind {
                         ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
                         ty::Generator(..) => PathElem::GeneratorTag,
@@ -697,8 +697,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         try_validation!(
             self.walk_value(op),
             self.path,
-            err_ub!(InvalidDiscriminant(val)) =>
-                { "{}", val } expected { "a valid enum discriminant" },
+            err_ub!(InvalidTag(val)) =>
+                { "{}", val } expected { "a valid enum tag" },
             err_unsup!(ReadPointerAsBytes) =>
                 { "a pointer" } expected { "plain (non-pointer) bytes" },
         );
