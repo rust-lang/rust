@@ -2,7 +2,7 @@
 //!
 //! Files which do not belong to any explicitly configured `FileSet` belong to
 //! the default `FileSet`.
-use std::{cmp, fmt, iter};
+use std::{fmt, iter};
 
 use paths::AbsPathBuf;
 use rustc_hash::FxHashMap;
@@ -44,6 +44,12 @@ pub struct FileSetConfig {
     roots: Vec<(AbsPathBuf, usize)>,
 }
 
+impl Default for FileSetConfig {
+    fn default() -> Self {
+        FileSetConfig::builder().build()
+    }
+}
+
 impl FileSetConfig {
     pub fn builder() -> FileSetConfigBuilder {
         FileSetConfigBuilder::default()
@@ -60,14 +66,19 @@ impl FileSetConfig {
         self.n_file_sets
     }
     fn classify(&self, path: &VfsPath) -> usize {
-        for (root, idx) in self.roots.iter() {
-            if let Some(path) = path.as_path() {
-                if path.starts_with(root) {
-                    return *idx;
-                }
-            }
+        let path = match path.as_path() {
+            Some(it) => it,
+            None => return self.len() - 1,
+        };
+        let idx = match self.roots.binary_search_by(|(p, _)| p.as_path().cmp(path)) {
+            Ok(it) => it,
+            Err(it) => it.saturating_sub(1),
+        };
+        if path.starts_with(&self.roots[idx].0) {
+            self.roots[idx].1
+        } else {
+            self.len() - 1
         }
-        self.len() - 1
     }
 }
 
@@ -82,6 +93,9 @@ impl Default for FileSetConfigBuilder {
 }
 
 impl FileSetConfigBuilder {
+    pub fn len(&self) -> usize {
+        self.roots.len()
+    }
     pub fn add_file_set(&mut self, roots: Vec<AbsPathBuf>) {
         self.roots.push(roots)
     }
@@ -93,7 +107,7 @@ impl FileSetConfigBuilder {
             .enumerate()
             .flat_map(|(i, paths)| paths.into_iter().zip(iter::repeat(i)))
             .collect();
-        roots.sort_by_key(|(path, _)| cmp::Reverse(path.to_string_lossy().len()));
+        roots.sort();
         FileSetConfig { n_file_sets, roots }
     }
 }

@@ -79,6 +79,9 @@ pub enum ChangeKind {
 }
 
 impl Vfs {
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
     pub fn file_id(&self, path: &VfsPath) -> Option<FileId> {
         self.interner.get(path).filter(|&it| self.get(it).is_some())
     }
