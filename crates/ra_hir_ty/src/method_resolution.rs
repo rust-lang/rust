@@ -74,7 +74,8 @@ impl CrateImplDefs {
             impls_by_trait: FxHashMap::default(),
         };
         let mut seen = FxHashSet::default();
-        let mut worklist = vec![krate];
+        let mut worklist =
+            crate_graph[krate].dependencies.iter().map(|dep| dep.crate_id).collect::<Vec<_>>();
         while let Some(krate) = worklist.pop() {
             if !seen.insert(krate) {
                 continue;
