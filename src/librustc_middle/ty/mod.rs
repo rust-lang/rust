@@ -1807,6 +1807,19 @@ impl<'tcx> VariantDef {
     pub fn is_field_list_non_exhaustive(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
     }
+
+    /// `repr(transparent)` structs can have a single non-ZST field, this function returns that
+    /// field.
+    pub fn transparent_newtype_field(&self, tcx: TyCtxt<'tcx>) -> Option<&FieldDef> {
+        for field in &self.fields {
+            let field_ty = field.ty(tcx, InternalSubsts::identity_for_item(tcx, self.def_id));
+            if !field_ty.is_zst(tcx, self.def_id) {
+                return Some(field);
+            }
+        }
+
+        None
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
@@ -2375,29 +2388,6 @@ impl<'tcx> AdtDef {
     /// the associated type is behind a pointer (e.g., issue #31299).
     pub fn sized_constraint(&self, tcx: TyCtxt<'tcx>) -> &'tcx [Ty<'tcx>] {
         tcx.adt_sized_constraint(self.did).0
-    }
-
-    /// `repr(transparent)` structs can have a single non-ZST field, this function returns that
-    /// field.
-    pub fn transparent_newtype_field(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-    ) -> Option<&FieldDef> {
-        assert!(self.is_struct() && self.repr.transparent());
-
-        for field in &self.non_enum_variant().fields {
-            let field_ty = tcx.normalize_erasing_regions(
-                param_env,
-                field.ty(tcx, InternalSubsts::identity_for_item(tcx, self.did)),
-            );
-
-            if !field_ty.is_zst(tcx, self.did) {
-                return Some(field);
-            }
-        }
-
-        None
     }
 }
 
