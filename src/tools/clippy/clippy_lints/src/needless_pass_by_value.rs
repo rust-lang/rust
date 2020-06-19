@@ -326,21 +326,21 @@ struct MovedVariablesCtxt {
 }
 
 impl MovedVariablesCtxt {
-    fn move_common(&mut self, cmt: &euv::Place<'_>) {
-        if let euv::PlaceBase::Local(vid) = cmt.base {
+    fn move_common(&mut self, cmt: &euv::PlaceWithHirId<'_>) {
+        if let euv::PlaceBase::Local(vid) = cmt.place.base {
             self.moved_vars.insert(vid);
         }
     }
 }
 
 impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
-    fn consume(&mut self, cmt: &euv::Place<'tcx>, mode: euv::ConsumeMode) {
+    fn consume(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move = mode {
             self.move_common(cmt);
         }
     }
 
-    fn borrow(&mut self, _: &euv::Place<'tcx>, _: ty::BorrowKind) {}
+    fn borrow(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: ty::BorrowKind) {}
 
-    fn mutate(&mut self, _: &euv::Place<'tcx>) {}
+    fn mutate(&mut self, _: &euv::PlaceWithHirId<'tcx>) {}
 }

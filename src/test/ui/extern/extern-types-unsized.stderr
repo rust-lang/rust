@@ -26,6 +26,10 @@ LL |     assert_sized::<Foo>();
    = help: within `Foo`, the trait `std::marker::Sized` is not implemented for `A`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Foo`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn assert_sized<T: ?Sized>() { }
+   |                  ^^^^^^^^
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/extern-types-unsized.rs:28:5
@@ -39,6 +43,10 @@ LL |     assert_sized::<Bar<A>>();
    = help: within `Bar<A>`, the trait `std::marker::Sized` is not implemented for `A`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Bar<A>`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn assert_sized<T: ?Sized>() { }
+   |                  ^^^^^^^^
 
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/extern-types-unsized.rs:31:5
@@ -53,6 +61,10 @@ LL |     assert_sized::<Bar<Bar<A>>>();
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Bar<A>`
    = note: required because it appears within the type `Bar<Bar<A>>`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn assert_sized<T: ?Sized>() { }
+   |                  ^^^^^^^^
 
 error: aborting due to 4 previous errors
 

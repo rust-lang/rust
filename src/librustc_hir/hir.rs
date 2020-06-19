@@ -12,6 +12,7 @@ use rustc_ast::node_id::NodeMap;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_macros::HashStable_Generic;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
@@ -2651,24 +2652,10 @@ pub type CaptureModeMap = NodeMap<CaptureBy>;
 // has length > 0 if the trait is found through an chain of imports, starting with the
 // import/use statement in the scope where the trait is used.
 #[derive(Clone, Debug)]
-pub struct TraitCandidate<ID = HirId> {
+pub struct TraitCandidate {
     pub def_id: DefId,
-    pub import_ids: SmallVec<[ID; 1]>,
+    pub import_ids: SmallVec<[LocalDefId; 1]>,
 }
-
-impl<ID> TraitCandidate<ID> {
-    pub fn map_import_ids<F, T>(self, f: F) -> TraitCandidate<T>
-    where
-        F: Fn(ID) -> T,
-    {
-        let TraitCandidate { def_id, import_ids } = self;
-        let import_ids = import_ids.into_iter().map(f).collect();
-        TraitCandidate { def_id, import_ids }
-    }
-}
-
-// Trait method resolution
-pub type TraitMap<ID = HirId> = NodeMap<Vec<TraitCandidate<ID>>>;
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum Node<'hir> {
@@ -2741,14 +2728,8 @@ impl Node<'_> {
     pub fn generics(&self) -> Option<&Generics<'_>> {
         match self {
             Node::TraitItem(TraitItem { generics, .. })
-            | Node::ImplItem(ImplItem { generics, .. })
-            | Node::Item(Item {
-                kind:
-                    ItemKind::Trait(_, _, generics, ..)
-                    | ItemKind::Impl { generics, .. }
-                    | ItemKind::Fn(_, generics, _),
-                ..
-            }) => Some(generics),
+            | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
+            Node::Item(item) => item.kind.generics(),
             _ => None,
         }
     }

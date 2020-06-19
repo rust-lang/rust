@@ -39,12 +39,16 @@ error[E0308]: mismatched types
    |
 LL |     let f = [0; -4_isize];
    |                 ^^^^^^^^ expected `usize`, found `isize`
+   |
+   = note: `-4_isize` cannot fit into type `usize`
 
 error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:22:23
    |
 LL |     let f = [0_usize; -1_isize];
    |                       ^^^^^^^^ expected `usize`, found `isize`
+   |
+   = note: `-1_isize` cannot fit into type `usize`
 
 error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:25:17

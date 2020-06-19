@@ -783,6 +783,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let literal_is_ty_suffixed = |expr: &hir::Expr<'_>| {
             if let hir::ExprKind::Lit(lit) = &expr.kind { lit.node.is_suffixed() } else { false }
         };
+        let is_negative_int =
+            |expr: &hir::Expr<'_>| matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::UnNeg, ..));
+        let is_uint = |ty: Ty<'_>| matches!(ty.kind, ty::Uint(..));
 
         let in_const_context = self.tcx.hir().is_inside_const_context(expr.hir_id);
 
@@ -807,7 +810,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "you can convert `{}` from `{}` to `{}`, matching the type of `{}`",
                         lhs_src, expected_ty, checked_ty, src
                     );
-                    let suggestion = format!("{}::from({})", checked_ty, lhs_src,);
+                    let suggestion = format!("{}::from({})", checked_ty, lhs_src);
                     (lhs_expr.span, msg, suggestion)
                 } else {
                     let msg = format!("{} and panic if the converted value wouldn't fit", msg);
@@ -822,8 +825,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             |err: &mut DiagnosticBuilder<'_>,
              found_to_exp_is_fallible: bool,
              exp_to_found_is_fallible: bool| {
+                let always_fallible = found_to_exp_is_fallible
+                    && (exp_to_found_is_fallible || expected_ty_expr.is_none());
                 let msg = if literal_is_ty_suffixed(expr) {
                     &lit_msg
+                } else if always_fallible && (is_negative_int(expr) && is_uint(expected_ty)) {
+                    // We now know that converting either the lhs or rhs is fallible. Before we
+                    // suggest a fallible conversion, check if the value can never fit in the
+                    // expected type.
+                    let msg = format!("`{}` cannot fit into type `{}`", src, expected_ty);
+                    err.note(&msg);
+                    return;
                 } else if in_const_context {
                     // Do not recommend `into` or `try_into` in const contexts.
                     return;

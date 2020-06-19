@@ -518,24 +518,13 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &hir::Expr<'_>) -> Option<Data> {
-        let hir_node = self.tcx.hir().expect_expr(expr.hir_id);
-        let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
-        if ty.is_none() || matches!(ty.unwrap().kind, ty::Error(_)) {
+        let ty = self.tables.expr_ty_adjusted_opt(expr)?;
+        if matches!(ty.kind, ty::Error(_)) {
             return None;
         }
         match expr.kind {
             hir::ExprKind::Field(ref sub_ex, ident) => {
-                let hir_node = match self.tcx.hir().find(sub_ex.hir_id) {
-                    Some(Node::Expr(expr)) => expr,
-                    _ => {
-                        debug!(
-                            "Missing or weird node for sub-expression {} in {:?}",
-                            sub_ex.hir_id, expr
-                        );
-                        return None;
-                    }
-                };
-                match self.tables.expr_ty_adjusted(&hir_node).kind {
+                match self.tables.expr_ty_adjusted(&sub_ex).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
                         filter!(self.span_utils, ident.span);
@@ -562,8 +551,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     hir::QPath::Resolved(_, path) => path.segments.last().unwrap(),
                     hir::QPath::TypeRelative(_, segment) => segment,
                 };
-                match self.tables.expr_ty_adjusted(&hir_node).kind {
-                    ty::Adt(def, _) if !def.is_enum() => {
+                match ty.kind {
+                    ty::Adt(def, _) => {
                         let sub_span = segment.ident.span;
                         filter!(self.span_utils, sub_span);
                         let span = self.span_from_span(sub_span);
@@ -574,9 +563,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                         }))
                     }
                     _ => {
-                        // FIXME ty could legitimately be an enum, but then we will fail
-                        // later if we try to look up the fields.
-                        debug!("expected struct or union, found {:?}", ty);
+                        debug!("expected adt, found {:?}", ty);
                         None
                     }
                 }

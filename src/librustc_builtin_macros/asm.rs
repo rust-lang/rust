@@ -11,7 +11,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{InnerSpan, Span};
 
 struct AsmArgs {
-    template: P<ast::Expr>,
+    templates: Vec<P<ast::Expr>>,
     operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxHashMap<Symbol, usize>,
     reg_args: FxHashSet<usize>,
@@ -52,9 +52,9 @@ fn parse_args<'a>(
         return Err(err);
     }
 
-    let template = p.parse_expr()?;
+    let first_template = p.parse_expr()?;
     let mut args = AsmArgs {
-        template,
+        templates: vec![first_template],
         operands: vec![],
         named_args: FxHashMap::default(),
         reg_args: FxHashSet::default(),
@@ -62,11 +62,11 @@ fn parse_args<'a>(
         options_span: None,
     };
 
-    let mut first = true;
+    let mut allow_templates = true;
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
-            if first {
-                // After `asm!(""` we always expect *only* a comma...
+            if allow_templates {
+                // After a template string, we always expect *only* a comma...
                 let mut err = ecx.struct_span_err(p.token.span, "expected token: `,`");
                 err.span_label(p.token.span, "expected `,`");
                 p.maybe_annotate_with_ascription(&mut err, false);
@@ -76,7 +76,6 @@ fn parse_args<'a>(
                 return Err(p.expect(&token::Comma).err().unwrap());
             }
         }
-        first = false;
         if p.token == token::Eof {
             break;
         } // accept trailing commas
@@ -84,6 +83,7 @@ fn parse_args<'a>(
         // Parse options
         if p.eat(&token::Ident(sym::options, false)) {
             parse_options(&mut p, &mut args)?;
+            allow_templates = false;
             continue;
         }
 
@@ -94,6 +94,7 @@ fn parse_args<'a>(
             let (ident, _) = p.token.ident().unwrap();
             p.bump();
             p.expect(&token::Eq)?;
+            allow_templates = false;
             Some(ident.name)
         } else {
             None
@@ -135,8 +136,7 @@ fn parse_args<'a>(
         } else if p.eat(&token::Ident(kw::Const, false)) {
             let expr = p.parse_expr()?;
             ast::InlineAsmOperand::Const { expr }
-        } else {
-            p.expect(&token::Ident(sym::sym, false))?;
+        } else if p.eat(&token::Ident(sym::sym, false)) {
             let expr = p.parse_expr()?;
             match expr.kind {
                 ast::ExprKind::Path(..) => {}
@@ -147,8 +147,27 @@ fn parse_args<'a>(
                 }
             }
             ast::InlineAsmOperand::Sym { expr }
+        } else if allow_templates {
+            let template = p.parse_expr()?;
+            // If it can't possibly expand to a string, provide diagnostics here to include other
+            // things it could have been.
+            match template.kind {
+                ast::ExprKind::Lit(ast::Lit { kind: ast::LitKind::Str(..), .. }) => {}
+                ast::ExprKind::MacCall(..) => {}
+                _ => {
+                    let errstr = "expected operand, options, or additional template string";
+                    let mut err = ecx.struct_span_err(template.span, errstr);
+                    err.span_label(template.span, errstr);
+                    return Err(err);
+                }
+            }
+            args.templates.push(template);
+            continue;
+        } else {
+            return Err(p.expect_one_of(&[], &[]).unwrap_err());
         };
 
+        allow_templates = false;
         let span = span_start.to(p.prev_token.span);
         let slot = args.operands.len();
         args.operands.push((op, span));
@@ -330,155 +349,180 @@ fn parse_reg<'a>(
 }
 
 fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast::Expr> {
-    let msg = "asm template must be a string literal";
-    let template_sp = args.template.span;
-    let (template_str, template_style, template_span) =
-        match expr_to_spanned_string(ecx, args.template, msg) {
-            Ok(template) => template,
-            Err(err) => {
-                if let Some(mut err) = err {
-                    err.emit();
-                }
-                return DummyResult::raw_expr(sp, true);
-            }
-        };
-
-    let str_style = match template_style {
-        ast::StrStyle::Cooked => None,
-        ast::StrStyle::Raw(raw) => Some(raw as usize),
-    };
-
-    let template_str = &template_str.as_str();
-    let template_snippet = ecx.source_map().span_to_snippet(template_sp).ok();
-    let mut parser = parse::Parser::new(
-        template_str,
-        str_style,
-        template_snippet,
-        false,
-        parse::ParseMode::InlineAsm,
-    );
-
-    let mut unverified_pieces = Vec::new();
-    while let Some(piece) = parser.next() {
-        if !parser.errors.is_empty() {
-            break;
-        } else {
-            unverified_pieces.push(piece);
-        }
-    }
-
-    if !parser.errors.is_empty() {
-        let err = parser.errors.remove(0);
-        let err_sp = template_span.from_inner(err.span);
-        let mut e = ecx
-            .struct_span_err(err_sp, &format!("invalid asm template string: {}", err.description));
-        e.span_label(err_sp, err.label + " in asm template string");
-        if let Some(note) = err.note {
-            e.note(&note);
-        }
-        if let Some((label, span)) = err.secondary_label {
-            let err_sp = template_span.from_inner(span);
-            e.span_label(err_sp, label);
-        }
-        e.emit();
-        return DummyResult::raw_expr(sp, true);
-    }
-
+    let mut template = vec![];
     // Register operands are implicitly used since they are not allowed to be
     // referenced in the template string.
     let mut used = vec![false; args.operands.len()];
     for pos in &args.reg_args {
         used[*pos] = true;
     }
-
     let named_pos: FxHashMap<usize, Symbol> =
         args.named_args.iter().map(|(&sym, &idx)| (idx, sym)).collect();
-    let mut arg_spans = parser.arg_places.iter().map(|span| template_span.from_inner(*span));
-    let mut template = vec![];
-    for piece in unverified_pieces {
-        match piece {
-            parse::Piece::String(s) => {
-                template.push(ast::InlineAsmTemplatePiece::String(s.to_string()))
-            }
-            parse::Piece::NextArgument(arg) => {
-                let span = arg_spans.next().unwrap_or(template_sp);
+    let mut line_spans = Vec::with_capacity(args.templates.len());
+    let mut curarg = 0;
 
-                let operand_idx = match arg.position {
-                    parse::ArgumentIs(idx) | parse::ArgumentImplicitlyIs(idx) => {
-                        if idx >= args.operands.len()
-                            || named_pos.contains_key(&idx)
-                            || args.reg_args.contains(&idx)
-                        {
-                            let msg = format!("invalid reference to argument at index {}", idx);
-                            let mut err = ecx.struct_span_err(span, &msg);
-                            err.span_label(span, "from here");
+    for template_expr in args.templates.into_iter() {
+        if !template.is_empty() {
+            template.push(ast::InlineAsmTemplatePiece::String("\n".to_string()));
+        }
 
-                            let positional_args =
-                                args.operands.len() - args.named_args.len() - args.reg_args.len();
-                            let positional = if positional_args != args.operands.len() {
-                                "positional "
-                            } else {
-                                ""
-                            };
-                            let msg = match positional_args {
-                                0 => format!("no {}arguments were given", positional),
-                                1 => format!("there is 1 {}argument", positional),
-                                x => format!("there are {} {}arguments", x, positional),
-                            };
-                            err.note(&msg);
-
-                            if named_pos.contains_key(&idx) {
-                                err.span_label(args.operands[idx].1, "named argument");
-                                err.span_note(
-                                    args.operands[idx].1,
-                                    "named arguments cannot be referenced by position",
-                                );
-                            } else if args.reg_args.contains(&idx) {
-                                err.span_label(args.operands[idx].1, "explicit register argument");
-                                err.span_note(
-                                    args.operands[idx].1,
-                                    "explicit register arguments cannot be used in the asm template",
-                                );
-                            }
-                            err.emit();
-                            None
-                        } else {
-                            Some(idx)
-                        }
+        let msg = "asm template must be a string literal";
+        let template_sp = template_expr.span;
+        let (template_str, template_style, template_span) =
+            match expr_to_spanned_string(ecx, template_expr, msg) {
+                Ok(template_part) => template_part,
+                Err(err) => {
+                    if let Some(mut err) = err {
+                        err.emit();
                     }
-                    parse::ArgumentNamed(name) => match args.named_args.get(&name) {
-                        Some(&idx) => Some(idx),
-                        None => {
-                            let msg = format!("there is no argument named `{}`", name);
-                            ecx.struct_span_err(span, &msg[..]).emit();
-                            None
-                        }
-                    },
-                };
-
-                let mut chars = arg.format.ty.chars();
-                let mut modifier = chars.next();
-                if chars.next().is_some() {
-                    let span = arg
-                        .format
-                        .ty_span
-                        .map(|sp| template_sp.from_inner(sp))
-                        .unwrap_or(template_sp);
-                    ecx.struct_span_err(span, "asm template modifier must be a single character")
-                        .emit();
-                    modifier = None;
+                    return DummyResult::raw_expr(sp, true);
                 }
+            };
 
-                if let Some(operand_idx) = operand_idx {
-                    used[operand_idx] = true;
-                    template.push(ast::InlineAsmTemplatePiece::Placeholder {
-                        operand_idx,
-                        modifier,
-                        span,
-                    });
+        let str_style = match template_style {
+            ast::StrStyle::Cooked => None,
+            ast::StrStyle::Raw(raw) => Some(raw as usize),
+        };
+
+        let template_str = &template_str.as_str();
+        let template_snippet = ecx.source_map().span_to_snippet(template_sp).ok();
+        let mut parser = parse::Parser::new(
+            template_str,
+            str_style,
+            template_snippet,
+            false,
+            parse::ParseMode::InlineAsm,
+        );
+        parser.curarg = curarg;
+
+        let mut unverified_pieces = Vec::new();
+        while let Some(piece) = parser.next() {
+            if !parser.errors.is_empty() {
+                break;
+            } else {
+                unverified_pieces.push(piece);
+            }
+        }
+
+        if !parser.errors.is_empty() {
+            let err = parser.errors.remove(0);
+            let err_sp = template_span.from_inner(err.span);
+            let msg = &format!("invalid asm template string: {}", err.description);
+            let mut e = ecx.struct_span_err(err_sp, msg);
+            e.span_label(err_sp, err.label + " in asm template string");
+            if let Some(note) = err.note {
+                e.note(&note);
+            }
+            if let Some((label, span)) = err.secondary_label {
+                let err_sp = template_span.from_inner(span);
+                e.span_label(err_sp, label);
+            }
+            e.emit();
+            return DummyResult::raw_expr(sp, true);
+        }
+
+        curarg = parser.curarg;
+
+        let mut arg_spans = parser.arg_places.iter().map(|span| template_span.from_inner(*span));
+        for piece in unverified_pieces {
+            match piece {
+                parse::Piece::String(s) => {
+                    template.push(ast::InlineAsmTemplatePiece::String(s.to_string()))
+                }
+                parse::Piece::NextArgument(arg) => {
+                    let span = arg_spans.next().unwrap_or(template_sp);
+
+                    let operand_idx = match arg.position {
+                        parse::ArgumentIs(idx) | parse::ArgumentImplicitlyIs(idx) => {
+                            if idx >= args.operands.len()
+                                || named_pos.contains_key(&idx)
+                                || args.reg_args.contains(&idx)
+                            {
+                                let msg = format!("invalid reference to argument at index {}", idx);
+                                let mut err = ecx.struct_span_err(span, &msg);
+                                err.span_label(span, "from here");
+
+                                let positional_args = args.operands.len()
+                                    - args.named_args.len()
+                                    - args.reg_args.len();
+                                let positional = if positional_args != args.operands.len() {
+                                    "positional "
+                                } else {
+                                    ""
+                                };
+                                let msg = match positional_args {
+                                    0 => format!("no {}arguments were given", positional),
+                                    1 => format!("there is 1 {}argument", positional),
+                                    x => format!("there are {} {}arguments", x, positional),
+                                };
+                                err.note(&msg);
+
+                                if named_pos.contains_key(&idx) {
+                                    err.span_label(args.operands[idx].1, "named argument");
+                                    err.span_note(
+                                        args.operands[idx].1,
+                                        "named arguments cannot be referenced by position",
+                                    );
+                                } else if args.reg_args.contains(&idx) {
+                                    err.span_label(
+                                        args.operands[idx].1,
+                                        "explicit register argument",
+                                    );
+                                    err.span_note(
+                                        args.operands[idx].1,
+                                        "explicit register arguments cannot be used in the asm template",
+                                    );
+                                }
+                                err.emit();
+                                None
+                            } else {
+                                Some(idx)
+                            }
+                        }
+                        parse::ArgumentNamed(name) => match args.named_args.get(&name) {
+                            Some(&idx) => Some(idx),
+                            None => {
+                                let msg = format!("there is no argument named `{}`", name);
+                                ecx.struct_span_err(span, &msg[..]).emit();
+                                None
+                            }
+                        },
+                    };
+
+                    let mut chars = arg.format.ty.chars();
+                    let mut modifier = chars.next();
+                    if chars.next().is_some() {
+                        let span = arg
+                            .format
+                            .ty_span
+                            .map(|sp| template_sp.from_inner(sp))
+                            .unwrap_or(template_sp);
+                        ecx.struct_span_err(
+                            span,
+                            "asm template modifier must be a single character",
+                        )
+                        .emit();
+                        modifier = None;
+                    }
+
+                    if let Some(operand_idx) = operand_idx {
+                        used[operand_idx] = true;
+                        template.push(ast::InlineAsmTemplatePiece::Placeholder {
+                            operand_idx,
+                            modifier,
+                            span,
+                        });
+                    }
                 }
             }
         }
+
+        if parser.line_spans.is_empty() {
+            let template_num_lines = 1 + template_str.matches('\n').count();
+            line_spans.extend(std::iter::repeat(template_sp).take(template_num_lines));
+        } else {
+            line_spans.extend(parser.line_spans.iter().map(|span| template_span.from_inner(*span)));
+        };
     }
 
     let mut unused_operands = vec![];
@@ -524,12 +568,6 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
             err.emit();
         }
     }
-
-    let line_spans = if parser.line_spans.is_empty() {
-        vec![template_sp]
-    } else {
-        parser.line_spans.iter().map(|span| template_span.from_inner(*span)).collect()
-    };
 
     let inline_asm =
         ast::InlineAsm { template, operands: args.operands, options: args.options, line_spans };

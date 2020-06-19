@@ -88,6 +88,8 @@ pub struct Lint {
 
     /// `Some` if this lint is feature gated, otherwise `None`.
     pub feature_gate: Option<Symbol>,
+
+    pub crate_level_only: bool,
 }
 
 /// Extra information for a future incompatibility lint.
@@ -111,6 +113,7 @@ impl Lint {
             report_in_external_macro: false,
             future_incompatible: None,
             feature_gate: None,
+            crate_level_only: false,
         }
     }
 
@@ -336,6 +339,7 @@ macro_rules! declare_tool_lint {
             future_incompatible: None,
             is_plugin: true,
             feature_gate: None,
+            crate_level_only: false,
         };
     );
 }

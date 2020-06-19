@@ -16,11 +16,11 @@ error: expected token: `,`
 LL |         asm!("{}" foo);
    |                   ^^^ expected `,`
 
-error: expected one of `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `foo`
+error: expected operand, options, or additional template string
   --> $DIR/parse-error.rs:15:20
    |
 LL |         asm!("{}", foo);
-   |                    ^^^ expected one of 8 possible tokens
+   |                    ^^^ expected operand, options, or additional template string
 
 error: expected `(`, found `foo`
   --> $DIR/parse-error.rs:17:23
@@ -160,5 +160,33 @@ LL |         asm!("{1}", in("eax") foo, const bar);
    |                     |
    |                     explicit register argument
 
-error: aborting due to 24 previous errors
+error: expected one of `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `""`
+  --> $DIR/parse-error.rs:55:29
+   |
+LL |         asm!("", options(), "");
+   |                             ^^ expected one of 8 possible tokens
+
+error: expected one of `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
+  --> $DIR/parse-error.rs:57:33
+   |
+LL |         asm!("{}", in(reg) foo, "{}", out(reg) foo);
+   |                                 ^^^^ expected one of 8 possible tokens
+
+error: asm template must be a string literal
+  --> $DIR/parse-error.rs:59:14
+   |
+LL |         asm!(format!("{{{}}}", 0), in(reg) foo);
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: asm template must be a string literal
+  --> $DIR/parse-error.rs:61:21
+   |
+LL |         asm!("{1}", format!("{{{}}}", 0), in(reg) foo, out(reg) bar);
+   |                     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 28 previous errors
 

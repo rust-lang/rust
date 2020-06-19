@@ -35,7 +35,7 @@ fn allocator_param() {
             }
         }
         unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-            Global.dealloc(ptr, layout)
+            unsafe { Global.dealloc(ptr, layout) }
         }
     }
 
