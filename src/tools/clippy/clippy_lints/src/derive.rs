@@ -6,7 +6,7 @@ use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, TraitRef, UnsafeSource, Unsafety,
+    BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, TraitRef, UnsafeSource, Unsafety, LangItemRecord,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
@@ -136,7 +136,7 @@ fn check_hash_peq<'a, 'tcx>(
 ) {
     if_chain! {
         if match_path(&trait_ref.path, &paths::HASH);
-        if let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait();
+        if let LangItemRecord::Present(peq_trait_def_id) = cx.tcx.lang_items().eq_trait();
         if let Some(def_id) = &trait_ref.trait_def_id();
         if !def_id.is_local();
         then {

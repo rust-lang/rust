@@ -2,7 +2,7 @@ use crate::utils::{get_parent_expr, implements_trait, snippet, span_lint_and_sug
 use if_chain::if_chain;
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX, PREC_PREFIX};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, LangItemRecord};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -73,39 +73,41 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Dereferencing {
 fn lint_deref(cx: &LateContext<'_, '_>, method_name: &str, call_expr: &Expr<'_>, var_span: Span, expr_span: Span) {
     match method_name {
         "deref" => {
-            if cx
+            if let LangItemRecord::Present(def_id) = cx
                 .tcx
                 .lang_items()
                 .deref_trait()
-                .map_or(false, |id| implements_trait(cx, cx.tables.expr_ty(&call_expr), id, &[]))
             {
-                span_lint_and_sugg(
-                    cx,
-                    EXPLICIT_DEREF_METHODS,
-                    expr_span,
-                    "explicit deref method call",
-                    "try this",
-                    format!("&*{}", &snippet(cx, var_span, "..")),
-                    Applicability::MachineApplicable,
-                );
+                if implements_trait(cx, cx.tables.expr_ty(&call_expr), def_id, &[]) {
+                    span_lint_and_sugg(
+                        cx,
+                        EXPLICIT_DEREF_METHODS,
+                        expr_span,
+                        "explicit deref method call",
+                        "try this",
+                        format!("&*{}", &snippet(cx, var_span, "..")),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         },
         "deref_mut" => {
-            if cx
+            if let LangItemRecord::Present(def_id) = cx
                 .tcx
                 .lang_items()
                 .deref_mut_trait()
-                .map_or(false, |id| implements_trait(cx, cx.tables.expr_ty(&call_expr), id, &[]))
             {
-                span_lint_and_sugg(
-                    cx,
-                    EXPLICIT_DEREF_METHODS,
-                    expr_span,
-                    "explicit deref_mut method call",
-                    "try this",
-                    format!("&mut *{}", &snippet(cx, var_span, "..")),
-                    Applicability::MachineApplicable,
-                );
+                if implements_trait(cx, cx.tables.expr_ty(&call_expr), def_id, &[]) {
+                    span_lint_and_sugg(
+                        cx,
+                        EXPLICIT_DEREF_METHODS,
+                        expr_span,
+                        "explicit deref_mut method call",
+                        "try this",
+                        format!("&mut *{}", &snippet(cx, var_span, "..")),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         },
         _ => (),

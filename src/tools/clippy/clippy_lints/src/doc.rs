@@ -4,6 +4,7 @@ use itertools::Itertools;
 use rustc_ast::ast::{AttrKind, Attribute};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_hir::LangItemRecord;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
@@ -227,7 +228,7 @@ fn lint_for_missing_headers<'a, 'tcx>(
         } else {
             if_chain! {
                 if let Some(body_id) = body_id;
-                if let Some(future) = cx.tcx.lang_items().future_trait();
+                if let LangItemRecord::Present(future) = cx.tcx.lang_items().future_trait();
                 let def_id = cx.tcx.hir().body_owner_def_id(body_id);
                 let mir = cx.tcx.optimized_mir(def_id.to_def_id());
                 let ret_ty = mir.return_ty();

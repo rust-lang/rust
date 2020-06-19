@@ -324,7 +324,7 @@ impl Types {
                 let hir_id = hir_ty.hir_id;
                 let res = qpath_res(cx, qpath, hir_id);
                 if let Some(def_id) = res.opt_def_id() {
-                    if Some(def_id) == cx.tcx.lang_items().owned_box() {
+                    if cx.tcx.lang_items().owned_box().has_def_id(def_id) {
                         if let Some(span) = match_borrows_parameter(cx, qpath) {
                             span_lint_and_sugg(
                                 cx,
@@ -397,7 +397,7 @@ impl Types {
                             if let TyKind::Path(ref ty_qpath) = ty.kind;
                             let res = qpath_res(cx, ty_qpath, ty.hir_id);
                             if let Some(def_id) = res.opt_def_id();
-                            if Some(def_id) == cx.tcx.lang_items().owned_box();
+                            if cx.tcx.lang_items().owned_box().has_def_id(def_id);
                             // At this point, we know ty is Box<T>, now get T
                             if let Some(ref last) = last_path_segment(ty_qpath).args;
                             if let Some(boxed_ty) = last.args.iter().find_map(|arg| match arg {
@@ -513,7 +513,7 @@ impl Types {
                 let def = qpath_res(cx, qpath, hir_id);
                 if_chain! {
                     if let Some(def_id) = def.opt_def_id();
-                    if Some(def_id) == cx.tcx.lang_items().owned_box();
+                    if cx.tcx.lang_items().owned_box().has_def_id(def_id);
                     if let QPath::Resolved(None, ref path) = *qpath;
                     if let [ref bx] = *path.segments;
                     if let Some(ref params) = bx.args;

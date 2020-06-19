@@ -8,7 +8,7 @@ use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, ItemKind, Node, PatKind, QPath, TyKind};
+use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, ItemKind, Node, PatKind, QPath, TyKind, LangItemRecord};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, TypeFoldable};
@@ -64,6 +64,16 @@ macro_rules! need {
     };
 }
 
+macro_rules! need_lang_item {
+    ($e: expr) => {
+        if let LangItemRecord::Present(x) = $e {
+            x
+        } else {
+            return;
+        }
+    };
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
     #[allow(clippy::too_many_lines)]
     fn check_fn(
@@ -101,13 +111,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         // Allow `Borrow` or functions to be taken by value
         let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
         let whitelisted_traits = [
-            need!(cx.tcx.lang_items().fn_trait()),
-            need!(cx.tcx.lang_items().fn_once_trait()),
-            need!(cx.tcx.lang_items().fn_mut_trait()),
+            need_lang_item!(cx.tcx.lang_items().fn_trait()),
+            need_lang_item!(cx.tcx.lang_items().fn_once_trait()),
+            need_lang_item!(cx.tcx.lang_items().fn_mut_trait()),
             need!(get_trait_def_id(cx, &paths::RANGE_ARGUMENT_TRAIT)),
         ];
 
-        let sized_trait = need!(cx.tcx.lang_items().sized_trait());
+        let sized_trait = need_lang_item!(cx.tcx.lang_items().sized_trait());
 
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
 

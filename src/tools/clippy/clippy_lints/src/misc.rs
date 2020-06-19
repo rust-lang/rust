@@ -4,7 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     def, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Mutability, PatKind, Stmt, StmtKind, Ty,
-    TyKind, UnOp,
+    TyKind, UnOp, LangItemRecord,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -595,8 +595,8 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr<'_>, other: &Expr<'_>) {
 
     let other_ty = cx.tables.expr_ty_adjusted(other);
     let partial_eq_trait_id = match cx.tcx.lang_items().eq_trait() {
-        Some(id) => id,
-        None => return,
+        LangItemRecord::Present(id) => id,
+        _ => return,
     };
 
     let deref_arg_impl_partial_eq_other = arg_ty.builtin_deref(true).map_or(false, |tam| {

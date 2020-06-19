@@ -104,7 +104,7 @@ fn future_trait_ref<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &'tcx Ty<'tcx>) -> Opt
         if let ItemKind::OpaqueTy(opaque) = &item.kind;
         if opaque.bounds.len() == 1;
         if let GenericBound::Trait(poly, _) = &opaque.bounds[0];
-        if poly.trait_ref.trait_def_id() == cx.tcx.lang_items().future_trait();
+        if poly.trait_ref.trait_def_id().map_or(false, |id| cx.tcx.lang_items().future_trait().has_def_id(id));
         then {
             return Some(&poly.trait_ref);
         }

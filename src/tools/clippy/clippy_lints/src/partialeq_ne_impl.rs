@@ -1,6 +1,6 @@
 use crate::utils::{is_automatically_derived, span_lint_hir};
 use if_chain::if_chain;
-use rustc_hir::{Item, ItemKind};
+use rustc_hir::{Item, ItemKind, LangItemRecord};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -35,7 +35,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PartialEqNeImpl {
         if_chain! {
             if let ItemKind::Impl{ of_trait: Some(ref trait_ref), items: impl_items, .. } = item.kind;
             if !is_automatically_derived(&*item.attrs);
-            if let Some(eq_trait) = cx.tcx.lang_items().eq_trait();
+            if let LangItemRecord::Present(eq_trait) = cx.tcx.lang_items().eq_trait();
             if trait_ref.path.res.def_id() == eq_trait;
             then {
                 for impl_item in impl_items {
