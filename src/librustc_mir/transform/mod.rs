@@ -28,6 +28,7 @@ pub mod elaborate_drops;
 pub mod generator;
 pub mod inline;
 pub mod instcombine;
+pub mod instrument_coverage;
 pub mod no_landing_pads;
 pub mod nrvo;
 pub mod promote_consts;
@@ -288,6 +289,10 @@ fn mir_validated(
             // What we need to run borrowck etc.
             &promote_pass,
             &simplify::SimplifyCfg::new("qualify-consts"),
+            // If the `instrument-coverage` option is enabled, analyze the CFG, identify each
+            // conditional branch, construct a coverage map to be passed to LLVM, and inject counters
+            // where needed.
+            &instrument_coverage::InstrumentCoverage,
         ]],
     );
 

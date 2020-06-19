@@ -1941,6 +1941,13 @@ extern "rust-intrinsic" {
     ///
     /// Perma-unstable: do not use.
     pub fn miri_start_panic(payload: *mut u8) -> !;
+
+    /// Internal placeholder for injecting code coverage counters when the "instrument-coverage"
+    /// option is enabled. The placeholder is replaced with `llvm.instrprof.increment` during code
+    /// generation.
+    #[cfg(not(bootstrap))]
+    #[lang = "count_code_region"]
+    pub fn count_code_region(index: u32);
 }
 
 // Some functions are defined here because they accidentally got made
