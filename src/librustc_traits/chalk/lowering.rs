@@ -223,9 +223,21 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                     // the environment.
                     ty::Placeholder(..) => chalk_ir::GoalData::All(chalk_ir::Goals::new(interner)),
 
-                    _ => chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::WellFormed(
-                        chalk_ir::WellFormed::Ty(ty.lower_into(interner)),
-                    )),
+                    _ => {
+                        let (ty, binders, _named_regions) =
+                            collect_bound_vars(interner, interner.tcx, &ty::Binder::bind(ty));
+
+                        chalk_ir::GoalData::Quantified(
+                            chalk_ir::QuantifierKind::ForAll,
+                            chalk_ir::Binders::new(
+                                binders,
+                                chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::WellFormed(
+                                    chalk_ir::WellFormed::Ty(ty.lower_into(interner)),
+                                ))
+                                .intern(interner),
+                            ),
+                        )
+                    }
                 },
                 // FIXME(chalk): handle well formed consts
                 GenericArgKind::Const(..) => {

@@ -408,7 +408,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             None => self.check_recursion_limit(&obligation, &obligation)?,
         }
 
-        // TODO: forall
         match obligation.predicate.ignore_qualifiers(self.tcx()).skip_binder().kind() {
             ty::PredicateKind::ForAll(_) => {
                 bug!("unexpected predicate: {:?}", obligation.predicate)

@@ -933,7 +933,6 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         debug!("assemble_candidates_from_predicates: predicate={:?}", predicate);
-        // TODO: forall
         if let &ty::PredicateKind::Projection(data) =
             predicate.ignore_qualifiers(infcx.tcx).skip_binder().kind()
         {
@@ -1228,7 +1227,6 @@ fn confirm_object_candidate<'cx, 'tcx>(
         // select only those projections that are actually projecting an
         // item with the correct name
 
-        // TODO: forall
         let env_predicates = env_predicates.filter_map(|o| {
             match o.predicate.ignore_qualifiers(selcx.tcx()).skip_binder().kind() {
                 &ty::PredicateKind::Projection(data)

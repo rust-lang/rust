@@ -1225,20 +1225,10 @@ impl<'tcx> Predicate<'tcx> {
         // substitution code expects equal binding levels in the values
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
-
         let substs = trait_ref.skip_binder().substs;
-        let kind = match self.kind() {
-            PredicateKind::ForAll(binder) => binder.skip_binder().kind(),
-            kind => kind,
-        };
-
-        let new = kind.subst(tcx, substs);
-
-        if new != *kind {
-            new.to_predicate(tcx).potentially_qualified(tcx, PredicateKind::ForAll)
-        } else {
-            self
-        }
+        let pred = *self.ignore_qualifiers(tcx).skip_binder();
+        let new = pred.subst(tcx, substs);
+        if new != pred { new.potentially_qualified(tcx, PredicateKind::ForAll) } else { self }
     }
 }
 

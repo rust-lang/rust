@@ -631,7 +631,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     };
                     let mut format_pred = |pred: ty::Predicate<'tcx>| {
-                        // TODO: forall
                         match pred.ignore_qualifiers(tcx).skip_binder().kind() {
                             &ty::PredicateKind::Projection(pred) => {
                                 let pred = ty::Binder::bind(pred);

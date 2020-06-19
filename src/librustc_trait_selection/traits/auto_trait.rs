@@ -639,7 +639,6 @@ impl AutoTraitFinder<'tcx> {
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
 
-            // TODO: forall
             match predicate.ignore_qualifiers(self.tcx).skip_binder().kind() {
                 &ty::PredicateKind::Trait(p, _) => {
                     if self.is_param_no_infer(p.trait_ref.substs)

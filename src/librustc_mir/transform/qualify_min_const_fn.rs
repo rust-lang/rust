@@ -24,7 +24,6 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
     loop {
         let predicates = tcx.predicates_of(current);
         for (predicate, _) in predicates.predicates {
-            // TODO: forall
             match predicate.ignore_qualifiers(tcx).skip_binder().kind() {
                 ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", predicate),
                 ty::PredicateKind::RegionOutlives(_)

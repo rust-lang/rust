@@ -1706,7 +1706,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     obligation.predicate
                 );
 
-                // TODO: forall
                 match obligation.predicate.ignore_qualifiers(tcx).skip_binder().kind() {
                     &ty::PredicateKind::Trait(pred, _) => {
                         let pred = ty::Binder::bind(pred);

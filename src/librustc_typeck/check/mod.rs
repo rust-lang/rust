@@ -2400,8 +2400,6 @@ fn bounds_from_generic_predicates<'tcx>(
     let mut projections = vec![];
     for (predicate, _) in predicates.predicates {
         debug!("predicate {:?}", predicate);
-        // TODO: forall (we could keep the current behavior and just skip binders eagerly,
-        // not sure if we want to though)
         match predicate.ignore_qualifiers(tcx).skip_binder().kind() {
             ty::PredicateKind::Trait(trait_predicate, _) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
@@ -3895,7 +3893,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .borrow()
             .pending_obligations()
             .into_iter()
-            // TODO: forall
             .filter_map(move |obligation| {
                 match obligation.predicate.ignore_qualifiers(self.tcx).skip_binder().kind() {
                     ty::PredicateKind::ForAll(_) => {

@@ -256,7 +256,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                // TODO: forall
                 match obligation.predicate.ignore_qualifiers(tcx).skip_binder().kind() {
                     ty::PredicateKind::ForAll(_) => {
                         bug!("unexpected predicate: {:?}", obligation.predicate)
@@ -1481,7 +1480,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             return;
         }
 
-        // TODO: forall
         let mut err = match predicate.ignore_qualifiers(self.tcx).skip_binder().kind() {
             &ty::PredicateKind::Trait(data, _) => {
                 let trait_ref = ty::Binder::bind(data.trait_ref);
@@ -1583,8 +1581,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             ty::PredicateKind::WellFormed(arg) => {
-                // TODO: forall
-
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
                 if arg.references_error() || self.tcx.sess.has_errors() {
@@ -1604,7 +1600,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::Subtype(ref data) => {
+            ty::PredicateKind::Subtype(data) => {
                 if data.references_error() || self.tcx.sess.has_errors() {
                     // no need to overload user in such cases
                     return;
@@ -1737,14 +1733,16 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        let (pred, item_def_id, span) =
-            match (obligation.predicate.ignore_qualifiers(self.tcx).skip_binder().kind(), obligation.cause.code.peel_derives()) {
-                (
-                    ty::PredicateKind::Trait(pred, _),
-                    &ObligationCauseCode::BindingObligation(item_def_id, span),
-                ) => (pred, item_def_id, span),
-                _ => return,
-            };
+        let (pred, item_def_id, span) = match (
+            obligation.predicate.ignore_qualifiers(self.tcx).skip_binder().kind(),
+            obligation.cause.code.peel_derives(),
+        ) {
+            (
+                ty::PredicateKind::Trait(pred, _),
+                &ObligationCauseCode::BindingObligation(item_def_id, span),
+            ) => (pred, item_def_id, span),
+            _ => return,
+        };
 
         let node = match (
             self.tcx.hir().get_if_local(item_def_id),

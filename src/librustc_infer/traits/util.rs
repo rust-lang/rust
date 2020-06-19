@@ -11,36 +11,22 @@ pub fn anonymize_predicate<'tcx>(
     pred: ty::Predicate<'tcx>,
 ) -> ty::Predicate<'tcx> {
     let kind = pred.kind();
-    let new = match kind {
+    match kind {
         ty::PredicateKind::ForAll(binder) => {
-            ty::PredicateKind::ForAll(tcx.anonymize_late_bound_regions(binder))
+            let new = ty::PredicateKind::ForAll(tcx.anonymize_late_bound_regions(binder));
+            if new != *kind { new.to_predicate(tcx) } else { pred }
         }
-        &ty::PredicateKind::Trait(data, constness) => ty::PredicateKind::Trait(data, constness),
-
-        &ty::PredicateKind::RegionOutlives(data) => ty::PredicateKind::RegionOutlives(data),
-
-        &ty::PredicateKind::TypeOutlives(data) => ty::PredicateKind::TypeOutlives(data),
-
-        &ty::PredicateKind::Projection(data) => ty::PredicateKind::Projection(data),
-
-        &ty::PredicateKind::WellFormed(data) => ty::PredicateKind::WellFormed(data),
-
-        &ty::PredicateKind::ObjectSafe(data) => ty::PredicateKind::ObjectSafe(data),
-
-        &ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
-            ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind)
-        }
-
-        &ty::PredicateKind::Subtype(data) => ty::PredicateKind::Subtype(data),
-
-        &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
-            ty::PredicateKind::ConstEvaluatable(def_id, substs)
-        }
-
-        &ty::PredicateKind::ConstEquate(c1, c2) => ty::PredicateKind::ConstEquate(c1, c2),
-    };
-
-    if new != *kind { new.to_predicate(tcx) } else { pred }
+        ty::PredicateKind::Trait(_, _)
+        | ty::PredicateKind::RegionOutlives(_)
+        | ty::PredicateKind::TypeOutlives(_)
+        | ty::PredicateKind::Projection(_)
+        | ty::PredicateKind::WellFormed(_)
+        | ty::PredicateKind::ObjectSafe(_)
+        | ty::PredicateKind::ClosureKind(_, _, _)
+        | ty::PredicateKind::Subtype(_)
+        | ty::PredicateKind::ConstEvaluatable(_, _)
+        | ty::PredicateKind::ConstEquate(_, _) => pred,
+    }
 }
 
 struct PredicateSet<'tcx> {
