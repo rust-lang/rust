@@ -1,4 +1,4 @@
-// compile-flags: -Z control_flow_guard=nochecks
+// compile-flags: -Z control-flow-guard=nochecks
 
 #![crate_type = "lib"]
 
