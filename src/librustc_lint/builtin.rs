@@ -26,15 +26,15 @@ use rustc_ast::attr::{self, HasAttrs};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_feature::{deprecated_attributes, AttributeGate, AttributeTemplate, AttributeType};
 use rustc_feature::{GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{GenericParamKind, PatKind};
-use rustc_hir::{HirIdSet, Node};
+use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
+use rustc_hir::{HirId, HirIdSet, Node};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -48,7 +48,7 @@ use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
-use log::debug;
+use log::{debug, trace};
 use std::fmt::Write;
 
 // hardwired lints from librustc_middle
@@ -2049,6 +2049,227 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                     }
                     err.emit();
                 });
+            }
+        }
+    }
+}
+
+declare_lint! {
+    pub CLASHING_EXTERN_DECL,
+    Warn,
+    "detects when an extern fn has been declared with the same name but different types"
+}
+
+pub struct ClashingExternDecl {
+    seen_decls: FxHashMap<Symbol, HirId>,
+}
+
+/// Differentiate between whether the name for an extern decl came from the link_name attribute or
+/// just from declaration itself. This is important because we don't want to report clashes on
+/// symbol name if they don't actually clash because one or the other links against a symbol with a
+/// different name.
+enum SymbolName {
+    /// The name of the symbol + the span of the annotation which introduced the link name.
+    Link(Symbol, Span),
+    /// No link name, so just the name of the symbol.
+    Normal(Symbol),
+}
+
+impl SymbolName {
+    fn get_name(&self) -> Symbol {
+        match self {
+            SymbolName::Link(s, _) | SymbolName::Normal(s) => *s,
+        }
+    }
+}
+
+impl ClashingExternDecl {
+    crate fn new() -> Self {
+        ClashingExternDecl { seen_decls: FxHashMap::default() }
+    }
+    /// Insert a new foreign item into the seen set. If a symbol with the same name already exists
+    /// for the item, return its HirId without updating the set.
+    fn insert(&mut self, tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> Option<HirId> {
+        let hid = fi.hir_id;
+
+        let name =
+            &tcx.codegen_fn_attrs(tcx.hir().local_def_id(hid)).link_name.unwrap_or(fi.ident.name);
+
+        if self.seen_decls.contains_key(name) {
+            // Avoid updating the map with the new entry when we do find a collision. We want to
+            // make sure we're always pointing to the first definition as the previous declaration.
+            // This lets us avoid emitting "knock-on" diagnostics.
+            Some(*self.seen_decls.get(name).unwrap())
+        } else {
+            self.seen_decls.insert(*name, hid)
+        }
+    }
+
+    /// Get the name of the symbol that's linked against for a given extern declaration. That is,
+    /// the name specified in a #[link_name = ...] attribute if one was specified, else, just the
+    /// symbol's name.
+    fn name_of_extern_decl(tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> SymbolName {
+        let did = tcx.hir().local_def_id(fi.hir_id);
+        if let Some((overridden_link_name, overridden_link_name_span)) =
+            tcx.codegen_fn_attrs(did).link_name.map(|overridden_link_name| {
+                // FIXME: Instead of searching through the attributes again to get span
+                // information, we could have codegen_fn_attrs also give span information back for
+                // where the attribute was defined. However, until this is found to be a
+                // bottleneck, this does just fine.
+                (
+                    overridden_link_name,
+                    tcx.get_attrs(did.to_def_id())
+                        .iter()
+                        .find(|at| at.check_name(sym::link_name))
+                        .unwrap()
+                        .span,
+                )
+            })
+        {
+            SymbolName::Link(overridden_link_name, overridden_link_name_span)
+        } else {
+            SymbolName::Normal(fi.ident.name)
+        }
+    }
+
+    /// Checks whether two types are structurally the same enough that the declarations shouldn't
+    /// clash. We need this so we don't emit a lint when two modules both declare an extern struct,
+    /// with the same members (as the declarations shouldn't clash).
+    fn structurally_same_type<'a, 'tcx>(
+        cx: &LateContext<'a, 'tcx>,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+    ) -> bool {
+        let tcx = cx.tcx;
+        if a == b || rustc_middle::ty::TyS::same_type(a, b) {
+            // All nominally-same types are structurally same, too.
+            true
+        } else {
+            // Do a full, depth-first comparison between the two.
+            use rustc_middle::ty::TyKind::*;
+            let a_kind = &a.kind;
+            let b_kind = &b.kind;
+
+            match (a_kind, b_kind) {
+                (Adt(..), Adt(..)) => {
+                    // Adts are pretty straightforward: just compare the layouts.
+                    use rustc_target::abi::LayoutOf;
+                    let a_layout = cx.layout_of(a).unwrap().layout;
+                    let b_layout = cx.layout_of(b).unwrap().layout;
+                    a_layout == b_layout
+                }
+                (Array(a_ty, a_const), Array(b_ty, b_const)) => {
+                    // For arrays, we also check the constness of the type.
+                    a_const.val == b_const.val
+                        && Self::structurally_same_type(cx, a_const.ty, b_const.ty)
+                        && Self::structurally_same_type(cx, a_ty, b_ty)
+                }
+                (Slice(a_ty), Slice(b_ty)) => Self::structurally_same_type(cx, a_ty, b_ty),
+                (RawPtr(a_tymut), RawPtr(b_tymut)) => {
+                    a_tymut.mutbl == a_tymut.mutbl
+                        && Self::structurally_same_type(cx, &a_tymut.ty, &b_tymut.ty)
+                }
+                (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
+                    // For structural sameness, we don't need the region to be same.
+                    a_mut == b_mut && Self::structurally_same_type(cx, a_ty, b_ty)
+                }
+                (FnDef(..), FnDef(..)) => {
+                    // As we don't compare regions, skip_binder is fine.
+                    let a_poly_sig = a.fn_sig(tcx);
+                    let b_poly_sig = b.fn_sig(tcx);
+
+                    let a_sig = a_poly_sig.skip_binder();
+                    let b_sig = b_poly_sig.skip_binder();
+
+                    (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
+                        == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)
+                        && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
+                            Self::structurally_same_type(cx, a, b)
+                        })
+                        && Self::structurally_same_type(cx, a_sig.output(), b_sig.output())
+                }
+                (Tuple(a_substs), Tuple(b_substs)) => {
+                    a_substs.types().eq_by(b_substs.types(), |a_ty, b_ty| {
+                        Self::structurally_same_type(cx, a_ty, b_ty)
+                    })
+                }
+                // For these, it's not quite as easy to define structural-sameness quite so easily.
+                // For the purposes of this lint, take the conservative approach and mark them as
+                // not structurally same.
+                (Dynamic(..), Dynamic(..))
+                | (Error(..), Error(..))
+                | (Closure(..), Closure(..))
+                | (Generator(..), Generator(..))
+                | (GeneratorWitness(..), GeneratorWitness(..))
+                | (Projection(..), Projection(..))
+                | (Opaque(..), Opaque(..)) => false,
+                // These definitely should have been caught above.
+                (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
+                _ => false,
+            }
+        }
+    }
+}
+
+impl_lint_pass!(ClashingExternDecl => [CLASHING_EXTERN_DECL]);
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ClashingExternDecl {
+    fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, this_fi: &hir::ForeignItem<'_>) {
+        trace!("ClashingExternDecl: check_foreign_item: {:?}", this_fi);
+        if let ForeignItemKind::Fn(..) = this_fi.kind {
+            let tcx = *&cx.tcx;
+            if let Some(existing_hid) = self.insert(tcx, this_fi) {
+                let existing_decl_ty = tcx.type_of(tcx.hir().local_def_id(existing_hid));
+                let this_decl_ty = tcx.type_of(tcx.hir().local_def_id(this_fi.hir_id));
+                debug!(
+                    "ClashingExternDecl: Comparing existing {:?}: {:?} to this {:?}: {:?}",
+                    existing_hid, existing_decl_ty, this_fi.hir_id, this_decl_ty
+                );
+                // Check that the declarations match.
+                if !Self::structurally_same_type(cx, existing_decl_ty, this_decl_ty) {
+                    let orig_fi = tcx.hir().expect_foreign_item(existing_hid);
+                    let orig = Self::name_of_extern_decl(tcx, orig_fi);
+
+                    // We want to ensure that we use spans for both decls that include where the
+                    // name was defined, whether that was from the link_name attribute or not.
+                    let get_relevant_span =
+                        |fi: &hir::ForeignItem<'_>| match Self::name_of_extern_decl(tcx, fi) {
+                            SymbolName::Normal(_) => fi.span,
+                            SymbolName::Link(_, annot_span) => fi.span.to(annot_span),
+                        };
+                    // Finally, emit the diagnostic.
+                    tcx.struct_span_lint_hir(
+                        CLASHING_EXTERN_DECL,
+                        this_fi.hir_id,
+                        get_relevant_span(this_fi),
+                        |lint| {
+                            let mut expected_str = DiagnosticStyledString::new();
+                            expected_str.push(existing_decl_ty.fn_sig(tcx).to_string(), false);
+                            let mut found_str = DiagnosticStyledString::new();
+                            found_str.push(this_decl_ty.fn_sig(tcx).to_string(), true);
+
+                            lint.build(&format!(
+                                "`{}` redeclare{} with a different signature",
+                                this_fi.ident.name,
+                                if orig.get_name() == this_fi.ident.name {
+                                    "d".to_string()
+                                } else {
+                                    format!("s `{}`", orig.get_name())
+                                }
+                            ))
+                            .span_label(
+                                get_relevant_span(orig_fi),
+                                &format!("`{}` previously declared here", orig.get_name()),
+                            )
+                            .span_label(
+                                get_relevant_span(this_fi),
+                                "this signature doesn't match the previous declaration",
+                            )
+                            .note_expected_found(&"", expected_str, &"", found_str)
+                            .emit()
+                        },
+                    );
+                }
             }
         }
     }
