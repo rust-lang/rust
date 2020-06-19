@@ -5,11 +5,14 @@ use std::{env, path::PathBuf, process::Command};
 fn main() {
     set_rerun();
 
-    let rev = rev().unwrap_or_else(|| "???????".to_string());
+    let rev =
+        env::var("RUST_ANALYZER_REV").ok().or_else(rev).unwrap_or_else(|| "???????".to_string());
     println!("cargo:rustc-env=REV={}", rev)
 }
 
 fn set_rerun() {
+    println!("cargo:rerun-if-env-changed=RUST_ANALYZER_REV");
+
     let mut manifest_dir = PathBuf::from(
         env::var("CARGO_MANIFEST_DIR").expect("`CARGO_MANIFEST_DIR` is always set by cargo."),
     );
