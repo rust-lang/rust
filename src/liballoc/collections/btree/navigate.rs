@@ -64,8 +64,10 @@ macro_rules! def_next_kv_uncheched_dealloc {
                 edge = match edge.$adjacent_kv() {
                     Ok(internal_kv) => return internal_kv,
                     Err(last_edge) => {
-                        let parent_edge = last_edge.into_node().deallocate_and_ascend();
-                        unwrap_unchecked(parent_edge).forget_node_type()
+                        unsafe {
+                            let parent_edge = last_edge.into_node().deallocate_and_ascend();
+                            unwrap_unchecked(parent_edge).forget_node_type()
+                        }
                     }
                 }
             }
@@ -82,9 +84,11 @@ def_next_kv_uncheched_dealloc! {unsafe fn next_back_kv_unchecked_dealloc: left_k
 /// Safety: The change closure must not panic.
 #[inline]
 unsafe fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {
-    let value = ptr::read(v);
+    let value = unsafe { ptr::read(v) };
     let (new_value, ret) = change(value);
-    ptr::write(v, new_value);
+    unsafe {
+        ptr::write(v, new_value);
+    }
     ret
 }
 
@@ -93,22 +97,26 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     /// key and value in between.
     /// Unsafe because the caller must ensure that the leaf edge is not the last one in the tree.
     pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv();
-            let kv = unwrap_unchecked(kv.ok());
-            (kv.next_leaf_edge(), kv.into_kv())
-        })
+        unsafe {
+            replace(self, |leaf_edge| {
+                let kv = leaf_edge.next_kv();
+                let kv = unwrap_unchecked(kv.ok());
+                (kv.next_leaf_edge(), kv.into_kv())
+            })
+        }
     }
 
     /// Moves the leaf edge handle to the previous leaf edge and returns references to the
     /// key and value in between.
     /// Unsafe because the caller must ensure that the leaf edge is not the first one in the tree.
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv();
-            let kv = unwrap_unchecked(kv.ok());
-            (kv.next_back_leaf_edge(), kv.into_kv())
-        })
+        unsafe {
+            replace(self, |leaf_edge| {
+                let kv = leaf_edge.next_back_kv();
+                let kv = unwrap_unchecked(kv.ok());
+                (kv.next_back_leaf_edge(), kv.into_kv())
+            })
+        }
     }
 }
 
@@ -119,14 +127,16 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
     /// - The caller must ensure that the leaf edge is not the last one in the tree.
     /// - Using the updated handle may well invalidate the returned references.
     pub unsafe fn next_unchecked(&mut self) -> (&'a mut K, &'a mut V) {
-        let kv = replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv();
-            let kv = unwrap_unchecked(kv.ok());
-            (ptr::read(&kv).next_leaf_edge(), kv)
-        });
-        // Doing the descend (and perhaps another move) invalidates the references
-        // returned by `into_kv_mut`, so we have to do this last.
-        kv.into_kv_mut()
+        unsafe {
+            let kv = replace(self, |leaf_edge| {
+                let kv = leaf_edge.next_kv();
+                let kv = unwrap_unchecked(kv.ok());
+                (ptr::read(&kv).next_leaf_edge(), kv)
+            });
+            // Doing the descend (and perhaps another move) invalidates the references
+            // returned by `into_kv_mut`, so we have to do this last.
+            kv.into_kv_mut()
+        }
     }
 
     /// Moves the leaf edge handle to the previous leaf and returns references to the
@@ -135,14 +145,16 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
     /// - The caller must ensure that the leaf edge is not the first one in the tree.
     /// - Using the updated handle may well invalidate the returned references.
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a mut K, &'a mut V) {
-        let kv = replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv();
-            let kv = unwrap_unchecked(kv.ok());
-            (ptr::read(&kv).next_back_leaf_edge(), kv)
-        });
-        // Doing the descend (and perhaps another move) invalidates the references
-        // returned by `into_kv_mut`, so we have to do this last.
-        kv.into_kv_mut()
+        unsafe {
+            let kv = replace(self, |leaf_edge| {
+                let kv = leaf_edge.next_back_kv();
+                let kv = unwrap_unchecked(kv.ok());
+                (ptr::read(&kv).next_back_leaf_edge(), kv)
+            });
+            // Doing the descend (and perhaps another move) invalidates the references
+            // returned by `into_kv_mut`, so we have to do this last.
+            kv.into_kv_mut()
+        }
     }
 }
 
@@ -159,12 +171,14 @@ impl<K, V> Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge> {
     ///   if the two preconditions above hold.
     /// - Using the updated handle may well invalidate the returned references.
     pub unsafe fn next_unchecked(&mut self) -> (K, V) {
-        replace(self, |leaf_edge| {
-            let kv = next_kv_unchecked_dealloc(leaf_edge);
-            let k = ptr::read(kv.reborrow().into_kv().0);
-            let v = ptr::read(kv.reborrow().into_kv().1);
-            (kv.next_leaf_edge(), (k, v))
-        })
+        unsafe {
+            replace(self, |leaf_edge| {
+                let kv = next_kv_unchecked_dealloc(leaf_edge);
+                let k = ptr::read(kv.reborrow().into_kv().0);
+                let v = ptr::read(kv.reborrow().into_kv().1);
+                (kv.next_leaf_edge(), (k, v))
+            })
+        }
     }
 
     /// Moves the leaf edge handle to the previous leaf edge and returns the key
@@ -179,12 +193,14 @@ impl<K, V> Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge> {
     ///   if the two preconditions above hold.
     /// - Using the updated handle may well invalidate the returned references.
     pub unsafe fn next_back_unchecked(&mut self) -> (K, V) {
-        replace(self, |leaf_edge| {
-            let kv = next_back_kv_unchecked_dealloc(leaf_edge);
-            let k = ptr::read(kv.reborrow().into_kv().0);
-            let v = ptr::read(kv.reborrow().into_kv().1);
-            (kv.next_back_leaf_edge(), (k, v))
-        })
+        unsafe {
+            replace(self, |leaf_edge| {
+                let kv = next_back_kv_unchecked_dealloc(leaf_edge);
+                let k = ptr::read(kv.reborrow().into_kv().0);
+                let v = ptr::read(kv.reborrow().into_kv().1);
+                (kv.next_back_leaf_edge(), (k, v))
+            })
+        }
     }
 }
 

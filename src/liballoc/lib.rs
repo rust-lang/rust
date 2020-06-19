@@ -72,6 +72,7 @@
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
+#![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(test))]
 #![feature(allocator_api)]
@@ -118,6 +119,7 @@
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(unicode_internals)]
+#![feature(unsafe_block_in_unsafe_fn)]
 #![feature(unsize)]
 #![feature(unsized_locals)]
 #![feature(allocator_internals)]
