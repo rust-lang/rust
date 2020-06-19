@@ -81,7 +81,7 @@ impl<'a> InferenceContext<'a> {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
                 let substs = Substs::type_params_for_generics(&generics);
                 let ty = self.db.impl_self_ty(impl_id).subst(&substs);
-                if let Some((AdtId::StructId(struct_id), _)) = ty.as_adt() {
+                if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
                     let ty = self.db.value_ty(struct_id.into()).subst(&substs);
                     return Some(ty);
                 } else {
