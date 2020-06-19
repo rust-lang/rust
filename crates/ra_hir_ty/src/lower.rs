@@ -467,6 +467,9 @@ impl Ty {
                             }
                             TypeParamLoweringMode::Variable => t.substs.clone(),
                         };
+                        // We need to shift in the bound vars, since
+                        // associated_type_shorthand_candidates does not do that
+                        let substs = substs.shift_bound_vars(ctx.in_binders);
                         // FIXME handle type parameters on the segment
                         return Some(Ty::Projection(ProjectionTy {
                             associated_ty,
