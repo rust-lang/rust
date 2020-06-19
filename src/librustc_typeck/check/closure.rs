@@ -700,7 +700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.
             astconv.ast_ty_to_ty(a);
-            self.tcx.types.err
+            self.tcx.ty_error()
         });
 
         if let hir::FnRetTy::Return(ref output) = decl.output {
@@ -709,7 +709,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let result = ty::Binder::bind(self.tcx.mk_fn_sig(
             supplied_arguments,
-            self.tcx.types.err,
+            self.tcx.ty_error(),
             decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,

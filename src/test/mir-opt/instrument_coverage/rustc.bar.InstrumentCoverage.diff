@@ -1,0 +1,41 @@
+- // MIR for `bar` before InstrumentCoverage
++ // MIR for `bar` after InstrumentCoverage
+  
+  fn bar() -> bool {
+      let mut _0: bool;                    // return place in scope 0 at $DIR/instrument_coverage.rs:18:13: 18:17
++     let mut _1: ();                      // in scope 0 at $DIR/instrument_coverage.rs:18:1: 20:2
+  
+      bb0: {
++         StorageLive(_1);                 // scope 0 at $DIR/instrument_coverage.rs:18:1: 20:2
++         _1 = const std::intrinsics::count_code_region(const 0u32) -> bb2; // scope 0 at $DIR/instrument_coverage.rs:18:1: 20:2
++                                          // ty::Const
++                                          // + ty: unsafe extern "rust-intrinsic" fn(u32) {std::intrinsics::count_code_region}
++                                          // + val: Value(Scalar(<ZST>))
++                                          // mir::Constant
++                                          // + span: $DIR/instrument_coverage.rs:18:1: 18:1
++                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x00000000))
++                                          // mir::Constant
++                                          // + span: $DIR/instrument_coverage.rs:18:1: 18:1
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
++     }
++ 
++     bb1 (cleanup): {
++         resume;                          // scope 0 at $DIR/instrument_coverage.rs:18:1: 20:2
++     }
++ 
++     bb2: {
++         StorageDead(_1);                 // scope 0 at $DIR/instrument_coverage.rs:19:5: 19:9
+          _0 = const true;                 // scope 0 at $DIR/instrument_coverage.rs:19:5: 19:9
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x01))
+                                           // mir::Constant
+                                           // + span: $DIR/instrument_coverage.rs:19:5: 19:9
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+          return;                          // scope 0 at $DIR/instrument_coverage.rs:20:2: 20:2
+      }
+  }
+  

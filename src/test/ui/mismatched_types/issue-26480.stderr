@@ -17,12 +17,11 @@ error[E0605]: non-primitive cast: `{integer}` as `()`
   --> $DIR/issue-26480.rs:22:19
    |
 LL |     ($x:expr) => ($x as ())
-   |                   ^^^^^^^^
+   |                   ^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 ...
 LL |     cast!(2);
    |     --------- in this macro invocation
    |
-   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

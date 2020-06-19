@@ -192,6 +192,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.inner.next();
         let compile_fail;
+        let should_panic;
         let ignore;
         let edition;
         if let Some(Event::Start(Tag::CodeBlock(kind))) = event {
@@ -205,6 +206,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 return Some(Event::Start(Tag::CodeBlock(kind)));
             }
             compile_fail = parse_result.compile_fail;
+            should_panic = parse_result.should_panic;
             ignore = parse_result.ignore;
             edition = parse_result.edition;
         } else {
@@ -280,6 +282,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             Some(("This example is not tested".to_owned(), "ignore"))
         } else if compile_fail {
             Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
+        } else if should_panic {
+            Some(("This example panics".to_owned(), "should_panic"))
         } else if explicit_edition {
             Some((format!("This code runs with edition {}", edition), "edition"))
         } else {
@@ -295,6 +299,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         " ignore"
                     } else if compile_fail {
                         " compile_fail"
+                    } else if should_panic {
+                        " should_panic"
                     } else if explicit_edition {
                         " edition "
                     } else {
@@ -314,6 +320,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         " ignore"
                     } else if compile_fail {
                         " compile_fail"
+                    } else if should_panic {
+                        " should_panic"
                     } else if explicit_edition {
                         " edition "
                     } else {

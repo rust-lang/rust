@@ -894,7 +894,7 @@ def bootstrap(help_triggered):
     build.clean = args.clean
 
     try:
-        toml_path = args.config or 'config.toml'
+        toml_path = os.getenv('RUST_BOOTSTRAP_CONFIG') or args.config or 'config.toml'
         if not os.path.exists(toml_path):
             toml_path = os.path.join(build.rust_root, toml_path)
 
@@ -947,6 +947,7 @@ def bootstrap(help_triggered):
     env["SRC"] = build.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
+    env["BOOTSTRAP_CONFIG"] = toml_path
     env["BUILD_DIR"] = build.build_dir
     env["RUSTC_BOOTSTRAP"] = '1'
     env["CARGO"] = build.cargo()

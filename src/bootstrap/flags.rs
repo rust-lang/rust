@@ -3,18 +3,16 @@
 //! This module implements the command-line parsing of the build system which
 //! has various flags to configure how it's run.
 
-use std::fs;
+use std::env;
 use std::path::PathBuf;
 use std::process;
 
 use getopts::Options;
 
 use crate::builder::Builder;
-use crate::config::Config;
-use crate::metadata;
-use crate::{Build, DocTests};
-
 use crate::cache::{Interned, INTERNER};
+use crate::config::Config;
+use crate::{Build, DocTests};
 
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
@@ -438,19 +436,12 @@ Arguments:
         // Get any optional paths which occur after the subcommand
         let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
-        let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
-            if fs::metadata("config.toml").is_ok() {
-                Some(PathBuf::from("config.toml"))
-            } else {
-                None
-            }
-        });
+        let cfg_file = env::var_os("BOOTSTRAP_CONFIG").map(PathBuf::from);
 
         // All subcommands except `clean` can have an optional "Available paths" section
         if matches.opt_present("verbose") {
             let config = Config::parse(&["build".to_string()]);
-            let mut build = Build::new(config);
-            metadata::build(&mut build);
+            let build = Build::new(config);
 
             let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
             extra_help.push_str(maybe_rules_help.unwrap_or_default().as_str());

@@ -1,4 +1,4 @@
-use self::EnumDiscriminantInfo::*;
+use self::EnumTagInfo::*;
 use self::MemberDescriptionFactory::*;
 use self::RecursiveTypeDescription::*;
 
@@ -40,7 +40,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::{Interner, Symbol};
 use rustc_span::{self, SourceFile, SourceFileHash, Span};
-use rustc_target::abi::{Abi, Align, DiscriminantKind, HasDataLayout, Integer, LayoutOf};
+use rustc_target::abi::{Abi, Align, HasDataLayout, Integer, LayoutOf, TagEncoding};
 use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{Primitive, Size, VariantIdx, Variants};
 
@@ -1335,7 +1335,7 @@ fn generator_layout_and_saved_local_names(
 struct EnumMemberDescriptionFactory<'ll, 'tcx> {
     enum_type: Ty<'tcx>,
     layout: TyAndLayout<'tcx>,
-    discriminant_type_metadata: Option<&'ll DIType>,
+    tag_type_metadata: Option<&'ll DIType>,
     containing_scope: &'ll DIScope,
     span: Span,
 }
@@ -1385,7 +1385,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     cx,
                     self.layout,
                     variant_info,
-                    NoDiscriminant,
+                    NoTag,
                     self_metadata,
                     self.span,
                 );
@@ -1409,19 +1409,19 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 }]
             }
             Variants::Multiple {
-                discr_kind: DiscriminantKind::Tag,
-                discr_index,
+                tag_encoding: TagEncoding::Direct,
+                tag_field,
                 ref variants,
                 ..
             } => {
-                let discriminant_info = if fallback {
-                    RegularDiscriminant {
-                        discr_field: Field::from(discr_index),
-                        discr_type_metadata: self.discriminant_type_metadata.unwrap(),
+                let tag_info = if fallback {
+                    RegularTag {
+                        tag_field: Field::from(tag_field),
+                        tag_type_metadata: self.tag_type_metadata.unwrap(),
                     }
                 } else {
                     // This doesn't matter in this case.
-                    NoDiscriminant
+                    NoTag
                 };
                 variants
                     .iter_enumerated()
@@ -1432,7 +1432,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             cx,
                             variant,
                             variant_info,
-                            discriminant_info,
+                            tag_info,
                             self_metadata,
                             self.span,
                         );
@@ -1467,11 +1467,11 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     .collect()
             }
             Variants::Multiple {
-                discr_kind:
-                    DiscriminantKind::Niche { ref niche_variants, niche_start, dataful_variant },
-                ref discr,
+                tag_encoding:
+                    TagEncoding::Niche { ref niche_variants, niche_start, dataful_variant },
+                ref tag,
                 ref variants,
-                discr_index,
+                tag_field,
             } => {
                 if fallback {
                     let variant = self.layout.for_variant(cx, dataful_variant);
@@ -1480,7 +1480,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         cx,
                         variant,
                         variant_info_for(dataful_variant),
-                        OptimizedDiscriminant,
+                        OptimizedTag,
                         self.containing_scope,
                         self.span,
                     );
@@ -1524,8 +1524,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         cx,
                         &mut name,
                         self.layout,
-                        self.layout.fields.offset(discr_index),
-                        self.layout.field(cx, discr_index).size,
+                        self.layout.fields.offset(tag_field),
+                        self.layout.field(cx, tag_field).size,
                     );
                     variant_info_for(*niche_variants.start()).map_struct_name(|variant_name| {
                         name.push_str(variant_name);
@@ -1552,7 +1552,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                     cx,
                                     variant,
                                     variant_info,
-                                    OptimizedDiscriminant,
+                                    OptimizedTag,
                                     self_metadata,
                                     self.span,
                                 );
@@ -1573,7 +1573,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                 let value = (i.as_u32() as u128)
                                     .wrapping_sub(niche_variants.start().as_u32() as u128)
                                     .wrapping_add(niche_start);
-                                let value = truncate(value, discr.value.size(cx));
+                                let value = truncate(value, tag.value.size(cx));
                                 // NOTE(eddyb) do *NOT* remove this assert, until
                                 // we pass the full 128-bit value to LLVM, otherwise
                                 // truncation will be silent and remain undetected.
@@ -1603,7 +1603,7 @@ struct VariantMemberDescriptionFactory<'ll, 'tcx> {
     /// Cloned from the `layout::Struct` describing the variant.
     offsets: Vec<Size>,
     args: Vec<(String, Ty<'tcx>)>,
-    discriminant_type_metadata: Option<&'ll DIType>,
+    tag_type_metadata: Option<&'ll DIType>,
     span: Span,
 }
 
@@ -1617,7 +1617,7 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
                 MemberDescription {
                     name: name.to_string(),
                     type_metadata: if use_enum_fallback(cx) {
-                        match self.discriminant_type_metadata {
+                        match self.tag_type_metadata {
                             // Discriminant is always the first field of our variant
                             // when using the enum fallback.
                             Some(metadata) if i == 0 => metadata,
@@ -1637,11 +1637,14 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
     }
 }
 
+// FIXME: terminology here should be aligned with `abi::TagEncoding`.
+// `OptimizedTag` is `TagEncoding::Niche`, `RegularTag` is `TagEncoding::Direct`.
+// `NoTag` should be removed; users should use `Option<EnumTagInfo>` instead.
 #[derive(Copy, Clone)]
-enum EnumDiscriminantInfo<'ll> {
-    RegularDiscriminant { discr_field: Field, discr_type_metadata: &'ll DIType },
-    OptimizedDiscriminant,
-    NoDiscriminant,
+enum EnumTagInfo<'ll> {
+    RegularTag { tag_field: Field, tag_type_metadata: &'ll DIType },
+    OptimizedTag,
+    NoTag,
 }
 
 #[derive(Copy, Clone)]
@@ -1706,7 +1709,7 @@ fn describe_enum_variant(
     cx: &CodegenCx<'ll, 'tcx>,
     layout: layout::TyAndLayout<'tcx>,
     variant: VariantInfo<'_, 'tcx>,
-    discriminant_info: EnumDiscriminantInfo<'ll>,
+    discriminant_info: EnumTagInfo<'ll>,
     containing_scope: &'ll DIScope,
     span: Span,
 ) -> (&'ll DICompositeType, MemberDescriptionFactory<'ll, 'tcx>) {
@@ -1722,12 +1725,12 @@ fn describe_enum_variant(
     let (offsets, args) = if use_enum_fallback(cx) {
         // If this is not a univariant enum, there is also the discriminant field.
         let (discr_offset, discr_arg) = match discriminant_info {
-            RegularDiscriminant { discr_field, .. } => {
+            RegularTag { tag_field, .. } => {
                 // We have the layout of an enum variant, we need the layout of the outer enum
                 let enum_layout = cx.layout_of(layout.ty);
-                let offset = enum_layout.fields.offset(discr_field.as_usize());
+                let offset = enum_layout.fields.offset(tag_field.as_usize());
                 let args =
-                    ("RUST$ENUM$DISR".to_owned(), enum_layout.field(cx, discr_field.as_usize()).ty);
+                    ("RUST$ENUM$DISR".to_owned(), enum_layout.field(cx, tag_field.as_usize()).ty);
                 (Some(offset), Some(args))
             }
             _ => (None, None),
@@ -1757,8 +1760,8 @@ fn describe_enum_variant(
     let member_description_factory = VariantMDF(VariantMemberDescriptionFactory {
         offsets,
         args,
-        discriminant_type_metadata: match discriminant_info {
-            RegularDiscriminant { discr_type_metadata, .. } => Some(discr_type_metadata),
+        tag_type_metadata: match discriminant_info {
+            RegularTag { tag_type_metadata, .. } => Some(tag_type_metadata),
             _ => None,
         },
         span,
@@ -1880,18 +1883,18 @@ fn prepare_enum_metadata(
 
     if let (
         &Abi::Scalar(_),
-        &Variants::Multiple { discr_kind: DiscriminantKind::Tag, ref discr, .. },
+        &Variants::Multiple { tag_encoding: TagEncoding::Direct, ref tag, .. },
     ) = (&layout.abi, &layout.variants)
     {
-        return FinalMetadata(discriminant_type_metadata(discr.value));
+        return FinalMetadata(discriminant_type_metadata(tag.value));
     }
 
     if use_enum_fallback(cx) {
         let discriminant_type_metadata = match layout.variants {
             Variants::Single { .. }
-            | Variants::Multiple { discr_kind: DiscriminantKind::Niche { .. }, .. } => None,
-            Variants::Multiple { discr_kind: DiscriminantKind::Tag, ref discr, .. } => {
-                Some(discriminant_type_metadata(discr.value))
+            | Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, .. } => None,
+            Variants::Multiple { tag_encoding: TagEncoding::Direct, ref tag, .. } => {
+                Some(discriminant_type_metadata(tag.value))
             }
         };
 
@@ -1927,7 +1930,7 @@ fn prepare_enum_metadata(
             EnumMDF(EnumMemberDescriptionFactory {
                 enum_type,
                 layout,
-                discriminant_type_metadata,
+                tag_type_metadata: discriminant_type_metadata,
                 containing_scope,
                 span,
             }),
@@ -1943,16 +1946,13 @@ fn prepare_enum_metadata(
         Variants::Single { .. } => None,
 
         Variants::Multiple {
-            discr_kind: DiscriminantKind::Niche { .. },
-            ref discr,
-            discr_index,
-            ..
+            tag_encoding: TagEncoding::Niche { .. }, ref tag, tag_field, ..
         } => {
             // Find the integer type of the correct size.
-            let size = discr.value.size(cx);
-            let align = discr.value.align(cx);
+            let size = tag.value.size(cx);
+            let align = tag.value.align(cx);
 
-            let discr_type = match discr.value {
+            let tag_type = match tag.value {
                 Int(t, _) => t,
                 F32 => Integer::I32,
                 F64 => Integer::I64,
@@ -1960,7 +1960,7 @@ fn prepare_enum_metadata(
             }
             .to_ty(cx.tcx, false);
 
-            let discr_metadata = basic_type_metadata(cx, discr_type);
+            let tag_metadata = basic_type_metadata(cx, tag_type);
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateMemberType(
                     DIB(cx),
@@ -1971,17 +1971,15 @@ fn prepare_enum_metadata(
                     UNKNOWN_LINE_NUMBER,
                     size.bits(),
                     align.abi.bits() as u32,
-                    layout.fields.offset(discr_index).bits(),
+                    layout.fields.offset(tag_field).bits(),
                     DIFlags::FlagArtificial,
-                    discr_metadata,
+                    tag_metadata,
                 ))
             }
         }
 
-        Variants::Multiple {
-            discr_kind: DiscriminantKind::Tag, ref discr, discr_index, ..
-        } => {
-            let discr_type = discr.value.to_ty(cx.tcx);
+        Variants::Multiple { tag_encoding: TagEncoding::Direct, ref tag, tag_field, .. } => {
+            let discr_type = tag.value.to_ty(cx.tcx);
             let (size, align) = cx.size_and_align_of(discr_type);
 
             let discr_metadata = basic_type_metadata(cx, discr_type);
@@ -1995,7 +1993,7 @@ fn prepare_enum_metadata(
                     UNKNOWN_LINE_NUMBER,
                     size.bits(),
                     align.bits() as u32,
-                    layout.fields.offset(discr_index).bits(),
+                    layout.fields.offset(tag_field).bits(),
                     DIFlags::FlagArtificial,
                     discr_metadata,
                 ))
@@ -2081,7 +2079,7 @@ fn prepare_enum_metadata(
         EnumMDF(EnumMemberDescriptionFactory {
             enum_type,
             layout,
-            discriminant_type_metadata: None,
+            tag_type_metadata: None,
             containing_scope,
             span,
         }),

@@ -29,6 +29,7 @@ use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
@@ -1112,7 +1113,7 @@ pub enum TerminatorKind<'tcx> {
     Unreachable,
 
     /// Drop the `Place`.
-    Drop { location: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
+    Drop { place: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
 
     /// Drop the `Place` and assign the new value over it. This ensures
     /// that the assignment to `P` occurs *even if* the destructor for
@@ -1141,7 +1142,7 @@ pub enum TerminatorKind<'tcx> {
     /// }
     /// ```
     DropAndReplace {
-        location: Place<'tcx>,
+        place: Place<'tcx>,
         value: Operand<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>,
@@ -1607,9 +1608,9 @@ impl<'tcx> TerminatorKind<'tcx> {
             Abort => write!(fmt, "abort"),
             Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { location, .. } => write!(fmt, "drop({:?})", location),
-            DropAndReplace { location, value, .. } => {
-                write!(fmt, "replace({:?} <- {:?})", location, value)
+            Drop { place, .. } => write!(fmt, "drop({:?})", place),
+            DropAndReplace { place, value, .. } => {
+                write!(fmt, "replace({:?} <- {:?})", place, value)
             }
             Call { func, args, destination, .. } => {
                 if let Some((destination, _)) = destination {
@@ -2215,6 +2216,33 @@ impl<'tcx> Operand<'tcx> {
             span,
             user_ty: None,
             literal: ty::Const::zero_sized(tcx, ty),
+        })
+    }
+
+    /// Convenience helper to make a literal-like constant from a given scalar value.
+    /// Since this is used to synthesize MIR, assumes `user_ty` is None.
+    pub fn const_from_scalar(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        val: Scalar,
+        span: Span,
+    ) -> Operand<'tcx> {
+        debug_assert!({
+            let param_env_and_ty = ty::ParamEnv::empty().and(ty);
+            let type_size = tcx
+                .layout_of(param_env_and_ty)
+                .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
+                .size;
+            let scalar_size = abi::Size::from_bytes(match val {
+                Scalar::Raw { size, .. } => size,
+                _ => panic!("Invalid scalar type {:?}", val),
+            });
+            scalar_size == type_size
+        });
+        Operand::Constant(box Constant {
+            span,
+            user_ty: None,
+            literal: ty::Const::from_scalar(tcx, val, ty),
         })
     }
 

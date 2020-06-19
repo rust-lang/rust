@@ -221,7 +221,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Ref(..)
         | ty::Str
         | ty::Foreign(..)
-        | ty::Error => true,
+        | ty::Error(_) => true,
 
         // [T; N] and [T] have same properties as T.
         ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, ty),

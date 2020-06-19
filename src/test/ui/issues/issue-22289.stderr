@@ -2,9 +2,12 @@ error[E0605]: non-primitive cast: `i32` as `&(dyn std::any::Any + 'static)`
   --> $DIR/issue-22289.rs:2:5
    |
 LL |     0 as &dyn std::any::Any;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
    |
-   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+help: borrow the value for the cast to be valid
+   |
+LL |     &0 as &dyn std::any::Any;
+   |     ^
 
 error: aborting due to previous error
 

@@ -27,9 +27,9 @@ use rustc_trait_selection::traits;
 
 use crate::const_eval::error_to_const_error;
 use crate::interpret::{
-    self, compile_time_machine, intern_const_alloc_recursive, AllocId, Allocation, Frame, ImmTy,
-    Immediate, InternKind, InterpCx, LocalState, LocalValue, Memory, MemoryKind, OpTy,
-    Operand as InterpOperand, PlaceTy, Pointer, ScalarMaybeUninit, StackPopCleanup,
+    self, compile_time_machine, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx, LocalState,
+    LocalValue, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer,
+    ScalarMaybeUninit, StackPopCleanup,
 };
 use crate::transform::{MirPass, MirSource};
 
@@ -702,11 +702,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 ScalarMaybeUninit::Scalar(l),
                 ScalarMaybeUninit::Scalar(r),
             )) => l.is_bits() && r.is_bits(),
-            interpret::Operand::Indirect(_) if mir_opt_level >= 2 => {
-                let mplace = op.assert_mem_place(&self.ecx);
-                intern_const_alloc_recursive(&mut self.ecx, InternKind::ConstProp, mplace, false);
-                true
-            }
             _ => false,
         }
     }

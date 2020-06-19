@@ -108,7 +108,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             | ty::Infer(_)
             | ty::Param(_)
             | ty::Never
-            | ty::Error
+            | ty::Error(_)
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Foreign(..) => {}
@@ -171,7 +171,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 | ty::ConstKind::Placeholder(_)
                 | ty::ConstKind::Bound(..)
                 | ty::ConstKind::Value(_)
-                | ty::ConstKind::Error => {}
+                | ty::ConstKind::Error(_) => {}
 
                 ty::ConstKind::Unevaluated(_, substs, _) => {
                     stack.extend(substs.iter().rev());

@@ -452,6 +452,14 @@ impl<'a> CrateLoader<'a> {
         if dep.is_none() {
             self.used_extern_options.insert(name);
         }
+        if !name.as_str().is_ascii() {
+            self.sess
+                .struct_span_err(
+                    span,
+                    &format!("cannot load a crate with a non-ascii name `{}`", name,),
+                )
+                .emit();
+        }
         self.maybe_resolve_crate(name, span, dep_kind, dep).unwrap_or_else(|err| err.report())
     }
 
@@ -698,7 +706,9 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_profiler_runtime(&mut self) {
-        if (self.sess.opts.debugging_opts.profile || self.sess.opts.cg.profile_generate.enabled())
+        if (self.sess.opts.debugging_opts.instrument_coverage
+            || self.sess.opts.debugging_opts.profile
+            || self.sess.opts.cg.profile_generate.enabled())
             && !self.sess.opts.debugging_opts.no_profiler_runtime
         {
             info!("loading profiler");

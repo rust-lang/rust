@@ -220,7 +220,7 @@ where
             | ty::Ref(..)
             | ty::FnPtr(..)
             | ty::Param(..)
-            | ty::Error
+            | ty::Error(_)
             | ty::GeneratorWitness(..) => {}
             ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)

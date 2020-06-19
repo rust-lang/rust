@@ -225,13 +225,15 @@ enum VisResolutionError<'a> {
     ModuleOnly(Span),
 }
 
-// A minimal representation of a path segment. We use this in resolve because
-// we synthesize 'path segments' which don't have the rest of an AST or HIR
-// `PathSegment`.
+/// A minimal representation of a path segment. We use this in resolve because we synthesize 'path
+/// segments' which don't have the rest of an AST or HIR `PathSegment`.
 #[derive(Clone, Copy, Debug)]
 pub struct Segment {
     ident: Ident,
     id: Option<NodeId>,
+    /// Signals whether this `PathSegment` has generic arguments. Used to avoid providing
+    /// nonsensical suggestions.
+    has_generic_args: bool,
 }
 
 impl Segment {
@@ -240,7 +242,7 @@ impl Segment {
     }
 
     fn from_ident(ident: Ident) -> Segment {
-        Segment { ident, id: None }
+        Segment { ident, id: None, has_generic_args: false }
     }
 
     fn names_to_string(segments: &[Segment]) -> String {
@@ -250,7 +252,7 @@ impl Segment {
 
 impl<'a> From<&'a ast::PathSegment> for Segment {
     fn from(seg: &'a ast::PathSegment) -> Segment {
-        Segment { ident: seg.ident, id: Some(seg.id) }
+        Segment { ident: seg.ident, id: Some(seg.id), has_generic_args: seg.args.is_some() }
     }
 }
 
@@ -2017,7 +2019,7 @@ impl<'a> Resolver<'a> {
             path, opt_ns, record_used, path_span, crate_lint,
         );
 
-        for (i, &Segment { ident, id }) in path.iter().enumerate() {
+        for (i, &Segment { ident, id, has_generic_args: _ }) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?} {:?}", i, ident, id);
             let record_segment_res = |this: &mut Self, res| {
                 if record_used {

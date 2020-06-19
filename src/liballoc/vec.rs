@@ -1639,7 +1639,7 @@ impl<T: Default> Vec<T> {
     }
 }
 
-// This code generalises `extend_with_{element,default}`.
+// This code generalizes `extend_with_{element,default}`.
 trait ExtendWith<T> {
     fn next(&mut self) -> T;
     fn last(self) -> T;
@@ -1837,7 +1837,7 @@ unsafe trait IsZero {
 }
 
 macro_rules! impl_is_zero {
-    ($t: ty, $is_zero: expr) => {
+    ($t:ty, $is_zero:expr) => {
         unsafe impl IsZero for $t {
             #[inline]
             fn is_zero(&self) -> bool {
@@ -2362,9 +2362,9 @@ macro_rules! __impl_slice_eq1 {
 __impl_slice_eq1! { [] Vec<A>, Vec<B>, }
 __impl_slice_eq1! { [] Vec<A>, &[B], }
 __impl_slice_eq1! { [] Vec<A>, &mut [B], }
+__impl_slice_eq1! { [] Cow<'_, [A]>, Vec<B>, A: Clone }
 __impl_slice_eq1! { [] Cow<'_, [A]>, &[B], A: Clone }
 __impl_slice_eq1! { [] Cow<'_, [A]>, &mut [B], A: Clone }
-__impl_slice_eq1! { [] Cow<'_, [A]>, Vec<B>, A: Clone }
 __impl_slice_eq1! { [const N: usize] Vec<A>, [B; N], [B; N]: LengthAtMost32 }
 __impl_slice_eq1! { [const N: usize] Vec<A>, &[B; N], [B; N]: LengthAtMost32 }
 

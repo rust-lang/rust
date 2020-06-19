@@ -1075,6 +1075,10 @@ fn get_object_file_path(sess: &Session, name: &str) -> PathBuf {
     if file_path.exists() {
         return file_path;
     }
+    let file_path = fs.get_selfcontained_lib_path().join(name);
+    if file_path.exists() {
+        return file_path;
+    }
     for search_path in fs.search_paths() {
         let file_path = search_path.dir.join(name);
         if file_path.exists() {
@@ -1469,6 +1473,9 @@ fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session) {
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
+    cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
+
+    let lib_path = sess.target_filesearch(PathKind::All).get_selfcontained_lib_path();
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
 }
 

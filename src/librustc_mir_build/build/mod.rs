@@ -687,7 +687,7 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
     let tcx = hir.tcx();
     let owner_id = tcx.hir().body_owner(body_id);
     let span = tcx.hir().span(owner_id);
-    let ty = tcx.types.err;
+    let ty = tcx.ty_error();
     let num_params = match hir.body_owner_kind {
         hir::BodyOwnerKind::Fn => tcx.hir().fn_decl_by_hir_id(owner_id).unwrap().inputs.len(),
         hir::BodyOwnerKind::Closure => {
@@ -909,7 +909,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.local_decls[local].mutability = mutability;
                         self.local_decls[local].source_info.scope = self.source_scope;
                         self.local_decls[local].local_info = if let Some(kind) = self_binding {
-                            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind))))
+                            Some(box LocalInfo::User(ClearCrossCrate::Set(
+                                BindingForm::ImplicitSelf(*kind),
+                            )))
                         } else {
                             let binding_mode = ty::BindingMode::BindByValue(mutability);
                             Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(

@@ -1,21 +1,21 @@
-error[E0621]: explicit lifetime required in the type of `v`
+error: lifetime may not live long enough
   --> $DIR/region-object-lifetime-in-coercion.rs:8:12
    |
 LL | fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
-   |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
+   |         - let's call the lifetime of this reference `'1`
 LL |     let x: Box<dyn Foo + 'static> = Box::new(v);
-   |            ^^^^^^^^^^^^^^^^^^^^^^ lifetime `'static` required
-
-error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/region-object-lifetime-in-coercion.rs:14:5
-   |
-LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
-   |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
-LL |     Box::new(v)
-   |     ^^^^^^^^^^^ lifetime `'static` required
+   |            ^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'1` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/region-object-lifetime-in-coercion.rs:20:5
+  --> $DIR/region-object-lifetime-in-coercion.rs:13:5
+   |
+LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
+   |         - let's call the lifetime of this reference `'1`
+LL |     Box::new(v)
+   |     ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/region-object-lifetime-in-coercion.rs:19:5
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo> {
    |         - let's call the lifetime of this reference `'1`
@@ -24,7 +24,7 @@ LL |     Box::new(v)
    |     ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/region-object-lifetime-in-coercion.rs:24:5
+  --> $DIR/region-object-lifetime-in-coercion.rs:23:5
    |
 LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |      -- -- lifetime `'b` defined here
@@ -37,4 +37,3 @@ LL |     Box::new(v)
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0621`.
