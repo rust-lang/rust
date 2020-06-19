@@ -1,5 +1,4 @@
 //! Missing batteries for standard libraries.
-
 use std::{cell::Cell, fmt, time::Instant};
 
 #[inline(always)]
