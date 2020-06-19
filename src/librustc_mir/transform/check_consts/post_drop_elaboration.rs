@@ -58,7 +58,7 @@ impl std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
 
 impl CheckLiveDrops<'mir, 'tcx> {
     fn check_live_drop(&self, span: Span) {
-        ops::non_const(self.ccx, ops::LiveDrop, span);
+        ops::non_const(self.ccx, ops::LiveDrop(None), span);
     }
 }
 

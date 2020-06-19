@@ -588,7 +588,10 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 };
 
                 if needs_drop {
-                    self.check_op_spanned(ops::LiveDrop, err_span);
+                    self.check_op_spanned(
+                        ops::LiveDrop(Some(terminator.source_info.span)),
+                        err_span,
+                    );
                 }
             }
 

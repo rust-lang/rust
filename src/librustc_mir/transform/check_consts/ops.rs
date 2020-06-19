@@ -160,17 +160,20 @@ pub struct InlineAsm;
 impl NonConstOp for InlineAsm {}
 
 #[derive(Debug)]
-pub struct LiveDrop;
+pub struct LiveDrop(pub Option<Span>);
 impl NonConstOp for LiveDrop {
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        struct_span_err!(
+        let mut diagnostic = struct_span_err!(
             ccx.tcx.sess,
             span,
             E0493,
             "destructors cannot be evaluated at compile-time"
-        )
-        .span_label(span, format!("{}s cannot evaluate destructors", ccx.const_kind()))
-        .emit();
+        );
+        diagnostic.span_label(span, format!("{}s cannot evaluate destructors", ccx.const_kind()));
+        if let Some(span) = self.0 {
+            diagnostic.span_label(span, "value is dropped here");
+        }
+        diagnostic.emit();
     }
 }
 
