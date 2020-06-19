@@ -82,7 +82,7 @@ async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<v
     }
 
     debugOutput.clear();
-    if (ctx.config.debug.openUpDebugPane) {
+    if (ctx.config.debug.openDebugPane) {
         debugOutput.show(true);
     }
 

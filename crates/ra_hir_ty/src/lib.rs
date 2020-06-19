@@ -73,6 +73,7 @@ pub use lower::{
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
 pub use chalk_ir::{BoundVar, DebruijnIndex};
+use itertools::Itertools;
 
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or
@@ -815,6 +816,11 @@ impl Ty {
         }
     }
 
+    /// If this is a `dyn Trait`, returns that trait.
+    pub fn dyn_trait(&self) -> Option<TraitId> {
+        self.dyn_trait_ref().map(|it| it.trait_)
+    }
+
     fn builtin_deref(&self) -> Option<Ty> {
         match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
@@ -867,13 +873,56 @@ impl Ty {
         }
     }
 
-    /// If this is a `dyn Trait`, returns that trait.
-    pub fn dyn_trait(&self) -> Option<TraitId> {
+    pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<GenericPredicate>> {
         match self {
-            Ty::Dyn(predicates) => predicates.iter().find_map(|pred| match pred {
-                GenericPredicate::Implemented(tr) => Some(tr.trait_),
-                _ => None,
-            }),
+            Ty::Opaque(opaque_ty) => {
+                let predicates = match opaque_ty.opaque_ty_id {
+                    OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                        db.return_type_impl_traits(func).map(|it| {
+                            let data = (*it)
+                                .as_ref()
+                                .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                            data.clone().subst(&opaque_ty.parameters)
+                        })
+                    }
+                };
+
+                predicates.map(|it| it.value)
+            }
+            Ty::Placeholder(id) => {
+                let generic_params = db.generic_params(id.parent);
+                let param_data = &generic_params.types[id.local_id];
+                match param_data.provenance {
+                    hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
+                        let predicates = db
+                            .generic_predicates_for_param(*id)
+                            .into_iter()
+                            .map(|pred| pred.value.clone())
+                            .collect_vec();
+
+                        Some(predicates)
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId> {
+        match self {
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::AssociatedType(type_alias_id), .. }) => {
+                match type_alias_id.lookup(db.upcast()).container {
+                    AssocContainerId::TraitId(trait_id) => Some(trait_id),
+                    _ => None,
+                }
+            }
+            Ty::Projection(projection_ty) => {
+                match projection_ty.associated_ty.lookup(db.upcast()).container {
+                    AssocContainerId::TraitId(trait_id) => Some(trait_id),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }
@@ -1057,5 +1106,5 @@ pub struct ReturnTypeImplTraits {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct ReturnTypeImplTrait {
-    pub(crate) bounds: Binders<Vec<GenericPredicate>>,
+    pub bounds: Binders<Vec<GenericPredicate>>,
 }

@@ -26,8 +26,8 @@ use hir_ty::{
     autoderef,
     display::{HirDisplayError, HirFormatter},
     expr::ExprValidator,
-    method_resolution, ApplicationTy, Canonical, InEnvironment, Substs, TraitEnvironment, Ty,
-    TyDefId, TypeCtor,
+    method_resolution, ApplicationTy, Canonical, GenericPredicate, InEnvironment, Substs,
+    TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, CrateName, Edition, FileId};
 use ra_prof::profile;
@@ -185,6 +185,22 @@ impl ModuleDef {
         };
 
         module.visibility_of(db, self)
+    }
+
+    pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
+        match self {
+            ModuleDef::Adt(it) => Some(it.name(db)),
+            ModuleDef::Trait(it) => Some(it.name(db)),
+            ModuleDef::Function(it) => Some(it.name(db)),
+            ModuleDef::EnumVariant(it) => Some(it.name(db)),
+            ModuleDef::TypeAlias(it) => Some(it.name(db)),
+
+            ModuleDef::Module(it) => it.name(db),
+            ModuleDef::Const(it) => it.name(db),
+            ModuleDef::Static(it) => it.name(db),
+
+            ModuleDef::BuiltinType(it) => Some(it.as_name()),
+        }
     }
 }
 
@@ -1359,6 +1375,27 @@ impl Type {
         Some(adt.into())
     }
 
+    pub fn as_dyn_trait(&self) -> Option<Trait> {
+        self.ty.value.dyn_trait().map(Into::into)
+    }
+
+    pub fn as_impl_traits(&self, db: &dyn HirDatabase) -> Option<Vec<Trait>> {
+        self.ty.value.impl_trait_bounds(db).map(|it| {
+            it.into_iter()
+                .filter_map(|pred| match pred {
+                    hir_ty::GenericPredicate::Implemented(trait_ref) => {
+                        Some(Trait::from(trait_ref.trait_))
+                    }
+                    _ => None,
+                })
+                .collect()
+        })
+    }
+
+    pub fn as_associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<Trait> {
+        self.ty.value.associated_type_parent_trait(db).map(Into::into)
+    }
+
     // FIXME: provide required accessors such that it becomes implementable from outside.
     pub fn is_equal_for_find_impls(&self, other: &Type) -> bool {
         match (&self.ty.value, &other.ty.value) {
@@ -1379,6 +1416,80 @@ impl Type {
             krate: self.krate,
             ty: InEnvironment { value: ty, environment: self.ty.environment.clone() },
         }
+    }
+
+    pub fn walk(&self, db: &dyn HirDatabase, mut cb: impl FnMut(Type)) {
+        // TypeWalk::walk for a Ty at first visits parameters and only after that the Ty itself.
+        // We need a different order here.
+
+        fn walk_substs(
+            db: &dyn HirDatabase,
+            type_: &Type,
+            substs: &Substs,
+            cb: &mut impl FnMut(Type),
+        ) {
+            for ty in substs.iter() {
+                walk_type(db, &type_.derived(ty.clone()), cb);
+            }
+        }
+
+        fn walk_bounds(
+            db: &dyn HirDatabase,
+            type_: &Type,
+            bounds: &[GenericPredicate],
+            cb: &mut impl FnMut(Type),
+        ) {
+            for pred in bounds {
+                match pred {
+                    GenericPredicate::Implemented(trait_ref) => {
+                        cb(type_.clone());
+                        walk_substs(db, type_, &trait_ref.substs, cb);
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        fn walk_type(db: &dyn HirDatabase, type_: &Type, cb: &mut impl FnMut(Type)) {
+            let ty = type_.ty.value.strip_references();
+            match ty {
+                Ty::Apply(ApplicationTy { ctor, parameters }) => {
+                    match ctor {
+                        TypeCtor::Adt(_) => {
+                            cb(type_.derived(ty.clone()));
+                        }
+                        TypeCtor::AssociatedType(_) => {
+                            if let Some(_) = ty.associated_type_parent_trait(db) {
+                                cb(type_.derived(ty.clone()));
+                            }
+                        }
+                        _ => (),
+                    }
+
+                    // adt params, tuples, etc...
+                    walk_substs(db, type_, parameters, cb);
+                }
+                Ty::Opaque(opaque_ty) => {
+                    if let Some(bounds) = ty.impl_trait_bounds(db) {
+                        walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
+                    }
+
+                    walk_substs(db, type_, &opaque_ty.parameters, cb);
+                }
+                Ty::Placeholder(_) => {
+                    if let Some(bounds) = ty.impl_trait_bounds(db) {
+                        walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
+                    }
+                }
+                Ty::Dyn(bounds) => {
+                    walk_bounds(db, &type_.derived(ty.clone()), bounds.as_ref(), cb);
+                }
+
+                _ => (),
+            }
+        }
+
+        walk_type(db, self, &mut cb);
     }
 }
 

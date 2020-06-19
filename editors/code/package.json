@@ -510,6 +510,11 @@
                     "type": "boolean",
                     "default": true
                 },
+                "rust-analyzer.hoverActions.gotoTypeDef": {
+                    "markdownDescription": "Whether to show `Go to Type Definition` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
+                    "type": "boolean",
+                    "default": true
+                },
                 "rust-analyzer.linkedProjects": {
                     "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set of projects.  \nElements must be paths pointing to Cargo.toml, rust-project.json, or JSON objects in rust-project.json format",
                     "type": "array",

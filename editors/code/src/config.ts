@@ -117,7 +117,7 @@ export class Config {
         return {
             engine: this.get<string>("debug.engine"),
             engineSettings: this.get<object>("debug.engineSettings"),
-            openUpDebugPane: this.get<boolean>("debug.openUpDebugPane"),
+            openDebugPane: this.get<boolean>("debug.openDebugPane"),
             sourceFileMap: sourceFileMap
         };
     }
@@ -135,6 +135,9 @@ export class Config {
         return {
             enable: this.get<boolean>("hoverActions.enable"),
             implementations: this.get<boolean>("hoverActions.implementations"),
+            run: this.get<boolean>("hoverActions.run"),
+            debug: this.get<boolean>("hoverActions.debug"),
+            gotoTypeDef: this.get<boolean>("hoverActions.gotoTypeDef"),
         };
     }
 }

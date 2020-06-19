@@ -2,7 +2,7 @@ use std::iter::once;
 
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
-    ModuleDef, ModuleSource, Semantics,
+    Module, ModuleDef, ModuleSource, Semantics,
 };
 use itertools::Itertools;
 use ra_db::SourceDatabase;
@@ -13,7 +13,9 @@ use ra_ide_db::{
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 
 use crate::{
-    display::{macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel, ToNav},
+    display::{
+        macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel, ToNav, TryToNav,
+    },
     runnables::runnable,
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
 };
@@ -24,19 +26,21 @@ pub struct HoverConfig {
     pub implementations: bool,
     pub run: bool,
     pub debug: bool,
+    pub goto_type_def: bool,
 }
 
 impl Default for HoverConfig {
     fn default() -> Self {
-        Self { implementations: true, run: true, debug: true }
+        Self { implementations: true, run: true, debug: true, goto_type_def: true }
     }
 }
 
 impl HoverConfig {
-    pub const NO_ACTIONS: Self = Self { implementations: false, run: false, debug: false };
+    pub const NO_ACTIONS: Self =
+        Self { implementations: false, run: false, debug: false, goto_type_def: false };
 
     pub fn any(&self) -> bool {
-        self.implementations || self.runnable()
+        self.implementations || self.runnable() || self.goto_type_def
     }
 
     pub fn none(&self) -> bool {
@@ -52,6 +56,13 @@ impl HoverConfig {
 pub enum HoverAction {
     Runnable(Runnable),
     Implementaion(FilePosition),
+    GoToType(Vec<HoverGotoTypeData>),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct HoverGotoTypeData {
+    pub mod_path: String,
+    pub nav: NavigationTarget,
 }
 
 /// Contains the results when hovering over an item
@@ -138,6 +149,10 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 res.push_action(action);
             }
 
+            if let Some(action) = goto_type_action(db, name_kind) {
+                res.push_action(action);
+            }
+
             return Some(RangeInfo::new(range, res));
         }
     }
@@ -218,6 +233,44 @@ fn runnable_action(
     }
 }
 
+fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
+    match def {
+        Definition::Local(it) => {
+            let mut targets: Vec<ModuleDef> = Vec::new();
+            let mut push_new_def = |item: ModuleDef| {
+                if !targets.contains(&item) {
+                    targets.push(item);
+                }
+            };
+
+            it.ty(db).walk(db, |t| {
+                if let Some(adt) = t.as_adt() {
+                    push_new_def(adt.into());
+                } else if let Some(trait_) = t.as_dyn_trait() {
+                    push_new_def(trait_.into());
+                } else if let Some(traits) = t.as_impl_traits(db) {
+                    traits.into_iter().for_each(|it| push_new_def(it.into()));
+                } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
+                    push_new_def(trait_.into());
+                }
+            });
+
+            let targets = targets
+                .into_iter()
+                .filter_map(|it| {
+                    Some(HoverGotoTypeData {
+                        mod_path: mod_path(db, &it)?,
+                        nav: it.try_to_nav(db)?,
+                    })
+                })
+                .collect();
+
+            Some(HoverAction::GoToType(targets))
+        }
+        _ => None,
+    }
+}
+
 fn hover_text(
     docs: Option<String>,
     desc: Option<String>,
@@ -248,25 +301,31 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
     .map(|name| name.to_string())
 }
 
-fn determine_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
-    let mod_path = def.module(db).map(|module| {
-        once(db.crate_graph()[module.krate().into()].display_name.as_ref().map(ToString::to_string))
-            .chain(
-                module
-                    .path_to_root(db)
-                    .into_iter()
-                    .rev()
-                    .map(|it| it.name(db).map(|name| name.to_string())),
-            )
-            .chain(once(definition_owner_name(db, def)))
-            .flatten()
-            .join("::")
-    });
-    mod_path
+fn determine_mod_path(db: &RootDatabase, module: Module, name: Option<String>) -> String {
+    once(db.crate_graph()[module.krate().into()].display_name.as_ref().map(ToString::to_string))
+        .chain(
+            module
+                .path_to_root(db)
+                .into_iter()
+                .rev()
+                .map(|it| it.name(db).map(|name| name.to_string())),
+        )
+        .chain(once(name))
+        .flatten()
+        .join("::")
+}
+
+// returns None only for ModuleDef::BuiltinType
+fn mod_path(db: &RootDatabase, item: &ModuleDef) -> Option<String> {
+    Some(determine_mod_path(db, item.module(db)?, item.name(db).map(|name| name.to_string())))
+}
+
+fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
+    def.module(db).map(|module| determine_mod_path(db, module, definition_owner_name(db, def)))
 }
 
 fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<String> {
-    let mod_path = determine_mod_path(db, &def);
+    let mod_path = definition_mod_path(db, &def);
     return match def {
         Definition::Macro(it) => {
             let src = it.source(db);
@@ -1306,6 +1365,1047 @@ fn func(foo: i32) { if true { <|>foo; }; }
                         },
                         cfg_exprs: [],
                     },
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_struct_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            struct S{ f1: u32 }
+
+            fn main() {
+                let s<|>t = S{ f1:0 };
+            }
+            ",
+            &["S"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..19,
+                                name: "S",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    7..8,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct S",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_generic_struct_has_goto_type_actions() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            struct Arg(u32);
+            struct S<T>{ f1: T }
+
+            fn main() {
+                let s<|>t = S{ f1:Arg(0) };
+            }
+            ",
+            &["S<Arg>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 17..37,
+                                name: "S",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    24..25,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct S",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "Arg",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..16,
+                                name: "Arg",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    7..10,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct Arg",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_generic_struct_has_flattened_goto_type_actions() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            struct Arg(u32);
+            struct S<T>{ f1: T }
+
+            fn main() {
+                let s<|>t = S{ f1: S{ f1: Arg(0) } };
+            }
+            ",
+            &["S<S<Arg>>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 17..37,
+                                name: "S",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    24..25,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct S",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "Arg",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..16,
+                                name: "Arg",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    7..10,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct Arg",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_tuple_has_goto_type_actions() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            struct A(u32);
+            struct B(u32);
+            mod M {
+                pub struct C(u32);
+            }
+
+            fn main() {
+                let s<|>t = (A(1), B(2), M::C(3) );
+            }
+            ",
+            &["(A, B, C)"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "A",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..14,
+                                name: "A",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    7..8,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct A",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "B",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 15..29,
+                                name: "B",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    22..23,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct B",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "M::C",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 42..60,
+                                name: "C",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    53..54,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "pub struct C",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+               "###);
+    }
+
+    #[test]
+    fn test_hover_return_impl_trait_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            trait Foo {}
+
+            fn foo() -> impl Foo {}
+
+            fn main() {
+                let s<|>t = foo();
+            }
+            ",
+            &["impl Foo"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..12,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_generic_return_impl_trait_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            trait Foo<T> {}
+            struct S;
+
+            fn foo() -> impl Foo<S> {}
+
+            fn main() {
+                let s<|>t = foo();
+            }
+            ",
+            &["impl Foo<S>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..15,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 16..25,
+                                name: "S",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    23..24,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct S",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_return_impl_traits_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            trait Foo {}
+            trait Bar {}
+
+            fn foo() -> impl Foo + Bar {}
+
+            fn main() {
+                let s<|>t = foo();
+            }
+            ",
+            &["impl Foo + Bar"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..12,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 13..25,
+                                name: "Bar",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    19..22,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Bar",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_generic_return_impl_traits_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            trait Foo<T> {}
+            trait Bar<T> {}
+            struct S1 {}
+            struct S2 {}
+
+            fn foo() -> impl Foo<S1> + Bar<S2> {}
+
+            fn main() {
+                let s<|>t = foo();
+            }
+            ",
+            &["impl Foo<S1> + Bar<S2>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..15,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 16..31,
+                                name: "Bar",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    22..25,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Bar",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "S1",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 32..44,
+                                name: "S1",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    39..41,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct S1",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "S2",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 45..57,
+                                name: "S2",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    52..54,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct S2",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+               "###);
+    }
+
+    #[test]
+    fn test_hover_arg_impl_trait_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            trait Foo {}
+            fn foo(ar<|>g: &impl Foo) {}
+            ",
+            &["&impl Foo"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..12,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_arg_impl_traits_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            trait Foo {}
+            trait Bar<T> {}
+            struct S{}
+
+            fn foo(ar<|>g: &impl Foo + Bar<S>) {}
+            ",
+            &["&impl Foo + Bar<S>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..12,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 13..28,
+                                name: "Bar",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    19..22,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Bar",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 29..39,
+                                name: "S",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    36..37,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct S",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_arg_generic_impl_trait_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            trait Foo<T> {}
+            struct S {}
+            fn foo(ar<|>g: &impl Foo<S>) {}
+            ",
+            &["&impl Foo<S>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..15,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 16..27,
+                                name: "S",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    23..24,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct S",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_dyn_return_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            trait Foo {}
+            struct S;
+            impl Foo for S {}
+
+            struct B<T>{}
+
+            fn foo() -> B<dyn Foo> {}
+
+            fn main() {
+                let s<|>t = foo();
+            }
+            ",
+            &["B<dyn Foo>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "B",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 41..54,
+                                name: "B",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    48..49,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct B",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..12,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_dyn_arg_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            trait Foo {}
+            fn foo(ar<|>g: &dyn Foo) {}
+            ",
+            &["&dyn Foo"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..12,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_generic_dyn_arg_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            trait Foo<T> {}
+            struct S {}
+            fn foo(ar<|>g: &dyn Foo<S>) {}
+            ",
+            &["&dyn Foo<S>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..15,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 16..27,
+                                name: "S",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    23..24,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct S",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_goto_type_action_links_order() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /lib.rs
+            trait ImplTrait<T> {}
+            trait DynTrait<T> {}
+            struct B<T> {}
+            struct S {}
+
+            fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
+            ",
+            &["&impl ImplTrait<B<dyn DynTrait<B<S>>>>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "ImplTrait",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..21,
+                                name: "ImplTrait",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..15,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait ImplTrait",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "B",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 43..57,
+                                name: "B",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    50..51,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct B",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "DynTrait",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 22..42,
+                                name: "DynTrait",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    28..36,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait DynTrait",
+                                ),
+                                docs: None,
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 58..69,
+                                name: "S",
+                                kind: STRUCT_DEF,
+                                focus_range: Some(
+                                    65..66,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "struct S",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
+                ),
+            ]
+            "###);
+    }
+
+    #[test]
+    fn test_hover_associated_type_has_goto_type_action() {
+        let (_, actions) = check_hover_result(
+            "
+            //- /main.rs
+            trait Foo {
+                type Item;
+                fn get(self) -> Self::Item {}
+            }
+
+            struct Bar{}
+            struct S{}
+
+            impl Foo for S{
+                type Item = Bar;
+            }
+
+            fn test() -> impl Foo {
+                S{}
+            }
+
+            fn main() {
+                let s<|>t = test().get();
+            }
+            ",
+            &["Foo::Item<impl Foo>"],
+        );
+        assert_debug_snapshot!(actions,
+            @r###"
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "Foo",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 0..62,
+                                name: "Foo",
+                                kind: TRAIT_DEF,
+                                focus_range: Some(
+                                    6..9,
+                                ),
+                                container_name: None,
+                                description: Some(
+                                    "trait Foo",
+                                ),
+                                docs: None,
+                            },
+                        },
+                    ],
                 ),
             ]
             "###);
