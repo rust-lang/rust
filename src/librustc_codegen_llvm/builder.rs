@@ -997,6 +997,33 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.call_lifetime_intrinsic("llvm.lifetime.end.p0i8", ptr, size);
     }
 
+    fn instrprof_increment(
+        &mut self,
+        fn_name: &'ll Value,
+        hash: &'ll Value,
+        num_counters: &'ll Value,
+        index: &'ll Value,
+    ) -> &'ll Value {
+        debug!(
+            "instrprof_increment() with args ({:?}, {:?}, {:?}, {:?})",
+            fn_name, hash, num_counters, index
+        );
+
+        let llfn = unsafe { llvm::LLVMRustGetInstrprofIncrementIntrinsic(self.cx().llmod) };
+        let args = &[fn_name, hash, num_counters, index];
+        let args = self.check_call("call", llfn, args);
+
+        unsafe {
+            llvm::LLVMRustBuildCall(
+                self.llbuilder,
+                llfn,
+                args.as_ptr() as *const &llvm::Value,
+                args.len() as c_uint,
+                None,
+            )
+        }
+    }
+
     fn call(
         &mut self,
         llfn: &'ll Value,

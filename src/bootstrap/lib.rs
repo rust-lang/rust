@@ -270,12 +270,7 @@ struct Crate {
 }
 
 impl Crate {
-    fn is_local(&self, build: &Build) -> bool {
-        self.path.starts_with(&build.config.src) && !self.path.to_string_lossy().ends_with("_shim")
-    }
-
     fn local_path(&self, build: &Build) -> PathBuf {
-        assert!(self.is_local(build));
         self.path.strip_prefix(&build.config.src).unwrap().into()
     }
 }
@@ -1090,17 +1085,29 @@ impl Build {
         }
     }
 
+    /// Returns a Vec of all the dependencies of the given root crate,
+    /// including transitive dependencies and the root itself. Only includes
+    /// "local" crates (those in the local source tree, not from a registry).
     fn in_tree_crates(&self, root: &str) -> Vec<&Crate> {
         let mut ret = Vec::new();
         let mut list = vec![INTERNER.intern_str(root)];
         let mut visited = HashSet::new();
         while let Some(krate) = list.pop() {
             let krate = &self.crates[&krate];
-            if krate.is_local(self) {
-                ret.push(krate);
-            }
+            ret.push(krate);
             for dep in &krate.deps {
-                if visited.insert(dep) && dep != "build_helper" {
+                // Don't include optional deps if their features are not
+                // enabled. Ideally this would be computed from `cargo
+                // metadata --features …`, but that is somewhat slow. Just
+                // skip `build_helper` since there aren't any operations we
+                // want to perform on it. In the future, we may want to
+                // consider just filtering all build and dev dependencies in
+                // metadata::build.
+                if visited.insert(dep)
+                    && dep != "build_helper"
+                    && (dep != "profiler_builtins" || self.config.profiler)
+                    && (dep != "rustc_codegen_llvm" || self.config.llvm_enabled())
+                {
                     list.push(*dep);
                 }
             }

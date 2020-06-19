@@ -347,6 +347,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 return;
             }
 
+            "count_code_region" => (0, vec![tcx.types.u32], tcx.mk_unit()),
+
             ref other => {
                 struct_span_err!(
                     tcx.sess,

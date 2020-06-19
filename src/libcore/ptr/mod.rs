@@ -70,7 +70,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{self, is_aligned_and_not_null, is_nonoverlapping};
+use crate::intrinsics::{self, abort, is_aligned_and_not_null, is_nonoverlapping};
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -420,9 +420,14 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
 pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
-    debug_assert!(is_aligned_and_not_null(x), "attempt to swap unaligned or null pointer");
-    debug_assert!(is_aligned_and_not_null(y), "attempt to swap unaligned or null pointer");
-    debug_assert!(is_nonoverlapping(x, y, count), "attempt to swap overlapping memory");
+    if cfg!(debug_assertions)
+        && !(is_aligned_and_not_null(x)
+            && is_aligned_and_not_null(y)
+            && is_nonoverlapping(x, y, count))
+    {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
 
     let x = x as *mut u8;
     let y = y as *mut u8;
@@ -838,7 +843,10 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
-    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
+    if cfg!(debug_assertions) && !is_aligned_and_not_null(dst) {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
     intrinsics::move_val_init(&mut *dst, src)
 }
 
@@ -1003,7 +1011,10 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
-    debug_assert!(is_aligned_and_not_null(src), "attempt to read from unaligned or null pointer");
+    if cfg!(debug_assertions) && !is_aligned_and_not_null(src) {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
     intrinsics::volatile_load(src)
 }
 
@@ -1072,7 +1083,10 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
-    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
+    if cfg!(debug_assertions) && !is_aligned_and_not_null(dst) {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
     intrinsics::volatile_store(dst, src);
 }
 

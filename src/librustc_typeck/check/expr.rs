@@ -29,9 +29,7 @@ use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty;
-use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
-};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{AdtKind, Visibility};
@@ -113,12 +111,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_expr_with_expectation(expr, ExpectHasType(expected))
     }
 
-    pub(super) fn check_expr_with_expectation(
+    fn check_expr_with_expectation_and_needs(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
+        needs: Needs,
     ) -> Ty<'tcx> {
-        self.check_expr_with_expectation_and_needs(expr, expected, Needs::None)
+        let ty = self.check_expr_with_expectation(expr, expected);
+
+        // If the expression is used in a place whether mutable place is required
+        // e.g. LHS of assignment, perform the conversion.
+        if let Needs::MutPlace = needs {
+            self.convert_place_derefs_to_mutable(expr);
+        }
+
+        ty
     }
 
     pub(super) fn check_expr(&self, expr: &'tcx hir::Expr<'tcx>) -> Ty<'tcx> {
@@ -143,11 +150,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Note that inspecting a type's structure *directly* may expose the fact
     /// that there are actually multiple representations for `Error`, so avoid
     /// that when err needs to be handled differently.
-    fn check_expr_with_expectation_and_needs(
+    pub(super) fn check_expr_with_expectation(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-        needs: Needs,
     ) -> Ty<'tcx> {
         debug!(">> type-checking: expr={:?} expected={:?}", expr, expected);
 
@@ -171,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_diverges = self.diverges.replace(Diverges::Maybe);
         let old_has_errors = self.has_errors.replace(false);
 
-        let ty = self.check_expr_kind(expr, expected, needs);
+        let ty = self.check_expr_kind(expr, expected);
 
         // Warn for non-block expressions with diverging children.
         match expr.kind {
@@ -213,9 +219,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-        needs: Needs,
     ) -> Ty<'tcx> {
-        debug!("check_expr_kind(expr={:?}, expected={:?}, needs={:?})", expr, expected, needs,);
+        debug!("check_expr_kind(expr={:?}, expected={:?})", expr, expected);
 
         let tcx = self.tcx;
         match expr.kind {
@@ -226,9 +231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_assign(expr, expected, lhs, rhs, span)
             }
             ExprKind::AssignOp(op, ref lhs, ref rhs) => self.check_binop_assign(expr, op, lhs, rhs),
-            ExprKind::Unary(unop, ref oprnd) => {
-                self.check_expr_unary(unop, oprnd, expected, needs, expr)
-            }
+            ExprKind::Unary(unop, ref oprnd) => self.check_expr_unary(unop, oprnd, expected, expr),
             ExprKind::AddrOf(kind, mutbl, ref oprnd) => {
                 self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
             }
@@ -264,7 +267,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Block(ref body, _) => self.check_block_with_expected(&body, expected),
             ExprKind::Call(ref callee, ref args) => self.check_call(expr, &callee, args, expected),
             ExprKind::MethodCall(ref segment, span, ref args, _) => {
-                self.check_method_call(expr, segment, span, args, expected, needs)
+                self.check_method_call(expr, segment, span, args, expected)
             }
             ExprKind::Cast(ref e, ref t) => self.check_expr_cast(e, t, expr),
             ExprKind::Type(ref e, ref t) => {
@@ -281,8 +284,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Struct(ref qpath, fields, ref base_expr) => {
                 self.check_expr_struct(expr, expected, qpath, fields, base_expr)
             }
-            ExprKind::Field(ref base, field) => self.check_field(expr, needs, &base, field),
-            ExprKind::Index(ref base, ref idx) => self.check_expr_index(base, idx, needs, expr),
+            ExprKind::Field(ref base, field) => self.check_field(expr, &base, field),
+            ExprKind::Index(ref base, ref idx) => self.check_expr_index(base, idx, expr),
             ExprKind::Yield(ref value, ref src) => self.check_expr_yield(value, expr, src),
             hir::ExprKind::Err => tcx.ty_error(),
         }
@@ -302,7 +305,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unop: hir::UnOp,
         oprnd: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-        needs: Needs,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
@@ -310,40 +312,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::UnOp::UnNot | hir::UnOp::UnNeg => expected,
             hir::UnOp::UnDeref => NoExpectation,
         };
-        let needs = match unop {
-            hir::UnOp::UnDeref => needs,
-            _ => Needs::None,
-        };
-        let mut oprnd_t = self.check_expr_with_expectation_and_needs(&oprnd, expected_inner, needs);
+        let mut oprnd_t = self.check_expr_with_expectation(&oprnd, expected_inner);
 
         if !oprnd_t.references_error() {
             oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
             match unop {
                 hir::UnOp::UnDeref => {
-                    if let Some(mt) = oprnd_t.builtin_deref(true) {
-                        oprnd_t = mt.ty;
-                    } else if let Some(ok) = self.try_overloaded_deref(expr.span, oprnd_t, needs) {
-                        let method = self.register_infer_ok_obligations(ok);
-                        if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
-                            let mutbl = match mutbl {
-                                hir::Mutability::Not => AutoBorrowMutability::Not,
-                                hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                                    // (It shouldn't actually matter for unary ops whether
-                                    // we enable two-phase borrows or not, since a unary
-                                    // op has no additional operands.)
-                                    allow_two_phase_borrow: AllowTwoPhase::No,
-                                },
-                            };
-                            self.apply_adjustments(
-                                oprnd,
-                                vec![Adjustment {
-                                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
-                                    target: method.sig.inputs()[0],
-                                }],
-                            );
-                        }
-                        oprnd_t = self.make_overloaded_place_return_type(method).ty;
-                        self.write_method_call(expr.hir_id, method);
+                    if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
+                        oprnd_t = ty;
                     } else {
                         let mut err = type_error_struct!(
                             tcx.sess,
@@ -405,8 +381,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => NoExpectation,
             }
         });
-        let needs = Needs::maybe_mut_place(mutbl);
-        let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
+        let ty =
+            self.check_expr_with_expectation_and_needs(&oprnd, hint, Needs::maybe_mut_place(mutbl));
 
         let tm = ty::TypeAndMut { ty, mutbl };
         match kind {
@@ -861,10 +837,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         args: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
-        needs: Needs,
     ) -> Ty<'tcx> {
         let rcvr = &args[0];
-        let rcvr_t = self.check_expr_with_needs(&rcvr, needs);
+        let rcvr_t = self.check_expr(&rcvr);
         // no need to check for bot/err -- callee does that
         let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
 
@@ -1443,11 +1418,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_field(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
-        needs: Needs,
         base: &'tcx hir::Expr<'tcx>,
         field: Ident,
     ) -> Ty<'tcx> {
-        let expr_t = self.check_expr_with_needs(base, needs);
+        let expr_t = self.check_expr(base);
         let expr_t = self.structurally_resolved_type(base.span, expr_t);
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, expr_t);
@@ -1467,7 +1441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // of error recovery.
                         self.write_field_index(expr.hir_id, index);
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            let adjustments = autoderef.adjust_steps(self, needs);
+                            let adjustments = autoderef.adjust_steps(self);
                             self.apply_adjustments(base, adjustments);
                             autoderef.finalize(self);
 
@@ -1482,7 +1456,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Ok(index) = fstr.parse::<usize>() {
                         if fstr == index.to_string() {
                             if let Some(field_ty) = tys.get(index) {
-                                let adjustments = autoderef.adjust_steps(self, needs);
+                                let adjustments = autoderef.adjust_steps(self);
                                 self.apply_adjustments(base, adjustments);
                                 autoderef.finalize(self);
 
@@ -1721,10 +1695,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         base: &'tcx hir::Expr<'tcx>,
         idx: &'tcx hir::Expr<'tcx>,
-        needs: Needs,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        let base_t = self.check_expr_with_needs(&base, needs);
+        let base_t = self.check_expr(&base);
         let idx_t = self.check_expr(&idx);
 
         if base_t.references_error() {
@@ -1733,7 +1706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             idx_t
         } else {
             let base_t = self.structurally_resolved_type(base.span, base_t);
-            match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
+            match self.lookup_indexing(expr, base, base_t, idx_t) {
                 Some((index_ty, element_ty)) => {
                     // two-phase not needed because index_ty is never mutable
                     self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);

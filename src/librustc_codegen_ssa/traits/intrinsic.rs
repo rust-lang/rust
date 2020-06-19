@@ -15,6 +15,7 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
         args: &[OperandRef<'tcx, Self::Value>],
         llresult: Self::Value,
         span: Span,
+        caller_instance: ty::Instance<'tcx>,
     );
 
     fn abort(&mut self);

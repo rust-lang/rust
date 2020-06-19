@@ -1,7 +1,7 @@
 // Verifies that no_sanitze attribute can be used to
 // selectively disable sanitizer instrumentation.
 //
-// needs-sanitizer-support
+// needs-sanitizer-address
 // compile-flags: -Zsanitizer=address
 
 #![crate_type="lib"]

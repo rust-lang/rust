@@ -82,6 +82,17 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("xcore", "xcore"),
 ];
 
+pub const ASAN_SUPPORTED_TARGETS: &'static [&'static str] =
+    &["aarch64-fuchsia", "x86_64-apple-darwin", "x86_64-fuchsia", "x86_64-unknown-linux-gnu"];
+
+pub const LSAN_SUPPORTED_TARGETS: &'static [&'static str] =
+    &["x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
+
+pub const MSAN_SUPPORTED_TARGETS: &'static [&'static str] = &["x86_64-unknown-linux-gnu"];
+
+pub const TSAN_SUPPORTED_TARGETS: &'static [&'static str] =
+    &["x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
+
 pub fn matches_os(triple: &str, name: &str) -> bool {
     // For the wasm32 bare target we ignore anything also ignored on emscripten
     // and then we also recognize `wasm32-bare` as the os for the target

@@ -1,11 +1,9 @@
 // Verifies that no_sanitize attribute prevents inlining when
 // given sanitizer is enabled, but has no effect on inlining otherwise.
 //
-// needs-sanitizer-support
-// only-x86_64
-//
+// needs-sanitizer-address
+// needs-sanitizer-leak
 // revisions: ASAN LSAN
-//
 //[ASAN] compile-flags: -Zsanitizer=address -C opt-level=3 -Z mir-opt-level=3
 //[LSAN] compile-flags: -Zsanitizer=leak    -C opt-level=3 -Z mir-opt-level=3
 

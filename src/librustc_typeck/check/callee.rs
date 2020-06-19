@@ -1,6 +1,6 @@
 use super::autoderef::Autoderef;
 use super::method::MethodCallee;
-use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
+use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::type_error_struct;
 
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
@@ -115,7 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If the callee is a bare function or a closure, then we're all set.
         match adjusted_ty.kind {
             ty::FnDef(..) | ty::FnPtr(_) => {
-                let adjustments = autoderef.adjust_steps(self, Needs::None);
+                let adjustments = autoderef.adjust_steps(self);
                 self.apply_adjustments(callee_expr, adjustments);
                 return Some(CallStep::Builtin(adjusted_ty));
             }
@@ -135,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             &closure_sig,
                         )
                         .0;
-                    let adjustments = autoderef.adjust_steps(self, Needs::None);
+                    let adjustments = autoderef.adjust_steps(self);
                     self.record_deferred_call_resolution(
                         def_id,
                         DeferredCallResolution {
@@ -176,7 +176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.try_overloaded_call_traits(call_expr, adjusted_ty, Some(arg_exprs))
             .or_else(|| self.try_overloaded_call_traits(call_expr, adjusted_ty, None))
             .map(|(autoref, method)| {
-                let mut adjustments = autoderef.adjust_steps(self, Needs::None);
+                let mut adjustments = autoderef.adjust_steps(self);
                 adjustments.extend(autoref);
                 self.apply_adjustments(callee_expr, adjustments);
                 CallStep::Overloaded(method)
@@ -220,21 +220,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;
                 if borrow {
-                    if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
-                        let mutbl = match mutbl {
-                            hir::Mutability::Not => AutoBorrowMutability::Not,
-                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                                // For initial two-phase borrow
-                                // deployment, conservatively omit
-                                // overloaded function call ops.
-                                allow_two_phase_borrow: AllowTwoPhase::No,
-                            },
-                        };
-                        autoref = Some(Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
-                            target: method.sig.inputs()[0],
-                        });
-                    }
+                    // Check for &self vs &mut self in the method signature. Since this is either
+                    // the Fn or FnMut trait, it should be one of those.
+                    let (region, mutbl) = if let ty::Ref(r, _, mutbl) = method.sig.inputs()[0].kind
+                    {
+                        (r, mutbl)
+                    } else {
+                        span_bug!(call_expr.span, "input to call/call_mut is not a ref?");
+                    };
+
+                    let mutbl = match mutbl {
+                        hir::Mutability::Not => AutoBorrowMutability::Not,
+                        hir::Mutability::Mut => AutoBorrowMutability::Mut {
+                            // For initial two-phase borrow
+                            // deployment, conservatively omit
+                            // overloaded function call ops.
+                            allow_two_phase_borrow: AllowTwoPhase::No,
+                        },
+                    };
+                    autoref = Some(Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                        target: method.sig.inputs()[0],
+                    });
                 }
                 return Some((autoref, method));
             }

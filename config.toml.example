@@ -209,7 +209,8 @@
 # Build the sanitizer runtimes
 #sanitizers = false
 
-# Build the profiler runtime
+# Build the profiler runtime (required when compiling with options that depend
+# on this runtime, such as `-C profile-generate` or `-Z instrument-coverage`).
 #profiler = false
 
 # Indicates whether the native libraries linked into Cargo will be statically

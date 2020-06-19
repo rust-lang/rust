@@ -1941,6 +1941,13 @@ extern "rust-intrinsic" {
     ///
     /// Perma-unstable: do not use.
     pub fn miri_start_panic(payload: *mut u8) -> !;
+
+    /// Internal placeholder for injecting code coverage counters when the "instrument-coverage"
+    /// option is enabled. The placeholder is replaced with `llvm.instrprof.increment` during code
+    /// generation.
+    #[cfg(not(bootstrap))]
+    #[lang = "count_code_region"]
+    pub fn count_code_region(index: u32);
 }
 
 // Some functions are defined here because they accidentally got made
@@ -2057,9 +2064,14 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
         fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
-    debug_assert!(is_aligned_and_not_null(src), "attempt to copy from unaligned or null pointer");
-    debug_assert!(is_aligned_and_not_null(dst), "attempt to copy to unaligned or null pointer");
-    debug_assert!(is_nonoverlapping(src, dst, count), "attempt to copy to overlapping memory");
+    if cfg!(debug_assertions)
+        && !(is_aligned_and_not_null(src)
+            && is_aligned_and_not_null(dst)
+            && is_nonoverlapping(src, dst, count))
+    {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
     copy_nonoverlapping(src, dst, count)
 }
 
@@ -2122,8 +2134,10 @@ pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
 
-    debug_assert!(is_aligned_and_not_null(src), "attempt to copy from unaligned or null pointer");
-    debug_assert!(is_aligned_and_not_null(dst), "attempt to copy to unaligned or null pointer");
+    if cfg!(debug_assertions) && !(is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)) {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
     copy(src, dst, count)
 }
 

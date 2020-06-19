@@ -7,6 +7,8 @@ use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
 
+use log::debug;
+
 use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
@@ -21,6 +23,7 @@ use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
+use rustc_span::Symbol;
 use rustc_target::abi::{self, HasDataLayout, LayoutOf, Primitive};
 use rustc_target::spec::PanicStrategy;
 
@@ -86,6 +89,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
+        caller_instance: ty::Instance<'tcx>,
     ) {
         let tcx = self.tcx;
         let callee_ty = instance.monomorphic_ty(tcx);
@@ -135,6 +139,28 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "breakpoint" => {
                 let llfn = self.get_intrinsic(&("llvm.debugtrap"));
                 self.call(llfn, &[], None)
+            }
+            "count_code_region" => {
+                if let ty::InstanceDef::Item(fn_def_id) = caller_instance.def {
+                    let caller_fn_path = tcx.def_path_str(fn_def_id);
+                    debug!(
+                        "count_code_region to llvm.instrprof.increment(fn_name={})",
+                        caller_fn_path
+                    );
+
+                    // FIXME(richkadel): (1) Replace raw function name with mangled function name;
+                    // (2) Replace hardcoded `1234` in `hash` with a computed hash (as discussed in)
+                    // the MCP (compiler-team/issues/278); and replace the hardcoded `1` for
+                    // `num_counters` with the actual number of counters per function (when the
+                    // changes are made to inject more than one counter per function).
+                    let (fn_name, _len_val) = self.const_str(Symbol::intern(&caller_fn_path));
+                    let index = args[0].immediate();
+                    let hash = self.const_u64(1234);
+                    let num_counters = self.const_u32(1);
+                    self.instrprof_increment(fn_name, hash, num_counters, index)
+                } else {
+                    bug!("intrinsic count_code_region: no src.instance");
+                }
             }
             "va_start" => self.va_start(args[0].immediate()),
             "va_end" => self.va_end(args[0].immediate()),
