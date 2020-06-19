@@ -36,8 +36,8 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> Cr
 
     // populate external prelude
     for dep in &crate_graph[def_map.krate].dependencies {
-        let dep_def_map = db.crate_def_map(dep.crate_id);
         log::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
+        let dep_def_map = db.crate_def_map(dep.crate_id);
         def_map.extern_prelude.insert(
             dep.as_name(),
             ModuleId { krate: dep.crate_id, local_id: dep_def_map.root }.into(),
