@@ -38,7 +38,7 @@ use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::{DefKey, Definitions};
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
-use rustc_hir::TraitMap;
+use rustc_hir::TraitCandidate;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::hir::exports::ExportMap;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
@@ -881,7 +881,7 @@ pub struct Resolver<'a> {
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     export_map: ExportMap<LocalDefId>,
-    trait_map: TraitMap<NodeId>,
+    trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1287,14 +1287,7 @@ impl<'a> Resolver<'a> {
         let trait_map = self
             .trait_map
             .into_iter()
-            .map(|(k, v)| {
-                (
-                    definitions.node_id_to_hir_id(k),
-                    v.into_iter()
-                        .map(|tc| tc.map_import_ids(|id| definitions.node_id_to_hir_id(id)))
-                        .collect(),
-                )
-            })
+            .map(|(k, v)| (definitions.node_id_to_hir_id(k), v))
             .collect();
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
@@ -1325,17 +1318,7 @@ impl<'a> Resolver<'a> {
             trait_map: self
                 .trait_map
                 .iter()
-                .map(|(&k, v)| {
-                    (
-                        self.definitions.node_id_to_hir_id(k),
-                        v.iter()
-                            .cloned()
-                            .map(|tc| {
-                                tc.map_import_ids(|id| self.definitions.node_id_to_hir_id(id))
-                            })
-                            .collect(),
-                    )
-                })
+                .map(|(&k, v)| (self.definitions.node_id_to_hir_id(k), v.clone()))
                 .collect(),
             glob_map: self.glob_map.clone(),
             maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
