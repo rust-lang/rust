@@ -280,8 +280,9 @@ There is a `TyKind::Error` that is produced when the user makes a type error. Th
 we would propagate this type and suppress other errors that come up due to it so as not to overwhelm
 the user with cascading compiler error messages.
 
-There is an **important invariant** for `TyKind::Error`. You should **never** return the 'error
-type' unless you **know** that an error has already been reported to the user. This is usually
+There is an **important invariant** for `TyKind::Error`. The compiler should
+**never** produce `Error` unless we **know** that an error has already been
+reported to the user. This is usually
 because (a) you just reported it right there or (b) you are propagating an existing Error type (in
 which case the error should've been reported when that error type was produced).
 
@@ -296,6 +297,19 @@ would've been reported earlier in the compilation, not locally. In that case, yo
 compilation should succeed, then it will trigger a compiler bug report.
 
 [`delay_span_bug`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html#method.delay_span_bug
+
+For added safety, it's not actually possible to produce a `TyKind::Error` value
+outside of [`rustc_middle::ty`][ty]; there is a private member of
+`TyKind::Error` that prevents it from being constructable elsewhere. Instead,
+one should use the [`TyCtxt::ty_error`][terr] or
+[`TyCtxt::ty_error_with_message`][terrmsg] methods. These methods automatically
+call `delay_span_bug` before returning an interned `Ty` of kind `Error`. If you
+were already planning to use [`delay_span_bug`], then you can just pass the
+span and message to [`ty_error_with_message`][terrmsg] instead to avoid
+delaying a redundant span bug.
+
+[terr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.ty_error
+[terrmsg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.ty_error_with_message
 
 ## Question: Why not substitute “inside” the `AdtDef`?
 
