@@ -19,7 +19,7 @@
 +                                          // mir::Constant
 +                                          // + span: $DIR/issue-66971.rs:16:13: 16:15
 +                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          _2 = (move _3, const 0u8, const 0u8); // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
+          _2 = (move _3, const 0_u8, const 0_u8); // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
                                            // ty::Const
                                            // + ty: u8
                                            // + val: Value(Scalar(0x00))

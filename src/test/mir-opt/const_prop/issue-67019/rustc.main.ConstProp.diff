@@ -11,7 +11,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/issue-67019.rs:11:5: 11:20
           StorageLive(_2);                 // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
           StorageLive(_3);                 // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
-          _3 = (const 1u8, const 2u8);     // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
+          _3 = (const 1_u8, const 2_u8);   // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
                                            // ty::Const
                                            // + ty: u8
                                            // + val: Value(Scalar(0x01))

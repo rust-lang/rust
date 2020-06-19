@@ -4,7 +4,7 @@ fn add() -> u32 {
     let mut _0: u32;                     // return place in scope 0 at $DIR/return_place.rs:5:13: 5:16
 
     bb0: {
-        _0 = const 4u32;                 // scope 0 at $DIR/return_place.rs:6:5: 6:10
+        _0 = const 4_u32;                // scope 0 at $DIR/return_place.rs:6:5: 6:10
                                          // ty::Const
                                          // + ty: u32
                                          // + val: Value(Scalar(0x00000004))

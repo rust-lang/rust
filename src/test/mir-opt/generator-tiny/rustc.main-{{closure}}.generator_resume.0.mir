@@ -32,7 +32,7 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
 
     bb0: {
         _11 = discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}]))); // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
-        switchInt(move _11) -> [0u32: bb1, 3u32: bb5, otherwise: bb6]; // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
+        switchInt(move _11) -> [0_u32: bb1, 3_u32: bb5, otherwise: bb6]; // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
     }
 
     bb1: {

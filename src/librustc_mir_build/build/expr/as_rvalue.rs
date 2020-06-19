@@ -87,7 +87,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         Operand::Move(is_min),
                         false,
-                        AssertKind::OverflowNeg,
+                        AssertKind::OverflowNeg(arg.to_copy()),
                         expr_span,
                     );
                 }
@@ -288,7 +288,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 source_info,
                 result_value,
-                Rvalue::CheckedBinaryOp(op, lhs, rhs),
+                Rvalue::CheckedBinaryOp(op, lhs.to_copy(), rhs.to_copy()),
             );
             let val_fld = Field::new(0);
             let of_fld = Field::new(1);
@@ -297,7 +297,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let val = tcx.mk_place_field(result_value, val_fld, ty);
             let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
-            let err = AssertKind::Overflow(op);
+            let err = AssertKind::Overflow(op, lhs, rhs);
 
             block = self.assert(block, Operand::Move(of), false, err, span);
 
@@ -308,11 +308,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
                 let zero_err = if op == BinOp::Div {
-                    AssertKind::DivisionByZero
+                    AssertKind::DivisionByZero(lhs.to_copy())
                 } else {
-                    AssertKind::RemainderByZero
+                    AssertKind::RemainderByZero(lhs.to_copy())
                 };
-                let overflow_err = AssertKind::Overflow(op);
+                let overflow_err = AssertKind::Overflow(op, lhs.to_copy(), rhs.to_copy());
 
                 // Check for / 0
                 let is_zero = self.temp(bool_ty, span);

@@ -96,7 +96,7 @@ fn main() -> () {
     bb8: {
         StorageDead(_3);                 // scope 1 at $DIR/issue-41888.rs:9:19: 9:20
         _5 = discriminant(_1);           // scope 1 at $DIR/issue-41888.rs:10:16: 10:24
-        switchInt(move _5) -> [0isize: bb10, otherwise: bb9]; // scope 1 at $DIR/issue-41888.rs:10:16: 10:24
+        switchInt(move _5) -> [0_isize: bb10, otherwise: bb9]; // scope 1 at $DIR/issue-41888.rs:10:16: 10:24
     }
 
     bb9: {
@@ -250,7 +250,7 @@ fn main() -> () {
 
     bb20: {
         _10 = discriminant(_1);          // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
-        switchInt(move _10) -> [0isize: bb15, otherwise: bb18]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+        switchInt(move _10) -> [0_isize: bb15, otherwise: bb18]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
     bb21: {
@@ -259,7 +259,7 @@ fn main() -> () {
 
     bb22 (cleanup): {
         _11 = discriminant(_1);          // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
-        switchInt(move _11) -> [0isize: bb17, otherwise: bb19]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
+        switchInt(move _11) -> [0_isize: bb17, otherwise: bb19]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
     bb23 (cleanup): {

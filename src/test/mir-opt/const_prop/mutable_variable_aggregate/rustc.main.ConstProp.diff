@@ -14,7 +14,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_aggregate.rs:5:9: 5:14
-          _1 = (const 42i32, const 43i32); // scope 0 at $DIR/mutable_variable_aggregate.rs:5:17: 5:25
+          _1 = (const 42_i32, const 43_i32); // scope 0 at $DIR/mutable_variable_aggregate.rs:5:17: 5:25
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x0000002a))
@@ -29,7 +29,7 @@
 -                                          // + span: $DIR/mutable_variable_aggregate.rs:5:22: 5:24
 +                                          // + span: $DIR/mutable_variable_aggregate.rs:5:17: 5:25
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x0000002b)) }
-          (_1.1: i32) = const 99i32;       // scope 1 at $DIR/mutable_variable_aggregate.rs:6:5: 6:13
+          (_1.1: i32) = const 99_i32;      // scope 1 at $DIR/mutable_variable_aggregate.rs:6:5: 6:13
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000063))
@@ -38,7 +38,7 @@
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000063)) }
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_aggregate.rs:7:9: 7:10
 -         _2 = _1;                         // scope 1 at $DIR/mutable_variable_aggregate.rs:7:13: 7:14
-+         _2 = (const 42i32, const 99i32); // scope 1 at $DIR/mutable_variable_aggregate.rs:7:13: 7:14
++         _2 = (const 42_i32, const 99_i32); // scope 1 at $DIR/mutable_variable_aggregate.rs:7:13: 7:14
 +                                          // ty::Const
 +                                          // + ty: i32
 +                                          // + val: Value(Scalar(0x0000002a))

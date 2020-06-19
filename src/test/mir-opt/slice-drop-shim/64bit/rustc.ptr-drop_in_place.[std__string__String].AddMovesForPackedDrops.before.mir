@@ -31,7 +31,7 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
 
     bb3 (cleanup): {
         _5 = &raw mut (*_1)[_4];         // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _4 = Add(move _4, const 1usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _4 = Add(move _4, const 1_usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000001))
@@ -48,7 +48,7 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
 
     bb5: {
         _7 = &raw mut (*_1)[_4];         // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _4 = Add(move _4, const 1usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _4 = Add(move _4, const 1_usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000001))
@@ -64,7 +64,7 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
     }
 
     bb7: {
-        _4 = const 0usize;               // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _4 = const 0_usize;              // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000000))
@@ -80,7 +80,7 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
 
     bb9 (cleanup): {
         _11 = _9;                        // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _9 = Offset(move _9, const 1usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _9 = Offset(move _9, const 1_usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000001))
@@ -97,7 +97,7 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
 
     bb11: {
         _13 = _9;                        // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _9 = Offset(move _9, const 1usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _9 = Offset(move _9, const 1_usize); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000001))
@@ -126,6 +126,6 @@ fn std::intrinsics::drop_in_place(_1: *mut [std::string::String]) -> () {
     bb15: {
         _2 = SizeOf(std::string::String); // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
         _3 = Len((*_1));                 // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        switchInt(move _2) -> [0usize: bb8, otherwise: bb14]; // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        switchInt(move _2) -> [0_usize: bb8, otherwise: bb14]; // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
     }
 }

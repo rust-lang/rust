@@ -13,7 +13,7 @@
   
       bb0: {
           _2 = discriminant(_1);           // scope 0 at $DIR/simplify-arm.rs:11:9: 11:16
-          switchInt(move _2) -> [0isize: bb1, 1isize: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify-arm.rs:11:9: 11:16
+          switchInt(move _2) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify-arm.rs:11:9: 11:16
       }
   
       bb1: {

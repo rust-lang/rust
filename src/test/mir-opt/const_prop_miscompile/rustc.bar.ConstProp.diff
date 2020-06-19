@@ -19,8 +19,8 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/const_prop_miscompile.rs:12:9: 12:14
--         _1 = (const 1i32,);              // scope 0 at $DIR/const_prop_miscompile.rs:12:17: 12:21
-+         _1 = const (1i32,);              // scope 0 at $DIR/const_prop_miscompile.rs:12:17: 12:21
+-         _1 = (const 1_i32,);             // scope 0 at $DIR/const_prop_miscompile.rs:12:17: 12:21
++         _1 = const (1_i32,);             // scope 0 at $DIR/const_prop_miscompile.rs:12:17: 12:21
                                            // ty::Const
 -                                          // + ty: i32
 +                                          // + ty: (i32,)
@@ -33,7 +33,7 @@
           StorageLive(_2);                 // scope 1 at $DIR/const_prop_miscompile.rs:13:5: 15:6
           StorageLive(_3);                 // scope 2 at $DIR/const_prop_miscompile.rs:14:10: 14:22
           _3 = &raw mut (_1.0: i32);       // scope 2 at $DIR/const_prop_miscompile.rs:14:10: 14:22
-          (*_3) = const 5i32;              // scope 2 at $DIR/const_prop_miscompile.rs:14:9: 14:26
+          (*_3) = const 5_i32;             // scope 2 at $DIR/const_prop_miscompile.rs:14:9: 14:26
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000005))
@@ -52,7 +52,7 @@
           StorageLive(_4);                 // scope 1 at $DIR/const_prop_miscompile.rs:16:9: 16:10
           StorageLive(_5);                 // scope 1 at $DIR/const_prop_miscompile.rs:16:13: 16:20
           _5 = (_1.0: i32);                // scope 1 at $DIR/const_prop_miscompile.rs:16:15: 16:18
-          _4 = Eq(move _5, const 5i32);    // scope 1 at $DIR/const_prop_miscompile.rs:16:13: 16:25
+          _4 = Eq(move _5, const 5_i32);   // scope 1 at $DIR/const_prop_miscompile.rs:16:13: 16:25
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000005))

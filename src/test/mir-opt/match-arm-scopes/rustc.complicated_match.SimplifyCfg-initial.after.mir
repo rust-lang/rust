@@ -67,7 +67,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb8: {
-        _0 = const 1i32;                 // scope 1 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        _0 = const 1_i32;                // scope 1 at $DIR/match-arm-scopes.rs:16:77: 16:78
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000001))
@@ -102,7 +102,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb12: {
-        _0 = const 3i32;                 // scope 0 at $DIR/match-arm-scopes.rs:16:59: 16:60
+        _0 = const 3_i32;                // scope 0 at $DIR/match-arm-scopes.rs:16:59: 16:60
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000003))
@@ -173,7 +173,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb21: {
-        _0 = const 3i32;                 // scope 0 at $DIR/match-arm-scopes.rs:16:59: 16:60
+        _0 = const 3_i32;                // scope 0 at $DIR/match-arm-scopes.rs:16:59: 16:60
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000003))
@@ -216,7 +216,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb25: {
-        _0 = const 2i32;                 // scope 2 at $DIR/match-arm-scopes.rs:17:41: 17:42
+        _0 = const 2_i32;                // scope 2 at $DIR/match-arm-scopes.rs:17:41: 17:42
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000002))

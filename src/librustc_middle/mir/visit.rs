@@ -571,7 +571,13 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(len, location);
                         self.visit_operand(index, location);
                     }
-                    Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
+                    Overflow(_, l, r) => {
+                        self.visit_operand(l, location);
+                        self.visit_operand(r, location);
+                    }
+                    OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
+                        self.visit_operand(op, location);
+                    }
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) => {
                         // Nothing to visit
                     }

@@ -45,7 +45,7 @@
       bb1: {
           StorageDead(_4);                 // scope 0 at $DIR/simplify-arm.rs:24:14: 24:15
           _5 = discriminant(_3);           // scope 0 at $DIR/simplify-arm.rs:24:14: 24:15
-          switchInt(move _5) -> [0isize: bb2, 1isize: bb4, otherwise: bb3]; // scope 0 at $DIR/simplify-arm.rs:24:14: 24:15
+          switchInt(move _5) -> [0_isize: bb2, 1_isize: bb4, otherwise: bb3]; // scope 0 at $DIR/simplify-arm.rs:24:14: 24:15
       }
   
       bb2: {

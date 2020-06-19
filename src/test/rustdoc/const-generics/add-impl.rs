@@ -1,7 +1,6 @@
 // ignore-tidy-linelength
 
 #![feature(const_generics)]
-
 #![crate_name = "foo"]
 
 use std::ops::Add;
@@ -11,7 +10,7 @@ pub struct Simd<T, const WIDTH: usize> {
     inner: T,
 }
 
-// @has foo/struct.Simd.html '//div[@id="trait-implementations-list"]/h3/code' 'impl Add<Simd<u8, 16usize>> for Simd<u8, 16>'
+// @has foo/struct.Simd.html '//div[@id="trait-implementations-list"]/h3/code' 'impl Add<Simd<u8, 16_usize>> for Simd<u8, 16>'
 impl Add for Simd<u8, 16> {
     type Output = Self;
 

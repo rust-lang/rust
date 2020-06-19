@@ -248,25 +248,19 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::AssertKind::*;
-        // Convert `AssertKind<Operand>` to `AssertKind<u64>`.
+        // Convert `AssertKind<Operand>` to `AssertKind<Scalar>`.
+        let eval_to_int =
+            |op| ecx.read_immediate(ecx.eval_operand(op, None)?).map(|x| x.to_const_int());
         let err = match msg {
             BoundsCheck { ref len, ref index } => {
-                let len = ecx
-                    .read_immediate(ecx.eval_operand(len, None)?)
-                    .expect("can't eval len")
-                    .to_scalar()?
-                    .to_machine_usize(&*ecx)?;
-                let index = ecx
-                    .read_immediate(ecx.eval_operand(index, None)?)
-                    .expect("can't eval index")
-                    .to_scalar()?
-                    .to_machine_usize(&*ecx)?;
+                let len = eval_to_int(len)?;
+                let index = eval_to_int(index)?;
                 BoundsCheck { len, index }
             }
-            Overflow(op) => Overflow(*op),
-            OverflowNeg => OverflowNeg,
-            DivisionByZero => DivisionByZero,
-            RemainderByZero => RemainderByZero,
+            Overflow(op, l, r) => Overflow(*op, eval_to_int(l)?, eval_to_int(r)?),
+            OverflowNeg(op) => OverflowNeg(eval_to_int(op)?),
+            DivisionByZero(op) => DivisionByZero(eval_to_int(op)?),
+            RemainderByZero(op) => RemainderByZero(eval_to_int(op)?),
             ResumedAfterReturn(generator_kind) => ResumedAfterReturn(*generator_kind),
             ResumedAfterPanic(generator_kind) => ResumedAfterPanic(*generator_kind),
         };

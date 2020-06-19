@@ -20,7 +20,7 @@ fn move_out_by_subslice() -> () {
         StorageLive(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
         StorageLive(_3);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
         _3 = Box(i32);                   // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
-        (*_3) = const 1i32;              // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
+        (*_3) = const 1_i32;             // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000001))
@@ -48,7 +48,7 @@ fn move_out_by_subslice() -> () {
         StorageLive(_4);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
         StorageLive(_5);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
         _5 = Box(i32);                   // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
-        (*_5) = const 2i32;              // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
+        (*_5) = const 2_i32;             // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000002))
