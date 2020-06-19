@@ -254,12 +254,12 @@ impl CrateGraph {
             return false;
         }
 
+        if target == from {
+            return true;
+        }
+
         for dep in &self[from].dependencies {
             let crate_id = dep.crate_id;
-            if crate_id == target {
-                return true;
-            }
-
             if self.dfs_find(target, crate_id, visited) {
                 return true;
             }
@@ -369,7 +369,7 @@ mod tests {
     use super::{CfgOptions, CrateGraph, CrateName, Dependency, Edition::Edition2018, Env, FileId};
 
     #[test]
-    fn it_should_panic_because_of_cycle_dependencies() {
+    fn detect_cyclic_dependency_indirect() {
         let mut graph = CrateGraph::default();
         let crate1 = graph.add_crate_root(
             FileId(1u32),
@@ -401,6 +401,31 @@ mod tests {
         assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
         assert!(graph.add_dep(crate2, CrateName::new("crate3").unwrap(), crate3).is_ok());
         assert!(graph.add_dep(crate3, CrateName::new("crate1").unwrap(), crate1).is_err());
+    }
+
+    #[test]
+    fn detect_cyclic_dependency_direct() {
+        let mut graph = CrateGraph::default();
+        let crate1 = graph.add_crate_root(
+            FileId(1u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+            Default::default(),
+            Default::default(),
+        );
+        let crate2 = graph.add_crate_root(
+            FileId(2u32),
+            Edition2018,
+            None,
+            CfgOptions::default(),
+            Env::default(),
+            Default::default(),
+            Default::default(),
+        );
+        assert!(graph.add_dep(crate1, CrateName::new("crate2").unwrap(), crate2).is_ok());
+        assert!(graph.add_dep(crate2, CrateName::new("crate2").unwrap(), crate2).is_err());
     }
 
     #[test]
