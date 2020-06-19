@@ -65,26 +65,20 @@ impl CrateImplDefs {
         db: &dyn HirDatabase,
         krate: CrateId,
     ) -> Arc<CrateImplDefs> {
-        // FIXME: This should take visibility and orphan rules into account to keep the result
-        // smaller.
         let _p = profile("impls_from_deps_query");
         let crate_graph = db.crate_graph();
         let mut res = CrateImplDefs {
             inherent_impls: FxHashMap::default(),
             impls_by_trait: FxHashMap::default(),
         };
-        let mut seen = FxHashSet::default();
-        let mut worklist =
-            crate_graph[krate].dependencies.iter().map(|dep| dep.crate_id).collect::<Vec<_>>();
-        while let Some(krate) = worklist.pop() {
-            if !seen.insert(krate) {
-                continue;
-            }
 
-            // No deduplication, since a) impls can't be reexported, b) we visit a crate only once
-            res.fill(db, krate);
-
-            worklist.extend(crate_graph[krate].dependencies.iter().map(|dep| dep.crate_id));
+        // For each dependency, calculate `impls_from_deps` recursively, then add its own
+        // `impls_in_crate`.
+        // As we might visit crates multiple times, `merge` has to deduplicate impls to avoid
+        // wasting memory.
+        for dep in &crate_graph[krate].dependencies {
+            res.merge(&db.impls_from_deps(dep.crate_id));
+            res.merge(&db.impls_in_crate(dep.crate_id));
         }
 
         Arc::new(res)
@@ -112,6 +106,25 @@ impl CrateImplDefs {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    fn merge(&mut self, other: &Self) {
+        for (fp, impls) in &other.inherent_impls {
+            let vec = self.inherent_impls.entry(*fp).or_default();
+            vec.extend(impls);
+            vec.sort();
+            vec.dedup();
+        }
+
+        for (trait_, other_map) in &other.impls_by_trait {
+            let map = self.impls_by_trait.entry(*trait_).or_default();
+            for (fp, impls) in other_map {
+                let vec = map.entry(*fp).or_default();
+                vec.extend(impls);
+                vec.sort();
+                vec.dedup();
             }
         }
     }
