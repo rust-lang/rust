@@ -11,21 +11,24 @@ impl Stdin {
         Ok(Stdin)
     }
 
-    pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
+    #[inline]
+    pub fn as_raw_fd(&self) -> u32 {
+        0
+    }
+}
+
+impl io::Read for Stdin {
+    fn read(&mut self, data: &mut [u8]) -> io::Result<usize> {
         self.read_vectored(&mut [IoSliceMut::new(data)])
     }
 
-    pub fn read_vectored(&self, data: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, data: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         ManuallyDrop::new(unsafe { WasiFd::from_raw(self.as_raw_fd()) }).read(data)
     }
 
     #[inline]
-    pub fn is_read_vectored(&self) -> bool {
+    fn is_read_vectored(&self) -> bool {
         true
-    }
-
-    pub fn as_raw_fd(&self) -> u32 {
-        0
     }
 }
 
@@ -34,25 +37,27 @@ impl Stdout {
         Ok(Stdout)
     }
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
+    #[inline]
+    pub fn as_raw_fd(&self) -> u32 {
+        1
+    }
+}
+
+impl io::Write for Stdout {
+    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         self.write_vectored(&[IoSlice::new(data)])
     }
 
-    pub fn write_vectored(&self, data: &[IoSlice<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, data: &[IoSlice<'_>]) -> io::Result<usize> {
         ManuallyDrop::new(unsafe { WasiFd::from_raw(self.as_raw_fd()) }).write(data)
     }
 
     #[inline]
-    pub fn is_write_vectored(&self) -> bool {
+    fn is_write_vectored(&self) -> bool {
         true
     }
-
-    pub fn flush(&self) -> io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
-    }
-
-    pub fn as_raw_fd(&self) -> u32 {
-        1
     }
 }
 
@@ -61,23 +66,7 @@ impl Stderr {
         Ok(Stderr)
     }
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        self.write_vectored(&[IoSlice::new(data)])
-    }
-
-    pub fn write_vectored(&self, data: &[IoSlice<'_>]) -> io::Result<usize> {
-        ManuallyDrop::new(unsafe { WasiFd::from_raw(self.as_raw_fd()) }).write(data)
-    }
-
     #[inline]
-    pub fn is_write_vectored(&self) -> bool {
-        true
-    }
-
-    pub fn flush(&self) -> io::Result<()> {
-        Ok(())
-    }
-
     pub fn as_raw_fd(&self) -> u32 {
         2
     }
@@ -85,11 +74,20 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        (&*self).write(data)
+        self.write_vectored(&[IoSlice::new(data)])
+    }
+
+    fn write_vectored(&mut self, data: &[IoSlice<'_>]) -> io::Result<usize> {
+        ManuallyDrop::new(unsafe { WasiFd::from_raw(self.as_raw_fd()) }).write(data)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        (&*self).flush()
+        Ok(())
     }
 }
 
