@@ -832,11 +832,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f32 {
-        if self == Self::NEG_INFINITY {
-            Self::NEG_INFINITY
-        } else {
-            (self + ((self * self) + 1.0).sqrt()).ln().copysign(self)
-        }
+        (self.abs() + ((self * self) + 1.0).sqrt()).ln().copysign(self)
     }
 
     /// Inverse hyperbolic cosine function.
@@ -1413,6 +1409,8 @@ mod tests {
         assert!((-0.0f32).asinh().is_sign_negative()); // issue 63271
         assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
         assert_approx_eq!((-2.0f32).asinh(), -1.443635475178810342493276740273105f32);
+        // regression test for the catastrophic cancellation fixed in 72486
+        assert_approx_eq!((-3000.0f32).asinh(), -8.699514775987968673236893537700647f32);
     }
 
     #[test]
