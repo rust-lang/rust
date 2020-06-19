@@ -10,7 +10,7 @@ use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::mir::{self, interpret::Allocation};
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, List, ToPredicate, Ty, TyCtxt};
+use crate::ty::{self, List, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
@@ -95,23 +95,6 @@ where
     Ok(())
 }
 
-pub fn encode_spanned_predicates<'tcx, E, C>(
-    encoder: &mut E,
-    predicates: &[(ty::Predicate<'tcx>, Span)],
-    cache: C,
-) -> Result<(), E::Error>
-where
-    E: TyEncoder,
-    C: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<ty::Predicate<'tcx>, usize>,
-{
-    predicates.len().encode(encoder)?;
-    for (predicate, span) in predicates {
-        encode_with_shorthand(encoder, predicate, &cache)?;
-        span.encode(encoder)?;
-    }
-    Ok(())
-}
-
 pub trait TyDecoder<'tcx>: Decoder {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
@@ -126,6 +109,14 @@ pub trait TyDecoder<'tcx>: Decoder {
     ) -> Result<Ty<'tcx>, Self::Error>
     where
         F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>;
+
+    fn cached_predicate_for_shorthand<F>(
+        &mut self,
+        shorthand: usize,
+        or_insert_with: F,
+    ) -> Result<ty::Predicate<'tcx>, Self::Error>
+    where
+        F: FnOnce(&mut Self) -> Result<ty::Predicate<'tcx>, Self::Error>;
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
     where
@@ -189,6 +180,26 @@ where
 }
 
 #[inline]
+pub fn decode_predicate<D>(decoder: &mut D) -> Result<ty::Predicate<'tcx>, D::Error>
+where
+    D: TyDecoder<'tcx>,
+{
+    // Handle shorthands first, if we have an usize > 0x80.
+    if decoder.positioned_at_shorthand() {
+        let pos = decoder.read_usize()?;
+        assert!(pos >= SHORTHAND_OFFSET);
+        let shorthand = pos - SHORTHAND_OFFSET;
+
+        decoder.cached_predicate_for_shorthand(shorthand, |decoder| {
+            decoder.with_position(shorthand, ty::Predicate::decode)
+        })
+    } else {
+        let tcx = decoder.tcx();
+        Ok(tcx.mk_predicate(ty::PredicateKind::decode(decoder)?))
+    }
+}
+
+#[inline]
 pub fn decode_spanned_predicates<D>(
     decoder: &mut D,
 ) -> Result<&'tcx [(ty::Predicate<'tcx>, Span)], D::Error>
@@ -198,20 +209,7 @@ where
     let tcx = decoder.tcx();
     Ok(tcx.arena.alloc_from_iter(
         (0..decoder.read_usize()?)
-            .map(|_| {
-                // Handle shorthands first, if we have an usize > 0x80.
-                let predicate_kind = if decoder.positioned_at_shorthand() {
-                    let pos = decoder.read_usize()?;
-                    assert!(pos >= SHORTHAND_OFFSET);
-                    let shorthand = pos - SHORTHAND_OFFSET;
-
-                    decoder.with_position(shorthand, ty::PredicateKind::decode)
-                } else {
-                    ty::PredicateKind::decode(decoder)
-                }?;
-                let predicate = predicate_kind.to_predicate(tcx);
-                Ok((predicate, Decodable::decode(decoder)?))
-            })
+            .map(|_| Decodable::decode(decoder))
             .collect::<Result<Vec<_>, _>>()?,
     ))
 }
@@ -421,7 +419,6 @@ macro_rules! implement_ty_decoder {
             // FIXME(#36588): These impls are horribly unsound as they allow
             // the caller to pick any lifetime for `'tcx`, including `'static`.
 
-            rustc_hir::arena_types!(impl_arena_allocatable_decoders, [$DecoderName [$($typaram),*]], 'tcx);
             arena_types!(impl_arena_allocatable_decoders, [$DecoderName [$($typaram),*]], 'tcx);
 
             impl<$($typaram),*> SpecializedDecoder<CrateNum>
@@ -436,7 +433,24 @@ macro_rules! implement_ty_decoder {
             where &'_x ty::TyS<'_y>: UseSpecializedDecodable
             {
                 fn specialized_decode(&mut self) -> Result<&'_x ty::TyS<'_y>, Self::Error> {
-                    unsafe { transmute::<Result<ty::Ty<'tcx>, Self::Error>, Result<&'_x ty::TyS<'_y>, Self::Error>>(decode_ty(self)) }
+                    unsafe {
+                        transmute::<
+                            Result<ty::Ty<'tcx>, Self::Error>,
+                            Result<&'_x ty::TyS<'_y>, Self::Error>,
+                        >(decode_ty(self))
+                    }
+                }
+            }
+
+            impl<'_x, $($typaram),*> SpecializedDecoder<ty::Predicate<'_x>>
+            for $DecoderName<$($typaram),*> {
+                fn specialized_decode(&mut self) -> Result<ty::Predicate<'_x>, Self::Error> {
+                    unsafe {
+                        transmute::<
+                            Result<ty::Predicate<'tcx>, Self::Error>,
+                            Result<ty::Predicate<'_x>, Self::Error>,
+                        >(decode_predicate(self))
+                    }
                 }
             }
 
