@@ -97,7 +97,7 @@ use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::{
@@ -840,7 +840,7 @@ fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 }
 
-fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &DefIdSet {
+fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &FxHashSet<LocalDefId> {
     &*tcx.typeck_tables_of(def_id).used_trait_imports
 }
 

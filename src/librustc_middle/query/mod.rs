@@ -526,7 +526,7 @@ rustc_queries! {
     }
 
     Other {
-        query used_trait_imports(key: LocalDefId) -> &'tcx DefIdSet {
+        query used_trait_imports(key: LocalDefId) -> &'tcx FxHashSet<LocalDefId> {
             desc { |tcx| "used_trait_imports `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
         }
