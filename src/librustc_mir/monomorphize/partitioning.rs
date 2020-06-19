@@ -734,7 +734,9 @@ fn characteristic_def_id_of_mono_item<'tcx>(
 
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 if tcx.sess.opts.incremental.is_some()
-                    && tcx.lang_items().drop_trait().has_def_id(impl_def_id)
+                    && tcx
+                        .trait_id_of_impl(impl_def_id)
+                        .map_or(false, |id| tcx.lang_items().drop_trait().has_def_id(id))
                 {
                     // Put `Drop::drop` into the same cgu as `drop_in_place`
                     // since `drop_in_place` is the only thing that can
