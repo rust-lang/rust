@@ -20,13 +20,6 @@ error[E0599]: no method named `b` found for struct `S` in the current scope
 LL | struct S;
    | --------- method `b` not found for this
 ...
-LL |         fn b(&self) { }
-   |            -
-   |            |
-   |            the method is available for `std::boxed::Box<S>` here
-   |            the method is available for `std::sync::Arc<S>` here
-   |            the method is available for `std::rc::Rc<S>` here
-...
 LL |     S.b();
    |       ^ method not found in `S`
    |
