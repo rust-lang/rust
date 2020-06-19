@@ -11,10 +11,10 @@ error[E0308]: mismatched types
   --> $DIR/different_byref.rs:8:9
    |
 LL |     x = Const::<{ [4] }> {};
-   |         ^^^^^^^^^^^^^^^^^^^ expected `3usize`, found `4usize`
+   |         ^^^^^^^^^^^^^^^^^^^ expected `3_usize`, found `4_usize`
    |
-   = note: expected type `[3usize]`
-              found type `[4usize]`
+   = note: expected type `[3_usize]`
+              found type `[4_usize]`
 
 error: aborting due to previous error; 1 warning emitted
 

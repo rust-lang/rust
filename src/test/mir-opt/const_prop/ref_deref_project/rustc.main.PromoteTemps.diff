@@ -12,7 +12,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/ref_deref_project.rs:5:5: 5:17
           StorageLive(_2);                 // scope 0 at $DIR/ref_deref_project.rs:5:6: 5:17
 -         StorageLive(_3);                 // scope 0 at $DIR/ref_deref_project.rs:5:8: 5:14
--         _3 = (const 4i32, const 5i32);   // scope 0 at $DIR/ref_deref_project.rs:5:8: 5:14
+-         _3 = (const 4_i32, const 5_i32); // scope 0 at $DIR/ref_deref_project.rs:5:8: 5:14
 +         _4 = const main::promoted[0];    // scope 0 at $DIR/ref_deref_project.rs:5:6: 5:17
                                            // ty::Const
 -                                          // + ty: i32

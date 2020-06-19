@@ -25,17 +25,17 @@
 -                                          // + span: $DIR/discriminant.rs:11:39: 11:43
 -                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
 -         _4 = discriminant(_3);           // scope 0 at $DIR/discriminant.rs:11:21: 11:31
--         switchInt(move _4) -> [1isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
+-         switchInt(move _4) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
 +                                          // + span: $DIR/discriminant.rs:11:34: 11:44
 +                                          // + literal: Const { ty: std::option::Option<bool>, val: Value(Scalar(0x01)) }
-+         _4 = const 1isize;               // scope 0 at $DIR/discriminant.rs:11:21: 11:31
++         _4 = const 1_isize;              // scope 0 at $DIR/discriminant.rs:11:21: 11:31
 +                                          // ty::Const
 +                                          // + ty: isize
 +                                          // + val: Value(Scalar(0x0000000000000001))
 +                                          // mir::Constant
 +                                          // + span: $DIR/discriminant.rs:11:21: 11:31
 +                                          // + literal: Const { ty: isize, val: Value(Scalar(0x0000000000000001)) }
-+         switchInt(const 1isize) -> [1isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
++         switchInt(const 1_isize) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
 +                                          // ty::Const
 +                                          // + ty: isize
 +                                          // + val: Value(Scalar(0x0000000000000001))
@@ -45,7 +45,7 @@
       }
   
       bb1: {
-          _2 = const 10i32;                // scope 0 at $DIR/discriminant.rs:11:59: 11:61
+          _2 = const 10_i32;               // scope 0 at $DIR/discriminant.rs:11:59: 11:61
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x0000000a))
@@ -60,7 +60,7 @@
       }
   
       bb3: {
-          _2 = const 42i32;                // scope 0 at $DIR/discriminant.rs:11:47: 11:49
+          _2 = const 42_i32;               // scope 0 at $DIR/discriminant.rs:11:47: 11:49
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x0000002a))
@@ -71,7 +71,7 @@
       }
   
       bb4: {
-          _1 = Add(move _2, const 0i32);   // scope 0 at $DIR/discriminant.rs:11:13: 11:68
+          _1 = Add(move _2, const 0_i32);  // scope 0 at $DIR/discriminant.rs:11:13: 11:68
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000000))

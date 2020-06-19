@@ -25,14 +25,14 @@ fn bar() -> bool {
                                          // + literal: Const { ty: fn(i32, i32) -> bool {foo}, val: Value(Scalar(<ZST>)) }
         StorageLive(_2);                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:6
         _2 = _1;                         // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:6
-        _3 = const 1i32;                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
+        _3 = const 1_i32;                // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000001))
                                          // mir::Constant
                                          // + span: $DIR/inline-any-operand.rs:12:7: 12:8
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
-        _4 = const -1i32;                // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
+        _4 = const -1_i32;               // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0xffffffff))

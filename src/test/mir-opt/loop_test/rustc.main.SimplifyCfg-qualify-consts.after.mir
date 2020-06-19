@@ -67,7 +67,7 @@ fn main() -> () {
 
     bb6: {
         StorageLive(_6);                 // scope 0 at $DIR/loop_test.rs:14:13: 14:14
-        _6 = const 1i32;                 // scope 0 at $DIR/loop_test.rs:14:17: 14:18
+        _6 = const 1_i32;                // scope 0 at $DIR/loop_test.rs:14:17: 14:18
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000001))

@@ -4,7 +4,7 @@ E::V::{{constant}}#0: isize = {
     let mut _0: isize;                   // return place in scope 0 at $DIR/unusual-item-types.rs:22:9: 22:10
 
     bb0: {
-        _0 = const 5isize;               // scope 0 at $DIR/unusual-item-types.rs:22:9: 22:10
+        _0 = const 5_isize;              // scope 0 at $DIR/unusual-item-types.rs:22:9: 22:10
                                          // ty::Const
                                          // + ty: isize
                                          // + val: Value(Scalar(0x0000000000000005))

@@ -30,7 +30,7 @@
           _2 = move _3 as &[u32] (Pointer(Unsize)); // scope 0 at $DIR/slice_len.rs:5:6: 5:19
           StorageDead(_3);                 // scope 0 at $DIR/slice_len.rs:5:18: 5:19
           StorageLive(_6);                 // scope 0 at $DIR/slice_len.rs:5:31: 5:32
-          _6 = const 1usize;               // scope 0 at $DIR/slice_len.rs:5:31: 5:32
+          _6 = const 1_usize;              // scope 0 at $DIR/slice_len.rs:5:31: 5:32
                                            // ty::Const
                                            // + ty: usize
                                            // + val: Value(Scalar(0x00000001))
@@ -40,7 +40,7 @@
 -         _7 = Len((*_2));                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 -         _8 = Lt(_6, _7);                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 -         assert(move _8, "index out of bounds: the len is {} but the index is {}", move _7, _6) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
-+         _7 = const 3usize;               // scope 0 at $DIR/slice_len.rs:5:5: 5:33
++         _7 = const 3_usize;              // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 +                                          // ty::Const
 +                                          // + ty: usize
 +                                          // + val: Value(Scalar(0x00000003))
@@ -65,7 +65,7 @@
   
       bb1: {
 -         _1 = (*_2)[_6];                  // scope 0 at $DIR/slice_len.rs:5:5: 5:33
-+         _1 = const 2u32;                 // scope 0 at $DIR/slice_len.rs:5:5: 5:33
++         _1 = const 2_u32;                // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000002))

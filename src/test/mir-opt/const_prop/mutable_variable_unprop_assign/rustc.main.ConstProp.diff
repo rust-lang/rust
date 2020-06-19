@@ -34,7 +34,7 @@
   
       bb1: {
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:6:9: 6:14
-          _2 = (const 1i32, const 2i32);   // scope 1 at $DIR/mutable_variable_unprop_assign.rs:6:29: 6:35
+          _2 = (const 1_i32, const 2_i32); // scope 1 at $DIR/mutable_variable_unprop_assign.rs:6:29: 6:35
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000001))

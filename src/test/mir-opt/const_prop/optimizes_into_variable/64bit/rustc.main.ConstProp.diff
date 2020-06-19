@@ -24,8 +24,8 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/optimizes_into_variable.rs:12:9: 12:10
--         _2 = CheckedAdd(const 2i32, const 2i32); // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
-+         _2 = (const 4i32, const false);  // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
+-         _2 = CheckedAdd(const 2_i32, const 2_i32); // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
++         _2 = (const 4_i32, const false); // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
                                            // ty::Const
                                            // + ty: i32
 -                                          // + val: Value(Scalar(0x00000002))
@@ -43,21 +43,33 @@
                                            // mir::Constant
 -                                          // + span: $DIR/optimizes_into_variable.rs:12:17: 12:18
 -                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
--         assert(!move (_2.1: bool), "attempt to add with overflow") -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
+-         assert(!move (_2.1: bool), "attempt to compute `{} + {}` which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
 +                                          // + span: $DIR/optimizes_into_variable.rs:12:13: 12:18
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-+         assert(!const false, "attempt to add with overflow") -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
-+                                          // ty::Const
++         assert(!const false, "attempt to compute `{} + {}` which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
+                                           // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x00))
 +                                          // mir::Constant
 +                                          // + span: $DIR/optimizes_into_variable.rs:12:13: 12:18
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
++                                          // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x00000002))
+                                           // mir::Constant
+                                           // + span: $DIR/optimizes_into_variable.rs:12:13: 12:14
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
+                                           // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x00000002))
+                                           // mir::Constant
+                                           // + span: $DIR/optimizes_into_variable.rs:12:17: 12:18
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
       }
   
       bb1: {
 -         _1 = move (_2.0: i32);           // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
-+         _1 = const 4i32;                 // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
++         _1 = const 4_i32;                // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
 +                                          // ty::Const
 +                                          // + ty: i32
 +                                          // + val: Value(Scalar(0x00000004))
@@ -66,7 +78,7 @@
 +                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000004)) }
           StorageLive(_3);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:9: 13:10
           StorageLive(_4);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:31
-          _4 = [const 0i32, const 1i32, const 2i32, const 3i32, const 4i32, const 5i32]; // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:31
+          _4 = [const 0_i32, const 1_i32, const 2_i32, const 3_i32, const 4_i32, const 5_i32]; // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:31
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000000))
@@ -104,14 +116,14 @@
                                            // + span: $DIR/optimizes_into_variable.rs:13:29: 13:30
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000005)) }
           StorageLive(_5);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:32: 13:33
-          _5 = const 3usize;               // scope 1 at $DIR/optimizes_into_variable.rs:13:32: 13:33
+          _5 = const 3_usize;              // scope 1 at $DIR/optimizes_into_variable.rs:13:32: 13:33
                                            // ty::Const
                                            // + ty: usize
                                            // + val: Value(Scalar(0x0000000000000003))
                                            // mir::Constant
                                            // + span: $DIR/optimizes_into_variable.rs:13:32: 13:33
                                            // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000003)) }
-          _6 = const 6usize;               // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
+          _6 = const 6_usize;              // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
                                            // ty::Const
                                            // + ty: usize
                                            // + val: Value(Scalar(0x0000000000000006))
@@ -138,7 +150,7 @@
   
       bb2: {
 -         _3 = _4[_5];                     // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
-+         _3 = const 3i32;                 // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
++         _3 = const 3_i32;                // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
 +                                          // ty::Const
 +                                          // + ty: i32
 +                                          // + val: Value(Scalar(0x00000003))
@@ -149,7 +161,7 @@
           StorageDead(_4);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:34: 13:35
           StorageLive(_8);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:9: 14:10
           StorageLive(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
-          _9 = Point { x: const 12u32, y: const 42u32 }; // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
+          _9 = Point { x: const 12_u32, y: const 42_u32 }; // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:36
                                            // ty::Const
                                            // + ty: u32
                                            // + val: Value(Scalar(0x0000000c))
@@ -163,7 +175,7 @@
                                            // + span: $DIR/optimizes_into_variable.rs:14:32: 14:34
                                            // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
 -         _8 = (_9.1: u32);                // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
-+         _8 = const 42u32;                // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
++         _8 = const 42_u32;               // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x0000002a))

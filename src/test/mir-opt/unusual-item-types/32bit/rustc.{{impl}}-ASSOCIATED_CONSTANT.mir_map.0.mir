@@ -4,7 +4,7 @@ const <impl at $DIR/unusual-item-types.rs:9:1: 11:2>::ASSOCIATED_CONSTANT: i32 =
     let mut _0: i32;                     // return place in scope 0 at $DIR/unusual-item-types.rs:10:32: 10:35
 
     bb0: {
-        _0 = const 2i32;                 // scope 0 at $DIR/unusual-item-types.rs:10:38: 10:39
+        _0 = const 2_i32;                // scope 0 at $DIR/unusual-item-types.rs:10:38: 10:39
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000002))

@@ -17,8 +17,8 @@
   
       bb0: {
 -         StorageLive(_2);                 // scope 0 at $DIR/nrvo-simple.rs:3:9: 3:16
--         _2 = [const 0u8; 1024];          // scope 0 at $DIR/nrvo-simple.rs:3:19: 3:28
-+         _0 = [const 0u8; 1024];          // scope 0 at $DIR/nrvo-simple.rs:3:19: 3:28
+-         _2 = [const 0_u8; 1024];         // scope 0 at $DIR/nrvo-simple.rs:3:19: 3:28
++         _0 = [const 0_u8; 1024];         // scope 0 at $DIR/nrvo-simple.rs:3:19: 3:28
                                            // ty::Const
                                            // + ty: u8
                                            // + val: Value(Scalar(0x00))

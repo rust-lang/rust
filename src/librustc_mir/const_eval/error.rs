@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fmt;
 
 use rustc_middle::mir::AssertKind;
+use rustc_middle::ty::ConstInt;
 use rustc_span::{Span, Symbol};
 
 use super::InterpCx;
@@ -13,7 +14,7 @@ pub enum ConstEvalErrKind {
     NeedsRfc(String),
     ConstAccessesStatic,
     ModifiedGlobal,
-    AssertFailure(AssertKind<u64>),
+    AssertFailure(AssertKind<ConstInt>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
 }
 

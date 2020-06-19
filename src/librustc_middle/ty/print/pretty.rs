@@ -1,10 +1,8 @@
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
-use crate::mir::interpret::{
-    sign_extend, truncate, AllocId, ConstValue, GlobalAlloc, Pointer, Scalar,
-};
+use crate::mir::interpret::{AllocId, ConstValue, GlobalAlloc, Pointer, Scalar};
 use crate::ty::layout::IntegerExt;
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
-use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ConstInt, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_ast::ast;
@@ -981,35 +979,14 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Int
             (Scalar::Raw { data, .. }, ty::Uint(ui)) => {
-                let bit_size = Integer::from_attr(&self.tcx(), UnsignedInt(*ui)).size();
-                let max = truncate(u128::MAX, bit_size);
-
-                let ui_str = ui.name_str();
-                if data == max {
-                    p!(write("{}::MAX", ui_str))
-                } else {
-                    if print_ty { p!(write("{}{}", data, ui_str)) } else { p!(write("{}", data)) }
-                };
+                let size = Integer::from_attr(&self.tcx(), UnsignedInt(*ui)).size();
+                let int = ConstInt::new(data, size, false, ty.is_ptr_sized_integral());
+                if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
             }
             (Scalar::Raw { data, .. }, ty::Int(i)) => {
                 let size = Integer::from_attr(&self.tcx(), SignedInt(*i)).size();
-                let bit_size = size.bits() as u128;
-                let min = 1u128 << (bit_size - 1);
-                let max = min - 1;
-
-                let i_str = i.name_str();
-                match data {
-                    d if d == min => p!(write("{}::MIN", i_str)),
-                    d if d == max => p!(write("{}::MAX", i_str)),
-                    _ => {
-                        let data = sign_extend(data, size) as i128;
-                        if print_ty {
-                            p!(write("{}{}", data, i_str))
-                        } else {
-                            p!(write("{}", data))
-                        }
-                    }
-                }
+                let int = ConstInt::new(data, size, true, ty.is_ptr_sized_integral());
+                if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
             }
             // Char
             (Scalar::Raw { data, .. }, ty::Char) if char::from_u32(data as u32).is_some() => {

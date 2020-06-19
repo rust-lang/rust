@@ -14,7 +14,7 @@ fn unwrap(_1: std::option::Option<T>) -> T {
 
     bb0: {
         _2 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
-        switchInt(move _2) -> [0isize: bb2, 1isize: bb4, otherwise: bb3]; // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
+        switchInt(move _2) -> [0_isize: bb2, 1_isize: bb4, otherwise: bb3]; // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
     }
 
     bb1 (cleanup): {

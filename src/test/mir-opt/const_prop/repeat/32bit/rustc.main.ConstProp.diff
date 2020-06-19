@@ -17,7 +17,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/repeat.rs:6:9: 6:10
           StorageLive(_2);                 // scope 0 at $DIR/repeat.rs:6:18: 6:28
           StorageLive(_3);                 // scope 0 at $DIR/repeat.rs:6:18: 6:25
-          _3 = [const 42u32; 8];           // scope 0 at $DIR/repeat.rs:6:18: 6:25
+          _3 = [const 42_u32; 8];          // scope 0 at $DIR/repeat.rs:6:18: 6:25
                                            // ty::Const
                                            // + ty: u32
                                            // + val: Value(Scalar(0x0000002a))
@@ -25,14 +25,14 @@
                                            // + span: $DIR/repeat.rs:6:19: 6:21
                                            // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
           StorageLive(_4);                 // scope 0 at $DIR/repeat.rs:6:26: 6:27
-          _4 = const 2usize;               // scope 0 at $DIR/repeat.rs:6:26: 6:27
+          _4 = const 2_usize;              // scope 0 at $DIR/repeat.rs:6:26: 6:27
                                            // ty::Const
                                            // + ty: usize
                                            // + val: Value(Scalar(0x00000002))
                                            // mir::Constant
                                            // + span: $DIR/repeat.rs:6:26: 6:27
                                            // + literal: Const { ty: usize, val: Value(Scalar(0x00000002)) }
-          _5 = const 8usize;               // scope 0 at $DIR/repeat.rs:6:18: 6:28
+          _5 = const 8_usize;              // scope 0 at $DIR/repeat.rs:6:18: 6:28
                                            // ty::Const
                                            // + ty: usize
                                            // + val: Value(Scalar(0x00000008))
@@ -59,8 +59,8 @@
   
       bb1: {
 -         _2 = _3[_4];                     // scope 0 at $DIR/repeat.rs:6:18: 6:28
--         _1 = Add(move _2, const 0u32);   // scope 0 at $DIR/repeat.rs:6:18: 6:32
-+         _2 = const 42u32;                // scope 0 at $DIR/repeat.rs:6:18: 6:28
+-         _1 = Add(move _2, const 0_u32);  // scope 0 at $DIR/repeat.rs:6:18: 6:32
++         _2 = const 42_u32;               // scope 0 at $DIR/repeat.rs:6:18: 6:28
                                            // ty::Const
                                            // + ty: u32
 -                                          // + val: Value(Scalar(0x00000000))
@@ -70,7 +70,7 @@
 -                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
 +                                          // + span: $DIR/repeat.rs:6:18: 6:28
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
-+         _1 = const 42u32;                // scope 0 at $DIR/repeat.rs:6:18: 6:32
++         _1 = const 42_u32;               // scope 0 at $DIR/repeat.rs:6:18: 6:32
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x0000002a))

@@ -12,7 +12,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/scalar_literal_propagation.rs:3:9: 3:10
-          _1 = const 1u32;                 // scope 0 at $DIR/scalar_literal_propagation.rs:3:13: 3:14
+          _1 = const 1_u32;                // scope 0 at $DIR/scalar_literal_propagation.rs:3:13: 3:14
                                            // ty::Const
                                            // + ty: u32
                                            // + val: Value(Scalar(0x00000001))
@@ -23,14 +23,14 @@
           StorageLive(_3);                 // scope 1 at $DIR/scalar_literal_propagation.rs:4:13: 4:14
 -         _3 = _1;                         // scope 1 at $DIR/scalar_literal_propagation.rs:4:13: 4:14
 -         _2 = const consume(move _3) -> bb1; // scope 1 at $DIR/scalar_literal_propagation.rs:4:5: 4:15
-+         _3 = const 1u32;                 // scope 1 at $DIR/scalar_literal_propagation.rs:4:13: 4:14
++         _3 = const 1_u32;                // scope 1 at $DIR/scalar_literal_propagation.rs:4:13: 4:14
                                            // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000001))
 +                                          // mir::Constant
 +                                          // + span: $DIR/scalar_literal_propagation.rs:4:13: 4:14
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
-+         _2 = const consume(const 1u32) -> bb1; // scope 1 at $DIR/scalar_literal_propagation.rs:4:5: 4:15
++         _2 = const consume(const 1_u32) -> bb1; // scope 1 at $DIR/scalar_literal_propagation.rs:4:5: 4:15
 +                                          // ty::Const
                                            // + ty: fn(u32) {consume}
                                            // + val: Value(Scalar(<ZST>))

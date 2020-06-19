@@ -18,7 +18,7 @@
           StorageLive(_2);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:20:11: 20:19
           _2 = Test1::C;                   // scope 0 at $DIR/uninhabited_enum_branching.rs:20:11: 20:19
           _3 = discriminant(_2);           // scope 0 at $DIR/uninhabited_enum_branching.rs:21:9: 21:20
--         switchInt(move _3) -> [0isize: bb2, 1isize: bb3, otherwise: bb1]; // scope 0 at $DIR/uninhabited_enum_branching.rs:21:9: 21:20
+-         switchInt(move _3) -> [0_isize: bb2, 1_isize: bb3, otherwise: bb1]; // scope 0 at $DIR/uninhabited_enum_branching.rs:21:9: 21:20
 +         switchInt(move _3) -> bb1;       // scope 0 at $DIR/uninhabited_enum_branching.rs:21:9: 21:20
       }
   
@@ -68,7 +68,7 @@
           StorageLive(_7);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:26:11: 26:19
           _7 = Test2::D;                   // scope 0 at $DIR/uninhabited_enum_branching.rs:26:11: 26:19
           _8 = discriminant(_7);           // scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
-          switchInt(move _8) -> [4isize: bb6, otherwise: bb5]; // scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
+          switchInt(move _8) -> [4_isize: bb6, otherwise: bb5]; // scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
       }
   
       bb5: {

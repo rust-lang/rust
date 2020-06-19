@@ -11,8 +11,8 @@ fn main() {
     match Some(10) { //~ ERROR non-exhaustive patterns: `Some(_)` not covered
       None => {}
     }
-    match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, i32::MIN..=3i32)`
-                      //  and `(_, _, 5i32..=i32::MAX)` not covered
+    match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, i32::MIN..=3_i32)`
+                      //  and `(_, _, 5_i32..=i32::MAX)` not covered
       (_, _, 4) => {}
     }
     match (T::A, T::A) { //~ ERROR non-exhaustive patterns: `(A, A)` not covered

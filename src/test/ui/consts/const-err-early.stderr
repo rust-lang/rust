@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL | pub const A: i8 = -std::i8::MIN;
    | ------------------^^^^^^^^^^^^^-
    |                   |
-   |                   attempt to negate with overflow
+   |                   attempt to negate i8::MIN which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-err-early.rs:1:9
@@ -18,7 +18,7 @@ error: any use of this value will cause an error
 LL | pub const B: u8 = 200u8 + 200u8;
    | ------------------^^^^^^^^^^^^^-
    |                   |
-   |                   attempt to add with overflow
+   |                   attempt to compute `200_u8 + 200_u8` which would overflow
 
 error: any use of this value will cause an error
   --> $DIR/const-err-early.rs:5:19
@@ -26,7 +26,7 @@ error: any use of this value will cause an error
 LL | pub const C: u8 = 200u8 * 4;
    | ------------------^^^^^^^^^-
    |                   |
-   |                   attempt to multiply with overflow
+   |                   attempt to compute `200_u8 * 4_u8` which would overflow
 
 error: any use of this value will cause an error
   --> $DIR/const-err-early.rs:6:19
@@ -34,7 +34,7 @@ error: any use of this value will cause an error
 LL | pub const D: u8 = 42u8 - (42u8 + 1);
    | ------------------^^^^^^^^^^^^^^^^^-
    |                   |
-   |                   attempt to subtract with overflow
+   |                   attempt to compute `42_u8 - 43_u8` which would overflow
 
 error: any use of this value will cause an error
   --> $DIR/const-err-early.rs:7:19
