@@ -315,12 +315,12 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         pred: ty::Predicate<'tcx>,
     ) -> FxHashSet<GenericParamDef> {
-        let regions = match pred.kind() {
-            ty::PredicateKind::Trait(poly_trait_pred, _) => {
-                tcx.collect_referenced_late_bound_regions(&poly_trait_pred)
+        let regions = match pred.ignore_qualifiers().skip_binder().kind() {
+            &ty::PredicateKind::Trait(poly_trait_pred, _) => {
+                tcx.collect_referenced_late_bound_regions(&ty::Binder::bind(poly_trait_pred))
             }
-            ty::PredicateKind::Projection(poly_proj_pred) => {
-                tcx.collect_referenced_late_bound_regions(&poly_proj_pred)
+            &ty::PredicateKind::Projection(poly_proj_pred) => {
+                tcx.collect_referenced_late_bound_regions(&ty::Binder::bind(poly_proj_pred))
             }
             _ => return FxHashSet::default(),
         };

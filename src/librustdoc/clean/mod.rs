@@ -480,13 +480,14 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
 
 impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
-        match self.kind() {
-            ty::PredicateKind::Trait(ref pred, _) => Some(pred.clean(cx)),
-            ty::PredicateKind::Subtype(ref pred) => Some(pred.clean(cx)),
-            ty::PredicateKind::RegionOutlives(ref pred) => pred.clean(cx),
-            ty::PredicateKind::TypeOutlives(ref pred) => pred.clean(cx),
-            ty::PredicateKind::Projection(ref pred) => Some(pred.clean(cx)),
+        match self.ignore_qualifiers().skip_binder().kind() {
+            &ty::PredicateKind::Trait(pred, _) => Some(ty::Binder::bind(pred).clean(cx)),
+            &ty::PredicateKind::Subtype(pred) => Some(ty::Binder::bind(pred).clean(cx)),
+            &ty::PredicateKind::RegionOutlives(pred) => ty::Binder::bind(pred).clean(cx),
+            &ty::PredicateKind::TypeOutlives(pred) => ty::Binder::bind(pred).clean(cx),
+            &ty::PredicateKind::Projection(pred) => Some(ty::Binder::bind(pred).clean(cx)),
 
+            ty::PredicateKind::ForAll(_) => panic!("unexpected predicate: {:?}", self),
             ty::PredicateKind::WellFormed(..)
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
@@ -754,19 +755,24 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
             .flat_map(|(p, _)| {
                 let mut projection = None;
                 let param_idx = (|| {
-                    if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
-                        if let ty::Param(param) = trait_ref.skip_binder().self_ty().kind {
-                            return Some(param.index);
+                    match p.ignore_qualifiers().skip_binder().kind() {
+                        &ty::PredicateKind::Trait(pred, _constness) => {
+                            if let ty::Param(param) = pred.self_ty().kind {
+                                return Some(param.index);
+                            }
                         }
-                    } else if let Some(outlives) = p.to_opt_type_outlives() {
-                        if let ty::Param(param) = outlives.skip_binder().0.kind {
-                            return Some(param.index);
+                        &ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+                            if let ty::Param(param) = ty.kind {
+                                return Some(param.index);
+                            }
                         }
-                    } else if let ty::PredicateKind::Projection(p) = p.kind() {
-                        if let ty::Param(param) = p.skip_binder().projection_ty.self_ty().kind {
-                            projection = Some(p);
-                            return Some(param.index);
+                        &ty::PredicateKind::Projection(p) => {
+                            if let ty::Param(param) = p.projection_ty.self_ty().kind {
+                                projection = Some(ty::Binder::bind(p));
+                                return Some(param.index);
+                            }
                         }
+                        _ => (),
                     }
 
                     None
@@ -1657,7 +1663,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     .filter_map(|predicate| {
                         let trait_ref = if let Some(tr) = predicate.to_opt_poly_trait_ref() {
                             tr
-                        } else if let ty::PredicateKind::TypeOutlives(pred) = predicate.kind() {
+                        } else if let Some(pred) = predicate.to_opt_type_outlives() {
                             // these should turn up at the end
                             if let Some(r) = pred.skip_binder().1.clean(cx) {
                                 regions.push(GenericBound::Outlives(r));
@@ -1678,8 +1684,10 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             .predicates
                             .iter()
                             .filter_map(|pred| {
-                                if let ty::PredicateKind::Projection(proj) = pred.kind() {
-                                    let proj = proj.skip_binder();
+                                if let ty::PredicateKind::Projection(proj) =
+                                    pred.ignore_qualifiers().skip_binder().kind()
+                                {
+                                    let proj = proj;
                                     if proj.projection_ty.trait_ref(cx.tcx)
                                         == trait_ref.skip_binder()
                                     {
