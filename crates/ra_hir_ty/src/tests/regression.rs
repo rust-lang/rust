@@ -633,3 +633,35 @@ where
     "###
     );
 }
+
+#[test]
+fn issue_4953() {
+    assert_snapshot!(
+        infer(r#"
+pub struct Foo(pub i64);
+impl Foo {
+    fn test() -> Self { Self(0i64) }
+}
+"#),
+        @r###"
+    59..73 '{ Self(0i64) }': Foo
+    61..65 'Self': Foo(i64) -> Foo
+    61..71 'Self(0i64)': Foo
+    66..70 '0i64': i64
+    "###
+    );
+    assert_snapshot!(
+        infer(r#"
+pub struct Foo<T>(pub T);
+impl Foo<i64> {
+    fn test() -> Self { Self(0i64) }
+}
+"#),
+        @r###"
+    65..79 '{ Self(0i64) }': Foo<i64>
+    67..71 'Self': Foo<i64>(i64) -> Foo<i64>
+    67..77 'Self(0i64)': Foo<i64>
+    72..76 '0i64': i64
+    "###
+    );
+}
