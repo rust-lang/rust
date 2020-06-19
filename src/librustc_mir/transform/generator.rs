@@ -1343,7 +1343,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 }
 
 /// Looks for any assignments between locals (e.g., `_4 = _5`) that will both be converted to fields
-/// in the generator state machine but whose storage does not conflict.
+/// in the generator state machine but whose storage is not marked as conflicting
 ///
 /// Validation needs to happen immediately *before* `TransformVisitor` is invoked, not after.
 ///
@@ -1371,7 +1371,7 @@ impl EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
 
     fn check_assigned_place(&mut self, place: Place<'tcx>, f: impl FnOnce(&mut Self)) {
         if let Some(assigned_local) = self.saved_local_for_direct_place(place) {
-            assert!(self.assigned_local.is_none(), "`check_assigned_local` must not recurse");
+            assert!(self.assigned_local.is_none(), "`check_assigned_place` must not recurse");
 
             self.assigned_local = Some(assigned_local);
             f(self);
@@ -1385,7 +1385,10 @@ impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
         let lhs = match self.assigned_local {
             Some(l) => l,
             None => {
-                // We should be visiting all places used in the MIR.
+                // This visitor only invokes `visit_place` for the right-hand side of an assignment
+                // and only after setting `self.assigned_local`. However, the default impl of
+                // `Visitor::super_body` may call `visit_place` with a `NonUseContext` for places
+                // with debuginfo. Ignore them here.
                 assert!(!context.is_use());
                 return;
             }
@@ -1398,8 +1401,8 @@ impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
 
         if !self.storage_conflicts.contains(lhs, rhs) {
             bug!(
-                "Assignment between generator saved locals whose storage does not conflict: \
-                    {:?}: {:?} = {:?}",
+                "Assignment between generator saved locals whose storage is not \
+                    marked as conflicting: {:?}: {:?} = {:?}",
                 location,
                 lhs,
                 rhs,
