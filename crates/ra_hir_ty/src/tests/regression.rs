@@ -693,3 +693,94 @@ fn check<T: PrimInt>(i: T) {
     "###
     );
 }
+
+#[test]
+fn issue_4885() {
+    assert_snapshot!(
+        infer(r#"
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+trait Future {
+    type Output;
+}
+trait Foo<R> {
+    type Bar;
+}
+fn foo<R, K>(key: &K) -> impl Future<Output = K::Bar>
+where
+    K: Foo<R>,
+{
+    bar(key)
+}
+fn bar<R, K>(key: &K) -> impl Future<Output = K::Bar>
+where
+    K: Foo<R>,
+{
+}
+"#),
+        @r###"
+    137..140 'key': &K
+    199..215 '{     ...key) }': impl Future<Output = <K as Foo<R>>::Bar>
+    205..208 'bar': fn bar<R, K>(&K) -> impl Future<Output = <K as Foo<R>>::Bar>
+    205..213 'bar(key)': impl Future<Output = <K as Foo<R>>::Bar>
+    209..212 'key': &K
+    229..232 'key': &K
+    291..294 '{ }': ()
+    "###
+    );
+}
+
+#[test]
+fn issue_4800() {
+    assert_snapshot!(
+        infer(r#"
+trait Debug {}
+
+struct Foo<T>;
+
+type E1<T> = (T, T, T);
+type E2<T> = E1<E1<E1<(T, T, T)>>>;
+
+impl Debug for Foo<E2<()>> {}
+
+struct Request;
+
+pub trait Future {
+    type Output;
+}
+
+pub struct PeerSet<D>;
+
+impl<D> Service<Request> for PeerSet<D>
+where
+    D: Discover,
+    D::Key: Debug,
+{
+    type Error = ();
+    type Future = dyn Future<Output = Self::Error>;
+
+    fn call(&mut self) -> Self::Future {
+        loop {}
+    }
+}
+
+pub trait Discover {
+    type Key;
+}
+
+pub trait Service<Request> {
+    type Error;
+    type Future: Future<Output = Self::Error>;
+    fn call(&mut self) -> Self::Future;
+}
+"#),
+        @r###"
+    380..384 'self': &mut PeerSet<D>
+    402..425 '{     ...     }': dyn Future<Output = ()>
+    412..419 'loop {}': !
+    417..419 '{}': ()
+    576..580 'self': &mut Self
+    "###
+    );
+}
