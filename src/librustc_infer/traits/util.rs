@@ -151,15 +151,11 @@ impl Elaborator<'tcx> {
 
     fn elaborate(&mut self, obligation: &PredicateObligation<'tcx>) {
         let tcx = self.visited.tcx;
-        let pred = match obligation.predicate.kind() {
-            // We have to be careful and rebind this when
-            // dealing with a predicate further down.
-            ty::PredicateKind::ForAll(binder) => binder.skip_binder().kind(),
-            pred => pred,
-        };
 
-        match pred {
-            ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", pred),
+        match obligation.predicate.ignore_qualifiers(tcx).skip_binder().kind() {
+            ty::PredicateKind::ForAll(_) => {
+                bug!("unexpected predicate: {:?}", obligation.predicate)
+            }
             ty::PredicateKind::Trait(data, _) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());

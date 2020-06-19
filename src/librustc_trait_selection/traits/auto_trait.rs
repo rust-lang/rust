@@ -763,7 +763,7 @@ impl AutoTraitFinder<'tcx> {
                             }
                         }
                         Ok(None) => {
-                            // It's ok not to make progress when hvave no inference variables -
+                            // It's ok not to make progress when have no inference variables -
                             // in that case, we were only performing unifcation to check if an
                             // error occurred (which would indicate that it's impossible for our
                             // type to implement the auto trait).
