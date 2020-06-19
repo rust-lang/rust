@@ -16,10 +16,10 @@ pub use hir_expand::db::{
 pub use hir_ty::db::{
     AssociatedTyDataQuery, AssociatedTyValueQuery, CallableItemSignatureQuery, FieldTypesQuery,
     GenericDefaultsQuery, GenericPredicatesForParamQuery, GenericPredicatesQuery, HirDatabase,
-    HirDatabaseStorage, ImplDatumQuery, ImplSelfTyQuery, ImplTraitQuery, ImplsInCrateQuery,
-    InferQueryQuery, InternAssocTyValueQuery, InternChalkImplQuery, InternTypeCtorQuery,
-    InternTypeParamIdQuery, ReturnTypeImplTraitsQuery, StructDatumQuery, TraitDatumQuery,
-    TraitSolveQuery, TyQuery, ValueTyQuery,
+    HirDatabaseStorage, ImplDatumQuery, ImplSelfTyQuery, ImplTraitQuery, ImplsFromDepsQuery,
+    ImplsInCrateQuery, InferQueryQuery, InternAssocTyValueQuery, InternChalkImplQuery,
+    InternTypeCtorQuery, InternTypeParamIdQuery, ReturnTypeImplTraitsQuery, StructDatumQuery,
+    TraitDatumQuery, TraitSolveQuery, TyQuery, ValueTyQuery,
 };
 
 #[test]
