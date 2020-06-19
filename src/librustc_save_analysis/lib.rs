@@ -520,7 +520,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     pub fn get_expr_data(&self, expr: &hir::Expr<'_>) -> Option<Data> {
         let hir_node = self.tcx.hir().expect_expr(expr.hir_id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
-        if ty.is_none() || ty.unwrap().kind == ty::Error {
+        if ty.is_none() || matches!(ty.unwrap().kind, ty::Error(_)) {
             return None;
         }
         match expr.kind {

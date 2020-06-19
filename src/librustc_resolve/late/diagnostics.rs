@@ -920,20 +920,47 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         &self,
         path: &[Segment],
     ) -> Option<(Span, &'static str, String, Applicability)> {
-        let ident = match path {
-            [segment] => segment.ident,
+        let (ident, span) = match path {
+            [segment] if !segment.has_generic_args => {
+                (segment.ident.to_string(), segment.ident.span)
+            }
             _ => return None,
         };
-        match (
-            self.diagnostic_metadata.current_item,
-            self.diagnostic_metadata.currently_processing_generics,
-        ) {
-            (Some(Item { kind: ItemKind::Fn(..), ident, .. }), true) if ident.name == sym::main => {
+        let mut iter = ident.chars().map(|c| c.is_uppercase());
+        let single_uppercase_char =
+            matches!(iter.next(), Some(true)) && matches!(iter.next(), None);
+        if !self.diagnostic_metadata.currently_processing_generics && !single_uppercase_char {
+            return None;
+        }
+        match (self.diagnostic_metadata.current_item, single_uppercase_char) {
+            (Some(Item { kind: ItemKind::Fn(..), ident, .. }), _) if ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
             }
-            (Some(Item { kind, .. }), true) => {
+            (
+                Some(Item {
+                    kind:
+                        kind @ ItemKind::Fn(..)
+                        | kind @ ItemKind::Enum(..)
+                        | kind @ ItemKind::Struct(..)
+                        | kind @ ItemKind::Union(..),
+                    ..
+                }),
+                true,
+            )
+            | (Some(Item { kind, .. }), false) => {
                 // Likely missing type parameter.
                 if let Some(generics) = kind.generics() {
+                    if span.overlaps(generics.span) {
+                        // Avoid the following:
+                        // error[E0405]: cannot find trait `A` in this scope
+                        //  --> $DIR/typo-suggestion-named-underscore.rs:CC:LL
+                        //   |
+                        // L | fn foo<T: A>(x: T) {} // Shouldn't suggest underscore
+                        //   |           ^- help: you might be missing a type parameter: `, A`
+                        //   |           |
+                        //   |           not found in this scope
+                        return None;
+                    }
                     let msg = "you might be missing a type parameter";
                     let (span, sugg) = if let [.., param] = &generics.params[..] {
                         let span = if let [.., bound] = &param.bounds[..] {

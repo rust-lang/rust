@@ -498,7 +498,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             if place_ty.variant_index.is_none() {
                 if place_ty.ty.references_error() {
                     assert!(self.errors_reported);
-                    return PlaceTy::from_ty(self.tcx().types.err);
+                    return PlaceTy::from_ty(self.tcx().ty_error());
                 }
             }
             place_ty = self.sanitize_projection(place_ty, elem, place, location)
@@ -725,7 +725,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
     fn error(&mut self) -> Ty<'tcx> {
         self.errors_reported = true;
-        self.tcx().types.err
+        self.tcx().ty_error()
     }
 
     fn field_ty(
@@ -1558,8 +1558,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // no checks needed for these
             }
 
-            TerminatorKind::DropAndReplace { ref location, ref value, target: _, unwind: _ } => {
-                let place_ty = location.ty(body, tcx).ty;
+            TerminatorKind::DropAndReplace { ref place, ref value, target: _, unwind: _ } => {
+                let place_ty = place.ty(body, tcx).ty;
                 let rv_ty = value.ty(body, tcx);
 
                 let locations = term_location.to_locations();

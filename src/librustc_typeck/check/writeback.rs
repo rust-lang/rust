@@ -208,11 +208,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     // to access an unexistend index. We assume that more relevant errors will
                     // already have been emitted, so we only gate on this with an ICE if no
                     // error has been emitted. (#64638)
-                    self.tcx().sess.delay_span_bug(
+                    self.fcx.tcx.ty_error_with_message(
                         e.span,
                         &format!("bad index {:?} for base: `{:?}`", index, base),
-                    );
-                    self.fcx.tcx.types.err
+                    )
                 });
                 let index_ty = self.fcx.resolve_vars_if_possible(&index_ty);
 
@@ -681,7 +680,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 self.report_type_error(t);
                 self.replaced_with_error = true;
-                self.tcx().types.err
+                self.tcx().ty_error()
             }
         }
     }
@@ -698,7 +697,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 self.report_const_error(ct);
                 self.replaced_with_error = true;
-                self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty: ct.ty })
+                self.tcx().const_error(ct.ty)
             }
         }
     }

@@ -349,9 +349,9 @@ fn check_terminator(
         | TerminatorKind::Resume
         | TerminatorKind::Unreachable => Ok(()),
 
-        TerminatorKind::Drop { location, .. } => check_place(tcx, *location, span, def_id, body),
-        TerminatorKind::DropAndReplace { location, value, .. } => {
-            check_place(tcx, *location, span, def_id, body)?;
+        TerminatorKind::Drop { place, .. } => check_place(tcx, *place, span, def_id, body),
+        TerminatorKind::DropAndReplace { place, value, .. } => {
+            check_place(tcx, *place, span, def_id, body)?;
             check_operand(tcx, value, span, def_id, body)
         }
 

@@ -1037,7 +1037,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         block: BasicBlock,
         span: Span,
-        location: Place<'tcx>,
+        place: Place<'tcx>,
         value: Operand<'tcx>,
     ) -> BlockAnd<()> {
         let source_info = self.source_info(span);
@@ -1047,7 +1047,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             TerminatorKind::DropAndReplace {
-                location,
+                place,
                 value,
                 target: next_target,
                 unwind: Some(diverge_target),
@@ -1158,7 +1158,7 @@ fn build_scope_drops<'tcx>(
                     block,
                     source_info,
                     TerminatorKind::Drop {
-                        location: local.into(),
+                        place: local.into(),
                         target: next,
                         unwind: Some(unwind_to),
                     },
@@ -1272,7 +1272,7 @@ fn build_diverge_scope<'tcx>(
                         block,
                         source_info(drop_data.span),
                         TerminatorKind::Drop {
-                            location: drop_data.local.into(),
+                            place: drop_data.local.into(),
                             target,
                             unwind: None,
                         },

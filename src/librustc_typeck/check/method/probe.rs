@@ -400,7 +400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .probe_instantiate_query_response(span, &orig_values, ty)
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.structurally_resolved_type(span, ty.value);
-                assert_eq!(ty, self.tcx.types.err);
+                assert!(matches!(ty.kind, ty::Error(_)));
                 return Err(MethodError::NoMatch(NoMatchData::new(
                     Vec::new(),
                     Vec::new(),
@@ -478,7 +478,7 @@ fn method_autoderef_steps<'tcx>(
 
         let final_ty = autoderef.maybe_ambiguous_final_ty();
         let opt_bad_ty = match final_ty.kind {
-            ty::Infer(ty::TyVar(_)) | ty::Error => Some(MethodAutoderefBadTy {
+            ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
                 reached_raw_pointer,
                 ty: infcx
                     .make_query_response_ignoring_pending_obligations(inference_vars, final_ty),

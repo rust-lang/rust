@@ -2035,8 +2035,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.tcx.sess,
             var_origin.span(),
             E0495,
-            "cannot infer an appropriate lifetime{} \
-             due to conflicting requirements",
+            "cannot infer an appropriate lifetime{} due to conflicting requirements",
             var_description
         )
     }

@@ -141,11 +141,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let (_, n) = match autoderef.nth(pick.autoderefs) {
             Some(n) => n,
             None => {
-                self.tcx.sess.delay_span_bug(
+                return self.tcx.ty_error_with_message(
                     rustc_span::DUMMY_SP,
                     &format!("failed autoderef {}", pick.autoderefs),
                 );
-                return self.tcx.types.err;
             }
         };
         assert_eq!(n, pick.autoderefs);

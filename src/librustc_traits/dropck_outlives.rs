@@ -271,7 +271,7 @@ fn dtorck_constraint_for_ty<'tcx>(
             constraints.dtorck_types.push(ty);
         }
 
-        ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error => {
+        ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => {
             // By the time this code runs, all type variables ought to
             // be fully resolved.
             return Err(NoSolution);

@@ -339,7 +339,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_sig(current, sig, variance);
             }
 
-            ty::Error => {
+            ty::Error(_) => {
                 // we encounter this when walking the trait references for object
                 // types, where we use Error as the Self type
             }

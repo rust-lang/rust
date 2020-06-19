@@ -518,7 +518,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!(write("{}", infer_ty))
                 }
             }
-            ty::Error => p!(write("[type error]")),
+            ty::Error(_) => p!(write("[type error]")),
             ty::Param(ref param_ty) => p!(write("{}", param_ty)),
             ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
                 ty::BoundTyKind::Anon => self.pretty_print_bound_var(debruijn, bound_ty.var)?,
@@ -919,7 +919,7 @@ pub trait PrettyPrinter<'tcx>:
                 self.pretty_print_bound_var(debruijn, bound_var)?
             }
             ty::ConstKind::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
-            ty::ConstKind::Error => p!(write("[const error]")),
+            ty::ConstKind::Error(_) => p!(write("[const error]")),
         };
         Ok(self)
     }

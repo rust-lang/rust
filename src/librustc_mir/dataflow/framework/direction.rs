@@ -441,8 +441,8 @@ impl Direction for Forward {
             Goto { target } => propagate(target, exit_state),
 
             Assert { target, cleanup: unwind, expected: _, msg: _, cond: _ }
-            | Drop { target, unwind, location: _ }
-            | DropAndReplace { target, unwind, value: _, location: _ }
+            | Drop { target, unwind, place: _ }
+            | DropAndReplace { target, unwind, value: _, place: _ }
             | FalseUnwind { real_target: target, unwind } => {
                 if let Some(unwind) = unwind {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {

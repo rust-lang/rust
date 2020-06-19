@@ -43,6 +43,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_session::lint;
 use rustc_session::Session;
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
@@ -135,7 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Generator(..)
             | ty::Adt(..)
             | ty::Never
-            | ty::Error => {
+            | ty::Error(_) => {
                 self.tcx
                     .sess
                     .delay_span_bug(span, &format!("`{:?}` should be sized but is not?", t));
@@ -333,10 +334,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     "only `u8` can be cast as `char`, not `{}`",
                     self.expr_ty
                 )
+                .span_label(self.span, "invalid cast")
                 .emit();
             }
             CastError::NonScalar => {
-                type_error_struct!(
+                let mut err = type_error_struct!(
                     fcx.tcx.sess,
                     self.span,
                     self.expr_ty,
@@ -344,12 +346,75 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     "non-primitive cast: `{}` as `{}`",
                     self.expr_ty,
                     fcx.ty_to_string(self.cast_ty)
-                )
-                .note(
-                    "an `as` expression can only be used to convert between \
-                                         primitive types. Consider using the `From` trait",
-                )
-                .emit();
+                );
+                let mut sugg = None;
+                if let ty::Ref(reg, _, mutbl) = self.cast_ty.kind {
+                    if fcx
+                        .try_coerce(
+                            self.expr,
+                            fcx.tcx.mk_ref(reg, TypeAndMut { ty: self.expr_ty, mutbl }),
+                            self.cast_ty,
+                            AllowTwoPhase::No,
+                        )
+                        .is_ok()
+                    {
+                        sugg = Some(format!("&{}", mutbl.prefix_str()));
+                    }
+                }
+                if let Some(sugg) = sugg {
+                    err.span_label(self.span, "invalid cast");
+                    err.span_suggestion_verbose(
+                        self.expr.span.shrink_to_lo(),
+                        "borrow the value for the cast to be valid",
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                } else if !matches!(
+                    self.cast_ty.kind,
+                    ty::FnDef(..) | ty::FnPtr(..) | ty::Closure(..)
+                ) {
+                    let mut label = true;
+                    // Check `impl From<self.expr_ty> for self.cast_ty {}` for accurate suggestion:
+                    if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
+                        if let Some(from_trait) = fcx.tcx.get_diagnostic_item(sym::from_trait) {
+                            let ty = fcx.resolve_vars_if_possible(&self.cast_ty);
+                            // Erase regions to avoid panic in `prove_value` when calling
+                            // `type_implements_trait`.
+                            let ty = fcx.tcx.erase_regions(&ty);
+                            let expr_ty = fcx.resolve_vars_if_possible(&self.expr_ty);
+                            let expr_ty = fcx.tcx.erase_regions(&expr_ty);
+                            let ty_params = fcx.tcx.mk_substs_trait(expr_ty, &[]);
+                            // Check for infer types because cases like `Option<{integer}>` would
+                            // panic otherwise.
+                            if !expr_ty.has_infer_types()
+                                && fcx.tcx.type_implements_trait((
+                                    from_trait,
+                                    ty,
+                                    ty_params,
+                                    fcx.param_env,
+                                ))
+                            {
+                                label = false;
+                                err.span_suggestion(
+                                    self.span,
+                                    "consider using the `From` trait instead",
+                                    format!("{}::from({})", self.cast_ty, snippet),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                        }
+                    }
+                    let msg = "an `as` expression can only be used to convert between primitive \
+                               types or to coerce to a specific trait object";
+                    if label {
+                        err.span_label(self.span, msg);
+                    } else {
+                        err.note(msg);
+                    }
+                } else {
+                    err.span_label(self.span, "invalid cast");
+                }
+                err.emit();
             }
             CastError::SizedUnsizedCast => {
                 use crate::structured_errors::{SizedUnsizedCastError, StructuredDiagnostic};
@@ -370,21 +435,22 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 };
                 let mut err = struct_span_err!(
                     fcx.tcx.sess,
-                    self.span,
+                    if unknown_cast_to { self.cast_span } else { self.span },
                     E0641,
                     "cannot cast {} a pointer of an unknown kind",
                     if unknown_cast_to { "to" } else { "from" }
                 );
-                err.note(
-                    "the type information given here is insufficient to check whether \
-                          the pointer cast is valid",
-                );
                 if unknown_cast_to {
-                    err.span_suggestion_short(
-                        self.cast_span,
-                        "consider giving more type information",
-                        String::new(),
-                        Applicability::Unspecified,
+                    err.span_label(self.cast_span, "needs more type information");
+                    err.note(
+                        "the type information given here is insufficient to check whether \
+                        the pointer cast is valid",
+                    );
+                } else {
+                    err.span_label(
+                        self.span,
+                        "the type information given here is insufficient to check whether \
+                        the pointer cast is valid",
                     );
                 }
                 err.emit();
@@ -438,13 +504,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     Ok(s) => {
                         err.span_suggestion(
                             self.cast_span,
-                            "try casting to a `Box` instead",
+                            "you can cast to a `Box` instead",
                             format!("Box<{}>", s),
                             Applicability::MachineApplicable,
                         );
                     }
                     Err(_) => {
-                        err.span_help(self.cast_span, &format!("did you mean `Box<{}>`?", tstr));
+                        err.span_help(
+                            self.cast_span,
+                            &format!("you might have meant `Box<{}>`", tstr),
+                        );
                     }
                 }
             }

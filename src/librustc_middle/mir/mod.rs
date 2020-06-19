@@ -1112,7 +1112,7 @@ pub enum TerminatorKind<'tcx> {
     Unreachable,
 
     /// Drop the `Place`.
-    Drop { location: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
+    Drop { place: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
 
     /// Drop the `Place` and assign the new value over it. This ensures
     /// that the assignment to `P` occurs *even if* the destructor for
@@ -1141,7 +1141,7 @@ pub enum TerminatorKind<'tcx> {
     /// }
     /// ```
     DropAndReplace {
-        location: Place<'tcx>,
+        place: Place<'tcx>,
         value: Operand<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>,
@@ -1607,9 +1607,9 @@ impl<'tcx> TerminatorKind<'tcx> {
             Abort => write!(fmt, "abort"),
             Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { location, .. } => write!(fmt, "drop({:?})", location),
-            DropAndReplace { location, value, .. } => {
-                write!(fmt, "replace({:?} <- {:?})", location, value)
+            Drop { place, .. } => write!(fmt, "drop({:?})", place),
+            DropAndReplace { place, value, .. } => {
+                write!(fmt, "replace({:?} <- {:?})", place, value)
             }
             Call { func, args, destination, .. } => {
                 if let Some((destination, _)) = destination {

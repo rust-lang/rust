@@ -105,7 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && i != 0
                 && self.if_fallback_coercion(expr.span, &arms[0].body, &mut coercion)
             {
-                tcx.types.err
+                tcx.ty_error()
             } else {
                 // Only call this if this is not an `if` expr with an expected type and no `else`
                 // clause to avoid duplicated type errors. (#60254)
