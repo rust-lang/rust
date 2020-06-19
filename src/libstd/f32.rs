@@ -832,11 +832,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f32 {
-        if self == Self::NEG_INFINITY {
-            Self::NEG_INFINITY
-        } else {
-            (self.abs() + ((self * self) + 1.0).sqrt()).ln().copysign(self)
-        }
+        (self.abs() + ((self * self) + 1.0).sqrt()).ln().copysign(self)
     }
 
     /// Inverse hyperbolic cosine function.
