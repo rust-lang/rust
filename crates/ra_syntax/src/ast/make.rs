@@ -75,6 +75,10 @@ pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordF
     }
 }
 
+pub fn record_field_def(name: ast::NameRef, ty: ast::TypeRef) -> ast::RecordFieldDef {
+    ast_from_text(&format!("struct S {{ {}: {}, }}", name, ty))
+}
+
 pub fn block_expr(
     stmts: impl IntoIterator<Item = ast::Stmt>,
     tail_expr: Option<ast::Expr>,

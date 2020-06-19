@@ -8,7 +8,7 @@ use std::cell::RefCell;
 
 use hir::{
     diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink},
-    Semantics,
+    HasSource, HirDisplay, Semantics, VariantDef,
 };
 use itertools::Itertools;
 use ra_db::SourceDatabase;
@@ -16,7 +16,7 @@ use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
     algo,
-    ast::{self, make, AstNode},
+    ast::{self, edit::IndentLevel, make, AstNode},
     SyntaxNode, TextRange, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
@@ -119,12 +119,83 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             severity: Severity::Error,
             fix: Some(fix),
         })
+    })
+    .on::<hir::diagnostics::NoSuchField, _>(|d| {
+        res.borrow_mut().push(Diagnostic {
+            range: sema.diagnostics_range(d).range,
+            message: d.message(),
+            severity: Severity::Error,
+            fix: missing_struct_field_fix(&sema, file_id, d),
+        })
     });
+
     if let Some(m) = sema.to_module_def(file_id) {
         m.diagnostics(db, &mut sink);
     };
     drop(sink);
     res.into_inner()
+}
+
+fn missing_struct_field_fix(
+    sema: &Semantics<RootDatabase>,
+    file_id: FileId,
+    d: &hir::diagnostics::NoSuchField,
+) -> Option<Fix> {
+    let record_expr = sema.ast(d);
+
+    let record_lit = ast::RecordLit::cast(record_expr.syntax().parent()?.parent()?)?;
+    let def_id = sema.resolve_variant(record_lit)?;
+    let module;
+    let record_fields = match VariantDef::from(def_id) {
+        VariantDef::Struct(s) => {
+            module = s.module(sema.db);
+            let source = s.source(sema.db);
+            let fields = source.value.field_def_list()?;
+            record_field_def_list(fields)?
+        }
+        VariantDef::Union(u) => {
+            module = u.module(sema.db);
+            let source = u.source(sema.db);
+            source.value.record_field_def_list()?
+        }
+        VariantDef::EnumVariant(e) => {
+            module = e.module(sema.db);
+            let source = e.source(sema.db);
+            let fields = source.value.field_def_list()?;
+            record_field_def_list(fields)?
+        }
+    };
+
+    let new_field_type = sema.type_of_expr(&record_expr.expr()?)?;
+    let new_field = make::record_field_def(
+        record_expr.field_name()?,
+        make::type_ref(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
+    );
+
+    let last_field = record_fields.fields().last()?;
+    let last_field_syntax = last_field.syntax();
+    let indent = IndentLevel::from_node(last_field_syntax);
+
+    let mut new_field = format!("\n{}{}", indent, new_field);
+
+    let needs_comma = !last_field_syntax.to_string().ends_with(",");
+    if needs_comma {
+        new_field = format!(",{}", new_field);
+    }
+
+    let source_change = SourceFileEdit {
+        file_id,
+        edit: TextEdit::insert(last_field_syntax.text_range().end(), new_field),
+    };
+    let fix = Fix::new("Create field", source_change.into());
+    return Some(fix);
+
+    fn record_field_def_list(field_def_list: ast::FieldDefList) -> Option<ast::RecordFieldDefList> {
+        match field_def_list {
+            ast::FieldDefList::RecordFieldDefList(it) => Some(it),
+            ast::FieldDefList::TupleFieldDefList(_) => None,
+        }
+    }
 }
 
 fn check_unnecessary_braces_in_use_statement(
@@ -790,5 +861,28 @@ fn main() {
         "#,
             check_struct_shorthand_initialization,
         );
+    }
+
+    #[test]
+    fn test_add_field_from_usage() {
+        check_apply_diagnostic_fix(
+            r"
+            fn main() {
+                Foo { bar: 3, baz: false};
+            }
+            struct Foo {
+                bar: i32
+            }
+            ",
+            r"
+            fn main() {
+                Foo { bar: 3, baz: false};
+            }
+            struct Foo {
+                bar: i32,
+                baz: bool
+            }
+            ",
+        )
     }
 }
