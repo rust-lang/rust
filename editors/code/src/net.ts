@@ -124,8 +124,7 @@ async function downloadFile(
     return new Promise<void>(resolve => {
         destFileStream.on("close", resolve);
         destFileStream.destroy();
-
-        // Details on workaround: https://github.com/rust-analyzer/rust-analyzer/pull/3092#discussion_r378191131
-        // Issue at nodejs repo: https://github.com/nodejs/node/issues/31776
+        // This workaround is awaiting to be removed when vscode moves to newer nodejs version:
+        // https://github.com/rust-analyzer/rust-analyzer/issues/3167
     });
 }
