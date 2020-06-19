@@ -82,6 +82,7 @@ macro_rules! language_item_table {
         }
 
         impl LangItemRecord {
+            #[inline]
             pub fn has_def_id(self, def_id: DefId) -> bool {
                 match self {
                     LangItemRecord::Present(assigned_id) if assigned_id == def_id => true,
@@ -89,8 +90,9 @@ macro_rules! language_item_table {
                 }
             }
 
+            #[inline]
             pub fn require<H: MissingLangItemHandler>(self, handler: &H, span: Option<Span>) -> DefId {
-                self.require_with(handler, span, |err| err.to_string())
+                self.require_with(handler, span, str::to_string)
             }
 
             pub fn require_with<H, F>(self, handler: &H, span: Option<Span>, err: F) -> DefId
@@ -111,6 +113,7 @@ macro_rules! language_item_table {
                 }
             }
 
+            #[inline]
             pub fn is_present(self) -> bool {
                 match self {
                     LangItemRecord::Present(_) => true,
@@ -118,20 +121,12 @@ macro_rules! language_item_table {
                 }
             }
 
+            #[inline]
             pub fn is_missing(self) -> bool {
                 !self.is_present()
             }
 
-            // FIXME(doctorn) remove
-            pub fn is_some(self) -> bool {
-                self.is_present()
-            }
-
-            // FIXME(doctorn) remove
-            pub fn is_none(self) -> bool {
-                self.is_missing()
-            }
-
+            #[inline]
             pub fn is_local(self) -> bool {
                 match self {
                     LangItemRecord::Present(assigned_id) => assigned_id.is_local(),
