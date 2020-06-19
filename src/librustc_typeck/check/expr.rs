@@ -888,10 +888,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     rcvr,
                     probe::ProbeScope::AllTraits,
                 ) {
-                    err.span_label(
-                        pick.item.ident.span,
-                        &format!("the method is available for `{}` here", new_rcvr_t),
-                    );
+                    debug!("try_alt_rcvr: pick candidate {:?}", pick);
+                    // Make sure the method is defined for the *actual* receiver:
+                    // we don't want to treat `Box<Self>` as a receiver if
+                    // it only works because of an autoderef to `&self`
+                    if pick.autoderefs == 0 {
+                        err.span_label(
+                            pick.item.ident.span,
+                            &format!("the method is available for `{}` here", new_rcvr_t),
+                        );
+                    }
                 }
             }
         };
