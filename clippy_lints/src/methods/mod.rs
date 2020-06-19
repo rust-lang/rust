@@ -3424,6 +3424,7 @@ const TRAIT_METHODS: [(&str, usize, &hir::FnHeader, SelfKind, OutType, &str); 30
     ("borrow_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
     ("clone", 1, &FN_HEADER, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
     ("cmp", 2, &FN_HEADER, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
+    // FIXME: default doesn't work
     ("default", 0, &FN_HEADER, SelfKind::No, OutType::Any, "std::default::Default"),
     ("deref", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
     ("deref_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),

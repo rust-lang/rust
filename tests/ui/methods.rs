@@ -37,9 +37,136 @@ use option_helpers::IteratorFalsePositives;
 pub struct T;
 
 impl T {
+    // *******************************************
+    // complete trait method list, should lint all
+    // *******************************************
     pub fn add(self, other: T) -> T {
-        self
+        unimplemented!()
     }
+
+    pub fn as_mut(&mut self) -> &mut T {
+        unimplemented!()
+    }
+
+    pub fn as_ref(&self) -> &T {
+        unimplemented!()
+    }
+
+    pub fn bitand(self, rhs: T) -> T {
+        unimplemented!()
+    }
+
+    pub fn bitor(self, rhs: Self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn bitxor(self, rhs: Self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn borrow(&self) -> &str {
+        unimplemented!()
+    }
+
+    pub fn borrow_mut(&mut self) -> &mut str {
+        unimplemented!()
+    }
+
+    pub fn clone(&self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn cmp(&self, other: &Self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn default() -> Self {
+        unimplemented!()
+    }
+
+    pub fn deref(&self) -> &Self {
+        unimplemented!()
+    }
+
+    pub fn deref_mut(&mut self) -> &mut Self {
+        unimplemented!()
+    }
+
+    pub fn div(self, rhs: Self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn drop(&mut self) {
+        unimplemented!()
+    }
+
+    pub fn eq(&self, other: &Self) -> bool {
+        unimplemented!()
+    }
+
+    pub fn from_iter<T>(iter: T) -> Self {
+        unimplemented!()
+    }
+
+    pub fn from_str(s: &str) -> Result<Self, Self> {
+        unimplemented!()
+    }
+
+    pub fn hash(&self, state: &mut T) {
+        unimplemented!()
+    }
+
+    pub fn index(&self, index: usize) -> &Self {
+        unimplemented!()
+    }
+
+    pub fn index_mut(&mut self, index: usize) -> &mut Self {
+        unimplemented!()
+    }
+
+    pub fn into_iter(self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn mul(self, rhs: Self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn neg(self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn next(&mut self) -> Option<Self> {
+        unimplemented!()
+    }
+
+    pub fn not(self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn rem(self, rhs: Self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn shl(self, rhs: Self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn shr(self, rhs: Self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn sub(self, rhs: Self) -> Self {
+        unimplemented!()
+    }
+    // *****************
+    // complete list end
+    // *****************
+}
+
+pub struct T1;
+impl T1 {
+    // corner cases: should not lint
 
     // no error, not public interface
     pub(crate) fn drop(&mut self) {}
@@ -50,22 +177,22 @@ impl T {
     }
 
     // no error, private function
-    fn eq(&self, other: T) -> bool {
+    fn eq(&self, other: Self) -> bool {
         true
     }
 
     // No error; self is a ref.
-    fn sub(&self, other: T) -> &T {
+    fn sub(&self, other: Self) -> &Self {
         self
     }
 
     // No error; different number of arguments.
-    fn div(self) -> T {
+    fn div(self) -> Self {
         self
     }
 
     // No error; wrong return type.
-    fn rem(self, other: T) {}
+    fn rem(self, other: Self) {}
 
     // Fine
     fn into_u32(self) -> u32 {
@@ -89,16 +216,15 @@ impl T {
     }
 }
 
-pub struct T1;
-
-impl T1 {
+pub struct T2;
+impl T2 {
     // Shouldn't trigger lint as it is unsafe.
-    pub unsafe fn add(self, rhs: T1) -> T1 {
+    pub unsafe fn add(self, rhs: Self) -> Self {
         self
     }
 
     // Should not trigger lint since this is an async function.
-    pub async fn next(&mut self) -> Option<T1> {
+    pub async fn next(&mut self) -> Option<Self> {
         None
     }
 }
