@@ -18,8 +18,6 @@ impl io::Read for Stdin {
     }
 
     fn read_vectored(&mut self, _data: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        //ManuallyDrop::new(unsafe { WasiFd::from_raw(libc::STDIN_FILENO as u32) })
-        //    .read(data)
         Ok(0)
     }
 
