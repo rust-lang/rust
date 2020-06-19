@@ -1024,7 +1024,7 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PointerKind {
     /// Most general case, we know no restrictions to tell LLVM.
     Shared,
@@ -1039,11 +1039,12 @@ pub enum PointerKind {
     UniqueOwned,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct PointeeInfo {
     pub size: Size,
     pub align: Align,
     pub safe: Option<PointerKind>,
+    pub address_space: AddressSpace,
 }
 
 pub trait TyAndLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
