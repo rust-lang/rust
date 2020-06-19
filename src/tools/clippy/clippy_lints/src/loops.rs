@@ -28,7 +28,7 @@ use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
-use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Place, PlaceBase};
+use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceWithHirId, PlaceBase};
 use std::iter::{once, Iterator};
 use std::mem;
 
@@ -1489,42 +1489,43 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
     }
 }
 
-struct MutatePairDelegate {
+struct MutatePairDelegate<'a, 'tcx> {
+    cx: &'a LateContext<'a, 'tcx>,
     hir_id_low: Option<HirId>,
     hir_id_high: Option<HirId>,
     span_low: Option<Span>,
     span_high: Option<Span>,
 }
 
-impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
-    fn consume(&mut self, _: &Place<'tcx>, _: ConsumeMode) {}
+impl<'a, 'tcx> Delegate<'tcx> for MutatePairDelegate<'a, 'tcx> {
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, cmt: &Place<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
-            if let PlaceBase::Local(id) = cmt.base {
+            if let PlaceBase::Local(id) = cmt.place.base {
                 if Some(id) == self.hir_id_low {
-                    self.span_low = Some(cmt.span)
+                    self.span_low = Some(self.cx.tcx.hir().span(cmt.hir_id))
                 }
                 if Some(id) == self.hir_id_high {
-                    self.span_high = Some(cmt.span)
+                    self.span_high = Some(self.cx.tcx.hir().span(cmt.hir_id))
                 }
             }
         }
     }
 
-    fn mutate(&mut self, cmt: &Place<'tcx>) {
-        if let PlaceBase::Local(id) = cmt.base {
+    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>) {
+        if let PlaceBase::Local(id) = cmt.place.base {
             if Some(id) == self.hir_id_low {
-                self.span_low = Some(cmt.span)
+                self.span_low = Some(self.cx.tcx.hir().span(cmt.hir_id))
             }
             if Some(id) == self.hir_id_high {
-                self.span_high = Some(cmt.span)
+                self.span_high = Some(self.cx.tcx.hir().span(cmt.hir_id))
             }
         }
     }
 }
 
-impl<'tcx> MutatePairDelegate {
+impl<'a, 'tcx> MutatePairDelegate<'a, 'tcx> {
     fn mutation_span(&self) -> (Option<Span>, Option<Span>) {
         (self.span_low, self.span_high)
     }
@@ -1579,12 +1580,13 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr<'_>) -> Option<Hi
     None
 }
 
-fn check_for_mutation(
-    cx: &LateContext<'_, '_>,
+fn check_for_mutation<'a, 'tcx> (
+    cx: &LateContext<'a, 'tcx>,
     body: &Expr<'_>,
     bound_ids: &[Option<HirId>],
 ) -> (Option<Span>, Option<Span>) {
     let mut delegate = MutatePairDelegate {
+        cx: cx,
         hir_id_low: bound_ids[0],
         hir_id_high: bound_ids[1],
         span_low: None,
