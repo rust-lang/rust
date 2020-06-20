@@ -340,11 +340,11 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 bug!("shouldn't exist at trans {:?}", bb_data.terminator());
             }
             TerminatorKind::Drop {
-                location,
+                place,
                 target,
                 unwind: _,
             } => {
-                let drop_place = trans_place(fx, *location);
+                let drop_place = trans_place(fx, *place);
                 crate::abi::codegen_drop(fx, bb_data.terminator().source_info.span, drop_place);
 
                 let target_block = fx.get_block(*target);

@@ -1,6 +1,6 @@
 //! Adapted from https://github.com/rust-lang/rust/blob/d760df5aea483aae041c9a241e7acacf48f75035/src/librustc_codegen_ssa/mir/place.rs
 
-use rustc_target::abi::{DiscriminantKind, Int, Variants};
+use rustc_target::abi::{TagEncoding, Int, Variants};
 
 use crate::prelude::*;
 
@@ -18,12 +18,12 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             assert_eq!(index, variant_index);
         }
         Variants::Multiple {
-            discr: _,
-            discr_index,
-            discr_kind: DiscriminantKind::Tag,
+            tag: _,
+            tag_field,
+            tag_encoding: TagEncoding::Direct,
             variants: _,
         } => {
-            let ptr = place.place_field(fx, mir::Field::new(discr_index));
+            let ptr = place.place_field(fx, mir::Field::new(tag_field));
             let to = layout
                 .ty
                 .discriminant_for_variant(fx.tcx, variant_index)
@@ -33,10 +33,10 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             ptr.write_cvalue(fx, discr);
         }
         Variants::Multiple {
-            discr: _,
-            discr_index,
-            discr_kind:
-                DiscriminantKind::Niche {
+            tag: _,
+            tag_field,
+            tag_encoding:
+                TagEncoding::Niche {
                     dataful_variant,
                     ref niche_variants,
                     niche_start,
@@ -44,7 +44,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             variants: _,
         } => {
             if variant_index != dataful_variant {
-                let niche = place.place_field(fx, mir::Field::new(discr_index));
+                let niche = place.place_field(fx, mir::Field::new(tag_field));
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                 let niche_value = u128::from(niche_value).wrapping_add(niche_start);
                 let niche_llval = CValue::const_val(fx, niche.layout(), niche_value);
@@ -69,7 +69,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
         );
     }
 
-    let (discr_scalar, discr_index, discr_kind) = match &layout.variants {
+    let (tag_scalar, tag_field, tag_encoding) = match &layout.variants {
         Variants::Single { index } => {
             let discr_val = layout
                 .ty
@@ -78,30 +78,30 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             return CValue::const_val(fx, dest_layout, discr_val);
         }
         Variants::Multiple {
-            discr,
-            discr_index,
-            discr_kind,
+            tag,
+            tag_field,
+            tag_encoding,
             variants: _,
-        } => (discr, *discr_index, discr_kind),
+        } => (tag, *tag_field, tag_encoding),
     };
 
     let cast_to = fx.clif_type(dest_layout.ty).unwrap();
 
     // Read the tag/niche-encoded discriminant from memory.
-    let encoded_discr = value.value_field(fx, mir::Field::new(discr_index));
-    let encoded_discr = encoded_discr.load_scalar(fx);
+    let tag = value.value_field(fx, mir::Field::new(tag_field));
+    let tag = tag.load_scalar(fx);
 
     // Decode the discriminant (specifically if it's niche-encoded).
-    match *discr_kind {
-        DiscriminantKind::Tag => {
-            let signed = match discr_scalar.value {
+    match *tag_encoding {
+        TagEncoding::Direct => {
+            let signed = match tag_scalar.value {
                 Int(_, signed) => signed,
                 _ => false,
             };
-            let val = clif_intcast(fx, encoded_discr, cast_to, signed);
-            return CValue::by_val(val, dest_layout);
+            let val = clif_intcast(fx, tag, cast_to, signed);
+            CValue::by_val(val, dest_layout)
         }
-        DiscriminantKind::Niche {
+        TagEncoding::Niche {
             dataful_variant,
             ref niche_variants,
             niche_start,
@@ -119,12 +119,12 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             // that might not fit in the same type, on top of needing an extra
             // comparison (see also the comment on `let niche_discr`).
             let relative_discr = if niche_start == 0 {
-                encoded_discr
+                tag
             } else {
                 // FIXME handle niche_start > i64::MAX
                 fx.bcx
                     .ins()
-                    .iadd_imm(encoded_discr, -i64::try_from(niche_start).unwrap())
+                    .iadd_imm(tag, -i64::try_from(niche_start).unwrap())
             };
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let is_niche = {
