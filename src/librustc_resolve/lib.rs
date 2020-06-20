@@ -1441,13 +1441,13 @@ impl<'a> Resolver<'a> {
     }
 
     /// Entry point to crate resolution.
-    pub fn resolve_crate(&mut self, krate: &Crate) {
+    pub fn resolve_crate(&mut self, krate: &Crate, ignore_bodies: bool) {
         let _prof_timer = self.session.prof.generic_activity("resolve_crate");
 
         ImportResolver { r: self }.finalize_imports();
         self.finalize_macro_resolutions();
 
-        self.late_resolve_crate(krate);
+        self.late_resolve_crate(krate, ignore_bodies);
 
         self.check_unused(krate);
         self.report_errors(krate);

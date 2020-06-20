@@ -394,6 +394,11 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
 
     /// Fields used to add information to diagnostic errors.
     diagnostic_metadata: DiagnosticMetadata<'ast>,
+
+    /// Whether to report resolution errors for item bodies.
+    ///
+    /// In particular, rustdoc uses this to avoid giving errors for `cfg()` items.
+    ignore_bodies: bool,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -627,7 +632,10 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 }
 
 impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
-    fn new(resolver: &'b mut Resolver<'a>) -> LateResolutionVisitor<'a, 'b, 'ast> {
+    fn new(
+        resolver: &'b mut Resolver<'a>,
+        ignore_bodies: bool,
+    ) -> LateResolutionVisitor<'a, 'b, 'ast> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
@@ -644,6 +652,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             label_ribs: Vec::new(),
             current_trait_ref: None,
             diagnostic_metadata: DiagnosticMetadata::default(),
+            ignore_bodies,
         }
     }
 
@@ -757,7 +766,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 return if self.is_label_valid_from_rib(i) {
                     Some(*id)
                 } else {
-                    self.r.report_error(
+                    self.report_error(
                         original_span,
                         ResolutionError::UnreachableLabel {
                             name: label.name,
@@ -775,7 +784,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             suggestion = suggestion.or_else(|| self.suggestion_for_label_in_rib(i, label));
         }
 
-        self.r.report_error(
+        self.report_error(
             original_span,
             ResolutionError::UndeclaredLabel { name: label.name, suggestion },
         );
@@ -1008,7 +1017,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if seen_bindings.contains_key(&ident) {
                 let span = seen_bindings.get(&ident).unwrap();
                 let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, *span);
-                self.r.report_error(param.ident.span, err);
+                self.report_error(param.ident.span, err);
             }
             seen_bindings.entry(ident).or_insert(param.ident.span);
 
@@ -1274,7 +1283,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 .is_err()
             {
                 let path = &self.current_trait_ref.as_ref().unwrap().1.path;
-                self.r.report_error(span, err(ident.name, &path_names_to_string(path)));
+                self.report_error(span, err(ident.name, &path_names_to_string(path)));
             }
         }
     }
@@ -1390,7 +1399,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if inconsistent_vars.contains_key(name) {
                 v.could_be_path = false;
             }
-            self.r.report_error(
+            self.report_error(
                 *v.origin.iter().next().unwrap(),
                 ResolutionError::VariableNotBoundInPattern(v),
             );
@@ -1400,7 +1409,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let mut inconsistent_vars = inconsistent_vars.iter().collect::<Vec<_>>();
         inconsistent_vars.sort();
         for (name, v) in inconsistent_vars {
-            self.r.report_error(v.0, ResolutionError::VariableBoundWithDifferentMode(*name, v.1));
+            self.report_error(v.0, ResolutionError::VariableBoundWithDifferentMode(*name, v.1));
         }
 
         // 5) Finally bubble up all the binding maps.
@@ -1550,7 +1559,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // `Variant(a, a)`:
                 _ => IdentifierBoundMoreThanOnceInSamePattern,
             };
-            self.r.report_error(ident.span, error(ident.name));
+            self.report_error(ident.span, error(ident.name));
         }
 
         // Record as bound if it's valid:
@@ -1624,7 +1633,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // to something unusable as a pattern (e.g., constructor function),
                 // but we still conservatively report an error, see
                 // issues/33118#issuecomment-233962221 for one reason why.
-                self.r.report_error(
+                self.report_error(
                     ident.span,
                     ResolutionError::BindingShadowsSomethingUnacceptable(
                         pat_src.descr(),
@@ -1809,7 +1818,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             Err(err) => {
                 if let Some(err) = report_errors_for_call(self, err) {
-                    self.r.report_error(err.span, err.node);
+                    self.report_error(err.span, err.node);
                 }
 
                 PartialRes::new(Res::Err)
@@ -1841,6 +1850,15 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let ident = Ident::new(kw::SelfLower, self_span);
         let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, path_span);
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
+    }
+
+    /// A wrapper around [`Resolver::report_error`].
+    ///
+    /// This doesn't emit errors for function bodies if `ignore_bodies` is set.
+    fn report_error(&self, span: Span, resolution_error: ResolutionError<'_>) {
+        if !self.ignore_bodies || self.diagnostic_metadata.current_function.is_none() {
+            self.r.report_error(span, resolution_error);
+        }
     }
 
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
@@ -2339,8 +2357,8 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 }
 
 impl<'a> Resolver<'a> {
-    pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
-        let mut late_resolution_visitor = LateResolutionVisitor::new(self);
+    pub(crate) fn late_resolve_crate(&mut self, krate: &Crate, ignore_bodies: bool) {
+        let mut late_resolution_visitor = LateResolutionVisitor::new(self, ignore_bodies);
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.diagnostic_metadata.unused_labels.iter() {
             self.lint_buffer.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");

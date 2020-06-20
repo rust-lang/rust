@@ -57,5 +57,7 @@ pub unsafe fn uses_target_feature() {
 //        'This is supported with target feature avx only.'
 #[doc(cfg(target_feature = "avx"))]
 pub fn uses_cfg_target_feature() {
-    uses_target_feature();
+    unsafe {
+        uses_target_feature();
+    }
 }
