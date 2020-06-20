@@ -31,7 +31,7 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 /// the number of nanoseconds.
 ///
 /// `Duration`s implement many common traits, including [`Add`], [`Sub`], and other
-/// [`ops`] traits.
+/// [`ops`] traits. It implements `Default` by returning a zero-length `Duration`.
 ///
 /// [`Add`]: ../../std/ops/trait.Add.html
 /// [`Sub`]: ../../std/ops/trait.Sub.html
@@ -138,6 +138,24 @@ impl Duration {
         Duration { secs, nanos }
     }
 
+    /// Creates a new `Duration` that spans no time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_zero)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::zero();
+    /// assert!(duration.is_zero());
+    /// assert_eq!(duration.as_nanos(), 0);
+    /// ```
+    #[unstable(feature = "duration_zero", issue = "73544")]
+    #[inline]
+    pub const fn zero() -> Duration {
+        Duration { secs: 0, nanos: 0 }
+    }
+
     /// Creates a new `Duration` from the specified number of whole seconds.
     ///
     /// # Examples
@@ -221,6 +239,29 @@ impl Duration {
             secs: nanos / (NANOS_PER_SEC as u64),
             nanos: (nanos % (NANOS_PER_SEC as u64)) as u32,
         }
+    }
+
+    /// Returns true if this `Duration` spans no time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_zero)]
+    /// use std::time::Duration;
+    ///
+    /// assert!(Duration::zero().is_zero());
+    /// assert!(Duration::new(0, 0).is_zero());
+    /// assert!(Duration::from_nanos(0).is_zero());
+    /// assert!(Duration::from_secs(0).is_zero());
+    ///
+    /// assert!(!Duration::new(1, 1).is_zero());
+    /// assert!(!Duration::from_nanos(1).is_zero());
+    /// assert!(!Duration::from_secs(1).is_zero());
+    /// ```
+    #[unstable(feature = "duration_zero", issue = "73544")]
+    #[inline]
+    pub const fn is_zero(&self) -> bool {
+        self.secs == 0 && self.nanos == 0
     }
 
     /// Returns the number of _whole_ seconds contained by this `Duration`.
