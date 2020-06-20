@@ -15,7 +15,7 @@ use ra_syntax::ast::RangeOp;
 
 use crate::{
     autoderef, method_resolution, op,
-    traits::{FnTrait, Guidance, InEnvironment, SolutionVariables},
+    traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
     ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
     TraitRef, Ty, TypeCtor,
@@ -23,7 +23,7 @@ use crate::{
 
 use super::{
     find_breakable, BindingMode, BreakableContext, Diverges, Expectation, InferenceContext,
-    InferenceDiagnostic, Solution, TypeMismatch,
+    InferenceDiagnostic, TypeMismatch,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -65,52 +65,47 @@ impl<'a> InferenceContext<'a> {
 
     fn callable_sig_from_fn_trait(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
         let krate = self.resolver.krate()?;
-        let fn_traits: Vec<crate::TraitId> = [FnTrait::FnOnce, FnTrait::FnMut, FnTrait::Fn]
-            .iter()
-            .filter_map(|f| f.get_id(self.db, krate))
-            .collect();
         let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
         let output_assoc_type =
             self.db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
-        for fn_trait in fn_traits {
-            let generic_params = generics(self.db.upcast(), fn_trait.into());
-            if generic_params.len() != 2 {
-                continue;
-            }
+        let generic_params = generics(self.db.upcast(), fn_once_trait.into());
+        if generic_params.len() != 2 {
+            return None;
+        }
 
-            let mut param_builder = Substs::builder(num_args);
-            for _ in 0..num_args {
-                param_builder = param_builder.push(self.table.new_type_var());
-            }
-            let arg_ty = Ty::Apply(ApplicationTy {
-                ctor: TypeCtor::Tuple { cardinality: num_args as u16 },
-                parameters: param_builder.build(),
-            });
-            let substs = Substs::build_for_generics(&generic_params)
-                .push(ty.clone())
-                .push(arg_ty.clone())
-                .build();
+        let mut param_builder = Substs::builder(num_args);
+        let mut arg_tys = vec![];
+        for _ in 0..num_args {
+            let arg = self.table.new_type_var();
+            param_builder = param_builder.push(arg.clone());
+            arg_tys.push(arg);
+        }
+        let parameters = param_builder.build();
+        let arg_ty = Ty::Apply(ApplicationTy {
+            ctor: TypeCtor::Tuple { cardinality: num_args as u16 },
+            parameters,
+        });
+        let substs = Substs::build_for_generics(&generic_params)
+            .push(ty.clone())
+            .push(arg_ty.clone())
+            .build();
 
-            let trait_ref = TraitRef { trait_: fn_trait, substs: substs.clone() };
-            let trait_env = Arc::clone(&self.trait_env);
-            let implements_fn_goal = self.canonicalizer().canonicalize_obligation(InEnvironment {
-                value: Obligation::Trait(trait_ref),
-                environment: trait_env,
-            });
-            let solution = match self.db.trait_solve(krate, implements_fn_goal.value.clone()) {
-                Some(Solution::Unique(SolutionVariables(solution)))
-                | Some(Solution::Ambig(Guidance::Definite(SolutionVariables(solution))))
-                | Some(Solution::Ambig(Guidance::Suggested(SolutionVariables(solution)))) => {
-                    solution
-                }
-                _ => continue,
-            };
+        let trait_env = Arc::clone(&self.trait_env);
+        let implements_fn_trait =
+            Obligation::Trait(TraitRef { trait_: fn_once_trait, substs: substs.clone() });
+        let goal = self.canonicalizer().canonicalize_obligation(InEnvironment {
+            value: implements_fn_trait.clone(),
+            environment: trait_env,
+        });
+        if self.db.trait_solve(krate, goal.value).is_some() {
+            self.obligations.push(implements_fn_trait);
             let output_proj_ty =
                 crate::ProjectionTy { associated_ty: output_assoc_type, parameters: substs };
             let return_ty = self.normalize_projection_ty(output_proj_ty);
-            return Some((solution.value, return_ty));
+            Some((arg_tys, return_ty))
+        } else {
+            None
         }
-        None
     }
 
     pub fn callable_sig(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {

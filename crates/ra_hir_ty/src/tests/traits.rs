@@ -3028,7 +3028,7 @@ fn infer_box_fn_arg() {
     656..667 '&self.inner': &*mut T
     657..661 'self': &Box<T>
     657..667 'self.inner': *mut T
-    812..957 '{     ...     }': FnOnce::Output<dyn FnOnce<(&Option<i32>,)>, ({unknown},)>
+    812..957 '{     ...     }': FnOnce::Output<dyn FnOnce<(&Option<i32>,)>, (&Option<i32>,)>
     834..835 's': Option<i32>
     838..850 'Option::None': Option<i32>
     872..873 'f': Box<dyn FnOnce<(&Option<i32>,)>>
@@ -3037,7 +3037,7 @@ fn infer_box_fn_arg() {
     913..915 'ps': {unknown}
     917..919 '{}': ()
     938..939 'f': Box<dyn FnOnce<(&Option<i32>,)>>
-    938..943 'f(&s)': FnOnce::Output<dyn FnOnce<(&Option<i32>,)>, ({unknown},)>
+    938..943 'f(&s)': FnOnce::Output<dyn FnOnce<(&Option<i32>,)>, (&Option<i32>,)>
     940..942 '&s': &Option<i32>
     941..942 's': Option<i32>
     "###
@@ -3105,9 +3105,9 @@ fn infer_dyn_fn_output() {
     937..946 'box(|| 5)': Box<|| -> i32>
     941..945 '|| 5': || -> i32
     944..945 '5': i32
-    968..969 'x': i32
+    968..969 'x': FnOnce::Output<dyn Fn<(), Output = i32>, ()>
     972..973 'f': Box<dyn Fn<(), Output = i32>>
-    972..975 'f()': i32
+    972..975 'f()': FnOnce::Output<dyn Fn<(), Output = i32>, ()>
     "###
     );
 }
