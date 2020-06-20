@@ -1,6 +1,6 @@
 fn main() {}
 
 // unconst and bad, will thus error in miri
-const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 }; //~ ERROR cannot be compared
+const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 }; //~ ERROR cannot be reliably compared
 // unconst and bad, will thus error in miri
-const X2: bool = unsafe { 42 as *const i32 == 43 as *const i32 }; //~ ERROR cannot be compared
+const X2: bool = unsafe { 42 as *const i32 == 43 as *const i32 }; //~ ERROR cannot be reliably compared

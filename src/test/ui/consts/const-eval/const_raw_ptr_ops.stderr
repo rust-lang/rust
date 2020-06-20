@@ -1,22 +1,18 @@
-error: pointers cannot be compared in a meaningful way during const eval.
+error: pointers cannot be reliably compared during const eval.
   --> $DIR/const_raw_ptr_ops.rs:4:26
    |
 LL | const X: bool = unsafe { &1 as *const i32 == &2 as *const i32 };
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
-   = note: It is conceptually impossible for const eval to know in all cases whether two pointers are equal. While sometimes it is clear (the address of a non-zst static item is never equal to the address of another non-zst static item), comparing an integer address with any allocation's address is impossible to do at compile-time.
-   = note: That said, there's the `<*const T>::guaranteed_eq` intrinsic which returns `true` for all comparisons where CTFE is sure that two addresses are equal. The mirror intrinsic `<*const T>::guaranteed_ne` returns `true` for all comparisons where CTFE is sure that two addresses are inequal.
 
-error: pointers cannot be compared in a meaningful way during const eval.
+error: pointers cannot be reliably compared during const eval.
   --> $DIR/const_raw_ptr_ops.rs:6:27
    |
 LL | const X2: bool = unsafe { 42 as *const i32 == 43 as *const i32 };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
-   = note: It is conceptually impossible for const eval to know in all cases whether two pointers are equal. While sometimes it is clear (the address of a non-zst static item is never equal to the address of another non-zst static item), comparing an integer address with any allocation's address is impossible to do at compile-time.
-   = note: That said, there's the `<*const T>::guaranteed_eq` intrinsic which returns `true` for all comparisons where CTFE is sure that two addresses are equal. The mirror intrinsic `<*const T>::guaranteed_ne` returns `true` for all comparisons where CTFE is sure that two addresses are inequal.
 
 error: aborting due to 2 previous errors
 

@@ -287,26 +287,12 @@ impl NonConstOp for RawPtrComparison {
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
         let mut err = ccx.tcx.sess.struct_span_err(
             span,
-            "pointers cannot be compared in a meaningful way during const eval.",
+            "pointers cannot be reliably compared during const eval.",
         );
         err.note(
             "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> \
             for more information",
         );
-        err.note(
-            "It is conceptually impossible for const eval to know in all cases whether two \
-             pointers are equal. While sometimes it is clear (the address of a non-zst static item \
-             is never equal to the address of another non-zst static item), comparing an integer \
-             address with any allocation's address is impossible to do at compile-time.",
-        );
-        if ccx.tcx.sess.parse_sess.unstable_features.is_nightly_build() {
-            err.note(
-                "That said, there's the `<*const T>::guaranteed_eq` intrinsic which returns `true` \
-                for all comparisons where CTFE is sure that two addresses are equal. The mirror \
-                intrinsic `<*const T>::guaranteed_ne` returns `true` for all comparisons where \
-                CTFE is sure that two addresses are inequal.",
-            );
-        }
         err.emit();
     }
 }
