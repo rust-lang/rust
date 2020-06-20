@@ -50,10 +50,10 @@ pub struct RegionConstraintStorage<'tcx> {
     /// R1 <= R2 and R2 <= R1 and (b) we unify the two regions in this
     /// table. You can then call `opportunistic_resolve_var` early
     /// which will map R1 and R2 to some common region (i.e., either
-    /// R1 or R2). This is important when dropck and other such code
-    /// is iterating to a fixed point, because otherwise we sometimes
-    /// would wind up with a fresh stream of region variables that
-    /// have been equated but appear distinct.
+    /// R1 or R2). This is important when fulfillment, dropck and other such
+    /// code is iterating to a fixed point, because otherwise we sometimes
+    /// would wind up with a fresh stream of region variables that have been
+    /// equated but appear distinct.
     pub(super) unification_table: ut::UnificationTableStorage<ty::RegionVid>,
 
     /// a flag set to true when we perform any unifications; this is used
@@ -714,13 +714,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn opportunistic_resolve_var(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        rid: RegionVid,
-    ) -> ty::Region<'tcx> {
-        let vid = self.unification_table().probe_value(rid).min_vid;
-        tcx.mk_region(ty::ReVar(vid))
+    pub fn opportunistic_resolve_var(&mut self, rid: RegionVid) -> ty::RegionVid {
+        self.unification_table().probe_value(rid).min_vid
     }
 
     fn combine_map(&mut self, t: CombineMapType) -> &mut CombineMap<'tcx> {

@@ -1,8 +1,8 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/project-fn-ret-invariant.rs:48:8
+  --> $DIR/project-fn-ret-invariant.rs:48:4
    |
 LL |    bar(foo, x)
-   |        ^^^
+   |    ^^^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 44:8...
   --> $DIR/project-fn-ret-invariant.rs:44:8
