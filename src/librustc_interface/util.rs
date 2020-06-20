@@ -1,6 +1,6 @@
 use log::info;
 use rustc_ast::ast::{AttrVec, BlockCheckMode};
-use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
+use rustc_ast::mut_visit::{/*visit_clobber,*/ MutVisitor, *};
 use rustc_ast::ptr::P;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::{self, ast};
@@ -29,7 +29,7 @@ use smallvec::SmallVec;
 use std::env;
 use std::io::{self, Write};
 use std::mem;
-use std::ops::DerefMut;
+//use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Once};
 #[cfg(not(parallel_compiler))]
@@ -593,7 +593,7 @@ pub fn build_output_filenames(
 // [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
 pub struct ReplaceBodyWithLoop<'a, 'b> {
     within_static_or_const: bool,
-    nested_blocks: Option<Vec<ast::Block>>,
+    nested_blocks: Option<Vec<ast::Stmt>>,
     resolver: &'a mut Resolver<'b>,
 }
 
@@ -707,6 +707,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             }
         }
 
+        /*
         fn block_to_stmt(b: ast::Block, resolver: &mut Resolver<'_>) -> ast::Stmt {
             let expr = P(ast::Expr {
                 id: resolver.next_node_id(),
@@ -722,6 +723,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 span: rustc_span::DUMMY_SP,
             }
         }
+        */
 
         let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.resolver);
         let loop_expr = P(ast::Expr {
@@ -741,9 +743,9 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
         if self.within_static_or_const {
             noop_visit_block(b, self)
         } else {
-            visit_clobber(b.deref_mut(), |b| {
+            //visit_clobber(b.deref_mut(), |b| {
                 let mut stmts = vec![];
-                for s in b.stmts {
+                for s in b.stmts.drain(..) {
                     let old_blocks = self.nested_blocks.replace(vec![]);
 
                     stmts.extend(self.flat_map_stmt(s).into_iter().filter(|s| s.is_item()));
@@ -751,25 +753,27 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                     // we put a Some in there earlier with that replace(), so this is valid
                     let new_blocks = self.nested_blocks.take().unwrap();
                     self.nested_blocks = old_blocks;
-                    stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, self.resolver)));
+                    stmts.extend(new_blocks); //.into_iter().map(|b| block_to_stmt(b, self.resolver)));
                 }
 
-                let mut new_block = ast::Block { stmts, ..b };
+                //let mut new_block = ast::Block { stmts, ..b };
 
                 if let Some(old_blocks) = self.nested_blocks.as_mut() {
                     //push our fresh block onto the cache and yield an empty block with `loop {}`
-                    if !new_block.stmts.is_empty() {
-                        old_blocks.push(new_block);
+                    if !stmts.is_empty() {
+                        //old_blocks.push(new_block);
+                        old_blocks.extend(stmts);
                     }
 
-                    stmt_to_block(b.rules, Some(loop_stmt), &mut self.resolver)
+                    b.stmts = vec![loop_stmt];
+                    //stmt_to_block(b.rules, Some(loop_stmt), &mut self.resolver)
                 } else {
                     //push `loop {}` onto the end of our fresh block and yield that
-                    new_block.stmts.push(loop_stmt);
+                    stmts.push(loop_stmt);
 
-                    new_block
+                    b.stmts = stmts;
                 }
-            })
+            //})
         }
     }
 
