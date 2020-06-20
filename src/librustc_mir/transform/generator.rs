@@ -426,6 +426,9 @@ struct LivenessInfo {
     /// The set of saved locals live at each suspension point.
     live_locals_at_suspension_points: Vec<BitSet<GeneratorSavedLocal>>,
 
+    /// Parallel vec to the above with SourceInfo for each yield terminator.
+    source_info_at_suspension_points: Vec<SourceInfo>,
+
     /// For every saved local, the set of other saved locals that are
     /// storage-live at the same time as this local. We cannot overlap locals in
     /// the layout which have conflicting storage.
@@ -477,6 +480,7 @@ fn locals_live_across_suspend_points(
 
     let mut storage_liveness_map = IndexVec::from_elem(None, body.basic_blocks());
     let mut live_locals_at_suspension_points = Vec::new();
+    let mut source_info_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks().iter_enumerated() {
@@ -522,6 +526,7 @@ fn locals_live_across_suspend_points(
             live_locals_at_any_suspension_point.union(&live_locals);
 
             live_locals_at_suspension_points.push(live_locals);
+            source_info_at_suspension_points.push(data.terminator().source_info);
         }
     }
     debug!("live_locals_anywhere = {:?}", live_locals_at_any_suspension_point);
@@ -543,6 +548,7 @@ fn locals_live_across_suspend_points(
     LivenessInfo {
         live_locals: live_locals_at_any_suspension_point,
         live_locals_at_suspension_points,
+        source_info_at_suspension_points,
         storage_conflicts,
         storage_liveness: storage_liveness_map,
     }
@@ -740,6 +746,7 @@ fn compute_layout<'tcx>(
     let LivenessInfo {
         live_locals,
         live_locals_at_suspension_points,
+        source_info_at_suspension_points,
         storage_conflicts,
         storage_liveness,
     } = locals_live_across_suspend_points(tcx, body, source, always_live_locals, movable);
@@ -756,7 +763,18 @@ fn compute_layout<'tcx>(
     }
 
     // Leave empty variants for the UNRESUMED, RETURNED, and POISONED states.
+    // In debuginfo, these will correspond to the beginning (UNRESUMED) or end
+    // (RETURNED, POISONED) of the function.
     const RESERVED_VARIANTS: usize = 3;
+    let body_span = body.source_scopes[OUTERMOST_SOURCE_SCOPE].span;
+    let mut variant_source_info: IndexVec<VariantIdx, SourceInfo> = [
+        SourceInfo::outermost(body_span.shrink_to_lo()),
+        SourceInfo::outermost(body_span.shrink_to_hi()),
+        SourceInfo::outermost(body_span.shrink_to_hi()),
+    ]
+    .iter()
+    .copied()
+    .collect();
 
     // Build the generator variant field list.
     // Create a map from local indices to generator struct indices.
@@ -775,11 +793,13 @@ fn compute_layout<'tcx>(
             remap.entry(locals[saved_local]).or_insert((tys[saved_local], variant_index, idx));
         }
         variant_fields.push(fields);
+        variant_source_info.push(source_info_at_suspension_points[suspension_point_idx]);
     }
     debug!("generator variant_fields = {:?}", variant_fields);
     debug!("generator storage_conflicts = {:#?}", storage_conflicts);
 
-    let layout = GeneratorLayout { field_tys: tys, variant_fields, storage_conflicts };
+    let layout =
+        GeneratorLayout { field_tys: tys, variant_fields, variant_source_info, storage_conflicts };
 
     (remap, layout, storage_liveness)
 }
