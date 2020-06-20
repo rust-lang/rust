@@ -17,6 +17,10 @@ rustc-std-workspace-core = { path = "./sysroot_src/src/tools/rustc-std-workspace
 rustc-std-workspace-alloc = { path = "./sysroot_src/src/tools/rustc-std-workspace-alloc" }
 rustc-std-workspace-std = { path = "./sysroot_src/src/tools/rustc-std-workspace-std" }
 
+[profile.dev]
+lto = "off"
+
 [profile.release]
 debug = true
 incremental = true
+lto = "off"
