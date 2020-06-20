@@ -3,7 +3,7 @@
 
 mod handlers;
 mod subscriptions;
-pub(crate) mod req_queue;
+pub(crate) mod request_metrics;
 
 use std::{
     borrow::Cow,
@@ -17,11 +17,13 @@ use std::{
 };
 
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
-use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
+use lsp_server::{
+    Connection, ErrorCode, Message, Notification, ReqQueue, Request, RequestId, Response,
+};
 use lsp_types::{
-    DidChangeTextDocumentParams, NumberOrString, TextDocumentContentChangeEvent, WorkDoneProgress,
-    WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
-    WorkDoneProgressReport,
+    request::Request as _, DidChangeTextDocumentParams, NumberOrString,
+    TextDocumentContentChangeEvent, WorkDoneProgress, WorkDoneProgressBegin,
+    WorkDoneProgressCreateParams, WorkDoneProgressEnd, WorkDoneProgressReport,
 };
 use ra_flycheck::{CheckTask, Status};
 use ra_ide::{Canceled, FileId, LineIndex};
@@ -37,10 +39,9 @@ use crate::{
     from_proto,
     global_state::{file_id_to_url, GlobalState, GlobalStateSnapshot},
     lsp_ext,
-    main_loop::subscriptions::Subscriptions,
+    main_loop::{request_metrics::RequestMetrics, subscriptions::Subscriptions},
     Result,
 };
-use req_queue::ReqQueue;
 
 #[derive(Debug)]
 pub struct LspError {
@@ -150,10 +151,11 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
             let params = lsp_types::RegistrationParams { registrations: vec![registration] };
-            let request = loop_state
-                .req_queue
-                .outgoing
-                .register::<lsp_types::request::RegisterCapability>(params, |_, _| ());
+            let request = loop_state.req_queue.outgoing.register(
+                lsp_types::request::RegisterCapability::METHOD.to_string(),
+                params,
+                DO_NOTHING,
+            );
             connection.sender.send(request.into()).unwrap();
         }
 
@@ -261,9 +263,13 @@ impl fmt::Debug for Event {
     }
 }
 
+type ReqHandler = fn(&mut GlobalState, Response);
+const DO_NOTHING: ReqHandler = |_, _| ();
+type Incoming = lsp_server::Incoming<(&'static str, Instant)>;
+
 #[derive(Default)]
 struct LoopState {
-    req_queue: ReqQueue<fn(&mut GlobalState, lsp_server::Response)>,
+    req_queue: ReqQueue<(&'static str, Instant), ReqHandler>,
     subscriptions: Subscriptions,
     workspace_loaded: bool,
     roots_progress_reported: Option<usize>,
@@ -367,14 +373,19 @@ fn loop_turn(
 fn on_task(
     task: Task,
     msg_sender: &Sender<Message>,
-    incoming_requests: &mut req_queue::Incoming,
+    incoming_requests: &mut Incoming,
     state: &mut GlobalState,
 ) {
     match task {
         Task::Respond(response) => {
-            if let Some(completed) = incoming_requests.complete(response.id.clone()) {
-                log::info!("handled req#{} in {:?}", completed.id, completed.duration);
-                state.complete_request(completed);
+            if let Some((method, start)) = incoming_requests.complete(response.id.clone()) {
+                let duration = start.elapsed();
+                log::info!("handled req#{} in {:?}", response.id, duration);
+                state.complete_request(RequestMetrics {
+                    id: response.id.clone(),
+                    method: method.to_string(),
+                    duration,
+                });
                 msg_sender.send(response.into()).unwrap();
             }
         }
@@ -387,7 +398,7 @@ fn on_task(
 
 fn on_request(
     global_state: &mut GlobalState,
-    incoming_requests: &mut req_queue::Incoming,
+    incoming_requests: &mut Incoming,
     pool: &ThreadPool,
     task_sender: &Sender<Task>,
     msg_sender: &Sender<Message>,
@@ -527,37 +538,35 @@ fn on_notification(
         Ok(_) => {
             // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
             // this notification's parameters should be ignored and the actual config queried separately.
-            let request = loop_state
-                .req_queue
-                .outgoing
-                .register::<lsp_types::request::WorkspaceConfiguration>(
-                    lsp_types::ConfigurationParams {
-                        items: vec![lsp_types::ConfigurationItem {
-                            scope_uri: None,
-                            section: Some("rust-analyzer".to_string()),
-                        }],
-                    },
-                    |global_state, resp| {
-                        log::debug!("config update response: '{:?}", resp);
-                        let Response { error, result, .. } = resp;
+            let request = loop_state.req_queue.outgoing.register(
+                lsp_types::request::WorkspaceConfiguration::METHOD.to_string(),
+                lsp_types::ConfigurationParams {
+                    items: vec![lsp_types::ConfigurationItem {
+                        scope_uri: None,
+                        section: Some("rust-analyzer".to_string()),
+                    }],
+                },
+                |global_state, resp| {
+                    log::debug!("config update response: '{:?}", resp);
+                    let Response { error, result, .. } = resp;
 
-                        match (error, result) {
-                            (Some(err), _) => {
-                                log::error!("failed to fetch the server settings: {:?}", err)
-                            }
-                            (None, Some(configs)) => {
-                                if let Some(new_config) = configs.get(0) {
-                                    let mut config = global_state.config.clone();
-                                    config.update(&new_config);
-                                    global_state.update_configuration(config);
-                                }
-                            }
-                            (None, None) => log::error!(
-                                "received empty server settings response from the client"
-                            ),
+                    match (error, result) {
+                        (Some(err), _) => {
+                            log::error!("failed to fetch the server settings: {:?}", err)
                         }
-                    },
-                );
+                        (None, Some(configs)) => {
+                            if let Some(new_config) = configs.get(0) {
+                                let mut config = global_state.config.clone();
+                                config.update(&new_config);
+                                global_state.update_configuration(config);
+                            }
+                        }
+                        (None, None) => {
+                            log::error!("received empty server settings response from the client")
+                        }
+                    }
+                },
+            );
             msg_sender.send(request.into())?;
 
             return Ok(());
@@ -727,15 +736,13 @@ fn send_startup_progress(sender: &Sender<Message>, loop_state: &mut LoopState) {
 
     match (prev, loop_state.workspace_loaded) {
         (None, false) => {
-            let request = loop_state
-                .req_queue
-                .outgoing
-                .register::<lsp_types::request::WorkDoneProgressCreate>(
-                    WorkDoneProgressCreateParams {
-                        token: lsp_types::ProgressToken::String("rustAnalyzer/startup".into()),
-                    },
-                    |_, _| (),
-                );
+            let request = loop_state.req_queue.outgoing.register(
+                lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
+                WorkDoneProgressCreateParams {
+                    token: lsp_types::ProgressToken::String("rustAnalyzer/startup".into()),
+                },
+                DO_NOTHING,
+            );
             sender.send(request.into()).unwrap();
             send_startup_progress_notif(
                 sender,
@@ -778,7 +785,7 @@ struct PoolDispatcher<'a> {
     req: Option<Request>,
     pool: &'a ThreadPool,
     global_state: &'a mut GlobalState,
-    incoming_requests: &'a mut req_queue::Incoming,
+    incoming_requests: &'a mut Incoming,
     msg_sender: &'a Sender<Message>,
     task_sender: &'a Sender<Task>,
     request_received: Instant,
@@ -854,11 +861,7 @@ impl<'a> PoolDispatcher<'a> {
                 return None;
             }
         };
-        self.incoming_requests.register(req_queue::PendingInRequest {
-            id: id.clone(),
-            method: R::METHOD.to_string(),
-            received: self.request_received,
-        });
+        self.incoming_requests.register(id.clone(), (R::METHOD, self.request_received));
         Some((id, params))
     }
 
