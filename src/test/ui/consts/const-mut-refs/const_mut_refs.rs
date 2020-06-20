@@ -1,5 +1,3 @@
-// run-pass
-
 #![feature(const_mut_refs)]
 
 struct Foo {
@@ -31,6 +29,9 @@ const fn bazz(foo: &mut Foo) -> usize {
 
 fn main() {
     let _: [(); foo().bar()] = [(); 1];
+    //~^ ERROR mutable references are not allowed in constants
     let _: [(); baz(&mut foo())] = [(); 2];
+    //~^ ERROR mutable references are not allowed in constants
     let _: [(); bazz(&mut foo())] = [(); 3];
+    //~^ ERROR mutable references are not allowed in constants
 }
