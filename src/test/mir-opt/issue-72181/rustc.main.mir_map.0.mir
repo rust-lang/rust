@@ -1,0 +1,93 @@
+// MIR for `main` 0 mir_map
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/issue-72181.rs:21:11: 21:11
+    let mut _1: usize;                   // in scope 0 at $DIR/issue-72181.rs:22:13: 22:34
+    let mut _3: Foo;                     // in scope 0 at $DIR/issue-72181.rs:24:14: 24:27
+    let mut _4: Foo;                     // in scope 0 at $DIR/issue-72181.rs:24:29: 24:42
+    let mut _5: u64;                     // in scope 0 at $DIR/issue-72181.rs:25:13: 25:30
+    let _6: usize;                       // in scope 0 at $DIR/issue-72181.rs:25:24: 25:25
+    let mut _7: usize;                   // in scope 0 at $DIR/issue-72181.rs:25:22: 25:26
+    let mut _8: bool;                    // in scope 0 at $DIR/issue-72181.rs:25:22: 25:26
+    scope 1 {
+        let _2: [Foo; 2];                // in scope 1 at $DIR/issue-72181.rs:24:9: 24:10
+        scope 2 {
+            debug f => _2;               // in scope 2 at $DIR/issue-72181.rs:24:9: 24:10
+            scope 3 {
+            }
+            scope 4 {
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at $DIR/issue-72181.rs:22:13: 22:34
+        _1 = const std::mem::size_of::<Foo>() -> [return: bb2, unwind: bb1]; // scope 0 at $DIR/issue-72181.rs:22:13: 22:34
+                                         // ty::Const
+                                         // + ty: fn() -> usize {std::mem::size_of::<Foo>}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-72181.rs:22:13: 22:32
+                                         // + literal: Const { ty: fn() -> usize {std::mem::size_of::<Foo>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-72181.rs:21:1: 26:2
+    }
+
+    bb2: {
+        StorageDead(_1);                 // scope 0 at $DIR/issue-72181.rs:22:34: 22:35
+        StorageLive(_2);                 // scope 1 at $DIR/issue-72181.rs:24:9: 24:10
+        StorageLive(_3);                 // scope 1 at $DIR/issue-72181.rs:24:14: 24:27
+        _3 = Foo { a: const 42u64 };     // scope 1 at $DIR/issue-72181.rs:24:14: 24:27
+                                         // ty::Const
+                                         // + ty: u64
+                                         // + val: Value(Scalar(0x000000000000002a))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-72181.rs:24:23: 24:25
+                                         // + literal: Const { ty: u64, val: Value(Scalar(0x000000000000002a)) }
+        StorageLive(_4);                 // scope 1 at $DIR/issue-72181.rs:24:29: 24:42
+        _4 = Foo { a: const 10u64 };     // scope 1 at $DIR/issue-72181.rs:24:29: 24:42
+                                         // ty::Const
+                                         // + ty: u64
+                                         // + val: Value(Scalar(0x000000000000000a))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-72181.rs:24:38: 24:40
+                                         // + literal: Const { ty: u64, val: Value(Scalar(0x000000000000000a)) }
+        _2 = [move _3, move _4];         // scope 1 at $DIR/issue-72181.rs:24:13: 24:43
+        StorageDead(_4);                 // scope 1 at $DIR/issue-72181.rs:24:42: 24:43
+        StorageDead(_3);                 // scope 1 at $DIR/issue-72181.rs:24:42: 24:43
+        FakeRead(ForLet, _2);            // scope 1 at $DIR/issue-72181.rs:24:9: 24:10
+        StorageLive(_5);                 // scope 2 at $DIR/issue-72181.rs:25:13: 25:30
+        StorageLive(_6);                 // scope 4 at $DIR/issue-72181.rs:25:24: 25:25
+        _6 = const 0usize;               // scope 4 at $DIR/issue-72181.rs:25:24: 25:25
+                                         // ty::Const
+                                         // + ty: usize
+                                         // + val: Value(Scalar(0x0000000000000000))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-72181.rs:25:24: 25:25
+                                         // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000000)) }
+        _7 = Len(_2);                    // scope 4 at $DIR/issue-72181.rs:25:22: 25:26
+        _8 = Lt(_6, _7);                 // scope 4 at $DIR/issue-72181.rs:25:22: 25:26
+        assert(move _8, "index out of bounds: the len is {} but the index is {}", move _7, _6) -> [success: bb3, unwind: bb1]; // scope 4 at $DIR/issue-72181.rs:25:22: 25:26
+    }
+
+    bb3: {
+        _5 = (_2[_6].0: u64);            // scope 4 at $DIR/issue-72181.rs:25:22: 25:28
+        StorageDead(_6);                 // scope 2 at $DIR/issue-72181.rs:25:30: 25:31
+        StorageDead(_5);                 // scope 2 at $DIR/issue-72181.rs:25:30: 25:31
+        _0 = const ();                   // scope 0 at $DIR/issue-72181.rs:21:11: 26:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-72181.rs:21:11: 26:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
+        StorageDead(_2);                 // scope 1 at $DIR/issue-72181.rs:26:1: 26:2
+        goto -> bb4;                     // scope 0 at $DIR/issue-72181.rs:26:2: 26:2
+    }
+
+    bb4: {
+        return;                          // scope 0 at $DIR/issue-72181.rs:26:2: 26:2
+    }
+}
