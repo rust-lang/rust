@@ -37,7 +37,7 @@ fn main() {
     let _ = STRUCT1; // ok
     let _: Struct1 = STRUCT1; // ok
     let _: Struct1<usize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
-    let _: Struct1<isize> = STRUCT1; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct1<isize> = Struct1 { field: 0 }; //~ ERROR use of unstable library feature 'unstable_default'
 
     // Instability is not enforced for generic type parameters used in public fields.
     // Note how the unstable type default `usize` leaks,
@@ -56,7 +56,7 @@ fn main() {
     let _ = STRUCT2;
     let _: Struct2 = STRUCT2; // ok
     let _: Struct2<usize> = STRUCT2; // ok
-    let _: Struct2<usize> = STRUCT2; // ok
+    let _: Struct2<isize> = Struct2 { field: 0 }; // ok
     let _ = STRUCT2.field; // ok
     let _: usize = STRUCT2.field; // ok
     let _ = STRUCT2.field + 1; // ok

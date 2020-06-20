@@ -23,7 +23,7 @@ LL | impl Trait2<usize> for S {
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:37:20
+  --> $DIR/generics-default-stability.rs:35:20
    |
 LL |     let _: Struct1<isize> = Struct1 { field: 1 };
    |                    ^^^^^
@@ -31,7 +31,7 @@ LL |     let _: Struct1<isize> = Struct1 { field: 1 };
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:41:20
+  --> $DIR/generics-default-stability.rs:39:20
    |
 LL |     let _: Struct1<usize> = STRUCT1;
    |                    ^^^^^
@@ -39,9 +39,9 @@ LL |     let _: Struct1<usize> = STRUCT1;
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:42:20
+  --> $DIR/generics-default-stability.rs:40:20
    |
-LL |     let _: Struct1<usize> = STRUCT1;
+LL |     let _: Struct1<isize> = Struct1 { field: 0 };
    |                    ^^^^^
    |
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
