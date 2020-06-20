@@ -63,11 +63,11 @@ impl PredicateSet<'tcx> {
     fn insert(&mut self, pred: ty::Predicate<'tcx>) -> bool {
         // We have to be careful here because we want
         //
-        //    for<'a> Foo<&'a int>
+        //    for<'a> Foo<&'a i32>
         //
         // and
         //
-        //    for<'b> Foo<&'b int>
+        //    for<'b> Foo<&'b i32>
         //
         // to be considered equivalent. So normalize all late-bound
         // regions before we throw things into the underlying set.

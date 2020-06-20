@@ -393,23 +393,25 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ```
 /// impl<T:Clone> Clone<T> for Option<T> { ... } // Impl_1
 /// impl<T:Clone> Clone<T> for Box<T> { ... }    // Impl_2
-/// impl Clone for int { ... }             // Impl_3
+/// impl Clone for i32 { ... }                   // Impl_3
 ///
-/// fn foo<T:Clone>(concrete: Option<Box<int>>,
-///                 param: T,
-///                 mixed: Option<T>) {
+/// fn foo<T: Clone>(concrete: Option<Box<i32>>, param: T, mixed: Option<T>) {
+///     // Case A: Vtable points at a specific impl. Only possible when
+///     // type is concretely known. If the impl itself has bounded
+///     // type parameters, Vtable will carry resolutions for those as well:
+///     concrete.clone(); // Vtable(Impl_1, [Vtable(Impl_2, [Vtable(Impl_3)])])
 ///
-///    // Case A: ImplSource points at a specific impl. Only possible when
-///    // type is concretely known. If the impl itself has bounded
-///    // type parameters, ImplSource will carry resolutions for those as well:
-///    concrete.clone(); // ImplSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
+///     // Case A: ImplSource points at a specific impl. Only possible when
+///     // type is concretely known. If the impl itself has bounded
+///     // type parameters, ImplSource will carry resolutions for those as well:
+///     concrete.clone(); // ImplSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
 ///
-///    // Case B: ImplSource must be provided by caller. This applies when
-///    // type is a type parameter.
-///    param.clone();    // ImplSourceParam
+///     // Case B: ImplSource must be provided by caller. This applies when
+///     // type is a type parameter.
+///     param.clone();    // ImplSourceParam
 ///
-///    // Case C: A mix of cases A and B.
-///    mixed.clone();    // ImplSource(Impl_1, [ImplSourceParam])
+///     // Case C: A mix of cases A and B.
+///     mixed.clone();    // ImplSource(Impl_1, [ImplSourceParam])
 /// }
 /// ```
 ///

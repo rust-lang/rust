@@ -198,10 +198,6 @@ impl<'tcx> InferCtxtUndoLogs<'tcx> {
         assert!(self.logs.len() >= snapshot.undo_len);
         assert!(self.num_open_snapshots > 0);
     }
-
-    pub(crate) fn iter(&self) -> std::slice::Iter<'_, UndoLog<'tcx>> {
-        self.logs.iter()
-    }
 }
 
 impl<'tcx> std::ops::Index<usize> for InferCtxtUndoLogs<'tcx> {
