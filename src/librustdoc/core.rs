@@ -372,7 +372,10 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         crate_name,
         lint_caps,
         register_lints: None,
-        override_queries: None,
+        override_queries: Some(|_sess, local_providers, external_providers| {
+            local_providers.lint_mod = |_, _| {};
+            external_providers.lint_mod = |_, _| {};
+        }),
         registry: rustc_driver::diagnostics_registry(),
     };
 
@@ -416,10 +419,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
             global_ctxt.enter(|tcx| {
-                tcx.analysis(LOCAL_CRATE).ok();
-
-                // Abort if there were any errors so far
-                sess.abort_if_errors();
+                sess.time("missing_docs", || {
+                    rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
+                });
 
                 let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
                 // Convert from a HirId set to a DefId set since we don't always have easy access

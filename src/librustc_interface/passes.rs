@@ -410,7 +410,6 @@ fn configure_and_expand_inner<'a>(
     // anything, so switch everything to just looping
     resolver.resolve_crate(&krate, sess.opts.actually_rustdoc);
 
-    //let mut should_loop = sess.opts.actually_rustdoc;
     let mut should_loop = false;
     if let Some(PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops)) = sess.opts.pretty {
         should_loop |= true;
