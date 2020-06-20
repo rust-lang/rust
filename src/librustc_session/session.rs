@@ -1349,11 +1349,19 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         );
     }
 
-    const ASAN_SUPPORTED_TARGETS: &[&str] =
-        &["aarch64-fuchsia", "x86_64-apple-darwin", "x86_64-fuchsia", "x86_64-unknown-linux-gnu"];
-    const LSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
-    const MSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
-    const TSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
+    const ASAN_SUPPORTED_TARGETS: &[&str] = &[
+        "aarch64-fuchsia",
+        "aarch64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "x86_64-fuchsia",
+        "x86_64-unknown-linux-gnu",
+    ];
+    const LSAN_SUPPORTED_TARGETS: &[&str] =
+        &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
+    const MSAN_SUPPORTED_TARGETS: &[&str] =
+        &["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"];
+    const TSAN_SUPPORTED_TARGETS: &[&str] =
+        &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
 
     // Sanitizers can only be used on some tested platforms.
     for s in sess.opts.debugging_opts.sanitizer {
