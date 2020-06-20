@@ -87,6 +87,8 @@ fn main() {
         panic!();
     }
 
+    test_checked_mul();
+
     let _a = 1u32 << 2u8;
 
     let empty: [i32; 0] = [];
@@ -256,6 +258,27 @@ unsafe fn test_mm_extract_epi8() {
     let r2 = _mm_extract_epi8(a, 19);
     assert_eq!(r1, 0xFF);
     assert_eq!(r2, 3);
+}
+
+fn test_checked_mul() {
+    let u: Option<u8> = u8::from_str_radix("1000", 10).ok();
+    assert_eq!(u, None);
+
+    assert_eq!(1u8.checked_mul(255u8), Some(255u8));
+    assert_eq!(255u8.checked_mul(255u8), None);
+    assert_eq!(1i8.checked_mul(127i8), Some(127i8));
+    assert_eq!(127i8.checked_mul(127i8), None);
+    assert_eq!((-1i8).checked_mul(-127i8), Some(127i8));
+    assert_eq!(1i8.checked_mul(-128i8), Some(-128i8));
+    assert_eq!((-128i8).checked_mul(-128i8), None);
+
+    assert_eq!(1u64.checked_mul(u64::max_value()), Some(u64::max_value()));
+    assert_eq!(u64::max_value().checked_mul(u64::max_value()), None);
+    assert_eq!(1i64.checked_mul(i64::max_value()), Some(i64::max_value()));
+    assert_eq!(i64::max_value().checked_mul(i64::max_value()), None);
+    assert_eq!((-1i64).checked_mul(i64::min_value() + 1), Some(i64::max_value()));
+    assert_eq!(1i64.checked_mul(i64::min_value()), Some(i64::min_value()));
+    assert_eq!(i64::min_value().checked_mul(i64::min_value()), None);
 }
 
 #[derive(PartialEq)]

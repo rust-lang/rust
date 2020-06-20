@@ -245,16 +245,42 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
             (val, has_overflow)
         }
         BinOp::Mul => {
-            let val = fx.bcx.ins().imul(lhs, rhs);
-            /*let val_hi = if !signed {
-                fx.bcx.ins().umulhi(lhs, rhs)
-            } else {
-                fx.bcx.ins().smulhi(lhs, rhs)
-            };
-            let has_overflow = fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0);*/
-            // TODO: check for overflow
-            let has_overflow = fx.bcx.ins().bconst(types::B1, false);
-            (val, has_overflow)
+            let ty = fx.bcx.func.dfg.value_type(lhs);
+            match ty {
+                types::I8 | types::I16 | types::I32 if !signed => {
+                    let lhs = fx.bcx.ins().uextend(ty.double_width().unwrap(), lhs);
+                    let rhs = fx.bcx.ins().uextend(ty.double_width().unwrap(), rhs);
+                    let val = fx.bcx.ins().imul(lhs, rhs);
+                    let has_overflow = fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, val, (1 << ty.bits()) - 1);
+                    let val = fx.bcx.ins().ireduce(ty, val);
+                    (val, has_overflow)
+                }
+                types::I8 | types::I16 | types::I32 if signed => {
+                    let lhs = fx.bcx.ins().sextend(ty.double_width().unwrap(), lhs);
+                    let rhs = fx.bcx.ins().sextend(ty.double_width().unwrap(), rhs);
+                    let val = fx.bcx.ins().imul(lhs, rhs);
+                    let has_underflow = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, val, -(1 << (ty.bits() - 1)));
+                    let has_overflow = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThan, val, (1 << (ty.bits() - 1)) - 1);
+                    let val = fx.bcx.ins().ireduce(ty, val);
+                    (val, fx.bcx.ins().bor(has_underflow, has_overflow))
+                }
+                types::I64 => {
+                    //let val = fx.easy_call("__mulodi4", &[lhs, rhs, overflow_ptr], types::I64);
+                    let val = fx.bcx.ins().imul(lhs, rhs);
+                    let has_overflow = if !signed {
+                        let val_hi = fx.bcx.ins().umulhi(lhs, rhs);
+                        fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0)
+                    } else {
+                        let val_hi = fx.bcx.ins().smulhi(lhs, rhs);
+                        let not_all_zero = fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0);
+                        let not_all_ones = fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, u64::try_from((1u128 << ty.bits()) - 1).unwrap() as i64);
+                        fx.bcx.ins().band(not_all_zero, not_all_ones)
+                    };
+                    (val, has_overflow)
+                }
+                types::I128 => unreachable!("i128 should have been handled by codegen_i128::maybe_codegen"),
+                _ => unreachable!("invalid non-integer type {}", ty),
+            }
         }
         BinOp::Shl => {
             let val = fx.bcx.ins().ishl(lhs, rhs);

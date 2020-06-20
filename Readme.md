@@ -67,6 +67,6 @@ function jit_calc() {
 ## Not yet supported
 
 * Good non-rust abi support ([several problems](https://github.com/bjorn3/rustc_codegen_cranelift/issues/10))
-* Checked binops ([some missing instructions in cranelift](https://github.com/bytecodealliance/wasmtime/issues/1044))
+    * Proc macros
 * Inline assembly ([no cranelift support](https://github.com/bytecodealliance/wasmtime/issues/1041), not coming soon)
 * SIMD ([tracked here](https://github.com/bjorn3/rustc_codegen_cranelift/issues/171), some basic things work)
