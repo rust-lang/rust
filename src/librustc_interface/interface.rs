@@ -202,6 +202,7 @@ pub fn run_compiler_in_existing_thread_pool<R>(
 }
 
 pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
+    log::trace!("run_compiler");
     let stderr = config.stderr.take();
     util::spawn_thread_pool(
         config.opts.edition,
