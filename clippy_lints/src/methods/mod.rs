@@ -1498,10 +1498,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 // check missing trait implementations
                     for &(method_name, n_args, fn_header, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         let no_lifetime_params = || {
-                            impl_item.generics.params.iter().filter(|p| match p.kind {
-                               hir::GenericParamKind::Lifetime { .. } => true,
-                               _ => false,
-                            }).count() == 0
+                            !impl_item.generics.params.iter()
+                                .any(|p| matches!(
+                                    p.kind,
+                                    hir::GenericParamKind::Lifetime { .. }))
                         };
                         if name == method_name &&
                             sig.decl.inputs.len() == n_args &&
@@ -1510,7 +1510,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                             fn_header_equals(*fn_header, sig.header) &&
                             // ignore methods with lifetime params, risk of false positive
                             no_lifetime_params()
-                             {
+                        {
                             span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
                                 "defining a method called `{}` on this type; consider implementing \
                                 the `{}` trait or choosing a less ambiguous name", name, trait_name));
