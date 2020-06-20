@@ -409,7 +409,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         let InferOk { value: mut adjustments, obligations: o } =
-            autoderef.adjust_steps_as_infer_ok(self);
+            self.adjust_steps_as_infer_ok(&autoderef);
         obligations.extend(o);
         obligations.extend(autoderef.into_obligations());
 

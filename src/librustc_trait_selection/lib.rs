@@ -28,6 +28,7 @@ extern crate log;
 #[macro_use]
 extern crate rustc_middle;
 
+pub mod autoderef;
 pub mod infer;
 pub mod opaque_types;
 pub mod traits;

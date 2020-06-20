@@ -3,6 +3,7 @@ use super::{
     SelectionContext,
 };
 
+use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
 use crate::traits::normalize_projection_type;
 
@@ -13,11 +14,11 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
-use rustc_middle::ty::TypeckTables;
 use rustc_middle::ty::{
     self, suggest_constraining_type_param, AdtKind, DefIdTree, Infer, InferTy, ToPredicate, Ty,
     TyCtxt, TypeFoldable, WithConstness,
 };
+use rustc_middle::ty::{TypeAndMut, TypeckTables};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
@@ -46,6 +47,14 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         code: &ObligationCauseCode<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
+    );
+
+    fn suggest_dereferences(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::PolyTraitRef<'tcx>,
+        points_at_arg: bool,
     );
 
     fn get_closure_name(
@@ -447,6 +456,62 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             hir_id = self.tcx.hir().get_parent_item(hir_id);
+        }
+    }
+
+    /// When after several dereferencing, the reference satisfies the trait
+    /// binding. This function provides dereference suggestion for this
+    /// specific situation.
+    fn suggest_dereferences(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::PolyTraitRef<'tcx>,
+        points_at_arg: bool,
+    ) {
+        // It only make sense when suggesting dereferences for arguments
+        if !points_at_arg {
+            return;
+        }
+        let param_env = obligation.param_env;
+        let body_id = obligation.cause.body_id;
+        let span = obligation.cause.span;
+        let real_trait_ref = match &obligation.cause.code {
+            ObligationCauseCode::ImplDerivedObligation(cause)
+            | ObligationCauseCode::DerivedObligation(cause)
+            | ObligationCauseCode::BuiltinDerivedObligation(cause) => &cause.parent_trait_ref,
+            _ => trait_ref,
+        };
+        let real_ty = match real_trait_ref.self_ty().no_bound_vars() {
+            Some(ty) => ty,
+            None => return,
+        };
+
+        if let ty::Ref(region, base_ty, mutbl) = real_ty.kind {
+            let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty);
+            if let Some(steps) = autoderef.find_map(|(ty, steps)| {
+                // Re-add the `&`
+                let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
+                let obligation =
+                    self.mk_trait_obligation_with_new_self_ty(param_env, real_trait_ref, ty);
+                Some(steps).filter(|_| self.predicate_may_hold(&obligation))
+            }) {
+                if steps > 0 {
+                    if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        // Don't care about `&mut` because `DerefMut` is used less
+                        // often and user will not expect autoderef happens.
+                        if src.starts_with("&") && !src.starts_with("&mut ") {
+                            let derefs = "*".repeat(steps);
+                            err.span_suggestion(
+                                span,
+                                "consider adding dereference here",
+                                format!("&{}{}", derefs, &src[1..]),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                    }
+                }
+            }
         }
     }
 
