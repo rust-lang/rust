@@ -10,7 +10,7 @@ use hir_def::{
     resolver::resolver_for_expr,
     AdtId, AssocContainerId, FieldId, Lookup,
 };
-use hir_expand::name::Name;
+use hir_expand::name::{name, Name};
 use ra_syntax::ast::RangeOp;
 
 use crate::{
@@ -70,18 +70,8 @@ impl<'a> InferenceContext<'a> {
             .filter_map(|f| f.get_id(self.db, krate))
             .collect();
         let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
-        let output_assoc_type = match self
-            .db
-            .trait_data(fn_once_trait)
-            .associated_types()
-            .collect::<Vec<hir_def::TypeAliasId>>()
-            .as_slice()
-        {
-            [output] => *output,
-            _ => {
-                return None;
-            }
-        };
+        let output_assoc_type =
+            self.db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
         for fn_trait in fn_traits {
             let generic_params = generics(self.db.upcast(), fn_trait.into());
             if generic_params.len() != 2 {
