@@ -1,0 +1,13 @@
+error[E0599]: no method named `f` found for type `u32` in the current scope
+  --> $DIR/hr-associated-type-bound-2.rs:19:10
+   |
+LL |     1u32.f("abc");
+   |          ^ method not found in `u32`
+   |
+   = note: the method `f` exists but the following trait bounds were not satisfied:
+           `<u32 as X<'b>>::U: std::clone::Clone`
+           which is required by `u32: X`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

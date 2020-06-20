@@ -5,13 +5,13 @@
 
 trait Foo {
     type Assoc3<T>;
-    //~^ type-generic associated types are not yet implemented
 }
 
 struct Bar;
 
 impl Foo for Bar {
     type Assoc3<T> where T: Iterator = Vec<T>;
+    //~^ ERROR impl has stricter requirements than trait
 }
 
 fn main() {}

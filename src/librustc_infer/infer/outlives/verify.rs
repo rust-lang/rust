@@ -1,9 +1,8 @@
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::{GenericKind, VerifyBound};
-use crate::traits;
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
@@ -311,18 +310,14 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn region_bounds_declared_on_associated_item(
         &self,
         assoc_item_def_id: DefId,
-    ) -> impl Iterator<Item = ty::Region<'tcx>> + 'cx + Captures<'tcx> {
+    ) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
-        let assoc_item = tcx.associated_item(assoc_item_def_id);
-        let trait_def_id = assoc_item.container.assert_trait();
-        let trait_predicates = tcx.predicates_of(trait_def_id).predicates.iter().map(|(p, _)| *p);
-        let identity_substs = InternalSubsts::identity_for_item(tcx, assoc_item_def_id);
-        let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
-        self.collect_outlives_from_predicate_list(
-            move |ty| ty == identity_proj,
-            traits::elaborate_predicates(tcx, trait_predicates).map(|o| o.predicate),
-        )
-        .map(|b| b.1)
+        let predicates = tcx.projection_predicates(assoc_item_def_id);
+        predicates
+            .into_iter()
+            .filter_map(|p| p.to_opt_type_outlives())
+            .filter_map(|p| p.no_bound_vars())
+            .map(|b| b.1)
     }
 
     /// Searches through a predicate list for a predicate `T: 'a`.

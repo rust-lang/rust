@@ -1273,9 +1273,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             placeholder_trait_predicate,
         );
 
-        let (def_id, substs) = match placeholder_trait_predicate.trait_ref.self_ty().kind {
-            ty::Projection(ref data) => (data.trait_ref(self.tcx()).def_id, data.substs),
-            ty::Opaque(def_id, substs) => (def_id, substs),
+        let tcx = self.infcx.tcx;
+        let predicates = match placeholder_trait_predicate.trait_ref.self_ty().kind {
+            ty::Projection(ref data) => {
+                tcx.projection_predicates(data.item_def_id).subst(tcx, data.substs)
+            }
+            ty::Opaque(def_id, substs) => tcx.projection_predicates(def_id).subst(tcx, substs),
             _ => {
                 span_bug!(
                     obligation.cause.span,
@@ -1285,32 +1288,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
             }
         };
-        debug!(
-            "match_projection_obligation_against_definition_bounds: \
-             def_id={:?}, substs={:?}",
-            def_id, substs
-        );
 
-        let predicates_of = self.tcx().predicates_of(def_id);
-        let bounds = predicates_of.instantiate(self.tcx(), substs);
-        debug!(
-            "match_projection_obligation_against_definition_bounds: \
-             bounds={:?}",
-            bounds
-        );
-
-        let elaborated_predicates =
-            util::elaborate_predicates(self.tcx(), bounds.predicates.into_iter());
-        let matching_bound = elaborated_predicates.filter_to_traits().find(|bound| {
-            self.infcx.probe(|_| {
-                self.match_projection(
-                    obligation,
-                    *bound,
-                    placeholder_trait_predicate.trait_ref,
-                    &placeholder_map,
-                    snapshot,
-                )
-            })
+        let matching_bound = predicates.iter().find_map(|bound| {
+            if let ty::PredicateKind::Trait(bound, _) = bound.kind() {
+                let bound = bound.to_poly_trait_ref();
+                if self.infcx.probe(|_| {
+                    self.match_projection(
+                        obligation,
+                        bound,
+                        placeholder_trait_predicate.trait_ref,
+                        &placeholder_map,
+                        snapshot,
+                    )
+                }) {
+                    return Some(bound);
+                }
+            }
+            None
         });
 
         debug!(

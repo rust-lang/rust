@@ -6,7 +6,6 @@ struct Foo;
 trait MyTrait {
     type Item<T>;
     //~^ ERROR generic associated types are unstable [E0658]
-    //~| ERROR type-generic associated types are not yet implemented
 }
 
 impl MyTrait for Foo {
