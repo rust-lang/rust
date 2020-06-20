@@ -896,9 +896,12 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
 
     let tcx = selcx.tcx();
     // Check whether the self-type is itself a projection.
-    let (def_id, substs) = match obligation_trait_ref.self_ty().kind {
-        ty::Projection(ref data) => (data.trait_ref(tcx).def_id, data.substs),
-        ty::Opaque(def_id, substs) => (def_id, substs),
+    // If so, extract what we know from the trait and try to come up with a good answer.
+    let bounds = match obligation_trait_ref.self_ty().kind {
+        ty::Projection(ref data) => {
+            tcx.projection_predicates(data.item_def_id).subst(tcx, data.substs)
+        }
+        ty::Opaque(def_id, substs) => tcx.projection_predicates(def_id).subst(tcx, substs),
         ty::Infer(ty::TyVar(_)) => {
             // If the self-type is an inference variable, then it MAY wind up
             // being a projected type, so induce an ambiguity.
@@ -908,17 +911,13 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
         _ => return,
     };
 
-    // If so, extract what we know from the trait and try to come up with a good answer.
-    let trait_predicates = tcx.predicates_of(def_id);
-    let bounds = trait_predicates.instantiate(tcx, substs);
-    let bounds = elaborate_predicates(tcx, bounds.predicates.into_iter()).map(|o| o.predicate);
     assemble_candidates_from_predicates(
         selcx,
         obligation,
         obligation_trait_ref,
         candidate_set,
         ProjectionTyCandidate::TraitDef,
-        bounds,
+        bounds.iter(),
     )
 }
 
@@ -1484,6 +1483,12 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         );
         return Progress { ty: tcx.ty_error(), obligations: nested };
     }
+    // If we're trying to normalize `<Vec<u32> as X>::A<S>` using
+    //`impl<T> X for Vec<T> { type A<Y> = Box<Y>; }`, then:
+    //
+    // * `obligation.predicate.substs` is `[Vec<u32>, S]`
+    // * `substs` is `[u32]`
+    // * `substs` ends up as `[u32, S]`
     let substs = obligation.predicate.substs.rebase_onto(tcx, trait_def_id, substs);
     let substs =
         translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.defining_node);

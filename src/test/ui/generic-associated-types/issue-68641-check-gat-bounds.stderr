@@ -1,0 +1,26 @@
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-68641-check-gat-bounds.rs:3:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+  --> $DIR/issue-68641-check-gat-bounds.rs:15:5
+   |
+LL |     type Item<'a>: Copy;
+   |     -------------------- required by `UnsafeCopy::Item`
+...
+LL |     type Item<'a> = T;
+   |     ^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | impl<T: std::marker::Copy> UnsafeCopy for T {
+   |       ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

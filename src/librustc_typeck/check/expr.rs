@@ -1447,9 +1447,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // of error recovery.
                         self.write_field_index(expr.hir_id, index);
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            let adjustments = autoderef.adjust_steps(self);
+                            let adjustments = self.adjust_steps(&autoderef);
                             self.apply_adjustments(base, adjustments);
-                            autoderef.finalize(self);
+                            self.register_predicates(autoderef.into_obligations());
 
                             self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span);
                             return field_ty;
@@ -1462,9 +1462,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Ok(index) = fstr.parse::<usize>() {
                         if fstr == index.to_string() {
                             if let Some(field_ty) = tys.get(index) {
-                                let adjustments = autoderef.adjust_steps(self);
+                                let adjustments = self.adjust_steps(&autoderef);
                                 self.apply_adjustments(base, adjustments);
-                                autoderef.finalize(self);
+                                self.register_predicates(autoderef.into_obligations());
 
                                 self.write_field_index(expr.hir_id, index);
                                 return field_ty.expect_ty();
@@ -1475,7 +1475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {}
             }
         }
-        autoderef.unambiguous_final_ty(self);
+        self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
 
         if let Some((did, field_ty)) = private_candidate {
             self.ban_private_field_access(expr, expr_t, field, did);

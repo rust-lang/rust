@@ -402,6 +402,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err.span_label(enclosing_scope_span, s.as_str());
                         }
 
+                        self.suggest_dereferences(&obligation, &mut err, &trait_ref, points_at_arg);
                         self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
                         self.suggest_fn_call(&obligation, &mut err, &trait_ref, points_at_arg);
                         self.suggest_remove_reference(&obligation, &mut err, &trait_ref);

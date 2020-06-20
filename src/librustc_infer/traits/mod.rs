@@ -25,8 +25,6 @@ pub use self::project::{
     Normalized, NormalizedTy, ProjectionCache, ProjectionCacheEntry, ProjectionCacheKey,
     ProjectionCacheStorage, Reveal,
 };
-crate use self::util::elaborate_predicates;
-
 pub use rustc_middle::traits::*;
 
 /// An `Obligation` represents some trait reference (e.g., `i32: Eq`) for

@@ -1109,6 +1109,10 @@ impl rustc_ast_lowering::Resolver for Resolver<'_> {
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
     }
+
+    fn trait_map(&self) -> &NodeMap<Vec<TraitCandidate>> {
+        &self.trait_map
+    }
 }
 
 impl<'a> Resolver<'a> {
@@ -1284,11 +1288,6 @@ impl<'a> Resolver<'a> {
         let definitions = self.definitions;
         let extern_crate_map = self.extern_crate_map;
         let export_map = self.export_map;
-        let trait_map = self
-            .trait_map
-            .into_iter()
-            .map(|(k, v)| (definitions.node_id_to_hir_id(k), v))
-            .collect();
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
         let glob_map = self.glob_map;
@@ -1297,7 +1296,6 @@ impl<'a> Resolver<'a> {
             cstore: Box::new(self.crate_loader.into_cstore()),
             extern_crate_map,
             export_map,
-            trait_map,
             glob_map,
             maybe_unused_trait_imports,
             maybe_unused_extern_crates,
@@ -1315,11 +1313,6 @@ impl<'a> Resolver<'a> {
             cstore: Box::new(self.cstore().clone()),
             extern_crate_map: self.extern_crate_map.clone(),
             export_map: self.export_map.clone(),
-            trait_map: self
-                .trait_map
-                .iter()
-                .map(|(&k, v)| (self.definitions.node_id_to_hir_id(k), v.clone()))
-                .collect(),
             glob_map: self.glob_map.clone(),
             maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
             maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),

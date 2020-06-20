@@ -333,6 +333,17 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
     /// in a different item, with `target_substs` as the base for
     /// the target impl/trait, with the source child-specific
     /// parameters (e.g., method parameters) on top of that base.
+    ///
+    /// For example given:
+    ///
+    /// trait X<S> { fn f<T>(); }
+    /// impl<U> X<U> for U { fn f<V>() {} }
+    ///
+    /// * If `self` is `[Self, S, T]`: the identity substs of `f` in the trait.
+    /// * If `source_ancestor` is the def_id of the trait.
+    /// * If `target_substs` is `[U]`, the substs for the impl.
+    /// * Then we will return `[U, T]`, the subst for `f` in the impl that
+    ///   are needed for it to match the trait.
     pub fn rebase_onto(
         &self,
         tcx: TyCtxt<'tcx>,

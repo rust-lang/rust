@@ -36,7 +36,6 @@
 #![feature(drain_filter)]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
-#![feature(marker_trait_attr)]
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(option_expect_none)]

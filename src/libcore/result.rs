@@ -1155,6 +1155,7 @@ impl<T: Deref, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(inner_deref)]
     /// let x: Result<String, u32> = Ok("hello".to_string());
     /// let y: Result<&str, &u32> = Ok("hello");
     /// assert_eq!(x.as_deref(), y);
@@ -1189,12 +1190,15 @@ impl<T: DerefMut, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(inner_deref)]
+    /// let mut s = "HELLO".to_string();
     /// let mut x: Result<String, u32> = Ok("hello".to_string());
-    /// let y: Result<&mut str, &mut u32> = Ok("HELLO");
+    /// let y: Result<&mut str, &mut u32> = Ok(&mut s);
     /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
     ///
+    /// let mut i = 42;
     /// let mut x: Result<String, u32> = Err(42);
-    /// let y: Result<&mut str, &mut u32> = Err(&42);
+    /// let y: Result<&mut str, &mut u32> = Err(&mut i);
     /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
     /// ```
     pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E> {

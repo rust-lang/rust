@@ -883,7 +883,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         })
                         .collect();
                     if !lifetimes.is_empty() {
-                        self.trait_ref_hack = true;
                         let next_early_index = self.next_early_index();
                         let scope = Scope::Binder {
                             lifetimes,
@@ -895,9 +894,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         let result = self.with(scope, |old_scope, this| {
                             this.check_lifetime_params(old_scope, &bound_generic_params);
                             this.visit_ty(&bounded_ty);
+                            this.trait_ref_hack = true;
                             walk_list!(this, visit_param_bound, bounds);
+                            this.trait_ref_hack = false;
                         });
-                        self.trait_ref_hack = false;
                         result
                     } else {
                         self.visit_ty(&bounded_ty);
@@ -932,13 +932,15 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         debug!("visit_poly_trait_ref(trait_ref={:?})", trait_ref);
 
         let should_pop_missing_lt = self.is_trait_ref_fn_scope(trait_ref);
-        if !self.trait_ref_hack
+
+        let trait_ref_hack = take(&mut self.trait_ref_hack);
+        if !trait_ref_hack
             || trait_ref.bound_generic_params.iter().any(|param| match param.kind {
                 GenericParamKind::Lifetime { .. } => true,
                 _ => false,
             })
         {
-            if self.trait_ref_hack {
+            if trait_ref_hack {
                 struct_span_err!(
                     self.tcx.sess,
                     trait_ref.span,
@@ -968,10 +970,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 this.check_lifetime_params(old_scope, &trait_ref.bound_generic_params);
                 walk_list!(this, visit_generic_param, trait_ref.bound_generic_params);
                 this.visit_trait_ref(&trait_ref.trait_ref);
-            })
+            });
         } else {
             self.visit_trait_ref(&trait_ref.trait_ref);
         }
+        self.trait_ref_hack = trait_ref_hack;
         if should_pop_missing_lt {
             self.missing_named_lifetime_spots.pop();
         }

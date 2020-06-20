@@ -1,4 +1,3 @@
-use super::autoderef::Autoderef;
 use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::type_error_struct;
@@ -17,6 +16,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_target::spec::abi;
+use rustc_trait_selection::autoderef::Autoderef;
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -72,7 +72,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         while result.is_none() && autoderef.next().is_some() {
             result = self.try_overloaded_call_step(call_expr, callee_expr, arg_exprs, &autoderef);
         }
-        autoderef.finalize(self);
+        self.register_predicates(autoderef.into_obligations());
 
         let output = match result {
             None => {
@@ -106,7 +106,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         autoderef: &Autoderef<'a, 'tcx>,
     ) -> Option<CallStep<'tcx>> {
-        let adjusted_ty = autoderef.unambiguous_final_ty(self);
+        let adjusted_ty =
+            self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
         debug!(
             "try_overloaded_call_step(call_expr={:?}, adjusted_ty={:?})",
             call_expr, adjusted_ty
@@ -115,7 +116,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If the callee is a bare function or a closure, then we're all set.
         match adjusted_ty.kind {
             ty::FnDef(..) | ty::FnPtr(_) => {
-                let adjustments = autoderef.adjust_steps(self);
+                let adjustments = self.adjust_steps(autoderef);
                 self.apply_adjustments(callee_expr, adjustments);
                 return Some(CallStep::Builtin(adjusted_ty));
             }
@@ -135,7 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             &closure_sig,
                         )
                         .0;
-                    let adjustments = autoderef.adjust_steps(self);
+                    let adjustments = self.adjust_steps(autoderef);
                     self.record_deferred_call_resolution(
                         def_id,
                         DeferredCallResolution {
@@ -176,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.try_overloaded_call_traits(call_expr, adjusted_ty, Some(arg_exprs))
             .or_else(|| self.try_overloaded_call_traits(call_expr, adjusted_ty, None))
             .map(|(autoref, method)| {
-                let mut adjustments = autoderef.adjust_steps(self);
+                let mut adjustments = self.adjust_steps(autoderef);
                 adjustments.extend(autoref);
                 self.apply_adjustments(callee_expr, adjustments);
                 CallStep::Overloaded(method)

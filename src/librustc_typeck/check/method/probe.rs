@@ -3,7 +3,6 @@ use super::MethodError;
 use super::NoMatchData;
 use super::{CandidateSource, ImplSource, TraitSource};
 
-use crate::check::autoderef::{self, Autoderef};
 use crate::check::FnCtxt;
 use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
@@ -30,6 +29,7 @@ use rustc_session::config::nightly_options;
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
+use rustc_trait_selection::autoderef::{self, Autoderef};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
 use rustc_trait_selection::traits::query::method_autoderef::{
@@ -477,7 +477,7 @@ fn method_autoderef_steps<'tcx>(
             })
             .collect();
 
-        let final_ty = autoderef.maybe_ambiguous_final_ty();
+        let final_ty = autoderef.final_ty(true);
         let opt_bad_ty = match final_ty.kind {
             ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
                 reached_raw_pointer,

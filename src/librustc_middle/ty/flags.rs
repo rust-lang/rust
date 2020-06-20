@@ -93,7 +93,6 @@ impl FlagComputation {
 
             &ty::Bound(debruijn, _) => {
                 self.add_binder(debruijn);
-                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
             &ty::Placeholder(..) => {
@@ -216,7 +215,6 @@ impl FlagComputation {
             }
             ty::ConstKind::Bound(debruijn, _) => {
                 self.add_binder(debruijn);
-                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Param(_) => {
                 self.add_flags(TypeFlags::HAS_CT_PARAM);
