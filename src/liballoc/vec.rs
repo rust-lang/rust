@@ -1760,17 +1760,15 @@ impl<T: PartialEq> Vec<T> {
 impl<T> Vec<T> {
     /// Removes the first instance of `item` from the vector if the item exists.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(vec_remove_item)]
-    /// let mut vec = vec![1, 2, 3, 1];
-    ///
-    /// vec.remove_item(&1);
-    ///
-    /// assert_eq!(vec, vec![2, 3, 1]);
-    /// ```
+    /// This method will be removed soon.
     #[unstable(feature = "vec_remove_item", reason = "recently added", issue = "40062")]
+    #[rustc_deprecated(
+        reason = "Removing the first item equal to a needle is already easily possible \
+            with iterators and the current Vec methods. Furthermore, having a method for \
+            one particular case of removal (linear search, only the first item, no swap remove) \
+            but not for others is inconsistent. This method will be removed soon.",
+        since = "1.46.0"
+    )]
     pub fn remove_item<V>(&mut self, item: &V) -> Option<T>
     where
         T: PartialEq<V>,
