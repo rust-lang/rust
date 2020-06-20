@@ -188,17 +188,23 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 // rustdoc needs to be able to document functions that use all the features, so
                 // whitelist them all
                 target_features_whitelist::all_known_features()
+                    .chain(Some(("cg_clif", None)))
                     .map(|(a, b)| (a.to_string(), b))
                     .collect()
             } else {
                 target_features_whitelist::target_feature_whitelist(tcx.sess)
                     .iter()
+                    .chain(&Some(("cg_clif", None)))
                     .map(|&(a, b)| (a.to_string(), b))
                     .collect()
             }
         };
     }
     fn provide_extern(&self, _providers: &mut Providers<'_>) {}
+
+    fn target_features(&self, _sess: &Session) -> Vec<rustc_span::Symbol> {
+        vec![rustc_span::Symbol::intern("cg_clif")]
+    }
 
     fn codegen_crate<'tcx>(
         &self,

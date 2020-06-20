@@ -11,12 +11,14 @@ diff --git a/src/stdarch/crates/core_arch/src/x86/cpuid.rs b/src/stdarch/crates/
 index f313c42..ff952bc 100644
 --- a/src/stdarch/crates/core_arch/src/x86/cpuid.rs
 +++ b/src/stdarch/crates/core_arch/src/x86/cpuid.rs
-@@ -84,6 +84,9 @@ pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
+@@ -84,6 +84,11 @@ pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
  /// Does the host support the `cpuid` instruction?
  #[inline]
  pub fn has_cpuid() -> bool {
 +    // __cpuid intrinsic is not yet implemented
-+    return false;
++    #[cfg(target_feature = "cg_clif")] {
++        return false;
++    }
 +
      #[cfg(target_env = "sgx")]
      {
