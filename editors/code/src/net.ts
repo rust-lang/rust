@@ -1,7 +1,9 @@
 import fetch from "node-fetch";
 import * as vscode from "vscode";
-import * as fs from "fs";
 import * as stream from "stream";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import * as util from "util";
 import { log, assert } from "./util";
 
@@ -87,7 +89,7 @@ export async function download(
 }
 
 /**
- * Downloads file from `url` and stores it at `destFilePath` with `destFilePermissions`.
+ * Downloads file from `url` and stores it at `destFilePath` with `mode` (unix permissions).
  * `onProgress` callback is called on recieveing each chunk of bytes
  * to track the progress of downloading, it gets the already read and total
  * amount of bytes to read as its parameters.
@@ -118,13 +120,46 @@ async function downloadFile(
         onProgress(readBytes, totalBytes);
     });
 
-    const destFileStream = fs.createWriteStream(destFilePath, { mode });
-
-    await pipeline(res.body, destFileStream);
-    return new Promise<void>(resolve => {
-        destFileStream.on("close", resolve);
-        destFileStream.destroy();
-        // This workaround is awaiting to be removed when vscode moves to newer nodejs version:
-        // https://github.com/rust-analyzer/rust-analyzer/issues/3167
+    // Put the artifact into a temporary folder to prevent partially downloaded files when user kills vscode
+    await withTempFile(async tempFilePath => {
+        const destFileStream = fs.createWriteStream(tempFilePath, { mode });
+        await pipeline(res.body, destFileStream);
+        await new Promise<void>(resolve => {
+            destFileStream.on("close", resolve);
+            destFileStream.destroy();
+            // This workaround is awaiting to be removed when vscode moves to newer nodejs version:
+            // https://github.com/rust-analyzer/rust-analyzer/issues/3167
+        });
+        await moveFile(tempFilePath, destFilePath);
     });
+}
+
+async function withTempFile(scope: (tempFilePath: string) => Promise<void>) {
+    // Based on the great article: https://advancedweb.hu/secure-tempfiles-in-nodejs-without-dependencies/
+
+    // `.realpath()` should handle the cases where os.tmpdir() contains symlinks
+    const osTempDir = await fs.promises.realpath(os.tmpdir());
+
+    const tempDir = await fs.promises.mkdtemp(path.join(osTempDir, "rust-analyzer"));
+
+    try {
+        return await scope(path.join(tempDir, "file"));
+    } finally {
+        // We are good citizens :D
+        void fs.promises.rmdir(tempDir, { recursive: true }).catch(log.error);
+    }
+};
+
+async function moveFile(src: fs.PathLike, dest: fs.PathLike) {
+    try {
+        await fs.promises.rename(src, dest);
+    } catch (err) {
+        if (err.code === 'EXDEV') {
+            // We are probably moving the file across partitions/devices
+            await fs.promises.copyFile(src, dest);
+            await fs.promises.unlink(src);
+        } else {
+            log.error(`Failed to rename the file ${src} -> ${dest}`, err);
+        }
+    }
 }
