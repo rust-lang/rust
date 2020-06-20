@@ -565,6 +565,7 @@ impl MetadataBlob {
 impl EntryKind {
     fn def_kind(&self) -> DefKind {
         match *self {
+            EntryKind::AnonConst(..) => DefKind::AnonConst,
             EntryKind::Const(..) => DefKind::Const,
             EntryKind::AssocConst(..) => DefKind::AssocConst,
             EntryKind::ImmStatic
@@ -1121,7 +1122,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn mir_const_qualif(&self, id: DefIndex) -> mir::ConstQualifs {
         match self.kind(id) {
-            EntryKind::Const(qualif, _)
+            EntryKind::AnonConst(qualif, _)
+            | EntryKind::Const(qualif, _)
             | EntryKind::AssocConst(
                 AssocContainer::ImplDefault
                 | AssocContainer::ImplFinal
@@ -1340,7 +1342,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_rendered_const(&self, id: DefIndex) -> String {
         match self.kind(id) {
-            EntryKind::Const(_, data) | EntryKind::AssocConst(_, _, data) => data.decode(self).0,
+            EntryKind::AnonConst(_, data)
+            | EntryKind::Const(_, data)
+            | EntryKind::AssocConst(_, _, data) => data.decode(self).0,
             _ => bug!(),
         }
     }

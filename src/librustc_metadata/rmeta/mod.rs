@@ -281,6 +281,7 @@ define_tables! {
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 enum EntryKind {
+    AnonConst(mir::ConstQualifs, Lazy<RenderedConst>),
     Const(mir::ConstQualifs, Lazy<RenderedConst>),
     ImmStatic,
     MutStatic,
