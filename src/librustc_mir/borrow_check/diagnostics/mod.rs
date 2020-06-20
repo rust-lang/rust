@@ -558,7 +558,9 @@ pub(super) enum UseSpans {
         fn_span: Span,
         kind: FnSelfUseKind,
     },
-    // This access has a single span associated to it: common case.
+    /// This access is caused by a `match` or `if let` pattern.
+    PatUse(Span),
+    /// This access has a single span associated to it: common case.
     OtherUse(Span),
 }
 
@@ -577,6 +579,7 @@ impl UseSpans {
         match self {
             UseSpans::ClosureUse { args_span: span, .. }
             | UseSpans::FnSelfUse { var_span: span, .. }
+            | UseSpans::PatUse(span)
             | UseSpans::OtherUse(span) => span,
         }
     }
@@ -585,6 +588,7 @@ impl UseSpans {
         match self {
             UseSpans::ClosureUse { var_span: span, .. }
             | UseSpans::FnSelfUse { var_span: span, .. }
+            | UseSpans::PatUse(span)
             | UseSpans::OtherUse(span) => span,
         }
     }
@@ -655,7 +659,7 @@ impl UseSpans {
         match self {
             closure @ UseSpans::ClosureUse { .. } => closure,
             fn_self @ UseSpans::FnSelfUse { .. } => fn_self,
-            UseSpans::OtherUse(_) => if_other(),
+            UseSpans::PatUse(_) | UseSpans::OtherUse(_) => if_other(),
         }
     }
 }
@@ -772,7 +776,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        let normal_ret = OtherUse(stmt.source_info.span);
+        let normal_ret = if let [ProjectionElem::Downcast(..), ProjectionElem::Field(_, _)] =
+            moved_place.projection
+        {
+            PatUse(stmt.source_info.span)
+        } else {
+            OtherUse(stmt.source_info.span)
+        };
 
         // We are trying to find MIR of the form:
         // ```
@@ -792,6 +802,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             _ => return normal_ret,
         };
 
+        debug!("move_spans: normal_ret = {:?}", normal_ret);
         debug!("move_spans: target_temp = {:?}", target_temp);
 
         if let Some(Terminator { kind: TerminatorKind::Call { func, args, fn_span, .. }, .. }) =
