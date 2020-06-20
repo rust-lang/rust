@@ -1,4 +1,4 @@
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 // Check a number of scenarios in which one impl tries to override another,
 // without correctly using `default`.

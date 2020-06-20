@@ -46,5 +46,14 @@ LL |     default fn f2() {}
    |     |
    |     `default` because of this
 
-error: aborting due to 6 previous errors
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:1:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
+error: aborting due to 6 previous errors; 1 warning emitted
 

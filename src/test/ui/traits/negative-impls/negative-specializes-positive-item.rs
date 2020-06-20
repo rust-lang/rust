@@ -1,4 +1,4 @@
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 #![feature(negative_impls)]
 
 // Negative impl for u32 cannot "specialize" the base impl.
