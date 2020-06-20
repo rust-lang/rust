@@ -22,6 +22,7 @@ extern crate alloc;
 use rustc_data_structures::cold_path;
 use smallvec::SmallVec;
 
+use std::alloc::Layout;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::intrinsics;
@@ -363,13 +364,15 @@ impl DroplessArena {
         }
     }
 
-    /// Allocates a byte slice with specified size and alignment from the
-    /// current memory chunk. Returns `None` if there is no free space left to
-    /// satisfy the request.
+    /// Allocates a byte slice with specified layout from the current memory
+    /// chunk. Returns `None` if there is no free space left to satisfy the
+    /// request.
     #[inline]
-    fn alloc_raw_without_grow(&self, bytes: usize, align: usize) -> Option<*mut u8> {
+    fn alloc_raw_without_grow(&self, layout: Layout) -> Option<*mut u8> {
         let ptr = self.ptr.get() as usize;
         let end = self.end.get() as usize;
+        let align = layout.align();
+        let bytes = layout.size();
         // The allocation request fits into the current chunk iff:
         //
         // let aligned = align_to(ptr, align);
@@ -390,15 +393,15 @@ impl DroplessArena {
     }
 
     #[inline]
-    pub fn alloc_raw(&self, bytes: usize, align: usize) -> *mut u8 {
-        assert!(bytes != 0);
+    pub fn alloc_raw(&self, layout: Layout) -> *mut u8 {
+        assert!(layout.size() != 0);
         loop {
-            if let Some(a) = self.alloc_raw_without_grow(bytes, align) {
+            if let Some(a) = self.alloc_raw_without_grow(layout) {
                 break a;
             }
             // No free space left. Allocate a new chunk to satisfy the request.
             // On failure the grow will panic or abort.
-            self.grow(bytes);
+            self.grow(layout.size());
         }
     }
 
@@ -406,7 +409,7 @@ impl DroplessArena {
     pub fn alloc<T>(&self, object: T) -> &mut T {
         assert!(!mem::needs_drop::<T>());
 
-        let mem = self.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut T;
+        let mem = self.alloc_raw(Layout::for_value::<T>(&object)) as *mut T;
 
         unsafe {
             // Write into uninitialized memory.
@@ -431,7 +434,7 @@ impl DroplessArena {
         assert!(mem::size_of::<T>() != 0);
         assert!(!slice.is_empty());
 
-        let mem = self.alloc_raw(slice.len() * mem::size_of::<T>(), mem::align_of::<T>()) as *mut T;
+        let mem = self.alloc_raw(Layout::for_value::<[T]>(slice)) as *mut T;
 
         unsafe {
             mem.copy_from_nonoverlapping(slice.as_ptr(), slice.len());
@@ -477,8 +480,8 @@ impl DroplessArena {
                 if len == 0 {
                     return &mut [];
                 }
-                let size = len.checked_mul(mem::size_of::<T>()).unwrap();
-                let mem = self.alloc_raw(size, mem::align_of::<T>()) as *mut T;
+
+                let mem = self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
                 unsafe { self.write_from_iter(iter, len, mem) }
             }
             (_, _) => {
@@ -491,9 +494,8 @@ impl DroplessArena {
                     // the content of the SmallVec
                     unsafe {
                         let len = vec.len();
-                        let start_ptr = self
-                            .alloc_raw(len * mem::size_of::<T>(), mem::align_of::<T>())
-                            as *mut T;
+                        let start_ptr =
+                            self.alloc_raw(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
                         vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
                         vec.set_len(0);
                         slice::from_raw_parts_mut(start_ptr, len)
@@ -537,7 +539,7 @@ pub struct DropArena {
 impl DropArena {
     #[inline]
     pub unsafe fn alloc<T>(&self, object: T) -> &mut T {
-        let mem = self.arena.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut T;
+        let mem = self.arena.alloc_raw(Layout::new::<T>()) as *mut T;
         // Write into uninitialized memory.
         ptr::write(mem, object);
         let result = &mut *mem;
@@ -557,10 +559,7 @@ impl DropArena {
         }
         let len = vec.len();
 
-        let start_ptr = self
-            .arena
-            .alloc_raw(len.checked_mul(mem::size_of::<T>()).unwrap(), mem::align_of::<T>())
-            as *mut T;
+        let start_ptr = self.arena.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
 
         let mut destructors = self.destructors.borrow_mut();
         // Reserve space for the destructors so we can't panic while adding them
