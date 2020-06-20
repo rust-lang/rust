@@ -611,7 +611,11 @@ macro_rules! which_arena_for_type {
 
 #[macro_export]
 macro_rules! declare_arena {
-    ([], [$($a:tt $name:ident: $ty:ty, $gen_ty:ty;)*], $tcx:lifetime) => {
+    // This macro has to take the same input as
+    // `impl_arena_allocatable_decoders` which requires a second version of
+    // each type. We ignore that type until we can fix
+    // `impl_arena_allocatable_decoders`.
+    ([], [$($a:tt $name:ident: $ty:ty, $_gen_ty:ty;)*], $tcx:lifetime) => {
         #[derive(Default)]
         pub struct Arena<$tcx> {
             pub dropless: $crate::DroplessArena,
@@ -619,39 +623,56 @@ macro_rules! declare_arena {
             $($name: $crate::arena_for_type!($a[$ty]),)*
         }
 
-        #[marker]
-        pub trait ArenaAllocatable<'tcx> {}
-
-        impl<'tcx, T: Copy> ArenaAllocatable<'tcx> for T {}
-
-        unsafe trait ArenaField<'tcx>: Sized + ArenaAllocatable<'tcx> {
-            /// Returns a specific arena to allocate from.
-            /// If `None` is returned, the `DropArena` will be used.
-            fn arena<'a>(arena: &'a Arena<'tcx>) -> Option<&'a $crate::TypedArena<Self>>;
+        pub trait ArenaAllocatable<'tcx, T = Self>: Sized {
+            fn allocate_on<'a>(self, arena: &'a Arena<'tcx>) -> &'a mut Self;
+            fn allocate_from_iter<'a>(
+                arena: &'a Arena<'tcx>,
+                iter: impl ::std::iter::IntoIterator<Item = Self>,
+            ) -> &'a mut [Self];
         }
 
-        unsafe impl<'tcx, T: ArenaAllocatable<'tcx>> ArenaField<'tcx> for T {
+        impl<'tcx, T: Copy> ArenaAllocatable<'tcx, ()> for T {
             #[inline]
-            default fn arena<'a>(_: &'a Arena<'tcx>) -> Option<&'a $crate::TypedArena<Self>> {
-                panic!()
+            fn allocate_on<'a>(self, arena: &'a Arena<'tcx>) -> &'a mut Self {
+                arena.dropless.alloc(self)
             }
-        }
+            #[inline]
+            fn allocate_from_iter<'a>(
+                arena: &'a Arena<'tcx>,
+                iter: impl ::std::iter::IntoIterator<Item = Self>,
+            ) -> &'a mut [Self] {
+                arena.dropless.alloc_from_iter(iter)
+            }
 
+        }
         $(
-            #[allow(unused_lifetimes)]
-            impl<$tcx> ArenaAllocatable<$tcx> for $ty {}
-            unsafe impl<$tcx, '_x, '_y, '_z, '_w> ArenaField<$tcx> for $gen_ty where Self: ArenaAllocatable<$tcx> {
+            impl<$tcx> ArenaAllocatable<$tcx, $ty> for $ty {
                 #[inline]
-                fn arena<'a>(_arena: &'a Arena<$tcx>) -> Option<&'a $crate::TypedArena<Self>> {
-                    // SAFETY: We only implement `ArenaAllocatable<$tcx>` for
-                    // `$ty`, so `$ty` and Self are the same type
-                    unsafe {
-                        ::std::mem::transmute::<
-                            Option<&'a $crate::TypedArena<$ty>>,
-                            Option<&'a $crate::TypedArena<Self>>,
-                        >(
-                            $crate::which_arena_for_type!($a[&_arena.$name])
-                        )
+                fn allocate_on<'a>(self, arena: &'a Arena<$tcx>) -> &'a mut Self {
+                    if !::std::mem::needs_drop::<Self>() {
+                        return arena.dropless.alloc(self);
+                    }
+                    match $crate::which_arena_for_type!($a[&arena.$name]) {
+                        ::std::option::Option::<&$crate::TypedArena<Self>>::Some(ty_arena) => {
+                            ty_arena.alloc(self)
+                        }
+                        ::std::option::Option::None => unsafe { arena.drop.alloc(self) },
+                    }
+                }
+
+                #[inline]
+                fn allocate_from_iter<'a>(
+                    arena: &'a Arena<$tcx>,
+                    iter: impl ::std::iter::IntoIterator<Item = Self>,
+                ) -> &'a mut [Self] {
+                    if !::std::mem::needs_drop::<Self>() {
+                        return arena.dropless.alloc_from_iter(iter);
+                    }
+                    match $crate::which_arena_for_type!($a[&arena.$name]) {
+                        ::std::option::Option::<&$crate::TypedArena<Self>>::Some(ty_arena) => {
+                            ty_arena.alloc_from_iter(iter)
+                        }
+                        ::std::option::Option::None => unsafe { arena.drop.alloc_from_iter(iter) },
                     }
                 }
             }
@@ -659,14 +680,8 @@ macro_rules! declare_arena {
 
         impl<'tcx> Arena<'tcx> {
             #[inline]
-            pub fn alloc<T: ArenaAllocatable<'tcx>>(&self, value: T) -> &mut T {
-                if !::std::mem::needs_drop::<T>() {
-                    return self.dropless.alloc(value);
-                }
-                match <T as ArenaField<'tcx>>::arena(self) {
-                    ::std::option::Option::Some(arena) => arena.alloc(value),
-                    ::std::option::Option::None => unsafe { self.drop.alloc(value) },
-                }
+            pub fn alloc<T: ArenaAllocatable<'tcx, U>, U>(&self, value: T) -> &mut T {
+                value.allocate_on(self)
             }
 
             #[inline]
@@ -677,17 +692,11 @@ macro_rules! declare_arena {
                 self.dropless.alloc_slice(value)
             }
 
-            pub fn alloc_from_iter<'a, T: ArenaAllocatable<'tcx>>(
+            pub fn alloc_from_iter<'a, T: ArenaAllocatable<'tcx, U>, U>(
                 &'a self,
                 iter: impl ::std::iter::IntoIterator<Item = T>,
             ) -> &'a mut [T] {
-                if !::std::mem::needs_drop::<T>() {
-                    return self.dropless.alloc_from_iter(iter);
-                }
-                match <T as ArenaField<'tcx>>::arena(self) {
-                    ::std::option::Option::Some(arena) => arena.alloc_from_iter(iter),
-                    ::std::option::Option::None => unsafe { self.drop.alloc_from_iter(iter) },
-                }
+                T::allocate_from_iter(self, iter)
             }
         }
     }
