@@ -640,9 +640,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-server"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dccec31bfd027ac0dd288a78e19005fd89624d9099456e284b5241316a6c3072"
+checksum = "53b4ace8ebe5d2aff3687ce0ed507f6020d6a47a7de2b0d3d664ea237ffb0c62"
 dependencies = [
  "crossbeam-channel",
  "log",

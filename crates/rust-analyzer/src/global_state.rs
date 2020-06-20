@@ -20,7 +20,7 @@ use stdx::format_to;
 use crate::{
     config::{Config, FilesWatcher},
     diagnostics::{CheckFixes, DiagnosticCollection},
-    main_loop::req_queue::{CompletedInRequest, LatestRequests},
+    main_loop::request_metrics::{LatestRequests, RequestMetrics},
     to_proto::url_from_abs_path,
     vfs_glob::{Glob, RustPackageFilterBuilder},
     LspError, Result,
@@ -55,10 +55,10 @@ pub struct GlobalState {
     pub analysis_host: AnalysisHost,
     pub vfs: Arc<RwLock<Vfs>>,
     pub task_receiver: Receiver<VfsTask>,
-    pub latest_requests: Arc<RwLock<LatestRequests>>,
     pub flycheck: Option<Flycheck>,
     pub diagnostics: DiagnosticCollection,
     pub proc_macro_client: ProcMacroClient,
+    pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -66,8 +66,8 @@ pub struct GlobalStateSnapshot {
     pub config: Config,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis: Analysis,
-    pub latest_requests: Arc<RwLock<LatestRequests>>,
     pub check_fixes: CheckFixes,
+    pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
     vfs: Arc<RwLock<Vfs>>,
 }
 
@@ -236,7 +236,7 @@ impl GlobalState {
         self.analysis_host.collect_garbage()
     }
 
-    pub(crate) fn complete_request(&mut self, request: CompletedInRequest) {
+    pub(crate) fn complete_request(&mut self, request: RequestMetrics) {
         self.latest_requests.write().record(request)
     }
 }
