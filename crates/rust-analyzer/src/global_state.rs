@@ -20,7 +20,7 @@ use stdx::format_to;
 use crate::{
     config::{Config, FilesWatcher},
     diagnostics::{CheckFixes, DiagnosticCollection},
-    main_loop::pending_requests::{CompletedRequest, LatestRequests},
+    main_loop::req_queue::{CompletedInRequest, LatestRequests},
     to_proto::url_from_abs_path,
     vfs_glob::{Glob, RustPackageFilterBuilder},
     LspError, Result,
@@ -236,7 +236,7 @@ impl GlobalState {
         self.analysis_host.collect_garbage()
     }
 
-    pub fn complete_request(&mut self, request: CompletedRequest) {
+    pub(crate) fn complete_request(&mut self, request: CompletedInRequest) {
         self.latest_requests.write().record(request)
     }
 }
