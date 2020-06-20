@@ -250,7 +250,8 @@ macro_rules! options {
         pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
         pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `leak`, `memory` or `thread`";
         pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
-        pub const parse_cfguard: &str = "either `disabled`, `nochecks`, or `checks`";
+        pub const parse_cfguard: &str =
+            "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
         pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
         pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavor::one_of();
         pub const parse_optimization_fuel: &str = "crate=integer";
@@ -495,12 +496,24 @@ macro_rules! options {
         }
 
         fn parse_cfguard(slot: &mut CFGuard, v: Option<&str>) -> bool {
-            match v {
-                Some("disabled") => *slot = CFGuard::Disabled,
-                Some("nochecks") => *slot = CFGuard::NoChecks,
-                Some("checks") => *slot = CFGuard::Checks,
-                _ => return false,
+            if v.is_some() {
+                let mut bool_arg = None;
+                if parse_opt_bool(&mut bool_arg, v) {
+                    *slot = if bool_arg.unwrap() {
+                        CFGuard::Checks
+                    } else {
+                        CFGuard::Disabled
+                    };
+                    return true
+                }
             }
+
+            *slot = match v {
+                None => CFGuard::Checks,
+                Some("checks") => CFGuard::Checks,
+                Some("nochecks") => CFGuard::NoChecks,
+                Some(_) => return false,
+            };
             true
         }
 
@@ -796,8 +809,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "enable the experimental Chalk-based trait solving engine"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
-    control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [UNTRACKED],
-        "use Windows Control Flow Guard (`disabled`, `nochecks` or `checks`)"),
+    control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED],
+        "use Windows Control Flow Guard (default: no)"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
     debug_macros: bool = (false, parse_bool, [TRACKED],
