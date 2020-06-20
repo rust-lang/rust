@@ -2,7 +2,9 @@
 use std::{panic, sync::Arc};
 
 use chalk_ir::cast::Cast;
-use hir_def::{expr::ExprId, DefWithBodyId, ImplId, TraitId, TypeAliasId};
+use hir_def::{
+    expr::ExprId, lang_item::LangItemTarget, DefWithBodyId, ImplId, TraitId, TypeAliasId,
+};
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
@@ -14,7 +16,7 @@ use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty,
 use self::chalk::{from_chalk, Interner, ToChalk};
 
 pub(crate) mod chalk;
-pub(crate) mod builtin;
+mod builtin;
 
 // This controls the maximum size of types Chalk considers. If we set this too
 // high, we can run into slow edge cases; if we set it too low, Chalk won't
@@ -296,6 +298,14 @@ impl FnTrait {
             FnTrait::FnOnce => "fn_once",
             FnTrait::FnMut => "fn_mut",
             FnTrait::Fn => "fn",
+        }
+    }
+
+    pub fn get_id(&self, db: &dyn HirDatabase, krate: CrateId) -> Option<TraitId> {
+        let target = db.lang_item(krate, self.lang_item_name().into())?;
+        match target {
+            LangItemTarget::TraitId(t) => Some(t),
+            _ => None,
         }
     }
 }

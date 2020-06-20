@@ -15,7 +15,7 @@ use ra_syntax::ast::RangeOp;
 
 use crate::{
     autoderef, method_resolution, op,
-    traits::{builtin::get_fn_trait, FnTrait, InEnvironment, SolutionVariables},
+    traits::{FnTrait, InEnvironment, SolutionVariables},
     utils::{generics, variant_data, Generics},
     ApplicationTy, Binders, CallableDef, FnSig, InferTy, IntTy, Mutability, Obligation, Rawness,
     Substs, TraitRef, Ty, TypeCtor,
@@ -67,7 +67,7 @@ impl<'a> InferenceContext<'a> {
         if let Some(krate) = self.resolver.krate() {
             let fn_traits: Vec<crate::TraitId> = [FnTrait::FnOnce, FnTrait::FnMut, FnTrait::Fn]
                 .iter()
-                .filter_map(|f| get_fn_trait(self.db, krate, *f))
+                .filter_map(|f| f.get_id(self.db, krate))
                 .collect();
             for fn_trait in fn_traits {
                 let fn_trait_data = self.db.trait_data(fn_trait);
