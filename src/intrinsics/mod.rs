@@ -126,7 +126,7 @@ macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $
     let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
 
     // Compare
-    let is_eq = codegen_icmp($fx, IntCC::SignedGreaterThan, old, $src);
+    let is_eq = $fx.bcx.ins().icmp(IntCC::SignedGreaterThan, old, $src);
     let new = $fx.bcx.ins().select(is_eq, old, $src);
 
     // Write new
@@ -257,7 +257,7 @@ macro simd_cmp {
         if let Some(vector_ty) = vector_ty {
             let x = $x.load_scalar($fx);
             let y = $y.load_scalar($fx);
-            let val = codegen_icmp($fx, IntCC::$cc, x, y);
+            let val = $fx.bcx.ins().icmp(IntCC::$cc, x, y);
 
             // HACK This depends on the fact that icmp for vectors represents bools as 0 and !0, not 0 and 1.
             let val = $fx.bcx.ins().raw_bitcast(vector_ty, val);
@@ -271,7 +271,7 @@ macro simd_cmp {
                 $ret,
                 |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
                     let res_lane = match lane_layout.ty.kind {
-                        ty::Uint(_) | ty::Int(_) => codegen_icmp(fx, IntCC::$cc, x_lane, y_lane),
+                        ty::Uint(_) | ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane),
                         _ => unreachable!("{:?}", lane_layout.ty),
                     };
                     bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
@@ -288,8 +288,8 @@ macro simd_cmp {
             $ret,
             |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
                 let res_lane = match lane_layout.ty.kind {
-                    ty::Uint(_) => codegen_icmp(fx, IntCC::$cc_u, x_lane, y_lane),
-                    ty::Int(_) => codegen_icmp(fx, IntCC::$cc_s, x_lane, y_lane),
+                    ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
+                    ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
                     _ => unreachable!("{:?}", lane_layout.ty),
                 };
                 bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
@@ -869,7 +869,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
 
             // Compare
-            let is_eq = codegen_icmp(fx, IntCC::Equal, old, test_old);
+            let is_eq = fx.bcx.ins().icmp(IntCC::Equal, old, test_old);
             let new = fx.bcx.ins().select(is_eq, new, old); // Keep old if not equal to test_old
 
             // Write new

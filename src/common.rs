@@ -81,51 +81,6 @@ pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-pub(crate) fn codegen_icmp(
-    fx: &mut FunctionCx<'_, '_, impl Backend>,
-    intcc: IntCC,
-    lhs: Value,
-    rhs: Value,
-) -> Value {
-    let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
-    let rhs_ty = fx.bcx.func.dfg.value_type(rhs);
-    assert_eq!(lhs_ty, rhs_ty);
-    if lhs_ty == types::I128 {
-        // FIXME legalize `icmp.i128` in Cranelift
-
-        let (lhs_lsb, lhs_msb) = fx.bcx.ins().isplit(lhs);
-        let (rhs_lsb, rhs_msb) = fx.bcx.ins().isplit(rhs);
-
-        match intcc {
-            IntCC::Equal => {
-                let lsb_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_lsb, rhs_lsb);
-                let msb_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_msb, rhs_msb);
-                fx.bcx.ins().band(lsb_eq, msb_eq)
-            }
-            IntCC::NotEqual => {
-                let lsb_ne = fx.bcx.ins().icmp(IntCC::NotEqual, lhs_lsb, rhs_lsb);
-                let msb_ne = fx.bcx.ins().icmp(IntCC::NotEqual, lhs_msb, rhs_msb);
-                fx.bcx.ins().bor(lsb_ne, msb_ne)
-            }
-            _ => {
-                // if msb_eq {
-                //     lsb_cc
-                // } else {
-                //     msb_cc
-                // }
-
-                let msb_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_msb, rhs_msb);
-                let lsb_cc = fx.bcx.ins().icmp(intcc, lhs_lsb, rhs_lsb);
-                let msb_cc = fx.bcx.ins().icmp(intcc, lhs_msb, rhs_msb);
-
-                fx.bcx.ins().select(msb_eq, lsb_cc, msb_cc)
-            }
-        }
-    } else {
-        fx.bcx.ins().icmp(intcc, lhs, rhs)
-    }
-}
-
 pub(crate) fn codegen_icmp_imm(
     fx: &mut FunctionCx<'_, '_, impl Backend>,
     intcc: IntCC,

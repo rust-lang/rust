@@ -81,6 +81,12 @@ fn main() {
     assert_eq!(houndred_f32 as i128, 100);
     assert_eq!(houndred_f64 as i128, 100);
 
+    // Test signed 128bit comparing
+    let max = usize::MAX as i128;
+    if 100i128 < 0i128 || 100i128 > max {
+        panic!();
+    }
+
     let _a = 1u32 << 2u8;
 
     let empty: [i32; 0] = [];

@@ -46,7 +46,7 @@ fn codegen_compare_bin_op<'tcx>(
     rhs: Value,
 ) -> CValue<'tcx> {
     let intcc = crate::num::bin_op_to_intcc(bin_op, signed).unwrap();
-    let val = codegen_icmp(fx, intcc, lhs, rhs);
+    let val = fx.bcx.ins().icmp(intcc, lhs, rhs);
     let val = fx.bcx.ins().bint(types::I8, val);
     CValue::by_val(val, fx.layout_of(fx.tcx.types.bool))
 }
