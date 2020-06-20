@@ -481,7 +481,7 @@ impl Step for Rustdoc {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rustdoc")
+        run.path("src/tools/rustdoc").path("src/librustdoc")
     }
 
     fn make_run(run: RunConfig<'_>) {

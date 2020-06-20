@@ -5,7 +5,7 @@
 
 const _: Vec<i32> = {
     let mut x = Vec::<i32>::new(); //~ ERROR destructors cannot be evaluated at compile-time
-    let r = &mut x; //~ ERROR references in constants may only refer to immutable values
+    let r = &mut x; //~ ERROR mutable references are not allowed in constants
     let y = x;
     y
 };

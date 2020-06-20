@@ -4,7 +4,7 @@
 // check-pass
 // edition:2018
 
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 fn main() {}
 

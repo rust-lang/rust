@@ -2352,6 +2352,7 @@ impl<'tcx> AdtDef {
     /// Alternatively, if there is no explicit discriminant, returns the
     /// inferred discriminant directly.
     pub fn discriminant_def_for_variant(&self, variant_index: VariantIdx) -> (Option<DefId>, u32) {
+        assert!(!self.variants.is_empty());
         let mut explicit_index = variant_index.as_u32();
         let expr_did;
         loop {

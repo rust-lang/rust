@@ -11,7 +11,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::{OptLevel, Sanitizer};
+use rustc_session::config::{OptLevel, SanitizerSet};
 use rustc_session::Session;
 
 use crate::attributes;
@@ -45,26 +45,16 @@ fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
 
 /// Apply LLVM sanitize attributes.
 #[inline]
-pub fn sanitize(cx: &CodegenCx<'ll, '_>, codegen_fn_flags: CodegenFnAttrFlags, llfn: &'ll Value) {
-    if let Some(ref sanitizer) = cx.tcx.sess.opts.debugging_opts.sanitizer {
-        match *sanitizer {
-            Sanitizer::Address => {
-                if !codegen_fn_flags.contains(CodegenFnAttrFlags::NO_SANITIZE_ADDRESS) {
-                    llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
-                }
-            }
-            Sanitizer::Memory => {
-                if !codegen_fn_flags.contains(CodegenFnAttrFlags::NO_SANITIZE_MEMORY) {
-                    llvm::Attribute::SanitizeMemory.apply_llfn(Function, llfn);
-                }
-            }
-            Sanitizer::Thread => {
-                if !codegen_fn_flags.contains(CodegenFnAttrFlags::NO_SANITIZE_THREAD) {
-                    llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
-                }
-            }
-            Sanitizer::Leak => {}
-        }
+pub fn sanitize(cx: &CodegenCx<'ll, '_>, no_sanitize: SanitizerSet, llfn: &'ll Value) {
+    let enabled = cx.tcx.sess.opts.debugging_opts.sanitizer - no_sanitize;
+    if enabled.contains(SanitizerSet::ADDRESS) {
+        llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
+    }
+    if enabled.contains(SanitizerSet::MEMORY) {
+        llvm::Attribute::SanitizeMemory.apply_llfn(Function, llfn);
+    }
+    if enabled.contains(SanitizerSet::THREAD) {
+        llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
     }
 }
 
@@ -123,9 +113,14 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
-    match cx.sess().opts.debugging_opts.sanitizer {
-        Some(Sanitizer::Address | Sanitizer::Thread) => return,
-        _ => {}
+    if cx
+        .sess()
+        .opts
+        .debugging_opts
+        .sanitizer
+        .intersects(SanitizerSet::ADDRESS | SanitizerSet::THREAD)
+    {
+        return;
     }
 
     // probestack doesn't play nice either with `-C profile-generate`.
@@ -296,7 +291,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
         Attribute::NoAlias.apply_llfn(llvm::AttributePlace::ReturnValue, llfn);
     }
-    sanitize(cx, codegen_fn_attrs.flags, llfn);
+    sanitize(cx, codegen_fn_attrs.no_sanitize, llfn);
 
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated

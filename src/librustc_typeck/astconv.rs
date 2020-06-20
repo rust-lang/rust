@@ -2787,7 +2787,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     hir::PrimTy::Int(it) => tcx.mk_mach_int(it),
                     hir::PrimTy::Uint(uit) => tcx.mk_mach_uint(uit),
                     hir::PrimTy::Float(ft) => tcx.mk_mach_float(ft),
-                    hir::PrimTy::Str => tcx.mk_str(),
+                    hir::PrimTy::Str => tcx.types.str_,
                 }
             }
             Res::Err => {

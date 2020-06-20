@@ -2,7 +2,7 @@
 
 // Test that you can list the more specific impl before the more general one.
 
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 trait Foo {
     type Out;

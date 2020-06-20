@@ -2265,7 +2265,7 @@ pub trait Iterator {
     }
 
     /// Applies function to the elements of iterator and returns
-    /// the first non-none result or the first error.
+    /// the first true result or the first error.
     ///
     /// # Examples
     ///
@@ -2286,19 +2286,26 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
-    fn try_find<F, E, R>(&mut self, mut f: F) -> Result<Option<Self::Item>, E>
+    fn try_find<F, R>(&mut self, f: F) -> Result<Option<Self::Item>, R::Error>
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
-        R: Try<Ok = bool, Error = E>,
+        R: Try<Ok = bool>,
     {
-        self.try_fold((), move |(), x| match f(&x).into_result() {
-            Ok(false) => LoopState::Continue(()),
-            Ok(true) => LoopState::Break(Ok(x)),
-            Err(x) => LoopState::Break(Err(x)),
-        })
-        .break_value()
-        .transpose()
+        #[inline]
+        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> LoopState<(), Result<T, R::Error>>
+        where
+            F: FnMut(&T) -> R,
+            R: Try<Ok = bool>,
+        {
+            move |(), x| match f(&x).into_result() {
+                Ok(false) => LoopState::Continue(()),
+                Ok(true) => LoopState::Break(Ok(x)),
+                Err(x) => LoopState::Break(Err(x)),
+            }
+        }
+
+        self.try_fold((), check(f)).break_value().transpose()
     }
 
     /// Searches for an element in an iterator, returning its index.

@@ -1,6 +1,7 @@
 // Semantically, we do not allow e.g., `static X: u8 = 0;` as an associated item.
 
 #![feature(specialization)]
+//~^ WARN the feature `specialization` is incomplete
 
 fn main() {}
 

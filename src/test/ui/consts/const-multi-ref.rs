@@ -3,7 +3,7 @@
 
 const _: i32 = {
     let mut a = 5;
-    let p = &mut a; //~ ERROR references in constants may only refer to immutable values
+    let p = &mut a; //~ ERROR mutable references are not allowed in constants
 
     let reborrow = {p};
     let pp = &reborrow;

@@ -29,7 +29,7 @@ use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
-use rustc_session::config::{Passes, Sanitizer, SwitchWithOptPath};
+use rustc_session::config::{Passes, SanitizerSet, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};
@@ -86,8 +86,8 @@ pub struct ModuleConfig {
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
 
-    pub sanitizer: Option<Sanitizer>,
-    pub sanitizer_recover: Vec<Sanitizer>,
+    pub sanitizer: SanitizerSet,
+    pub sanitizer_recover: SanitizerSet,
     pub sanitizer_memory_track_origins: usize,
 
     // Flags indicating which outputs to produce.
@@ -195,10 +195,10 @@ impl ModuleConfig {
             ),
             pgo_use: if_regular!(sess.opts.cg.profile_use.clone(), None),
 
-            sanitizer: if_regular!(sess.opts.debugging_opts.sanitizer.clone(), None),
+            sanitizer: if_regular!(sess.opts.debugging_opts.sanitizer, SanitizerSet::empty()),
             sanitizer_recover: if_regular!(
-                sess.opts.debugging_opts.sanitizer_recover.clone(),
-                vec![]
+                sess.opts.debugging_opts.sanitizer_recover,
+                SanitizerSet::empty()
             ),
             sanitizer_memory_track_origins: if_regular!(
                 sess.opts.debugging_opts.sanitizer_memory_track_origins,

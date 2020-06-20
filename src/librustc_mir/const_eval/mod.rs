@@ -30,8 +30,10 @@ pub(crate) fn const_caller_location(
     ConstValue::Scalar(loc_place.ptr)
 }
 
-// this function uses `unwrap` copiously, because an already validated constant
-// must have valid fields and can thus never fail outside of compiler bugs
+/// This function uses `unwrap` copiously, because an already validated constant
+/// must have valid fields and can thus never fail outside of compiler bugs. However, it is
+/// invoked from the pretty printer, where it can receive enums with no variants and e.g.
+/// `read_discriminant` needs to be able to handle that.
 pub(crate) fn destructure_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -41,17 +43,21 @@ pub(crate) fn destructure_const<'tcx>(
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     let op = ecx.eval_const_to_op(val, None).unwrap();
 
-    let variant = ecx.read_discriminant(op).unwrap().1;
-
     // We go to `usize` as we cannot allocate anything bigger anyway.
-    let field_count = match val.ty.kind {
-        ty::Array(_, len) => usize::try_from(len.eval_usize(tcx, param_env)).unwrap(),
-        ty::Adt(def, _) => def.variants[variant].fields.len(),
-        ty::Tuple(substs) => substs.len(),
+    let (field_count, variant, down) = match val.ty.kind {
+        ty::Array(_, len) => (usize::try_from(len.eval_usize(tcx, param_env)).unwrap(), None, op),
+        ty::Adt(def, _) if def.variants.is_empty() => {
+            return mir::DestructuredConst { variant: None, fields: tcx.arena.alloc_slice(&[]) };
+        }
+        ty::Adt(def, _) => {
+            let variant = ecx.read_discriminant(op).unwrap().1;
+            let down = ecx.operand_downcast(op, variant).unwrap();
+            (def.variants[variant].fields.len(), Some(variant), down)
+        }
+        ty::Tuple(substs) => (substs.len(), None, op),
         _ => bug!("cannot destructure constant {:?}", val),
     };
 
-    let down = ecx.operand_downcast(op, variant).unwrap();
     let fields_iter = (0..field_count).map(|i| {
         let field_op = ecx.operand_field(down, i).unwrap();
         let val = op_to_const(&ecx, field_op);

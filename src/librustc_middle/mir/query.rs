@@ -244,6 +244,6 @@ pub enum ClosureOutlivesSubject<'tcx> {
 /// The constituent parts of an ADT or array.
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct DestructuredConst<'tcx> {
-    pub variant: VariantIdx,
+    pub variant: Option<VariantIdx>,
     pub fields: &'tcx [&'tcx ty::Const<'tcx>],
 }

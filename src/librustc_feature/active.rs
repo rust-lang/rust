@@ -596,4 +596,5 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::raw_dylib,
     sym::const_trait_impl,
     sym::const_trait_bound_opt_out,
+    sym::specialization,
 ];

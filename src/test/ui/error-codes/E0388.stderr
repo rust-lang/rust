@@ -1,11 +1,8 @@
-error[E0658]: references in constants may only refer to immutable values
+error[E0764]: mutable references are not allowed in constants
   --> $DIR/E0388.rs:4:30
    |
 LL | const CR: &'static mut i32 = &mut C;
-   |                              ^^^^^^ constants require immutable values
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   |                              ^^^^^^ `&mut` is only allowed in `const fn`
 
 error[E0019]: static contains unimplemented expression type
   --> $DIR/E0388.rs:5:39
@@ -15,14 +12,11 @@ LL | static STATIC_REF: &'static mut i32 = &mut X;
    |
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0658]: references in statics may only refer to immutable values
+error[E0764]: mutable references are not allowed in statics
   --> $DIR/E0388.rs:5:39
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X;
-   |                                       ^^^^^^ statics require immutable values
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   |                                       ^^^^^^ `&mut` is only allowed in `const fn`
 
 error[E0596]: cannot borrow immutable static item `X` as mutable
   --> $DIR/E0388.rs:5:39
@@ -30,16 +24,13 @@ error[E0596]: cannot borrow immutable static item `X` as mutable
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^ cannot borrow as mutable
 
-error[E0658]: references in statics may only refer to immutable values
+error[E0764]: mutable references are not allowed in statics
   --> $DIR/E0388.rs:8:38
    |
 LL | static CONST_REF: &'static mut i32 = &mut C;
-   |                                      ^^^^^^ statics require immutable values
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   |                                      ^^^^^^ `&mut` is only allowed in `const fn`
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0019, E0596, E0658.
+Some errors have detailed explanations: E0019, E0596, E0764.
 For more information about an error, try `rustc --explain E0019`.

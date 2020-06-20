@@ -12,8 +12,7 @@ This feature allows for use of one of following sanitizers:
 * [ThreadSanitizer][clang-tsan] a fast data race detector.
 
 To enable a sanitizer compile with `-Zsanitizer=address`, `-Zsanitizer=leak`,
-`-Zsanitizer=memory` or `-Zsanitizer=thread`. Only a single sanitizer can be
-enabled at a time.
+`-Zsanitizer=memory` or `-Zsanitizer=thread`.
 
 # AddressSanitizer
 

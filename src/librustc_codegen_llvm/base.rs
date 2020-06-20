@@ -29,12 +29,12 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::dep_graph;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::exported_symbols;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::DebugInfo;
+use rustc_session::config::{DebugInfo, SanitizerSet};
 use rustc_span::symbol::Symbol;
 
 use std::ffi::CString;
@@ -132,7 +132,7 @@ pub fn compile_codegen_unit(
             // If this codegen unit contains the main function, also create the
             // wrapper here
             if let Some(entry) = maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx) {
-                attributes::sanitize(&cx, CodegenFnAttrFlags::empty(), entry);
+                attributes::sanitize(&cx, SanitizerSet::empty(), entry);
             }
 
             // Run replace-all-uses-with for statics that need it
