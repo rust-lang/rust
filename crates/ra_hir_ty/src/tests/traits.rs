@@ -2888,3 +2888,158 @@ impl<A: Step> iter::Iterator for ops::Range<A> {
     );
     assert_eq!(t, "i32");
 }
+
+#[test]
+fn infer_closure_arg() {
+    assert_snapshot!(
+        infer(
+            r#"
+            //- /lib.rs
+
+            enum Option<T> {
+                None,
+                Some(T)
+            }
+
+            fn foo() {
+                let s = Option::None;
+                let f = |x: Option<i32>| {};
+                (&f)(s)
+            }
+        "#
+        ),
+        @r###"
+    137..259 '{     ...     }': ()
+    159..160 's': Option<i32>
+    163..175 'Option::None': Option<i32>
+    197..198 'f': |Option<i32>| -> ()
+    201..220 '|x: Op...2>| {}': |Option<i32>| -> ()
+    202..203 'x': Option<i32>
+    218..220 '{}': ()
+    238..245 '(&f)(s)': ()
+    239..241 '&f': &|Option<i32>| -> ()
+    240..241 'f': |Option<i32>| -> ()
+    243..244 's': Option<i32>
+    "###
+    );
+}
+
+#[test]
+fn infer_fn_trait_arg() {
+    assert_snapshot!(
+        infer(
+            r#"
+            //- /lib.rs deps:std
+
+            #[lang = "fn_once"]
+            pub trait FnOnce<Args> {
+                type Output;
+
+                extern "rust-call" fn call_once(&self, args: Args) -> Self::Output;
+            }
+
+            #[lang = "fn"]
+            pub trait Fn<Args>:FnOnce<Args> {
+                extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+            }
+
+            enum Option<T> {
+                None,
+                Some(T)
+            }
+
+            fn foo<F, T>(f: F) -> T
+            where
+                F: Fn(Option<i32>) -> T,
+            {
+                let s = None;
+                f(s)
+            }
+        "#
+        ),
+        @r###"
+    183..187 'self': &Self
+    189..193 'args': Args
+    350..354 'self': &Self
+    356..360 'args': Args
+    515..516 'f': F
+    597..663 '{     ...     }': T
+    619..620 's': Option<i32>
+    623..627 'None': Option<i32>
+    645..646 'f': F
+    645..649 'f(s)': T
+    647..648 's': Option<i32>
+    "###
+    );
+}
+
+#[test]
+fn infer_box_fn_arg() {
+    assert_snapshot!(
+        infer(
+            r#"
+            //- /lib.rs deps:std
+
+            #[lang = "fn_once"]
+            pub trait FnOnce<Args> {
+                type Output;
+
+                extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+            }
+
+            #[lang = "deref"]
+            pub trait Deref {
+                type Target: ?Sized;
+
+                fn deref(&self) -> &Self::Target;
+            }
+
+            #[lang = "owned_box"]
+            pub struct Box<T: ?Sized> {
+                inner: *mut T,
+            }
+
+            impl<T: ?Sized> Deref for Box<T> {
+                type Target = T;
+
+                fn deref(&self) -> &T {
+                    &self.inner
+                }
+            }
+
+            enum Option<T> {
+                None,
+                Some(T)
+            }
+
+            fn foo() {
+                let s = Option::None;
+                let f: Box<dyn FnOnce(&Option<i32>)> = box (|ps| {});
+                f(&s)
+            }
+        "#
+        ),
+        @r###"
+    182..186 'self': Self
+    188..192 'args': Args
+    356..360 'self': &Self
+    622..626 'self': &Box<T>
+    634..685 '{     ...     }': &T
+    656..667 '&self.inner': &*mut T
+    657..661 'self': &Box<T>
+    657..667 'self.inner': *mut T
+    812..957 '{     ...     }': FnOnce::Output<dyn FnOnce<(&Option<i32>,)>, ({unknown},)>
+    834..835 's': Option<i32>
+    838..850 'Option::None': Option<i32>
+    872..873 'f': Box<dyn FnOnce<(&Option<i32>,)>>
+    907..920 'box (|ps| {})': Box<|{unknown}| -> ()>
+    912..919 '|ps| {}': |{unknown}| -> ()
+    913..915 'ps': {unknown}
+    917..919 '{}': ()
+    938..939 'f': Box<dyn FnOnce<(&Option<i32>,)>>
+    938..943 'f(&s)': FnOnce::Output<dyn FnOnce<(&Option<i32>,)>, ({unknown},)>
+    940..942 '&s': &Option<i32>
+    941..942 's': Option<i32>
+    "###
+    );
+}
