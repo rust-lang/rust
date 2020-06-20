@@ -88,6 +88,17 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
         if let (None, Some(ty)) =
             (self.found_local_pattern, self.node_ty_contains_target(local.hir_id))
         {
+            // FIXME: There's a trade-off here - we can either check that our target span
+            // is contained in `local.span` or not. If we choose to check containment
+            // we can avoid some spurious suggestions (see #72690), but we lose
+            // the ability to report on things like:
+            //
+            // ```
+            // let x = vec![];
+            // ```
+            //
+            // because the target span will be in the macro expansion of `vec![]`.
+            // At present we choose not to check containment.
             self.found_local_pattern = Some(&*local.pat);
             self.found_node_ty = Some(ty);
         }
@@ -99,8 +110,10 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
             if let (None, Some(ty)) =
                 (self.found_arg_pattern, self.node_ty_contains_target(param.hir_id))
             {
-                self.found_arg_pattern = Some(&*param.pat);
-                self.found_node_ty = Some(ty);
+                if self.target_span.contains(param.pat.span) {
+                    self.found_arg_pattern = Some(&*param.pat);
+                    self.found_node_ty = Some(ty);
+                }
             }
         }
         intravisit::walk_body(self, body);
