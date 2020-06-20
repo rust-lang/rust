@@ -52,7 +52,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .into_iter()
         .collect::<Vec<(_, (_, _))>>();
 
-    let mut cx = CodegenCx::new(tcx, jit_module, false);
+    let mut cx = crate::CodegenCx::new(tcx, jit_module, false);
 
     let (mut jit_module, _debug, mut unwind_context) = super::time(tcx, "codegen mono items", || {
         super::codegen_mono_items(&mut cx, mono_items);

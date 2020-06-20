@@ -1,8 +1,7 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use crate::prelude::*;
-
+use rustc_session::Session;
 use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
 use rustc_codegen_ssa::METADATA_FILENAME;
 

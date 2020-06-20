@@ -30,7 +30,7 @@ pub(crate) fn codegen_crate(
 }
 
 fn codegen_mono_items<'tcx>(
-    cx: &mut CodegenCx<'tcx, impl Backend + 'static>,
+    cx: &mut crate::CodegenCx<'tcx, impl Backend + 'static>,
     mono_items: Vec<(MonoItem<'tcx>, (RLinkage, Visibility))>,
 ) {
     cx.tcx.sess.time("predefine functions", || {
@@ -62,9 +62,9 @@ fn trans_mono_item<'tcx, B: Backend + 'static>(
     match mono_item {
         MonoItem::Fn(inst) => {
             let _inst_guard =
-                PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).name.as_str()));
+                crate::PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).name.as_str()));
             debug_assert!(!inst.substs.needs_infer());
-            let _mir_guard = PrintOnPanic(|| {
+            let _mir_guard = crate::PrintOnPanic(|| {
                 match inst.def {
                     InstanceDef::Item(_)
                     | InstanceDef::DropGlue(_, _)

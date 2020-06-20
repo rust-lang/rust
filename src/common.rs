@@ -302,16 +302,6 @@ impl<'tcx, B: Backend + 'static> HasTargetSpec for FunctionCx<'_, 'tcx, B> {
     }
 }
 
-impl<'tcx, B: Backend> BackendTypes for FunctionCx<'_, 'tcx, B> {
-    type Value = Value;
-    type Function = Value;
-    type BasicBlock = Block;
-    type Type = Type;
-    type Funclet = !;
-    type DIScope = !;
-    type DIVariable = !;
-}
-
 impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     pub(crate) fn monomorphize<T>(&self, value: &T) -> T
     where

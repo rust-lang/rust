@@ -4,7 +4,7 @@ use rustc_middle::mir::mono::CodegenUnit;
 use rustc_session::config::{DebugInfo, OutputType};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_codegen_ssa::back::linker::LinkerInfo;
-use rustc_codegen_ssa::CrateInfo;
+use rustc_codegen_ssa::{CrateInfo, CodegenResults, CompiledModule, ModuleKind};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 use crate::prelude::*;
@@ -110,7 +110,7 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
 
     let module = new_module(tcx, cgu_name.as_str().to_string());
 
-    let mut cx = CodegenCx::new(tcx, module, tcx.sess.opts.debuginfo != DebugInfo::None);
+    let mut cx = crate::CodegenCx::new(tcx, module, tcx.sess.opts.debuginfo != DebugInfo::None);
     super::codegen_mono_items(&mut cx, mono_items);
     let (mut module, debug, mut unwind_context) = tcx.sess.time("finalize CodegenCx", || cx.finalize());
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context);

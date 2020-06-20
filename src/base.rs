@@ -134,12 +134,12 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
 
 pub(crate) fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
     tcx.sess.time("verify clif ir", || {
-        let flags = settings::Flags::new(settings::builder());
-        match ::cranelift_codegen::verify_function(&func, &flags) {
+        let flags = cranelift_codegen::settings::Flags::new(cranelift_codegen::settings::builder());
+        match cranelift_codegen::verify_function(&func, &flags) {
             Ok(_) => {}
             Err(err) => {
                 tcx.sess.err(&format!("{:?}", err));
-                let pretty_error = ::cranelift_codegen::print_errors::pretty_verifier_error(
+                let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
                     &func,
                     None,
                     Some(Box::new(writer)),
@@ -323,7 +323,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
 
                         // Black box
                     }
-                    _ => unimpl_fatal!(fx.tcx, bb_data.terminator().source_info.span, "Inline assembly is not supported"),
+                    _ => fx.tcx.sess.span_fatal(bb_data.terminator().source_info.span, "Inline assembly is not supported"),
                 }
             }
             TerminatorKind::Resume | TerminatorKind::Abort => {
@@ -363,7 +363,7 @@ fn trans_stmt<'tcx>(
     cur_block: Block,
     stmt: &Statement<'tcx>,
 ) {
-    let _print_guard = PrintOnPanic(|| format!("stmt {:?}", stmt));
+    let _print_guard = crate::PrintOnPanic(|| format!("stmt {:?}", stmt));
 
     fx.set_debug_loc(stmt.source_info);
 
@@ -691,7 +691,7 @@ fn trans_stmt<'tcx>(
                 "int $$0x29" => {
                     crate::trap::trap_unimplemented(fx, "Windows abort");
                 }
-                _ => unimpl_fatal!(fx.tcx, stmt.source_info.span, "Inline assembly is not supported"),
+                _ => fx.tcx.sess.span_fatal(stmt.source_info.span, "Inline assembly is not supported"),
             }
         }
     }

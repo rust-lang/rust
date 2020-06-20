@@ -452,7 +452,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     intrinsic_match! {
         fx, intrinsic, substs, args,
         _ => {
-            unimpl_fatal!(fx.tcx, span, "unsupported intrinsic {}", intrinsic);
+            fx.tcx.sess.span_fatal(span, &format!("unsupported intrinsic {}", intrinsic));
         };
 
         assume, (c _a) {};

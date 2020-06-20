@@ -29,11 +29,13 @@ use std::any::Any;
 use rustc_errors::ErrorReported;
 use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
+use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
 use rustc_middle::ty::query::Providers;
+use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
 
-use cranelift_codegen::settings;
+use cranelift_codegen::settings::{self, Configurable};
 
 use crate::constant::ConstantCx;
 use crate::prelude::*;
@@ -75,7 +77,6 @@ mod prelude {
     pub(crate) use rustc_middle::bug;
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_middle::mir::{self, *};
-    pub(crate) use rustc_session::Session;
     pub(crate) use rustc_middle::ty::layout::{self, TyAndLayout};
     pub(crate) use rustc_target::abi::{Abi, LayoutOf, Scalar, Size, VariantIdx};
     pub(crate) use rustc_middle::ty::{
@@ -86,9 +87,6 @@ mod prelude {
 
     pub(crate) use rustc_index::vec::Idx;
 
-    pub(crate) use rustc_codegen_ssa::traits::*;
-    pub(crate) use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
-
     pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_codegen::entity::EntitySet;
     pub(crate) use cranelift_codegen::ir::{AbiParam, Block, ExternalName, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value};
@@ -96,7 +94,6 @@ mod prelude {
     pub(crate) use cranelift_codegen::ir::function::Function;
     pub(crate) use cranelift_codegen::ir::types;
     pub(crate) use cranelift_codegen::isa::{self, CallConv};
-    pub(crate) use cranelift_codegen::settings::{self, Configurable};
     pub(crate) use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
     pub(crate) use cranelift_module::{
         self, Backend, DataContext, DataId, FuncId, Linkage, Module,
@@ -110,23 +107,18 @@ mod prelude {
     pub(crate) use crate::pointer::Pointer;
     pub(crate) use crate::trap::*;
     pub(crate) use crate::value_and_place::{CPlace, CPlaceInner, CValue};
-    pub(crate) use crate::CodegenCx;
+}
 
-    pub(crate) struct PrintOnPanic<F: Fn() -> String>(pub F);
-    impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
-        fn drop(&mut self) {
-            if ::std::thread::panicking() {
-                println!("{}", (self.0)());
-            }
+struct PrintOnPanic<F: Fn() -> String>(F);
+impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
+    fn drop(&mut self) {
+        if ::std::thread::panicking() {
+            println!("{}", (self.0)());
         }
-    }
-
-    pub(crate) macro unimpl_fatal($tcx:expr, $span:expr, $($tt:tt)*) {
-        $tcx.sess.span_fatal($span, &format!($($tt)*));
     }
 }
 
-pub(crate) struct CodegenCx<'tcx, B: Backend + 'static> {
+struct CodegenCx<'tcx, B: Backend + 'static> {
     tcx: TyCtxt<'tcx>,
     module: Module<B>,
     constants_cx: ConstantCx,
