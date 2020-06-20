@@ -1,0 +1,28 @@
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-68643-broken-mir.rs:3:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0277]: expected a `std::ops::Fn<()>` closure, found `T`
+  --> $DIR/issue-68643-broken-mir.rs:15:5
+   |
+LL |     type F<'a>: Fn() -> u32;
+   |     ------------------------ required by `Fun::F`
+...
+LL |     type F<'a> = Self;
+   |     ^^^^^^^^^^^^^^^^^^ expected an `Fn<()>` closure, found `T`
+   |
+   = help: the trait `std::ops::Fn<()>` is not implemented for `T`
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }
+help: consider restricting type parameter `T`
+   |
+LL | impl<T: std::ops::Fn<()>> Fun for T {
+   |       ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,7 +1,7 @@
 #![allow(incomplete_features)]
 #![feature(generic_associated_types)]
 
-// FIXME(#30472) normalize enough to handle this.
+// check-pass
 
 use std::ops::Deref;
 
@@ -17,7 +17,6 @@ trait Baz {
 }
 
 impl<T> Baz for T where T: Foo {
-//~^ ERROR type mismatch resolving
     type Quux<'a> where T: 'a = T;
 
     type Baa<'a> where T: 'a = &'a <T as Foo>::Bar<'a, 'static>;
