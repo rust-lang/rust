@@ -553,14 +553,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///
     /// Here is an example. Imagine we have a closure expression
     /// and we desugared it so that the type of the expression is
-    /// `Closure`, and `Closure` expects an int as argument. Then it
+    /// `Closure`, and `Closure` expects `i32` as argument. Then it
     /// is "as if" the compiler generated this impl:
     ///
-    ///     impl Fn(int) for Closure { ... }
+    ///     impl Fn(i32) for Closure { ... }
     ///
-    /// Now imagine our obligation is `Fn(usize) for Closure`. So far
+    /// Now imagine our obligation is `Closure: Fn(usize)`. So far
     /// we have matched the self type `Closure`. At this point we'll
-    /// compare the `int` to `usize` and generate an error.
+    /// compare the `i32` to `usize` and generate an error.
     ///
     /// Note that this checking occurs *after* the impl has selected,
     /// because these output type parameters should not affect the

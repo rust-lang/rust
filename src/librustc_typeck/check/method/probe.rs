@@ -1468,7 +1468,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///
     /// ```
     /// trait Foo { ... }
-    /// impl Foo for Vec<int> { ... }
+    /// impl Foo for Vec<i32> { ... }
     /// impl Foo for Vec<usize> { ... }
     /// ```
     ///

@@ -63,14 +63,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// placeholder region. This is the first step of checking subtyping
     /// when higher-ranked things are involved.
     ///
-    /// **Important:** you must call this function from within a snapshot.
-    /// Moreover, before committing the snapshot, you must eventually call
-    /// either `plug_leaks` or `pop_placeholders` to remove the placeholder
-    /// regions. If you rollback the snapshot (or are using a probe), then
-    /// the pop occurs as part of the rollback, so an explicit call is not
-    /// needed (but is also permitted).
-    ///
-    /// For more information about how placeholders and HRTBs work, see
+    /// **Important:** You have to be careful to not leak these placeholders,
+    /// for more information about how placeholders and HRTBs work, see
     /// the [rustc dev guide].
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html

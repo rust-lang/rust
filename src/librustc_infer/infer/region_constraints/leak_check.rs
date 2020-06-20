@@ -128,7 +128,7 @@ impl<'tcx> TaintSet<'tcx> {
                         verifys[i].origin.span(),
                         "we never add verifications while doing higher-ranked things",
                     ),
-                    &Purged | &AddCombination(..) | &AddVar(..) => {}
+                    &AddCombination(..) | &AddVar(..) => {}
                 }
             }
         }
