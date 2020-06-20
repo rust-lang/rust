@@ -38,31 +38,15 @@ index c9096b7..be37fcd 100644
  }
  
  #[test]
-+#[ignore]
++#[ignore] // checked_mul impl not yet checking for overflow
  fn test_iterator_step_by_nth_overflow() {
      #[cfg(target_pointer_width = "8")]
      type Bigger = u16;
-@@ -2184,6 +2185,7 @@ fn test_range_inclusive_folds() {
- }
- 
- #[test]
-+#[ignore]
- fn test_range_size_hint() {
-     assert_eq!((0..0usize).size_hint(), (0, Some(0)));
-     assert_eq!((0..100usize).size_hint(), (100, Some(100)));
-@@ -2210,6 +2212,7 @@ fn test_range_size_hint() {
- }
- 
- #[test]
-+#[ignore]
- fn test_range_inclusive_size_hint() {
-     assert_eq!((1..=0usize).size_hint(), (0, Some(0)));
-     assert_eq!((0..=0usize).size_hint(), (1, Some(1)));
 @@ -2305,6 +2308,7 @@ fn test_repeat_with_take_collect() {
  }
  
  #[test]
-+#[ignore]
++#[ignore] // checked_mul impl not yet checking for overflow
  fn test_successors() {
      let mut powers_of_10 = successors(Some(1_u16), |n| n.checked_mul(10));
      assert_eq!(powers_of_10.by_ref().collect::<Vec<_>>(), &[1, 10, 100, 1_000, 10_000]);
@@ -74,7 +58,7 @@ index a17c094..5bb11d2 100644
  }
  
  #[test]
-+#[ignore]
++#[ignore] // checked_mul impl not yet checking for overflow
  fn from_str_issue7588() {
      let u: Option<u8> = u8::from_str_radix("1000", 10).ok();
      assert_eq!(u, None);
@@ -102,7 +86,7 @@ index fac70c4..9107a02 100644
  }
  
  #[test]
-+#[ignore]
++#[ignore] // checked_mul impl not yet checking for overflow
  fn checked_mul() {
      assert_eq!(Duration::new(0, 1).checked_mul(2), Some(Duration::new(0, 2)));
      assert_eq!(Duration::new(1, 1).checked_mul(3), Some(Duration::new(3, 3)));
