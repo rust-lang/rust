@@ -81,6 +81,7 @@ fn clif_sig_from_fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     triple: &target_lexicon::Triple,
     sig: FnSig<'tcx>,
+    span: Span,
     is_vtable_fn: bool,
     requires_caller_location: bool,
 ) -> Signature {
@@ -118,7 +119,25 @@ fn clif_sig_from_fn_sig<'tcx>(
                     .layout_of(ParamEnv::reveal_all().and(tcx.mk_mut_ptr(tcx.mk_unit())))
                     .unwrap();
             }
-            get_pass_mode(tcx, layout).get_param_ty(tcx).into_iter()
+            let pass_mode = get_pass_mode(tcx, layout);
+            if abi != Abi::Rust && abi != Abi::RustCall && abi != Abi::RustIntrinsic {
+                match pass_mode {
+                    PassMode::NoPass | PassMode::ByVal(_) => {}
+                    PassMode::ByValPair(_, _) | PassMode::ByRef { sized: _ } => {
+                        tcx.sess.span_warn(
+                            span,
+                            &format!(
+                                "Argument of type `{:?}` with pass mode `{:?}` is not yet supported \
+                                for non-rust abi `{}`. Calling this function may result in a crash.",
+                                layout.ty,
+                                pass_mode,
+                                abi,
+                            ),
+                        );
+                    }
+                }
+            }
+            pass_mode.get_param_ty(tcx).into_iter()
         })
         .flatten();
 
@@ -171,7 +190,7 @@ pub(crate) fn get_function_name_and_sig<'tcx>(
     if fn_sig.c_variadic && !support_vararg {
         tcx.sess.span_fatal(tcx.def_span(inst.def_id()), "Variadic function definitions are not yet supported");
     }
-    let sig = clif_sig_from_fn_sig(tcx, triple, fn_sig, false, inst.def.requires_caller_location(tcx));
+    let sig = clif_sig_from_fn_sig(tcx, triple, fn_sig, tcx.def_span(inst.def_id()), false, inst.def.requires_caller_location(tcx));
     (tcx.symbol_name(inst).name.as_str().to_string(), sig)
 }
 
@@ -584,6 +603,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     fx.tcx,
                     fx.triple(),
                     fn_sig,
+                    span,
                     is_virtual_call,
                     false, // calls through function pointers never pass the caller location
                 );
@@ -654,6 +674,7 @@ pub(crate) fn codegen_drop<'tcx>(
                     fx.tcx,
                     fx.triple(),
                     fn_sig,
+                    span,
                     true,
                     false, // `drop_in_place` is never `#[track_caller]`
                 );
