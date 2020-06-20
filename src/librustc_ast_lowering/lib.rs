@@ -205,6 +205,8 @@ pub trait Resolver {
     fn lint_buffer(&mut self) -> &mut LintBuffer;
 
     fn next_node_id(&mut self) -> NodeId;
+
+    fn trait_map(&self) -> &NodeMap<Vec<hir::TraitCandidate>>;
 }
 
 type NtToTokenstream = fn(&Nonterminal, &ParseSess, Span) -> TokenStream;
@@ -557,6 +559,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let proc_macros =
             c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
 
+        let trait_map = self
+            .resolver
+            .trait_map()
+            .iter()
+            .map(|(&k, v)| (self.node_id_to_hir_id[k].unwrap(), v.clone()))
+            .collect();
+
         self.resolver.definitions().init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
 
         hir::Crate {
@@ -571,6 +580,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             trait_impls: self.trait_impls,
             modules: self.modules,
             proc_macros,
+            trait_map,
         }
     }
 
