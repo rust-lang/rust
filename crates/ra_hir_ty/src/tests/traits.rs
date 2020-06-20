@@ -3043,3 +3043,71 @@ fn infer_box_fn_arg() {
     "###
     );
 }
+
+#[test]
+fn infer_dyn_fn_output() {
+    assert_snapshot!(
+        infer(
+            r#"
+            //- /lib.rs deps:std
+
+            #[lang = "fn_once"]
+            pub trait FnOnce<Args> {
+                type Output;
+
+                extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+            }
+
+            #[lang = "fn"]
+            pub trait Fn<Args>:FnOnce<Args> {
+                extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+            }
+
+            #[lang = "deref"]
+            pub trait Deref {
+                type Target: ?Sized;
+
+                fn deref(&self) -> &Self::Target;
+            }
+
+            #[lang = "owned_box"]
+            pub struct Box<T: ?Sized> {
+                inner: *mut T,
+            }
+
+            impl<T: ?Sized> Deref for Box<T> {
+                type Target = T;
+
+                fn deref(&self) -> &T {
+                    &self.inner
+                }
+            }
+
+            fn foo() {
+                let f: Box<dyn Fn() -> i32> = box(|| 5);
+                let x = f();
+            }
+        "#
+        ),
+        @r###"
+    182..186 'self': Self
+    188..192 'args': Args
+    349..353 'self': &Self
+    355..359 'args': Args
+    523..527 'self': &Self
+    789..793 'self': &Box<T>
+    801..852 '{     ...     }': &T
+    823..834 '&self.inner': &*mut T
+    824..828 'self': &Box<T>
+    824..834 'self.inner': *mut T
+    889..990 '{     ...     }': ()
+    911..912 'f': Box<dyn Fn<(), Output = i32>>
+    937..946 'box(|| 5)': Box<|| -> i32>
+    941..945 '|| 5': || -> i32
+    944..945 '5': i32
+    968..969 'x': i32
+    972..973 'f': Box<dyn Fn<(), Output = i32>>
+    972..975 'f()': i32
+    "###
+    );
+}
