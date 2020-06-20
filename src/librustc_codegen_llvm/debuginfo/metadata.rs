@@ -33,9 +33,9 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::truncate;
 use rustc_middle::mir::{self, Field, GeneratorLayout};
 use rustc_middle::ty::layout::{self, IntegerExt, PrimitiveExt, TyAndLayout};
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::Instance;
-use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, GeneratorSubsts, ParamEnv, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::{Interner, Symbol};
@@ -1381,12 +1381,11 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
         let variant_info_for = |index: VariantIdx| match self.enum_type.kind {
             ty::Adt(adt, _) => VariantInfo::Adt(&adt.variants[index]),
-            ty::Generator(def_id, substs, _) => {
+            ty::Generator(def_id, _, _) => {
                 let (generator_layout, generator_saved_local_names) =
                     generator_variant_info_data.as_ref().unwrap();
                 VariantInfo::Generator {
                     def_id,
-                    substs,
                     generator_layout: *generator_layout,
                     generator_saved_local_names,
                     variant_index: index,
@@ -1693,7 +1692,6 @@ enum VariantInfo<'a, 'tcx> {
     Adt(&'tcx ty::VariantDef),
     Generator {
         def_id: DefId,
-        substs: SubstsRef<'tcx>,
         generator_layout: &'tcx GeneratorLayout<'tcx>,
         generator_saved_local_names: &'a IndexVec<mir::GeneratorSavedLocal, Option<Symbol>>,
         variant_index: VariantIdx,
@@ -1704,8 +1702,8 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
     fn map_struct_name<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         match self {
             VariantInfo::Adt(variant) => f(&variant.ident.as_str()),
-            VariantInfo::Generator { substs, variant_index, .. } => {
-                f(&substs.as_generator().variant_name(*variant_index))
+            VariantInfo::Generator { variant_index, .. } => {
+                f(&GeneratorSubsts::variant_name(*variant_index))
             }
         }
     }
@@ -1900,7 +1898,7 @@ fn prepare_enum_metadata(
                 .variant_range(enum_def_id, tcx)
                 .map(|variant_index| {
                     debug_assert_eq!(tcx.types.u32, substs.as_generator().discr_ty(tcx));
-                    let name = substs.as_generator().variant_name(variant_index);
+                    let name = GeneratorSubsts::variant_name(variant_index);
                     unsafe {
                         Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                             DIB(cx),
