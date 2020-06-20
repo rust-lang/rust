@@ -103,7 +103,7 @@ pub enum Strip {
     Symbols,
 }
 
-/// The different settings that the `-Z control_flow_guard` flag can have.
+/// The different settings that the `-Z control-flow-guard` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum CFGuard {
     /// Do not emit Control Flow Guard metadata or checks.
