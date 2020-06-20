@@ -15,7 +15,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{SymbolName, TyCtxt};
-use rustc_session::config::{CrateType, Sanitizer};
+use rustc_session::config::{CrateType, SanitizerSet};
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types())
@@ -204,7 +204,7 @@ fn exported_symbols_provider_local(
         }));
     }
 
-    if let Some(Sanitizer::Memory) = tcx.sess.opts.debugging_opts.sanitizer {
+    if tcx.sess.opts.debugging_opts.sanitizer.contains(SanitizerSet::MEMORY) {
         // Similar to profiling, preserve weak msan symbol during LTO.
         const MSAN_WEAK_SYMBOLS: [&str; 2] = ["__msan_track_origins", "__msan_keep_going"];
 

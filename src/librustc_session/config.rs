@@ -10,6 +10,7 @@ use crate::{early_error, early_warn, Session};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::impl_stable_hash_via_hash;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 use rustc_target::spec::{Target, TargetTriple};
 
@@ -37,35 +38,55 @@ pub struct Config {
     pub ptr_width: u32,
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Sanitizer {
-    Address,
-    Leak,
-    Memory,
-    Thread,
-}
-
-impl fmt::Display for Sanitizer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Sanitizer::Address => "address".fmt(f),
-            Sanitizer::Leak => "leak".fmt(f),
-            Sanitizer::Memory => "memory".fmt(f),
-            Sanitizer::Thread => "thread".fmt(f),
-        }
+bitflags! {
+    #[derive(Default, RustcEncodable, RustcDecodable)]
+    pub struct SanitizerSet: u8 {
+        const ADDRESS = 1 << 0;
+        const LEAK    = 1 << 1;
+        const MEMORY  = 1 << 2;
+        const THREAD  = 1 << 3;
     }
 }
 
-impl FromStr for Sanitizer {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Sanitizer, ()> {
-        match s {
-            "address" => Ok(Sanitizer::Address),
-            "leak" => Ok(Sanitizer::Leak),
-            "memory" => Ok(Sanitizer::Memory),
-            "thread" => Ok(Sanitizer::Thread),
-            _ => Err(()),
+/// Formats a sanitizer set as a comma separated list of sanitizers' names.
+impl fmt::Display for SanitizerSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut first = true;
+        for s in *self {
+            let name = match s {
+                SanitizerSet::ADDRESS => "address",
+                SanitizerSet::LEAK => "leak",
+                SanitizerSet::MEMORY => "memory",
+                SanitizerSet::THREAD => "thread",
+                _ => panic!("unrecognized sanitizer {:?}", s),
+            };
+            if !first {
+                f.write_str(",")?;
+            }
+            f.write_str(name)?;
+            first = false;
         }
+        Ok(())
+    }
+}
+
+impl IntoIterator for SanitizerSet {
+    type Item = SanitizerSet;
+    type IntoIter = std::vec::IntoIter<SanitizerSet>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        [SanitizerSet::ADDRESS, SanitizerSet::LEAK, SanitizerSet::MEMORY, SanitizerSet::THREAD]
+            .iter()
+            .copied()
+            .filter(|&s| self.contains(s))
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+}
+
+impl<CTX> HashStable<CTX> for SanitizerSet {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.bits().hash_stable(ctx, hasher);
     }
 }
 
@@ -726,10 +747,12 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
             }
         }
     }
-    if let Some(s) = &sess.opts.debugging_opts.sanitizer {
+
+    for s in sess.opts.debugging_opts.sanitizer {
         let symbol = Symbol::intern(&s.to_string());
         ret.insert((sym::sanitize, Some(symbol)));
     }
+
     if sess.opts.debug_assertions {
         ret.insert((Symbol::intern("debug_assertions"), None));
     }
@@ -1995,7 +2018,7 @@ impl PpMode {
 crate mod dep_tracking {
     use super::{
         CFGuard, CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel,
-        OutputTypes, Passes, Sanitizer, SourceFileHashAlgorithm, SwitchWithOptPath,
+        OutputTypes, Passes, SanitizerSet, SourceFileHashAlgorithm, SwitchWithOptPath,
         SymbolManglingVersion,
     };
     use crate::lint;
@@ -2069,8 +2092,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(UnstableFeatures);
     impl_dep_tracking_hash_via_hash!(OutputTypes);
     impl_dep_tracking_hash_via_hash!(NativeLibKind);
-    impl_dep_tracking_hash_via_hash!(Sanitizer);
-    impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
+    impl_dep_tracking_hash_via_hash!(SanitizerSet);
     impl_dep_tracking_hash_via_hash!(CFGuard);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
@@ -2085,7 +2107,6 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>, NativeLibKind));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
-    impl_dep_tracking_hash_for_sortable_vec_of!(Sanitizer);
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
     where

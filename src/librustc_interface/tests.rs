@@ -6,7 +6,9 @@ use rustc_session::config::Strip;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
-use rustc_session::config::{Externs, OutputType, OutputTypes, Sanitizer, SymbolManglingVersion};
+use rustc_session::config::{
+    Externs, OutputType, OutputTypes, SanitizerSet, SymbolManglingVersion,
+};
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::NativeLibKind;
@@ -569,9 +571,9 @@ fn test_debugging_options_tracking_hash() {
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(report_delayed_bugs, true);
     tracked!(run_dsymutil, false);
-    tracked!(sanitizer, Some(Sanitizer::Address));
+    tracked!(sanitizer, SanitizerSet::ADDRESS);
     tracked!(sanitizer_memory_track_origins, 2);
-    tracked!(sanitizer_recover, vec![Sanitizer::Address]);
+    tracked!(sanitizer_recover, SanitizerSet::ADDRESS);
     tracked!(saturating_float_casts, Some(true));
     tracked!(share_generics, Some(true));
     tracked!(show_span, Some(String::from("abc")));
