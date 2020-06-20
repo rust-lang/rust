@@ -9,24 +9,31 @@ note: the lint level is defined here
    |
 LL | #![deny(unsafe_code)]
    |         ^^^^^^^^^^^
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: declaration of a `no_mangle` static
   --> $DIR/lint-unsafe-code.rs:32:21
    |
 LL | #[no_mangle] static FOO: u32 = 5;
    |                     ^^^
+   |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: declaration of a function with `export_name`
   --> $DIR/lint-unsafe-code.rs:34:27
    |
 LL | #[export_name = "bar"] fn bar() {}
    |                           ^^^
+   |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: declaration of a static with `export_name`
   --> $DIR/lint-unsafe-code.rs:35:31
    |
 LL | #[export_name = "BAR"] static BAR: u32 = 5;
    |                               ^^^
+   |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: declaration of an `unsafe` function
   --> $DIR/lint-unsafe-code.rs:37:1
@@ -115,6 +122,7 @@ LL |         #[no_mangle] fn foo() {}
 LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: declaration of a `no_mangle` static
@@ -126,6 +134,7 @@ LL |         #[no_mangle] static FOO: u32 = 5;
 LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: declaration of a function with `export_name`
@@ -137,6 +146,7 @@ LL |         #[export_name = "bar"] fn bar() {}
 LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: declaration of a static with `export_name`
@@ -148,6 +158,7 @@ LL |         #[export_name = "BAR"] static BAR: u32 = 5;
 LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
+   = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of an `unsafe` block

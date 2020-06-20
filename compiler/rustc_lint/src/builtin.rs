@@ -236,6 +236,18 @@ impl UnsafeCode {
 
         cx.struct_span_lint(UNSAFE_CODE, span, decorate);
     }
+
+    fn report_overriden_symbol_name(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
+        self.report_unsafe(cx, span, |lint| {
+            lint.build(msg)
+                .note(
+                    "the linker's behavior with multiple libraries exporting duplicate symbol \
+                    names is undefined and Rust cannot provide guarantees when you manually \
+                    override them",
+                )
+                .emit();
+        })
+    }
 }
 
 impl EarlyLintPass for UnsafeCode {
@@ -279,27 +291,35 @@ impl EarlyLintPass for UnsafeCode {
 
             ast::ItemKind::Fn(..) => {
                 if attr::contains_name(&it.attrs, sym::no_mangle) {
-                    self.report_unsafe(cx, it.ident.span, |lint| {
-                        lint.build("declaration of a `no_mangle` function").emit();
-                    })
+                    self.report_overriden_symbol_name(
+                        cx,
+                        it.ident.span,
+                        "declaration of a `no_mangle` function",
+                    );
                 }
                 if attr::contains_name(&it.attrs, sym::export_name) {
-                    self.report_unsafe(cx, it.ident.span, |lint| {
-                        lint.build("declaration of a function with `export_name`").emit();
-                    })
+                    self.report_overriden_symbol_name(
+                        cx,
+                        it.ident.span,
+                        "declaration of a function with `export_name`",
+                    );
                 }
             }
 
             ast::ItemKind::Static(..) => {
                 if attr::contains_name(&it.attrs, sym::no_mangle) {
-                    self.report_unsafe(cx, it.ident.span, |lint| {
-                        lint.build("declaration of a `no_mangle` static").emit();
-                    })
+                    self.report_overriden_symbol_name(
+                        cx,
+                        it.ident.span,
+                        "declaration of a `no_mangle` static",
+                    );
                 }
                 if attr::contains_name(&it.attrs, sym::export_name) {
-                    self.report_unsafe(cx, it.ident.span, |lint| {
-                        lint.build("declaration of a static with `export_name`").emit();
-                    })
+                    self.report_overriden_symbol_name(
+                        cx,
+                        it.ident.span,
+                        "declaration of a static with `export_name`",
+                    );
                 }
             }
 
