@@ -1,5 +1,5 @@
 // ignore-windows: Unwind panicking does not currently work on Windows
-// normalize-stderr-test "[^ ]*libcore/(macros|mem)/mod.rs[0-9:]*" -> "$$LOC"
+// normalize-stderr-test "[^ ]*libcore/[a-z/]+.rs[0-9:]*" -> "$$LOC"
 #![feature(never_type)]
 #![allow(unconditional_panic)]
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -75,7 +75,7 @@ fn main() {
     // Assertion and debug assertion
     test(None, |_old_val| { assert!(false); loop {} });
     test(None, |_old_val| { debug_assert!(false); loop {} });
-    test(None, |_old_val| { unsafe { (1 as *const i32).read() }; loop {} }); // trigger debug-assertion in libstd
+    test(None, |_old_val| { unsafe { std::char::from_u32_unchecked(0xFD10000); } loop {} }); // trigger debug-assertion in libstd
 
     eprintln!("Success!"); // Make sure we get this in stderr
 }
