@@ -1,7 +1,8 @@
-#![feature(unsize, coerce_unsized, raw_ref_op)]
+#![feature(unsize, coerce_unsized, raw_ref_op, raw_ref_macros)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
+use std::ptr;
 
 fn test_basic() {
     #[repr(packed)]
@@ -45,7 +46,9 @@ fn test_basic() {
     assert_eq!({x.b}, 99);
     // but we *can* take a raw pointer!
     assert_eq!(unsafe { (&raw const x.a).read_unaligned() }, 42);
+    assert_eq!(unsafe { ptr::raw_const!(x.a).read_unaligned() }, 42);
     assert_eq!(unsafe { (&raw const x.b).read_unaligned() }, 99);
+    assert_eq!(unsafe { ptr::raw_const!(x.b).read_unaligned() }, 99);
 
     x.b = 77;
     assert_eq!({x.b}, 77);
