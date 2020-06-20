@@ -8,8 +8,7 @@
 use crate::collect::PlaceholderHirTyCollector;
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
-use rustc_ast::ast::ParamKindOrd;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast::{ast::ParamKindOrd, util::lev_distance::find_best_match_for_name};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, FatalError};
@@ -27,7 +26,7 @@ use rustc_middle::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETIME_ARGUMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
@@ -475,7 +474,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Report an error that a generic argument did not match the generic parameter that was
     /// expected.
-    fn generic_arg_mismatch_err(sess: &Session, arg: &GenericArg<'_>, kind: &'static str) {
+    fn generic_arg_mismatch_err(
+        sess: &Session,
+        arg: &GenericArg<'_>,
+        kind: &'static str,
+        help: Option<&str>,
+    ) {
         let mut err = struct_span_err!(
             sess,
             arg.span(),
@@ -503,6 +507,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let (first, last) =
             if kind_ord < arg_ord { (kind, arg.descr()) } else { (arg.descr(), kind) };
         err.note(&format!("{} arguments must be provided before {} arguments", first, last));
+
+        if let Some(help) = help {
+            err.help(help);
+        }
         err.emit();
     }
 
@@ -648,7 +656,60 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 if arg_count.correct.is_ok()
                                     && arg_count.explicit_late_bound == ExplicitLateBound::No
                                 {
-                                    Self::generic_arg_mismatch_err(tcx.sess, arg, kind.descr());
+                                    // We're going to iterate over the parameters to sort them out, and
+                                    // show that order to the user as a possible order for the parameters
+                                    let mut param_types_present = defs
+                                        .params
+                                        .clone()
+                                        .into_iter()
+                                        .map(|param| {
+                                            (
+                                                match param.kind {
+                                                    GenericParamDefKind::Lifetime => {
+                                                        ParamKindOrd::Lifetime
+                                                    }
+                                                    GenericParamDefKind::Type { .. } => {
+                                                        ParamKindOrd::Type
+                                                    }
+                                                    GenericParamDefKind::Const => {
+                                                        ParamKindOrd::Const
+                                                    }
+                                                },
+                                                param,
+                                            )
+                                        })
+                                        .collect::<Vec<(ParamKindOrd, GenericParamDef)>>();
+                                    param_types_present.sort_by_key(|(ord, _)| *ord);
+                                    let (mut param_types_present, ordered_params): (
+                                        Vec<ParamKindOrd>,
+                                        Vec<GenericParamDef>,
+                                    ) = param_types_present.into_iter().unzip();
+                                    param_types_present.dedup();
+
+                                    Self::generic_arg_mismatch_err(
+                                        tcx.sess,
+                                        arg,
+                                        kind.descr(),
+                                        Some(&format!(
+                                            "reorder the arguments: {}: `<{}>`",
+                                            param_types_present
+                                                .into_iter()
+                                                .map(|ord| format!("{}s", ord.to_string()))
+                                                .collect::<Vec<String>>()
+                                                .join(", then "),
+                                            ordered_params
+                                                .into_iter()
+                                                .filter_map(|param| {
+                                                    if param.name == kw::SelfUpper {
+                                                        None
+                                                    } else {
+                                                        Some(param.name.to_string())
+                                                    }
+                                                })
+                                                .collect::<Vec<String>>()
+                                                .join(", ")
+                                        )),
+                                    );
                                 }
 
                                 // We've reported the error, but we want to make sure that this
@@ -680,7 +741,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             assert_eq!(kind, "lifetime");
                             let provided =
                                 force_infer_lt.expect("lifetimes ought to have been inferred");
-                            Self::generic_arg_mismatch_err(tcx.sess, provided, kind);
+                            Self::generic_arg_mismatch_err(tcx.sess, provided, kind, None);
                         }
 
                         break;
