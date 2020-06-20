@@ -131,7 +131,7 @@ fn dump_matched_mir_node<'tcx, F>(
         }
         writeln!(file, " {} {}", disambiguator, pass_name)?;
         if let Some(ref layout) = body.generator_layout {
-            writeln!(file, "// generator_layout = {:?}", layout)?;
+            writeln!(file, "/* generator_layout = {:#?} */", layout)?;
         }
         writeln!(file)?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
