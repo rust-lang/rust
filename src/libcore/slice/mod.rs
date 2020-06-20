@@ -5946,47 +5946,7 @@ where
     }
 }
 
-// Remove after boostrap bump
-#[cfg(bootstrap)]
-impl<A> SlicePartialEq<A> for [A]
-where
-    A: PartialEq<A> + Eq,
-{
-    default fn equal(&self, other: &[A]) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-
-        if self.as_ptr() == other.as_ptr() {
-            return true;
-        }
-
-        self.iter().zip(other.iter()).all(|(x, y)| x == y)
-    }
-}
-
-// Remove after boostrap bump
-#[cfg(bootstrap)]
-impl<A> SlicePartialEq<A> for [A]
-where
-    A: PartialEq<A> + BytewiseEquality,
-{
-    fn equal(&self, other: &[A]) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        if self.as_ptr() == other.as_ptr() {
-            return true;
-        }
-        unsafe {
-            let size = mem::size_of_val(self);
-            memcmp(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
-        }
-    }
-}
-
 // Use an equal-pointer optimization when types are `Eq`
-#[cfg(not(bootstrap))]
 impl<A> SlicePartialEq<A> for [A]
 where
     A: PartialEq<A> + Eq,
@@ -5994,10 +5954,16 @@ where
     default fn equal(&self, other: &[A]) -> bool {
         if self.len() != other.len() {
             return false;
+        }
+
+        #[cfg(bootstrap)]
+        if self.as_ptr() == other.as_ptr() {
+            return true;
         }
 
         // While performance would suffer if `guaranteed_eq` just returned `false`
         // for all arguments, correctness and return value of this function are not affected.
+        #[cfg(not(bootstrap))]
         if self.as_ptr().guaranteed_eq(other.as_ptr()) {
             return true;
         }
@@ -6007,7 +5973,6 @@ where
 }
 
 // Use memcmp for bytewise equality when the types allow
-#[cfg(not(bootstrap))]
 impl<A> SlicePartialEq<A> for [A]
 where
     A: PartialEq<A> + BytewiseEquality,
@@ -6017,8 +5982,14 @@ where
             return false;
         }
 
+        #[cfg(bootstrap)]
+        if self.as_ptr() == other.as_ptr() {
+            return true;
+        }
+
         // While performance would suffer if `guaranteed_eq` just returned `false`
         // for all arguments, correctness and return value of this function are not affected.
+        #[cfg(not(bootstrap))]
         if self.as_ptr().guaranteed_eq(other.as_ptr()) {
             return true;
         }

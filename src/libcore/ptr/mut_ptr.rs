@@ -273,7 +273,7 @@ impl<T: ?Sized> *mut T {
         if self.is_null() { None } else { Some(&mut *self) }
     }
 
-    /// Returns whether two pointers are guaranteed equal.
+    /// Returns whether two pointers are guaranteed to be equal.
     ///
     /// At runtime this function behaves like `self == other`.
     /// However, in some contexts (e.g., compile-time evaluation),
@@ -306,7 +306,7 @@ impl<T: ?Sized> *mut T {
         intrinsics::ptr_guaranteed_eq(self as *const _, other as *const _)
     }
 
-    /// Returns whether two pointers are guaranteed not equal.
+    /// Returns whether two pointers are guaranteed to be inequal.
     ///
     /// At runtime this function behaves like `self != other`.
     /// However, in some contexts (e.g., compile-time evaluation),

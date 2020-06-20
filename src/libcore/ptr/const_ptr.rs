@@ -295,7 +295,7 @@ impl<T: ?Sized> *const T {
         intrinsics::ptr_offset_from(self, origin)
     }
 
-    /// Returns whether two pointers are guaranteed equal.
+    /// Returns whether two pointers are guaranteed to be equal.
     ///
     /// At runtime this function behaves like `self == other`.
     /// However, in some contexts (e.g., compile-time evaluation),
@@ -328,7 +328,7 @@ impl<T: ?Sized> *const T {
         intrinsics::ptr_guaranteed_eq(self, other)
     }
 
-    /// Returns whether two pointers are guaranteed not equal.
+    /// Returns whether two pointers are guaranteed to be inequal.
     ///
     /// At runtime this function behaves like `self != other`.
     /// However, in some contexts (e.g., compile-time evaluation),
