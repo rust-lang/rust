@@ -1358,7 +1358,7 @@ impl EncodeContext<'tcx> {
         let const_data = self.encode_rendered_const_for_body(body_id);
         let qualifs = self.tcx.mir_const_qualif(def_id);
 
-        record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::Const(qualifs, const_data));
+        record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst(qualifs, const_data));
         record!(self.tables.visibility[def_id.to_def_id()] <- ty::Visibility::Public);
         record!(self.tables.span[def_id.to_def_id()] <- self.tcx.def_span(def_id));
         self.encode_item_type(def_id.to_def_id());
