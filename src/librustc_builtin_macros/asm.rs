@@ -16,7 +16,7 @@ struct AsmArgs {
     named_args: FxHashMap<Symbol, usize>,
     reg_args: FxHashSet<usize>,
     options: ast::InlineAsmOptions,
-    options_span: Option<Span>,
+    options_spans: Vec<Span>,
 }
 
 fn parse_args<'a>(
@@ -59,7 +59,7 @@ fn parse_args<'a>(
         named_args: FxHashMap::default(),
         reg_args: FxHashSet::default(),
         options: ast::InlineAsmOptions::empty(),
-        options_span: None,
+        options_spans: vec![],
     };
 
     let mut allow_templates = true;
@@ -174,9 +174,9 @@ fn parse_args<'a>(
 
         // Validate the order of named, positional & explicit register operands and options. We do
         // this at the end once we have the full span of the argument available.
-        if let Some(options_span) = args.options_span {
+        if !args.options_spans.is_empty() {
             ecx.struct_span_err(span, "arguments are not allowed after options")
-                .span_label(options_span, "previous options")
+                .span_labels(args.options_spans.clone(), "previous options")
                 .span_label(span, "argument")
                 .emit();
         }
@@ -227,23 +227,23 @@ fn parse_args<'a>(
     if args.options.contains(ast::InlineAsmOptions::NOMEM)
         && args.options.contains(ast::InlineAsmOptions::READONLY)
     {
-        let span = args.options_span.unwrap();
-        ecx.struct_span_err(span, "the `nomem` and `readonly` options are mutually exclusive")
+        let spans = args.options_spans.clone();
+        ecx.struct_span_err(spans, "the `nomem` and `readonly` options are mutually exclusive")
             .emit();
     }
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && args.options.contains(ast::InlineAsmOptions::NORETURN)
     {
-        let span = args.options_span.unwrap();
-        ecx.struct_span_err(span, "the `pure` and `noreturn` options are mutually exclusive")
+        let spans = args.options_spans.clone();
+        ecx.struct_span_err(spans, "the `pure` and `noreturn` options are mutually exclusive")
             .emit();
     }
     if args.options.contains(ast::InlineAsmOptions::PURE)
         && !args.options.intersects(ast::InlineAsmOptions::NOMEM | ast::InlineAsmOptions::READONLY)
     {
-        let span = args.options_span.unwrap();
+        let spans = args.options_spans.clone();
         ecx.struct_span_err(
-            span,
+            spans,
             "the `pure` option must be combined with either `nomem` or `readonly`",
         )
         .emit();
@@ -267,7 +267,7 @@ fn parse_args<'a>(
     }
     if args.options.contains(ast::InlineAsmOptions::PURE) && !have_real_output {
         ecx.struct_span_err(
-            args.options_span.unwrap(),
+            args.options_spans.clone(),
             "asm with `pure` option must have at least one output",
         )
         .emit();
@@ -283,6 +283,50 @@ fn parse_args<'a>(
     Ok(args)
 }
 
+/// Report a duplicate option error.
+///
+/// This function must be called immediately after the option token is parsed.
+/// Otherwise, the suggestion will be incorrect.
+fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
+    let mut err = p
+        .sess
+        .span_diagnostic
+        .struct_span_err(span, &format!("the `{}` option was already provided", symbol));
+    err.span_label(span, "this option was already provided");
+
+    // Tool-only output
+    let mut full_span = span;
+    if p.token.kind == token::Comma {
+        full_span = full_span.to(p.token.span);
+    }
+    err.tool_only_span_suggestion(
+        full_span,
+        "remove this option",
+        String::new(),
+        Applicability::MachineApplicable,
+    );
+
+    err.emit();
+}
+
+/// Try to set the provided option in the provided `AsmArgs`.
+/// If it is already set, report a duplicate option error.
+///
+/// This function must be called immediately after the option token is parsed.
+/// Otherwise, the error will not point to the correct spot.
+fn try_set_option<'a>(
+    p: &mut Parser<'a>,
+    args: &mut AsmArgs,
+    symbol: Symbol,
+    option: ast::InlineAsmOptions,
+) {
+    if !args.options.contains(option) {
+        args.options |= option;
+    } else {
+        err_duplicate_option(p, symbol, p.prev_token.span);
+    }
+}
+
 fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), DiagnosticBuilder<'a>> {
     let span_start = p.prev_token.span;
 
@@ -290,20 +334,20 @@ fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), Diagn
 
     while !p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
         if p.eat(&token::Ident(sym::pure, false)) {
-            args.options |= ast::InlineAsmOptions::PURE;
+            try_set_option(p, args, sym::pure, ast::InlineAsmOptions::PURE);
         } else if p.eat(&token::Ident(sym::nomem, false)) {
-            args.options |= ast::InlineAsmOptions::NOMEM;
+            try_set_option(p, args, sym::nomem, ast::InlineAsmOptions::NOMEM);
         } else if p.eat(&token::Ident(sym::readonly, false)) {
-            args.options |= ast::InlineAsmOptions::READONLY;
+            try_set_option(p, args, sym::readonly, ast::InlineAsmOptions::READONLY);
         } else if p.eat(&token::Ident(sym::preserves_flags, false)) {
-            args.options |= ast::InlineAsmOptions::PRESERVES_FLAGS;
+            try_set_option(p, args, sym::preserves_flags, ast::InlineAsmOptions::PRESERVES_FLAGS);
         } else if p.eat(&token::Ident(sym::noreturn, false)) {
-            args.options |= ast::InlineAsmOptions::NORETURN;
+            try_set_option(p, args, sym::noreturn, ast::InlineAsmOptions::NORETURN);
         } else if p.eat(&token::Ident(sym::nostack, false)) {
-            args.options |= ast::InlineAsmOptions::NOSTACK;
+            try_set_option(p, args, sym::nostack, ast::InlineAsmOptions::NOSTACK);
         } else {
             p.expect(&token::Ident(sym::att_syntax, false))?;
-            args.options |= ast::InlineAsmOptions::ATT_SYNTAX;
+            try_set_option(p, args, sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX);
         }
 
         // Allow trailing commas
@@ -314,14 +358,7 @@ fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), Diagn
     }
 
     let new_span = span_start.to(p.prev_token.span);
-    if let Some(options_span) = args.options_span {
-        p.struct_span_err(new_span, "asm options cannot be specified multiple times")
-            .span_label(options_span, "previously here")
-            .span_label(new_span, "duplicate options")
-            .emit();
-    } else {
-        args.options_span = Some(new_span);
-    }
+    args.options_spans.push(new_span);
 
     Ok(())
 }
