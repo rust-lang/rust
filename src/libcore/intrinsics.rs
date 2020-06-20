@@ -11,7 +11,7 @@
 //! In order to make an intrinsic usable at compile-time, one needs to copy the implementation
 //! from https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics.rs to
 //! `librustc_mir/interpret/intrinsics.rs` and add a
-//! `#[rustc_const_unstable(feature = "foo2", issue = "01234")]` to the intrinsic.
+//! `#[rustc_const_unstable(feature = "foo", issue = "01234")]` to the intrinsic.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
 //! the intrinsic's attribute must be `rustc_const_stable`, too. Such a change should not be done

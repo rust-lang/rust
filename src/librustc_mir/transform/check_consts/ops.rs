@@ -285,10 +285,10 @@ impl NonConstOp for Panic {
 pub struct RawPtrComparison;
 impl NonConstOp for RawPtrComparison {
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        let mut err = ccx.tcx.sess.struct_span_err(
-            span,
-            "pointers cannot be reliably compared during const eval.",
-        );
+        let mut err = ccx
+            .tcx
+            .sess
+            .struct_span_err(span, "pointers cannot be reliably compared during const eval.");
         err.note(
             "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> \
             for more information",
