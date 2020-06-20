@@ -144,9 +144,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         };
         assert_eq!(n, pick.autoderefs);
 
-        let mut adjustments = autoderef.adjust_steps(self);
+        let mut adjustments = self.adjust_steps(&autoderef);
 
-        let mut target = autoderef.unambiguous_final_ty(self);
+        let mut target =
+            self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
 
         if let Some(mutbl) = pick.autoref {
             let region = self.next_region_var(infer::Autoref(self.span));
@@ -176,7 +177,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             assert!(pick.unsize.is_none());
         }
 
-        autoderef.finalize(self);
+        self.register_predicates(autoderef.into_obligations());
 
         // Write out the final adjustments.
         self.apply_adjustments(self.self_expr, adjustments);

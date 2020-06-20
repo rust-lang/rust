@@ -1118,7 +1118,7 @@ fn receiver_is_valid<'fcx, 'tcx>(
             );
 
             if can_eq_self(potential_self_ty) {
-                autoderef.finalize(fcx);
+                fcx.register_predicates(autoderef.into_obligations());
 
                 if let Some(mut err) =
                     fcx.demand_eqtype_with_origin(&cause, self_ty, potential_self_ty)

@@ -1,4 +1,3 @@
-use crate::check::autoderef::Autoderef;
 use crate::check::method::MethodCallee;
 use crate::check::{FnCtxt, PlaceOp};
 use rustc_hir as hir;
@@ -9,6 +8,7 @@ use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutabili
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use rustc_trait_selection::autoderef::Autoderef;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type-check `*oprnd_expr` with `oprnd_expr` type-checked already.
@@ -57,7 +57,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         while result.is_none() && autoderef.next().is_some() {
             result = self.try_index_step(expr, base_expr, &autoderef, idx_ty);
         }
-        autoderef.finalize(self);
+        self.register_predicates(autoderef.into_obligations());
         result
     }
 
@@ -73,7 +73,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         autoderef: &Autoderef<'a, 'tcx>,
         index_ty: Ty<'tcx>,
     ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
-        let adjusted_ty = autoderef.unambiguous_final_ty(self);
+        let adjusted_ty =
+            self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
         debug!(
             "try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
              index_ty={:?})",
@@ -105,7 +106,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("try_index_step: success, using overloaded indexing");
                 let method = self.register_infer_ok_obligations(ok);
 
-                let mut adjustments = autoderef.adjust_steps(self);
+                let mut adjustments = self.adjust_steps(autoderef);
                 if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(region, AutoBorrowMutability::Not)),
