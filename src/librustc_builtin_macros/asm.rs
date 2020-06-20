@@ -292,10 +292,7 @@ fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
         .sess
         .span_diagnostic
         .struct_span_err(span, &format!("the `{}` option was already provided", symbol));
-    err.span_label(
-        span,
-        "this option was already provided",
-    );
+    err.span_label(span, "this option was already provided");
 
     // Tool-only output
     let mut full_span = span;
