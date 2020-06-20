@@ -776,13 +776,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        let normal_ret = if let [ProjectionElem::Downcast(..), ProjectionElem::Field(_, _)] =
-            moved_place.projection
-        {
-            PatUse(stmt.source_info.span)
-        } else {
-            OtherUse(stmt.source_info.span)
-        };
+        let normal_ret =
+            if moved_place.projection.iter().any(|p| matches!(p, ProjectionElem::Downcast(..))) {
+                PatUse(stmt.source_info.span)
+            } else {
+                OtherUse(stmt.source_info.span)
+            };
 
         // We are trying to find MIR of the form:
         // ```
