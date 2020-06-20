@@ -1,6 +1,6 @@
 use log::info;
 use rustc_ast::ast::{AttrVec, BlockCheckMode};
-use rustc_ast::mut_visit::{/*visit_clobber,*/ MutVisitor, *};
+use rustc_ast::mut_visit::{MutVisitor, *};
 use rustc_ast::ptr::P;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::{self, ast};
@@ -29,7 +29,6 @@ use smallvec::SmallVec;
 use std::env;
 use std::io::{self, Write};
 use std::mem;
-//use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, Once};
 #[cfg(not(parallel_compiler))]
@@ -593,21 +592,21 @@ pub fn build_output_filenames(
 // [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
 pub struct ReplaceBodyWithLoop<'a, 'b> {
     within_static_or_const: bool,
-    nested_blocks: Option<Vec<ast::Stmt>>,
+    nested_items: Option<Vec<ast::Stmt>>,
     resolver: &'a mut Resolver<'b>,
 }
 
 impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
     pub fn new(resolver: &'a mut Resolver<'b>) -> ReplaceBodyWithLoop<'a, 'b> {
-        ReplaceBodyWithLoop { within_static_or_const: false, nested_blocks: None, resolver }
+        ReplaceBodyWithLoop { within_static_or_const: false, nested_items: None, resolver }
     }
 
     fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
         let old_const = mem::replace(&mut self.within_static_or_const, is_const);
-        let old_blocks = self.nested_blocks.take();
+        let old_blocks = self.nested_items.take();
         let ret = action(self);
         self.within_static_or_const = old_const;
-        self.nested_blocks = old_blocks;
+        self.nested_items = old_blocks;
         ret
     }
 
@@ -694,6 +693,8 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     }
 
     fn visit_block(&mut self, b: &mut P<ast::Block>) {
+        // WARNING: this generates a dummy span and so should not be made the parent of any stmt that is not a dummy.
+        // See https://github.com/rust-lang/rust/issues/71104.
         fn stmt_to_block(
             rules: ast::BlockCheckMode,
             s: Option<ast::Stmt>,
@@ -706,24 +707,6 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
                 span: rustc_span::DUMMY_SP,
             }
         }
-
-        /*
-        fn block_to_stmt(b: ast::Block, resolver: &mut Resolver<'_>) -> ast::Stmt {
-            let expr = P(ast::Expr {
-                id: resolver.next_node_id(),
-                kind: ast::ExprKind::Block(P(b), None),
-                span: rustc_span::DUMMY_SP,
-                attrs: AttrVec::new(),
-                tokens: None,
-            });
-
-            ast::Stmt {
-                id: resolver.next_node_id(),
-                kind: ast::StmtKind::Expr(expr),
-                span: rustc_span::DUMMY_SP,
-            }
-        }
-        */
 
         let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.resolver);
         let loop_expr = P(ast::Expr {
@@ -741,39 +724,33 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
         };
 
         if self.within_static_or_const {
-            noop_visit_block(b, self)
+            return noop_visit_block(b, self);
+        }
+
+        let mut items = vec![];
+        for s in b.stmts.drain(..) {
+            let old_items = self.nested_items.replace(vec![]);
+
+            items.extend(self.flat_map_stmt(s).into_iter().filter(|s| s.is_item()));
+
+            // we put a Some in there earlier with that replace(), so this is valid
+            let nested_items = self.nested_items.take().unwrap();
+            self.nested_items = old_items;
+            items.extend(nested_items);
+        }
+
+        if let Some(nested_items) = self.nested_items.as_mut() {
+            // add our items to the existing statements and yield an empty block with `loop {}`
+            if !items.is_empty() {
+                nested_items.extend(items);
+            }
+
+            b.stmts = vec![loop_stmt];
         } else {
-            //visit_clobber(b.deref_mut(), |b| {
-                let mut stmts = vec![];
-                for s in b.stmts.drain(..) {
-                    let old_blocks = self.nested_blocks.replace(vec![]);
+            // push `loop {}` onto the end of our fresh block and yield that
+            items.push(loop_stmt);
 
-                    stmts.extend(self.flat_map_stmt(s).into_iter().filter(|s| s.is_item()));
-
-                    // we put a Some in there earlier with that replace(), so this is valid
-                    let new_blocks = self.nested_blocks.take().unwrap();
-                    self.nested_blocks = old_blocks;
-                    stmts.extend(new_blocks); //.into_iter().map(|b| block_to_stmt(b, self.resolver)));
-                }
-
-                //let mut new_block = ast::Block { stmts, ..b };
-
-                if let Some(old_blocks) = self.nested_blocks.as_mut() {
-                    //push our fresh block onto the cache and yield an empty block with `loop {}`
-                    if !stmts.is_empty() {
-                        //old_blocks.push(new_block);
-                        old_blocks.extend(stmts);
-                    }
-
-                    b.stmts = vec![loop_stmt];
-                    //stmt_to_block(b.rules, Some(loop_stmt), &mut self.resolver)
-                } else {
-                    //push `loop {}` onto the end of our fresh block and yield that
-                    stmts.push(loop_stmt);
-
-                    b.stmts = stmts;
-                }
-            //})
+            b.stmts = items;
         }
     }
 
