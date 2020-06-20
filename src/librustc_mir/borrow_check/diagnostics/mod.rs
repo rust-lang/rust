@@ -542,20 +542,26 @@ pub(super) enum UseSpans {
         // The span of the first use of the captured variable inside the closure.
         var_span: Span,
     },
-    // This access has a single span associated to it: common case.
+    /// This access is caused by a `match` or `if let` pattern.
+    PatUse(Span),
+    /// This access has a single span associated to it: common case.
     OtherUse(Span),
 }
 
 impl UseSpans {
     pub(super) fn args_or_use(self) -> Span {
         match self {
-            UseSpans::ClosureUse { args_span: span, .. } | UseSpans::OtherUse(span) => span,
+            UseSpans::ClosureUse { args_span: span, .. }
+            | UseSpans::PatUse(span)
+            | UseSpans::OtherUse(span) => span,
         }
     }
 
     pub(super) fn var_or_use(self) -> Span {
         match self {
-            UseSpans::ClosureUse { var_span: span, .. } | UseSpans::OtherUse(span) => span,
+            UseSpans::ClosureUse { var_span: span, .. }
+            | UseSpans::PatUse(span)
+            | UseSpans::OtherUse(span) => span,
         }
     }
 
@@ -624,7 +630,7 @@ impl UseSpans {
     {
         match self {
             closure @ UseSpans::ClosureUse { .. } => closure,
-            UseSpans::OtherUse(_) => if_other(),
+            UseSpans::PatUse(_) | UseSpans::OtherUse(_) => if_other(),
         }
     }
 }
@@ -741,7 +747,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        OtherUse(stmt.source_info.span)
+        if moved_place.projection.iter().any(|p| matches!(p, ProjectionElem::Downcast(..))) {
+            PatUse(stmt.source_info.span)
+        } else {
+            OtherUse(stmt.source_info.span)
+        }
     }
 
     /// Finds the span of arguments of a closure (within `maybe_closure_span`)
