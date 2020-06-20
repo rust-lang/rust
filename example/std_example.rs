@@ -5,6 +5,8 @@ use std::io::Write;
 use std::ops::Generator;
 
 fn main() {
+    println!("{:?}", std::env::args().collect::<Vec<_>>());
+
     let mutex = std::sync::Mutex::new(());
     let _guard = mutex.lock().unwrap();
 

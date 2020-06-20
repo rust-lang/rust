@@ -58,7 +58,7 @@ $RUN_WRAPPER ./target/out/dst_field_align || (echo $?; false)
 
 echo "[AOT] std_example"
 $RUSTC example/std_example.rs --crate-type bin --target $TARGET_TRIPLE
-$RUN_WRAPPER ./target/out/std_example --target $TARGET_TRIPLE
+$RUN_WRAPPER ./target/out/std_example arg
 
 echo "[AOT] subslice-patterns-const-eval"
 $RUSTC example/subslice-patterns-const-eval.rs --crate-type bin -Cpanic=abort --target $TARGET_TRIPLE

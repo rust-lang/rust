@@ -264,7 +264,7 @@ fn data_id_for_static(
 
 fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mut ConstantCx) {
     while let Some(todo_item) = cx.todo.pop() {
-        let (data_id, alloc) = match todo_item {
+        let (data_id, alloc, section_name) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
                 //println!("alloc_id {}", alloc_id);
                 let alloc = match tcx.get_global_alloc(alloc_id).unwrap() {
@@ -272,14 +272,12 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                     GlobalAlloc::Function(_) | GlobalAlloc::Static(_) => unreachable!(),
                 };
                 let data_id = data_id_for_alloc_id(module, alloc_id, alloc.align);
-                (data_id, alloc)
+                (data_id, alloc, None)
             }
             TodoItem::Static(def_id) => {
                 //println!("static {:?}", def_id);
 
-                if tcx.is_foreign_item(def_id) {
-                    continue;
-                }
+                let section_name = tcx.codegen_fn_attrs(def_id).link_section.map(|s| s.as_str());
 
                 let const_ = tcx.const_eval_poly(def_id).unwrap();
 
@@ -298,7 +296,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                         Linkage::Export // FIXME Set hidden visibility
                     },
                 );
-                (data_id, alloc)
+                (data_id, alloc, section_name)
             }
         };
 
@@ -308,6 +306,11 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
         }
 
         let mut data_ctx = DataContext::new();
+
+        if let Some(section_name) = section_name {
+            // FIXME set correct segment for Mach-O files
+            data_ctx.set_segment_section("", &*section_name);
+        }
 
         let bytes = alloc.inspect_with_undef_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
         data_ctx.define(bytes.into_boxed_slice());

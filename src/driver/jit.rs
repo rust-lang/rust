@@ -75,9 +75,8 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         unsafe { ::std::mem::transmute(finalized_main) };
 
     let args = ::std::env::var("CG_CLIF_JIT_ARGS").unwrap_or_else(|_| String::new());
-    let args = args
-        .split(" ")
-        .chain(Some(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string()))
+    let args = std::iter::once(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string())
+        .chain(args.split(" "))
         .map(|arg| CString::new(arg).unwrap())
         .collect::<Vec<_>>();
     let argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
