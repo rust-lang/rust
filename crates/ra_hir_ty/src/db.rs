@@ -3,15 +3,15 @@
 use std::sync::Arc;
 
 use hir_def::{
-    db::DefDatabase, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId, TraitId,
-    TypeParamId, VariantId,
+    db::DefDatabase, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId, TypeParamId,
+    VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::{impl_intern_key, salsa, CrateId, Upcast};
 use ra_prof::profile;
 
 use crate::{
-    method_resolution::{CrateImplDefs, TyFingerprint},
+    method_resolution::CrateImplDefs,
     traits::{chalk, AssocTyValue, Impl},
     Binders, CallableDef, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
     ReturnTypeImplTraits, Substs, TraitRef, Ty, TyDefId, TypeCtor, ValueTyDefId,
@@ -70,13 +70,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::method_resolution::CrateImplDefs::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: CrateId) -> Arc<CrateImplDefs>;
 
-    #[salsa::invoke(crate::traits::impls_for_trait_query)]
-    fn impls_for_trait(
-        &self,
-        krate: CrateId,
-        trait_: TraitId,
-        self_ty_fp: Option<TyFingerprint>,
-    ) -> Arc<[ImplId]>;
+    #[salsa::invoke(crate::method_resolution::CrateImplDefs::impls_from_deps_query)]
+    fn impls_from_deps(&self, krate: CrateId) -> Arc<CrateImplDefs>;
 
     // Interned IDs for Chalk integration
     #[salsa::interned]

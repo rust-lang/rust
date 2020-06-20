@@ -74,14 +74,26 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         // Note: Since we're using impls_for_trait, only impls where the trait
         // can be resolved should ever reach Chalk. `impl_datum` relies on that
         // and will panic if the trait can't be resolved.
-        let mut result: Vec<_> = self
-            .db
-            .impls_for_trait(self.krate, trait_, self_ty_fp)
-            .iter()
-            .copied()
-            .map(Impl::ImplDef)
-            .map(|impl_| impl_.to_chalk(self.db))
-            .collect();
+        let in_deps = self.db.impls_from_deps(self.krate);
+        let in_self = self.db.impls_in_crate(self.krate);
+        let impl_maps = [in_deps, in_self];
+
+        let id_to_chalk = |id: hir_def::ImplId| Impl::ImplDef(id).to_chalk(self.db);
+
+        let mut result: Vec<_> = match self_ty_fp {
+            Some(fp) => impl_maps
+                .iter()
+                .flat_map(|crate_impl_defs| {
+                    crate_impl_defs.lookup_impl_defs_for_trait_and_ty(trait_, fp).map(id_to_chalk)
+                })
+                .collect(),
+            None => impl_maps
+                .iter()
+                .flat_map(|crate_impl_defs| {
+                    crate_impl_defs.lookup_impl_defs_for_trait(trait_).map(id_to_chalk)
+                })
+                .collect(),
+        };
 
         let arg: Option<Ty> =
             parameters.get(1).map(|p| from_chalk(self.db, p.assert_ty_ref(&Interner).clone()));
