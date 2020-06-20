@@ -2438,10 +2438,15 @@ fn func(foo: i32) { if true { <|>foo; }; }
             r#"
             //- /lib.rs deps:std
 
-            #[lang = "fn"]
-            pub trait Fn<Args> {
+            #[lang = "fn_once"]
+            pub trait FnOnce<Args> {
                 type Output;
 
+                extern "rust-call" fn call_once(&self, args: Args) -> Self::Output;
+            }
+
+            #[lang = "fn"]
+            pub trait Fn<Args>:FnOnce<Args> {
                 extern "rust-call" fn call(&self, args: Args) -> Self::Output;
             }
 

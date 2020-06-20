@@ -15,10 +15,10 @@ use ra_syntax::ast::RangeOp;
 
 use crate::{
     autoderef, method_resolution, op,
-    traits::{FnTrait, InEnvironment, SolutionVariables},
+    traits::{FnTrait, Guidance, InEnvironment, SolutionVariables},
     utils::{generics, variant_data, Generics},
-    ApplicationTy, Binders, CallableDef, FnSig, InferTy, IntTy, Mutability, Obligation, Rawness,
-    Substs, TraitRef, Ty, TypeCtor,
+    ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
+    TraitRef, Ty, TypeCtor,
 };
 
 use super::{
@@ -63,72 +63,70 @@ impl<'a> InferenceContext<'a> {
         self.resolve_ty_as_possible(ty)
     }
 
-    fn callable_sig_from_fn_trait(&mut self, ty: &Ty) -> Option<FnSig> {
-        if let Some(krate) = self.resolver.krate() {
-            let fn_traits: Vec<crate::TraitId> = [FnTrait::FnOnce, FnTrait::FnMut, FnTrait::Fn]
-                .iter()
-                .filter_map(|f| f.get_id(self.db, krate))
-                .collect();
-            for fn_trait in fn_traits {
-                let fn_trait_data = self.db.trait_data(fn_trait);
-                let generic_params = generics(self.db.upcast(), fn_trait.into());
-                if generic_params.len() != 2 {
-                    continue;
-                }
-
-                let arg_ty = self.table.new_type_var();
-                let substs = Substs::build_for_generics(&generic_params)
-                    .push(ty.clone())
-                    .push(arg_ty.clone())
-                    .build();
-
-                let trait_ref = TraitRef { trait_: fn_trait, substs: substs.clone() };
-                let trait_env = Arc::clone(&self.trait_env);
-                let implements_fn_goal =
-                    self.canonicalizer().canonicalize_obligation(InEnvironment {
-                        value: Obligation::Trait(trait_ref),
-                        environment: trait_env,
-                    });
-                if let Some(Solution::Unique(SolutionVariables(solution))) =
-                    self.db.trait_solve(krate, implements_fn_goal.value.clone())
-                {
-                    match solution.value.as_slice() {
-                        [Ty::Apply(ApplicationTy {
-                            ctor: TypeCtor::Tuple { cardinality: _ },
-                            parameters,
-                        })] => {
-                            let output_assoc_type = match fn_trait_data
-                                .associated_types()
-                                .collect::<Vec<hir_def::TypeAliasId>>()
-                                .as_slice()
-                            {
-                                [output] => *output,
-                                _ => {
-                                    continue;
-                                }
-                            };
-                            let output_proj_ty = crate::ProjectionTy {
-                                associated_ty: output_assoc_type,
-                                parameters: substs,
-                            };
-                            let return_ty = self.normalize_projection_ty(output_proj_ty);
-                            return Some(FnSig::from_params_and_return(
-                                parameters.into_iter().map(|ty| ty.clone()).collect(),
-                                return_ty,
-                            ));
-                        }
-                        _ => (),
-                    }
-                }
+    fn callable_sig_from_fn_trait(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
+        let krate = self.resolver.krate()?;
+        let fn_traits: Vec<crate::TraitId> = [FnTrait::FnOnce, FnTrait::FnMut, FnTrait::Fn]
+            .iter()
+            .filter_map(|f| f.get_id(self.db, krate))
+            .collect();
+        let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
+        let output_assoc_type = match self
+            .db
+            .trait_data(fn_once_trait)
+            .associated_types()
+            .collect::<Vec<hir_def::TypeAliasId>>()
+            .as_slice()
+        {
+            [output] => *output,
+            _ => {
+                return None;
             }
         };
+        for fn_trait in fn_traits {
+            let generic_params = generics(self.db.upcast(), fn_trait.into());
+            if generic_params.len() != 2 {
+                continue;
+            }
+
+            let mut param_builder = Substs::builder(num_args);
+            for _ in 0..num_args {
+                param_builder = param_builder.push(self.table.new_type_var());
+            }
+            let arg_ty = Ty::Apply(ApplicationTy {
+                ctor: TypeCtor::Tuple { cardinality: num_args as u16 },
+                parameters: param_builder.build(),
+            });
+            let substs = Substs::build_for_generics(&generic_params)
+                .push(ty.clone())
+                .push(arg_ty.clone())
+                .build();
+
+            let trait_ref = TraitRef { trait_: fn_trait, substs: substs.clone() };
+            let trait_env = Arc::clone(&self.trait_env);
+            let implements_fn_goal = self.canonicalizer().canonicalize_obligation(InEnvironment {
+                value: Obligation::Trait(trait_ref),
+                environment: trait_env,
+            });
+            let solution = match self.db.trait_solve(krate, implements_fn_goal.value.clone()) {
+                Some(Solution::Unique(SolutionVariables(solution)))
+                | Some(Solution::Ambig(Guidance::Definite(SolutionVariables(solution))))
+                | Some(Solution::Ambig(Guidance::Suggested(SolutionVariables(solution)))) => {
+                    solution
+                }
+                _ => continue,
+            };
+            let output_proj_ty =
+                crate::ProjectionTy { associated_ty: output_assoc_type, parameters: substs };
+            let return_ty = self.normalize_projection_ty(output_proj_ty);
+            return Some((solution.value, return_ty));
+        }
         None
     }
 
-    pub fn callable_sig(&mut self, ty: &Ty) -> Option<FnSig> {
+    pub fn callable_sig(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
         match ty.callable_sig(self.db) {
-            result @ Some(_) => result,
-            None => self.callable_sig_from_fn_trait(ty),
+            Some(sig) => Some((sig.params().to_vec(), sig.ret().clone())),
+            None => self.callable_sig_from_fn_trait(ty, num_args),
         }
     }
 
@@ -278,8 +276,10 @@ impl<'a> InferenceContext<'a> {
                 );
                 let (param_tys, ret_ty): (Vec<Ty>, Ty) = derefs
                     .find_map(|callee_deref_ty| {
-                        self.callable_sig(&canonicalized.decanonicalize_ty(callee_deref_ty.value))
-                            .map(|sig| (sig.params().to_vec(), sig.ret().clone()))
+                        self.callable_sig(
+                            &canonicalized.decanonicalize_ty(callee_deref_ty.value),
+                            args.len(),
+                        )
                     })
                     .unwrap_or((Vec::new(), Ty::Unknown));
                 self.register_obligations_for_call(&callee_ty);
