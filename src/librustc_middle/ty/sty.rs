@@ -522,7 +522,6 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 
     /// Calls `f` with a reference to the name of the enumerator for the given
     /// variant `v`.
-    #[inline]
     pub fn variant_name(v: VariantIdx) -> Cow<'static, str> {
         match v.as_usize() {
             Self::UNRESUMED => Cow::from(Self::UNRESUMED_NAME),
