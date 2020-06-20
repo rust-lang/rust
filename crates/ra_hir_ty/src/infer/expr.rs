@@ -768,7 +768,7 @@ impl<'a> InferenceContext<'a> {
         let method_ty = method_ty.subst(&substs);
         let method_ty = self.insert_type_vars(method_ty);
         self.register_obligations_for_call(&method_ty);
-        let (expected_receiver_ty, param_tys, ret_ty) = match self.callable_sig(&method_ty) {
+        let (expected_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
             Some(sig) => {
                 if !sig.params().is_empty() {
                     (sig.params()[0].clone(), sig.params()[1..].to_vec(), sig.ret().clone())
