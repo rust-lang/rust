@@ -40,7 +40,7 @@ pub(super) fn get_builtin_impls(
     if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Closure { def, expr }, .. }) = ty {
         for &fn_trait in [super::FnTrait::FnOnce, super::FnTrait::FnMut, super::FnTrait::Fn].iter()
         {
-            if let Some(actual_trait) = get_fn_trait(db, krate, fn_trait) {
+            if let Some(actual_trait) = fn_trait.get_id(db, krate) {
                 if trait_ == actual_trait {
                     let impl_ = super::ClosureFnTraitImplData { def: *def, expr: *expr, fn_trait };
                     if check_closure_fn_trait_impl_prerequisites(db, krate, impl_) {
@@ -128,7 +128,7 @@ fn check_closure_fn_trait_impl_prerequisites(
     data: super::ClosureFnTraitImplData,
 ) -> bool {
     // the respective Fn/FnOnce/FnMut trait needs to exist
-    if get_fn_trait(db, krate, data.fn_trait).is_none() {
+    if data.fn_trait.get_id(db, krate).is_none() {
         return false;
     }
 
@@ -136,7 +136,7 @@ fn check_closure_fn_trait_impl_prerequisites(
     // the traits having no type params, FnOnce being a supertrait
 
     // the FnOnce trait needs to exist and have an assoc type named Output
-    let fn_once_trait = match get_fn_trait(db, krate, super::FnTrait::FnOnce) {
+    let fn_once_trait = match (super::FnTrait::FnOnce).get_id(db, krate) {
         Some(t) => t,
         None => return false,
     };
@@ -151,7 +151,9 @@ fn closure_fn_trait_impl_datum(
     // for some closure |X, Y| -> Z:
     // impl<T, U, V> Fn<(T, U)> for closure<fn(T, U) -> V> { Output = V }
 
-    let trait_ = get_fn_trait(db, krate, data.fn_trait) // get corresponding fn trait
+    let trait_ = data
+        .fn_trait
+        .get_id(db, krate) // get corresponding fn trait
         // the existence of the Fn trait has been checked before
         .expect("fn trait for closure impl missing");
 
@@ -211,7 +213,7 @@ fn closure_fn_trait_output_assoc_ty_value(
     let output_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, num_args.into()));
 
     let fn_once_trait =
-        get_fn_trait(db, krate, super::FnTrait::FnOnce).expect("assoc ty value should not exist");
+        (super::FnTrait::FnOnce).get_id(db, krate).expect("assoc ty value should not exist");
 
     let output_ty_id = db
         .trait_data(fn_once_trait)
@@ -358,14 +360,6 @@ fn super_trait_object_unsize_impl_datum(
     let trait_ref = TraitRef { trait_: unsize_trait, substs };
 
     BuiltinImplData { num_vars, trait_ref, where_clauses: Vec::new(), assoc_ty_values: Vec::new() }
-}
-
-fn get_fn_trait(db: &dyn HirDatabase, krate: CrateId, fn_trait: super::FnTrait) -> Option<TraitId> {
-    let target = db.lang_item(krate, fn_trait.lang_item_name().into())?;
-    match target {
-        LangItemTarget::TraitId(t) => Some(t),
-        _ => None,
-    }
 }
 
 fn get_unsize_trait(db: &dyn HirDatabase, krate: CrateId) -> Option<TraitId> {

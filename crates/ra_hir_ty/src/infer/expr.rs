@@ -10,12 +10,12 @@ use hir_def::{
     resolver::resolver_for_expr,
     AdtId, AssocContainerId, FieldId, Lookup,
 };
-use hir_expand::name::Name;
+use hir_expand::name::{name, Name};
 use ra_syntax::ast::RangeOp;
 
 use crate::{
     autoderef, method_resolution, op,
-    traits::InEnvironment,
+    traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
     ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
     TraitRef, Ty, TypeCtor,
@@ -61,6 +61,58 @@ impl<'a> InferenceContext<'a> {
         };
 
         self.resolve_ty_as_possible(ty)
+    }
+
+    fn callable_sig_from_fn_trait(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
+        let krate = self.resolver.krate()?;
+        let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
+        let output_assoc_type =
+            self.db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
+        let generic_params = generics(self.db.upcast(), fn_once_trait.into());
+        if generic_params.len() != 2 {
+            return None;
+        }
+
+        let mut param_builder = Substs::builder(num_args);
+        let mut arg_tys = vec![];
+        for _ in 0..num_args {
+            let arg = self.table.new_type_var();
+            param_builder = param_builder.push(arg.clone());
+            arg_tys.push(arg);
+        }
+        let parameters = param_builder.build();
+        let arg_ty = Ty::Apply(ApplicationTy {
+            ctor: TypeCtor::Tuple { cardinality: num_args as u16 },
+            parameters,
+        });
+        let substs = Substs::build_for_generics(&generic_params)
+            .push(ty.clone())
+            .push(arg_ty.clone())
+            .build();
+
+        let trait_env = Arc::clone(&self.trait_env);
+        let implements_fn_trait =
+            Obligation::Trait(TraitRef { trait_: fn_once_trait, substs: substs.clone() });
+        let goal = self.canonicalizer().canonicalize_obligation(InEnvironment {
+            value: implements_fn_trait.clone(),
+            environment: trait_env,
+        });
+        if self.db.trait_solve(krate, goal.value).is_some() {
+            self.obligations.push(implements_fn_trait);
+            let output_proj_ty =
+                crate::ProjectionTy { associated_ty: output_assoc_type, parameters: substs };
+            let return_ty = self.normalize_projection_ty(output_proj_ty);
+            Some((arg_tys, return_ty))
+        } else {
+            None
+        }
+    }
+
+    pub fn callable_sig(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
+        match ty.callable_sig(self.db) {
+            Some(sig) => Some((sig.params().to_vec(), sig.ret().clone())),
+            None => self.callable_sig_from_fn_trait(ty, num_args),
+        }
     }
 
     fn infer_expr_inner(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
@@ -198,14 +250,23 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
-                let (param_tys, ret_ty) = match callee_ty.callable_sig(self.db) {
-                    Some(sig) => (sig.params().to_vec(), sig.ret().clone()),
-                    None => {
-                        // Not callable
-                        // FIXME: report an error
-                        (Vec::new(), Ty::Unknown)
-                    }
-                };
+                let canonicalized = self.canonicalizer().canonicalize_ty(callee_ty.clone());
+                let mut derefs = autoderef(
+                    self.db,
+                    self.resolver.krate(),
+                    InEnvironment {
+                        value: canonicalized.value.clone(),
+                        environment: self.trait_env.clone(),
+                    },
+                );
+                let (param_tys, ret_ty): (Vec<Ty>, Ty) = derefs
+                    .find_map(|callee_deref_ty| {
+                        self.callable_sig(
+                            &canonicalized.decanonicalize_ty(callee_deref_ty.value),
+                            args.len(),
+                        )
+                    })
+                    .unwrap_or((Vec::new(), Ty::Unknown));
                 self.register_obligations_for_call(&callee_ty);
                 self.check_call_arguments(args, &param_tys);
                 self.normalize_associated_types_in(ret_ty)
