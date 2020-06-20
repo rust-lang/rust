@@ -376,6 +376,19 @@ struct DiagnosticMetadata<'ast> {
     current_let_binding: Option<(Span, Option<Span>, Option<Span>)>,
 }
 
+/// Keeps track of whether errors should be reported.
+///
+/// Used by rustdoc to ignore errors in function bodies.
+/// This is just a fancy boolean so it can have doc-comments.
+#[derive(Copy, Clone, Debug)]
+pub enum IgnoreState {
+    /// We are at global scope or in a trait implementation, so all errors should be reported.
+    Report,
+    /// We are in a function body, so errors shouldn't be reported.
+    Ignore,
+    // Note that we don't need to worry about macros, which must always be resolved (or we wouldn't have gotten to the late pass).
+}
+
 struct LateResolutionVisitor<'a, 'b, 'ast> {
     r: &'b mut Resolver<'a>,
 
@@ -395,10 +408,12 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
     /// Fields used to add information to diagnostic errors.
     diagnostic_metadata: DiagnosticMetadata<'ast>,
 
-    /// Whether to report resolution errors for item bodies.
+    /// State used to know whether to ignore resolution errors for item bodies.
     ///
     /// In particular, rustdoc uses this to avoid giving errors for `cfg()` items.
-    ignore_bodies: bool,
+    /// In most cases this will be `None`, in which case errors will always be reported.
+    /// If it is `Some(_)`, then it will be updated when entering a nested function or trait body.
+    ignore_bodies: Option<IgnoreState>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -502,6 +517,10 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
                 visit::walk_fn_ret_ty(this, &declaration.output);
 
+                let previous_ignore = this.ignore_bodies.take();
+                // Ignore errors in function bodies if originally passed `ignore_state: true`
+                // Be sure not to set this until the function signature has been resolved.
+                this.ignore_bodies = previous_ignore.and(Some(IgnoreState::Ignore));
                 // Resolve the function body, potentially inside the body of an async closure
                 match fn_kind {
                     FnKind::Fn(.., body) => walk_list!(this, visit_block, body),
@@ -509,6 +528,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 };
 
                 debug!("(resolving function) leaving function");
+                this.ignore_bodies = previous_ignore;
             })
         });
         self.diagnostic_metadata.current_function = previous_value;
@@ -634,7 +654,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn new(
         resolver: &'b mut Resolver<'a>,
-        ignore_bodies: bool,
+        ignore_bodies: IgnoreState,
     ) -> LateResolutionVisitor<'a, 'b, 'ast> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
@@ -652,7 +672,11 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             label_ribs: Vec::new(),
             current_trait_ref: None,
             diagnostic_metadata: DiagnosticMetadata::default(),
-            ignore_bodies,
+            ignore_bodies: match ignore_bodies {
+                // errors at module scope should always be reported
+                IgnoreState::Ignore => Some(IgnoreState::Report),
+                IgnoreState::Report => None,
+            },
         }
     }
 
@@ -842,7 +866,11 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             };
             let report_error = |this: &Self, ns| {
                 let what = if ns == TypeNS { "type parameters" } else { "local variables" };
-                this.r.session.span_err(ident.span, &format!("imports cannot refer to {}", what));
+                if this.should_report_errs() {
+                    this.r
+                        .session
+                        .span_err(ident.span, &format!("imports cannot refer to {}", what));
+                }
             };
 
             for &ns in nss {
@@ -1166,6 +1194,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         impl_items: &'ast [P<AssocItem>],
     ) {
         debug!("resolve_implementation");
+        let old_ignore = self.ignore_bodies.take();
+        // Never ignore errors in trait implementations.
+        self.ignore_bodies = old_ignore.and(Some(IgnoreState::Report));
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
             // Dummy self type for better errors if `Self` is used in the trait path.
@@ -1261,6 +1292,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             });
         });
+        self.ignore_bodies = old_ignore;
     }
 
     fn check_trait_item<F>(&mut self, ident: Ident, ns: Namespace, span: Span, err: F)
@@ -1298,6 +1330,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn resolve_local(&mut self, local: &'ast Local) {
+        debug!("resolving local ({:?})", local);
         // Resolve the type.
         walk_list!(self, visit_ty, &local.ty);
 
@@ -1686,18 +1719,27 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         source: PathSource<'ast>,
         crate_lint: CrateLint,
     ) -> PartialRes {
+        log::debug!("smart_resolve_path_fragment(id={:?},qself={:?},path={:?}", id, qself, path);
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
         let report_errors = |this: &mut Self, res: Option<Res>| {
-            let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
+            if this.should_report_errs() {
+                let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
 
-            let def_id = this.parent_scope.module.normal_ancestor_id;
-            let instead = res.is_some();
-            let suggestion =
-                if res.is_none() { this.report_missing_type_error(path) } else { None };
+                let def_id = this.parent_scope.module.normal_ancestor_id;
+                let instead = res.is_some();
+                let suggestion =
+                    if res.is_none() { this.report_missing_type_error(path) } else { None };
 
-            this.r.use_injections.push(UseError { err, candidates, def_id, instead, suggestion });
+                this.r.use_injections.push(UseError {
+                    err,
+                    candidates,
+                    def_id,
+                    instead,
+                    suggestion,
+                });
+            }
 
             PartialRes::new(Res::Err)
         };
@@ -1755,13 +1797,17 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             let def_id = this.parent_scope.module.normal_ancestor_id;
 
-            this.r.use_injections.push(UseError {
-                err,
-                candidates,
-                def_id,
-                instead: false,
-                suggestion: None,
-            });
+            if this.should_report_errs() {
+                this.r.use_injections.push(UseError {
+                    err,
+                    candidates,
+                    def_id,
+                    instead: false,
+                    suggestion: None,
+                });
+            } else {
+                err.cancel();
+            }
 
             // We don't return `Some(parent_err)` here, because the error will
             // be already printed as part of the `use` injections
@@ -1856,8 +1902,17 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     ///
     /// This doesn't emit errors for function bodies if `ignore_bodies` is set.
     fn report_error(&self, span: Span, resolution_error: ResolutionError<'_>) {
-        if !self.ignore_bodies || self.diagnostic_metadata.current_function.is_none() {
+        if self.should_report_errs() {
             self.r.report_error(span, resolution_error);
+        }
+    }
+
+    #[inline]
+    fn should_report_errs(&self) -> bool {
+        debug!("should_report_errs(state={:?})", self.ignore_bodies);
+        match self.ignore_bodies {
+            None | Some(IgnoreState::Report) => true,
+            Some(IgnoreState::Ignore) => false,
         }
     }
 
@@ -2357,7 +2412,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 }
 
 impl<'a> Resolver<'a> {
-    pub(crate) fn late_resolve_crate(&mut self, krate: &Crate, ignore_bodies: bool) {
+    pub(crate) fn late_resolve_crate(&mut self, krate: &Crate, ignore_bodies: IgnoreState) {
         let mut late_resolution_visitor = LateResolutionVisitor::new(self, ignore_bodies);
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.diagnostic_metadata.unused_labels.iter() {

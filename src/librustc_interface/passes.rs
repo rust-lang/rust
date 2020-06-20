@@ -233,6 +233,8 @@ fn configure_and_expand_inner<'a>(
     resolver_arenas: &'a ResolverArenas<'a>,
     metadata_loader: &'a MetadataLoaderDyn,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
+    use rustc_resolve::IgnoreState;
+
     log::trace!("configure_and_expand_inner");
     pre_expansion_lint(sess, lint_store, &krate);
 
@@ -354,12 +356,17 @@ fn configure_and_expand_inner<'a>(
         )
     });
 
-    let crate_types = sess.crate_types();
-    let is_proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
+    if let Some(PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops)) = sess.opts.pretty {
+        log::debug!("replacing bodies with loop {{}}");
+        util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
+    }
 
     let has_proc_macro_decls = sess.time("AST_validation", || {
         rustc_ast_passes::ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
     });
+
+    let crate_types = sess.crate_types();
+    let is_proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
 
     // For backwards compatibility, we don't try to run proc macro injection
     // if rustdoc is run on a proc macro crate without '--crate-type proc-macro' being
@@ -407,17 +414,9 @@ fn configure_and_expand_inner<'a>(
     }
 
     // If we're actually rustdoc then avoid giving a name resolution error for `cfg()` items.
-    // anything, so switch everything to just looping
-    resolver.resolve_crate(&krate, sess.opts.actually_rustdoc);
-
-    let mut should_loop = false;
-    if let Some(PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops)) = sess.opts.pretty {
-        should_loop |= true;
-    }
-    if should_loop {
-        log::debug!("replacing bodies with loop {{}}");
-        util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
-    }
+    let ignore_bodies =
+        if sess.opts.actually_rustdoc { IgnoreState::Ignore } else { IgnoreState::Report };
+    resolver.resolve_crate(&krate, ignore_bodies);
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
