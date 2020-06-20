@@ -152,10 +152,6 @@ jobs:
           - name: dist-x86_64-linux
             os: ubuntu-latest-xl
             env: {}
-          - name: dist-x86_64-linux-alt
-            env:
-              IMAGE: dist-x86_64-linux
-            os: ubuntu-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:

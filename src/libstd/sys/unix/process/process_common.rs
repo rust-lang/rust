@@ -428,6 +428,7 @@ mod tests {
     // ignored there.
     #[cfg_attr(target_arch = "arm", ignore)]
     #[cfg_attr(target_arch = "aarch64", ignore)]
+    #[cfg_attr(target_arch = "riscv64", ignore)]
     fn test_process_mask() {
         unsafe {
             // Test to make sure that a signal mask does not get inherited.

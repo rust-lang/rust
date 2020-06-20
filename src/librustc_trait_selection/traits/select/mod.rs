@@ -1754,27 +1754,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Vec<PredicateObligation<'tcx>> {
         // Because the types were potentially derived from
         // higher-ranked obligations they may reference late-bound
-        // regions. For example, `for<'a> Foo<&'a int> : Copy` would
-        // yield a type like `for<'a> &'a int`. In general, we
+        // regions. For example, `for<'a> Foo<&'a i32> : Copy` would
+        // yield a type like `for<'a> &'a i32`. In general, we
         // maintain the invariant that we never manipulate bound
         // regions, so we have to process these bound regions somehow.
         //
         // The strategy is to:
         //
         // 1. Instantiate those regions to placeholder regions (e.g.,
-        //    `for<'a> &'a int` becomes `&0 int`.
-        // 2. Produce something like `&'0 int : Copy`
-        // 3. Re-bind the regions back to `for<'a> &'a int : Copy`
+        //    `for<'a> &'a i32` becomes `&0 i32`.
+        // 2. Produce something like `&'0 i32 : Copy`
+        // 3. Re-bind the regions back to `for<'a> &'a i32 : Copy`
 
         types
-            .skip_binder()
+            .skip_binder() // binder moved -\
             .iter()
             .flat_map(|ty| {
-                // binder moved -\
                 let ty: ty::Binder<Ty<'tcx>> = ty::Binder::bind(ty); // <----/
 
                 self.infcx.commit_unconditionally(|_| {
-                    let (skol_ty, _) = self.infcx.replace_bound_vars_with_placeholders(&ty);
+                    let (placeholder_ty, _) = self.infcx.replace_bound_vars_with_placeholders(&ty);
                     let Normalized { value: normalized_ty, mut obligations } =
                         ensure_sufficient_stack(|| {
                             project::normalize_with_depth(
@@ -1782,10 +1781,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 param_env,
                                 cause.clone(),
                                 recursion_depth,
-                                &skol_ty,
+                                &placeholder_ty,
                             )
                         });
-                    let skol_obligation = predicate_for_trait_def(
+                    let placeholder_obligation = predicate_for_trait_def(
                         self.tcx(),
                         param_env,
                         cause.clone(),
@@ -1794,7 +1793,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         normalized_ty,
                         &[],
                     );
-                    obligations.push(skol_obligation);
+                    obligations.push(placeholder_obligation);
                     obligations
                 })
             })
@@ -1844,9 +1843,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(());
         }
 
-        let (skol_obligation, placeholder_map) =
+        let (placeholder_obligation, placeholder_map) =
             self.infcx().replace_bound_vars_with_placeholders(&obligation.predicate);
-        let skol_obligation_trait_ref = skol_obligation.trait_ref;
+        let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 
         let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
 
@@ -1865,14 +1864,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(
             "match_impl(impl_def_id={:?}, obligation={:?}, \
-             impl_trait_ref={:?}, skol_obligation_trait_ref={:?})",
-            impl_def_id, obligation, impl_trait_ref, skol_obligation_trait_ref
+             impl_trait_ref={:?}, placeholder_obligation_trait_ref={:?})",
+            impl_def_id, obligation, impl_trait_ref, placeholder_obligation_trait_ref
         );
 
         let InferOk { obligations, .. } = self
             .infcx
             .at(&obligation.cause, obligation.param_env)
-            .eq(skol_obligation_trait_ref, impl_trait_ref)
+            .eq(placeholder_obligation_trait_ref, impl_trait_ref)
             .map_err(|e| debug!("match_impl: failed eq_trait_refs due to `{}`", e))?;
         nested_obligations.extend(obligations);
 

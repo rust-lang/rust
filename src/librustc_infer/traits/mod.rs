@@ -29,10 +29,10 @@ crate use self::util::elaborate_predicates;
 
 pub use rustc_middle::traits::*;
 
-/// An `Obligation` represents some trait reference (e.g., `int: Eq`) for
+/// An `Obligation` represents some trait reference (e.g., `i32: Eq`) for
 /// which the "impl_source" must be found. The process of finding a "impl_source" is
 /// called "resolving" the `Obligation`. This process consists of
-/// either identifying an `impl` (e.g., `impl Eq for int`) that
+/// either identifying an `impl` (e.g., `impl Eq for i32`) that
 /// satisfies the obligation, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
 #[derive(Clone, PartialEq, Eq, Hash)]

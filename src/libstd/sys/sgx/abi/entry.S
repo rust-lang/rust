@@ -26,17 +26,9 @@ IMAGE_BASE:
 .Lxsave_clear:
 .org .+24
 .Lxsave_mxcsr:
-    .int 0
+    .short 0x1f80
 
 /*  We can store a bunch of data in the gap between MXCSR and the XSAVE header */
-
-/* MXCSR initialization value for ABI */
-.Lmxcsr_init:
-    .int 0x1f80
-
-/* x87 FPU control word initialization value for ABI */
-.Lfpucw_init:
-    .int 0x037f
 
 /*  The following symbols point at read-only data that will be filled in by the */
 /*  post-linker. */
@@ -177,13 +169,17 @@ sgx_entry:
     jz .Lskip_debug_init
     mov %r10,%gs:tcsls_debug_panic_buf_ptr
 .Lskip_debug_init:
+/*  reset cpu state */
+    mov %rdx, %r10
+    mov $-1, %rax
+    mov $-1, %rdx
+    xrstor .Lxsave_clear(%rip)
+    mov %r10, %rdx
+
 /*  check if returning from usercall */
     mov %gs:tcsls_last_rsp,%r11
     test %r11,%r11
     jnz .Lusercall_ret
-/*  reset user state */
-    ldmxcsr .Lmxcsr_init(%rip)
-    fldcw .Lfpucw_init(%rip)
 /*  setup stack */
     mov %gs:tcsls_tos,%rsp /*  initially, RSP is not set to the correct value */
                            /*  here. This is fixed below under "adjust stack". */
