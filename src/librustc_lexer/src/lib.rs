@@ -179,21 +179,18 @@ pub enum Base {
 /// but shebang isn't a part of rust syntax.
 pub fn strip_shebang(input: &str) -> Option<usize> {
     // Shebang must start with `#!` literally, without any preceding whitespace.
-    if input.starts_with("#!") {
-        let input_tail = &input[2..];
-        // Shebang must have something non-whitespace after `#!` on the first line.
-        let first_line_tail = input_tail.lines().next()?;
-        if first_line_tail.contains(|c| !is_whitespace(c)) {
-            // Ok, this is a shebang but if the next non-whitespace token is `[` or maybe
-            // a doc comment (due to `TokenKind::(Line,Block)Comment` ambiguity at lexer level),
-            // then it may be valid Rust code, so consider it Rust code.
-            let next_non_whitespace_token = tokenize(input_tail).map(|tok| tok.kind).find(|tok|
-                !matches!(tok, TokenKind::Whitespace | TokenKind::LineComment | TokenKind::BlockComment { .. })
-            );
-            if next_non_whitespace_token != Some(TokenKind::OpenBracket) {
-                // No other choice than to consider this a shebang.
-                return Some(2 + first_line_tail.len());
-            }
+    // For simplicity we consider any line starting with `#!` a shebang,
+    // regardless of restrictions put on shebangs by specific platforms.
+    if let Some(input_tail) = input.strip_prefix("#!") {
+        // Ok, this is a shebang but if the next non-whitespace token is `[` or maybe
+        // a doc comment (due to `TokenKind::(Line,Block)Comment` ambiguity at lexer level),
+        // then it may be valid Rust code, so consider it Rust code.
+        let next_non_whitespace_token = tokenize(input_tail).map(|tok| tok.kind).find(|tok|
+            !matches!(tok, TokenKind::Whitespace | TokenKind::LineComment | TokenKind::BlockComment { .. })
+        );
+        if next_non_whitespace_token != Some(TokenKind::OpenBracket) {
+            // No other choice than to consider this a shebang.
+            return Some(2 + input_tail.lines().next().unwrap_or_default().len());
         }
     }
     None
