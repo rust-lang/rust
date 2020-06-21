@@ -233,7 +233,7 @@ impl MutBorrow<'mir, 'tcx> {
     ///
     /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
     fn shared_borrow_allows_mutation(&self, place: Place<'tcx>) -> bool {
-        !place.ty(self.body, self.tcx).ty.is_freeze(self.tcx, self.param_env, DUMMY_SP)
+        !place.ty(self.body, self.tcx).ty.is_freeze(self.tcx.at(DUMMY_SP), self.param_env)
     }
 }
 

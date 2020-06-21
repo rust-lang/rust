@@ -74,7 +74,7 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
     }
 
     fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx(), ty::ParamEnv::reveal_all(), DUMMY_SP)
+        ty.is_freeze(self.tcx().at(DUMMY_SP), ty::ParamEnv::reveal_all())
     }
 
     fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
