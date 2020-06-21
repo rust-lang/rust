@@ -582,25 +582,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         while !queue.is_empty() {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
-            let trait_pred =
-                match obligation.predicate.ignore_qualifiers(self.tcx).skip_binder().kind() {
-                    &ty::PredicateKind::Trait(trait_pred, _)
-                        if traits.contains(&trait_pred.def_id()) =>
-                    {
-                        if unsize_did == trait_pred.def_id() {
-                            let unsize_ty = trait_pred.trait_ref.substs[1].expect_ty();
-                            if let ty::Tuple(..) = unsize_ty.kind {
-                                debug!("coerce_unsized: found unsized tuple coercion");
-                                has_unsized_tuple_coercion = true;
-                            }
+            let trait_pred = match obligation.predicate.ignore_qualifiers().skip_binder().kind() {
+                &ty::PredicateKind::Trait(trait_pred, _)
+                    if traits.contains(&trait_pred.def_id()) =>
+                {
+                    if unsize_did == trait_pred.def_id() {
+                        let unsize_ty = trait_pred.trait_ref.substs[1].expect_ty();
+                        if let ty::Tuple(..) = unsize_ty.kind {
+                            debug!("coerce_unsized: found unsized tuple coercion");
+                            has_unsized_tuple_coercion = true;
                         }
-                        ty::Binder::bind(trait_pred)
                     }
-                    _ => {
-                        coercion.obligations.push(obligation);
-                        continue;
-                    }
-                };
+                    ty::Binder::bind(trait_pred)
+                }
+                _ => {
+                    coercion.obligations.push(obligation);
+                    continue;
+                }
+            };
             match selcx.select(&obligation.with(trait_pred)) {
                 // Uncertain or unimplemented.
                 Ok(None) => {

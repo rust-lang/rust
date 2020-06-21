@@ -196,7 +196,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
         };
 
     // It is fine to skip the binder as we don't care about regions here.
-    match pred.ignore_qualifiers(tcx).skip_binder().kind() {
+    match pred.ignore_qualifiers().skip_binder().kind() {
         ty::PredicateKind::Projection(proj) => {
             // The obligation comes not from the current `impl` nor the `trait` being implemented,
             // but rather from a "second order" obligation, where an associated type has a
@@ -269,7 +269,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         let extend = |obligation: traits::PredicateObligation<'tcx>| {
             let mut cause = cause.clone();
-            if let Some(parent_trait_ref) = obligation.predicate.to_opt_poly_trait_ref(tcx) {
+            if let Some(parent_trait_ref) = obligation.predicate.to_opt_poly_trait_ref() {
                 let derived_cause = traits::DerivedObligationCause {
                     parent_trait_ref,
                     parent_code: Rc::new(obligation.cause.code.clone()),

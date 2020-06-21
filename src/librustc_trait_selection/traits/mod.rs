@@ -237,7 +237,7 @@ fn do_normalize_predicates<'tcx>(
 
         // We can use the `elaborated_env` here; the region code only
         // cares about declarations like `'a: 'b`.
-        let outlives_env = OutlivesEnvironment::new(tcx, elaborated_env);
+        let outlives_env = OutlivesEnvironment::new(elaborated_env);
 
         infcx.resolve_regions_and_report_errors(
             region_context,
@@ -328,7 +328,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // This works fairly well because trait matching  does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
-        .drain_filter(|predicate| match predicate.ignore_qualifiers(tcx).skip_binder().kind() {
+        .drain_filter(|predicate| match predicate.ignore_qualifiers().skip_binder().kind() {
             ty::PredicateKind::TypeOutlives(..) => true,
             _ => false,
         })

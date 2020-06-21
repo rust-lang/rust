@@ -181,7 +181,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         stack: &TraitObligationStack<'o, 'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
-        let tcx = self.tcx();
         debug!("assemble_candidates_from_caller_bounds({:?})", stack.obligation);
 
         let all_bounds = stack
@@ -189,7 +188,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .param_env
             .caller_bounds()
             .iter()
-            .filter_map(move |o| o.to_opt_poly_trait_ref(tcx));
+            .filter_map(|o| o.to_opt_poly_trait_ref());
 
         // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =

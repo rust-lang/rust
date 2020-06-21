@@ -84,31 +84,33 @@ where
             || (!self.def_id_visitor.shallow() && substs.visit_with(self))
     }
 
+    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool {
+        match predicate.kind() {
+            &ty::PredicateKind::ForAll(pred) => {
+                // This visitor does not care about bound regions as we only
+                // look at `DefId`s.
+                self.visit_predicate(*pred.skip_binder())
+            }
+            &ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref }, _) => {
+                self.visit_trait(trait_ref)
+            }
+            &ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
+                ty.visit_with(self)
+                    || self.visit_trait(projection_ty.trait_ref(self.def_id_visitor.tcx()))
+            }
+            &ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => {
+                ty.visit_with(self)
+            }
+            ty::PredicateKind::RegionOutlives(..) => false,
+            _ => bug!("unexpected predicate: {:?}", predicate),
+        }
+    }
+
     fn visit_predicates(&mut self, predicates: ty::GenericPredicates<'tcx>) -> bool {
         let ty::GenericPredicates { parent: _, predicates } = predicates;
-        for (predicate, _span) in predicates {
-            // This visitor does not care about bound regions.
-            match predicate.ignore_qualifiers(self.def_id_visitor.tcx()).skip_binder().kind() {
-                &ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref }, _) => {
-                    if self.visit_trait(trait_ref) {
-                        return true;
-                    }
-                }
-                &ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
-                    if ty.visit_with(self) {
-                        return true;
-                    }
-                    if self.visit_trait(projection_ty.trait_ref(self.def_id_visitor.tcx())) {
-                        return true;
-                    }
-                }
-                &ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => {
-                    if ty.visit_with(self) {
-                        return true;
-                    }
-                }
-                ty::PredicateKind::RegionOutlives(..) => {}
-                _ => bug!("unexpected predicate: {:?}", predicate),
+        for &(predicate, _span) in predicates {
+            if self.visit_predicate(predicate) {
+                return true;
             }
         }
         false

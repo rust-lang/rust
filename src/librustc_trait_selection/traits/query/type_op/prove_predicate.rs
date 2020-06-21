@@ -16,7 +16,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         // we have to prove. No need to canonicalize and all that for
         // such cases.
         if let ty::PredicateKind::Trait(trait_ref, _) =
-            key.value.predicate.ignore_qualifiers(tcx).skip_binder().kind()
+            key.value.predicate.ignore_qualifiers().skip_binder().kind()
         {
             if let Some(sized_def_id) = tcx.lang_items().sized_trait() {
                 if trait_ref.def_id() == sized_def_id {

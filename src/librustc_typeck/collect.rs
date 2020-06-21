@@ -552,7 +552,7 @@ fn type_param_predicates(
     let extra_predicates = extend.into_iter().chain(
         icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty, OnlySelfBounds(true))
             .into_iter()
-            .filter(|(predicate, _)| match predicate.ignore_qualifiers(tcx).skip_binder().kind() {
+            .filter(|(predicate, _)| match predicate.ignore_qualifiers().skip_binder().kind() {
                 ty::PredicateKind::Trait(data, _) => data.self_ty().is_param(index),
                 _ => false,
             }),
@@ -1004,8 +1004,7 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
     // which will, in turn, reach indirect supertraits.
     for &(pred, span) in superbounds {
         debug!("superbound: {:?}", pred);
-        if let ty::PredicateKind::Trait(bound, _) = pred.ignore_qualifiers(tcx).skip_binder().kind()
-        {
+        if let ty::PredicateKind::Trait(bound, _) = pred.ignore_qualifiers().skip_binder().kind() {
             tcx.at(span).super_predicates_of(bound.def_id());
         }
     }

@@ -590,7 +590,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let mut found = false;
                     for predicate in bounds.predicates {
                         if let ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_, r)) =
-                            predicate.ignore_qualifiers(self.infcx.tcx).skip_binder().kind()
+                            predicate.ignore_qualifiers().skip_binder().kind()
                         {
                             if let ty::RegionKind::ReStatic = r {
                                 found = true;

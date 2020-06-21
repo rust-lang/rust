@@ -245,7 +245,7 @@ fn predicates_reference_self(
         .iter()
         .map(|(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), sp))
         .filter_map(|(predicate, &sp)| {
-            match predicate.ignore_qualifiers(tcx).skip_binder().kind() {
+            match predicate.ignore_qualifiers().skip_binder().kind() {
                 ty::PredicateKind::Trait(ref data, _) => {
                     // In the case of a trait predicate, we can skip the "self" type.
                     if data.trait_ref.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
@@ -299,7 +299,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
     elaborate_predicates(tcx, predicates.into_iter()).any(|obligation| {
-        match obligation.predicate.ignore_qualifiers(tcx).skip_binder().kind() {
+        match obligation.predicate.ignore_qualifiers().skip_binder().kind() {
             ty::PredicateKind::Trait(ref trait_pred, _) => {
                 trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
             }
@@ -400,7 +400,7 @@ fn virtual_call_violation_for_method<'tcx>(
         // A trait object can't claim to live more than the concrete type,
         // so outlives predicates will always hold.
         .cloned()
-        .filter(|(p, _)| p.to_opt_type_outlives(tcx).is_none())
+        .filter(|(p, _)| p.to_opt_type_outlives().is_none())
         .collect::<Vec<_>>()
         // Do a shallow visit so that `contains_illegal_self_type_reference`
         // may apply it's custom visiting.

@@ -5,10 +5,9 @@ pub mod obligations;
 pub mod verify;
 
 use rustc_middle::traits::query::OutlivesBound;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty;
 
 pub fn explicit_outlives_bounds<'tcx>(
-    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> impl Iterator<Item = OutlivesBound<'tcx>> + 'tcx {
     debug!("explicit_outlives_bounds()");

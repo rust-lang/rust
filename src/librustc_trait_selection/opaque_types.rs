@@ -1155,7 +1155,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 
         for predicate in &bounds.predicates {
             if let ty::PredicateKind::Projection(projection) =
-                predicate.ignore_qualifiers(tcx).skip_binder().kind()
+                predicate.ignore_qualifiers().skip_binder().kind()
             {
                 if projection.ty.references_error() {
                     // No point on adding these obligations since there's a type error involved.
@@ -1254,7 +1254,7 @@ crate fn required_region_bounds(
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|obligation| {
             debug!("required_region_bounds(obligation={:?})", obligation);
-            match obligation.predicate.ignore_qualifiers(tcx).skip_binder().kind() {
+            match obligation.predicate.ignore_qualifiers().skip_binder().kind() {
                 ty::PredicateKind::Projection(..)
                 | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::Subtype(..)

@@ -27,9 +27,7 @@ fn normalize_generic_arg_after_erasing_regions<'tcx>(
                 // always only region relations, and we are about to
                 // erase those anyway:
                 debug_assert_eq!(
-                    normalized_obligations
-                        .iter()
-                        .find(|p| not_outlives_predicate(tcx, &p.predicate)),
+                    normalized_obligations.iter().find(|p| not_outlives_predicate(&p.predicate)),
                     None,
                 );
 
@@ -41,8 +39,8 @@ fn normalize_generic_arg_after_erasing_regions<'tcx>(
     })
 }
 
-fn not_outlives_predicate(tcx: TyCtxt<'tcx>, p: &ty::Predicate<'tcx>) -> bool {
-    match p.ignore_qualifiers(tcx).skip_binder().kind() {
+fn not_outlives_predicate(p: &ty::Predicate<'tcx>) -> bool {
+    match p.ignore_qualifiers().skip_binder().kind() {
         ty::PredicateKind::RegionOutlives(..) | ty::PredicateKind::TypeOutlives(..) => false,
         ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", p),
         ty::PredicateKind::Trait(..)

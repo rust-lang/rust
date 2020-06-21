@@ -331,9 +331,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         compare_ty: impl Fn(Ty<'tcx>) -> bool,
         predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
     ) -> impl Iterator<Item = ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
-        let tcx = self.tcx;
         predicates
-            .filter_map(move |p| p.to_opt_type_outlives(tcx))
+            .filter_map(|p| p.to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())
             .filter(move |p| compare_ty(p.0))
     }

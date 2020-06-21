@@ -572,7 +572,16 @@ pub trait PrettyPrinter<'tcx>:
                     let mut is_sized = false;
                     p!(write("impl"));
                     for predicate in bounds.predicates {
-                        if let Some(trait_ref) = predicate.to_opt_poly_trait_ref(self.tcx()) {
+                        // Note: We can't use `to_opt_poly_trait_ref` here as `predicate`
+                        // may contain unbound variables. We therefore do this manually.
+                        //
+                        // FIXME(lcnr): Find out why exactly this is the case :)
+                        if let ty::PredicateKind::Trait(pred, _) = predicate
+                            .ignore_qualifiers_with_unbound_vars(self.tcx())
+                            .skip_binder()
+                            .kind()
+                        {
+                            let trait_ref = ty::Binder::bind(pred.trait_ref);
                             // Don't print +Sized, but rather +?Sized if absent.
                             if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {
                                 is_sized = true;

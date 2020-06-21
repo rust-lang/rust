@@ -1050,7 +1050,30 @@ impl<'tcx> Predicate<'tcx> {
     }
 
     /// Skips `PredicateKind::ForAll`.
-    pub fn ignore_qualifiers(self, tcx: TyCtxt<'tcx>) -> Binder<Predicate<'tcx>> {
+    pub fn ignore_qualifiers(self) -> Binder<Predicate<'tcx>> {
+        match self.kind() {
+            &PredicateKind::ForAll(binder) => binder,
+            ty::PredicateKind::Projection(..)
+            | ty::PredicateKind::Trait(..)
+            | ty::PredicateKind::Subtype(..)
+            | ty::PredicateKind::WellFormed(..)
+            | ty::PredicateKind::ObjectSafe(..)
+            | ty::PredicateKind::ClosureKind(..)
+            | ty::PredicateKind::TypeOutlives(..)
+            | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::RegionOutlives(..) => Binder::dummy(self),
+        }
+    }
+
+    /// Skips `PredicateKind::ForAll`, while allowing for unbound variables.
+    ///
+    /// This method requires the `TyCtxt` as it has to shift the unbound variables
+    /// outwards.
+    ///
+    /// Do not use this method if you may end up just skipping the binder, as this
+    /// would leave the unbound variables at an incorrect binding level.
+    pub fn ignore_qualifiers_with_unbound_vars(self, tcx: TyCtxt<'tcx>) -> Binder<Predicate<'tcx>> {
         match self.kind() {
             &PredicateKind::ForAll(binder) => binder,
             ty::PredicateKind::Projection(..)
@@ -1226,7 +1249,7 @@ impl<'tcx> Predicate<'tcx> {
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
         let substs = trait_ref.skip_binder().substs;
-        let pred = *self.ignore_qualifiers(tcx).skip_binder();
+        let pred = *self.ignore_qualifiers().skip_binder();
         let new = pred.subst(tcx, substs);
         if new != pred { new.potentially_qualified(tcx, PredicateKind::ForAll) } else { self }
     }
@@ -1427,8 +1450,8 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
-    pub fn to_opt_poly_trait_ref(self, tcx: TyCtxt<'tcx>) -> Option<PolyTraitRef<'tcx>> {
-        self.ignore_qualifiers(tcx)
+    pub fn to_opt_poly_trait_ref(self) -> Option<PolyTraitRef<'tcx>> {
+        self.ignore_qualifiers()
             .map_bound(|pred| match pred.kind() {
                 &PredicateKind::Trait(ref t, _) => Some(t.trait_ref),
                 PredicateKind::Projection(..)
@@ -1445,11 +1468,8 @@ impl<'tcx> Predicate<'tcx> {
             .transpose()
     }
 
-    pub fn to_opt_type_outlives(
-        self,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
-        self.ignore_qualifiers(tcx)
+    pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
+        self.ignore_qualifiers()
             .map_bound(|pred| match pred.kind() {
                 &PredicateKind::TypeOutlives(data) => Some(data),
                 PredicateKind::Trait(..)

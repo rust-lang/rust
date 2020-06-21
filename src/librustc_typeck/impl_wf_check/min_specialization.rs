@@ -163,7 +163,7 @@ fn get_impl_substs<'tcx>(
     let impl2_substs = translate_substs(infcx, param_env, impl1_def_id, impl1_substs, impl2_node);
 
     // Conservatively use an empty `ParamEnv`.
-    let outlives_env = OutlivesEnvironment::new(tcx, ty::ParamEnv::empty());
+    let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
     infcx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env, RegionckMode::default());
     let impl2_substs = match infcx.fully_resolve(&impl2_substs) {
         Ok(s) => s,
@@ -199,7 +199,7 @@ fn unconstrained_parent_impl_substs<'tcx>(
     // unconstrained parameters.
     for (predicate, _) in impl_generic_predicates.predicates.iter() {
         if let ty::PredicateKind::Projection(proj) =
-            predicate.ignore_qualifiers(tcx).skip_binder().kind()
+            predicate.ignore_qualifiers().skip_binder().kind()
         {
             let projection_ty = proj.projection_ty;
             let projected_ty = proj.ty;
@@ -361,7 +361,7 @@ fn check_predicates<'tcx>(
 
 fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tcx>, span: Span) {
     debug!("can_specialize_on(predicate = {:?})", predicate);
-    match predicate.ignore_qualifiers(tcx).skip_binder().kind() {
+    match predicate.ignore_qualifiers().skip_binder().kind() {
         // Global predicates are either always true or always false, so we
         // are fine to specialize on.
         _ if predicate.is_global() => (),
@@ -394,7 +394,7 @@ fn trait_predicate_kind<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicate: ty::Predicate<'tcx>,
 ) -> Option<TraitSpecializationKind> {
-    match predicate.ignore_qualifiers(tcx).skip_binder().kind() {
+    match predicate.ignore_qualifiers().skip_binder().kind() {
         ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", predicate),
         ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {
             Some(tcx.trait_def(pred.def_id()).specialization_kind)

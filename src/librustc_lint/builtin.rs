@@ -1210,7 +1210,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
             for &(predicate, span) in predicates.predicates {
                 // We don't actually look inside of the predicate,
                 // so it is safe to skip this binder here.
-                let predicate_kind_name = match predicate.ignore_qualifiers(cx.tcx).skip_binder().kind() {
+                let predicate_kind_name = match predicate.ignore_qualifiers().skip_binder().kind() {
                     Trait(..) => "Trait",
                     TypeOutlives(..) |
                     RegionOutlives(..) => "Lifetime",
@@ -1495,13 +1495,12 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
-        tcx: TyCtxt<'tcx>,
         inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.ignore_qualifiers(tcx).skip_binder().kind() {
+            .filter_map(|(pred, _)| match pred.ignore_qualifiers().skip_binder().kind() {
                 &ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match a {
                     ty::ReEarlyBound(ebr) if ebr.index == index => Some(b),
                     _ => None,
@@ -1512,13 +1511,12 @@ impl ExplicitOutlivesRequirements {
     }
 
     fn lifetimes_outliving_type<'tcx>(
-        tcx: TyCtxt<'tcx>,
         inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.ignore_qualifiers(tcx).skip_binder().kind() {
+            .filter_map(|(pred, _)| match pred.ignore_qualifiers().skip_binder().kind() {
                 &ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     a.is_param(index).then_some(b)
                 }
@@ -1539,10 +1537,10 @@ impl ExplicitOutlivesRequirements {
 
         match param.kind {
             hir::GenericParamKind::Lifetime { .. } => {
-                Self::lifetimes_outliving_lifetime(tcx, inferred_outlives, index)
+                Self::lifetimes_outliving_lifetime(inferred_outlives, index)
             }
             hir::GenericParamKind::Type { .. } => {
-                Self::lifetimes_outliving_type(tcx, inferred_outlives, index)
+                Self::lifetimes_outliving_type(inferred_outlives, index)
             }
             hir::GenericParamKind::Const { .. } => Vec::new(),
         }
@@ -1694,11 +1692,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                             cx.tcx.named_region(predicate.lifetime.hir_id)
                         {
                             (
-                                Self::lifetimes_outliving_lifetime(
-                                    cx.tcx,
-                                    inferred_outlives,
-                                    index,
-                                ),
+                                Self::lifetimes_outliving_lifetime(inferred_outlives, index),
                                 &predicate.bounds,
                                 predicate.span,
                             )
@@ -1714,11 +1708,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                 if let Res::Def(DefKind::TyParam, def_id) = path.res {
                                     let index = ty_generics.param_def_id_to_index[&def_id];
                                     (
-                                        Self::lifetimes_outliving_type(
-                                            cx.tcx,
-                                            inferred_outlives,
-                                            index,
-                                        ),
+                                        Self::lifetimes_outliving_type(inferred_outlives, index),
                                         &predicate.bounds,
                                         predicate.span,
                                     )

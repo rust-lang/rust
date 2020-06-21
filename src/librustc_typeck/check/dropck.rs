@@ -127,7 +127,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
         // it did the wrong thing, so I chose to preserve existing
         // behavior, since it ought to be simply more
         // conservative. -nmatsakis
-        let outlives_env = OutlivesEnvironment::new(infcx.tcx, ty::ParamEnv::empty());
+        let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
 
         infcx.resolve_regions_and_report_errors(
             drop_impl_did.to_def_id(),
@@ -227,8 +227,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         let predicate_matches_closure = |p: Predicate<'tcx>| {
             let mut relator: SimpleEqRelation<'tcx> = SimpleEqRelation::new(tcx, self_param_env);
             match (
-                predicate.ignore_qualifiers(tcx).skip_binder().kind(),
-                p.ignore_qualifiers(tcx).skip_binder().kind(),
+                predicate.ignore_qualifiers().skip_binder().kind(),
+                p.ignore_qualifiers().skip_binder().kind(),
             ) {
                 (&ty::PredicateKind::Trait(a, _), &ty::PredicateKind::Trait(b, _)) => {
                     relator.relate(ty::Binder::bind(a), ty::Binder::bind(b)).is_ok()
