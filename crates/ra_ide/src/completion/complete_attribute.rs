@@ -42,6 +42,10 @@ fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attr
         )
         .kind(CompletionItemKind::Attribute);
 
+        if let Some(lookup) = attr_completion.lookup {
+            item = item.lookup_by(lookup);
+        }
+
         match (attr_completion.snippet, ctx.config.snippet_cap) {
             (Some(snippet), Some(cap)) => {
                 item = item.insert_snippet(cap, snippet);
@@ -57,114 +61,160 @@ fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attr
 
 struct AttrCompletion {
     label: &'static str,
+    lookup: Option<&'static str>,
     snippet: Option<&'static str>,
     should_be_inner: bool,
 }
 
 const ATTRIBUTES: &[AttrCompletion] = &[
     AttrCompletion {
-        label: "allow(…)", snippet: Some("allow(${0:lint})"), should_be_inner: false
+        label: "allow(…)",
+        snippet: Some("allow(${0:lint})"),
+        should_be_inner: false,
+        lookup: Some("allow"),
     },
     AttrCompletion {
         label: "cfg_attr(…)",
         snippet: Some("cfg_attr(${1:predicate}, ${0:attr})"),
         should_be_inner: false,
+        lookup: Some("cfg_attr"),
     },
     AttrCompletion {
         label: "cfg(…)",
         snippet: Some("cfg(${0:predicate})"),
         should_be_inner: false,
+        lookup: Some("cfg"),
     },
-    AttrCompletion { label: "deny(…)", snippet: Some("deny(${0:lint})"), should_be_inner: false },
+    AttrCompletion {
+        label: "deny(…)",
+        snippet: Some("deny(${0:lint})"),
+        should_be_inner: false,
+        lookup: Some("deny"),
+    },
     AttrCompletion {
         label: r#"deprecated = "…""#,
         snippet: Some(r#"deprecated = "${0:reason}""#),
         should_be_inner: false,
+        lookup: Some("deprecated"),
     },
     AttrCompletion {
         label: "derive(…)",
         snippet: Some(r#"derive(${0:Debug})"#),
         should_be_inner: false,
+        lookup: Some("derive"),
     },
     AttrCompletion {
         label: r#"doc = "…""#,
         snippet: Some(r#"doc = "${0:docs}""#),
         should_be_inner: false,
+        lookup: Some("doc"),
     },
     AttrCompletion {
         label: "feature(…)",
         snippet: Some("feature(${0:flag})"),
         should_be_inner: true,
+        lookup: Some("feature"),
     },
     AttrCompletion {
         label: "forbid(…)",
         snippet: Some("forbid(${0:lint})"),
         should_be_inner: false,
+        lookup: Some("forbid"),
     },
     // FIXME: resolve through macro resolution?
-    AttrCompletion { label: "global_allocator", snippet: None, should_be_inner: true },
+    AttrCompletion {
+        label: "global_allocator",
+        snippet: None,
+        should_be_inner: true,
+        lookup: None,
+    },
     AttrCompletion {
         label: "ignore(…)",
         snippet: Some("ignore(${0:lint})"),
         should_be_inner: false,
+        lookup: Some("ignore"),
     },
     AttrCompletion {
         label: "inline(…)",
         snippet: Some("inline(${0:lint})"),
         should_be_inner: false,
+        lookup: Some("inline"),
     },
     AttrCompletion {
         label: r#"link_name = "…""#,
         snippet: Some(r#"link_name = "${0:symbol_name}""#),
         should_be_inner: false,
+        lookup: Some("link_name"),
     },
-    AttrCompletion { label: "link", snippet: None, should_be_inner: false },
-    AttrCompletion { label: "macro_export", snippet: None, should_be_inner: false },
-    AttrCompletion { label: "macro_use", snippet: None, should_be_inner: false },
+    AttrCompletion { label: "link", snippet: None, should_be_inner: false, lookup: None },
+    AttrCompletion { label: "macro_export", snippet: None, should_be_inner: false, lookup: None },
+    AttrCompletion { label: "macro_use", snippet: None, should_be_inner: false, lookup: None },
     AttrCompletion {
         label: r#"must_use = "…""#,
         snippet: Some(r#"must_use = "${0:reason}""#),
         should_be_inner: false,
+        lookup: Some("must_use"),
     },
-    AttrCompletion { label: "no_mangle", snippet: None, should_be_inner: false },
-    AttrCompletion { label: "no_std", snippet: None, should_be_inner: true },
-    AttrCompletion { label: "non_exhaustive", snippet: None, should_be_inner: false },
-    AttrCompletion { label: "panic_handler", snippet: None, should_be_inner: true },
+    AttrCompletion { label: "no_mangle", snippet: None, should_be_inner: false, lookup: None },
+    AttrCompletion { label: "no_std", snippet: None, should_be_inner: true, lookup: None },
+    AttrCompletion { label: "non_exhaustive", snippet: None, should_be_inner: false, lookup: None },
+    AttrCompletion { label: "panic_handler", snippet: None, should_be_inner: true, lookup: None },
     AttrCompletion {
         label: "path = \"…\"",
         snippet: Some("path =\"${0:path}\""),
         should_be_inner: false,
+        lookup: Some("path"),
     },
-    AttrCompletion { label: "proc_macro", snippet: None, should_be_inner: false },
-    AttrCompletion { label: "proc_macro_attribute", snippet: None, should_be_inner: false },
+    AttrCompletion { label: "proc_macro", snippet: None, should_be_inner: false, lookup: None },
+    AttrCompletion {
+        label: "proc_macro_attribute",
+        snippet: None,
+        should_be_inner: false,
+        lookup: None,
+    },
     AttrCompletion {
         label: "proc_macro_derive(…)",
         snippet: Some("proc_macro_derive(${0:Trait})"),
         should_be_inner: false,
+        lookup: Some("proc_macro_derive"),
     },
     AttrCompletion {
         label: "recursion_limit = …",
         snippet: Some("recursion_limit = ${0:128}"),
         should_be_inner: true,
+        lookup: Some("recursion_limit"),
     },
-    AttrCompletion { label: "repr(…)", snippet: Some("repr(${0:C})"), should_be_inner: false },
+    AttrCompletion {
+        label: "repr(…)",
+        snippet: Some("repr(${0:C})"),
+        should_be_inner: false,
+        lookup: Some("repr"),
+    },
     AttrCompletion {
         label: "should_panic(…)",
         snippet: Some(r#"should_panic(expected = "${0:reason}")"#),
         should_be_inner: false,
+        lookup: Some("should_panic"),
     },
     AttrCompletion {
         label: r#"target_feature = "…""#,
         snippet: Some("target_feature = \"${0:feature}\""),
         should_be_inner: false,
+        lookup: Some("target_feature"),
     },
-    AttrCompletion { label: "test", snippet: None, should_be_inner: false },
-    AttrCompletion { label: "used", snippet: None, should_be_inner: false },
-    AttrCompletion { label: "warn(…)", snippet: Some("warn(${0:lint})"), should_be_inner: false },
+    AttrCompletion { label: "test", snippet: None, should_be_inner: false, lookup: None },
+    AttrCompletion { label: "used", snippet: None, should_be_inner: false, lookup: None },
+    AttrCompletion {
+        label: "warn(…)",
+        snippet: Some("warn(${0:lint})"),
+        should_be_inner: false,
+        lookup: Some("warn"),
+    },
     AttrCompletion {
         label: r#"windows_subsystem = "…""#,
         snippet: Some(r#"windows_subsystem = "${0:subsystem}""#),
         should_be_inner: true,
+        lookup: Some("windows_subsystem"),
     },
 ];
 
@@ -457,6 +507,7 @@ mod tests {
                 delete: 19..19,
                 insert: "allow(${0:lint})",
                 kind: Attribute,
+                lookup: "allow",
             },
             CompletionItem {
                 label: "cfg(…)",
@@ -464,6 +515,7 @@ mod tests {
                 delete: 19..19,
                 insert: "cfg(${0:predicate})",
                 kind: Attribute,
+                lookup: "cfg",
             },
             CompletionItem {
                 label: "cfg_attr(…)",
@@ -471,6 +523,7 @@ mod tests {
                 delete: 19..19,
                 insert: "cfg_attr(${1:predicate}, ${0:attr})",
                 kind: Attribute,
+                lookup: "cfg_attr",
             },
             CompletionItem {
                 label: "deny(…)",
@@ -478,6 +531,7 @@ mod tests {
                 delete: 19..19,
                 insert: "deny(${0:lint})",
                 kind: Attribute,
+                lookup: "deny",
             },
             CompletionItem {
                 label: "deprecated = \"…\"",
@@ -485,6 +539,7 @@ mod tests {
                 delete: 19..19,
                 insert: "deprecated = \"${0:reason}\"",
                 kind: Attribute,
+                lookup: "deprecated",
             },
             CompletionItem {
                 label: "derive(…)",
@@ -492,6 +547,7 @@ mod tests {
                 delete: 19..19,
                 insert: "derive(${0:Debug})",
                 kind: Attribute,
+                lookup: "derive",
             },
             CompletionItem {
                 label: "doc = \"…\"",
@@ -499,6 +555,7 @@ mod tests {
                 delete: 19..19,
                 insert: "doc = \"${0:docs}\"",
                 kind: Attribute,
+                lookup: "doc",
             },
             CompletionItem {
                 label: "forbid(…)",
@@ -506,6 +563,7 @@ mod tests {
                 delete: 19..19,
                 insert: "forbid(${0:lint})",
                 kind: Attribute,
+                lookup: "forbid",
             },
             CompletionItem {
                 label: "ignore(…)",
@@ -513,6 +571,7 @@ mod tests {
                 delete: 19..19,
                 insert: "ignore(${0:lint})",
                 kind: Attribute,
+                lookup: "ignore",
             },
             CompletionItem {
                 label: "inline(…)",
@@ -520,6 +579,7 @@ mod tests {
                 delete: 19..19,
                 insert: "inline(${0:lint})",
                 kind: Attribute,
+                lookup: "inline",
             },
             CompletionItem {
                 label: "link",
@@ -534,6 +594,7 @@ mod tests {
                 delete: 19..19,
                 insert: "link_name = \"${0:symbol_name}\"",
                 kind: Attribute,
+                lookup: "link_name",
             },
             CompletionItem {
                 label: "macro_export",
@@ -555,6 +616,7 @@ mod tests {
                 delete: 19..19,
                 insert: "must_use = \"${0:reason}\"",
                 kind: Attribute,
+                lookup: "must_use",
             },
             CompletionItem {
                 label: "no_mangle",
@@ -576,6 +638,7 @@ mod tests {
                 delete: 19..19,
                 insert: "path =\"${0:path}\"",
                 kind: Attribute,
+                lookup: "path",
             },
             CompletionItem {
                 label: "proc_macro",
@@ -597,6 +660,7 @@ mod tests {
                 delete: 19..19,
                 insert: "proc_macro_derive(${0:Trait})",
                 kind: Attribute,
+                lookup: "proc_macro_derive",
             },
             CompletionItem {
                 label: "repr(…)",
@@ -604,6 +668,7 @@ mod tests {
                 delete: 19..19,
                 insert: "repr(${0:C})",
                 kind: Attribute,
+                lookup: "repr",
             },
             CompletionItem {
                 label: "should_panic(…)",
@@ -611,6 +676,7 @@ mod tests {
                 delete: 19..19,
                 insert: "should_panic(expected = \"${0:reason}\")",
                 kind: Attribute,
+                lookup: "should_panic",
             },
             CompletionItem {
                 label: "target_feature = \"…\"",
@@ -618,6 +684,7 @@ mod tests {
                 delete: 19..19,
                 insert: "target_feature = \"${0:feature}\"",
                 kind: Attribute,
+                lookup: "target_feature",
             },
             CompletionItem {
                 label: "test",
@@ -639,6 +706,7 @@ mod tests {
                 delete: 19..19,
                 insert: "warn(${0:lint})",
                 kind: Attribute,
+                lookup: "warn",
             },
         ]
         "###
@@ -675,6 +743,7 @@ mod tests {
                 delete: 20..20,
                 insert: "allow(${0:lint})",
                 kind: Attribute,
+                lookup: "allow",
             },
             CompletionItem {
                 label: "cfg(…)",
@@ -682,6 +751,7 @@ mod tests {
                 delete: 20..20,
                 insert: "cfg(${0:predicate})",
                 kind: Attribute,
+                lookup: "cfg",
             },
             CompletionItem {
                 label: "cfg_attr(…)",
@@ -689,6 +759,7 @@ mod tests {
                 delete: 20..20,
                 insert: "cfg_attr(${1:predicate}, ${0:attr})",
                 kind: Attribute,
+                lookup: "cfg_attr",
             },
             CompletionItem {
                 label: "deny(…)",
@@ -696,6 +767,7 @@ mod tests {
                 delete: 20..20,
                 insert: "deny(${0:lint})",
                 kind: Attribute,
+                lookup: "deny",
             },
             CompletionItem {
                 label: "deprecated = \"…\"",
@@ -703,6 +775,7 @@ mod tests {
                 delete: 20..20,
                 insert: "deprecated = \"${0:reason}\"",
                 kind: Attribute,
+                lookup: "deprecated",
             },
             CompletionItem {
                 label: "derive(…)",
@@ -710,6 +783,7 @@ mod tests {
                 delete: 20..20,
                 insert: "derive(${0:Debug})",
                 kind: Attribute,
+                lookup: "derive",
             },
             CompletionItem {
                 label: "doc = \"…\"",
@@ -717,6 +791,7 @@ mod tests {
                 delete: 20..20,
                 insert: "doc = \"${0:docs}\"",
                 kind: Attribute,
+                lookup: "doc",
             },
             CompletionItem {
                 label: "feature(…)",
@@ -724,6 +799,7 @@ mod tests {
                 delete: 20..20,
                 insert: "feature(${0:flag})",
                 kind: Attribute,
+                lookup: "feature",
             },
             CompletionItem {
                 label: "forbid(…)",
@@ -731,6 +807,7 @@ mod tests {
                 delete: 20..20,
                 insert: "forbid(${0:lint})",
                 kind: Attribute,
+                lookup: "forbid",
             },
             CompletionItem {
                 label: "global_allocator",
@@ -745,6 +822,7 @@ mod tests {
                 delete: 20..20,
                 insert: "ignore(${0:lint})",
                 kind: Attribute,
+                lookup: "ignore",
             },
             CompletionItem {
                 label: "inline(…)",
@@ -752,6 +830,7 @@ mod tests {
                 delete: 20..20,
                 insert: "inline(${0:lint})",
                 kind: Attribute,
+                lookup: "inline",
             },
             CompletionItem {
                 label: "link",
@@ -766,6 +845,7 @@ mod tests {
                 delete: 20..20,
                 insert: "link_name = \"${0:symbol_name}\"",
                 kind: Attribute,
+                lookup: "link_name",
             },
             CompletionItem {
                 label: "macro_export",
@@ -787,6 +867,7 @@ mod tests {
                 delete: 20..20,
                 insert: "must_use = \"${0:reason}\"",
                 kind: Attribute,
+                lookup: "must_use",
             },
             CompletionItem {
                 label: "no_mangle",
@@ -822,6 +903,7 @@ mod tests {
                 delete: 20..20,
                 insert: "path =\"${0:path}\"",
                 kind: Attribute,
+                lookup: "path",
             },
             CompletionItem {
                 label: "proc_macro",
@@ -843,6 +925,7 @@ mod tests {
                 delete: 20..20,
                 insert: "proc_macro_derive(${0:Trait})",
                 kind: Attribute,
+                lookup: "proc_macro_derive",
             },
             CompletionItem {
                 label: "recursion_limit = …",
@@ -850,6 +933,7 @@ mod tests {
                 delete: 20..20,
                 insert: "recursion_limit = ${0:128}",
                 kind: Attribute,
+                lookup: "recursion_limit",
             },
             CompletionItem {
                 label: "repr(…)",
@@ -857,6 +941,7 @@ mod tests {
                 delete: 20..20,
                 insert: "repr(${0:C})",
                 kind: Attribute,
+                lookup: "repr",
             },
             CompletionItem {
                 label: "should_panic(…)",
@@ -864,6 +949,7 @@ mod tests {
                 delete: 20..20,
                 insert: "should_panic(expected = \"${0:reason}\")",
                 kind: Attribute,
+                lookup: "should_panic",
             },
             CompletionItem {
                 label: "target_feature = \"…\"",
@@ -871,6 +957,7 @@ mod tests {
                 delete: 20..20,
                 insert: "target_feature = \"${0:feature}\"",
                 kind: Attribute,
+                lookup: "target_feature",
             },
             CompletionItem {
                 label: "test",
@@ -892,6 +979,7 @@ mod tests {
                 delete: 20..20,
                 insert: "warn(${0:lint})",
                 kind: Attribute,
+                lookup: "warn",
             },
             CompletionItem {
                 label: "windows_subsystem = \"…\"",
@@ -899,6 +987,7 @@ mod tests {
                 delete: 20..20,
                 insert: "windows_subsystem = \"${0:subsystem}\"",
                 kind: Attribute,
+                lookup: "windows_subsystem",
             },
         ]
         "###
