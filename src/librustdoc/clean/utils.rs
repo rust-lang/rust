@@ -481,8 +481,8 @@ pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
         _ => {
             let mut s = n.to_string();
             // array lengths are obviously usize
-            if s.ends_with("usize") {
-                let n = s.len() - "usize".len();
+            if s.ends_with("_usize") {
+                let n = s.len() - "_usize".len();
                 s.truncate(n);
                 if s.ends_with(": ") {
                     let n = s.len() - ": ".len();
