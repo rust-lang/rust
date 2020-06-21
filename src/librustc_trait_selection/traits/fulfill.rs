@@ -321,7 +321,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             ty::PredicateKind::Trait(ref data, _) => {
                 let trait_obligation = obligation.with(*data);
 
-                if data.is_global() {
+                if obligation.predicate.is_global() {
                     // no type variables present, can use evaluation for better caching.
                     // FIXME: consider caching errors too.
                     if infcx.predicate_must_hold_considering_regions(&obligation) {
