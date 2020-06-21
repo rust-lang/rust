@@ -878,9 +878,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
             //  so they are currently ignored for the purposes of this lint.
-            ty::Param(..) | ty::Projection(..) => FfiSafe,
+            ty::Param(..) | ty::Projection(..)
+                if matches!(self.mode, ImproperCTypesMode::Definitions) =>
+            {
+                FfiSafe
+            }
 
-            ty::Infer(..)
+            ty::Param(..)
+            | ty::Projection(..)
+            | ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)
             | ty::Closure(..)
