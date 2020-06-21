@@ -734,8 +734,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "ptr_guaranteed_eq" | "ptr_guaranteed_ne" => {
                 let a = args[0].immediate();
                 let b = args[1].immediate();
-                let a = self.ptrtoint(a, self.type_isize());
-                let b = self.ptrtoint(b, self.type_isize());
                 if name == "ptr_guaranteed_eq" {
                     self.icmp(IntPredicate::IntEQ, a, b)
                 } else {
