@@ -53,6 +53,7 @@
     issue = "none"
 )]
 #![allow(missing_docs)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::marker::DiscriminantKind;
 use crate::mem;
@@ -2097,7 +2098,10 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
         // Not panicking to keep codegen impact smaller.
         abort();
     }
-    copy_nonoverlapping(src, dst, count)
+
+    // SAFETY: the safety contract for `copy_nonoverlapping` must be
+    // upheld by the caller.
+    unsafe { copy_nonoverlapping(src, dst, count) }
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -2163,7 +2167,9 @@ pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
         // Not panicking to keep codegen impact smaller.
         abort();
     }
-    copy(src, dst, count)
+
+    // SAFETY: the safety contract for `copy` must be upheld by the caller.
+    unsafe { copy(src, dst, count) }
 }
 
 /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
@@ -2246,5 +2252,7 @@ pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     }
 
     debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
-    write_bytes(dst, val, count)
+
+    // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
+    unsafe { write_bytes(dst, val, count) }
 }

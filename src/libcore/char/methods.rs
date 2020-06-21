@@ -1,5 +1,7 @@
 //! impl char {}
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
@@ -183,7 +185,8 @@ impl char {
     #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
     #[inline]
     pub unsafe fn from_u32_unchecked(i: u32) -> char {
-        super::convert::from_u32_unchecked(i)
+        // SAFETY: the safety contract must be upheld by the caller.
+        unsafe { super::convert::from_u32_unchecked(i) }
     }
 
     /// Converts a digit in the given radix to a `char`.

@@ -148,6 +148,7 @@
 #![feature(const_type_id)]
 #![feature(const_caller_location)]
 #![feature(no_niche)] // rust-lang/rust#68303
+#![feature(unsafe_block_in_unsafe_fn)]
 
 #[prelude_import]
 #[allow(unused)]

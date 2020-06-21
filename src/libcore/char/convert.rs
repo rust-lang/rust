@@ -1,5 +1,7 @@
 //! Character conversions.
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::convert::TryFrom;
 use crate::fmt;
 use crate::mem::transmute;
@@ -99,7 +101,8 @@ pub fn from_u32(i: u32) -> Option<char> {
 #[inline]
 #[stable(feature = "char_from_unchecked", since = "1.5.0")]
 pub unsafe fn from_u32_unchecked(i: u32) -> char {
-    if cfg!(debug_assertions) { char::from_u32(i).unwrap() } else { transmute(i) }
+    // SAFETY: the caller must guarantee that `i` is a valid char value.
+    if cfg!(debug_assertions) { char::from_u32(i).unwrap() } else { unsafe { transmute(i) } }
 }
 
 #[stable(feature = "char_convert", since = "1.13.0")]
