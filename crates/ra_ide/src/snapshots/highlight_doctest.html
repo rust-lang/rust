@@ -84,4 +84,13 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration">foo</span>(&<span class="self_keyword">self</span>) -&gt; <span class="builtin_type">bool</span> {
         <span class="bool_literal">true</span>
     }
+}
+
+<span class="comment documentation">/// ```</span>
+<span class="comment documentation">/// </span><span class="macro">noop!</span>(<span class="numeric_literal">1</span>);
+<span class="comment documentation">/// ```</span>
+<span class="macro">macro_rules!</span> <span class="macro declaration">noop</span> {
+    ($expr:expr) =&gt; {
+        $expr
+    }
 }</code></pre>
