@@ -355,7 +355,7 @@ incredibly helpful:
 - [Working groups][wg]: there are a bunch of working groups on a wide variety
   of rust-related things.
 
-[iceb]: ./ice-breaker/cleanup-crew.md
+[iceb]: ./notification-groups/cleanup-crew.md
 [wg]: https://rust-lang.github.io/compiler-team/working-groups/
 
 

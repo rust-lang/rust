@@ -5,6 +5,7 @@
 ---
 
 - [Part 1: Building, debugging, and contributing to Rustc](./part-1-intro.md)
+    - [Prerequisites](./building/prerequisites.md)
     - [Getting Started](./getting-started.md)
     - [About the compiler team](./compiler-team.md)
     - [How to Build and Run the Compiler](./building/how-to-build-and-run.md)

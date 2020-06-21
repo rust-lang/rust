@@ -14,7 +14,7 @@ install:
 - cargo install mdbook --version 0.3.7
 - cargo install mdbook-linkcheck --version 0.5.0
 script:
-- git rebase origin master # this will exit with an error on conflict
+- git log --oneline | head -n 10
 - mdbook build
 notifications:
   email:
