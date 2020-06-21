@@ -362,17 +362,6 @@ impl<'tcx> CPlace<'tcx> {
             to_ty: Ty<'tcx>,
         ) {
             match (&from_ty.kind, &to_ty.kind) {
-                (ty::Ref(_, t, Mutability::Not), ty::Ref(_, u, Mutability::Not))
-                | (ty::Ref(_, t, Mutability::Mut), ty::Ref(_, u, Mutability::Not))
-                | (ty::Ref(_, t, Mutability::Mut), ty::Ref(_, u, Mutability::Mut)) => {
-                    assert_assignable(fx, t, u);
-                    // &mut T -> &T is allowed
-                    // &'a T -> &'b T is allowed
-                }
-                (ty::Ref(_, _, Mutability::Not), ty::Ref(_, _, Mutability::Mut)) => panic!(
-                    "Cant assign value of type {} to place of type {}",
-                    from_ty, to_ty
-                ),
                 (ty::FnPtr(_), ty::FnPtr(_)) => {
                     let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
                         ParamEnv::reveal_all(),
