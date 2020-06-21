@@ -1135,9 +1135,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             generics.params.iter().map(|param| {
                 let ident = Some(param.ident.to_string());
                 let (kind, ident) = match &param.kind {
-                    GenericParamKind::Lifetime { .. } => (ParamKindOrd::Lifetime, ident),
-                    GenericParamKind::Type { .. } => (ParamKindOrd::Type, ident),
-                    GenericParamKind::Const { ref ty } => {
+                    GenericParamKind::Lifetime => (ParamKindOrd::Lifetime, ident),
+                    GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident),
+                    GenericParamKind::Const { ref ty, kw_span: _ } => {
                         let ty = pprust::ty_to_string(ty);
                         (ParamKindOrd::Const, Some(format!("const {}: {}", param.ident, ty)))
                     }
