@@ -1,0 +1,14 @@
+PATH@0..13
+  PATH@0..8
+    PATH@0..3
+      PATH_SEGMENT@0..3
+        NAME_REF@0..3
+          IDENT@0..3 "foo"
+    COLON2@3..5 "::"
+    PATH_SEGMENT@5..8
+      NAME_REF@5..8
+        IDENT@5..8 "bar"
+  COLON2@8..10 "::"
+  PATH_SEGMENT@10..13
+    NAME_REF@10..13
+      IDENT@10..13 "baz"

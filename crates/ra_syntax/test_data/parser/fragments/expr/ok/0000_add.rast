@@ -1,0 +1,8 @@
+BIN_EXPR@0..5
+  LITERAL@0..1
+    INT_NUMBER@0..1 "1"
+  WHITESPACE@1..2 " "
+  PLUS@2..3 "+"
+  WHITESPACE@3..4 " "
+  LITERAL@4..5
+    INT_NUMBER@4..5 "2"

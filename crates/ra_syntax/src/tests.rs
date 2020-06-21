@@ -55,6 +55,51 @@ fn parser_tests() {
 }
 
 #[test]
+fn expr_parser_tests() {
+    fragment_parser_dir_test(
+        &["parser/fragments/expr/ok"],
+        &["parser/fragments/expr/err"],
+        crate::ast::Expr::parse,
+    );
+}
+
+#[test]
+fn path_parser_tests() {
+    fragment_parser_dir_test(
+        &["parser/fragments/path/ok"],
+        &["parser/fragments/path/err"],
+        crate::ast::Path::parse,
+    );
+}
+
+#[test]
+fn pattern_parser_tests() {
+    fragment_parser_dir_test(
+        &["parser/fragments/pattern/ok"],
+        &["parser/fragments/pattern/err"],
+        crate::ast::Pat::parse,
+    );
+}
+
+#[test]
+fn item_parser_tests() {
+    fragment_parser_dir_test(
+        &["parser/fragments/item/ok"],
+        &["parser/fragments/item/err"],
+        crate::ast::ModuleItem::parse,
+    );
+}
+
+#[test]
+fn type_parser_tests() {
+    fragment_parser_dir_test(
+        &["parser/fragments/type/ok"],
+        &["parser/fragments/type/err"],
+        crate::ast::TypeRef::parse,
+    );
+}
+
+#[test]
 fn parser_fuzz_tests() {
     for (_, text) in collect_rust_files(&test_data_dir(), &["parser/fuzz-failures"]) {
         fuzz::check_parser(&text)
@@ -133,4 +178,25 @@ fn dump_tokens_and_errors(tokens: &[Token], errors: &[SyntaxError], text: &str) 
             .unwrap();
     }
     acc
+}
+
+fn fragment_parser_dir_test<T, F>(ok_paths: &[&str], err_paths: &[&str], f: F)
+where
+    T: crate::AstNode,
+    F: Fn(&str) -> Result<T, ()>,
+{
+    dir_tests(&test_data_dir(), ok_paths, "rast", |text, path| {
+        if let Ok(node) = f(text) {
+            format!("{:#?}", crate::ast::AstNode::syntax(&node))
+        } else {
+            panic!("Failed to parse '{:?}'", path);
+        }
+    });
+    dir_tests(&test_data_dir(), err_paths, "rast", |text, path| {
+        if let Ok(_) = f(text) {
+            panic!("'{:?}' successfully parsed when it should have errored", path);
+        } else {
+            "ERROR\n".to_owned()
+        }
+    });
 }
