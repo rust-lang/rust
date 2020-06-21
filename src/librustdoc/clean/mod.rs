@@ -1661,16 +1661,23 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     .predicates
                     .iter()
                     .filter_map(|predicate| {
-                        let trait_ref = if let Some(tr) = predicate.to_opt_poly_trait_ref() {
-                            tr
-                        } else if let Some(pred) = predicate.to_opt_type_outlives() {
-                            // these should turn up at the end
-                            if let Some(r) = pred.skip_binder().1.clean(cx) {
-                                regions.push(GenericBound::Outlives(r));
+                        // Note: The substs of opaque types can contain unbound variables,
+                        // meaning that we have to use `ignore_qualifiers_with_unbound_vars` here.
+                        let trait_ref = match predicate
+                            .ignore_qualifiers_with_unbound_vars(cx.tcx)
+                            .skip_binder()
+                            .kind()
+                        {
+                            ty::PredicateKind::Trait(tr, _constness) => {
+                                ty::Binder::bind(tr.trait_ref)
                             }
-                            return None;
-                        } else {
-                            return None;
+                            ty::PredicateKind::TypeOutlives(pred) => {
+                                if let Some(r) = pred.1.clean(cx) {
+                                    regions.push(GenericBound::Outlives(r));
+                                }
+                                return None;
+                            }
+                            _ => return None,
                         };
 
                         if let Some(sized) = cx.tcx.lang_items().sized_trait() {
@@ -1684,10 +1691,11 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             .predicates
                             .iter()
                             .filter_map(|pred| {
-                                if let ty::PredicateKind::Projection(proj) =
-                                    pred.ignore_qualifiers().skip_binder().kind()
+                                if let ty::PredicateKind::Projection(proj) = pred
+                                    .ignore_qualifiers_with_unbound_vars(cx.tcx)
+                                    .skip_binder()
+                                    .kind()
                                 {
-                                    let proj = proj;
                                     if proj.projection_ty.trait_ref(cx.tcx)
                                         == trait_ref.skip_binder()
                                     {
