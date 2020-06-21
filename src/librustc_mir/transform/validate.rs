@@ -128,8 +128,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         location,
                         format!(
                             "encountered `SwitchInt` terminator with type mismatch: {:?} != {:?}",
-                            ty,
-                            switch_ty,
+                            ty, switch_ty,
                         ),
                     );
                 }

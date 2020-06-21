@@ -51,14 +51,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call {
-                ref func,
-                ref args,
-                destination,
-                ref cleanup,
-                from_hir_call: _,
-                fn_span: _,
-            } => {
+            Call { ref func, ref args, destination, ref cleanup, from_hir_call: _, fn_span: _ } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
