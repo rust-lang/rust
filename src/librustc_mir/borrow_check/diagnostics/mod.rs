@@ -568,7 +568,8 @@ pub(super) enum FnSelfUseKind {
     Normal { self_arg: Ident, implicit_into_iter: bool },
     /// A call to `FnOnce::call_once`, desugared from `my_closure(a, b, c)`
     FnOnceCall,
-    /// A call to an operator trait, desuraged from operator syntax (e.g. `a << b`)
+    /// A call to an operator trait, desugared from operator syntax (e.g. `a << b`)
+    #[allow(dead_code)] // FIXME: Detect desugared operators
     Operator { self_arg: Ident },
 }
 
@@ -823,8 +824,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                     let kind = if is_fn_once {
                         FnSelfUseKind::FnOnceCall
-                    } else if fn_call_span.is_desugaring(DesugaringKind::Operator) {
-                        FnSelfUseKind::Operator { self_arg }
                     } else {
                         debug!(
                             "move_spans: method_did={:?}, fn_call_span={:?}",

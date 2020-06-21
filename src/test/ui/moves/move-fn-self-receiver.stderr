@@ -103,11 +103,11 @@ error[E0382]: use of moved value: `foo_add`
 LL |     let foo_add = Foo;
    |         ------- move occurs because `foo_add` has type `Foo`, which does not implement the `Copy` trait
 LL |     foo_add + Foo;
-   |     ------------- `foo_add` moved due to usage in operator
+   |     ------------- `foo_add` moved due to this method call
 LL |     foo_add;
    |     ^^^^^^^ value used here after move
    |
-note: calling this operator moves the left-hand side
+note: this function consumes the receiver `self` by taking ownership of it, which moves `foo_add`
   --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
    |
 LL |     fn add(self, rhs: Rhs) -> Self::Output;

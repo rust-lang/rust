@@ -25,7 +25,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
-        let mut span = e.span;
         ensure_sufficient_stack(|| {
             let kind = match e.kind {
                 ExprKind::Box(ref inner) => hir::ExprKind::Box(self.lower_expr(inner)),
@@ -54,7 +53,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args, span)
                 }
                 ExprKind::Binary(binop, ref lhs, ref rhs) => {
-                    span = self.mark_span_with_reason(DesugaringKind::Operator, e.span, None);
                     let binop = self.lower_binop(binop);
                     let lhs = self.lower_expr(lhs);
                     let rhs = self.lower_expr(rhs);
@@ -224,7 +222,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::Expr {
                 hir_id: self.lower_node_id(e.id),
                 kind,
-                span,
+                span: e.span,
                 attrs: e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
             }
         })
@@ -239,7 +237,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_binop(&mut self, b: BinOp) -> hir::BinOp {
-        let span = self.mark_span_with_reason(DesugaringKind::Operator, b.span, None);
         Spanned {
             node: match b.node {
                 BinOpKind::Add => hir::BinOpKind::Add,
@@ -261,7 +258,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 BinOpKind::Ge => hir::BinOpKind::Ge,
                 BinOpKind::Gt => hir::BinOpKind::Gt,
             },
-            span,
+            span: b.span,
         }
     }
 

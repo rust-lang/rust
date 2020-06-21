@@ -9,9 +9,9 @@ LL | |     x;
    | |     ^
    | |     |
    | |_____value used here after move
-   |       `x` moved due to usage in operator
+   |       `x` moved due to this method call
    |
-note: calling this operator moves the left-hand side
+note: this function consumes the receiver `self` by taking ownership of it, which moves `x`
   --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
    |
 LL |     fn add(self, rhs: Rhs) -> Self::Output;

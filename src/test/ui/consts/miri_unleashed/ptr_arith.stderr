@@ -5,7 +5,7 @@ LL |     let _v = x == x;
    |              ^^^^^^ "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ptr_arith.rs:17:14
+  --> $DIR/ptr_arith.rs:16:14
    |
 LL |     let _v = x + 0;
    |              ^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
@@ -18,7 +18,7 @@ help: skipping check for `const_compare_raw_pointers` feature
 LL |     let _v = x == x;
    |              ^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/ptr_arith.rs:16:20
+  --> $DIR/ptr_arith.rs:15:20
    |
 LL |     let x: usize = std::mem::transmute(&0);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^
