@@ -295,6 +295,72 @@ impl<T: ?Sized> *const T {
         intrinsics::ptr_offset_from(self, origin)
     }
 
+    /// Returns whether two pointers are guaranteed to be equal.
+    ///
+    /// At runtime this function behaves like `self == other`.
+    /// However, in some contexts (e.g., compile-time evaluation),
+    /// it is not always possible to determine equality of two pointers, so this function may
+    /// spuriously return `false` for pointers that later actually turn out to be equal.
+    /// But when it returns `true`, the pointers are guaranteed to be equal.
+    ///
+    /// This function is the mirror of [`guaranteed_ne`], but not its inverse. There are pointer
+    /// comparisons for which both functions return `false`.
+    ///
+    /// [`guaranteed_ne`]: #method.guaranteed_ne
+    ///
+    /// The return value may change depending on the compiler version and unsafe code may not
+    /// rely on the result of this function for soundness. It is suggested to only use this function
+    /// for performance optimizations where spurious `false` return values by this function do not
+    /// affect the outcome, but just the performance.
+    /// The consequences of using this method to make runtime and compile-time code behave
+    /// differently have not been explored. This method should not be used to introduce such
+    /// differences, and it should also not be stabilized before we have a better understanding
+    /// of this issue.
+    /// ```
+    #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[inline]
+    #[cfg(not(bootstrap))]
+    pub const fn guaranteed_eq(self, other: *const T) -> bool
+    where
+        T: Sized,
+    {
+        intrinsics::ptr_guaranteed_eq(self, other)
+    }
+
+    /// Returns whether two pointers are guaranteed to be inequal.
+    ///
+    /// At runtime this function behaves like `self != other`.
+    /// However, in some contexts (e.g., compile-time evaluation),
+    /// it is not always possible to determine the inequality of two pointers, so this function may
+    /// spuriously return `false` for pointers that later actually turn out to be inequal.
+    /// But when it returns `true`, the pointers are guaranteed to be inequal.
+    ///
+    /// This function is the mirror of [`guaranteed_eq`], but not its inverse. There are pointer
+    /// comparisons for which both functions return `false`.
+    ///
+    /// [`guaranteed_eq`]: #method.guaranteed_eq
+    ///
+    /// The return value may change depending on the compiler version and unsafe code may not
+    /// rely on the result of this function for soundness. It is suggested to only use this function
+    /// for performance optimizations where spurious `false` return values by this function do not
+    /// affect the outcome, but just the performance.
+    /// The consequences of using this method to make runtime and compile-time code behave
+    /// differently have not been explored. This method should not be used to introduce such
+    /// differences, and it should also not be stabilized before we have a better understanding
+    /// of this issue.
+    /// ```
+    #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[inline]
+    #[cfg(not(bootstrap))]
+    pub const fn guaranteed_ne(self, other: *const T) -> bool
+    where
+        T: Sized,
+    {
+        intrinsics::ptr_guaranteed_ne(self, other)
+    }
+
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
     ///

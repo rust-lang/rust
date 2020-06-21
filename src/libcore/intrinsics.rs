@@ -1012,7 +1012,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::any::type_name`](../../std/any/fn.type_name.html)
-    #[rustc_const_unstable(feature = "const_type_name", issue = "none")]
+    #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This
@@ -1021,7 +1021,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::any::TypeId::of`](../../std/any/struct.TypeId.html#method.of)
-    #[rustc_const_unstable(feature = "const_type_id", issue = "none")]
+    #[rustc_const_unstable(feature = "const_type_id", issue = "41875")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
@@ -1931,7 +1931,7 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "none")]
+    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// Internal hook used by Miri to implement unwinding.
@@ -1948,6 +1948,16 @@ extern "rust-intrinsic" {
     #[cfg(not(bootstrap))]
     #[lang = "count_code_region"]
     pub fn count_code_region(index: u32);
+
+    /// See documentation of `<*const T>::guaranteed_eq` for details.
+    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[cfg(not(bootstrap))]
+    pub fn ptr_guaranteed_eq<T>(ptr: *const T, other: *const T) -> bool;
+
+    /// See documentation of `<*const T>::guaranteed_ne` for details.
+    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[cfg(not(bootstrap))]
+    pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
 }
 
 // Some functions are defined here because they accidentally got made

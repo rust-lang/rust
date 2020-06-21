@@ -74,9 +74,8 @@ pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
         | "wrapping_add" | "wrapping_sub" | "wrapping_mul" | "saturating_add"
         | "saturating_sub" | "rotate_left" | "rotate_right" | "ctpop" | "ctlz" | "cttz"
         | "bswap" | "bitreverse" | "discriminant_value" | "type_id" | "likely" | "unlikely"
-        | "minnumf32" | "minnumf64" | "maxnumf32" | "maxnumf64" | "type_name" => {
-            hir::Unsafety::Normal
-        }
+        | "ptr_guaranteed_eq" | "ptr_guaranteed_ne" | "minnumf32" | "minnumf64" | "maxnumf32"
+        | "maxnumf64" | "type_name" => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }
 }
@@ -256,6 +255,10 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" => {
                 (1, vec![param(0), param(0)], tcx.intern_tup(&[param(0), tcx.types.bool]))
+            }
+
+            "ptr_guaranteed_eq" | "ptr_guaranteed_ne" => {
+                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.bool)
             }
 
             "ptr_offset_from" => {

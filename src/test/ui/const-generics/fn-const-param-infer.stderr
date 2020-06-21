@@ -1,46 +1,17 @@
 warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/fn-const-param-infer.rs:1:12
    |
-LL | #![feature(const_generics, const_compare_raw_pointers)]
+LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
    |
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
-error[E0308]: mismatched types
-  --> $DIR/fn-const-param-infer.rs:16:31
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/fn-const-param-infer.rs:4:25
    |
-LL |     let _: Checked<not_one> = Checked::<not_two>;
-   |                               ^^^^^^^^^^^^^^^^^^ expected `{not_one as fn(usize) -> bool}`, found `{not_two as fn(usize) -> bool}`
-   |
-   = note: expected type `{not_one as fn(usize) -> bool}`
-              found type `{not_two as fn(usize) -> bool}`
+LL | struct Checked<const F: fn(usize) -> bool>;
+   |                         ^^^^^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
-  --> $DIR/fn-const-param-infer.rs:20:24
-   |
-LL |     let _ = Checked::<{generic_arg::<u32>}>;
-   |                        ^^^^^^^^^^^^^^^^^^ expected `usize`, found `u32`
-   |
-   = note: expected fn pointer `fn(usize) -> _`
-                 found fn item `fn(u32) -> _ {generic_arg::<u32>}`
+error: aborting due to previous error; 1 warning emitted
 
-error[E0282]: type annotations needed
-  --> $DIR/fn-const-param-infer.rs:22:23
-   |
-LL |     let _ = Checked::<generic>;
-   |                       ^^^^^^^ cannot infer type for type parameter `T` declared on the function `generic`
-
-error[E0308]: mismatched types
-  --> $DIR/fn-const-param-infer.rs:25:40
-   |
-LL |     let _: Checked<{generic::<u32>}> = Checked::<{generic::<u16>}>;
-   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{generic::<u32> as fn(usize) -> bool}`, found `{generic::<u16> as fn(usize) -> bool}`
-   |
-   = note: expected type `{generic::<u32> as fn(usize) -> bool}`
-              found type `{generic::<u16> as fn(usize) -> bool}`
-
-error: aborting due to 4 previous errors; 1 warning emitted
-
-Some errors have detailed explanations: E0282, E0308.
-For more information about an error, try `rustc --explain E0282`.

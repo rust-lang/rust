@@ -1,0 +1,28 @@
+error: any use of this value will cause an error
+  --> $DIR/const_raw_ptr_ops2.rs:8:28
+   |
+LL | const Y2: usize = unsafe { &1 as *const i32 as usize + 1 };
+   | ---------------------------^^^^^^^^^^^^^^^^^^^^^^^^^-------
+   |                            |
+   |                            "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: any use of this value will cause an error
+  --> $DIR/const_raw_ptr_ops2.rs:12:26
+   |
+LL | const Z2: i32 = unsafe { *(42 as *const i32) };
+   | -------------------------^^^^^^^^^^^^^^^^^^^---
+   |                          |
+   |                          unable to turn bytes into a pointer
+
+error: any use of this value will cause an error
+  --> $DIR/const_raw_ptr_ops2.rs:13:26
+   |
+LL | const Z3: i32 = unsafe { *(44 as *const i32) };
+   | -------------------------^^^^^^^^^^^^^^^^^^^---
+   |                          |
+   |                          unable to turn bytes into a pointer
+
+error: aborting due to 3 previous errors
+
