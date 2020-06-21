@@ -2663,6 +2663,44 @@ impl<T> [T] {
     {
         self.iter().is_sorted_by_key(f)
     }
+
+    /// Returns index of partition point according to the given predicate,
+    /// such that all those that return true precede the index and
+    /// such that all those that return false succeed the index.
+    ///
+    /// 'self' must be partitioned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(partition_point)]
+    ///
+    /// let v = [1, 2, 3, 3, 5, 6, 7];
+    /// let i = xs.partition_point(|&x| x < 5);
+    ///
+    /// assert_eq!(i, 4);
+    /// assert!(xs[..i].iter().all(|&x| x < 5));
+    /// assert!(xs[i..].iter().all(|&x| !(x < 5)));
+    /// ```
+    #[unstable(feature = "partition_point", reason = "new API", issue = "99999")]
+    pub fn partition_point<P>(&self, mut pred: P) -> usize
+    where
+        P: FnMut(&T) -> bool,
+    {
+        let mut left = 0;
+        let mut right = self.len();
+
+        while left != right {
+            let mid = left + (right - left) / 2;
+            let value = unsafe { self.get_unchecked(mid) };
+            if pred(value) {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+        return left;
+    }
 }
 
 #[lang = "slice_u8"]
