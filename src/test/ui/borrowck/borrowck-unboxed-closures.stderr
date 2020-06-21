@@ -22,15 +22,10 @@ error[E0382]: use of moved value: `f`
 LL | fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
    |                                       - move occurs because `f` has type `F`, which does not implement the `Copy` trait
 LL |     f(1, 2);
-   |     ------- `f` moved due to this call
+   |     - value moved here
 LL |     f(1, 2);
    |     ^ value used here after move
    |
-note: this value implements `FnOnce`, which causes it to be moved when called
-  --> $DIR/borrowck-unboxed-closures.rs:11:5
-   |
-LL |     f(1, 2);
-   |     ^
 help: consider further restricting this bound
    |
 LL | fn c<F:FnOnce(isize, isize) -> isize + Copy>(f: F) {

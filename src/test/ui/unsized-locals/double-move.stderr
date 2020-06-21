@@ -34,15 +34,9 @@ error[E0382]: use of moved value: `y`
 LL |         let y = *x;
    |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
 LL |         y.foo();
-   |           ----- `y` moved due to this method call
+   |         - value moved here
 LL |         y.foo();
    |         ^ value used here after move
-   |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `y`
-  --> $DIR/double-move.rs:4:12
-   |
-LL |     fn foo(self) -> String;
-   |            ^^^^
 
 error[E0382]: use of moved value: `x`
   --> $DIR/double-move.rs:45:9
