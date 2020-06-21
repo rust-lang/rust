@@ -29,3 +29,7 @@ fn main() {
     foo::<C>(); //~ ERROR: cannot find type `C` in this scope
     foo::<D>(); //~ ERROR: cannot find type `D` in this scope
 }
+
+mod other {
+    pub fn import() {}
+}

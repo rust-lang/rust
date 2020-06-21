@@ -643,27 +643,33 @@ impl<'a> Resolver<'a> {
         let not_local_module = crate_name.name != kw::Crate;
         let mut worklist =
             vec![(start_module, Vec::<ast::PathSegment>::new(), true, not_local_module)];
+        let mut worklist_via_import = vec![];
 
-        while let Some((in_module, path_segments, accessible, in_module_is_extern)) = worklist.pop()
+        while let Some((in_module, path_segments, accessible, in_module_is_extern)) =
+            match worklist.pop() {
+                None => worklist_via_import.pop(),
+                Some(x) => Some(x),
+            }
         {
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
-                // avoid imports entirely
-                if name_binding.is_import() && !name_binding.is_extern_crate() {
-                    return;
-                }
-
-                // avoid non-importable candidates as well
+                // avoid non-importable candidates
                 if !name_binding.is_importable() {
                     return;
                 }
+
+                let via_import = name_binding.is_import() && !name_binding.is_extern_crate();
 
                 let child_accessible =
                     accessible && this.is_accessible_from(name_binding.vis, parent_scope.module);
 
                 // do not venture inside inaccessible items of other crates
                 if in_module_is_extern && !child_accessible {
+                    return;
+                }
+
+                if via_import && name_binding.is_possibly_imported_variant() {
                     return;
                 }
 
@@ -724,7 +730,8 @@ impl<'a> Resolver<'a> {
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id().unwrap()) {
-                            worklist.push((module, path_segments, child_accessible, is_extern));
+                            if via_import { &mut worklist_via_import } else { &mut worklist }
+                                .push((module, path_segments, child_accessible, is_extern));
                         }
                     }
                 }

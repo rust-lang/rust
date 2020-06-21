@@ -42,6 +42,11 @@ error[E0425]: cannot find function `import` in this scope
    |
 LL |     import();
    |     ^^^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+LL | use other::import;
+   |
 
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/glob-resolve1.rs:28:11
