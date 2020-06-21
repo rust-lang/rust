@@ -1,4 +1,4 @@
-PRINT-BANG INPUT (DISPLAY):  FirstStruct 
+PRINT-BANG INPUT (DISPLAY): FirstStruct
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,
@@ -12,7 +12,6 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-BANG INPUT (DISPLAY): SecondStruct
-PRINT-BANG RE-COLLECTED (DISPLAY):  SecondStruct 
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,
