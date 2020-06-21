@@ -513,7 +513,7 @@ fn is_mutable_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Span,
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
         ty::Adt(ref adt, ref substs) => {
-            tys.insert(adt.did) && !ty.is_freeze(cx.tcx, cx.param_env, span)
+            tys.insert(adt.did) && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
                 || KNOWN_WRAPPER_TYS.iter().any(|path| match_def_path(cx, adt.did, path))
                     && substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys))
         },
