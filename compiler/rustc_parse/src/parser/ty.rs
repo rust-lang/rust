@@ -276,8 +276,34 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
-        let opt_lifetime = if self.check_lifetime() { Some(self.expect_lifetime()) } else { None };
+        let and_span = self.prev_token.span;
+        let mut opt_lifetime =
+            if self.check_lifetime() { Some(self.expect_lifetime()) } else { None };
         let mutbl = self.parse_mutability();
+        if self.token.is_lifetime() && mutbl == Mutability::Mut && opt_lifetime.is_none() {
+            // A lifetime is invalid here: it would be part of a bare trait bound, which requires
+            // it to be followed by a plus, but we disallow plus in the pointee type.
+            // So we can handle this case as an error here, and suggest `'a mut`.
+            // If there *is* a plus next though, handling the error later provides better suggestions
+            // (like adding parentheses)
+            if !self.look_ahead(1, |t| t.is_like_plus()) {
+                let lifetime_span = self.token.span;
+                let span = and_span.to(lifetime_span);
+
+                let mut err = self.struct_span_err(span, "lifetime must precede `mut`");
+                if let Ok(lifetime_src) = self.span_to_snippet(lifetime_span) {
+                    err.span_suggestion(
+                        span,
+                        "place the lifetime before `mut`",
+                        format!("&{} mut", lifetime_src),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                err.emit();
+
+                opt_lifetime = Some(self.expect_lifetime());
+            }
+        }
         let ty = self.parse_ty_no_plus()?;
         Ok(TyKind::Rptr(opt_lifetime, MutTy { ty, mutbl }))
     }
