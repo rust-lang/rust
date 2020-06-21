@@ -37,16 +37,10 @@ error[E0382]: borrow of moved value: `y`
 LL |         let y = *x;
    |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
 LL |         y.foo();
-   |           ----- `y` moved due to this method call
+   |         - value moved here
 ...
 LL |         println!("{}", &y);
    |                        ^^ value borrowed here after move
-   |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `y`
-  --> $DIR/borrow-after-move.rs:4:12
-   |
-LL |     fn foo(self) -> String;
-   |            ^^^^
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/borrow-after-move.rs:39:24

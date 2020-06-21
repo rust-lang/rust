@@ -408,7 +408,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     format!("{}.as_ref()", snippet),
                     Applicability::MaybeIncorrect,
                 );
-            } else if matches!(span.desugaring_kind(), Some(DesugaringKind::ForLoop(_)))
+            } else if span.is_desugaring(DesugaringKind::ForLoop)
                 && self.infcx.tcx.is_diagnostic_item(Symbol::intern("vec_type"), def_id)
             {
                 // FIXME: suggest for anything that implements `IntoIterator`.
