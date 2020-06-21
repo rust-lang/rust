@@ -734,7 +734,10 @@ pub fn create_global_ctxt<'tcx>(
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
-    let defs: &'tcx Definitions = arena.alloc(mem::take(&mut resolver_outputs.definitions));
+    let defs: &'tcx Definitions = arena.alloc(mem::replace(
+        &mut resolver_outputs.definitions,
+        Definitions::new(crate_name, sess.local_crate_disambiguator()),
+    ));
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 

@@ -1126,7 +1126,7 @@ impl ResolverAstLowering for Resolver<'_> {
     }
 
     /// Adds a definition with a parent definition.
-    fn create_def_with_parent(
+    fn create_def(
         &mut self,
         parent: LocalDefId,
         node_id: ast::NodeId,
@@ -1142,7 +1142,7 @@ impl ResolverAstLowering for Resolver<'_> {
             self.definitions.def_key(self.node_id_to_def_id[&node_id]),
         );
 
-        let def_id = self.definitions.create_def_with_parent(parent, data, expn_id);
+        let def_id = self.definitions.create_def(parent, data, expn_id);
 
         assert_eq!(self.def_id_to_span.push(span), def_id);
 
@@ -1150,7 +1150,7 @@ impl ResolverAstLowering for Resolver<'_> {
         // anything in the AST, so they don't have a `NodeId`. For these cases
         // we don't need a mapping from `NodeId` to `LocalDefId`.
         if node_id != ast::DUMMY_NODE_ID {
-            debug!("create_def_with_parent: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
+            debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
             self.node_id_to_def_id.insert(node_id, def_id);
         }
         assert_eq!(self.def_id_to_node_id.push(node_id), def_id);
@@ -1187,8 +1187,8 @@ impl<'a> Resolver<'a> {
         let mut module_map = FxHashMap::default();
         module_map.insert(LocalDefId { local_def_index: CRATE_DEF_INDEX }, graph_root);
 
-        let mut definitions = Definitions::default();
-        let root = definitions.create_root_def(crate_name, session.local_crate_disambiguator());
+        let definitions = Definitions::new(crate_name, session.local_crate_disambiguator());
+        let root = definitions.get_root_def();
 
         let mut def_id_to_span = IndexVec::default();
         assert_eq!(def_id_to_span.push(rustc_span::DUMMY_SP), root);

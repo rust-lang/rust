@@ -71,9 +71,9 @@ impl DefPathTable {
 }
 
 /// The definition table containing node definitions.
-/// It holds the `DefPathTable` for local `DefId`s/`DefPath`s and it also stores a
-/// mapping from `NodeId`s to local `DefId`s.
-#[derive(Clone, Default)]
+/// It holds the `DefPathTable` for `LocalDefId`s/`DefPath`s.
+/// It also stores mappings to convert `LocalDefId`s to/from `HirId`s.
+#[derive(Clone)]
 pub struct Definitions {
     table: DefPathTable,
 
@@ -328,11 +328,7 @@ impl Definitions {
     }
 
     /// Adds a root definition (no parent) and a few other reserved definitions.
-    pub fn create_root_def(
-        &mut self,
-        crate_name: &str,
-        crate_disambiguator: CrateDisambiguator,
-    ) -> LocalDefId {
+    pub fn new(crate_name: &str, crate_disambiguator: CrateDisambiguator) -> Definitions {
         let key = DefKey {
             parent: None,
             disambiguated_data: DisambiguatedDefPathData {
@@ -344,24 +340,34 @@ impl Definitions {
         let parent_hash = DefKey::root_parent_stable_hash(crate_name, crate_disambiguator);
         let def_path_hash = key.compute_stable_hash(parent_hash);
 
-        // Create the definition.
-        let root = LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) };
+        // Create the root definition.
+        let mut table = DefPathTable::default();
+        let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        root
+        Definitions {
+            table,
+            def_id_to_hir_id: Default::default(),
+            hir_id_to_def_id: Default::default(),
+            expansions_that_defined: Default::default(),
+            next_disambiguator: Default::default(),
+            parent_modules_of_macro_defs: Default::default(),
+        }
+    }
+
+    /// Retrieves the root definition.
+    pub fn get_root_def(&self) -> LocalDefId {
+        LocalDefId { local_def_index: CRATE_DEF_INDEX }
     }
 
     /// Adds a definition with a parent definition.
-    pub fn create_def_with_parent(
+    pub fn create_def(
         &mut self,
         parent: LocalDefId,
         data: DefPathData,
         expn_id: ExpnId,
     ) -> LocalDefId {
-        debug!(
-            "create_def_with_parent(parent={:?}, data={:?}, expn_id={:?})",
-            parent, data, expn_id
-        );
+        debug!("create_def(parent={:?}, data={:?}, expn_id={:?})", parent, data, expn_id);
 
         // The root node must be created with `create_root_def()`.
         assert!(data != DefPathData::CrateRoot);
@@ -382,7 +388,7 @@ impl Definitions {
         let parent_hash = self.table.def_path_hash(parent.local_def_index);
         let def_path_hash = key.compute_stable_hash(parent_hash);
 
-        debug!("create_def_with_parent: after disambiguation, key = {:?}", key);
+        debug!("create_def: after disambiguation, key = {:?}", key);
 
         // Create the definition.
         let def_id = LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) };

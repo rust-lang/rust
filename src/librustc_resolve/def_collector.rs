@@ -32,7 +32,7 @@ impl<'a, 'b> DefCollector<'a, 'b> {
     fn create_def(&mut self, node_id: NodeId, data: DefPathData, span: Span) -> LocalDefId {
         let parent_def = self.parent_def;
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
-        self.resolver.create_def_with_parent(parent_def, node_id, data, self.expansion, span)
+        self.resolver.create_def(parent_def, node_id, data, self.expansion, span)
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
