@@ -118,7 +118,7 @@ fn is_mutable_type<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Spa
             size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0) && is_mutable_type(cx, inner_ty, span)
         },
         Tuple(..) => ty.tuple_fields().any(|ty| is_mutable_type(cx, ty, span)),
-        Adt(..) => cx.tcx.layout_of(cx.param_env.and(ty)).is_ok() && !ty.is_freeze(cx.tcx, cx.param_env, span),
+        Adt(..) => cx.tcx.layout_of(cx.param_env.and(ty)).is_ok() && !ty.is_freeze(cx.tcx.at(span), cx.param_env),
         _ => false,
     }
 }
