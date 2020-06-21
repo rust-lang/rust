@@ -24,7 +24,13 @@
       }
   
       bb2: {
-          discriminant(_0) = 0;            // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:17: 3:21
+          _0 = const std::option::Option::<std::boxed::Box<()>>::None; // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:17: 3:21
+                                           // ty::Const
+                                           // + ty: std::option::Option<std::boxed::Box<()>>
+                                           // + val: Value(Scalar(0x00000000))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:17: 3:21
+                                           // + literal: Const { ty: std::option::Option<std::boxed::Box<()>>, val: Value(Scalar(0x00000000)) }
           goto -> bb3;                     // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:2:5: 5:6
       }
   
