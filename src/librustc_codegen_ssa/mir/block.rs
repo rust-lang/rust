@@ -200,6 +200,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         targets: &Vec<mir::BasicBlock>,
     ) {
         let discr = self.codegen_operand(&mut bx, &discr);
+        // `switch_ty` is redundant, sanity-check that.
+        assert_eq!(discr.layout.ty, switch_ty);
         if targets.len() == 2 {
             // If there are two targets, emit br instead of switch
             let lltrue = helper.llblock(self, targets[0]);
