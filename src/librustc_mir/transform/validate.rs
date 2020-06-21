@@ -7,7 +7,11 @@ use rustc_middle::{
         BasicBlock, Body, Location, Operand, Rvalue, Statement, StatementKind, Terminator,
         TerminatorKind,
     },
-    ty::{self, fold::BottomUpFolder, ParamEnv, Ty, TyCtxt, TypeFoldable},
+    ty::{
+        self,
+        relate::{Relate, RelateResult, TypeRelation},
+        ParamEnv, Ty, TyCtxt,
+    },
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -103,23 +107,81 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Type-changing assignments can happen when subtyping is used. While
         // all normal lifetimes are erased, higher-ranked types with their
         // late-bound lifetimes are still around and can lead to type
-        // differences. Normalize both of them away.
-        // Also see the related but slightly different post-monomorphization
-        // method in `interpret/eval_context.rs`.
-        let normalize = |ty: Ty<'tcx>| {
-            ty.fold_with(&mut BottomUpFolder {
-                tcx: self.tcx,
-                ty_op: |ty| ty,
-                // We just erase all late-bound lifetimes, but this is not fully correct (FIXME):
-                // lifetimes in invariant positions could matter (e.g. through associated types).
-                // But that just means we miss some potential incompatible types, it will not
-                // lead to wrong errors.
-                lt_op: |_| self.tcx.lifetimes.re_erased,
-                // Evaluate consts.
-                ct_op: |ct| ct.eval(self.tcx, param_env),
-            })
-        };
-        normalize(src) == normalize(dest)
+        // differences. So we compare ignoring lifetimes.
+        struct LifetimeIgnoreRelation<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            param_env: ty::ParamEnv<'tcx>,
+        }
+
+        impl TypeRelation<'tcx> for LifetimeIgnoreRelation<'tcx> {
+            fn tcx(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+
+            fn param_env(&self) -> ty::ParamEnv<'tcx> {
+                self.param_env
+            }
+
+            fn tag(&self) -> &'static str {
+                "librustc_mir::transform::validate"
+            }
+
+            fn a_is_expected(&self) -> bool {
+                true
+            }
+
+            fn relate_with_variance<T: Relate<'tcx>>(
+                &mut self,
+                _: ty::Variance,
+                a: &T,
+                b: &T,
+            ) -> RelateResult<'tcx, T> {
+                // Ignore variance, require types to be exactly the same.
+                self.relate(a, b)
+            }
+
+            fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+                if a == b {
+                    // Short-circuit.
+                    return Ok(a);
+                }
+                ty::relate::super_relate_tys(self, a, b)
+            }
+
+            fn regions(
+                &mut self,
+                a: ty::Region<'tcx>,
+                _b: ty::Region<'tcx>,
+            ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+                // Ignore regions.
+                Ok(a)
+            }
+
+            fn consts(
+                &mut self,
+                a: &'tcx ty::Const<'tcx>,
+                b: &'tcx ty::Const<'tcx>,
+            ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+                ty::relate::super_relate_consts(self, a, b)
+            }
+
+            fn binders<T>(
+                &mut self,
+                a: &ty::Binder<T>,
+                b: &ty::Binder<T>,
+            ) -> RelateResult<'tcx, ty::Binder<T>>
+            where
+                T: Relate<'tcx>,
+            {
+                self.relate(a.skip_binder(), b.skip_binder())?;
+                Ok(a.clone())
+            }
+        }
+
+        // Instantiate and run relation.
+        let mut relator: LifetimeIgnoreRelation<'tcx> =
+            LifetimeIgnoreRelation { tcx: self.tcx, param_env };
+        relator.relate(&src, &dest).is_ok()
     }
 }
 
