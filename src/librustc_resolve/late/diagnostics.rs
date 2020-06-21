@@ -887,7 +887,12 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         let path = Path { span: name_binding.span, segments: path_segments };
                         result = Some((
                             module,
-                            ImportSuggestion { did: Some(def_id), descr: "module", path },
+                            ImportSuggestion {
+                                did: Some(def_id),
+                                descr: "module",
+                                path,
+                                accessible: true,
+                            },
                         ));
                     } else {
                         // add the module to the lookup

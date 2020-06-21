@@ -23,13 +23,9 @@ LL | |     }
    | |_____- in this macro invocation
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider importing one of these items
+help: consider importing this function
    |
 LL | use bar::g;
-   |
-LL | use foo::test2::test::g;
-   |
-LL | use foo::test::g;
    |
 
 error[E0425]: cannot find function `f` in this scope
