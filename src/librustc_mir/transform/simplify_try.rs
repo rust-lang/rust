@@ -11,10 +11,10 @@
 
 use crate::transform::{simplify, MirPass, MirSource};
 use itertools::Itertools as _;
-use rustc_index::vec::IndexVec;
-use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_index::{bit_set::BitSet, vec::IndexVec};
+use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{List, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 use std::iter::{Enumerate, Peekable};
 use std::slice::Iter;
@@ -74,10 +74,19 @@ struct ArmIdentityInfo<'tcx> {
 
     /// The statements that should be removed (turned into nops)
     stmts_to_remove: Vec<usize>,
+
+    /// Indices of debug variables that need to be adjusted to point to
+    // `{local_0}.{dbg_projection}`.
+    dbg_info_to_adjust: Vec<usize>,
+
+    /// The projection used to rewrite debug info.
+    dbg_projection: &'tcx List<PlaceElem<'tcx>>,
 }
 
 fn get_arm_identity_info<'a, 'tcx>(
     stmts: &'a [Statement<'tcx>],
+    locals_count: usize,
+    debug_info: &'a [VarDebugInfo<'tcx>],
 ) -> Option<ArmIdentityInfo<'tcx>> {
     // This can't possibly match unless there are at least 3 statements in the block
     // so fail fast on tiny blocks.
@@ -190,7 +199,7 @@ fn get_arm_identity_info<'a, 'tcx>(
     try_eat_storage_stmts(&mut stmt_iter, &mut storage_live_stmts, &mut storage_dead_stmts);
 
     let (get_variant_field_stmt, stmt) = stmt_iter.next()?;
-    let (local_tmp_s0, local_1, vf_s0) = match_get_variant_field(stmt)?;
+    let (local_tmp_s0, local_1, vf_s0, dbg_projection) = match_get_variant_field(stmt)?;
 
     try_eat_storage_stmts(&mut stmt_iter, &mut storage_live_stmts, &mut storage_dead_stmts);
 
@@ -231,6 +240,19 @@ fn get_arm_identity_info<'a, 'tcx>(
     let stmt_to_overwrite =
         nop_stmts.iter().find(|stmt_idx| live_idx < **stmt_idx && **stmt_idx < dead_idx);
 
+    let mut tmp_assigned_vars = BitSet::new_empty(locals_count);
+    for (l, r) in &tmp_assigns {
+        tmp_assigned_vars.insert(*l);
+        tmp_assigned_vars.insert(*r);
+    }
+
+    let mut dbg_info_to_adjust = Vec::new();
+    for (i, var_info) in debug_info.iter().enumerate() {
+        if tmp_assigned_vars.contains(var_info.place.local) {
+            dbg_info_to_adjust.push(i);
+        }
+    }
+
     Some(ArmIdentityInfo {
         local_temp_0: local_tmp_s0,
         local_1,
@@ -246,6 +268,8 @@ fn get_arm_identity_info<'a, 'tcx>(
         source_info: discr_stmt_source_info,
         storage_stmts,
         stmts_to_remove: nop_stmts,
+        dbg_info_to_adjust,
+        dbg_projection,
     })
 }
 
@@ -253,6 +277,7 @@ fn optimization_applies<'tcx>(
     opt_info: &ArmIdentityInfo<'tcx>,
     local_decls: &IndexVec<Local, LocalDecl<'tcx>>,
     local_uses: &IndexVec<Local, usize>,
+    var_debug_info: &[VarDebugInfo<'tcx>],
 ) -> bool {
     trace!("testing if optimization applies...");
 
@@ -309,6 +334,15 @@ fn optimization_applies<'tcx>(
         }
     }
 
+    // Check that debug info only points to full Locals and not projections.
+    for dbg_idx in &opt_info.dbg_info_to_adjust {
+        let dbg_info = &var_debug_info[*dbg_idx];
+        if !dbg_info.place.projection.is_empty() {
+            trace!("NO: debug info for {:?} had a projection {:?}", dbg_info.name, dbg_info.place);
+            return false;
+        }
+    }
+
     if source_local != opt_info.local_temp_0 {
         trace!(
             "NO: start of assignment chain does not match enum variant temp: {:?} != {:?}",
@@ -337,11 +371,14 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
 
         trace!("running SimplifyArmIdentity on {:?}", source);
         let local_uses = LocalUseCounter::get_local_uses(body);
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+        let (basic_blocks, local_decls, debug_info) =
+            body.basic_blocks_local_decls_mut_and_var_debug_info();
         for bb in basic_blocks {
-            if let Some(opt_info) = get_arm_identity_info(&bb.statements) {
+            if let Some(opt_info) =
+                get_arm_identity_info(&bb.statements, local_decls.len(), debug_info)
+            {
                 trace!("got opt_info = {:#?}", opt_info);
-                if !optimization_applies(&opt_info, local_decls, &local_uses) {
+                if !optimization_applies(&opt_info, local_decls, &local_uses, &debug_info) {
                     debug!("optimization skipped for {:?}", source);
                     continue;
                 }
@@ -377,6 +414,14 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
 
                 bb.statements.retain(|stmt| stmt.kind != StatementKind::Nop);
 
+                // Fix the debug info to point to the right local
+                for dbg_index in opt_info.dbg_info_to_adjust {
+                    let dbg_info = &mut debug_info[dbg_index];
+                    assert!(dbg_info.place.projection.is_empty());
+                    dbg_info.place.local = opt_info.local_0;
+                    dbg_info.place.projection = opt_info.dbg_projection;
+                }
+
                 trace!("block is now {:?}", bb.statements);
             }
         }
@@ -397,7 +442,9 @@ impl LocalUseCounter {
 
 impl<'tcx> Visitor<'tcx> for LocalUseCounter {
     fn visit_local(&mut self, local: &Local, context: PlaceContext, _location: Location) {
-        if context.is_storage_marker() {
+        if context.is_storage_marker()
+            || context == PlaceContext::NonUse(NonUseContext::VarDebugInfo)
+        {
             return;
         }
 
@@ -409,13 +456,15 @@ impl<'tcx> Visitor<'tcx> for LocalUseCounter {
 /// ```rust
 /// _LOCAL_INTO = ((_LOCAL_FROM as Variant).FIELD: TY);
 /// ```
-fn match_get_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local, VarField<'tcx>)> {
+fn match_get_variant_field<'tcx>(
+    stmt: &Statement<'tcx>,
+) -> Option<(Local, Local, VarField<'tcx>, &'tcx List<PlaceElem<'tcx>>)> {
     match &stmt.kind {
         StatementKind::Assign(box (place_into, rvalue_from)) => match rvalue_from {
             Rvalue::Use(Operand::Copy(pf) | Operand::Move(pf)) => {
                 let local_into = place_into.as_local()?;
                 let (local_from, vf) = match_variant_field_place(*pf)?;
-                Some((local_into, local_from, vf))
+                Some((local_into, local_from, vf, pf.projection))
             }
             _ => None,
         },
