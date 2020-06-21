@@ -554,10 +554,7 @@ impl Step for Clippy {
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        // FIXME: Disable clippy tests for now, they're failing on master
-        // (generally this would mean a toolstate failure but we don't have
-        // toolstate for clippy anymore).
-        // builder.run(&mut cargo.into());
+        builder.run(&mut cargo.into());
     }
 }
 
