@@ -311,7 +311,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Ok(imm) = self.try_read_immediate(op)? {
             Ok(imm)
         } else {
-            bug!("primitive read failed for type: {:?}", op.layout.ty);
+            span_bug!(self.cur_span(), "primitive read failed for type: {:?}", op.layout.ty);
         }
     }
 
@@ -360,9 +360,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = if offset.bytes() == 0 { a } else { b };
                 Immediate::from(val)
             }
-            Immediate::Scalar(val) => {
-                bug!("field access on non aggregate {:#?}, {:#?}", val, op.layout)
-            }
+            Immediate::Scalar(val) => span_bug!(
+                self.cur_span(),
+                "field access on non aggregate {:#?}, {:#?}",
+                val,
+                op.layout
+            ),
         };
         Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout })
     }
@@ -545,7 +548,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)
             | ty::ConstKind::Placeholder(..) => {
-                bug!("eval_const_to_op: Unexpected ConstKind {:?}", val)
+                span_bug!(self.cur_span(), "eval_const_to_op: Unexpected ConstKind {:?}", val)
             }
             ty::ConstKind::Value(val_val) => val_val,
         };
@@ -656,7 +659,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             .discriminants(def_id, *self.tcx)
                             .find(|(_, var)| var.val == discr_bits)
                     }
-                    _ => bug!("tagged layout for non-adt non-generator"),
+                    _ => span_bug!(self.cur_span(), "tagged layout for non-adt non-generator"),
                 }
                 .ok_or_else(|| err_ub!(InvalidTag(tag_val.erase_tag())))?;
                 // Return the cast value, and the index.
