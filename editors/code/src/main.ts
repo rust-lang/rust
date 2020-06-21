@@ -42,7 +42,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const config = new Config(context);
     const state = new PersistentState(context.globalState);
-    const serverPath = await bootstrap(config, state);
+    const serverPath = await bootstrap(config, state).catch(err => {
+        let message = "Failed to bootstrap rust-analyzer.";
+        if (err.code === "EBUSY" || err.code === "ETXTBSY") {
+            message += " Other vscode windows might be using rust-analyzer, " +
+                "you should close them and reload this window to retry.";
+        }
+        message += " Open \"Help > Toggle Developer Tools > Console\" to see the logs";
+        log.error("Bootstrap error", err);
+        throw new Error(message);
+    });
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (workspaceFolder === undefined) {
@@ -284,6 +293,11 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     const release = await fetchRelease(config.package.releaseTag);
     const artifact = release.assets.find(artifact => artifact.name === binaryName);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
+
+    // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
+    await fs.unlink(dest).catch(err => {
+        if (err.code !== "ENOENT") throw err;
+    });
 
     await download(artifact.browser_download_url, dest, "Downloading rust-analyzer server", { mode: 0o755 });
 
