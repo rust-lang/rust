@@ -364,6 +364,7 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
+/// [`size_of_val`]: ../../core/mem/fn.size_of_val.html
 ///
 /// # Examples
 ///
@@ -498,6 +499,7 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
+/// [`align_of_val`]: ../../core/mem/fn.align_of_val.html
 ///
 /// # Examples
 ///
