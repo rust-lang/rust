@@ -135,7 +135,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
                     Abi::Scalar(ref scalar) => scalar.value,
-                    _ => bug!("{} called on invalid type {:?}", intrinsic_name, ty),
+                    _ => span_bug!(
+                        self.cur_span(),
+                        "{} called on invalid type {:?}",
+                        intrinsic_name,
+                        ty
+                    ),
                 };
                 let (nonzero, intrinsic_name) = match intrinsic_name {
                     sym::cttz_nonzero => (true, sym::cttz),
