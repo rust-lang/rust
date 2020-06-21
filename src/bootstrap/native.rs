@@ -158,7 +158,6 @@ impl Step for Llvm {
             .define("LLVM_INCLUDE_TESTS", "OFF")
             .define("LLVM_INCLUDE_DOCS", "OFF")
             .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
-            .define("LLVM_ENABLE_ZLIB", "OFF")
             .define("WITH_POLLY", "OFF")
             .define("LLVM_ENABLE_TERMINFO", "OFF")
             .define("LLVM_ENABLE_LIBEDIT", "OFF")
@@ -167,6 +166,14 @@ impl Step for Llvm {
             .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
             .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
             .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+
+        if !target.contains("netbsd") {
+            cfg.define("LLVM_ENABLE_ZLIB", "ON");
+        } else {
+            // FIXME: Enable zlib on NetBSD too
+            // https://github.com/rust-lang/rust/pull/72696#issuecomment-641517185
+            cfg.define("LLVM_ENABLE_ZLIB", "OFF");
+        }
 
         if builder.config.llvm_thin_lto {
             cfg.define("LLVM_ENABLE_LTO", "Thin");
