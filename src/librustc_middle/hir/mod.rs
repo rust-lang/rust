@@ -12,7 +12,10 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
-use rustc_hir::*;
+use rustc_hir::Body;
+use rustc_hir::HirId;
+use rustc_hir::ItemLocalId;
+use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 
 pub struct Owner<'tcx> {
@@ -76,20 +79,5 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
     providers.hir_owner = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].signature;
     providers.hir_owner_nodes = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].with_bodies.as_deref();
-    providers.fn_arg_names = |tcx, id| {
-        let hir = tcx.hir();
-        let hir_id = hir.as_local_hir_id(id.expect_local());
-        if let Some(body_id) = hir.maybe_body_owned_by(hir_id) {
-            tcx.arena.alloc_from_iter(hir.body_param_names(body_id))
-        } else if let Node::TraitItem(&TraitItem {
-            kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
-            ..
-        }) = hir.get(hir_id)
-        {
-            tcx.arena.alloc_slice(idents)
-        } else {
-            span_bug!(hir.span(hir_id), "fn_arg_names: unexpected item {:?}", id);
-        }
-    };
     map::provide(providers);
 }

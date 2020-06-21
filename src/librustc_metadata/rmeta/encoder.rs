@@ -30,7 +30,7 @@ use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder, UseSpecializedEncodable};
 use rustc_session::config::CrateType;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span};
 use rustc_target::abi::VariantIdx;
 use std::hash::Hash;
@@ -1004,12 +1004,18 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Ident]> {
-        self.tcx.dep_graph.with_ignore(|| self.lazy(self.tcx.hir().body_param_names(body_id)))
+    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Symbol]> {
+        self.tcx.dep_graph.with_ignore(|| {
+            let body = self.tcx.hir().body(body_id);
+            self.lazy(body.params.iter().map(|arg| match arg.pat.kind {
+                hir::PatKind::Binding(_, _, ident, _) => ident.name,
+                _ => kw::Invalid,
+            }))
+        })
     }
 
-    fn encode_fn_param_names(&mut self, param_names: &[Ident]) -> Lazy<[Ident]> {
-        self.lazy(param_names.iter())
+    fn encode_fn_param_names(&mut self, param_names: &[Ident]) -> Lazy<[Symbol]> {
+        self.lazy(param_names.iter().map(|ident| ident.name))
     }
 
     fn encode_optimized_mir(&mut self, def_id: LocalDefId) {
