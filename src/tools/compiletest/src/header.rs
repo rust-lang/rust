@@ -875,6 +875,7 @@ impl Config {
             match self.compare_mode {
                 Some(CompareMode::Nll) => name == "compare-mode-nll",
                 Some(CompareMode::Polonius) => name == "compare-mode-polonius",
+                Some(CompareMode::Chalk) => name == "compare-mode-chalk",
                 None => false,
             } ||
             (cfg!(debug_assertions) && name == "debug") ||

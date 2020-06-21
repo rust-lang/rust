@@ -33,8 +33,7 @@ pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
 
 pub use self::chalk::{
-    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, RustDefId as ChalkRustDefId,
-    RustInterner as ChalkRustInterner,
+    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, RustInterner as ChalkRustInterner,
 };
 
 /// Depending on the stage of compilation, we want projection to be

@@ -32,8 +32,7 @@
 //! variables from the current `Binder`.
 
 use rustc_middle::traits::{
-    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, ChalkRustDefId as RustDefId,
-    ChalkRustInterner as RustInterner,
+    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, ChalkRustInterner as RustInterner,
 };
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
@@ -62,7 +61,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Substitution<RustInterner<'tcx>>> for Subst
 impl<'tcx> LowerInto<'tcx, chalk_ir::AliasTy<RustInterner<'tcx>>> for ty::ProjectionTy<'tcx> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::AliasTy<RustInterner<'tcx>> {
         chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-            associated_ty_id: chalk_ir::AssocTypeId(RustDefId::AssocTy(self.item_def_id)),
+            associated_ty_id: chalk_ir::AssocTypeId(self.item_def_id),
             substitution: self.substs.lower_into(interner),
         })
     }
@@ -98,8 +97,30 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                             .intern(interner),
                         )
                     }
-                    // FIXME(chalk): need to add RegionOutlives/TypeOutlives
-                    ty::PredicateKind::RegionOutlives(_) => None,
+                    ty::PredicateKind::RegionOutlives(predicate) => {
+                        let (predicate, binders, _named_regions) =
+                            collect_bound_vars(interner, interner.tcx, predicate);
+
+                        Some(
+                            chalk_ir::ProgramClauseData::ForAll(chalk_ir::Binders::new(
+                                binders,
+                                chalk_ir::ProgramClauseImplication {
+                                    consequence: chalk_ir::DomainGoal::Holds(
+                                        chalk_ir::WhereClause::LifetimeOutlives(
+                                            chalk_ir::LifetimeOutlives {
+                                                a: predicate.0.lower_into(interner),
+                                                b: predicate.1.lower_into(interner),
+                                            },
+                                        ),
+                                    ),
+                                    conditions: chalk_ir::Goals::new(interner),
+                                    priority: chalk_ir::ClausePriority::High,
+                                },
+                            ))
+                            .intern(interner),
+                        )
+                    }
+                    // FIXME(chalk): need to add TypeOutlives
                     ty::PredicateKind::TypeOutlives(_) => None,
                     ty::PredicateKind::Projection(predicate) => {
                         let (predicate, binders, _named_regions) =
@@ -157,30 +178,36 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::GoalData<RustInterner<'tcx>> {
         match self.kind() {
             ty::PredicateKind::Trait(predicate, _) => predicate.lower_into(interner),
-            // FIXME(chalk): we need to register constraints.
-            ty::PredicateKind::RegionOutlives(_predicate) => {
-                chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
+            ty::PredicateKind::RegionOutlives(predicate) => {
+                let (predicate, binders, _named_regions) =
+                    collect_bound_vars(interner, interner.tcx, predicate);
+
+                chalk_ir::GoalData::Quantified(
+                    chalk_ir::QuantifierKind::ForAll,
+                    chalk_ir::Binders::new(
+                        binders,
+                        chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(
+                            chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
+                                a: predicate.0.lower_into(interner),
+                                b: predicate.1.lower_into(interner),
+                            }),
+                        ))
+                        .intern(interner),
+                    ),
+                )
             }
+            // FIXME(chalk): TypeOutlives
             ty::PredicateKind::TypeOutlives(_predicate) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
             }
             ty::PredicateKind::Projection(predicate) => predicate.lower_into(interner),
             ty::PredicateKind::WellFormed(arg) => match arg.unpack() {
                 GenericArgKind::Type(ty) => match ty.kind {
-                    // These types are always WF.
-                    ty::Str | ty::Placeholder(..) | ty::Error(_) | ty::Never => {
-                        chalk_ir::GoalData::All(chalk_ir::Goals::new(interner))
-                    }
+                    // FIXME(chalk): In Chalk, a placeholder is WellFormed if it
+                    // `FromEnv`. However, when we "lower" Params, we don't update
+                    // the environment.
+                    ty::Placeholder(..) => chalk_ir::GoalData::All(chalk_ir::Goals::new(interner)),
 
-                    // FIXME(chalk): Well-formed only if ref lifetime outlives type
-                    ty::Ref(..) => chalk_ir::GoalData::All(chalk_ir::Goals::new(interner)),
-
-                    ty::Param(..) => panic!("No Params expected."),
-
-                    // FIXME(chalk) -- ultimately I think this is what we
-                    // want to do, and we just have rules for how to prove
-                    // `WellFormed` for everything above, instead of
-                    // inlining a bit the rules of the proof here.
                     _ => chalk_ir::GoalData::DomainGoal(chalk_ir::DomainGoal::WellFormed(
                         chalk_ir::WellFormed::Ty(ty.lower_into(interner)),
                     )),
@@ -192,12 +219,15 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                 GenericArgKind::Lifetime(lt) => bug!("unexpect well formed predicate: {:?}", lt),
             },
 
+            ty::PredicateKind::ObjectSafe(t) => chalk_ir::GoalData::DomainGoal(
+                chalk_ir::DomainGoal::ObjectSafe(chalk_ir::TraitId(*t)),
+            ),
+
             // FIXME(chalk): other predicates
             //
             // We can defer this, but ultimately we'll want to express
             // some of these in terms of chalk operations.
-            ty::PredicateKind::ObjectSafe(..)
-            | ty::PredicateKind::ClosureKind(..)
+            ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..) => {
@@ -212,7 +242,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::TraitRef<RustInterner<'tcx>>>
 {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::TraitRef<RustInterner<'tcx>> {
         chalk_ir::TraitRef {
-            trait_id: chalk_ir::TraitId(RustDefId::Trait(self.def_id)),
+            trait_id: chalk_ir::TraitId(self.def_id),
             substitution: self.substs.lower_into(interner),
         }
     }
@@ -274,7 +304,8 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
         use TyKind::*;
 
         let empty = || chalk_ir::Substitution::empty(interner);
-        let struct_ty = |def_id| chalk_ir::TypeName::Struct(chalk_ir::StructId(def_id));
+        let struct_ty =
+            |def_id| chalk_ir::TypeName::Adt(chalk_ir::AdtId(interner.tcx.adt_def(def_id)));
         let apply = |name, substitution| {
             TyData::Apply(chalk_ir::ApplicationTy { name, substitution }).intern(interner)
         };
@@ -305,39 +336,72 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 ast::FloatTy::F32 => float(chalk_ir::FloatTy::F32),
                 ast::FloatTy::F64 => float(chalk_ir::FloatTy::F64),
             },
-            Adt(def, substs) => {
-                apply(struct_ty(RustDefId::Adt(def.did)), substs.lower_into(interner))
-            }
+            Adt(def, substs) => apply(struct_ty(def.did), substs.lower_into(interner)),
             Foreign(_def_id) => unimplemented!(),
-            Str => apply(struct_ty(RustDefId::Str), empty()),
-            Array(ty, _) => apply(
-                struct_ty(RustDefId::Array),
-                chalk_ir::Substitution::from1(
-                    interner,
-                    chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner),
-                ),
-            ),
-            Slice(ty) => apply(
-                struct_ty(RustDefId::Slice),
-                chalk_ir::Substitution::from1(
-                    interner,
-                    chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner),
-                ),
-            ),
-            RawPtr(_) => apply(struct_ty(RustDefId::RawPtr), empty()),
-            Ref(region, ty, mutability) => apply(
-                struct_ty(RustDefId::Ref(mutability)),
-                chalk_ir::Substitution::from(
-                    interner,
-                    [
-                        chalk_ir::ParameterKind::Lifetime(region.lower_into(interner))
+            Str => apply(chalk_ir::TypeName::Str, empty()),
+            Array(ty, len) => {
+                let value = match len.val {
+                    ty::ConstKind::Value(val) => {
+                        chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: val })
+                    }
+                    ty::ConstKind::Bound(db, bound) => {
+                        chalk_ir::ConstValue::BoundVar(chalk_ir::BoundVar::new(
+                            chalk_ir::DebruijnIndex::new(db.as_u32()),
+                            bound.index(),
+                        ))
+                    }
+                    _ => unimplemented!("Const not implemented. {:?}", len.val),
+                };
+                apply(
+                    chalk_ir::TypeName::Array,
+                    chalk_ir::Substitution::from(
+                        interner,
+                        &[
+                            chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
+                            chalk_ir::GenericArgData::Const(
+                                chalk_ir::ConstData { ty: len.ty.lower_into(interner), value }
+                                    .intern(interner),
+                            )
                             .intern(interner),
-                        chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner),
-                    ]
-                    .iter(),
+                        ],
+                    ),
+                )
+            }
+            Slice(ty) => apply(
+                chalk_ir::TypeName::Slice,
+                chalk_ir::Substitution::from1(
+                    interner,
+                    chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
                 ),
             ),
-            FnDef(def_id, _) => apply(struct_ty(RustDefId::FnDef(def_id)), empty()),
+            RawPtr(ptr) => {
+                let name = match ptr.mutbl {
+                    ast::Mutability::Mut => chalk_ir::TypeName::Raw(chalk_ir::Mutability::Mut),
+                    ast::Mutability::Not => chalk_ir::TypeName::Raw(chalk_ir::Mutability::Not),
+                };
+                apply(name, chalk_ir::Substitution::from1(interner, ptr.ty.lower_into(interner)))
+            }
+            Ref(region, ty, mutability) => {
+                let name = match mutability {
+                    ast::Mutability::Mut => chalk_ir::TypeName::Ref(chalk_ir::Mutability::Mut),
+                    ast::Mutability::Not => chalk_ir::TypeName::Ref(chalk_ir::Mutability::Not),
+                };
+                apply(
+                    name,
+                    chalk_ir::Substitution::from(
+                        interner,
+                        &[
+                            chalk_ir::GenericArgData::Lifetime(region.lower_into(interner))
+                                .intern(interner),
+                            chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
+                        ],
+                    ),
+                )
+            }
+            FnDef(def_id, substs) => apply(
+                chalk_ir::TypeName::FnDef(chalk_ir::FnDefId(def_id)),
+                substs.lower_into(interner),
+            ),
             FnPtr(sig) => {
                 let (inputs_and_outputs, binders, _named_regions) =
                     collect_bound_vars(interner, interner.tcx, &sig.inputs_and_output());
@@ -346,22 +410,32 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                     substitution: chalk_ir::Substitution::from(
                         interner,
                         inputs_and_outputs.iter().map(|ty| {
-                            chalk_ir::ParameterKind::Ty(ty.lower_into(interner)).intern(interner)
+                            chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner)
                         }),
                     ),
                 })
                 .intern(interner)
             }
-            Dynamic(_, _) => unimplemented!(),
+            // FIXME(chalk): add region
+            Dynamic(predicates, _region) => {
+                TyData::Dyn(chalk_ir::DynTy { bounds: predicates.lower_into(interner) })
+                    .intern(interner)
+            }
             Closure(_def_id, _) => unimplemented!(),
             Generator(_def_id, _substs, _) => unimplemented!(),
             GeneratorWitness(_) => unimplemented!(),
-            Never => apply(struct_ty(RustDefId::Never), empty()),
+            Never => apply(chalk_ir::TypeName::Never, empty()),
             Tuple(substs) => {
                 apply(chalk_ir::TypeName::Tuple(substs.len()), substs.lower_into(interner))
             }
             Projection(proj) => TyData::Alias(proj.lower_into(interner)).intern(interner),
-            Opaque(_def_id, _substs) => unimplemented!(),
+            Opaque(def_id, substs) => {
+                TyData::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
+                    opaque_ty_id: chalk_ir::OpaqueTyId(def_id),
+                    substitution: substs.lower_into(interner),
+                }))
+                .intern(interner)
+            }
             // This should have been done eagerly prior to this, and all Params
             // should have been substituted to placeholders
             Param(_) => panic!("Lowering Param when not expected."),
@@ -376,7 +450,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             })
             .intern(interner),
             Infer(_infer) => unimplemented!(),
-            Error(_) => unimplemented!(),
+            Error(_) => apply(chalk_ir::TypeName::Error, empty()),
         }
     }
 }
@@ -401,6 +475,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
                 ty::BrEnv => unimplemented!(),
             },
             ReFree(_) => unimplemented!(),
+            // FIXME(chalk): need to handle ReStatic
             ReStatic => unimplemented!(),
             ReVar(_) => unimplemented!(),
             RePlaceholder(placeholder_region) => {
@@ -411,21 +486,22 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
                 .intern(interner)
             }
             ReEmpty(_) => unimplemented!(),
+            // FIXME(chalk): need to handle ReErased
             ReErased => unimplemented!(),
         }
     }
 }
 
-impl<'tcx> LowerInto<'tcx, chalk_ir::Parameter<RustInterner<'tcx>>> for GenericArg<'tcx> {
-    fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::Parameter<RustInterner<'tcx>> {
+impl<'tcx> LowerInto<'tcx, chalk_ir::GenericArg<RustInterner<'tcx>>> for GenericArg<'tcx> {
+    fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::GenericArg<RustInterner<'tcx>> {
         match self.unpack() {
             ty::subst::GenericArgKind::Type(ty) => {
-                chalk_ir::ParameterKind::Ty(ty.lower_into(interner))
+                chalk_ir::GenericArgData::Ty(ty.lower_into(interner))
             }
             ty::subst::GenericArgKind::Lifetime(lifetime) => {
-                chalk_ir::ParameterKind::Lifetime(lifetime.lower_into(interner))
+                chalk_ir::GenericArgData::Lifetime(lifetime.lower_into(interner))
             }
-            ty::subst::GenericArgKind::Const(_) => chalk_ir::ParameterKind::Ty(
+            ty::subst::GenericArgKind::Const(_) => chalk_ir::GenericArgData::Ty(
                 chalk_ir::TyData::Apply(chalk_ir::ApplicationTy {
                     name: chalk_ir::TypeName::Tuple(0),
                     substitution: chalk_ir::Substitution::empty(interner),
@@ -458,7 +534,18 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
                     chalk_ir::WhereClause::Implemented(predicate.trait_ref.lower_into(interner)),
                 ))
             }
-            ty::PredicateKind::RegionOutlives(_predicate) => None,
+            ty::PredicateKind::RegionOutlives(predicate) => {
+                let (predicate, binders, _named_regions) =
+                    collect_bound_vars(interner, interner.tcx, predicate);
+
+                Some(chalk_ir::Binders::new(
+                    binders,
+                    chalk_ir::WhereClause::LifetimeOutlives(chalk_ir::LifetimeOutlives {
+                        a: predicate.0.lower_into(interner),
+                        b: predicate.1.lower_into(interner),
+                    }),
+                ))
+            }
             ty::PredicateKind::TypeOutlives(_predicate) => None,
             ty::PredicateKind::Projection(_predicate) => None,
             ty::PredicateKind::WellFormed(_ty) => None,
@@ -469,6 +556,39 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..) => bug!("unexpected predicate {}", &self),
         }
+    }
+}
+
+impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<RustInterner<'tcx>>>>
+    for Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>
+{
+    fn lower_into(
+        self,
+        interner: &RustInterner<'tcx>,
+    ) -> chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<RustInterner<'tcx>>> {
+        let (predicates, binders, _named_regions) =
+            collect_bound_vars(interner, interner.tcx, &self);
+        let where_clauses = predicates.into_iter().map(|predicate| match predicate {
+            ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef { def_id, substs }) => {
+                chalk_ir::Binders::new(
+                    chalk_ir::VariableKinds::new(interner),
+                    chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
+                        trait_id: chalk_ir::TraitId(def_id),
+                        substitution: substs.lower_into(interner),
+                    }),
+                )
+            }
+            ty::ExistentialPredicate::Projection(_predicate) => unimplemented!(),
+            ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
+                chalk_ir::VariableKinds::new(interner),
+                chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
+                    trait_id: chalk_ir::TraitId(def_id),
+                    substitution: chalk_ir::Substitution::empty(interner),
+                }),
+            ),
+        });
+        let value = chalk_ir::QuantifiedWhereClauses::from(interner, where_clauses);
+        chalk_ir::Binders::new(binders, value)
     }
 }
 
@@ -485,7 +605,7 @@ crate fn collect_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>>(
     interner: &RustInterner<'tcx>,
     tcx: TyCtxt<'tcx>,
     ty: &'a Binder<T>,
-) -> (T, chalk_ir::ParameterKinds<RustInterner<'tcx>>, BTreeMap<DefId, u32>) {
+) -> (T, chalk_ir::VariableKinds<RustInterner<'tcx>>, BTreeMap<DefId, u32>) {
     let mut bound_vars_collector = BoundVarsCollector::new();
     ty.skip_binder().visit_with(&mut bound_vars_collector);
     let mut parameters = bound_vars_collector.parameters;
@@ -500,25 +620,25 @@ crate fn collect_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>>(
     let new_ty = ty.skip_binder().fold_with(&mut bound_var_substitutor);
 
     for var in named_parameters.values() {
-        parameters.insert(*var, chalk_ir::ParameterKind::Lifetime(()));
+        parameters.insert(*var, chalk_ir::VariableKind::Lifetime);
     }
 
     (0..parameters.len()).for_each(|i| {
         parameters.get(&(i as u32)).expect("Skipped bound var index.");
     });
 
-    let binders = chalk_ir::ParameterKinds::from(interner, parameters.into_iter().map(|(_, v)| v));
+    let binders = chalk_ir::VariableKinds::from(interner, parameters.into_iter().map(|(_, v)| v));
 
     (new_ty, binders, named_parameters)
 }
 
-crate struct BoundVarsCollector {
+crate struct BoundVarsCollector<'tcx> {
     binder_index: ty::DebruijnIndex,
-    crate parameters: BTreeMap<u32, chalk_ir::ParameterKind<()>>,
+    crate parameters: BTreeMap<u32, chalk_ir::VariableKind<RustInterner<'tcx>>>,
     crate named_parameters: Vec<DefId>,
 }
 
-impl BoundVarsCollector {
+impl<'tcx> BoundVarsCollector<'tcx> {
     crate fn new() -> Self {
         BoundVarsCollector {
             binder_index: ty::INNERMOST,
@@ -528,7 +648,7 @@ impl BoundVarsCollector {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector {
+impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
         self.binder_index.shift_in(1);
         let result = t.super_visit_with(self);
@@ -541,11 +661,12 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 match self.parameters.entry(bound_ty.var.as_u32()) {
                     Entry::Vacant(entry) => {
-                        entry.insert(chalk_ir::ParameterKind::Ty(()));
+                        entry.insert(chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General));
                     }
-                    Entry::Occupied(entry) => {
-                        entry.get().assert_ty_ref();
-                    }
+                    Entry::Occupied(entry) => match entry.get() {
+                        chalk_ir::VariableKind::Ty(_) => {}
+                        _ => panic!(),
+                    },
                 }
             }
 
@@ -566,11 +687,12 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector {
 
                 ty::BoundRegion::BrAnon(var) => match self.parameters.entry(*var) {
                     Entry::Vacant(entry) => {
-                        entry.insert(chalk_ir::ParameterKind::Lifetime(()));
+                        entry.insert(chalk_ir::VariableKind::Lifetime);
                     }
-                    Entry::Occupied(entry) => {
-                        entry.get().assert_lifetime_ref();
-                    }
+                    Entry::Occupied(entry) => match entry.get() {
+                        chalk_ir::VariableKind::Lifetime => {}
+                        _ => panic!(),
+                    },
                 },
 
                 ty::BrEnv => unimplemented!(),

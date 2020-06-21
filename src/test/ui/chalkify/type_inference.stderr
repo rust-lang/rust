@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `f64: Foo` is not satisfied
-  --> $DIR/type_inference.rs:22:5
+error[E0277]: the trait bound `f64: Bar` is not satisfied
+  --> $DIR/type_inference.rs:27:5
    |
-LL | fn only_foo<T: Foo>(_x: T) { }
-   |                --- required by this bound in `only_foo`
+LL | fn only_bar<T: Bar>(_x: T) { }
+   |                --- required by this bound in `only_bar`
 ...
-LL |     only_foo(x);
-   |     ^^^^^^^^ the trait `Foo` is not implemented for `f64`
+LL |     only_bar(x);
+   |     ^^^^^^^^ the trait `Bar` is not implemented for `f64`
 
 error: aborting due to previous error
 
