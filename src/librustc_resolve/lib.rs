@@ -982,6 +982,8 @@ pub struct Resolver<'a> {
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
     /// we know what parent node that fragment should be attached to thanks to this table.
     invocation_parents: FxHashMap<ExpnId, LocalDefId>,
+
+    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1142,7 +1144,16 @@ impl ResolverAstLowering for Resolver<'_> {
             self.definitions.def_key(self.node_id_to_def_id[&node_id]),
         );
 
-        let def_id = self.definitions.create_def(parent, data, expn_id);
+        // Find the next free disambiguator for this key.
+        let next_disambiguator = &mut self.next_disambiguator;
+        let next_disambiguator = |parent, data| {
+            let next_disamb = next_disambiguator.entry((parent, data)).or_insert(0);
+            let disambiguator = *next_disamb;
+            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+            disambiguator
+        };
+
+        let def_id = self.definitions.create_def(parent, data, expn_id, next_disambiguator);
 
         assert_eq!(self.def_id_to_span.push(span), def_id);
 
@@ -1322,6 +1333,7 @@ impl<'a> Resolver<'a> {
             def_id_to_node_id,
             placeholder_field_indices: Default::default(),
             invocation_parents,
+            next_disambiguator: Default::default(),
         }
     }
 

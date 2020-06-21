@@ -87,7 +87,6 @@ pub struct Definitions {
     parent_modules_of_macro_defs: FxHashMap<ExpnId, DefId>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expansions_that_defined: FxHashMap<LocalDefId, ExpnId>,
-    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -350,7 +349,6 @@ impl Definitions {
             def_id_to_hir_id: Default::default(),
             hir_id_to_def_id: Default::default(),
             expansions_that_defined: Default::default(),
-            next_disambiguator: Default::default(),
             parent_modules_of_macro_defs: Default::default(),
         }
     }
@@ -366,20 +364,14 @@ impl Definitions {
         parent: LocalDefId,
         data: DefPathData,
         expn_id: ExpnId,
+        mut next_disambiguator: impl FnMut(LocalDefId, DefPathData) -> u32,
     ) -> LocalDefId {
         debug!("create_def(parent={:?}, data={:?}, expn_id={:?})", parent, data, expn_id);
 
         // The root node must be created with `create_root_def()`.
         assert!(data != DefPathData::CrateRoot);
 
-        // Find the next free disambiguator for this key.
-        let disambiguator = {
-            let next_disamb = self.next_disambiguator.entry((parent, data)).or_insert(0);
-            let disambiguator = *next_disamb;
-            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
-            disambiguator
-        };
-
+        let disambiguator = next_disambiguator(parent, data);
         let key = DefKey {
             parent: Some(parent.local_def_index),
             disambiguated_data: DisambiguatedDefPathData { data, disambiguator },
