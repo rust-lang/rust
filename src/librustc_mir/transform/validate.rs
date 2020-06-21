@@ -100,22 +100,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
 
-        // Type-changing assignments can happen for (at least) two reasons:
-        // 1. `&mut T` -> `&T` gets optimized from a reborrow to a mere assignment.
-        // 2. Subtyping is used. While all normal lifetimes are erased, higher-ranked types
-        //    with their late-bound lifetimes are still around and can lead to type differences.
-        // Normalize both of them away.
-        // Also see the related but slightly different post-monomorphization method in `interpret/eval_context.rs`.
+        // Type-changing assignments can happen when subtyping is used. While
+        // all normal lifetimes are erased, higher-ranked types with their
+        // late-bound lifetimes are still around and can lead to type
+        // differences. Normalize both of them away.
+        // Also see the related but slightly different post-monomorphization
+        // method in `interpret/eval_context.rs`.
         let normalize = |ty: Ty<'tcx>| {
             ty.fold_with(&mut BottomUpFolder {
                 tcx: self.tcx,
-                // Normalize all references to immutable.
-                ty_op: |ty| match ty.kind {
-                    ty::Ref(_, pointee, _) => {
-                        self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, pointee)
-                    }
-                    _ => ty,
-                },
+                ty_op: |ty| ty,
                 // We just erase all late-bound lifetimes, but this is not fully correct (FIXME):
                 // lifetimes in invariant positions could matter (e.g. through associated types).
                 // But that just means we miss some potential incompatible types, it will not
