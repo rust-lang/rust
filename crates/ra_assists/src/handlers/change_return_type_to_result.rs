@@ -4,6 +4,7 @@ use ra_syntax::{
 };
 
 use crate::{AssistContext, AssistId, Assists};
+use test_utils::mark;
 
 // Assist: change_return_type_to_result
 //
@@ -26,6 +27,7 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
     let first_part_ret_type = ret_type_str.splitn(2, '<').next();
     if let Some(ret_type_first_part) = first_part_ret_type {
         if ret_type_first_part.ends_with("Result") {
+            mark::hit!(change_return_type_to_result_simple_return_type_already_result);
             return None;
         }
     }
@@ -313,6 +315,7 @@ mod tests {
 
     #[test]
     fn change_return_type_to_result_simple_return_type_already_result() {
+        mark::check!(change_return_type_to_result_simple_return_type_already_result);
         check_assist_not_applicable(
             change_return_type_to_result,
             r#"fn foo() -> Result<i32<|>, String> {
