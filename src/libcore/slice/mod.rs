@@ -2676,11 +2676,11 @@ impl<T> [T] {
     /// #![feature(partition_point)]
     ///
     /// let v = [1, 2, 3, 3, 5, 6, 7];
-    /// let i = xs.partition_point(|&x| x < 5);
+    /// let i = v.partition_point(|&x| x < 5);
     ///
     /// assert_eq!(i, 4);
-    /// assert!(xs[..i].iter().all(|&x| x < 5));
-    /// assert!(xs[i..].iter().all(|&x| !(x < 5)));
+    /// assert!(v[..i].iter().all(|&x| x < 5));
+    /// assert!(v[i..].iter().all(|&x| !(x < 5)));
     /// ```
     #[unstable(feature = "partition_point", reason = "new API", issue = "99999")]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
