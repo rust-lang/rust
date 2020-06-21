@@ -22,7 +22,7 @@ error: byte constant must be ASCII. Use a \xHH escape for a non-ASCII byte
 LL |     b"é";
    |       ^
 
-error: unterminated double quote byte string
+error[E0766]: unterminated double quote byte string
   --> $DIR/byte-string-literals.rs:7:6
    |
 LL |       b"a
@@ -32,3 +32,4 @@ LL | | }
 
 error: aborting due to 5 previous errors
 
+For more information about this error, try `rustc --explain E0766`.
