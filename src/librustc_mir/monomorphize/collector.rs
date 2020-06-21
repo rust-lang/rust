@@ -79,7 +79,7 @@
 //! function or method call (represented by a CALL terminator in MIR). But
 //! calls are not the only thing that might introduce a reference between two
 //! function mono items, and as we will see below, they are just a
-//! specialized of the form described next, and consequently will not get any
+//! specialization of the form described next, and consequently will not get any
 //! special treatment in the algorithm.
 //!
 //! #### Taking a reference to a function or method
