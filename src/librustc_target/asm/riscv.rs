@@ -1,4 +1,5 @@
 use super::{InlineAsmArch, InlineAsmType};
+use crate::spec::Target;
 use rustc_macros::HashStable_Generic;
 use std::fmt;
 
@@ -50,6 +51,7 @@ impl RiscVInlineAsmRegClass {
 fn not_e(
     _arch: InlineAsmArch,
     mut has_feature: impl FnMut(&str) -> bool,
+    _target: &Target,
     _allocating: bool,
 ) -> Result<(), &'static str> {
     if has_feature("e") {
