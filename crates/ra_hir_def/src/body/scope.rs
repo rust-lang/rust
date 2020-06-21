@@ -87,15 +87,13 @@ impl ExprScopes {
     }
 
     fn add_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
-        match &body[pat] {
-            Pat::Bind { name, .. } => {
-                // bind can have a sub pattern, but it's actually not allowed
-                // to bind to things in there
-                let entry = ScopeEntry { name: name.clone(), pat };
-                self.scopes[scope].entries.push(entry)
-            }
-            p => p.walk_child_pats(|pat| self.add_bindings(body, scope, pat)),
+        let pattern = &body[pat];
+        if let Pat::Bind { name, .. } = pattern {
+            let entry = ScopeEntry { name: name.clone(), pat };
+            self.scopes[scope].entries.push(entry);
         }
+
+        pattern.walk_child_pats(|pat| self.add_bindings(body, scope, pat));
     }
 
     fn add_params_bindings(&mut self, body: &Body, scope: ScopeId, params: &[PatId]) {
@@ -190,8 +188,8 @@ mod tests {
         }
     }
 
-    fn do_check(code: &str, expected: &[&str]) {
-        let (off, code) = extract_offset(code);
+    fn do_check(ra_fixture: &str, expected: &[&str]) {
+        let (off, code) = extract_offset(ra_fixture);
         let code = {
             let mut buf = String::new();
             let off: usize = off.into();
@@ -297,6 +295,22 @@ mod tests {
                 let x : &str = &x<|>;
             }",
             &["x"],
+        );
+    }
+
+    #[test]
+    fn test_bindings_after_at() {
+        do_check(
+            r"
+            fn foo() {
+                match Some(()) {
+                    opt @ Some(unit) => {
+                        <|>
+                    }
+                    _ => {}
+                }
+            }",
+            &["opt", "unit"],
         );
     }
 
