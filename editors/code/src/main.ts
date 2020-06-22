@@ -43,12 +43,16 @@ export async function activate(context: vscode.ExtensionContext) {
     const config = new Config(context);
     const state = new PersistentState(context.globalState);
     const serverPath = await bootstrap(config, state).catch(err => {
-        let message = "Failed to bootstrap rust-analyzer.";
+        let message = "bootstrap error. ";
+
         if (err.code === "EBUSY" || err.code === "ETXTBSY") {
-            message += " Other vscode windows might be using rust-analyzer, " +
-                "you should close them and reload this window to retry.";
+            message += "Other vscode windows might be using rust-analyzer, ";
+            message += "you should close them and reload this window to retry. ";
         }
-        message += " Open \"Help > Toggle Developer Tools > Console\" to see the logs";
+
+        message += 'Open "Help > Toggle Developer Tools > Console" to see the logs ';
+        message += '(enable verbose logs with "rust-analyzer.trace.extension")';
+
         log.error("Bootstrap error", err);
         throw new Error(message);
     });
