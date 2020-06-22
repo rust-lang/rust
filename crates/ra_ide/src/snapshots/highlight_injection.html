@@ -5,7 +5,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .lifetime           { color: #DFAF8F; font-style: italic; }
 .comment            { color: #7F9F7F; }
-.documentation      { color: #00CC00; }
+.documentation      { color: #629755; }
 .injected           { opacity: 0.65 ; }
 .struct, .enum      { color: #7CB8BB; }
 .enum_variant       { color: #BDE0F3; }
@@ -34,14 +34,14 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .control            { font-style: italic; }
 </style>
-<pre><code><span class="keyword">fn</span> <span class="function declaration">fixture</span>(<span class="variable declaration">ra_fixture</span>: &<span class="builtin_type">str</span>) {}
+<pre><code><span class="keyword">fn</span> <span class="function declaration">fixture</span><span class="punctuation">(</span><span class="variable declaration">ra_fixture</span><span class="punctuation">:</span> <span class="punctuation">&</span><span class="builtin_type">str</span><span class="punctuation">)</span> <span class="punctuation">{</span><span class="punctuation">}</span>
 
-<span class="keyword">fn</span> <span class="function declaration">main</span>() {
-    <span class="function">fixture</span>(<span class="string_literal">r#"</span>
-        <span class="keyword">trait</span> <span class="trait declaration">Foo</span> {
-            <span class="keyword">fn</span> <span class="function declaration">foo</span>() {
-                <span class="macro">println!</span>(<span class="string_literal">"2 + 2 = {}"</span>, <span class="numeric_literal">4</span>);
-            }
-        }<span class="string_literal">"#</span>
-    );
-}</code></pre>
+<span class="keyword">fn</span> <span class="function declaration">main</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="punctuation">{</span>
+    <span class="function">fixture</span><span class="punctuation">(</span><span class="string_literal">r#"</span>
+        <span class="keyword">trait</span> <span class="trait declaration">Foo</span> <span class="punctuation">{</span>
+            <span class="keyword">fn</span> <span class="function declaration">foo</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="punctuation">{</span>
+                <span class="macro">println!</span><span class="punctuation">(</span><span class="string_literal">"2 + 2 = {}"</span><span class="punctuation">,</span> <span class="numeric_literal">4</span><span class="punctuation">)</span><span class="punctuation">;</span>
+            <span class="punctuation">}</span>
+        <span class="punctuation">}</span><span class="string_literal">"#</span>
+    <span class="punctuation">)</span><span class="punctuation">;</span>
+<span class="punctuation">}</span></code></pre>

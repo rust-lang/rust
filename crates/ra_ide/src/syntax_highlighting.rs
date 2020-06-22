@@ -45,7 +45,7 @@ pub(crate) fn highlight(
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
     syntactic_name_ref_highlighting: bool,
-    default_tag: Option<HighlightTag>,
+    should_highlight_punctuation: bool,
 ) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
     let sema = Semantics::new(db);
@@ -108,7 +108,7 @@ pub(crate) fn highlight(
                         &mut bindings_shadow_count,
                         syntactic_name_ref_highlighting,
                         name.syntax().clone().into(),
-                        default_tag,
+                        should_highlight_punctuation,
                     ) {
                         stack.add(HighlightedRange {
                             range: name.syntax().text_range(),
@@ -208,7 +208,7 @@ pub(crate) fn highlight(
             &mut bindings_shadow_count,
             syntactic_name_ref_highlighting,
             element_to_highlight.clone(),
-            default_tag,
+            true,
         ) {
             stack.add(HighlightedRange { range, highlight, binding_hash });
             if let Some(string) =
@@ -331,12 +331,12 @@ impl HighlightedRangeStack {
     /// can only modify the last range currently on the stack.
     /// Can be used to do injections that span multiple ranges, like the
     /// doctest injection below.
-    /// If `delete` is set to true, the parent range is deleted instead of
+    /// If `inject` is set to true, the parent range is deleted instead of
     /// intersected.
     ///
     /// Note that `pop` can be simulated by `pop_and_inject(false)` but the
     /// latter is computationally more expensive.
-    fn pop_and_inject(&mut self, delete: bool) {
+    fn pop_and_inject(&mut self, inject: bool) {
         let mut children = self.stack.pop().unwrap();
         let prev = self.stack.last_mut().unwrap();
         children.sort_by_key(|range| range.range.start());
@@ -347,14 +347,14 @@ impl HighlightedRangeStack {
                 prev.iter().position(|parent| parent.range.contains_range(child.range))
             {
                 let cloned = Self::intersect(&mut prev[idx], &child);
-                let insert_idx = if delete || prev[idx].range.is_empty() {
+                let insert_idx = if inject || prev[idx].range.is_empty() {
                     prev.remove(idx);
                     idx
                 } else {
                     idx + 1
                 };
                 prev.insert(insert_idx, child);
-                if !delete && !cloned.range.is_empty() {
+                if !inject && !cloned.range.is_empty() {
                     prev.insert(insert_idx + 1, cloned);
                 }
             } else if let Some(_idx) =
@@ -433,14 +433,14 @@ fn highlight_element(
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
     syntactic_name_ref_highlighting: bool,
     element: SyntaxElement,
-    default_tag: Option<HighlightTag>,
+    should_highlight_punctuation: bool,
 ) -> Option<(Highlight, Option<u64>)> {
     let db = sema.db;
     let mut binding_hash = None;
     let highlight: Highlight = match element.kind() {
         FN_DEF => {
             bindings_shadow_count.clear();
-            default_tag?.into()
+            return None;
         }
 
         // Highlight definitions depending on the "type" of the definition.
@@ -518,10 +518,10 @@ fn highlight_element(
 
             let expr = prefix_expr.expr()?;
             let ty = sema.type_of_expr(&expr)?;
+            let mut h = HighlightTag::Operator.into();
             if !ty.is_raw_ptr() {
-                default_tag?.into()
+                h
             } else {
-                let mut h = Highlight::new(HighlightTag::Operator);
                 h |= HighlightModifier::Unsafe;
                 h
             }
@@ -550,7 +550,8 @@ fn highlight_element(
             }
         }
 
-        _ => default_tag?.into(),
+        p if should_highlight_punctuation && p.is_punct() => HighlightTag::Punctuation.into(),
+        _ => return None,
     };
 
     return Some((highlight, binding_hash));

@@ -19,7 +19,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         )
     }
 
-    let ranges = highlight(db, file_id, None, false, None);
+    let ranges = highlight(db, file_id, None, false, false);
     let text = parse.tree().syntax().to_string();
     let mut prev_pos = TextSize::from(0);
     let mut buf = String::new();
@@ -64,7 +64,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .lifetime           { color: #DFAF8F; font-style: italic; }
 .comment            { color: #7F9F7F; }
-.documentation      { color: #00CC00; }
+.documentation      { color: #629755; }
 .injected           { opacity: 0.65 ; }
 .struct, .enum      { color: #7CB8BB; }
 .enum_variant       { color: #BDE0F3; }

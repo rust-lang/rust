@@ -39,13 +39,14 @@ define_semantic_token_types![
     (BOOLEAN, "boolean"),
     (BUILTIN_TYPE, "builtinType"),
     (ENUM_MEMBER, "enumMember"),
+    (ESCAPE_SEQUENCE, "escapeSequence"),
+    (FORMAT_SPECIFIER, "formatSpecifier"),
     (LIFETIME, "lifetime"),
+    (PUNCTUATION, "punctuation"),
     (SELF_KEYWORD, "selfKeyword"),
     (TYPE_ALIAS, "typeAlias"),
     (UNION, "union"),
     (UNRESOLVED_REFERENCE, "unresolvedReference"),
-    (FORMAT_SPECIFIER, "formatSpecifier"),
-    (ESCAPE_SEQUENCE, "escapeSequence"),
 ];
 
 macro_rules! define_semantic_token_modifiers {

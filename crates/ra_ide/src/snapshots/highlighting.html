@@ -5,7 +5,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .lifetime           { color: #DFAF8F; font-style: italic; }
 .comment            { color: #7F9F7F; }
-.documentation      { color: #00CC00; }
+.documentation      { color: #629755; }
 .injected           { opacity: 0.65 ; }
 .struct, .enum      { color: #7CB8BB; }
 .enum_variant       { color: #BDE0F3; }
@@ -34,84 +34,84 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .control            { font-style: italic; }
 </style>
-<pre><code><span class="attribute">#[</span><span class="function attribute">derive</span><span class="attribute">(Clone, Debug)]</span>
-<span class="keyword">struct</span> <span class="struct declaration">Foo</span> {
-    <span class="keyword">pub</span> <span class="field declaration">x</span>: <span class="builtin_type">i32</span>,
-    <span class="keyword">pub</span> <span class="field declaration">y</span>: <span class="builtin_type">i32</span>,
-}
+<pre><code><span class="punctuation">#</span><span class="punctuation">[</span><span class="function attribute">derive</span><span class="punctuation">(</span><span class="attribute">Clone</span><span class="punctuation">,</span><span class="attribute"> Debug</span><span class="punctuation">)</span><span class="punctuation">]</span>
+<span class="keyword">struct</span> <span class="struct declaration">Foo</span> <span class="punctuation">{</span>
+    <span class="keyword">pub</span> <span class="field declaration">x</span><span class="punctuation">:</span> <span class="builtin_type">i32</span><span class="punctuation">,</span>
+    <span class="keyword">pub</span> <span class="field declaration">y</span><span class="punctuation">:</span> <span class="builtin_type">i32</span><span class="punctuation">,</span>
+<span class="punctuation">}</span>
 
-<span class="keyword">trait</span> <span class="trait declaration">Bar</span> {
-    <span class="keyword">fn</span> <span class="function declaration">bar</span>(&<span class="self_keyword">self</span>) -&gt; <span class="builtin_type">i32</span>;
-}
+<span class="keyword">trait</span> <span class="trait declaration">Bar</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration">bar</span><span class="punctuation">(</span><span class="punctuation">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="punctuation">-&gt;</span> <span class="builtin_type">i32</span><span class="punctuation">;</span>
+<span class="punctuation">}</span>
 
-<span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> {
-    <span class="keyword">fn</span> <span class="function declaration">bar</span>(&<span class="self_keyword">self</span>) -&gt; <span class="builtin_type">i32</span> {
-        <span class="self_keyword">self</span>.<span class="field">x</span>
-    }
-}
+<span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration">bar</span><span class="punctuation">(</span><span class="punctuation">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="punctuation">-&gt;</span> <span class="builtin_type">i32</span> <span class="punctuation">{</span>
+        <span class="self_keyword">self</span><span class="punctuation">.</span><span class="field">x</span>
+    <span class="punctuation">}</span>
+<span class="punctuation">}</span>
 
-<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable">STATIC_MUT</span>: <span class="builtin_type">i32</span> = <span class="numeric_literal">0</span>;
+<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable">STATIC_MUT</span><span class="punctuation">:</span> <span class="builtin_type">i32</span> <span class="punctuation">=</span> <span class="numeric_literal">0</span><span class="punctuation">;</span>
 
-<span class="keyword">fn</span> <span class="function declaration">foo</span>&lt;<span class="lifetime declaration">'a</span>, <span class="type_param declaration">T</span>&gt;() -&gt; <span class="type_param">T</span> {
-    <span class="function">foo</span>::&lt;<span class="lifetime">'a</span>, <span class="builtin_type">i32</span>&gt;()
-}
+<span class="keyword">fn</span> <span class="function declaration">foo</span><span class="punctuation">&lt;</span><span class="lifetime declaration">'a</span><span class="punctuation">,</span> <span class="type_param declaration">T</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="punctuation">-&gt;</span> <span class="type_param">T</span> <span class="punctuation">{</span>
+    <span class="function">foo</span><span class="punctuation">::</span><span class="punctuation">&lt;</span><span class="lifetime">'a</span><span class="punctuation">,</span> <span class="builtin_type">i32</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="punctuation">)</span>
+<span class="punctuation">}</span>
 
-<span class="macro">macro_rules!</span> <span class="macro declaration">def_fn</span> {
-    ($($tt:tt)*) =&gt; {$($tt)*}
-}
+<span class="macro">macro_rules!</span> <span class="macro declaration">def_fn</span> <span class="punctuation">{</span>
+    <span class="punctuation">(</span><span class="punctuation">$</span><span class="punctuation">(</span><span class="punctuation">$</span>tt<span class="punctuation">:</span>tt<span class="punctuation">)</span>*<span class="punctuation">)</span> <span class="punctuation">=</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span><span class="punctuation">$</span><span class="punctuation">(</span><span class="punctuation">$</span>tt<span class="punctuation">)</span>*<span class="punctuation">}</span>
+<span class="punctuation">}</span>
 
-<span class="macro">def_fn!</span> {
-    <span class="keyword">fn</span> <span class="function declaration">bar</span>() -&gt; <span class="builtin_type">u32</span> {
+<span class="macro">def_fn!</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration">bar</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="punctuation">-</span><span class="punctuation">&gt;</span> <span class="builtin_type">u32</span> <span class="punctuation">{</span>
         <span class="numeric_literal">100</span>
-    }
-}
+    <span class="punctuation">}</span>
+<span class="punctuation">}</span>
 
-<span class="macro">macro_rules!</span> <span class="macro declaration">noop</span> {
-    ($expr:expr) =&gt; {
-        $expr
-    }
-}
+<span class="macro">macro_rules!</span> <span class="macro declaration">noop</span> <span class="punctuation">{</span>
+    <span class="punctuation">(</span><span class="punctuation">$</span>expr<span class="punctuation">:</span>expr<span class="punctuation">)</span> <span class="punctuation">=</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
+        <span class="punctuation">$</span>expr
+    <span class="punctuation">}</span>
+<span class="punctuation">}</span>
 
 <span class="comment">// comment</span>
-<span class="keyword">fn</span> <span class="function declaration">main</span>() {
-    <span class="macro">println!</span>(<span class="string_literal">"Hello, {}!"</span>, <span class="numeric_literal">92</span>);
+<span class="keyword">fn</span> <span class="function declaration">main</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="punctuation">{</span>
+    <span class="macro">println!</span><span class="punctuation">(</span><span class="string_literal">"Hello, {}!"</span><span class="punctuation">,</span> <span class="numeric_literal">92</span><span class="punctuation">)</span><span class="punctuation">;</span>
 
-    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">vec</span> = <span class="unresolved_reference">Vec</span>::<span class="unresolved_reference">new</span>();
-    <span class="keyword control">if</span> <span class="bool_literal">true</span> {
-        <span class="keyword">let</span> <span class="variable declaration">x</span> = <span class="numeric_literal">92</span>;
-        <span class="variable mutable">vec</span>.<span class="unresolved_reference">push</span>(<span class="struct">Foo</span> { <span class="field">x</span>, <span class="field">y</span>: <span class="numeric_literal">1</span> });
-    }
-    <span class="keyword unsafe">unsafe</span> {
-        <span class="variable mutable">vec</span>.<span class="unresolved_reference">set_len</span>(<span class="numeric_literal">0</span>);
-        <span class="static mutable">STATIC_MUT</span> = <span class="numeric_literal">1</span>;
-    }
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">vec</span> <span class="punctuation">=</span> <span class="unresolved_reference">Vec</span><span class="punctuation">::</span><span class="unresolved_reference">new</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="keyword control">if</span> <span class="bool_literal">true</span> <span class="punctuation">{</span>
+        <span class="keyword">let</span> <span class="variable declaration">x</span> <span class="punctuation">=</span> <span class="numeric_literal">92</span><span class="punctuation">;</span>
+        <span class="variable mutable">vec</span><span class="punctuation">.</span><span class="unresolved_reference">push</span><span class="punctuation">(</span><span class="struct">Foo</span> <span class="punctuation">{</span> <span class="field">x</span><span class="punctuation">,</span> <span class="field">y</span><span class="punctuation">:</span> <span class="numeric_literal">1</span> <span class="punctuation">}</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="punctuation">}</span>
+    <span class="keyword unsafe">unsafe</span> <span class="punctuation">{</span>
+        <span class="variable mutable">vec</span><span class="punctuation">.</span><span class="unresolved_reference">set_len</span><span class="punctuation">(</span><span class="numeric_literal">0</span><span class="punctuation">)</span><span class="punctuation">;</span>
+        <span class="static mutable">STATIC_MUT</span> <span class="punctuation">=</span> <span class="numeric_literal">1</span><span class="punctuation">;</span>
+    <span class="punctuation">}</span>
 
-    <span class="keyword control">for</span> <span class="variable declaration">e</span> <span class="keyword control">in</span> <span class="variable mutable">vec</span> {
+    <span class="keyword control">for</span> <span class="variable declaration">e</span> <span class="keyword control">in</span> <span class="variable mutable">vec</span> <span class="punctuation">{</span>
         <span class="comment">// Do nothing</span>
-    }
+    <span class="punctuation">}</span>
 
-    <span class="macro">noop!</span>(<span class="macro">noop</span><span class="macro">!</span>(<span class="numeric_literal">1</span>));
+    <span class="macro">noop!</span><span class="punctuation">(</span><span class="macro">noop</span><span class="macro">!</span><span class="punctuation">(</span><span class="numeric_literal">1</span><span class="punctuation">)</span><span class="punctuation">)</span><span class="punctuation">;</span>
 
-    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">x</span> = <span class="numeric_literal">42</span>;
-    <span class="keyword">let</span> <span class="variable declaration mutable">y</span> = &<span class="keyword">mut</span> <span class="variable mutable">x</span>;
-    <span class="keyword">let</span> <span class="variable declaration">z</span> = &<span class="variable mutable">y</span>;
+    <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">x</span> <span class="punctuation">=</span> <span class="numeric_literal">42</span><span class="punctuation">;</span>
+    <span class="keyword">let</span> <span class="variable declaration mutable">y</span> <span class="punctuation">=</span> <span class="punctuation">&</span><span class="keyword">mut</span> <span class="variable mutable">x</span><span class="punctuation">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">z</span> <span class="punctuation">=</span> <span class="punctuation">&</span><span class="variable mutable">y</span><span class="punctuation">;</span>
 
-    <span class="keyword">let</span> <span class="struct">Foo</span> { <span class="field">x</span>: <span class="variable declaration">z</span>, <span class="field">y</span> } = <span class="struct">Foo</span> { <span class="field">x</span>: <span class="variable">z</span>, <span class="field">y</span> };
+    <span class="keyword">let</span> <span class="struct">Foo</span> <span class="punctuation">{</span> <span class="field">x</span><span class="punctuation">:</span> <span class="variable declaration">z</span><span class="punctuation">,</span> <span class="field">y</span> <span class="punctuation">}</span> <span class="punctuation">=</span> <span class="struct">Foo</span> <span class="punctuation">{</span> <span class="field">x</span><span class="punctuation">:</span> <span class="variable">z</span><span class="punctuation">,</span> <span class="field">y</span> <span class="punctuation">}</span><span class="punctuation">;</span>
 
-    <span class="variable">y</span>;
-}
+    <span class="variable">y</span><span class="punctuation">;</span>
+<span class="punctuation">}</span>
 
-<span class="keyword">enum</span> <span class="enum declaration">Option</span>&lt;<span class="type_param declaration">T</span>&gt; {
-    <span class="enum_variant declaration">Some</span>(<span class="type_param">T</span>),
-    <span class="enum_variant declaration">None</span>,
-}
-<span class="keyword">use</span> <span class="enum">Option</span>::*;
+<span class="keyword">enum</span> <span class="enum declaration">Option</span><span class="punctuation">&lt;</span><span class="type_param declaration">T</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
+    <span class="enum_variant declaration">Some</span><span class="punctuation">(</span><span class="type_param">T</span><span class="punctuation">)</span><span class="punctuation">,</span>
+    <span class="enum_variant declaration">None</span><span class="punctuation">,</span>
+<span class="punctuation">}</span>
+<span class="keyword">use</span> <span class="enum">Option</span><span class="punctuation">::</span>*<span class="punctuation">;</span>
 
-<span class="keyword">impl</span>&lt;<span class="type_param declaration">T</span>&gt; <span class="enum">Option</span>&lt;<span class="type_param">T</span>&gt; {
-    <span class="keyword">fn</span> <span class="function declaration">and</span>&lt;<span class="type_param declaration">U</span>&gt;(<span class="self_keyword">self</span>, <span class="variable declaration">other</span>: <span class="enum">Option</span>&lt;<span class="type_param">U</span>&gt;) -&gt; <span class="enum">Option</span>&lt;(<span class="type_param">T</span>, <span class="type_param">U</span>)&gt; {
-        <span class="keyword control">match</span> <span class="variable">other</span> {
-            <span class="enum_variant">None</span> =&gt; <span class="macro">unimplemented!</span>(),
-            <span class="variable declaration">Nope</span> =&gt; <span class="variable">Nope</span>,
-        }
-    }
-}</code></pre>
+<span class="keyword">impl</span><span class="punctuation">&lt;</span><span class="type_param declaration">T</span><span class="punctuation">&gt;</span> <span class="enum">Option</span><span class="punctuation">&lt;</span><span class="type_param">T</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration">and</span><span class="punctuation">&lt;</span><span class="type_param declaration">U</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="self_keyword">self</span><span class="punctuation">,</span> <span class="variable declaration">other</span><span class="punctuation">:</span> <span class="enum">Option</span><span class="punctuation">&lt;</span><span class="type_param">U</span><span class="punctuation">&gt;</span><span class="punctuation">)</span> <span class="punctuation">-&gt;</span> <span class="enum">Option</span><span class="punctuation">&lt;</span><span class="punctuation">(</span><span class="type_param">T</span><span class="punctuation">,</span> <span class="type_param">U</span><span class="punctuation">)</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
+        <span class="keyword control">match</span> <span class="variable">other</span> <span class="punctuation">{</span>
+            <span class="enum_variant">None</span> <span class="punctuation">=&gt;</span> <span class="macro">unimplemented!</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">,</span>
+            <span class="variable declaration">Nope</span> <span class="punctuation">=&gt;</span> <span class="variable">Nope</span><span class="punctuation">,</span>
+        <span class="punctuation">}</span>
+    <span class="punctuation">}</span>
+<span class="punctuation">}</span></code></pre>
