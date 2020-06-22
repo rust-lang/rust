@@ -26,7 +26,6 @@ export const log = new class {
     }
 
     error(message?: any, ...optionalParams: any[]): void {
-        if (!log.enabled) return;
         debugger;
         // eslint-disable-next-line no-console
         console.error(message, ...optionalParams);
