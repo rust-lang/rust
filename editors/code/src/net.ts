@@ -114,15 +114,16 @@ async function downloadFile(
 
     log.debug("Downloading file of", totalBytes, "bytes size from", url, "to", destFilePath);
 
-    let readBytes = 0;
-    res.body.on("data", (chunk: Buffer) => {
-        readBytes += chunk.length;
-        onProgress(readBytes, totalBytes);
-    });
-
     // Put the artifact into a temporary folder to prevent partially downloaded files when user kills vscode
     await withTempFile(async tempFilePath => {
         const destFileStream = fs.createWriteStream(tempFilePath, { mode });
+
+        let readBytes = 0;
+        res.body.on("data", (chunk: Buffer) => {
+            readBytes += chunk.length;
+            onProgress(readBytes, totalBytes);
+        });
+
         await pipeline(res.body, destFileStream);
         await new Promise<void>(resolve => {
             destFileStream.on("close", resolve);
