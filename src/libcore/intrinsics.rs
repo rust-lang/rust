@@ -1291,7 +1291,7 @@ extern "rust-intrinsic" {
     /// implements `Copy`.
     ///
     /// If the actual type neither requires drop glue nor implements
-    /// `Copy`, then may return `true` or `false`.
+    /// `Copy`, then the return value of this function is unspecified.
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::needs_drop`](../../std/mem/fn.needs_drop.html).
