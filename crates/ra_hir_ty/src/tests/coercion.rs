@@ -664,6 +664,8 @@ fn test() {
 fn coerce_unsize_trait_object() {
     assert_snapshot!(
         infer_with_mismatches(r#"
+#[lang = "sized"]
+pub trait Sized {}
 #[lang = "unsize"]
 pub trait Unsize<T> {}
 #[lang = "coerce_unsized"]
@@ -689,19 +691,19 @@ fn test() {
 }
 "#, true),
         @r###"
-    387..572 '{     ...bj2; }': ()
-    397..400 'obj': &dyn Baz<i8, i16>
-    422..424 '&S': &S<i8, i16>
-    423..424 'S': S<i8, i16>
-    434..437 'obj': &dyn Bar<usize, i8, i16>
-    459..462 'obj': &dyn Baz<i8, i16>
-    472..475 'obj': &dyn Foo<i8, usize>
-    494..497 'obj': &dyn Bar<usize, i8, i16>
-    507..511 'obj2': &dyn Baz<i8, i16>
-    533..535 '&S': &S<i8, i16>
-    534..535 'S': S<i8, i16>
-    545..546 '_': &dyn Foo<i8, usize>
-    565..569 'obj2': &dyn Baz<i8, i16>
+    424..609 '{     ...bj2; }': ()
+    434..437 'obj': &dyn Baz<i8, i16>
+    459..461 '&S': &S<i8, i16>
+    460..461 'S': S<i8, i16>
+    471..474 'obj': &dyn Bar<usize, i8, i16>
+    496..499 'obj': &dyn Baz<i8, i16>
+    509..512 'obj': &dyn Foo<i8, usize>
+    531..534 'obj': &dyn Bar<usize, i8, i16>
+    544..548 'obj2': &dyn Baz<i8, i16>
+    570..572 '&S': &S<i8, i16>
+    571..572 'S': S<i8, i16>
+    582..583 '_': &dyn Foo<i8, usize>
+    602..606 'obj2': &dyn Baz<i8, i16>
     "###
     );
 }
@@ -710,6 +712,8 @@ fn test() {
 fn coerce_unsize_super_trait_cycle() {
     assert_snapshot!(
         infer_with_mismatches(r#"
+#[lang = "sized"]
+pub trait Sized {}
 #[lang = "unsize"]
 pub trait Unsize<T> {}
 #[lang = "coerce_unsized"]
@@ -734,12 +738,12 @@ fn test() {
 }
 "#, true),
         @r###"
-    291..347 '{     ...obj; }': ()
-    301..304 'obj': &dyn D
-    315..317 '&S': &S
-    316..317 'S': S
-    327..330 'obj': &dyn A
-    341..344 'obj': &dyn D
+    328..384 '{     ...obj; }': ()
+    338..341 'obj': &dyn D
+    352..354 '&S': &S
+    353..354 'S': S
+    364..367 'obj': &dyn A
+    378..381 'obj': &dyn D
     "###
     );
 }

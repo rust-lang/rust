@@ -65,7 +65,10 @@ impl ToChalk for Ty {
                     &Interner,
                     predicates.iter().filter(|p| !p.is_error()).cloned().map(|p| p.to_chalk(db)),
                 );
-                let bounded_ty = chalk_ir::DynTy { bounds: make_binders(where_clauses, 1) };
+                let bounded_ty = chalk_ir::DynTy {
+                    bounds: make_binders(where_clauses, 1),
+                    lifetime: LIFETIME_PLACEHOLDER.to_lifetime(&Interner),
+                };
                 chalk_ir::TyData::Dyn(bounded_ty).intern(&Interner)
             }
             Ty::Opaque(opaque_ty) => {
@@ -317,6 +320,10 @@ impl ToChalk for TypeCtor {
 
             TypeName::Array | TypeName::Error => {
                 // this should not be reached, since we don't represent TypeName::Error with TypeCtor
+                unreachable!()
+            }
+            TypeName::Closure(_) => {
+                // FIXME: implement closure support
                 unreachable!()
             }
         }
