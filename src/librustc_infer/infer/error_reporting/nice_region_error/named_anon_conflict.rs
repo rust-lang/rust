@@ -92,9 +92,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         .next()
                         .is_some()
                 {
+                    // If the failure is due to a `'static` requirement coming from a `dyn` or
+                    // `impl` Trait that *isn't* caused by `async fn` desugaring, handle this case
+                    // better in `static_impl_trait`.
                     debug!("try_report_named_anon_conflict: impl Trait + 'static");
-                    // This is an `impl Trait` or `dyn Trait` return that evaluates de need of
-                    // `'static`. We handle this case better in `static_impl_trait`.
                     return None;
                 }
             }

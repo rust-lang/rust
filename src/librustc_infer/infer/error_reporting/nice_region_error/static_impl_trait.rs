@@ -26,7 +26,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 );
                 let anon_reg_sup = self.tcx().is_suitable_region(sup_r)?;
                 debug!("try_report_static_impl_trait: anon_reg_sup={:?}", anon_reg_sup);
-                let fn_returns = self.tcx().return_type_impl_or_dyn_trait(anon_reg_sup.def_id);
+                let fn_returns = self.tcx().return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
                 if fn_returns.is_empty() {
                     return None;
                 }
