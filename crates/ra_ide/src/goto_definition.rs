@@ -908,4 +908,84 @@ mod tests {
             "x: i32|x",
         );
     }
+
+    #[test]
+    fn goto_def_for_enum_variant_self_pattern_const() {
+        check_goto(
+            "
+            //- /lib.rs
+            enum Foo {
+                Bar,
+            }
+            impl Foo {
+                fn baz(self) {
+                    match self {
+                        Self::Bar<|> => {}
+                    }
+                }
+            }
+            ",
+            "Bar ENUM_VARIANT FileId(1) 15..18 15..18",
+            "Bar|Bar",
+        );
+    }
+
+    #[test]
+    fn goto_def_for_enum_variant_self_pattern_record() {
+        check_goto(
+            "
+            //- /lib.rs
+            enum Foo {
+                Bar { val: i32 },
+            }
+            impl Foo {
+                fn baz(self) -> i32 {
+                    match self {
+                        Self::Bar<|> { val } => {}
+                    }
+                }
+            }
+            ",
+            "Bar ENUM_VARIANT FileId(1) 15..31 15..18",
+            "Bar { val: i32 }|Bar",
+        );
+    }
+
+    #[test]
+    fn goto_def_for_enum_variant_self_expr_const() {
+        check_goto(
+            "
+            //- /lib.rs
+            enum Foo {
+                Bar,
+            }
+            impl Foo {
+                fn baz(self) {
+                    Self::Bar<|>;
+                }
+            }
+            ",
+            "Bar ENUM_VARIANT FileId(1) 15..18 15..18",
+            "Bar|Bar",
+        );
+    }
+
+    #[test]
+    fn goto_def_for_enum_variant_self_expr_record() {
+        check_goto(
+            "
+            //- /lib.rs
+            enum Foo {
+                Bar { val: i32 },
+            }
+            impl Foo {
+                fn baz(self) {
+                    Self::Bar<|> {val: 4};
+                }
+            }
+            ",
+            "Bar ENUM_VARIANT FileId(1) 15..31 15..18",
+            "Bar { val: i32 }|Bar",
+        );
+    }
 }

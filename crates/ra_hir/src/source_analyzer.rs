@@ -216,13 +216,43 @@ impl SourceAnalyzer {
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_expr(expr_id) {
                 return Some(PathResolution::AssocItem(assoc.into()));
             }
+            if let Some(VariantId::EnumVariantId(variant)) =
+                self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
+            {
+                return Some(PathResolution::Def(ModuleDef::EnumVariant(variant.into())));
+            }
         }
+
         if let Some(path_pat) = path.syntax().parent().and_then(ast::PathPat::cast) {
             let pat_id = self.pat_id(&path_pat.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
                 return Some(PathResolution::AssocItem(assoc.into()));
             }
+            if let Some(VariantId::EnumVariantId(variant)) =
+                self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
+            {
+                return Some(PathResolution::Def(ModuleDef::EnumVariant(variant.into())));
+            }
         }
+
+        if let Some(rec_lit) = path.syntax().parent().and_then(ast::RecordLit::cast) {
+            let expr_id = self.expr_id(db, &rec_lit.into())?;
+            if let Some(VariantId::EnumVariantId(variant)) =
+                self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
+            {
+                return Some(PathResolution::Def(ModuleDef::EnumVariant(variant.into())));
+            }
+        }
+
+        if let Some(rec_pat) = path.syntax().parent().and_then(ast::RecordPat::cast) {
+            let pat_id = self.pat_id(&rec_pat.into())?;
+            if let Some(VariantId::EnumVariantId(variant)) =
+                self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
+            {
+                return Some(PathResolution::Def(ModuleDef::EnumVariant(variant.into())));
+            }
+        }
+
         // This must be a normal source file rather than macro file.
         let hir_path =
             crate::Path::from_src(path.clone(), &Hygiene::new(db.upcast(), self.file_id))?;
