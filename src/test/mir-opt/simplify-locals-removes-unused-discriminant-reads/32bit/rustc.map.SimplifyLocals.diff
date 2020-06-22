@@ -19,7 +19,9 @@
       }
   
       bb1: {
-          _0 = move _1;                    // scope 1 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:4:20: 4:27
+          _3 = move ((_1 as Some).0: std::boxed::Box<()>); // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:4:14: 4:15
+          ((_0 as Some).0: std::boxed::Box<()>) = move _3; // scope 1 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:4:20: 4:27
+          discriminant(_0) = 1;            // scope 1 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:4:20: 4:27
           goto -> bb3;                     // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:2:5: 5:6
       }
   

@@ -12,6 +12,7 @@
 use crate::transform::{simplify, MirPass, MirSource};
 use itertools::Itertools as _;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
@@ -75,7 +76,9 @@ struct ArmIdentityInfo<'tcx> {
     stmts_to_remove: Vec<usize>,
 }
 
-fn get_arm_identity_info<'a, 'tcx>(stmts: &'a [Statement<'tcx>]) -> Option<ArmIdentityInfo<'tcx>> {
+fn get_arm_identity_info<'a, 'tcx>(
+    stmts: &'a [Statement<'tcx>],
+) -> Option<ArmIdentityInfo<'tcx>> {
     // This can't possibly match unless there are at least 3 statements in the block
     // so fail fast on tiny blocks.
     if stmts.len() < 3 {
@@ -249,6 +252,7 @@ fn get_arm_identity_info<'a, 'tcx>(stmts: &'a [Statement<'tcx>]) -> Option<ArmId
 fn optimization_applies<'tcx>(
     opt_info: &ArmIdentityInfo<'tcx>,
     local_decls: &IndexVec<Local, LocalDecl<'tcx>>,
+    local_uses: &IndexVec<Local, usize>,
 ) -> bool {
     trace!("testing if optimization applies...");
 
@@ -285,6 +289,26 @@ fn optimization_applies<'tcx>(
         last_assigned_to = *l;
     }
 
+    // Check that the first and last used locals are only used twice
+    // since they are of the form:
+    //
+    // ```
+    // _first = ((_x as Variant).n: ty);
+    // _n = _first;
+    // ...
+    // ((_y as Variant).n: ty) = _n;
+    // discriminant(_y) = z;
+    // ```
+    for (l, r) in &opt_info.field_tmp_assignments {
+        if local_uses[*l] != 2 {
+            warn!("NO: FAILED assignment chain local {:?} was used more than twice", l);
+            return false;
+        } else if local_uses[*r] != 2 {
+            warn!("NO: FAILED assignment chain local {:?} was used more than twice", r);
+            return false;
+        }
+    }
+
     if source_local != opt_info.local_temp_0 {
         trace!(
             "NO: start of assignment chain does not match enum variant temp: {:?} != {:?}",
@@ -312,11 +336,12 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
         }
 
         trace!("running SimplifyArmIdentity on {:?}", source);
+        let local_uses = LocalUseCounter::get_local_uses(body);
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for bb in basic_blocks {
             if let Some(opt_info) = get_arm_identity_info(&bb.statements) {
                 trace!("got opt_info = {:#?}", opt_info);
-                if !optimization_applies(&opt_info, local_decls) {
+                if !optimization_applies(&opt_info, local_decls, &local_uses) {
                     debug!("optimization skipped for {:?}", source);
                     continue;
                 }
@@ -355,6 +380,28 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
                 trace!("block is now {:?}", bb.statements);
             }
         }
+    }
+}
+
+struct LocalUseCounter {
+    local_uses: IndexVec<Local, usize>,
+}
+
+impl LocalUseCounter {
+    fn get_local_uses<'tcx>(body: &Body<'tcx>) -> IndexVec<Local, usize> {
+        let mut counter = LocalUseCounter { local_uses: IndexVec::from_elem(0, &body.local_decls) };
+        counter.visit_body(body);
+        counter.local_uses
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for LocalUseCounter {
+    fn visit_local(&mut self, local: &Local, context: PlaceContext, _location: Location) {
+        if context.is_storage_marker() {
+            return;
+        }
+
+        self.local_uses[*local] += 1;
     }
 }
 
