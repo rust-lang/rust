@@ -489,7 +489,7 @@ impl<'a> CrateLocator<'a> {
             {
                 err.note(&format!("the `{}` target may not be installed", self.triple));
             } else if self.crate_name == sym::profiler_builtins {
-                err.note(&"the compiler may have been built without `profiler = true`");
+                err.note(&"the compiler may have been built without the profiler runtime");
             }
             err.span_label(self.span, "can't find crate");
             err

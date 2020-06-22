@@ -3,7 +3,7 @@ use crate::util::patch::MirPatch;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::lang_items;
-use rustc_hir::*;
+use rustc_middle::hir;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{
@@ -140,7 +140,7 @@ fn placeholder_block(span: Span) -> BasicBlockData<'tcx> {
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, src: &MirSource<'tcx>) -> u64 {
     let fn_body_id = match tcx.hir().get_if_local(src.def_id()) {
-        Some(node) => match associated_body(node) {
+        Some(node) => match hir::map::associated_body(node) {
             Some(body_id) => body_id,
             _ => bug!("instrumented MirSource does not include a function body: {:?}", node),
         },
@@ -158,27 +158,4 @@ fn hash(
     let mut stable_hasher = StableHasher::new();
     node.hash_stable(hcx, &mut stable_hasher);
     stable_hasher.finish()
-}
-
-fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
-    match node {
-        Node::Item(Item {
-            kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
-            ..
-        })
-        | Node::TraitItem(TraitItem {
-            kind:
-                TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)),
-            ..
-        })
-        | Node::ImplItem(ImplItem {
-            kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
-            ..
-        })
-        | Node::Expr(Expr { kind: ExprKind::Closure(.., body, _, _), .. }) => Some(*body),
-
-        Node::AnonConst(constant) => Some(constant.body),
-
-        _ => None,
-    }
 }
