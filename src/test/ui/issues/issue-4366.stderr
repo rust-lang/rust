@@ -4,11 +4,9 @@ error[E0425]: cannot find function `foo` in this scope
 LL |         fn sub() -> isize { foo(); 1 }
    |                             ^^^ not found in this scope
    |
-help: consider importing one of these items
+help: consider importing this function
    |
 LL |         use foo::foo;
-   |
-LL |         use m1::foo;
    |
 
 error: aborting due to previous error
