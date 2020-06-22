@@ -13,7 +13,11 @@ use ra_syntax::{
 use tt::Subtree;
 
 use crate::{
-    db::DefDatabase, nameres::ModuleSource, path::ModPath, src::HasChildSource, src::HasSource,
+    db::DefDatabase,
+    item_tree::{ItemTreeId, ItemTreeNode},
+    nameres::ModuleSource,
+    path::ModPath,
+    src::HasChildSource,
     AdtId, AttrDefId, Lookup,
 };
 
@@ -65,19 +69,19 @@ impl Attrs {
                 Attrs::from_attrs_owner(db, src.map(|it| it as &dyn AttrsOwner))
             }
             AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => attrs_from_loc(it.lookup(db), db),
-                AdtId::EnumId(it) => attrs_from_loc(it.lookup(db), db),
-                AdtId::UnionId(it) => attrs_from_loc(it.lookup(db), db),
+                AdtId::StructId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+                AdtId::EnumId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+                AdtId::UnionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             },
-            AttrDefId::TraitId(it) => attrs_from_loc(it.lookup(db), db),
+            AttrDefId::TraitId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             AttrDefId::MacroDefId(it) => {
                 it.ast_id.map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db))
             }
-            AttrDefId::ImplId(it) => attrs_from_loc(it.lookup(db), db),
-            AttrDefId::ConstId(it) => attrs_from_loc(it.lookup(db), db),
-            AttrDefId::StaticId(it) => attrs_from_loc(it.lookup(db), db),
-            AttrDefId::FunctionId(it) => attrs_from_loc(it.lookup(db), db),
-            AttrDefId::TypeAliasId(it) => attrs_from_loc(it.lookup(db), db),
+            AttrDefId::ImplId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::ConstId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::StaticId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::FunctionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::TypeAliasId(it) => attrs_from_item_tree(it.lookup(db).id, db),
         }
     }
 
@@ -187,11 +191,8 @@ where
     Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
 }
 
-fn attrs_from_loc<T>(node: T, db: &dyn DefDatabase) -> Attrs
-where
-    T: HasSource,
-    T::Value: ast::AttrsOwner,
-{
-    let src = node.source(db);
-    Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
+fn attrs_from_item_tree<N: ItemTreeNode>(id: ItemTreeId<N>, db: &dyn DefDatabase) -> Attrs {
+    let tree = db.item_tree(id.file_id);
+    let mod_item = N::id_to_mod_item(id.value);
+    tree.attrs(mod_item).clone()
 }

@@ -175,6 +175,9 @@ pub trait ItemTreeNode: Clone {
 
     /// Downcasts a `ModItem` to a `FileItemTreeId` specific to this type.
     fn id_from_mod_item(mod_item: ModItem) -> Option<FileItemTreeId<Self>>;
+
+    /// Upcasts a `FileItemTreeId` to a generic `ModItem`.
+    fn id_to_mod_item(id: FileItemTreeId<Self>) -> ModItem;
 }
 
 /// Trait for item tree nodes that allow accessing the original AST node.
@@ -231,6 +234,10 @@ macro_rules! nodes {
                 } else {
                     None
                 }
+            }
+
+            fn id_to_mod_item(id: FileItemTreeId<Self>) -> ModItem {
+                ModItem::$node(id)
             }
         }
     )+ };

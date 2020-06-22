@@ -553,7 +553,12 @@ impl Ctx {
 
                 generics.fill(&self.body_ctx, &mut sm, node);
             }
-            GenericsOwner::Impl => {}
+            GenericsOwner::Impl => {
+                // Note that we don't add `Self` here: in `impl`s, `Self` is not a
+                // type-parameter, but rather is a type-alias for impl's target
+                // type, so this is handled by the resolver.
+                generics.fill(&self.body_ctx, &mut sm, node);
+            }
         }
         generics
     }
