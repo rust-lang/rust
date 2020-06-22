@@ -352,8 +352,13 @@ class StdHashMapProvider:
         ctrl = table["ctrl"]["pointer"]
 
         self.size = int(table["items"])
-        self.data_ptr = table["data"]["pointer"]
-        self.pair_type = self.data_ptr.dereference().type
+        self.pair_type = table.type.template_argument(0)
+
+        self.new_layout = not table.type.has_key("data")
+        if self.new_layout:
+            self.data_ptr = ctrl.cast(self.pair_type.pointer())
+        else:
+            self.data_ptr = table["data"]["pointer"]
 
         self.valid_indices = []
         for idx in range(capacity):
@@ -374,6 +379,8 @@ class StdHashMapProvider:
 
         for index in range(self.size):
             idx = self.valid_indices[index]
+            if self.new_layout:
+                idx = -(idx + 1)
             element = (pairs_start + idx).dereference()
             if self.show_values:
                 yield "key{}".format(index), element[ZERO_FIELD]
