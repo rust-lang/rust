@@ -95,7 +95,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
         // Normalize projections and things like that.
         // FIXME: We need to reveal_all, as some optimizations change types in ways
-        // that requires unfolding opaque types.
+        // that require unfolding opaque types.
         let param_env = self.param_env.with_reveal_all();
         let src = self.tcx.normalize_erasing_regions(param_env, src);
         let dest = self.tcx.normalize_erasing_regions(param_env, dest);
