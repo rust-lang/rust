@@ -357,6 +357,10 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                   value moved here
    |
    = note: move occurs because value has type `main::U`, which does not implement the `Copy` trait
+help: borrow this field in the pattern to avoid moving the value
+   |
+LL |         a @ Some((ref mut b @ ref mut c, d @ ref e)) => {}
+   |                   ^^^
 
 error[E0382]: use of moved value
   --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:61:38
@@ -379,6 +383,10 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                                      value moved here
    |
    = note: move occurs because value has type `main::U`, which does not implement the `Copy` trait
+help: borrow this field in the pattern to avoid moving the value
+   |
+LL |         a @ Some((mut b @ ref mut c, ref d @ ref e)) => {}
+   |                                      ^^^
 
 error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:71:30
@@ -412,6 +420,10 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                   value moved here
    |
    = note: move occurs because value has type `main::U`, which does not implement the `Copy` trait
+help: borrow this field in the pattern to avoid moving the value
+   |
+LL |         a @ Some((ref mut b @ ref mut c, d @ ref e)) => {}
+   |                   ^^^
 
 error[E0382]: use of moved value
   --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:83:38
@@ -434,6 +446,10 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                                      value moved here
    |
    = note: move occurs because value has type `main::U`, which does not implement the `Copy` trait
+help: borrow this field in the pattern to avoid moving the value
+   |
+LL |         a @ Some((mut b @ ref mut c, ref d @ ref e)) => {}
+   |                                      ^^^
 
 error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:93:30
