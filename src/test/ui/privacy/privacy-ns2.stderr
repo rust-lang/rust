@@ -4,13 +4,9 @@ error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar
 LL |     Bar();
    |     ^^^ not a function, tuple struct or tuple variant
    |
-help: consider importing one of these items instead
-   |
-LL | use foo1::Bar;
+help: consider importing this function instead
    |
 LL | use foo2::Bar;
-   |
-LL | use foo3::Bar;
    |
 
 error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
@@ -26,13 +22,9 @@ help: a unit struct with a similar name exists
    |
 LL |     Baz();
    |     ^^^
-help: consider importing one of these items instead
-   |
-LL | use foo1::Bar;
+help: consider importing this function instead
    |
 LL | use foo2::Bar;
-   |
-LL | use foo3::Bar;
    |
 
 error[E0573]: expected type, found function `Bar`
@@ -45,13 +37,9 @@ help: use `=` if you meant to assign
    |
 LL |     let _x = Bar();
    |            ^
-help: consider importing one of these items instead
+help: consider importing this trait instead
    |
 LL | use foo1::Bar;
-   |
-LL | use foo2::Bar;
-   |
-LL | use foo3::Bar;
    |
 
 error[E0603]: trait `Bar` is private
