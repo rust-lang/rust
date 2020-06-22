@@ -365,7 +365,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     opt_assignment_rhs_span.and_then(|span| span.desugaring_kind());
                                 match opt_desugaring_kind {
                                     // on for loops, RHS points to the iterator part
-                                    Some(DesugaringKind::ForLoop(_)) => Some((
+                                    Some(DesugaringKind::ForLoop) => Some((
                                         false,
                                         opt_assignment_rhs_span.unwrap(),
                                         format!(
