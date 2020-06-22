@@ -28,21 +28,23 @@ impl ReleaseCmd {
 
         let contents = format!(
             "\
-    = Changelog #{}
-    :sectanchors:
-    :page-layout: post
+= Changelog #{}
+:sectanchors:
+:page-layout: post
 
-    Commit: commit:{}[] +
-    Release: release:{}[]
+Commit: commit:{}[] +
+Release: release:{}[]
 
-    == New Features
+== Sponsors
 
-    * pr:[] .
+== New Features
 
-    == Fixes
+* pr:[] .
 
-    == Internal Improvements
-    ",
+== Fixes
+
+== Internal Improvements
+",
             changelog_n, commit, today
         );
 
