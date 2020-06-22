@@ -2,7 +2,7 @@ warning: this arithmetic operation will overflow
   --> $DIR/promoted_errors.rs:12:20
    |
 LL |     println!("{}", 0u32 - 1);
-   |                    ^^^^^^^^ attempt to subtract with overflow
+   |                    ^^^^^^^^ attempt to compute `0_u32 - 1_u32` which would overflow
    |
 note: the lint level is defined here
   --> $DIR/promoted_errors.rs:9:20
@@ -14,13 +14,13 @@ warning: this arithmetic operation will overflow
   --> $DIR/promoted_errors.rs:14:14
    |
 LL |     let _x = 0u32 - 1;
-   |              ^^^^^^^^ attempt to subtract with overflow
+   |              ^^^^^^^^ attempt to compute `0_u32 - 1_u32` which would overflow
 
 warning: this operation will panic at runtime
   --> $DIR/promoted_errors.rs:16:20
    |
 LL |     println!("{}", 1 / (1 - 1));
-   |                    ^^^^^^^^^^^ attempt to divide by zero
+   |                    ^^^^^^^^^^^ attempt to divide 1_i32 by zero
    |
 note: the lint level is defined here
   --> $DIR/promoted_errors.rs:9:41
@@ -50,13 +50,13 @@ warning: this operation will panic at runtime
   --> $DIR/promoted_errors.rs:20:14
    |
 LL |     let _x = 1 / (1 - 1);
-   |              ^^^^^^^^^^^ attempt to divide by zero
+   |              ^^^^^^^^^^^ attempt to divide 1_i32 by zero
 
 warning: this operation will panic at runtime
   --> $DIR/promoted_errors.rs:22:20
    |
 LL |     println!("{}", 1 / (false as u32));
-   |                    ^^^^^^^^^^^^^^^^^^ attempt to divide by zero
+   |                    ^^^^^^^^^^^^^^^^^^ attempt to divide 1_u32 by zero
 
 warning: reaching this expression at runtime will panic or abort
   --> $DIR/promoted_errors.rs:22:20
@@ -74,7 +74,7 @@ warning: this operation will panic at runtime
   --> $DIR/promoted_errors.rs:26:14
    |
 LL |     let _x = 1 / (false as u32);
-   |              ^^^^^^^^^^^^^^^^^^ attempt to divide by zero
+   |              ^^^^^^^^^^^^^^^^^^ attempt to divide 1_u32 by zero
 
 warning: 10 warnings emitted
 

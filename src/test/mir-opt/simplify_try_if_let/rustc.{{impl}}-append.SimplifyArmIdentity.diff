@@ -26,7 +26,7 @@
   
       bb0: {
           _3 = discriminant(((*_1).1: std::option::Option<std::ptr::NonNull<Node>>)); // scope 0 at $DIR/simplify_try_if_let.rs:22:13: 22:17
-          switchInt(move _3) -> [0isize: bb3, 1isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_try_if_let.rs:22:13: 22:17
+          switchInt(move _3) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_try_if_let.rs:22:13: 22:17
       }
   
       bb1: {
@@ -62,7 +62,7 @@
       bb4: {
           StorageDead(_6);                 // scope 1 at $DIR/simplify_try_if_let.rs:26:59: 26:60
           _7 = discriminant(_5);           // scope 1 at $DIR/simplify_try_if_let.rs:26:24: 26:40
-          switchInt(move _7) -> [1isize: bb6, otherwise: bb5]; // scope 1 at $DIR/simplify_try_if_let.rs:26:24: 26:40
+          switchInt(move _7) -> [1_isize: bb6, otherwise: bb5]; // scope 1 at $DIR/simplify_try_if_let.rs:26:24: 26:40
       }
   
       bb5: {

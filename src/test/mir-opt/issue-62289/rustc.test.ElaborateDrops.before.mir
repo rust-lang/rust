@@ -46,7 +46,7 @@ fn test() -> std::option::Option<std::boxed::Box<u32>> {
     bb2: {
         StorageDead(_4);                 // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
         _5 = discriminant(_3);           // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
-        switchInt(move _5) -> [0isize: bb4, 1isize: bb6, otherwise: bb5]; // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
+        switchInt(move _5) -> [0_isize: bb4, 1_isize: bb6, otherwise: bb5]; // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
     }
 
     bb3 (cleanup): {

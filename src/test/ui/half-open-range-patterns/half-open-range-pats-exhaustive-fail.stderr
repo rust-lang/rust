@@ -79,20 +79,20 @@ LL |         m!(0, ..core::u8::MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u8`
 
-error[E0004]: non-exhaustive patterns: `254u8..=u8::MAX` not covered
+error[E0004]: non-exhaustive patterns: `254_u8..=u8::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:42:12
    |
 LL |         m!(0, ..ALMOST_MAX);
-   |            ^ pattern `254u8..=u8::MAX` not covered
+   |            ^ pattern `254_u8..=u8::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u8`
 
-error[E0004]: non-exhaustive patterns: `0u8` not covered
+error[E0004]: non-exhaustive patterns: `0_u8` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:43:12
    |
 LL |         m!(0, ALMOST_MIN..);
-   |            ^ pattern `0u8` not covered
+   |            ^ pattern `0_u8` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u8`
@@ -106,20 +106,20 @@ LL |         m!(0, ..=ALMOST_MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u8`
 
-error[E0004]: non-exhaustive patterns: `43u8` not covered
+error[E0004]: non-exhaustive patterns: `43_u8` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:45:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
-   |            ^ pattern `43u8` not covered
+   |            ^ pattern `43_u8` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u8`
 
-error[E0004]: non-exhaustive patterns: `43u8` not covered
+error[E0004]: non-exhaustive patterns: `43_u8` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:46:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
-   |            ^ pattern `43u8` not covered
+   |            ^ pattern `43_u8` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u8`
@@ -133,20 +133,20 @@ LL |         m!(0, ..core::u16::MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u16`
 
-error[E0004]: non-exhaustive patterns: `65534u16..=u16::MAX` not covered
+error[E0004]: non-exhaustive patterns: `65534_u16..=u16::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:55:12
    |
 LL |         m!(0, ..ALMOST_MAX);
-   |            ^ pattern `65534u16..=u16::MAX` not covered
+   |            ^ pattern `65534_u16..=u16::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u16`
 
-error[E0004]: non-exhaustive patterns: `0u16` not covered
+error[E0004]: non-exhaustive patterns: `0_u16` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:56:12
    |
 LL |         m!(0, ALMOST_MIN..);
-   |            ^ pattern `0u16` not covered
+   |            ^ pattern `0_u16` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u16`
@@ -160,20 +160,20 @@ LL |         m!(0, ..=ALMOST_MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u16`
 
-error[E0004]: non-exhaustive patterns: `43u16` not covered
+error[E0004]: non-exhaustive patterns: `43_u16` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:58:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
-   |            ^ pattern `43u16` not covered
+   |            ^ pattern `43_u16` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u16`
 
-error[E0004]: non-exhaustive patterns: `43u16` not covered
+error[E0004]: non-exhaustive patterns: `43_u16` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:59:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
-   |            ^ pattern `43u16` not covered
+   |            ^ pattern `43_u16` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u16`
@@ -187,20 +187,20 @@ LL |         m!(0, ..core::u32::MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u32`
 
-error[E0004]: non-exhaustive patterns: `4294967294u32..=u32::MAX` not covered
+error[E0004]: non-exhaustive patterns: `4294967294_u32..=u32::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:68:12
    |
 LL |         m!(0, ..ALMOST_MAX);
-   |            ^ pattern `4294967294u32..=u32::MAX` not covered
+   |            ^ pattern `4294967294_u32..=u32::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u32`
 
-error[E0004]: non-exhaustive patterns: `0u32` not covered
+error[E0004]: non-exhaustive patterns: `0_u32` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:69:12
    |
 LL |         m!(0, ALMOST_MIN..);
-   |            ^ pattern `0u32` not covered
+   |            ^ pattern `0_u32` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u32`
@@ -214,20 +214,20 @@ LL |         m!(0, ..=ALMOST_MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u32`
 
-error[E0004]: non-exhaustive patterns: `43u32` not covered
+error[E0004]: non-exhaustive patterns: `43_u32` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:71:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
-   |            ^ pattern `43u32` not covered
+   |            ^ pattern `43_u32` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u32`
 
-error[E0004]: non-exhaustive patterns: `43u32` not covered
+error[E0004]: non-exhaustive patterns: `43_u32` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:72:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
-   |            ^ pattern `43u32` not covered
+   |            ^ pattern `43_u32` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u32`
@@ -241,20 +241,20 @@ LL |         m!(0, ..core::u64::MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u64`
 
-error[E0004]: non-exhaustive patterns: `18446744073709551614u64..=u64::MAX` not covered
+error[E0004]: non-exhaustive patterns: `18446744073709551614_u64..=u64::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:81:12
    |
 LL |         m!(0, ..ALMOST_MAX);
-   |            ^ pattern `18446744073709551614u64..=u64::MAX` not covered
+   |            ^ pattern `18446744073709551614_u64..=u64::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u64`
 
-error[E0004]: non-exhaustive patterns: `0u64` not covered
+error[E0004]: non-exhaustive patterns: `0_u64` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:82:12
    |
 LL |         m!(0, ALMOST_MIN..);
-   |            ^ pattern `0u64` not covered
+   |            ^ pattern `0_u64` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u64`
@@ -268,20 +268,20 @@ LL |         m!(0, ..=ALMOST_MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u64`
 
-error[E0004]: non-exhaustive patterns: `43u64` not covered
+error[E0004]: non-exhaustive patterns: `43_u64` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:84:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
-   |            ^ pattern `43u64` not covered
+   |            ^ pattern `43_u64` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u64`
 
-error[E0004]: non-exhaustive patterns: `43u64` not covered
+error[E0004]: non-exhaustive patterns: `43_u64` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:85:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
-   |            ^ pattern `43u64` not covered
+   |            ^ pattern `43_u64` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u64`
@@ -295,20 +295,20 @@ LL |         m!(0, ..core::u128::MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u128`
 
-error[E0004]: non-exhaustive patterns: `340282366920938463463374607431768211454u128..=u128::MAX` not covered
+error[E0004]: non-exhaustive patterns: `340282366920938463463374607431768211454_u128..=u128::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:94:12
    |
 LL |         m!(0, ..ALMOST_MAX);
-   |            ^ pattern `340282366920938463463374607431768211454u128..=u128::MAX` not covered
+   |            ^ pattern `340282366920938463463374607431768211454_u128..=u128::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u128`
 
-error[E0004]: non-exhaustive patterns: `0u128` not covered
+error[E0004]: non-exhaustive patterns: `0_u128` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:95:12
    |
 LL |         m!(0, ALMOST_MIN..);
-   |            ^ pattern `0u128` not covered
+   |            ^ pattern `0_u128` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u128`
@@ -322,20 +322,20 @@ LL |         m!(0, ..=ALMOST_MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u128`
 
-error[E0004]: non-exhaustive patterns: `43u128` not covered
+error[E0004]: non-exhaustive patterns: `43_u128` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:97:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
-   |            ^ pattern `43u128` not covered
+   |            ^ pattern `43_u128` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u128`
 
-error[E0004]: non-exhaustive patterns: `43u128` not covered
+error[E0004]: non-exhaustive patterns: `43_u128` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:98:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
-   |            ^ pattern `43u128` not covered
+   |            ^ pattern `43_u128` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `u128`
@@ -349,11 +349,11 @@ LL |         m!(0, ..core::i8::MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i8`
 
-error[E0004]: non-exhaustive patterns: `126i8..=i8::MAX` not covered
+error[E0004]: non-exhaustive patterns: `126_i8..=i8::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:110:12
    |
 LL |         m!(0, ..ALMOST_MAX);
-   |            ^ pattern `126i8..=i8::MAX` not covered
+   |            ^ pattern `126_i8..=i8::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i8`
@@ -376,20 +376,20 @@ LL |         m!(0, ..=ALMOST_MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i8`
 
-error[E0004]: non-exhaustive patterns: `43i8` not covered
+error[E0004]: non-exhaustive patterns: `43_i8` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:113:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
-   |            ^ pattern `43i8` not covered
+   |            ^ pattern `43_i8` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i8`
 
-error[E0004]: non-exhaustive patterns: `43i8` not covered
+error[E0004]: non-exhaustive patterns: `43_i8` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:114:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
-   |            ^ pattern `43i8` not covered
+   |            ^ pattern `43_i8` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i8`
@@ -403,11 +403,11 @@ LL |         m!(0, ..core::i16::MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i16`
 
-error[E0004]: non-exhaustive patterns: `32766i16..=i16::MAX` not covered
+error[E0004]: non-exhaustive patterns: `32766_i16..=i16::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:123:12
    |
 LL |         m!(0, ..ALMOST_MAX);
-   |            ^ pattern `32766i16..=i16::MAX` not covered
+   |            ^ pattern `32766_i16..=i16::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i16`
@@ -430,20 +430,20 @@ LL |         m!(0, ..=ALMOST_MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i16`
 
-error[E0004]: non-exhaustive patterns: `43i16` not covered
+error[E0004]: non-exhaustive patterns: `43_i16` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:126:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
-   |            ^ pattern `43i16` not covered
+   |            ^ pattern `43_i16` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i16`
 
-error[E0004]: non-exhaustive patterns: `43i16` not covered
+error[E0004]: non-exhaustive patterns: `43_i16` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:127:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
-   |            ^ pattern `43i16` not covered
+   |            ^ pattern `43_i16` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i16`
@@ -457,11 +457,11 @@ LL |         m!(0, ..core::i32::MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i32`
 
-error[E0004]: non-exhaustive patterns: `2147483646i32..=i32::MAX` not covered
+error[E0004]: non-exhaustive patterns: `2147483646_i32..=i32::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:136:12
    |
 LL |         m!(0, ..ALMOST_MAX);
-   |            ^ pattern `2147483646i32..=i32::MAX` not covered
+   |            ^ pattern `2147483646_i32..=i32::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i32`
@@ -484,20 +484,20 @@ LL |         m!(0, ..=ALMOST_MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i32`
 
-error[E0004]: non-exhaustive patterns: `43i32` not covered
+error[E0004]: non-exhaustive patterns: `43_i32` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:139:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
-   |            ^ pattern `43i32` not covered
+   |            ^ pattern `43_i32` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i32`
 
-error[E0004]: non-exhaustive patterns: `43i32` not covered
+error[E0004]: non-exhaustive patterns: `43_i32` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:140:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
-   |            ^ pattern `43i32` not covered
+   |            ^ pattern `43_i32` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i32`
@@ -511,11 +511,11 @@ LL |         m!(0, ..core::i64::MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i64`
 
-error[E0004]: non-exhaustive patterns: `9223372036854775806i64..=i64::MAX` not covered
+error[E0004]: non-exhaustive patterns: `9223372036854775806_i64..=i64::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:149:12
    |
 LL |         m!(0, ..ALMOST_MAX);
-   |            ^ pattern `9223372036854775806i64..=i64::MAX` not covered
+   |            ^ pattern `9223372036854775806_i64..=i64::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i64`
@@ -538,20 +538,20 @@ LL |         m!(0, ..=ALMOST_MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i64`
 
-error[E0004]: non-exhaustive patterns: `43i64` not covered
+error[E0004]: non-exhaustive patterns: `43_i64` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:152:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
-   |            ^ pattern `43i64` not covered
+   |            ^ pattern `43_i64` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i64`
 
-error[E0004]: non-exhaustive patterns: `43i64` not covered
+error[E0004]: non-exhaustive patterns: `43_i64` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:153:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
-   |            ^ pattern `43i64` not covered
+   |            ^ pattern `43_i64` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i64`
@@ -565,11 +565,11 @@ LL |         m!(0, ..core::i128::MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i128`
 
-error[E0004]: non-exhaustive patterns: `170141183460469231731687303715884105726i128..=i128::MAX` not covered
+error[E0004]: non-exhaustive patterns: `170141183460469231731687303715884105726_i128..=i128::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:162:12
    |
 LL |         m!(0, ..ALMOST_MAX);
-   |            ^ pattern `170141183460469231731687303715884105726i128..=i128::MAX` not covered
+   |            ^ pattern `170141183460469231731687303715884105726_i128..=i128::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i128`
@@ -592,20 +592,20 @@ LL |         m!(0, ..=ALMOST_MAX);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i128`
 
-error[E0004]: non-exhaustive patterns: `43i128` not covered
+error[E0004]: non-exhaustive patterns: `43_i128` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:165:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
-   |            ^ pattern `43i128` not covered
+   |            ^ pattern `43_i128` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i128`
 
-error[E0004]: non-exhaustive patterns: `43i128` not covered
+error[E0004]: non-exhaustive patterns: `43_i128` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:166:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
-   |            ^ pattern `43i128` not covered
+   |            ^ pattern `43_i128` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `i128`

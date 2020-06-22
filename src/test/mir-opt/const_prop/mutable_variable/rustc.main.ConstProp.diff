@@ -14,14 +14,14 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable.rs:5:9: 5:14
-          _1 = const 42i32;                // scope 0 at $DIR/mutable_variable.rs:5:17: 5:19
+          _1 = const 42_i32;               // scope 0 at $DIR/mutable_variable.rs:5:17: 5:19
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x0000002a))
                                            // mir::Constant
                                            // + span: $DIR/mutable_variable.rs:5:17: 5:19
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
-          _1 = const 99i32;                // scope 1 at $DIR/mutable_variable.rs:6:5: 6:11
+          _1 = const 99_i32;               // scope 1 at $DIR/mutable_variable.rs:6:5: 6:11
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000063))
@@ -30,7 +30,7 @@
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000063)) }
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable.rs:7:9: 7:10
 -         _2 = _1;                         // scope 1 at $DIR/mutable_variable.rs:7:13: 7:14
-+         _2 = const 99i32;                // scope 1 at $DIR/mutable_variable.rs:7:13: 7:14
++         _2 = const 99_i32;               // scope 1 at $DIR/mutable_variable.rs:7:13: 7:14
 +                                          // ty::Const
 +                                          // + ty: i32
 +                                          // + val: Value(Scalar(0x00000063))

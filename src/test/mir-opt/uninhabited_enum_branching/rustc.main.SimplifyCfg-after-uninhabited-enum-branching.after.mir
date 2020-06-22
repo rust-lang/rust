@@ -33,7 +33,7 @@ fn main() -> () {
         StorageLive(_7);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:26:11: 26:19
         _7 = Test2::D;                   // scope 0 at $DIR/uninhabited_enum_branching.rs:26:11: 26:19
         _8 = discriminant(_7);           // scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
-        switchInt(move _8) -> [4isize: bb2, otherwise: bb1]; // scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
+        switchInt(move _8) -> [4_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
     }
 
     bb1: {

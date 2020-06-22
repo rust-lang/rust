@@ -9,7 +9,7 @@ use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
 use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{ConstInt, Ty};
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{Abi, HasDataLayout, LayoutOf, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
@@ -206,6 +206,19 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn from_int(i: impl Into<i128>, layout: TyAndLayout<'tcx>) -> Self {
         Self::from_scalar(Scalar::from_int(i, layout.size), layout)
+    }
+
+    #[inline]
+    pub fn to_const_int(self) -> ConstInt {
+        assert!(self.layout.ty.is_integral());
+        ConstInt::new(
+            self.to_scalar()
+                .expect("to_const_int doesn't work on scalar pairs")
+                .assert_bits(self.layout.size),
+            self.layout.size,
+            self.layout.ty.is_signed(),
+            self.layout.ty.is_ptr_sized_integral(),
+        )
     }
 }
 

@@ -14,7 +14,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/aggregate.rs:5:9: 5:10
           StorageLive(_2);                 // scope 0 at $DIR/aggregate.rs:5:13: 5:24
           StorageLive(_3);                 // scope 0 at $DIR/aggregate.rs:5:13: 5:22
-          _3 = (const 0i32, const 1i32, const 2i32); // scope 0 at $DIR/aggregate.rs:5:13: 5:22
+          _3 = (const 0_i32, const 1_i32, const 2_i32); // scope 0 at $DIR/aggregate.rs:5:13: 5:22
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000000))
@@ -34,8 +34,8 @@
                                            // + span: $DIR/aggregate.rs:5:20: 5:21
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
 -         _2 = (_3.1: i32);                // scope 0 at $DIR/aggregate.rs:5:13: 5:24
--         _1 = Add(move _2, const 0i32);   // scope 0 at $DIR/aggregate.rs:5:13: 5:28
-+         _2 = const 1i32;                 // scope 0 at $DIR/aggregate.rs:5:13: 5:24
+-         _1 = Add(move _2, const 0_i32);  // scope 0 at $DIR/aggregate.rs:5:13: 5:28
++         _2 = const 1_i32;                // scope 0 at $DIR/aggregate.rs:5:13: 5:24
                                            // ty::Const
                                            // + ty: i32
 -                                          // + val: Value(Scalar(0x00000000))
@@ -45,7 +45,7 @@
 -                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
 +                                          // + span: $DIR/aggregate.rs:5:13: 5:24
 +                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
-+         _1 = const 1i32;                 // scope 0 at $DIR/aggregate.rs:5:13: 5:28
++         _1 = const 1_i32;                // scope 0 at $DIR/aggregate.rs:5:13: 5:28
 +                                          // ty::Const
 +                                          // + ty: i32
 +                                          // + val: Value(Scalar(0x00000001))

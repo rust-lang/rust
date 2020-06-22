@@ -15,7 +15,7 @@
   
       bb0: {
           _2 = discriminant(_1);           // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:9: 3:13
-          switchInt(move _2) -> [0isize: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:9: 3:13
+          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:3:9: 3:13
       }
   
       bb1: {

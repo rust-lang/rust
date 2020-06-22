@@ -2,7 +2,7 @@ warning: multiple patterns covering the same range
   --> $DIR/issue-43253.rs:16:9
    |
 LL |         1..10 => {},
-   |         ----- this range overlaps on `9i32`
+   |         ----- this range overlaps on `9_i32`
 LL |         9..=10 => {},
    |         ^^^^^^ overlapping patterns
    |

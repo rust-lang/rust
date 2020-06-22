@@ -16,7 +16,7 @@ fn main() -> () {
         StorageLive(_1);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:9: 6:14
         StorageLive(_2);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:24: 6:42
         StorageLive(_3);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:32: 6:41
-        _3 = Droppy(const 0usize);       // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:32: 6:41
+        _3 = Droppy(const 0_usize);      // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:32: 6:41
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000000))
@@ -29,7 +29,7 @@ fn main() -> () {
         StorageDead(_2);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:42: 6:43
         StorageLive(_4);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:11: 7:29
         StorageLive(_5);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:19: 7:28
-        _5 = Droppy(const 0usize);       // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:19: 7:28
+        _5 = Droppy(const 0_usize);      // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:19: 7:28
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000000))

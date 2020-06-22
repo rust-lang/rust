@@ -1,4 +1,4 @@
-error[E0005]: refutable pattern in local binding: `0u8..=1u8` and `3u8..=u8::MAX` not covered
+error[E0005]: refutable pattern in local binding: `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
   --> $DIR/const-pattern-irrefutable.rs:12:9
    |
 LL | const a: u8 = 2;
@@ -12,7 +12,7 @@ LL |     let a = 4;
    |
    = note: the matched value is of type `u8`
 
-error[E0005]: refutable pattern in local binding: `0u8..=1u8` and `3u8..=u8::MAX` not covered
+error[E0005]: refutable pattern in local binding: `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
   --> $DIR/const-pattern-irrefutable.rs:13:9
    |
 LL |     pub const b: u8 = 2;
@@ -26,7 +26,7 @@ LL |     let c = 4;
    |
    = note: the matched value is of type `u8`
 
-error[E0005]: refutable pattern in local binding: `0u8..=1u8` and `3u8..=u8::MAX` not covered
+error[E0005]: refutable pattern in local binding: `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
   --> $DIR/const-pattern-irrefutable.rs:14:9
    |
 LL |     pub const d: u8 = 2;

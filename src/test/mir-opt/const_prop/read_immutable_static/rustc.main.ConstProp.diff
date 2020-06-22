@@ -24,7 +24,7 @@
                                            // + span: $DIR/read_immutable_static.rs:7:13: 7:16
                                            // + literal: Const { ty: &u8, val: Value(Scalar(alloc0)) }
 -         _2 = (*_3);                      // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
-+         _2 = const 2u8;                  // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
++         _2 = const 2_u8;                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
 +                                          // ty::Const
 +                                          // + ty: u8
 +                                          // + val: Value(Scalar(0x02))
@@ -42,14 +42,14 @@
                                            // + literal: Const { ty: &u8, val: Value(Scalar(alloc0)) }
 -         _4 = (*_5);                      // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
 -         _1 = Add(move _2, move _4);      // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:22
-+         _4 = const 2u8;                  // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
++         _4 = const 2_u8;                 // scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
 +                                          // ty::Const
 +                                          // + ty: u8
 +                                          // + val: Value(Scalar(0x02))
 +                                          // mir::Constant
 +                                          // + span: $DIR/read_immutable_static.rs:7:19: 7:22
 +                                          // + literal: Const { ty: u8, val: Value(Scalar(0x02)) }
-+         _1 = const 4u8;                  // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:22
++         _1 = const 4_u8;                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:22
 +                                          // ty::Const
 +                                          // + ty: u8
 +                                          // + val: Value(Scalar(0x04))

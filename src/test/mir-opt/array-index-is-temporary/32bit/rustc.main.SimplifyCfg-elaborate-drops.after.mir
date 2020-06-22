@@ -25,7 +25,7 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/array-index-is-temporary.rs:13:9: 13:14
-        _1 = [const 42u32, const 43u32, const 44u32]; // scope 0 at $DIR/array-index-is-temporary.rs:13:17: 13:29
+        _1 = [const 42_u32, const 43_u32, const 44_u32]; // scope 0 at $DIR/array-index-is-temporary.rs:13:17: 13:29
                                          // ty::Const
                                          // + ty: u32
                                          // + val: Value(Scalar(0x0000002a))
@@ -45,7 +45,7 @@ fn main() -> () {
                                          // + span: $DIR/array-index-is-temporary.rs:13:26: 13:28
                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000002c)) }
         StorageLive(_2);                 // scope 1 at $DIR/array-index-is-temporary.rs:14:9: 14:14
-        _2 = const 1usize;               // scope 1 at $DIR/array-index-is-temporary.rs:14:17: 14:18
+        _2 = const 1_usize;              // scope 1 at $DIR/array-index-is-temporary.rs:14:17: 14:18
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x00000001))

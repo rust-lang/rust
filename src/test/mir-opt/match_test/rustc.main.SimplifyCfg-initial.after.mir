@@ -20,7 +20,7 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/match_test.rs:7:9: 7:10
-        _1 = const 3i32;                 // scope 0 at $DIR/match_test.rs:7:13: 7:14
+        _1 = const 3_i32;                // scope 0 at $DIR/match_test.rs:7:13: 7:14
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000003))
@@ -39,7 +39,7 @@ fn main() -> () {
         FakeRead(ForLet, _2);            // scope 1 at $DIR/match_test.rs:8:9: 8:10
         StorageLive(_3);                 // scope 2 at $DIR/match_test.rs:12:5: 17:6
         FakeRead(ForMatchedPlace, _1);   // scope 2 at $DIR/match_test.rs:12:11: 12:12
-        _6 = Le(const 0i32, _1);         // scope 2 at $DIR/match_test.rs:13:9: 13:14
+        _6 = Le(const 0_i32, _1);        // scope 2 at $DIR/match_test.rs:13:9: 13:14
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000000))
@@ -50,7 +50,7 @@ fn main() -> () {
     }
 
     bb1: {
-        _7 = Lt(_1, const 10i32);        // scope 2 at $DIR/match_test.rs:13:9: 13:14
+        _7 = Lt(_1, const 10_i32);       // scope 2 at $DIR/match_test.rs:13:9: 13:14
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x0000000a))
@@ -65,7 +65,7 @@ fn main() -> () {
     }
 
     bb3: {
-        _3 = const 3i32;                 // scope 2 at $DIR/match_test.rs:16:14: 16:15
+        _3 = const 3_i32;                // scope 2 at $DIR/match_test.rs:16:14: 16:15
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000003))
@@ -76,7 +76,7 @@ fn main() -> () {
     }
 
     bb4: {
-        _4 = Le(const 10i32, _1);        // scope 2 at $DIR/match_test.rs:14:9: 14:16
+        _4 = Le(const 10_i32, _1);       // scope 2 at $DIR/match_test.rs:14:9: 14:16
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x0000000a))
@@ -87,7 +87,7 @@ fn main() -> () {
     }
 
     bb5: {
-        _5 = Le(_1, const 20i32);        // scope 2 at $DIR/match_test.rs:14:9: 14:16
+        _5 = Le(_1, const 20_i32);       // scope 2 at $DIR/match_test.rs:14:9: 14:16
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000014))
@@ -102,7 +102,7 @@ fn main() -> () {
     }
 
     bb7: {
-        switchInt(_1) -> [-1i32: bb8, otherwise: bb3]; // scope 2 at $DIR/match_test.rs:15:9: 15:11
+        switchInt(_1) -> [-1_i32: bb8, otherwise: bb3]; // scope 2 at $DIR/match_test.rs:15:9: 15:11
     }
 
     bb8: {
@@ -119,7 +119,7 @@ fn main() -> () {
     bb10: {
         StorageDead(_9);                 // scope 2 at $DIR/match_test.rs:13:24: 13:25
         FakeRead(ForMatchGuard, _8);     // scope 2 at $DIR/match_test.rs:13:18: 13:19
-        _3 = const 0i32;                 // scope 2 at $DIR/match_test.rs:13:23: 13:24
+        _3 = const 0_i32;                // scope 2 at $DIR/match_test.rs:13:23: 13:24
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000000))
@@ -135,7 +135,7 @@ fn main() -> () {
     }
 
     bb12: {
-        _3 = const 1i32;                 // scope 2 at $DIR/match_test.rs:14:20: 14:21
+        _3 = const 1_i32;                // scope 2 at $DIR/match_test.rs:14:20: 14:21
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000001))
@@ -146,7 +146,7 @@ fn main() -> () {
     }
 
     bb13: {
-        _3 = const 2i32;                 // scope 2 at $DIR/match_test.rs:15:15: 15:16
+        _3 = const 2_i32;                // scope 2 at $DIR/match_test.rs:15:15: 15:16
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000002))

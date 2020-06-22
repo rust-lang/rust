@@ -18,7 +18,7 @@
   
       bb0: {
           _2 = discriminant(_1);           // scope 0 at $DIR/simplify-arm.rs:18:9: 18:14
-          switchInt(move _2) -> [0isize: bb3, 1isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify-arm.rs:18:9: 18:14
+          switchInt(move _2) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify-arm.rs:18:9: 18:14
       }
   
       bb1: {
