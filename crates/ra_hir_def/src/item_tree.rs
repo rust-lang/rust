@@ -349,6 +349,7 @@ pub struct Function {
     pub visibility: RawVisibility,
     pub generic_params: GenericParams,
     pub has_self_param: bool,
+    pub is_unsafe: bool,
     pub params: Vec<TypeRef>,
     pub ret_type: TypeRef,
     pub ast_id: FileAstId<ast::FnDef>,
@@ -408,6 +409,7 @@ pub struct Const {
 pub struct Static {
     pub name: Name,
     pub visibility: RawVisibility,
+    pub mutable: bool,
     pub type_ref: TypeRef,
     pub ast_id: FileAstId<ast::StaticDef>,
 }
@@ -436,6 +438,8 @@ pub struct Impl {
 pub struct TypeAlias {
     pub name: Name,
     pub visibility: RawVisibility,
+    /// Bounds on the type alias itself. Only valid in trait declarations, eg. `type Assoc: Copy;`.
+    pub bounds: Vec<TypeBound>,
     pub generic_params: GenericParams,
     pub type_ref: Option<TypeRef>,
     pub ast_id: FileAstId<ast::TypeAliasDef>,

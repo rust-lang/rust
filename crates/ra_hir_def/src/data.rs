@@ -2,23 +2,16 @@
 
 use std::sync::Arc;
 
-use hir_expand::{
-    hygiene::Hygiene,
-    name::{name, AsName, Name},
-    InFile,
-};
+use hir_expand::{name::Name, InFile};
 use ra_prof::profile;
-use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, TypeBoundsOwner, VisibilityOwner};
+use ra_syntax::ast;
 
 use crate::{
     attr::Attrs,
     body::Expander,
-    body::LowerCtx,
     db::DefDatabase,
     item_tree::{AssocItem, ItemTreeId, ModItem},
-    path::{path, AssociatedTypeBinding, GenericArgs, Path},
-    src::HasSource,
-    type_ref::{Mutability, TypeBound, TypeRef},
+    type_ref::{TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
     Intern, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
@@ -40,75 +33,19 @@ pub struct FunctionData {
 impl FunctionData {
     pub(crate) fn fn_data_query(db: &impl DefDatabase, func: FunctionId) -> Arc<FunctionData> {
         let loc = func.lookup(db);
-        let src = loc.source(db);
-        let ctx = LowerCtx::new(db, src.file_id);
-        let name = src.value.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
-        let mut params = Vec::new();
-        let mut has_self_param = false;
-        if let Some(param_list) = src.value.param_list() {
-            if let Some(self_param) = param_list.self_param() {
-                let self_type = if let Some(type_ref) = self_param.ascribed_type() {
-                    TypeRef::from_ast(&ctx, type_ref)
-                } else {
-                    let self_type = TypeRef::Path(name![Self].into());
-                    match self_param.kind() {
-                        ast::SelfParamKind::Owned => self_type,
-                        ast::SelfParamKind::Ref => {
-                            TypeRef::Reference(Box::new(self_type), Mutability::Shared)
-                        }
-                        ast::SelfParamKind::MutRef => {
-                            TypeRef::Reference(Box::new(self_type), Mutability::Mut)
-                        }
-                    }
-                };
-                params.push(self_type);
-                has_self_param = true;
-            }
-            for param in param_list.params() {
-                let type_ref = TypeRef::from_ast_opt(&ctx, param.ascribed_type());
-                params.push(type_ref);
-            }
-        }
-        let attrs = Attrs::new(&src.value, &Hygiene::new(db.upcast(), src.file_id));
+        let item_tree = db.item_tree(loc.id.file_id);
+        let func = &item_tree[loc.id.value];
 
-        let ret_type = if let Some(type_ref) = src.value.ret_type().and_then(|rt| rt.type_ref()) {
-            TypeRef::from_ast(&ctx, type_ref)
-        } else {
-            TypeRef::unit()
-        };
-
-        let ret_type = if src.value.async_token().is_some() {
-            let future_impl = desugar_future_path(ret_type);
-            let ty_bound = TypeBound::Path(future_impl);
-            TypeRef::ImplTrait(vec![ty_bound])
-        } else {
-            ret_type
-        };
-
-        let is_unsafe = src.value.unsafe_token().is_some();
-
-        let vis_default = RawVisibility::default_for_container(loc.container);
-        let visibility =
-            RawVisibility::from_ast_with_default(db, vis_default, src.map(|s| s.visibility()));
-
-        let sig =
-            FunctionData { name, params, ret_type, has_self_param, is_unsafe, visibility, attrs };
-        Arc::new(sig)
+        Arc::new(FunctionData {
+            name: func.name.clone(),
+            params: func.params.clone(),
+            ret_type: func.ret_type.clone(),
+            attrs: func.attrs.clone(),
+            has_self_param: func.has_self_param,
+            is_unsafe: func.is_unsafe,
+            visibility: func.visibility.clone(),
+        })
     }
-}
-
-fn desugar_future_path(orig: TypeRef) -> Path {
-    let path = path![core::future::Future];
-    let mut generic_args: Vec<_> = std::iter::repeat(None).take(path.segments.len() - 1).collect();
-    let mut last = GenericArgs::empty();
-    last.bindings.push(AssociatedTypeBinding {
-        name: name![Output],
-        type_ref: Some(orig),
-        bounds: Vec::new(),
-    });
-    generic_args.push(Some(Arc::new(last)));
-
-    Path::from_known_path(path, generic_args)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -116,6 +53,7 @@ pub struct TypeAliasData {
     pub name: Name,
     pub type_ref: Option<TypeRef>,
     pub visibility: RawVisibility,
+    /// Bounds restricting the type alias itself (eg. `type Ty: Bound;` in a trait or impl).
     pub bounds: Vec<TypeBound>,
 }
 
@@ -125,22 +63,15 @@ impl TypeAliasData {
         typ: TypeAliasId,
     ) -> Arc<TypeAliasData> {
         let loc = typ.lookup(db);
-        let node = loc.source(db);
-        let name = node.value.name().map_or_else(Name::missing, |n| n.as_name());
-        let lower_ctx = LowerCtx::new(db, node.file_id);
-        let type_ref = node.value.type_ref().map(|it| TypeRef::from_ast(&lower_ctx, it));
-        let vis_default = RawVisibility::default_for_container(loc.container);
-        let visibility = RawVisibility::from_ast_with_default(
-            db,
-            vis_default,
-            node.as_ref().map(|n| n.visibility()),
-        );
-        let bounds = if let Some(bound_list) = node.value.type_bound_list() {
-            bound_list.bounds().map(|it| TypeBound::from_ast(&lower_ctx, it)).collect()
-        } else {
-            Vec::new()
-        };
-        Arc::new(TypeAliasData { name, type_ref, visibility, bounds })
+        let item_tree = db.item_tree(loc.id.file_id);
+        let typ = &item_tree[loc.id.value];
+
+        Arc::new(TypeAliasData {
+            name: typ.name.clone(),
+            type_ref: typ.type_ref.clone(),
+            visibility: typ.visibility.clone(),
+            bounds: typ.bounds.clone(),
+        })
     }
 }
 
@@ -238,22 +169,14 @@ pub struct ConstData {
 impl ConstData {
     pub(crate) fn const_data_query(db: &dyn DefDatabase, konst: ConstId) -> Arc<ConstData> {
         let loc = konst.lookup(db);
-        let node = loc.source(db);
-        let vis_default = RawVisibility::default_for_container(loc.container);
-        Arc::new(ConstData::new(db, vis_default, node))
-    }
+        let item_tree = db.item_tree(loc.id.file_id);
+        let konst = &item_tree[loc.id.value];
 
-    fn new<N: NameOwner + TypeAscriptionOwner + VisibilityOwner>(
-        db: &dyn DefDatabase,
-        vis_default: RawVisibility,
-        node: InFile<N>,
-    ) -> ConstData {
-        let ctx = LowerCtx::new(db, node.file_id);
-        let name = node.value.name().map(|n| n.as_name());
-        let type_ref = TypeRef::from_ast_opt(&ctx, node.value.ascribed_type());
-        let visibility =
-            RawVisibility::from_ast_with_default(db, vis_default, node.map(|n| n.visibility()));
-        ConstData { name, type_ref, visibility }
+        Arc::new(ConstData {
+            name: konst.name.clone(),
+            type_ref: konst.type_ref.clone(),
+            visibility: konst.visibility.clone(),
+        })
     }
 }
 
@@ -267,19 +190,16 @@ pub struct StaticData {
 
 impl StaticData {
     pub(crate) fn static_data_query(db: &dyn DefDatabase, konst: StaticId) -> Arc<StaticData> {
-        let node = konst.lookup(db).source(db);
-        let ctx = LowerCtx::new(db, node.file_id);
+        let node = konst.lookup(db);
+        let item_tree = db.item_tree(node.id.file_id);
+        let statik = &item_tree[node.id.value];
 
-        let name = node.value.name().map(|n| n.as_name());
-        let type_ref = TypeRef::from_ast_opt(&ctx, node.value.ascribed_type());
-        let mutable = node.value.mut_token().is_some();
-        let visibility = RawVisibility::from_ast_with_default(
-            db,
-            RawVisibility::private(),
-            node.map(|n| n.visibility()),
-        );
-
-        Arc::new(StaticData { name, type_ref, visibility, mutable })
+        Arc::new(StaticData {
+            name: Some(statik.name.clone()),
+            type_ref: statik.type_ref.clone(),
+            visibility: statik.visibility.clone(),
+            mutable: statik.mutable,
+        })
     }
 }
 

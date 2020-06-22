@@ -204,7 +204,7 @@ Impl { generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_
 
 inner items:
 FileAstId::<ra_syntax::ast::generated::nodes::ModuleItem>(2):
-- Function { name: Name(Text("end")), attrs: Attrs { entries: None }, visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("W"))), default: None, provenance: TypeParamList }] }, where_predicates: [WherePredicate { target: TypeRef(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("W"))] }, generic_args: [None] })), bound: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Write"))] }, generic_args: [None] }) }] }, has_self_param: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
+- Function { name: Name(Text("end")), attrs: Attrs { entries: None }, visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("W"))), default: None, provenance: TypeParamList }] }, where_predicates: [WherePredicate { target: TypeRef(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("W"))] }, generic_args: [None] })), bound: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Write"))] }, generic_args: [None] }) }] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
     "###);
 }
 

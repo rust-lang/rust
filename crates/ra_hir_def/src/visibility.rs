@@ -6,7 +6,7 @@ use ra_syntax::ast;
 use crate::{
     db::DefDatabase,
     path::{ModPath, PathKind},
-    AssocContainerId, ModuleId,
+    ModuleId,
 };
 
 /// Visibility of an item, not yet resolved.
@@ -23,25 +23,6 @@ impl RawVisibility {
     pub(crate) const fn private() -> RawVisibility {
         let path = ModPath { kind: PathKind::Super(0), segments: Vec::new() };
         RawVisibility::Module(path)
-    }
-
-    pub(crate) fn default_for_container(container_id: AssocContainerId) -> Self {
-        match container_id {
-            AssocContainerId::TraitId(_) => RawVisibility::Public,
-            _ => RawVisibility::private(),
-        }
-    }
-
-    pub(crate) fn from_ast_with_default(
-        db: &dyn DefDatabase,
-        default: RawVisibility,
-        node: InFile<Option<ast::Visibility>>,
-    ) -> RawVisibility {
-        Self::from_ast_with_hygiene_and_default(
-            node.value,
-            default,
-            &Hygiene::new(db.upcast(), node.file_id),
-        )
     }
 
     pub(crate) fn from_ast(

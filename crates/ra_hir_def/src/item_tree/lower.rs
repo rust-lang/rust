@@ -36,6 +36,7 @@ pub(super) struct Ctx {
     source_ast_id_map: Arc<AstIdMap>,
     body_ctx: crate::body::LowerCtx,
     inner_items: Vec<ModItem>,
+    forced_visibility: Option<RawVisibility>,
 }
 
 impl Ctx {
@@ -47,6 +48,7 @@ impl Ctx {
             source_ast_id_map: db.ast_id_map(file),
             body_ctx: crate::body::LowerCtx::new(db, file),
             inner_items: Vec::new(),
+            forced_visibility: None,
         }
     }
 
@@ -117,6 +119,7 @@ impl Ctx {
     }
 
     fn collect_inner_items(&mut self, container: &SyntaxNode) {
+        let forced_vis = self.forced_visibility.take();
         let mut inner_items = mem::replace(&mut self.tree.inner_items, FxHashMap::default());
         inner_items.extend(
             container.descendants().skip(1).filter_map(ast::ModuleItem::cast).filter_map(|item| {
@@ -125,6 +128,7 @@ impl Ctx {
             }),
         );
         self.tree.inner_items = inner_items;
+        self.forced_visibility = forced_vis;
     }
 
     fn lower_assoc_item(&mut self, item: &ast::ModuleItem) -> Option<AssocItem> {
@@ -304,6 +308,7 @@ impl Ctx {
             visibility,
             generic_params: GenericParams::default(),
             has_self_param,
+            is_unsafe: func.unsafe_token().is_some(),
             params,
             ret_type,
             ast_id,
@@ -320,9 +325,10 @@ impl Ctx {
         let name = type_alias.name()?.as_name();
         let type_ref = type_alias.type_ref().map(|it| self.lower_type_ref(&it));
         let visibility = self.lower_visibility(type_alias);
+        let bounds = self.lower_type_bounds(type_alias);
         let generic_params = self.lower_generic_params(GenericsOwner::TypeAlias, type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
-        let res = TypeAlias { name, visibility, generic_params, type_ref, ast_id };
+        let res = TypeAlias { name, visibility, bounds, generic_params, type_ref, ast_id };
         Some(id(self.tree.type_aliases.alloc(res)))
     }
 
@@ -330,8 +336,9 @@ impl Ctx {
         let name = static_.name()?.as_name();
         let type_ref = self.lower_type_ref_opt(static_.ascribed_type());
         let visibility = self.lower_visibility(static_);
+        let mutable = static_.mut_token().is_some();
         let ast_id = self.source_ast_id_map.ast_id(static_);
-        let res = Static { name, visibility, type_ref, ast_id };
+        let res = Static { name, visibility, mutable, type_ref, ast_id };
         Some(id(self.tree.statics.alloc(res)))
     }
 
@@ -376,12 +383,14 @@ impl Ctx {
         let generic_params = self.lower_generic_params(GenericsOwner::Trait(trait_def), trait_def);
         let auto = trait_def.auto_token().is_some();
         let items = trait_def.item_list().map(|list| {
-            list.items()
-                .flat_map(|item| {
-                    self.collect_inner_items(item.syntax());
-                    self.lower_assoc_item(&item)
-                })
-                .collect()
+            self.with_inherited_visibility(visibility.clone(), |this| {
+                list.items()
+                    .flat_map(|item| {
+                        this.collect_inner_items(item.syntax());
+                        this.lower_assoc_item(&item)
+                    })
+                    .collect()
+            })
         });
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
         let res = Trait {
@@ -549,17 +558,41 @@ impl Ctx {
         generics
     }
 
+    fn lower_type_bounds(&mut self, node: &impl ast::TypeBoundsOwner) -> Vec<TypeBound> {
+        if let Some(bound_list) = node.type_bound_list() {
+            bound_list.bounds().map(|it| TypeBound::from_ast(&self.body_ctx, it)).collect()
+        } else {
+            Vec::new()
+        }
+    }
+
     fn lower_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
         Attrs::new(item, &self.hygiene)
     }
     fn lower_visibility(&self, item: &impl ast::VisibilityOwner) -> RawVisibility {
-        RawVisibility::from_ast_with_hygiene(item.visibility(), &self.hygiene)
+        if let Some(vis) = self.forced_visibility.as_ref() {
+            vis.clone()
+        } else {
+            RawVisibility::from_ast_with_hygiene(item.visibility(), &self.hygiene)
+        }
     }
     fn lower_type_ref(&self, type_ref: &ast::TypeRef) -> TypeRef {
         TypeRef::from_ast(&self.body_ctx, type_ref.clone())
     }
     fn lower_type_ref_opt(&self, type_ref: Option<ast::TypeRef>) -> TypeRef {
         TypeRef::from_ast_opt(&self.body_ctx, type_ref)
+    }
+
+    /// Forces the visibility `vis` to be used for all items lowered during execution of `f`.
+    fn with_inherited_visibility<R>(
+        &mut self,
+        vis: RawVisibility,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        let old = mem::replace(&mut self.forced_visibility, Some(vis));
+        let res = f(self);
+        self.forced_visibility = old;
+        res
     }
 
     fn next_field_idx(&self) -> Idx<Field> {
