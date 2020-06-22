@@ -61,4 +61,19 @@ fn main() {
     let _: usize = STRUCT2.field; // ok
     let _ = STRUCT2.field + 1; // ok
     let _ = STRUCT2.field + 1usize; // ok
+
+    let _ = STRUCT3;
+    let _: Struct3 = STRUCT3; // ok
+    let _: Struct3<isize, usize> = STRUCT3; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct3<isize> = STRUCT3; // ok
+    let _: Struct3<isize, isize> = Struct3 { field1: 0, field2: 0 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _: Struct3<usize, usize> = Struct3 { field1: 0, field2: 0 }; //~ ERROR use of unstable library feature 'unstable_default'
+    let _ = STRUCT3.field1; // ok
+    let _: isize = STRUCT3.field1; // ok
+    let _ = STRUCT3.field1 + 1; // ok
+    // Note the aforementioned leak.
+    let _: usize = STRUCT3.field2; // ok
+    let _: Struct3<usize> = Struct3 { field1: 0, field2: 0 }; // ok
+    let _ = STRUCT3.field2 + 1; // ok
+    let _ = STRUCT3.field2 + 1usize; // ok
 }
