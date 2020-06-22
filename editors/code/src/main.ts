@@ -178,7 +178,11 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
     const dest = path.join(config.globalStoragePath, "rust-analyzer.vsix");
-    await download(artifact.browser_download_url, dest, "Downloading rust-analyzer extension");
+    await download({
+        url: artifact.browser_download_url,
+        dest,
+        progressTitle: "Downloading rust-analyzer extension",
+    });
 
     await vscode.commands.executeCommand("workbench.extensions.installExtension", vscode.Uri.file(dest));
     await fs.unlink(dest);
@@ -299,7 +303,12 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         if (err.code !== "ENOENT") throw err;
     });
 
-    await download(artifact.browser_download_url, dest, "Downloading rust-analyzer server", { mode: 0o755 });
+    await download({
+        url: artifact.browser_download_url,
+        dest,
+        progressTitle: "Downloading rust-analyzer server",
+        mode: 0o755
+    });
 
     // Patching executable if that's NixOS.
     if (await fs.stat("/etc/nixos").then(_ => true).catch(_ => false)) {
