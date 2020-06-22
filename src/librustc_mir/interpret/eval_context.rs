@@ -226,7 +226,9 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     dest: TyAndLayout<'tcx>,
 ) -> bool {
     if src.ty == dest.ty {
-        // Equal types, all is good.
+        // Equal types, all is good. Layout will also be equal.
+        // (Enum variants would be an exception here as they have the type of the enum but different layout.
+        // However, those are never the type of an assignment.)
         return true;
     }
     if src.layout != dest.layout {
