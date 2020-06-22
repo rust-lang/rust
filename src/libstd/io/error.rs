@@ -160,6 +160,11 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     Interrupted,
     /// Any I/O error not part of this list.
+    ///
+    /// Errors that are `Other` now may move to a different or a new
+    /// [`ErrorKind`] variant in the future. It is not recommended to match
+    /// an error against `Other` and to expect any additional characteristics,
+    /// e.g., a specific [`Error::raw_os_error`] return value.
     #[stable(feature = "rust1", since = "1.0.0")]
     Other,
 
