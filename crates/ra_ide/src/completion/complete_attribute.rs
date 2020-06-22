@@ -20,14 +20,7 @@ pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
         {
             complete_derive(acc, ctx, token_tree)
         }
-        (_, Some(ast::AttrInput::TokenTree(token_tree))) => {
-            let token_tree_str = token_tree.to_string();
-            let nested = token_tree_str.starts_with('(') && token_tree_str.ends_with(')');
-
-            if !nested {
-                complete_attribute_start(acc, ctx, attribute);
-            }
-        }
+        (_, Some(ast::AttrInput::TokenTree(_token_tree))) => {}
         _ => complete_attribute_start(acc, ctx, attribute),
     }
     Some(())
