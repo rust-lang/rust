@@ -113,7 +113,7 @@ topic = "P-critical #{number} {title}"
 message_on_add = "@*WG-prioritization* issue #{number} has been assigned `P-critical`."
 
 [notify-zulip."P-high"]
-required_labels = ["regression-from-stable-to-*"]
+required_labels = ["regression-from-stable-to-[bn]*"] # only nightly and beta regressions
 zulip_stream = 227806 # #t-compiler/wg-prioritization
 topic = "P-high regression #{number} {title}"
 message_on_add = "@*WG-prioritization* issue #{number} has been assigned `P-high` and is a regression."
