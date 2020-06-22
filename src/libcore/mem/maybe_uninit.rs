@@ -494,8 +494,12 @@ impl<T> MaybeUninit<T> {
     #[inline(always)]
     #[rustc_diagnostic_item = "assume_init"]
     pub unsafe fn assume_init(self) -> T {
-        intrinsics::assert_inhabited::<T>();
-        ManuallyDrop::into_inner(self.value)
+        // SAFETY: the caller must guarantee that `self` is initialized.
+        // This also means that `self` must be a `value` variant.
+        unsafe {
+            intrinsics::assert_inhabited::<T>();
+            ManuallyDrop::into_inner(self.value)
+        }
     }
 
     /// Reads the value from the `MaybeUninit<T>` container. The resulting `T` is subject
@@ -558,8 +562,12 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
     pub unsafe fn read(&self) -> T {
-        intrinsics::assert_inhabited::<T>();
-        self.as_ptr().read()
+        // SAFETY: the caller must guarantee that `self` is initialized.
+        // Reading from `self.as_ptr()` is safe since `self` should be initialized.
+        unsafe {
+            intrinsics::assert_inhabited::<T>();
+            self.as_ptr().read()
+        }
     }
 
     /// Gets a shared reference to the contained value.
@@ -620,8 +628,12 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
-        intrinsics::assert_inhabited::<T>();
-        &*self.value
+        // SAFETY: the caller must guarantee that `self` is initialized.
+        // This also means that `self` must be a `value` variant.
+        unsafe {
+            intrinsics::assert_inhabited::<T>();
+            &*self.value
+        }
     }
 
     /// Gets a mutable (unique) reference to the contained value.
@@ -738,8 +750,12 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_mut(&mut self) -> &mut T {
-        intrinsics::assert_inhabited::<T>();
-        &mut *self.value
+        // SAFETY: the caller must guarantee that `self` is initialized.
+        // This also means that `self` must be a `value` variant.
+        unsafe {
+            intrinsics::assert_inhabited::<T>();
+            &mut *self.value
+        }
     }
 
     /// Assuming all the elements are initialized, get a slice to them.
@@ -752,7 +768,11 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "none")]
     #[inline(always)]
     pub unsafe fn slice_get_ref(slice: &[Self]) -> &[T] {
-        &*(slice as *const [Self] as *const [T])
+        // SAFETY: casting slice to a `*const [T]` is safe since the caller guarantees that
+        // `slice` is initialized, and`MaybeUninit` is guaranteed to have the same layout as `T`.
+        // The pointer obtained is valid since it refers to memory owned by `slice` which is a
+        // reference and thus guaranteed to be valid for reads.
+        unsafe { &*(slice as *const [Self] as *const [T]) }
     }
 
     /// Assuming all the elements are initialized, get a mutable slice to them.
@@ -765,7 +785,9 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_slice_assume_init", issue = "none")]
     #[inline(always)]
     pub unsafe fn slice_get_mut(slice: &mut [Self]) -> &mut [T] {
-        &mut *(slice as *mut [Self] as *mut [T])
+        // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
+        // mutable reference which is also guaranteed to be valid for writes.
+        unsafe { &mut *(slice as *mut [Self] as *mut [T]) }
     }
 
     /// Gets a pointer to the first element of the array.

@@ -122,7 +122,9 @@ impl<T> ManuallyDrop<T> {
     #[stable(feature = "manually_drop_take", since = "1.42.0")]
     #[inline]
     pub unsafe fn take(slot: &mut ManuallyDrop<T>) -> T {
-        ptr::read(&slot.value)
+        // SAFETY: we are reading from a reference, which is guaranteed
+        // to be valid for reads.
+        unsafe { ptr::read(&slot.value) }
     }
 }
 
@@ -152,7 +154,10 @@ impl<T: ?Sized> ManuallyDrop<T> {
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
     pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
-        ptr::drop_in_place(&mut slot.value)
+        // SAFETY: we are dropping the value pointed to by a mutable reference
+        // which is guaranteed to be valid for writes.
+        // It is up to the caller to make sure that `slot` isn't dropped again.
+        unsafe { ptr::drop_in_place(&mut slot.value) }
     }
 }
 
