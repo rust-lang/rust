@@ -164,7 +164,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
 
     let mut source_root = SourceRoot::new_local();
     let mut source_root_id = WORKSPACE;
-    let mut source_root_prefix: RelativePathBuf = "/".into();
+    let mut source_root_prefix = "/".to_string();
     let mut file_id = FileId(0);
 
     let mut file_position = None;
@@ -212,9 +212,9 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
         };
 
         db.set_file_text(file_id, Arc::new(text));
-        db.set_file_relative_path(file_id, meta.path.clone());
+        db.set_file_relative_path(file_id, meta.path.clone().into());
         db.set_file_source_root(file_id, source_root_id);
-        source_root.insert_file(meta.path, file_id);
+        source_root.insert_file(meta.path.into(), file_id);
 
         file_id.0 += 1;
     }
@@ -245,12 +245,12 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
 }
 
 enum ParsedMeta {
-    Root { path: RelativePathBuf },
+    Root { path: String },
     File(FileMeta),
 }
 
 struct FileMeta {
-    path: RelativePathBuf,
+    path: String,
     krate: Option<String>,
     deps: Vec<String>,
     cfg: CfgOptions,

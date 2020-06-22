@@ -765,7 +765,7 @@ fn foo(opt: Option<i32>) {
     }
 }"#;
         let before =
-            &format!("//- main.rs crate:main deps:core\n{}{}", before, FamousDefs::FIXTURE);
+            &format!("//- /main.rs crate:main deps:core\n{}{}", before, FamousDefs::FIXTURE);
 
         check_assist(
             fill_match_arms,

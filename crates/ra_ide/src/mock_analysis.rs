@@ -4,7 +4,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
-use ra_db::{CrateName, Env, RelativePathBuf};
+use ra_db::{CrateName, Env};
 use test_utils::{extract_offset, extract_range, parse_fixture, FixtureEntry, CURSOR_MARKER};
 
 use crate::{
@@ -28,7 +28,7 @@ impl MockFileData {
     fn path(&self) -> &str {
         match self {
             MockFileData::Plain { path, .. } => path.as_str(),
-            MockFileData::Fixture(f) => f.meta.path().as_str(),
+            MockFileData::Fixture(f) => f.meta.path(),
         }
     }
 
@@ -167,7 +167,6 @@ impl MockAnalysis {
         for (i, data) in self.files.into_iter().enumerate() {
             let path = data.path();
             assert!(path.starts_with('/'));
-            let path = RelativePathBuf::from_path(&path[1..]).unwrap();
             let cfg_options = data.cfg_options();
             let file_id = FileId(i as u32 + 1);
             let edition = data.edition();
@@ -183,7 +182,8 @@ impl MockAnalysis {
                     Default::default(),
                 ));
             } else if path.ends_with("/lib.rs") {
-                let crate_name = path.parent().unwrap().file_name().unwrap();
+                let base = &path[..path.len() - "/lib.rs".len()];
+                let crate_name = &base[base.rfind('/').unwrap() + '/'.len_utf8()..];
                 let other_crate = crate_graph.add_crate_root(
                     file_id,
                     edition,
@@ -199,7 +199,7 @@ impl MockAnalysis {
                         .unwrap();
                 }
             }
-            change.add_file(source_root, file_id, path, Arc::new(data.content().to_owned()));
+            change.add_file(source_root, file_id, path.into(), Arc::new(data.content().to_owned()));
         }
         change.set_crate_graph(crate_graph);
         host.apply_change(change);

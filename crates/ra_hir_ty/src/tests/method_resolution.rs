@@ -933,7 +933,7 @@ fn method_resolution_overloaded_method() {
     test_utils::mark::check!(impl_self_type_match_without_receiver);
     let t = type_at(
         r#"
-//- main.rs
+//- /main.rs
 struct Wrapper<T>(T);
 struct Foo<T>(T);
 struct Bar<T>(T);
