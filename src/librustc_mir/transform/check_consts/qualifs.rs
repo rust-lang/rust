@@ -77,7 +77,7 @@ impl Qualif for HasMutInterior {
     }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP)
+        !ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env)
     }
 
     fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
