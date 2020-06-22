@@ -5956,7 +5956,15 @@ where
             return false;
         }
 
+        #[cfg(bootstrap)]
         if self.as_ptr() == other.as_ptr() {
+            return true;
+        }
+
+        // While performance would suffer if `guaranteed_eq` just returned `false`
+        // for all arguments, correctness and return value of this function are not affected.
+        #[cfg(not(bootstrap))]
+        if self.as_ptr().guaranteed_eq(other.as_ptr()) {
             return true;
         }
 
@@ -5973,7 +5981,16 @@ where
         if self.len() != other.len() {
             return false;
         }
+
+        #[cfg(bootstrap)]
         if self.as_ptr() == other.as_ptr() {
+            return true;
+        }
+
+        // While performance would suffer if `guaranteed_eq` just returned `false`
+        // for all arguments, correctness and return value of this function are not affected.
+        #[cfg(not(bootstrap))]
+        if self.as_ptr().guaranteed_eq(other.as_ptr()) {
             return true;
         }
         unsafe {
