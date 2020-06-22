@@ -24,9 +24,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Goto { target } => self.go_to_block(target),
 
-            SwitchInt { ref discr, ref values, ref targets, .. } => {
+            SwitchInt { ref discr, ref values, ref targets, switch_ty } => {
                 let discr = self.read_immediate(self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
+                assert_eq!(discr.layout.ty, switch_ty);
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 assert!(!targets.is_empty());
@@ -50,14 +51,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call {
-                ref func,
-                ref args,
-                destination,
-                ref cleanup,
-                from_hir_call: _from_hir_call,
-                fn_span: _,
-            } => {
+            Call { ref func, ref args, destination, ref cleanup, from_hir_call: _, fn_span: _ } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
