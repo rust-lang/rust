@@ -4,7 +4,7 @@ use rustc_hir::lang_items::FnMutTraitLangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -36,11 +36,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             build_call_shim(tcx, instance, Some(Adjustment::Deref), CallKind::Direct(def_id), None)
         }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
-            // FIXME(eddyb) support generating shims for a "shallow type",
-            // e.g. `Foo<_>` or `[_]` instead of requiring a fully monomorphic
-            // `Foo<Bar>` or `[String]` etc.
-            assert!(!ty.needs_subst());
-
             let trait_ = tcx.trait_of_item(def_id).unwrap();
             let adjustment = match tcx.fn_trait_kind_from_lang_item(trait_) {
                 Some(ty::ClosureKind::FnOnce) => Adjustment::Identity,
@@ -83,22 +78,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
                 None,
             )
         }
-        ty::InstanceDef::DropGlue(def_id, ty) => {
-            // FIXME(eddyb) support generating shims for a "shallow type",
-            // e.g. `Foo<_>` or `[_]` instead of requiring a fully monomorphic
-            // `Foo<Bar>` or `[String]` etc.
-            assert!(!ty.needs_subst());
-
-            build_drop_shim(tcx, def_id, ty)
-        }
-        ty::InstanceDef::CloneShim(def_id, ty) => {
-            // FIXME(eddyb) support generating shims for a "shallow type",
-            // e.g. `Foo<_>` or `[_]` instead of requiring a fully monomorphic
-            // `Foo<Bar>` or `[String]` etc.
-            assert!(!ty.needs_subst());
-
-            build_clone_shim(tcx, def_id, ty)
-        }
+        ty::InstanceDef::DropGlue(def_id, ty) => build_drop_shim(tcx, def_id, ty),
+        ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
         }
