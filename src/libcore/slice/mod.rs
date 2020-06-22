@@ -2668,7 +2668,9 @@ impl<T> [T] {
     /// such that all those that return true precede the index and
     /// such that all those that return false succeed the index.
     ///
-    /// 'self' must be partitioned.
+    /// The slice must be partitioned
+    /// so that all elements where the predicate returns true
+    /// precede the elements where the predicate returns false.
     ///
     /// # Examples
     ///
