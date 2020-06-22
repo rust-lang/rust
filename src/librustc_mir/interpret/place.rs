@@ -652,6 +652,7 @@ where
         // Sanity-check the type we ended up with.
         debug_assert!(mir_assign_valid_types(
             *self.tcx,
+            self.param_env,
             self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
                 place.ty(&self.frame().body.local_decls, *self.tcx).ty
             ))?,
@@ -855,7 +856,7 @@ where
     ) -> InterpResult<'tcx> {
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
-        if !mir_assign_valid_types(*self.tcx, src.layout, dest.layout) {
+        if !mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout) {
             span_bug!(
                 self.cur_span(),
                 "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
@@ -912,7 +913,7 @@ where
         src: OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        if mir_assign_valid_types(*self.tcx, src.layout, dest.layout) {
+        if mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout) {
             // Fast path: Just use normal `copy_op`
             return self.copy_op(src, dest);
         }

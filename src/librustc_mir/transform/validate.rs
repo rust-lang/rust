@@ -32,6 +32,93 @@ impl<'tcx> MirPass<'tcx> for Validator {
     }
 }
 
+/// Returns whether the two types are equal up to lifetimes.
+/// All lifetimes, including higher-ranked ones, get ignored for this comparison.
+/// (This is unlike the `erasing_regions` methods, which keep higher-ranked lifetimes for soundness reasons.)
+///
+/// The point of this function is to approximate "equal up to subtyping".  However,
+/// the approximation is incorrect as variance is ignored.
+pub fn equal_up_to_regions(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    src: Ty<'tcx>,
+    dest: Ty<'tcx>,
+) -> bool {
+    struct LifetimeIgnoreRelation<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    }
+
+    impl TypeRelation<'tcx> for LifetimeIgnoreRelation<'tcx> {
+        fn tcx(&self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn param_env(&self) -> ty::ParamEnv<'tcx> {
+            self.param_env
+        }
+
+        fn tag(&self) -> &'static str {
+            "librustc_mir::transform::validate"
+        }
+
+        fn a_is_expected(&self) -> bool {
+            true
+        }
+
+        fn relate_with_variance<T: Relate<'tcx>>(
+            &mut self,
+            _: ty::Variance,
+            a: &T,
+            b: &T,
+        ) -> RelateResult<'tcx, T> {
+            // Ignore variance, require types to be exactly the same.
+            self.relate(a, b)
+        }
+
+        fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+            if a == b {
+                // Short-circuit.
+                return Ok(a);
+            }
+            ty::relate::super_relate_tys(self, a, b)
+        }
+
+        fn regions(
+            &mut self,
+            a: ty::Region<'tcx>,
+            _b: ty::Region<'tcx>,
+        ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+            // Ignore regions.
+            Ok(a)
+        }
+
+        fn consts(
+            &mut self,
+            a: &'tcx ty::Const<'tcx>,
+            b: &'tcx ty::Const<'tcx>,
+        ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+            ty::relate::super_relate_consts(self, a, b)
+        }
+
+        fn binders<T>(
+            &mut self,
+            a: &ty::Binder<T>,
+            b: &ty::Binder<T>,
+        ) -> RelateResult<'tcx, ty::Binder<T>>
+        where
+            T: Relate<'tcx>,
+        {
+            self.relate(a.skip_binder(), b.skip_binder())?;
+            Ok(a.clone())
+        }
+    }
+
+    // Instantiate and run relation.
+    let mut relator: LifetimeIgnoreRelation<'tcx> = LifetimeIgnoreRelation { tcx: tcx, param_env };
+    relator.relate(&src, &dest).is_ok()
+}
+
 struct TypeChecker<'a, 'tcx> {
     when: &'a str,
     source: MirSource<'tcx>,
@@ -108,80 +195,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // all normal lifetimes are erased, higher-ranked types with their
         // late-bound lifetimes are still around and can lead to type
         // differences. So we compare ignoring lifetimes.
-        struct LifetimeIgnoreRelation<'tcx> {
-            tcx: TyCtxt<'tcx>,
-            param_env: ty::ParamEnv<'tcx>,
-        }
-
-        impl TypeRelation<'tcx> for LifetimeIgnoreRelation<'tcx> {
-            fn tcx(&self) -> TyCtxt<'tcx> {
-                self.tcx
-            }
-
-            fn param_env(&self) -> ty::ParamEnv<'tcx> {
-                self.param_env
-            }
-
-            fn tag(&self) -> &'static str {
-                "librustc_mir::transform::validate"
-            }
-
-            fn a_is_expected(&self) -> bool {
-                true
-            }
-
-            fn relate_with_variance<T: Relate<'tcx>>(
-                &mut self,
-                _: ty::Variance,
-                a: &T,
-                b: &T,
-            ) -> RelateResult<'tcx, T> {
-                // Ignore variance, require types to be exactly the same.
-                self.relate(a, b)
-            }
-
-            fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-                if a == b {
-                    // Short-circuit.
-                    return Ok(a);
-                }
-                ty::relate::super_relate_tys(self, a, b)
-            }
-
-            fn regions(
-                &mut self,
-                a: ty::Region<'tcx>,
-                _b: ty::Region<'tcx>,
-            ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-                // Ignore regions.
-                Ok(a)
-            }
-
-            fn consts(
-                &mut self,
-                a: &'tcx ty::Const<'tcx>,
-                b: &'tcx ty::Const<'tcx>,
-            ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-                ty::relate::super_relate_consts(self, a, b)
-            }
-
-            fn binders<T>(
-                &mut self,
-                a: &ty::Binder<T>,
-                b: &ty::Binder<T>,
-            ) -> RelateResult<'tcx, ty::Binder<T>>
-            where
-                T: Relate<'tcx>,
-            {
-                self.relate(a.skip_binder(), b.skip_binder())?;
-                Ok(a.clone())
-            }
-        }
-
-        // Instantiate and run relation.
-        let mut relator: LifetimeIgnoreRelation<'tcx> =
-            LifetimeIgnoreRelation { tcx: self.tcx, param_env };
-        relator.relate(&src, &dest).is_ok()
+        equal_up_to_regions(self.tcx, param_env, src, dest)
     }
 }
 
