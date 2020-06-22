@@ -1,6 +1,8 @@
 //! A simplified AST that only contains items.
 
 mod lower;
+#[cfg(test)]
+mod tests;
 
 use std::{
     fmt::{self, Debug},
@@ -31,16 +33,20 @@ use crate::{
     type_ref::{Mutability, TypeBound, TypeRef},
     visibility::RawVisibility,
 };
+use smallvec::SmallVec;
 
 /// The item tree of a source file.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ItemTree {
+    file_id: HirFileId,
     top_level: Vec<ModItem>,
     top_attrs: Attrs,
     attrs: FxHashMap<ModItem, Attrs>,
     empty_attrs: Attrs,
+    inner_items: FxHashMap<FileAstId<ast::ModuleItem>, SmallVec<[ModItem; 1]>>,
 
     imports: Arena<Import>,
+    extern_crates: Arena<ExternCrate>,
     functions: Arena<Function>,
     structs: Arena<Struct>,
     fields: Arena<Field>,
@@ -63,7 +69,7 @@ impl ItemTree {
         let syntax = if let Some(node) = db.parse_or_expand(file_id) {
             node
         } else {
-            return Default::default();
+            return Arc::new(Self::empty(file_id));
         };
 
         let hygiene = Hygiene::new(db.upcast(), file_id);
@@ -80,20 +86,41 @@ impl ItemTree {
                     file_storage = file;
                     &file_storage
                 },
-                _ => return Default::default(),
+                _ => return Arc::new(Self::empty(file_id)),
             }
         };
 
-        let map = db.ast_id_map(file_id);
-        let mut ctx = lower::Ctx {
-            tree: ItemTree::default(),
-            hygiene,
-            file: file_id,
-            source_ast_id_map: map,
-            body_ctx: crate::body::LowerCtx::new(db, file_id),
-        };
-        ctx.tree.top_attrs = top_attrs.unwrap_or_default();
-        Arc::new(ctx.lower(item_owner))
+        let ctx = lower::Ctx::new(db, hygiene, file_id);
+        let mut item_tree = ctx.lower(item_owner);
+        item_tree.top_attrs = top_attrs.unwrap_or_default();
+        Arc::new(item_tree)
+    }
+
+    fn empty(file_id: HirFileId) -> Self {
+        Self {
+            file_id,
+            top_level: Default::default(),
+            top_attrs: Default::default(),
+            attrs: Default::default(),
+            empty_attrs: Default::default(),
+            inner_items: Default::default(),
+            imports: Default::default(),
+            extern_crates: Default::default(),
+            functions: Default::default(),
+            structs: Default::default(),
+            fields: Default::default(),
+            unions: Default::default(),
+            enums: Default::default(),
+            variants: Default::default(),
+            consts: Default::default(),
+            statics: Default::default(),
+            traits: Default::default(),
+            impls: Default::default(),
+            type_aliases: Default::default(),
+            mods: Default::default(),
+            macro_calls: Default::default(),
+            exprs: Default::default(),
+        }
     }
 
     /// Returns an iterator over all items located at the top level of the `HirFileId` this
@@ -110,17 +137,49 @@ impl ItemTree {
     pub fn attrs(&self, of: ModItem) -> &Attrs {
         self.attrs.get(&of).unwrap_or(&self.empty_attrs)
     }
+
+    /// Returns the lowered inner items that `ast` corresponds to.
+    ///
+    /// Most AST items are lowered to a single `ModItem`, but some (eg. `use` items) may be lowered
+    /// to multiple items in the `ItemTree`.
+    pub fn inner_items(&self, ast: FileAstId<ast::ModuleItem>) -> &[ModItem] {
+        &self.inner_items[&ast]
+    }
+
+    pub fn all_inner_items(&self) -> impl Iterator<Item = ModItem> + '_ {
+        self.inner_items.values().flatten().copied()
+    }
+
+    pub fn source<S: ItemTreeSource>(
+        &self,
+        db: &dyn DefDatabase,
+        of: FileItemTreeId<S>,
+    ) -> S::Source {
+        // This unwrap cannot fail, since it has either succeeded above, or resulted in an empty
+        // ItemTree (in which case there is no valid `FileItemTreeId` to call this method with).
+        let root = db
+            .parse_or_expand(self.file_id)
+            .expect("parse_or_expand failed on constructed ItemTree");
+
+        let id = self[of].ast_id();
+        let map = db.ast_id_map(self.file_id);
+        let ptr = map.get(id);
+        ptr.to_node(&root)
+    }
 }
 
 /// Trait implemented by all nodes in the item tree.
 pub trait ItemTreeNode: Clone {
     /// Looks up an instance of `Self` in an item tree.
     fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self;
+
+    /// Downcasts a `ModItem` to a `FileItemTreeId` specific to this type.
+    fn id_from_mod_item(mod_item: ModItem) -> Option<FileItemTreeId<Self>>;
 }
 
 /// Trait for item tree nodes that allow accessing the original AST node.
 pub trait ItemTreeSource: ItemTreeNode {
-    type Source: AstNode;
+    type Source: AstNode + Into<ast::ModuleItem>;
 
     fn ast_id(&self) -> FileAstId<Self::Source>;
 }
@@ -164,12 +223,22 @@ macro_rules! nodes {
             fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self {
                 &tree.$fld[index]
             }
+
+
+            fn id_from_mod_item(mod_item: ModItem) -> Option<FileItemTreeId<Self>> {
+                if let ModItem::$node(id) = mod_item {
+                    Some(id)
+                } else {
+                    None
+                }
+            }
         }
     )+ };
 }
 
 nodes!(
     Import in imports,
+    ExternCrate in extern_crates,
     Function in functions,
     Struct in structs,
     Union in unions,
@@ -196,6 +265,8 @@ macro_rules! source {
 }
 
 source! {
+    Import -> ast::UseItem,
+    ExternCrate -> ast::ExternCrateItem,
     Function -> ast::FnDef,
     Struct -> ast::StructDef,
     Union -> ast::UnionDef,
@@ -248,7 +319,7 @@ impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     }
 }
 
-/// A desugared `extern crate` or `use` import.
+/// A desugared `use` import.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Import {
     pub path: ModPath,
@@ -256,8 +327,19 @@ pub struct Import {
     pub visibility: RawVisibility,
     pub is_glob: bool,
     pub is_prelude: bool,
-    pub is_extern_crate: bool,
+    /// AST ID of the `use` or `extern crate` item this import was derived from. Note that many
+    /// `Import`s can map to the same `use` item.
+    pub ast_id: FileAstId<ast::UseItem>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ExternCrate {
+    pub path: ModPath,
+    pub alias: Option<ImportAlias>,
+    pub visibility: RawVisibility,
+    /// Whether this is a `#[macro_use] extern crate ...`.
     pub is_macro_use: bool,
+    pub ast_id: FileAstId<ast::ExternCrateItem>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -270,7 +352,6 @@ pub struct Function {
     pub params: Vec<TypeRef>,
     pub ret_type: TypeRef,
     pub ast_id: FileAstId<ast::FnDef>,
-    // FIXME inner items
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -412,6 +493,7 @@ macro_rules! impl_froms {
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum ModItem {
     Import(FileItemTreeId<Import>),
+    ExternCrate(FileItemTreeId<ExternCrate>),
     Function(FileItemTreeId<Function>),
     Struct(FileItemTreeId<Struct>),
     Union(FileItemTreeId<Union>),
@@ -429,6 +511,7 @@ impl ModItem {
     pub fn as_assoc_item(&self) -> Option<AssocItem> {
         match self {
             ModItem::Import(_)
+            | ModItem::ExternCrate(_)
             | ModItem::Struct(_)
             | ModItem::Union(_)
             | ModItem::Enum(_)
@@ -442,10 +525,15 @@ impl ModItem {
             ModItem::Function(func) => Some(AssocItem::Function(*func)),
         }
     }
+
+    pub fn downcast<N: ItemTreeNode>(self) -> Option<FileItemTreeId<N>> {
+        N::id_from_mod_item(self)
+    }
 }
 
 impl_froms!(ModItem {
     Import(FileItemTreeId<Import>),
+    ExternCrate(FileItemTreeId<ExternCrate>),
     Function(FileItemTreeId<Function>),
     Struct(FileItemTreeId<Struct>),
     Union(FileItemTreeId<Union>),
@@ -473,6 +561,17 @@ impl_froms!(AssocItem {
     Const(FileItemTreeId<Const>),
     MacroCall(FileItemTreeId<MacroCall>),
 });
+
+impl From<AssocItem> for ModItem {
+    fn from(item: AssocItem) -> Self {
+        match item {
+            AssocItem::Function(it) => it.into(),
+            AssocItem::TypeAlias(it) => it.into(),
+            AssocItem::Const(it) => it.into(),
+            AssocItem::MacroCall(it) => it.into(),
+        }
+    }
+}
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Variant {

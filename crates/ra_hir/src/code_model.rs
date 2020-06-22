@@ -31,10 +31,7 @@ use hir_ty::{
 };
 use ra_db::{CrateId, CrateName, Edition, FileId};
 use ra_prof::profile;
-use ra_syntax::{
-    ast::{self, AttrsOwner, NameOwner},
-    AstNode,
-};
+use ra_syntax::ast::{self, AttrsOwner, NameOwner};
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -205,7 +202,8 @@ impl ModuleDef {
 }
 
 pub use hir_def::{
-    attr::Attrs, item_scope::ItemInNs, visibility::Visibility, AssocItemId, AssocItemLoc,
+    attr::Attrs, item_scope::ItemInNs, item_tree::ItemTreeNode, visibility::Visibility,
+    AssocItemId, AssocItemLoc,
 };
 
 impl Module {
@@ -872,7 +870,7 @@ where
     ID: Lookup<Data = AssocItemLoc<AST>>,
     DEF: From<ID>,
     CTOR: FnOnce(DEF) -> AssocItem,
-    AST: AstNode,
+    AST: ItemTreeNode,
 {
     match id.lookup(db.upcast()).container {
         AssocContainerId::TraitId(_) | AssocContainerId::ImplId(_) => Some(ctor(DEF::from(id))),

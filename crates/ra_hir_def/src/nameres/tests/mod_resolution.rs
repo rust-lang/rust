@@ -722,10 +722,7 @@ fn unresolved_module_diagnostics() {
                         ),
                     ),
                 ),
-                value: FileAstId {
-                    raw: Idx::<SyntaxNodePtr>(1),
-                    _ty: PhantomData,
-                },
+                value: FileAstId::<ra_syntax::ast::generated::nodes::Module>(1),
             },
             candidate: "bar.rs",
         },

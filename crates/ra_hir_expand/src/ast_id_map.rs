@@ -6,6 +6,8 @@
 //! changes.
 
 use std::{
+    any::type_name,
+    fmt,
     hash::{Hash, Hasher},
     marker::PhantomData,
 };
@@ -14,7 +16,6 @@ use ra_arena::{Arena, Idx};
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
-#[derive(Debug)]
 pub struct FileAstId<N: AstNode> {
     raw: ErasedFileAstId,
     _ty: PhantomData<fn() -> N>,
@@ -39,11 +40,17 @@ impl<N: AstNode> Hash for FileAstId<N> {
     }
 }
 
+impl<N: AstNode> fmt::Debug for FileAstId<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "FileAstId::<{}>({})", type_name::<N>(), self.raw.into_raw())
+    }
+}
+
 impl<N: AstNode> FileAstId<N> {
     // Can't make this a From implementation because of coherence
     pub fn upcast<M: AstNode>(self) -> FileAstId<M>
     where
-        M: From<N>,
+        N: Into<M>,
     {
         FileAstId { raw: self.raw, _ty: PhantomData }
     }
@@ -89,7 +96,7 @@ impl AstIdMap {
         }
     }
 
-    pub(crate) fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
+    pub fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
         self.arena[id.raw].clone().cast::<N>().unwrap()
     }
 
