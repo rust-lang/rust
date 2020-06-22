@@ -44,6 +44,11 @@ pub fn equal_up_to_regions(
     src: Ty<'tcx>,
     dest: Ty<'tcx>,
 ) -> bool {
+    // Fast path.
+    if src == dest {
+        return true;
+    }
+
     struct LifetimeIgnoreRelation<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -176,6 +181,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Check if src can be assigned into dest.
     /// This is not precise, it will accept some incorrect assignments.
     fn mir_assign_valid_types(&self, src: Ty<'tcx>, dest: Ty<'tcx>) -> bool {
+        // Fast path before we normalize.
         if src == dest {
             // Equal types, all is good.
             return true;
@@ -186,10 +192,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let param_env = self.param_env.with_reveal_all();
         let src = self.tcx.normalize_erasing_regions(param_env, src);
         let dest = self.tcx.normalize_erasing_regions(param_env, dest);
-        // It's worth checking equality again.
-        if src == dest {
-            return true;
-        }
 
         // Type-changing assignments can happen when subtyping is used. While
         // all normal lifetimes are erased, higher-ranked types with their

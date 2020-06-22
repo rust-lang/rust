@@ -225,28 +225,17 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     src: TyAndLayout<'tcx>,
     dest: TyAndLayout<'tcx>,
 ) -> bool {
-    if src.ty == dest.ty {
-        // Equal types, all is good. Layout will also be equal.
-        // (Enum variants would be an exception here as they have the type of the enum but different layout.
-        // However, those are never the type of an assignment.)
-        return true;
-    }
-    if src.layout != dest.layout {
-        // Layout differs, definitely not equal.
-        // We do this here because Miri would *do the wrong thing* if we allowed layout-changing
-        // assignments.
-        return false;
-    }
-
     // Type-changing assignments can happen when subtyping is used. While
     // all normal lifetimes are erased, higher-ranked types with their
     // late-bound lifetimes are still around and can lead to type
     // differences. So we compare ignoring lifetimes.
-    //
-    // Note that this is not fully correct (FIXME):
-    // lifetimes in invariant positions could matter (e.g. through associated types).
-    // We rely on the fact that layout was confirmed to be equal above.
-    equal_up_to_regions(tcx, param_env, src.ty, dest.ty)
+    if equal_up_to_regions(tcx, param_env, src.ty, dest.ty) {
+        // Make sure the layout is equal, too -- just to be safe. Miri really needs layout equality.
+        assert_eq!(src.layout, dest.layout);
+        true
+    } else {
+        false
+    }
 }
 
 /// Use the already known layout if given (but sanity check in debug mode),
