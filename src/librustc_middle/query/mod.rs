@@ -1461,9 +1461,9 @@ rustc_queries! {
             desc { "normalizing `{:?}`", goal }
         }
 
-        query substitute_normalize_and_test_predicates(key: (DefId, SubstsRef<'tcx>)) -> bool {
+        query subst_and_check_impossible_predicates(key: (DefId, SubstsRef<'tcx>)) -> bool {
             desc { |tcx|
-                "testing substituted normalized predicates:`{}`",
+                "impossible substituted predicates:`{}`",
                 tcx.def_path_str(key.0)
             }
         }
