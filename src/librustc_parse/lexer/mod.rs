@@ -353,8 +353,15 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated double quote string")
-                        .raise()
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start, suffix_start),
+                            "unterminated double quote string",
+                            error_code!(E0765),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
                 (token::Str, Mode::Str, 1, 1) // " "
             }

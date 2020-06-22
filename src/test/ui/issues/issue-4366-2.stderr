@@ -15,11 +15,9 @@ error[E0423]: expected function, found module `foo`
 LL |     foo();
    |     ^^^ not a function
    |
-help: consider importing one of these items instead
+help: consider importing this function instead
    |
 LL | use foo::foo;
-   |
-LL | use m1::foo;
    |
 
 error: aborting due to 2 previous errors

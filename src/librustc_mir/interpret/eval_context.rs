@@ -536,7 +536,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if sized_size == Size::ZERO {
                             return Ok(None);
                         } else {
-                            bug!("Fields cannot be extern types, unless they are at offset 0")
+                            span_bug!(
+                                self.cur_span(),
+                                "Fields cannot be extern types, unless they are at offset 0"
+                            )
                         }
                     }
                 };
@@ -584,7 +587,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             ty::Foreign(_) => Ok(None),
 
-            _ => bug!("size_and_align_of::<{:?}> not supported", layout.ty),
+            _ => span_bug!(self.cur_span(), "size_and_align_of::<{:?}> not supported", layout.ty),
         }
     }
     #[inline]

@@ -380,11 +380,18 @@ impl<T: ?Sized> *mut T {
     /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
     /// ```
     #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
+    #[rustc_deprecated(
+        since = "1.46.0",
+        reason = "Pointer distances across allocation \
+        boundaries are not typically meaningful. \
+        Use integer subtraction if you really need this."
+    )]
     #[inline]
     pub fn wrapping_offset_from(self, origin: *const T) -> isize
     where
         T: Sized,
     {
+        #[allow(deprecated_in_future, deprecated)]
         (self as *const T).wrapping_offset_from(origin)
     }
 
