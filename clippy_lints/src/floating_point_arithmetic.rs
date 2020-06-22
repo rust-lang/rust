@@ -294,37 +294,56 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 }
 
 fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
-    // Check argument
     if let Some((value, _)) = constant(cx, cx.tables(), &args[1]) {
-        // TODO: need more specific check. this is too wide. remember also to include tests
-        if let Some(parent) = get_parent_expr(cx, expr) {
-            if let Some(grandparent) = get_parent_expr(cx, parent) {
-                if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, _, args, _) = grandparent.kind {
-                    if method_name.as_str() == "sqrt" && detect_hypot(cx, args).is_some() {
-                        return;
+        if value == Int(2) {
+            if let Some(parent) = get_parent_expr(cx, expr) {
+                if let Some(grandparent) = get_parent_expr(cx, parent) {
+                    if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, _, args, _) = grandparent.kind {
+                        if method_name.as_str() == "sqrt" && detect_hypot(cx, args).is_some() {
+                            return;
+                        }
                     }
                 }
+
+                if let ExprKind::Binary(
+                    Spanned {
+                        node: BinOpKind::Add, ..
+                    },
+                    ref lhs,
+                    ref rhs,
+                ) = parent.kind
+                {
+                    let other_addend = if lhs.hir_id == expr.hir_id { rhs } else { lhs };
+
+                    span_lint_and_sugg(
+                        cx,
+                        SUBOPTIMAL_FLOPS,
+                        parent.span,
+                        "square can be computed more efficiently",
+                        "consider using",
+                        format!(
+                            "{}.mul_add({}, {})",
+                            Sugg::hir(cx, &args[0], ".."),
+                            Sugg::hir(cx, &args[0], ".."),
+                            Sugg::hir(cx, &other_addend, ".."),
+                        ),
+                        Applicability::MachineApplicable,
+                    );
+
+                    return;
+                }
             }
-        }
 
-        let (lint, help, suggestion) = match value {
-            Int(2) => (
-                IMPRECISE_FLOPS,
-                "square can be computed more accurately",
+            span_lint_and_sugg(
+                cx,
+                SUBOPTIMAL_FLOPS,
+                expr.span,
+                "square can be computed more efficiently",
+                "consider using",
                 format!("{} * {}", Sugg::hir(cx, &args[0], ".."), Sugg::hir(cx, &args[0], "..")),
-            ),
-            _ => return,
-        };
-
-        span_lint_and_sugg(
-            cx,
-            lint,
-            expr.span,
-            help,
-            "consider using",
-            suggestion,
-            Applicability::MachineApplicable,
-        );
+                Applicability::MachineApplicable,
+            );
+        }
     }
 }
 

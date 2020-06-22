@@ -1,34 +1,40 @@
-error: square can be computed more accurately
+error: square can be computed more efficiently
   --> $DIR/floating_point_powi.rs:7:13
    |
 LL |     let _ = x.powi(2);
    |             ^^^^^^^^^ help: consider using: `x * x`
    |
-   = note: `-D clippy::imprecise-flops` implied by `-D warnings`
+   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
-error: square can be computed more accurately
+error: square can be computed more efficiently
   --> $DIR/floating_point_powi.rs:8:13
    |
 LL |     let _ = x.powi(1 + 1);
    |             ^^^^^^^^^^^^^ help: consider using: `x * x`
 
-error: square can be computed more accurately
-  --> $DIR/floating_point_powi.rs:11:14
+error: square can be computed more efficiently
+  --> $DIR/floating_point_powi.rs:11:13
+   |
+LL |     let _ = x.powi(2) + y;
+   |             ^^^^^^^^^^^^^ help: consider using: `x.mul_add(x, y)`
+
+error: square can be computed more efficiently
+  --> $DIR/floating_point_powi.rs:12:13
+   |
+LL |     let _ = x + y.powi(2);
+   |             ^^^^^^^^^^^^^ help: consider using: `y.mul_add(y, x)`
+
+error: square can be computed more efficiently
+  --> $DIR/floating_point_powi.rs:13:13
    |
 LL |     let _ = (x.powi(2) + y).sqrt();
-   |              ^^^^^^^^^ help: consider using: `x * x`
+   |             ^^^^^^^^^^^^^^^ help: consider using: `x.mul_add(x, y)`
 
-error: square can be computed more accurately
-  --> $DIR/floating_point_powi.rs:12:18
+error: square can be computed more efficiently
+  --> $DIR/floating_point_powi.rs:14:13
    |
 LL |     let _ = (x + y.powi(2)).sqrt();
-   |                  ^^^^^^^^^ help: consider using: `y * y`
+   |             ^^^^^^^^^^^^^^^ help: consider using: `y.mul_add(y, x)`
 
-error: hypotenuse can be computed more accurately
-  --> $DIR/floating_point_powi.rs:16:13
-   |
-LL |     let _ = (x.powi(2) + y.powi(2)).sqrt();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.hypot(y)`
-
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
