@@ -39,7 +39,14 @@ struct CallSite<'tcx> {
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
-            Inliner { tcx, source }.run_pass(body);
+            if tcx.sess.opts.debugging_opts.instrument_coverage {
+                // The current implementation of source code coverage injects code region counters
+                // into the MIR, and assumes a 1-to-1 correspondence between MIR and source-code-
+                // based function.
+                debug!("function inlining is disabled when compiling with `instrument_coverage`");
+            } else {
+                Inliner { tcx, source }.run_pass(body);
+            }
         }
     }
 }

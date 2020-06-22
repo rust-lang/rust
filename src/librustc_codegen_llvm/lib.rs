@@ -55,6 +55,7 @@ mod callee;
 mod common;
 mod consts;
 mod context;
+mod coverageinfo;
 mod debuginfo;
 mod declare;
 mod intrinsic;

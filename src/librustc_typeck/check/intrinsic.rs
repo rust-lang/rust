@@ -352,7 +352,17 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 return;
             }
 
-            "count_code_region" => (0, vec![tcx.types.u32], tcx.mk_unit()),
+            "count_code_region" => {
+                (0, vec![tcx.types.u32, tcx.types.u32, tcx.types.u32], tcx.mk_unit())
+            }
+
+            "coverage_counter_add" | "coverage_counter_subtract" => (
+                0,
+                vec![tcx.types.u32, tcx.types.u32, tcx.types.u32, tcx.types.u32, tcx.types.u32],
+                tcx.mk_unit(),
+            ),
+
+            "coverage_unreachable" => (0, vec![tcx.types.u32, tcx.types.u32], tcx.mk_unit()),
 
             ref other => {
                 struct_span_err!(
