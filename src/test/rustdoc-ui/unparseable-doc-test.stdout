@@ -5,7 +5,7 @@ test $DIR/unparseable-doc-test.rs - foo (line 6) ... FAILED
 failures:
 
 ---- $DIR/unparseable-doc-test.rs - foo (line 6) stdout ----
-error: unterminated double quote string
+error[E0765]: unterminated double quote string
   --> $DIR/unparseable-doc-test.rs:8:1
    |
 LL | "unterminated
@@ -13,6 +13,7 @@ LL | "unterminated
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0765`.
 Couldn't compile the test.
 
 failures:
