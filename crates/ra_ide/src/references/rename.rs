@@ -1,11 +1,14 @@
 //! FIXME: write short doc here
 
-use hir::{ModuleSource, Semantics};
+use hir::{Module, ModuleDef, ModuleSource, Semantics};
 use ra_db::{RelativePathBuf, SourceDatabaseExt};
-use ra_ide_db::RootDatabase;
+use ra_ide_db::{
+    defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
+    RootDatabase,
+};
 use ra_syntax::{
-    algo::find_node_at_offset, ast, ast::TypeAscriptionOwner, lex_single_valid_syntax_kind,
-    AstNode, SyntaxKind, SyntaxNode, SyntaxToken,
+    algo::find_node_at_offset, ast, ast::NameOwner, ast::TypeAscriptionOwner,
+    lex_single_valid_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 use ra_text_edit::TextEdit;
 use std::convert::TryInto;
@@ -30,10 +33,8 @@ pub(crate) fn rename(
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
-    if let Some((ast_name, ast_module)) = find_name_and_module_at_offset(syntax, position) {
-        let range = ast_name.syntax().text_range();
-        rename_mod(&sema, &ast_name, &ast_module, position, new_name)
-            .map(|info| RangeInfo::new(range, info))
+    if let Some(module) = find_module_at_offset(&sema, position, syntax) {
+        rename_mod(db, position, module, new_name)
     } else if let Some(self_token) =
         syntax.token_at_offset(position.offset).find(|t| t.kind() == SyntaxKind::SELF_KW)
     {
@@ -43,13 +44,32 @@ pub(crate) fn rename(
     }
 }
 
-fn find_name_and_module_at_offset(
-    syntax: &SyntaxNode,
+fn find_module_at_offset(
+    sema: &Semantics<RootDatabase>,
     position: FilePosition,
-) -> Option<(ast::Name, ast::Module)> {
-    let ast_name = find_node_at_offset::<ast::Name>(syntax, position.offset)?;
-    let ast_module = ast::Module::cast(ast_name.syntax().parent()?)?;
-    Some((ast_name, ast_module))
+    syntax: &SyntaxNode,
+) -> Option<Module> {
+    let ident = syntax.token_at_offset(position.offset).find(|t| t.kind() == SyntaxKind::IDENT)?;
+
+    let module = match_ast! {
+        match (ident.parent()) {
+            ast::NameRef(name_ref) => {
+                match classify_name_ref(sema, &name_ref)? {
+                    NameRefClass::Definition(Definition::ModuleDef(ModuleDef::Module(module))) => module,
+                    _ => return None,
+                }
+            },
+            ast::Name(name) => {
+                match classify_name(&sema, &name)? {
+                    NameClass::Definition(Definition::ModuleDef(ModuleDef::Module(module))) => module,
+                    _ => return None,
+                }
+            },
+            _ => return None,
+        }
+    };
+
+    Some(module)
 }
 
 fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFileEdit {
@@ -77,49 +97,50 @@ fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFil
 }
 
 fn rename_mod(
-    sema: &Semantics<RootDatabase>,
-    ast_name: &ast::Name,
-    ast_module: &ast::Module,
+    db: &RootDatabase,
     position: FilePosition,
+    module: Module,
     new_name: &str,
-) -> Option<SourceChange> {
+) -> Option<RangeInfo<SourceChange>> {
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
-    if let Some(module) = sema.to_def(ast_module) {
-        let src = module.definition_source(sema.db);
-        let file_id = src.file_id.original_file(sema.db);
-        match src.value {
-            ModuleSource::SourceFile(..) => {
-                let mod_path: RelativePathBuf = sema.db.file_relative_path(file_id);
-                // mod is defined in path/to/dir/mod.rs
-                let dst = if mod_path.file_stem() == Some("mod") {
-                    format!("../{}/mod.rs", new_name)
-                } else {
-                    format!("{}.rs", new_name)
-                };
-                let move_file =
-                    FileSystemEdit::MoveFile { src: file_id, anchor: position.file_id, dst };
-                file_system_edits.push(move_file);
-            }
-            ModuleSource::Module(..) => {}
+
+    let src = module.definition_source(db);
+    let file_id = src.file_id.original_file(db);
+    match src.value {
+        ModuleSource::SourceFile(..) => {
+            let mod_path: RelativePathBuf = db.file_relative_path(file_id);
+            // mod is defined in path/to/dir/mod.rs
+            let dst = if mod_path.file_stem() == Some("mod") {
+                format!("../{}/mod.rs", new_name)
+            } else {
+                format!("{}.rs", new_name)
+            };
+            let move_file =
+                FileSystemEdit::MoveFile { src: file_id, anchor: position.file_id, dst };
+            file_system_edits.push(move_file);
         }
+        ModuleSource::Module(..) => {}
     }
 
-    let edit = SourceFileEdit {
-        file_id: position.file_id,
-        edit: TextEdit::replace(ast_name.syntax().text_range(), new_name.into()),
-    };
-    source_file_edits.push(edit);
-
-    if let Some(RangeInfo { range: _, info: refs }) = find_all_refs(sema.db, position, None) {
-        let ref_edits = refs
-            .references
-            .into_iter()
-            .map(|reference| source_edit_from_reference(reference, new_name));
-        source_file_edits.extend(ref_edits);
+    if let Some(src) = module.declaration_source(db) {
+        let file_id = src.file_id.original_file(db);
+        let name = src.value.name()?;
+        let edit = SourceFileEdit {
+            file_id: file_id,
+            edit: TextEdit::replace(name.syntax().text_range(), new_name.into()),
+        };
+        source_file_edits.push(edit);
     }
 
-    Some(SourceChange::from_edits(source_file_edits, file_system_edits))
+    let RangeInfo { range, info: refs } = find_all_refs(db, position, None)?;
+    let ref_edits = refs
+        .references
+        .into_iter()
+        .map(|reference| source_edit_from_reference(reference, new_name));
+    source_file_edits.extend(ref_edits);
+
+    Some(RangeInfo::new(range, SourceChange::from_edits(source_file_edits, file_system_edits)))
 }
 
 fn rename_to_self(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<SourceChange>> {
@@ -657,6 +678,76 @@ mod foo<|>;
                                 2,
                             ),
                             dst: "foo2.rs",
+                        },
+                    ],
+                    is_snippet: false,
+                },
+            },
+        )
+        "###);
+    }
+
+    #[test]
+    fn test_rename_mod_in_use_tree() {
+        let (analysis, position) = analysis_and_position(
+            r#"
+//- /main.rs
+pub mod foo;
+pub mod bar;
+fn main() {}
+
+//- /foo.rs
+pub struct FooContent;
+
+//- /bar.rs
+use crate::foo<|>::FooContent;
+            "#,
+        );
+        let new_name = "qux";
+        let source_change = analysis.rename(position, new_name).unwrap();
+        assert_debug_snapshot!(&source_change,
+@r###"
+        Some(
+            RangeInfo {
+                range: 11..14,
+                info: SourceChange {
+                    source_file_edits: [
+                        SourceFileEdit {
+                            file_id: FileId(
+                                1,
+                            ),
+                            edit: TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "qux",
+                                        delete: 8..11,
+                                    },
+                                ],
+                            },
+                        },
+                        SourceFileEdit {
+                            file_id: FileId(
+                                3,
+                            ),
+                            edit: TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "qux",
+                                        delete: 11..14,
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                2,
+                            ),
+                            anchor: FileId(
+                                3,
+                            ),
+                            dst: "qux.rs",
                         },
                     ],
                     is_snippet: false,
