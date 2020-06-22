@@ -91,14 +91,16 @@ impl<'db> MatchFinder<'db> {
             if let Ok(mut m) = matching::get_match(false, rule, &code, restrict_range, &self.sema) {
                 // Continue searching in each of our placeholders.
                 for placeholder_value in m.placeholder_values.values_mut() {
-                    // Don't search our placeholder if it's the entire matched node, otherwise we'd
-                    // find the same match over and over until we got a stack overflow.
-                    if placeholder_value.node != *code {
-                        self.find_matches(
-                            &placeholder_value.node,
-                            restrict_range,
-                            &mut placeholder_value.inner_matches,
-                        );
+                    if let Some(placeholder_node) = &placeholder_value.node {
+                        // Don't search our placeholder if it's the entire matched node, otherwise we'd
+                        // find the same match over and over until we got a stack overflow.
+                        if placeholder_node != code {
+                            self.find_matches(
+                                placeholder_node,
+                                restrict_range,
+                                &mut placeholder_value.inner_matches,
+                            );
+                        }
                     }
                 }
                 matches_out.matches.push(m);

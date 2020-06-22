@@ -9,6 +9,7 @@ use ra_ssr::{MatchFinder, SsrError, SsrRule};
 // Search and replace with named wildcards that will match any expression, type, path, pattern or item.
 // The syntax for a structural search replace command is `<search_pattern> ==>> <replace_pattern>`.
 // A `$<name>` placeholder in the search pattern will match any AST node and `$<name>` will reference it in the replacement.
+// Within a macro call, a placeholder will match up until whatever token follows the placeholder.
 // Available via the command `rust-analyzer.ssr`.
 //
 // ```rust
