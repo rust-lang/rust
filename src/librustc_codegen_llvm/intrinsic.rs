@@ -146,7 +146,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 let (mangled_fn_name, _len_val) = self.const_str(mangled_fn.name);
                 let hash = self.const_u64(coverage_data.hash);
                 let index = args[0].immediate();
-                let num_counters = self.const_u32(coverage_data.num_counters as u32);
+                let num_counters = self.const_u32(coverage_data.num_counters);
                 debug!(
                     "count_code_region to LLVM intrinsic instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
                     mangled_fn.name, hash, index, num_counters

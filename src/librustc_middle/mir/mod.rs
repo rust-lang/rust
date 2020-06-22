@@ -98,7 +98,7 @@ pub struct CoverageData {
     pub hash: u64,
 
     /// The total number of coverage region counters added to this MIR Body.
-    pub num_counters: usize,
+    pub num_counters: u32,
 }
 
 /// The lowered representation of a single function.

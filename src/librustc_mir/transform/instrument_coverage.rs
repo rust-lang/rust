@@ -21,7 +21,7 @@ pub struct InstrumentCoverage;
 
 struct Instrumentor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    num_counters: usize,
+    num_counters: u32,
 }
 
 impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
@@ -55,12 +55,12 @@ impl<'tcx> Instrumentor<'tcx> {
     }
 
     fn next_counter(&mut self) -> u32 {
-        let next = self.num_counters as u32;
+        let next = self.num_counters;
         self.num_counters += 1;
         next
     }
 
-    fn inject_counters(&mut self, mir_body: &mut mir::Body<'tcx>) -> usize {
+    fn inject_counters(&mut self, mir_body: &mut mir::Body<'tcx>) -> u32 {
         // FIXME(richkadel): As a first step, counters are only injected at the top of each
         // function. The complete solution will inject counters at each conditional code branch.
         let top_of_function = START_BLOCK;
