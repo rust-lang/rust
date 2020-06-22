@@ -167,6 +167,9 @@ fn missing_struct_field_fix(
     };
 
     let new_field_type = sema.type_of_expr(&record_expr.expr()?)?;
+    if new_field_type.is_unknown() {
+        return None;
+    }
     let new_field = make::record_field_def(
         record_expr.field_name()?,
         make::type_ref(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
