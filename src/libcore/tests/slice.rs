@@ -82,6 +82,46 @@ fn test_binary_search_implementation_details() {
 }
 
 #[test]
+fn test_partition_point() {
+    let b: [i32; 0] = [];
+    assert_eq!(b.partition_point(|&x| x < 5), 0);
+
+    let b = [4];
+    assert_eq!(b.partition_point(|&x| x < 3), 0);
+    assert_eq!(b.partition_point(|&x| x < 4), 0);
+    assert_eq!(b.partition_point(|&x| x < 5), 1);
+
+    let b = [1, 2, 4, 6, 8, 9];
+    assert_eq!(b.partition_point(|&x| x < 5), 3);
+    assert_eq!(b.partition_point(|&x| x < 6), 3);
+    assert_eq!(b.partition_point(|&x| x < 7), 4);
+    assert_eq!(b.partition_point(|&x| x < 8), 4);
+
+    let b = [1, 2, 4, 5, 6, 8];
+    assert_eq!(b.partition_point(|&x| x < 9), 6);
+
+    let b = [1, 2, 4, 6, 7, 8, 9];
+    assert_eq!(b.partition_point(|&x| x < 6), 3);
+    assert_eq!(b.partition_point(|&x| x < 5), 3);
+    assert_eq!(b.partition_point(|&x| x < 8), 5);
+
+    let b = [1, 2, 4, 5, 6, 8, 9];
+    assert_eq!(b.partition_point(|&x| x < 7), 5);
+    assert_eq!(b.partition_point(|&x| x < 0), 0);
+
+    let b = [1, 3, 3, 3, 7];
+    assert_eq!(b.partition_point(|&x| x < 0), 0);
+    assert_eq!(b.partition_point(|&x| x < 1), 0);
+    assert_eq!(b.partition_point(|&x| x < 2), 1);
+    assert_eq!(b.partition_point(|&x| x < 3), 1);
+    assert_eq!(b.partition_point(|&x| x < 4), 4);
+    assert_eq!(b.partition_point(|&x| x < 5), 4);
+    assert_eq!(b.partition_point(|&x| x < 6), 4);
+    assert_eq!(b.partition_point(|&x| x < 7), 4);
+    assert_eq!(b.partition_point(|&x| x < 8), 5);
+}
+
+#[test]
 fn test_iterator_nth() {
     let v: &[_] = &[0, 1, 2, 3, 4];
     for i in 0..v.len() {

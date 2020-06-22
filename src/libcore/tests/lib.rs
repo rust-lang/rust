@@ -44,6 +44,7 @@
 #![feature(const_forget)]
 #![feature(option_unwrap_none)]
 #![feature(peekable_next_if)]
+#![feature(partition_point)]
 
 extern crate test;
 
