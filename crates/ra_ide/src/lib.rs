@@ -70,7 +70,6 @@ pub use crate::{
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
-    ssr::SsrError,
     syntax_highlighting::{
         Highlight, HighlightModifier, HighlightModifiers, HighlightTag, HighlightedRange,
     },
@@ -89,6 +88,7 @@ pub use ra_ide_db::{
     symbol_index::Query,
     RootDatabase,
 };
+pub use ra_ssr::SsrError;
 pub use ra_text_edit::{Indel, TextEdit};
 
 pub type Cancelable<T> = Result<T, Canceled>;
