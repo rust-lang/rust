@@ -1090,7 +1090,7 @@ fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> Pat
     }
     // Special directory with objects used only in self-contained linkage mode
     if self_contained {
-        let file_path = fs.get_selfcontained_lib_path().join(name);
+        let file_path = fs.get_self_contained_lib_path().join(name);
         if file_path.exists() {
             return file_path;
         }
@@ -1500,7 +1500,7 @@ fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session, self_contained:
 
     // Special directory with libraries used only in self-contained linkage mode
     if self_contained {
-        let lib_path = sess.target_filesearch(PathKind::All).get_selfcontained_lib_path();
+        let lib_path = sess.target_filesearch(PathKind::All).get_self_contained_lib_path();
         cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
     }
 }

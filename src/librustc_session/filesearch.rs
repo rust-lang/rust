@@ -41,7 +41,7 @@ impl<'a> FileSearch<'a> {
         make_target_lib_path(self.sysroot, self.triple)
     }
 
-    pub fn get_selfcontained_lib_path(&self) -> PathBuf {
+    pub fn get_self_contained_lib_path(&self) -> PathBuf {
         self.get_lib_path().join("self-contained")
     }
 
