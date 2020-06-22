@@ -168,13 +168,13 @@ pub struct FixtureEntry {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum FixtureMeta {
-    Root { path: RelativePathBuf },
+    Root { path: String },
     File(FileMeta),
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct FileMeta {
-    pub path: RelativePathBuf,
+    pub path: String,
     pub crate_name: Option<String>,
     pub deps: Vec<String>,
     pub cfg: CfgOptions,
@@ -183,7 +183,7 @@ pub struct FileMeta {
 }
 
 impl FixtureMeta {
-    pub fn path(&self) -> &RelativePath {
+    pub fn path(&self) -> &str {
         match self {
             FixtureMeta::Root { path } => &path,
             FixtureMeta::File(f) => &f.path,
@@ -292,12 +292,12 @@ fn parse_meta(meta: &str) -> FixtureMeta {
     let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
 
     if components[0] == "root" {
-        let path: RelativePathBuf = components[1].into();
+        let path = components[1].to_string();
         assert!(path.starts_with("/") && path.ends_with("/"));
         return FixtureMeta::Root { path };
     }
 
-    let path: RelativePathBuf = components[0].into();
+    let path = components[0].to_string();
     assert!(path.starts_with("/"));
 
     let mut krate = None;

@@ -128,7 +128,7 @@ impl From<foo::bar::baz::Boo> for A {
 
     fn check_not_applicable(ra_fixture: &str) {
         let fixture =
-            format!("//- main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
+            format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
         check_assist_not_applicable(add_from_impl_for_enum, &fixture)
     }
 

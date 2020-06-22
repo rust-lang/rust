@@ -301,7 +301,7 @@ fn another_fn() {
 
     fn check_not_applicable(ra_fixture: &str) {
         let fixture =
-            format!("//- main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
+            format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
         check_assist_not_applicable(extract_struct_from_enum_variant, &fixture)
     }
 

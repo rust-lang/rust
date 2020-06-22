@@ -29,12 +29,12 @@ fn completes_items_from_standard_library() {
     let project_start = Instant::now();
     let server = Project::with_fixture(
         r#"
-//- Cargo.toml
+//- /Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
 
-//- src/lib.rs
+//- /src/lib.rs
 use std::collections::Spam;
 "#,
     )
@@ -63,24 +63,24 @@ fn test_runnables_project() {
     }
 
     let code = r#"
-//- foo/Cargo.toml
+//- /foo/Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
 
-//- foo/src/lib.rs
+//- /foo/src/lib.rs
 pub fn foo() {}
 
-//- foo/tests/spam.rs
+//- /foo/tests/spam.rs
 #[test]
 fn test_eggs() {}
 
-//- bar/Cargo.toml
+//- /bar/Cargo.toml
 [package]
 name = "bar"
 version = "0.0.0"
 
-//- bar/src/main.rs
+//- /bar/src/main.rs
 fn main() {}
 "#;
 
@@ -140,12 +140,12 @@ fn test_format_document() {
 
     let server = project(
         r#"
-//- Cargo.toml
+//- /Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
 
-//- src/lib.rs
+//- /src/lib.rs
 mod bar;
 
 fn main() {
@@ -200,13 +200,13 @@ fn test_format_document_2018() {
 
     let server = project(
         r#"
-//- Cargo.toml
+//- /Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
 edition = "2018"
 
-//- src/lib.rs
+//- /src/lib.rs
 mod bar;
 
 async fn test() {
@@ -266,12 +266,12 @@ fn test_missing_module_code_action() {
 
     let server = project(
         r#"
-//- Cargo.toml
+//- /Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
 
-//- src/lib.rs
+//- /src/lib.rs
 mod bar;
 
 fn main() {}
@@ -335,10 +335,10 @@ fn test_missing_module_code_action_in_json_project() {
 
     let code = format!(
         r#"
-//- rust-project.json
+//- /rust-project.json
 {PROJECT}
 
-//- src/lib.rs
+//- /src/lib.rs
 mod bar;
 
 fn main() {{}}
@@ -391,15 +391,15 @@ fn diagnostics_dont_block_typing() {
     }
 
     let librs: String = (0..10).map(|i| format!("mod m{};", i)).collect();
-    let libs: String = (0..10).map(|i| format!("//- src/m{}.rs\nfn foo() {{}}\n\n", i)).collect();
+    let libs: String = (0..10).map(|i| format!("//- /src/m{}.rs\nfn foo() {{}}\n\n", i)).collect();
     let server = Project::with_fixture(&format!(
         r#"
-//- Cargo.toml
+//- /Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
 
-//- src/lib.rs
+//- /src/lib.rs
 {}
 
 {}
@@ -449,12 +449,12 @@ fn preserves_dos_line_endings() {
 
     let server = Project::with_fixture(
         &"
-//- Cargo.toml
+//- /Cargo.toml
 [package]
 name = \"foo\"
 version = \"0.0.0\"
 
-//- src/main.rs
+//- /src/main.rs
 /// Some Docs\r\nfn main() {}
 ",
     )
@@ -484,12 +484,12 @@ fn out_dirs_check() {
 
     let server = Project::with_fixture(
         r###"
-//- Cargo.toml
+//- /Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
 
-//- build.rs
+//- /build.rs
 use std::{env, fs, path::Path};
 
 fn main() {
@@ -504,7 +504,7 @@ fn main() {
     println!("cargo:rustc-cfg=featlike=\"set\"");
     println!("cargo:rerun-if-changed=build.rs");
 }
-//- src/main.rs
+//- /src/main.rs
 #[rustc_builtin_macro] macro_rules! include {}
 #[rustc_builtin_macro] macro_rules! concat {}
 #[rustc_builtin_macro] macro_rules! env {}
@@ -599,7 +599,7 @@ fn resolve_proc_macro() {
     }
     let server = Project::with_fixture(
         r###"
-//- foo/Cargo.toml
+//- /foo/Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
@@ -607,7 +607,7 @@ edition = "2018"
 [dependencies]
 bar = {path = "../bar"}
 
-//- foo/src/main.rs
+//- /foo/src/main.rs
 use bar::Bar;
 trait Bar {
   fn bar();
@@ -618,7 +618,7 @@ fn main() {
   Foo::bar();
 }
 
-//- bar/Cargo.toml
+//- /bar/Cargo.toml
 [package]
 name = "bar"
 version = "0.0.0"
@@ -627,7 +627,7 @@ edition = "2018"
 [lib]
 proc-macro = true
 
-//- bar/src/lib.rs
+//- /bar/src/lib.rs
 extern crate proc_macro;
 use proc_macro::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
 macro_rules! t {
