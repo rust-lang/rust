@@ -379,10 +379,32 @@ pub trait Decoder {
     fn error(&mut self, err: &str) -> Self::Error;
 }
 
+/// Trait for types that can be serialized
+///
+/// This can be implemented using the `Encodable`, `TyEncodable` and
+/// `MetadataEncodable` macros.
+///
+/// * `Encodable` should be used in crates that don't depend on
+///   `librustc_middle`.
+/// * `TyEncodable` should be used for types that are only serialized in crate
+///   metadata or the incremental cache, except for simple enums.where
+/// * `MetadataEncodable` is used in `rustc_metadata` for types that are only
+///   serialized in crate metadata.
 pub trait Encodable<S: Encoder> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error>;
 }
 
+/// Trait for types that can be deserialized
+///
+/// This can be implemented using the `Decodable`, `TyDecodable` and
+/// `MetadataDecodable` macros.
+///
+/// * `Decodable` should be used in crates that don't depend on
+///   `librustc_middle`.
+/// * `TyDecodable` should be used for types that are only serialized in crate
+///   metadata or the incremental cache, except for simple enums.where
+/// * `MetadataDecodable` is used in `rustc_metadata` for types that are only
+///   serialized in crate metadata.
 pub trait Decodable<D: Decoder>: Sized {
     fn decode(d: &mut D) -> Result<Self, D::Error>;
 }

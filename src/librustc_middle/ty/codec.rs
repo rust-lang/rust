@@ -74,6 +74,16 @@ pub trait TyEncoder<'tcx>: Encoder {
     fn encode_alloc_id(&mut self, alloc_id: &AllocId) -> Result<(), Self::Error>;
 }
 
+/// Trait for decoding to a reference.
+///
+/// This is a separate trait from `Decodable` so that we can implement it for
+/// upstream types, such as `FxHashSet`.
+///
+/// The `TyDecodable` derive macro will use this trait for fields that are
+/// references (and don't use a type alias to hide that).
+///
+/// `Decodable` can still be implemented in cases where `Decodable` is required
+/// by a trait bound.
 pub trait RefDecodable<'tcx, D: TyDecoder<'tcx>> {
     fn decode(d: &mut D) -> Result<&'tcx Self, D::Error>;
 }
@@ -301,6 +311,7 @@ macro_rules! impl_decodable_via_ref {
         })*
     }
 }
+
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::AdtDef {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let def_id = <DefId as Decodable<D>>::decode(decoder)?;
