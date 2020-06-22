@@ -700,6 +700,8 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
             prepare_tuple_metadata(cx, t, &tys, unique_type_id, usage_site_span, NO_SCOPE_METADATA)
                 .finalize(cx)
         }
+        // Type parameters from polymorphized functions.
+        ty::Param(_) => MetadataCreationResult::new(param_type_metadata(cx, t), false),
         _ => bug!("debuginfo: unexpected type in type_metadata: {:?}", t),
     };
 
@@ -953,6 +955,20 @@ fn pointer_type_metadata(
             name.len(),
         )
     }
+}
+
+fn param_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
+    debug!("param_type_metadata: {:?}", t);
+    let name = format!("{:?}", t);
+    return unsafe {
+        llvm::LLVMRustDIBuilderCreateBasicType(
+            DIB(cx),
+            name.as_ptr().cast(),
+            name.len(),
+            Size::ZERO.bits(),
+            DW_ATE_unsigned,
+        )
+    };
 }
 
 pub fn compile_unit_metadata(
