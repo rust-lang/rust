@@ -95,12 +95,13 @@
 //! [previous attempt]: https://github.com/rust-lang/rust/pull/47954
 //! [subsequent approach]: https://github.com/rust-lang/rust/pull/71003
 
-use crate::dataflow::{self, Analysis};
+use crate::dataflow::impls::{MaybeInitializedLocals, MaybeLiveLocals};
+use crate::dataflow::Analysis;
 use crate::{
     transform::{MirPass, MirSource},
     util::{dump_mir, PassWhere},
 };
-use dataflow::impls::{MaybeInitializedLocals, MaybeLiveLocals};
+use itertools::Itertools;
 use rustc_data_structures::unify::{InPlaceUnificationTable, UnifyKey};
 use rustc_index::{
     bit_set::{BitMatrix, BitSet},
@@ -255,12 +256,14 @@ impl Replacements<'tcx> {
 
             // We still return `Err` in any case, as `src` and `dest` do not need to be unified
             // *again*.
+            trace!("push({:?}): already unified", candidate);
             return Err(());
         }
 
         let entry = &mut self.map[candidate.src];
         if entry.is_some() {
             // We're already replacing `src` with something else, so this candidate is out.
+            trace!("push({:?}): src already has replacement", candidate);
             return Err(());
         }
 
@@ -270,6 +273,7 @@ impl Replacements<'tcx> {
         self.kill.insert(candidate.src);
         self.kill.insert(candidate.dest.local);
 
+        trace!("push({:?}): accepted", candidate);
         Ok(())
     }
 
@@ -535,7 +539,7 @@ impl Conflicts<'a> {
 
                 trace!("record conflicts at {:?}", loc);
 
-                this.record_conflicts(&mut live_and_init_locals[statement_index]);
+                this.record_dataflow_conflicts(&mut live_and_init_locals[statement_index]);
             }
 
             init.seek_to_block_end(block);
@@ -544,19 +548,25 @@ impl Conflicts<'a> {
             conflicts.intersect(live.get());
             trace!("record conflicts at end of {:?}", block);
 
-            this.record_conflicts(&mut conflicts);
+            this.record_dataflow_conflicts(&mut conflicts);
         }
 
         this
     }
 
-    fn record_conflicts(&mut self, new_conflicts: &mut BitSet<Local>) {
+    fn record_dataflow_conflicts(&mut self, new_conflicts: &mut BitSet<Local>) {
         // Remove all locals that are not candidates.
         new_conflicts.intersect(self.relevant_locals);
 
         for local in new_conflicts.iter() {
             self.matrix.union_row_with(&new_conflicts, local);
         }
+    }
+
+    fn record_local_conflict(&mut self, a: Local, b: Local, why: &str) {
+        trace!("conflict {:?} <-> {:?} due to {}", a, b, why);
+        self.matrix.insert(a, b);
+        self.matrix.insert(b, a);
     }
 
     /// Records locals that must not overlap during the evaluation of `stmt`. These locals conflict
@@ -575,8 +585,11 @@ impl Conflicts<'a> {
                         if !in_place.is_indirect() {
                             for out_place in &*asm.outputs {
                                 if !out_place.is_indirect() && !in_place.is_indirect() {
-                                    self.matrix.insert(in_place.local, out_place.local);
-                                    self.matrix.insert(out_place.local, in_place.local);
+                                    self.record_local_conflict(
+                                        in_place.local,
+                                        out_place.local,
+                                        "aliasing llvm_asm! operands",
+                                    );
                                 }
                             }
                         }
@@ -599,16 +612,22 @@ impl Conflicts<'a> {
             TerminatorKind::DropAndReplace { location, value, target: _, unwind: _ } => {
                 if let Some(place) = value.place() {
                     if !place.is_indirect() && !location.is_indirect() {
-                        self.matrix.insert(place.local, location.local);
-                        self.matrix.insert(location.local, place.local);
+                        self.record_local_conflict(
+                            place.local,
+                            location.local,
+                            "DropAndReplace operand overlap",
+                        );
                     }
                 }
             }
             TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
                 if let Some(place) = value.place() {
                     if !place.is_indirect() && !resume_arg.is_indirect() {
-                        self.matrix.insert(place.local, resume_arg.local);
-                        self.matrix.insert(resume_arg.local, place.local);
+                        self.record_local_conflict(
+                            place.local,
+                            resume_arg.local,
+                            "Yield operand overlap",
+                        );
                     }
                 }
             }
@@ -623,8 +642,11 @@ impl Conflicts<'a> {
                 for arg in args.iter().chain(Some(func)) {
                     if let Some(place) = arg.place() {
                         if !place.is_indirect() && !dest_place.is_indirect() {
-                            self.matrix.insert(dest_place.local, place.local);
-                            self.matrix.insert(place.local, dest_place.local);
+                            self.record_local_conflict(
+                                dest_place.local,
+                                place.local,
+                                "call dest/arg overlap",
+                            );
                         }
                     }
                 }
@@ -653,8 +675,11 @@ impl Conflicts<'a> {
                                     InlineAsmOperand::In { reg: _, value } => {
                                         if let Some(p) = value.place() {
                                             if !p.is_indirect() && !dest_place.is_indirect() {
-                                                self.matrix.insert(p.local, dest_place.local);
-                                                self.matrix.insert(dest_place.local, p.local);
+                                                self.record_local_conflict(
+                                                    p.local,
+                                                    dest_place.local,
+                                                    "asm! operand overlap",
+                                                );
                                             }
                                         }
                                     }
@@ -664,8 +689,11 @@ impl Conflicts<'a> {
                                         place: Some(place),
                                     } => {
                                         if !place.is_indirect() && !dest_place.is_indirect() {
-                                            self.matrix.insert(place.local, dest_place.local);
-                                            self.matrix.insert(dest_place.local, place.local);
+                                            self.record_local_conflict(
+                                                place.local,
+                                                dest_place.local,
+                                                "asm! operand overlap",
+                                            );
                                         }
                                     }
                                     InlineAsmOperand::InOut {
@@ -676,15 +704,21 @@ impl Conflicts<'a> {
                                     } => {
                                         if let Some(place) = in_value.place() {
                                             if !place.is_indirect() && !dest_place.is_indirect() {
-                                                self.matrix.insert(place.local, dest_place.local);
-                                                self.matrix.insert(dest_place.local, place.local);
+                                                self.record_local_conflict(
+                                                    place.local,
+                                                    dest_place.local,
+                                                    "asm! operand overlap",
+                                                );
                                             }
                                         }
 
                                         if let Some(place) = out_place {
                                             if !place.is_indirect() && !dest_place.is_indirect() {
-                                                self.matrix.insert(place.local, dest_place.local);
-                                                self.matrix.insert(dest_place.local, place.local);
+                                                self.record_local_conflict(
+                                                    place.local,
+                                                    dest_place.local,
+                                                    "asm! operand overlap",
+                                                );
                                             }
                                         }
                                     }
@@ -749,6 +783,10 @@ impl Conflicts<'a> {
     fn unify(&mut self, a: Local, b: Local) {
         // FIXME: This might be somewhat slow. Conflict graphs are undirected, maybe we can use
         // something with union-find to speed this up?
+
+        trace!("unify({:?}, {:?})", a, b);
+        trace!("{:?} conflicts: {:?}", a, self.matrix.iter(a).format(", "));
+        trace!("{:?} conflicts: {:?}", b, self.matrix.iter(b).format(", "));
 
         // Make all locals that conflict with `a` also conflict with `b`, and vice versa.
         self.unify_cache.clear();
