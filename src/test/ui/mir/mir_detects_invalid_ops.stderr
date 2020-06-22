@@ -12,11 +12,5 @@ error: this operation will panic at runtime
 LL |     let _z = 1 % y;
    |              ^^^^^ attempt to calculate the remainder with a divisor of zero
 
-error: this operation will panic at runtime
-  --> $DIR/mir_detects_invalid_ops.rs:22:18
-   |
-LL |         let _b = (*a)[3];
-   |                  ^^^^^^^ index out of bounds: the len is 3 but the index is 3
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

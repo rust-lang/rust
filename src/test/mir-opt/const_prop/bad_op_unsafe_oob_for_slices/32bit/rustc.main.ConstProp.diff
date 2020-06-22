@@ -46,22 +46,8 @@
                                            // mir::Constant
                                            // + span: $DIR/bad_op_unsafe_oob_for_slices.rs:7:23: 7:24
                                            // + literal: Const { ty: usize, val: Value(Scalar(0x00000003)) }
--         _7 = Len((*_1));                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
--         _8 = Lt(_6, _7);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
-+         _7 = const 3usize;               // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
-+                                          // ty::Const
-+                                          // + ty: usize
-+                                          // + val: Value(Scalar(0x00000003))
-+                                          // mir::Constant
-+                                          // + span: $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
-+                                          // + literal: Const { ty: usize, val: Value(Scalar(0x00000003)) }
-+         _8 = const false;                // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
-+                                          // ty::Const
-+                                          // + ty: bool
-+                                          // + val: Value(Scalar(0x00))
-+                                          // mir::Constant
-+                                          // + span: $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
-+                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+          _7 = Len((*_1));                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
+          _8 = Lt(_6, _7);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
           assert(move _8, "index out of bounds: the len is {} but the index is {}", move _7, _6) -> bb1; // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
       }
   
