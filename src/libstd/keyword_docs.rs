@@ -967,9 +967,50 @@ mod move_keyword {}
 //
 /// A mutable binding, reference, or pointer.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `mut` can be used in several situations. The first is mutable bindings,
+/// which can be used anywhere you can bind a value to a variable name. Some
+/// examples:
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// ```
+/// // A mutable binding in the parameter list of a function.
+/// fn foo(mut x: u8, y: u8) -> u8 {
+///     x += y;
+///     x
+/// }
+///
+/// // A mutable binding for a variable.
+/// let mut a = 5;
+/// a = 6;
+///
+/// assert_eq!(foo(3, 4), 7);
+/// assert_eq!(a, 6);
+/// ```
+///
+/// The second is references. They can be created from `mut` bindings and must
+/// be unique: no other binding can have a mutable reference, nor a simple
+/// reference.
+///
+/// ```
+/// // Taking a mutable reference.
+/// fn push_two(v: &mut Vec<u8>) {
+///     v.push(2);
+/// }
+///
+/// // You cannot take a mutable reference to a non-mutable variable.
+/// let mut v = vec![0, 1];
+/// // Passing a mutable reference.
+/// push_two(&mut v);
+///
+/// assert_eq!(v, vec![0, 1, 2]);
+/// ```
+///
+/// Mutable pointers work much like mutable references, with the added
+/// possibility of being nul. The syntax is `*mut Type`.
+///
+/// You can find more information on mutable references and pointers in the
+/// [Reference].
+///
+/// [Reference]: ../reference/types/pointer.html#mutable-references-mut
 mod mut_keyword {}
 
 #[doc(keyword = "pub")]
