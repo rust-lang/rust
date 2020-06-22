@@ -890,6 +890,7 @@ impl<'tcx> Generics {
         false
     }
 
+    /// Returns the `GenericParamDef` with the given index.
     pub fn param_at(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
         if let Some(index) = param_index.checked_sub(self.parent_count) {
             &self.params[index]
@@ -899,6 +900,7 @@ impl<'tcx> Generics {
         }
     }
 
+    /// Returns the `GenericParamDef` associated with this `EarlyBoundRegion`.
     pub fn region_param(
         &'tcx self,
         param: &EarlyBoundRegion,
@@ -920,7 +922,7 @@ impl<'tcx> Generics {
         }
     }
 
-    /// Returns the `ConstParameterDef` associated with this `ParamConst`.
+    /// Returns the `GenericParamDef` associated with this `ParamConst`.
     pub fn const_param(&'tcx self, param: &ParamConst, tcx: TyCtxt<'tcx>) -> &GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
