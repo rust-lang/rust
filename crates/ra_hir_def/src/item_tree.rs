@@ -65,7 +65,7 @@ pub struct ItemTree {
 
 impl ItemTree {
     pub fn item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
-        let _p = ra_prof::profile("item_tree_query");
+        let _p = ra_prof::profile("item_tree_query").detail(|| format!("{:?}", file_id));
         let syntax = if let Some(node) = db.parse_or_expand(file_id) {
             node
         } else {

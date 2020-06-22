@@ -114,7 +114,7 @@ pub trait SourceDatabase: CheckCanceled + FileLoader + std::fmt::Debug {
 }
 
 fn parse_query(db: &impl SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
-    let _p = profile("parse_query");
+    let _p = profile("parse_query").detail(|| format!("{:?}", file_id));
     let text = db.file_text(file_id);
     SourceFile::parse(&*text)
 }
