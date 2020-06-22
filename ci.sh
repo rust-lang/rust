@@ -23,10 +23,11 @@ function run_tests {
   fi
 
   ./miri test --locked
-  if ! [ -n "${MIRI_TEST_TARGET+exists}" ]; then
+  #if ! [ -n "${MIRI_TEST_TARGET+exists}" ]; then
     # Only for host architecture: tests with MIR optimizations
-    MIRI_TEST_FLAGS="-Z mir-opt-level=3" ./miri test --locked
-  fi
+    # FIXME: disabled because of <https://github.com/rust-lang/rust/issues/73609>.
+    #MIRI_TEST_FLAGS="-Z mir-opt-level=3" ./miri test --locked
+  #fi
   # "miri test" has built the sysroot for us, now this should pass without
   # any interactive questions.
   ${PYTHON:-python3} test-cargo-miri/run-test.py
