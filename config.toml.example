@@ -173,9 +173,7 @@
 
 # Python interpreter to use for various tasks throughout the build, notably
 # rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
-#
-# Defaults to the Python interpreter used to execute x.py.
-#python = "python"
+#python = "python" # defaults to the Python interpreter used to execute x.py
 
 # Force Cargo to check that Cargo.lock describes the precise dependency
 # set that all the Cargo.toml files create, instead of updating it.
@@ -313,13 +311,11 @@
 
 # Whether or not debug assertions are enabled for the compiler and standard
 # library.
-# Defaults to rust.debug value.
-#debug-assertions = false
+#debug-assertions = false # defaults to rust.debug value
 
 # Whether or not debug assertions are enabled for the standard library.
 # Overrides the `debug-assertions` option, if defined.
-# Defaults to rust.debug value.
-#debug-assertions-std = false
+#debug-assertions-std = false # defaults to rust.debug value
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
@@ -328,21 +324,16 @@
 # Can be overridden for specific subsets of Rust code (rustc, std or tools).
 # Debuginfo for tests run with compiletest is not controlled by this option
 # and needs to be enabled separately with `debuginfo-level-tests`.
-#
-# If debug is true, this defaults to 2.
-#debuginfo-level = 0
+#debuginfo-level = 0 # defaults to 2 if debug is true
 
 # Debuginfo level for the compiler.
-# Defaults to rust.debuginfo-level value.
-#debuginfo-level-rustc = 0
+#debuginfo-level-rustc = 0 # defaults to rust.debuginfo-level value
 
 # Debuginfo level for the standard library.
-# Defaults to rust.debuginfo-level value.
-#debuginfo-level-std = 0
+#debuginfo-level-std = 0 # defaults to rust.debuginfo-level value
 
 # Debuginfo level for the tools.
-# Defaults to rust.debuginfo-level value.
-#debuginfo-level-tools = 0
+#debuginfo-level-tools = 0 # defaults to rust.debuginfo-level value
 
 # Debuginfo level for the test suites run with compiletest.
 # FIXME(#61117): Some tests fail when this option is enabled.
