@@ -214,6 +214,12 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
+        query coverage_data(key: DefId) -> Option<mir::CoverageData> {
+            desc { |tcx| "retrieving coverage data, if computed from MIR for `{}`", tcx.def_path_str(key) }
+            storage(ArenaCacheSelector<'tcx>)
+            cache_on_disk_if { key.is_local() }
+        }
+
         query promoted_mir(key: DefId) -> IndexVec<mir::Promoted, mir::Body<'tcx>> {
             desc { |tcx| "optimizing promoted MIR for `{}`", tcx.def_path_str(key) }
             storage(ArenaCacheSelector<'tcx>)

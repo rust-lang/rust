@@ -21,9 +21,9 @@ use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
 pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
-    pub instance: Instance<'tcx>,
+    instance: Instance<'tcx>,
 
-    pub mir: &'tcx mir::Body<'tcx>,
+    mir: &'tcx mir::Body<'tcx>,
 
     debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
 
