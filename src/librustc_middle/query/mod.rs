@@ -1309,6 +1309,13 @@ rustc_queries! {
         query codegen_unit(_: Symbol) -> &'tcx CodegenUnit<'tcx> {
             desc { "codegen_unit" }
         }
+        query unused_generic_params(key: DefId) -> u64 {
+            cache_on_disk_if { key.is_local() }
+            desc {
+                |tcx| "determining which generic parameters are unused by `{}`",
+                    tcx.def_path_str(key)
+            }
+        }
         query backend_optimization_level(_: CrateNum) -> OptLevel {
             desc { "optimization level used by backend" }
         }

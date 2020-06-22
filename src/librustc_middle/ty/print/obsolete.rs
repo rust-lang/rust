@@ -144,12 +144,14 @@ impl DefPathBasedNames<'tcx> {
                 let substs = substs.truncate_to(self.tcx, generics);
                 self.push_generic_params(substs, iter::empty(), output, debug);
             }
+            ty::Param(_) => {
+                output.push_str(&t.to_string());
+            }
             ty::Error(_)
             | ty::Bound(..)
             | ty::Infer(_)
             | ty::Placeholder(..)
             | ty::Projection(..)
-            | ty::Param(_)
             | ty::GeneratorWitness(_)
             | ty::Opaque(..) => {
                 if debug {

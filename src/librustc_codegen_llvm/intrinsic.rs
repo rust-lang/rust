@@ -160,7 +160,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         caller_instance: ty::Instance<'tcx>,
     ) {
         let tcx = self.tcx;
-        let callee_ty = instance.monomorphic_ty(tcx);
+        let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
         let (def_id, substs) = match callee_ty.kind {
             ty::FnDef(def_id, substs) => (def_id, substs),

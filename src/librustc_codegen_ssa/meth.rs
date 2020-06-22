@@ -94,7 +94,8 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
                     def_id,
                     substs,
                 )
-                .unwrap(),
+                .unwrap()
+                .polymorphize(cx.tcx()),
             )
         })
     });

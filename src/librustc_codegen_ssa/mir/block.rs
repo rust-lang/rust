@@ -543,7 +543,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 Some(
                     ty::Instance::resolve(bx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs)
                         .unwrap()
-                        .unwrap(),
+                        .unwrap()
+                        .polymorphize(bx.tcx()),
                 ),
                 None,
             ),

@@ -27,7 +27,7 @@ impl SomeGenericTrait<u64> for i32 {
 
     // For the non-generic foo(), we should generate a codegen-item even if it
     // is not called anywhere
-    //~ MONO_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::foo[0]<i32, u64>
+    //~ MONO_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::foo[0]<i32, T1>
 }
 
 // Non-generic impl of generic trait
