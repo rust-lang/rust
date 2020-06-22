@@ -232,7 +232,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::FnDef(..) => instance_ty.fn_sig(*self.tcx).abi(),
                     ty::Closure(..) => Abi::RustCall,
                     ty::Generator(..) => Abi::Rust,
-                    _ => bug!("unexpected callee ty: {:?}", instance_ty),
+                    _ => span_bug!(self.cur_span(), "unexpected callee ty: {:?}", instance_ty),
                 }
             };
             let normalize_abi = |abi| match abi {
