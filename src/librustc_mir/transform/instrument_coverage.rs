@@ -7,10 +7,12 @@ use rustc_middle::hir;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{
-    self, BasicBlock, BasicBlockData, CoverageData, Operand, Place, SourceInfo, StatementKind,
-    Terminator, TerminatorKind, START_BLOCK,
+    self, traversal, BasicBlock, BasicBlockData, CoverageData, Operand, Place, SourceInfo,
+    StatementKind, Terminator, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::FnDef;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
@@ -18,6 +20,31 @@ use rustc_span::Span;
 /// Inserts call to count_code_region() as a placeholder to be replaced during code generation with
 /// the intrinsic llvm.instrprof.increment.
 pub struct InstrumentCoverage;
+
+/// The `query` provider for `CoverageData`, requested by `codegen_intrinsic_call()` when
+/// constructing the arguments for `llvm.instrprof.increment`.
+pub(crate) fn provide(providers: &mut Providers<'_>) {
+    providers.coverage_data = |tcx, def_id| {
+        let body = tcx.optimized_mir(def_id);
+        let count_code_region_fn =
+            tcx.require_lang_item(lang_items::CountCodeRegionFnLangItem, None);
+        let mut num_counters: u32 = 0;
+        for (_, data) in traversal::preorder(body) {
+            if let Some(terminator) = &data.terminator {
+                if let TerminatorKind::Call { func: Operand::Constant(func), .. } = &terminator.kind
+                {
+                    if let FnDef(called_fn_def_id, _) = func.literal.ty.kind {
+                        if called_fn_def_id == count_code_region_fn {
+                            num_counters += 1;
+                        }
+                    }
+                }
+            }
+        }
+        let hash = if num_counters > 0 { hash_mir_source(tcx, def_id) } else { 0 };
+        CoverageData { num_counters, hash }
+    };
+}
 
 struct Instrumentor<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -30,20 +57,12 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             // If the InstrumentCoverage pass is called on promoted MIRs, skip them.
             // See: https://github.com/rust-lang/rust/pull/73011#discussion_r438317601
             if src.promoted.is_none() {
-                assert!(mir_body.coverage_data.is_none());
-
-                let hash = hash_mir_source(tcx, &src);
-
                 debug!(
-                    "instrumenting {:?}, hash: {}, span: {}",
+                    "instrumenting {:?}, span: {}",
                     src.def_id(),
-                    hash,
                     tcx.sess.source_map().span_to_string(mir_body.span)
                 );
-
-                let num_counters = Instrumentor::new(tcx).inject_counters(mir_body);
-
-                mir_body.coverage_data = Some(CoverageData { hash, num_counters });
+                Instrumentor::new(tcx).inject_counters(mir_body);
             }
         }
     }
@@ -60,15 +79,13 @@ impl<'tcx> Instrumentor<'tcx> {
         next
     }
 
-    fn inject_counters(&mut self, mir_body: &mut mir::Body<'tcx>) -> u32 {
+    fn inject_counters(&mut self, mir_body: &mut mir::Body<'tcx>) {
         // FIXME(richkadel): As a first step, counters are only injected at the top of each
         // function. The complete solution will inject counters at each conditional code branch.
         let top_of_function = START_BLOCK;
         let entire_function = mir_body.span;
 
         self.inject_counter(mir_body, top_of_function, entire_function);
-
-        self.num_counters
     }
 
     fn inject_counter(
@@ -138,14 +155,9 @@ fn placeholder_block(span: Span) -> BasicBlockData<'tcx> {
     }
 }
 
-fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, src: &MirSource<'tcx>) -> u64 {
-    let fn_body_id = match tcx.hir().get_if_local(src.def_id()) {
-        Some(node) => match hir::map::associated_body(node) {
-            Some(body_id) => body_id,
-            _ => bug!("instrumented MirSource does not include a function body: {:?}", node),
-        },
-        None => bug!("instrumented MirSource is not local: {:?}", src),
-    };
+fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> u64 {
+    let hir_node = tcx.hir().get_if_local(def_id).expect("DefId is local");
+    let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
     let hir_body = tcx.hir().body(fn_body_id);
     let mut hcx = tcx.create_no_span_stable_hashing_context();
     hash(&mut hcx, &hir_body.value).to_smaller_hash()

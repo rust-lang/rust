@@ -6,7 +6,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
-use rustc_middle::mir::{traversal, Body, ConstQualifs, CoverageData, MirPhase, Promoted};
+use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{InstanceDef, TyCtxt, TypeFoldable};
@@ -53,10 +53,10 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
         mir_drops_elaborated_and_const_checked,
         optimized_mir,
         is_mir_available,
-        coverage_data,
         promoted_mir,
         ..*providers
     };
+    instrument_coverage::provide(providers);
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
@@ -421,11 +421,6 @@ fn run_optimization_passes<'tcx>(
             pre_codegen_cleanup,
         ],
     );
-}
-
-fn coverage_data(tcx: TyCtxt<'_>, def_id: DefId) -> Option<CoverageData> {
-    let body = tcx.optimized_mir(def_id);
-    body.coverage_data.clone()
 }
 
 fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {

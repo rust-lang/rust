@@ -140,18 +140,15 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.call(llfn, &[], None)
             }
             "count_code_region" => {
-                let coverage_data = tcx
-                    .coverage_data(caller_instance.def_id())
-                    .as_ref()
-                    .expect("LLVM intrinsic count_code_region call has associated coverage_data");
+                let coverage_data = tcx.coverage_data(caller_instance.def_id());
                 let mangled_fn = tcx.symbol_name(caller_instance);
                 let (mangled_fn_name, _len_val) = self.const_str(mangled_fn.name);
                 let hash = self.const_u64(coverage_data.hash);
-                let index = args[0].immediate();
                 let num_counters = self.const_u32(coverage_data.num_counters);
+                let index = args[0].immediate();
                 debug!(
                     "count_code_region to LLVM intrinsic instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
-                    mangled_fn.name, hash, index, num_counters
+                    mangled_fn.name, hash, num_counters, index
                 );
                 self.instrprof_increment(mangled_fn_name, hash, num_counters, index)
             }
