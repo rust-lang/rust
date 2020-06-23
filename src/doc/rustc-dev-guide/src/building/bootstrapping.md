@@ -2,7 +2,83 @@
 
 This subchapter is about the bootstrapping process.
 
-When running `x.py` you will see output such as:
+## What is bootstrapping? How does it work?
+
+[Bootstrapping] is the process of using a compiler to compile itself.
+More accurately, it means using an older compiler to compile a newer version
+of the same compiler.
+
+This raises a chicken-and-egg paradox: where did the first compiler come from?
+It must have been written in a different language. In Rust's case it was
+[written in OCaml][ocaml-compiler]. However it was abandoned long ago and the
+only way to build a modern version of rustc is a slightly less modern
+version.
+
+This is exactly how `x.py` works: it downloads the current `beta` release of
+rustc, then uses it to compile the nightly compiler. The beta release is
+called `stage0` and the newly built compiler is `stage1` (or `stage0
+artifacts`). To get the full benefits of the new compiler (e.g. optimizations
+and new features), the `stage1` compiler then compiles _itself_ again. This
+last compiler is called `stage2` (or `stage1 artifacts`).
+
+The `stage2` compiler is the one distributed with `rustup` and all other
+install methods. However, it takes a very long time to build because one must
+first build the new compiler with an older compiler and then use that to
+build the new compiler with itself. For development, you usually only want
+the `stage1` compiler: `x.py build --stage 1 src/libstd`.
+
+## Complications of bootstrapping
+
+Since the build system uses the current beta compiler to build the stage-1
+bootstrapping compiler, the compiler source code can't use some features
+until they reach beta (because otherwise the beta compiler doesn't support
+them). On the other hand, for [compiler intrinsics][intrinsics] and internal
+features, the features _have_ to be used. Additionally, the compiler makes
+heavy use of nightly features (`#![feature(...)]`). How can we resolve this
+problem?
+
+There are two methods used:
+1. The build system sets `--cfg bootstrap` when building with `stage0`, so we
+can use `cfg(not(bootstrap))` to only use features when built with `stage1`.
+This is useful for e.g. features that were just stabilized, which require
+`#![feature(...)]` when built with `stage0`, but not for `stage1`.
+2. The build system sets `RUSTC_BOOTSTRAP=1`. This special variable means to
+_break the stability guarantees_ of rust: Allow using `#![feature(...)]` with
+a compiler that's not nightly. This should never be used except when
+bootstrapping the compiler.
+
+[Bootstrapping]: https://en.wikipedia.org/wiki/Bootstrapping_(compilers)
+[intrinsics]: ../appendix/glossary.md#intrinsic
+[ocaml-compiler]: https://github.com/rust-lang/rust/tree/ef75860a0a72f79f97216f8aaa5b388d98da6480/src/boot
+
+## Contributing to bootstrap
+
+When you use the bootstrap system, you'll call it through `x.py`.
+However, most of the code lives in `src/bootstrap`.
+`bootstrap` has a difficult problem: it is written in Rust, but yet it is run
+before the rust compiler is built! To work around this, there are two
+components of bootstrap: the main one written in rust, and `bootstrap.py`.
+`bootstrap.py` is what gets run by x.py. It takes care of downloading the
+`stage0` compiler, which will then build the bootstrap binary written in
+Rust.
+
+Because there are two separate codebases being from from `x.py`, they need to
+be kept in sync. In particular, both `bootstrap.py` and the bootstrap binary
+parse `config.toml` and read the same command line arguments. `bootstrap.py`
+keeps these in sync by setting various environment variables, and the
+programs sometimes to have add arguments that are explicitly ignored, to be
+read by the other.
+
+### Adding a setting to config.toml
+
+This section is a work in progress. In the meantime, you can see an example contribution [here][bootstrap-build].
+
+[bootstrap-build]: https://github.com/rust-lang/rust/pull/71994
+
+## Stages of bootstrap
+
+This is a detailed look into the separate bootstrap stages. When running
+`x.py` you will see output such as:
 
 ```txt
 Building stage0 std artifacts
