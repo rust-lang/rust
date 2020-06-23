@@ -19,7 +19,6 @@ use stdx::split1;
 use text_size::{TextRange, TextSize};
 
 pub use ra_cfg::CfgOptions;
-pub use relative_path::{RelativePath, RelativePathBuf};
 pub use rustc_hash::FxHashMap;
 
 pub use difference::Changeset as __Changeset;

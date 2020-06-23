@@ -1407,7 +1407,6 @@ dependencies = [
  "ra_tt",
  "ra_vfs",
  "rand",
- "relative-path",
  "rustc-hash",
  "serde",
  "serde_json",
@@ -1677,7 +1676,6 @@ version = "0.1.0"
 dependencies = [
  "difference",
  "ra_cfg",
- "relative-path",
  "rustc-hash",
  "serde_json",
  "stdx",
