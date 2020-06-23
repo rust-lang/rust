@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapIdentity {
 /// map(). Otherwise, returns None.
 fn get_map_argument<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<&'a [Expr<'a>]> {
     if_chain! {
-        if let ExprKind::MethodCall(ref method, _, ref args) = expr.kind;
+        if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
         if args.len() == 2 && method.ident.as_str() == "map";
         let caller_ty = cx.tables.expr_ty(&args[0]);
         if match_trait_method(cx, expr, &paths::ITERATOR)
