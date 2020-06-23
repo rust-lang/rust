@@ -4,13 +4,8 @@ use stdx::split1;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct FixtureEntry {
-    pub meta: FixtureMeta,
+    pub meta: FileMeta,
     pub text: String,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum FixtureMeta {
-    File(FileMeta),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -21,57 +16,6 @@ pub struct FileMeta {
     pub cfg: CfgOptions,
     pub edition: Option<String>,
     pub env: FxHashMap<String, String>,
-}
-
-impl FixtureMeta {
-    pub fn path(&self) -> &str {
-        match self {
-            FixtureMeta::File(f) => &f.path,
-        }
-    }
-
-    pub fn crate_name(&self) -> Option<&String> {
-        match self {
-            FixtureMeta::File(f) => f.crate_name.as_ref(),
-        }
-    }
-
-    pub fn cfg_options(&self) -> Option<&CfgOptions> {
-        match self {
-            FixtureMeta::File(f) => Some(&f.cfg),
-        }
-    }
-
-    pub fn edition(&self) -> Option<&String> {
-        match self {
-            FixtureMeta::File(f) => f.edition.as_ref(),
-        }
-    }
-
-    pub fn env(&self) -> impl Iterator<Item = (&String, &String)> {
-        struct EnvIter<'a> {
-            iter: Option<std::collections::hash_map::Iter<'a, String, String>>,
-        }
-
-        impl<'a> EnvIter<'a> {
-            fn new(meta: &'a FixtureMeta) -> Self {
-                Self {
-                    iter: match meta {
-                        FixtureMeta::File(f) => Some(f.env.iter()),
-                    },
-                }
-            }
-        }
-
-        impl<'a> Iterator for EnvIter<'a> {
-            type Item = (&'a String, &'a String);
-            fn next(&mut self) -> Option<Self::Item> {
-                self.iter.as_mut().and_then(|i| i.next())
-            }
-        }
-
-        EnvIter::new(self)
-    }
 }
 
 /// Same as `parse_fixture`, except it allow empty fixture
@@ -137,7 +81,7 @@ The offending line: {:?}"#,
 }
 
 //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
-fn parse_meta(meta: &str) -> FixtureMeta {
+fn parse_meta(meta: &str) -> FileMeta {
     let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
 
     let path = components[0].to_string();
@@ -173,7 +117,7 @@ fn parse_meta(meta: &str) -> FixtureMeta {
         }
     }
 
-    FixtureMeta::File(FileMeta { path, crate_name: krate, deps, edition, cfg, env })
+    FileMeta { path, crate_name: krate, deps, edition, cfg, env }
 }
 
 /// Adjusts the indentation of the first line to the minimum indentation of the rest of the lines.

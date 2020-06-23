@@ -61,7 +61,7 @@ use std::{str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use rustc_hash::FxHashMap;
-use test_utils::{extract_offset, parse_fixture, parse_single_fixture, FixtureMeta, CURSOR_MARKER};
+use test_utils::{extract_offset, parse_fixture, parse_single_fixture, CURSOR_MARKER};
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
@@ -243,20 +243,18 @@ struct FileMeta {
     env: Env,
 }
 
-impl From<&FixtureMeta> for ParsedMeta {
-    fn from(meta: &FixtureMeta) -> Self {
-        match meta {
-            FixtureMeta::File(f) => Self::File(FileMeta {
-                path: f.path.to_owned(),
-                krate: f.crate_name.to_owned(),
-                deps: f.deps.to_owned(),
-                cfg: f.cfg.to_owned(),
-                edition: f
-                    .edition
-                    .as_ref()
-                    .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
-                env: Env::from(f.env.iter()),
-            }),
-        }
+impl From<&test_utils::FileMeta> for ParsedMeta {
+    fn from(f: &test_utils::FileMeta) -> Self {
+        Self::File(FileMeta {
+            path: f.path.to_owned(),
+            krate: f.crate_name.to_owned(),
+            deps: f.deps.to_owned(),
+            cfg: f.cfg.to_owned(),
+            edition: f
+                .edition
+                .as_ref()
+                .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
+            env: Env::from(f.env.iter()),
+        })
     }
 }
