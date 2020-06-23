@@ -1,6 +1,7 @@
 use super::archive;
 use super::command::Command;
 use super::symbol_export;
+use rustc_span::symbol::sym;
 
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
@@ -1036,9 +1037,7 @@ impl<'a> WasmLd<'a> {
         //
         // * `--export=*tls*` - when `#[thread_local]` symbols are used these
         //   symbols are how the TLS segments are initialized and configured.
-        let atomics = sess.opts.cg.target_feature.contains("+atomics")
-            || sess.target.target.options.features.contains("+atomics");
-        if atomics {
+        if sess.target_features.contains(&sym::atomics) {
             cmd.arg("--shared-memory");
             cmd.arg("--max-memory=1073741824");
             cmd.arg("--import-memory");

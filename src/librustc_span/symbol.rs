@@ -159,6 +159,7 @@ symbols! {
         assume_init,
         async_await,
         async_closure,
+        atomics,
         attr,
         attributes,
         attr_literals,
