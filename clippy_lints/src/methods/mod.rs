@@ -1501,7 +1501,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                             !impl_item.generics.params.iter()
                                 .any(|p| matches!(
                                     p.kind,
-                                    hir::GenericParamKind::Lifetime { .. }))
+                                    hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }))
                         };
                         if name == method_name &&
                             sig.decl.inputs.len() == n_args &&
