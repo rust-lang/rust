@@ -587,6 +587,7 @@ symbols! {
         proc_macro_mod,
         proc_macro_non_items,
         proc_macro_path_invoc,
+        profiler_builtins,
         profiler_runtime,
         ptr_guaranteed_eq,
         ptr_guaranteed_ne,

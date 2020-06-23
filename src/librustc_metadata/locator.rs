@@ -488,6 +488,8 @@ impl<'a> CrateLocator<'a> {
                 && self.triple != TargetTriple::from_triple(config::host_triple())
             {
                 err.note(&format!("the `{}` target may not be installed", self.triple));
+            } else if self.crate_name == sym::profiler_builtins {
+                err.note(&"the compiler may have been built without the profiler runtime");
             }
             err.span_label(self.span, "can't find crate");
             err
