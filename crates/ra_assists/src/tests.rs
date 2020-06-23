@@ -4,7 +4,7 @@ use hir::Semantics;
 use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
 use ra_ide_db::RootDatabase;
 use ra_syntax::TextRange;
-use test_utils::{assert_eq_text, extract_offset, extract_range, extract_range_or_offset};
+use test_utils::{assert_eq_text, extract_offset, extract_range};
 
 use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, Assists};
 use stdx::trim_indent;
@@ -30,8 +30,9 @@ pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
 }
 
 fn check_doc_test(assist_id: &str, before: &str, after: &str) {
-    let (selection, before) = extract_range_or_offset(before);
-    let (db, file_id) = crate::tests::with_single_file(&before);
+    let after = trim_indent(after);
+    let (db, file_id, selection) = RootDatabase::with_range_or_offset(&before);
+    let before = db.file_text(file_id).to_string();
     let frange = FileRange { file_id, range: selection.into() };
 
     let mut assist = Assist::resolved(&db, &AssistConfig::default(), frange)
@@ -51,11 +52,11 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
 
     let actual = {
         let change = assist.source_change.source_file_edits.pop().unwrap();
-        let mut actual = before.clone();
+        let mut actual = before;
         change.edit.apply(&mut actual);
         actual
     };
-    assert_eq_text!(after, &actual);
+    assert_eq_text!(&after, &actual);
 }
 
 enum ExpectedResult<'a> {
@@ -66,7 +67,7 @@ enum ExpectedResult<'a> {
 
 fn check(handler: Handler, before: &str, expected: ExpectedResult) {
     let (db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
-    let text_without_caret = db.file_text(file_with_caret_id).as_ref().to_owned();
+    let text_without_caret = db.file_text(file_with_caret_id).to_string();
 
     let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
 

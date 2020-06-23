@@ -74,8 +74,9 @@ pub const WORKSPACE: SourceRootId = SourceRootId(0);
 pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     fn with_single_file(text: &str) -> (Self, FileId) {
         let mut db = Self::default();
-        let file_id = with_single_file(&mut db, text);
-        (db, file_id)
+        let (_, files) = with_files(&mut db, text);
+        assert_eq!(files.len(), 1);
+        (db, files[0])
     }
 
     fn with_files(ra_fixture: &str) -> Self {
@@ -111,52 +112,6 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
 }
 
 impl<DB: SourceDatabaseExt + Default + 'static> WithFixture for DB {}
-
-fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId {
-    let file_id = FileId(0);
-    let mut file_set = vfs::file_set::FileSet::default();
-    file_set.insert(file_id, vfs::VfsPath::new_virtual_path("/main.rs".to_string()));
-
-    let source_root = SourceRoot::new_local(file_set);
-
-    let crate_graph = if let Some(meta) = ra_fixture.lines().find(|it| it.contains("//-")) {
-        let entry = Fixture::parse_meta_line(meta.trim());
-        let meta = match ParsedMeta::from(&entry) {
-            ParsedMeta::File(it) => it,
-        };
-
-        let mut crate_graph = CrateGraph::default();
-        crate_graph.add_crate_root(
-            file_id,
-            meta.edition,
-            meta.krate.map(|name| {
-                CrateName::new(&name).expect("Fixture crate name should not contain dashes")
-            }),
-            meta.cfg,
-            meta.env,
-            Default::default(),
-        );
-        crate_graph
-    } else {
-        let mut crate_graph = CrateGraph::default();
-        crate_graph.add_crate_root(
-            file_id,
-            Edition::Edition2018,
-            None,
-            CfgOptions::default(),
-            Env::default(),
-            Default::default(),
-        );
-        crate_graph
-    };
-
-    db.set_file_text(file_id, Arc::new(ra_fixture.to_string()));
-    db.set_file_source_root(file_id, WORKSPACE);
-    db.set_source_root(WORKSPACE, Arc::new(source_root));
-    db.set_crate_graph(Arc::new(crate_graph));
-
-    file_id
-}
 
 fn with_files(
     db: &mut dyn SourceDatabaseExt,

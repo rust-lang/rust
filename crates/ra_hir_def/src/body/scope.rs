@@ -189,20 +189,22 @@ mod tests {
     }
 
     fn do_check(ra_fixture: &str, expected: &[&str]) {
-        let (off, code) = extract_offset(ra_fixture);
+        let (offset, code) = extract_offset(ra_fixture);
         let code = {
             let mut buf = String::new();
-            let off: usize = off.into();
+            let off: usize = offset.into();
             buf.push_str(&code[..off]);
-            buf.push_str("marker");
+            buf.push_str("<|>marker");
             buf.push_str(&code[off..]);
             buf
         };
 
-        let (db, file_id) = TestDB::with_single_file(&code);
+        let (db, position) = TestDB::with_position(&code);
+        let file_id = position.file_id;
+        let offset = position.offset;
 
         let file_syntax = db.parse(file_id).syntax_node();
-        let marker: ast::PathExpr = find_node_at_offset(&file_syntax, off).unwrap();
+        let marker: ast::PathExpr = find_node_at_offset(&file_syntax, offset).unwrap();
         let function = find_function(&db, file_id);
 
         let scopes = db.expr_scopes(function.into());
@@ -302,27 +304,28 @@ mod tests {
     fn test_bindings_after_at() {
         do_check(
             r"
-            fn foo() {
-                match Some(()) {
-                    opt @ Some(unit) => {
-                        <|>
-                    }
-                    _ => {}
-                }
-            }",
+fn foo() {
+    match Some(()) {
+        opt @ Some(unit) => {
+            <|>
+        }
+        _ => {}
+    }
+}
+",
             &["opt", "unit"],
         );
     }
 
-    fn do_check_local_name(code: &str, expected_offset: u32) {
-        let (off, code) = extract_offset(code);
-
-        let (db, file_id) = TestDB::with_single_file(&code);
+    fn do_check_local_name(ra_fixture: &str, expected_offset: u32) {
+        let (db, position) = TestDB::with_position(ra_fixture);
+        let file_id = position.file_id;
+        let offset = position.offset;
 
         let file = db.parse(file_id).ok().unwrap();
         let expected_name = find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into())
             .expect("failed to find a name at the target offset");
-        let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
+        let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), offset).unwrap();
 
         let function = find_function(&db, file_id);
 
@@ -350,15 +353,16 @@ mod tests {
     fn test_resolve_local_name() {
         do_check_local_name(
             r#"
-            fn foo(x: i32, y: u32) {
-                {
-                    let z = x * 2;
-                }
-                {
-                    let t = x<|> * 3;
-                }
-            }"#,
-            21,
+fn foo(x: i32, y: u32) {
+    {
+        let z = x * 2;
+    }
+    {
+        let t = x<|> * 3;
+    }
+}
+"#,
+            7,
         );
     }
 
@@ -366,10 +370,11 @@ mod tests {
     fn test_resolve_local_name_declaration() {
         do_check_local_name(
             r#"
-            fn foo(x: String) {
-                let x : &str = &x<|>;
-            }"#,
-            21,
+fn foo(x: String) {
+    let x : &str = &x<|>;
+}
+"#,
+            7,
         );
     }
 
@@ -377,12 +382,12 @@ mod tests {
     fn test_resolve_local_name_shadow() {
         do_check_local_name(
             r"
-            fn foo(x: String) {
-                let x : &str = &x;
-                x<|>
-            }
-            ",
-            53,
+fn foo(x: String) {
+    let x : &str = &x;
+    x<|>
+}
+",
+            28,
         );
     }
 
@@ -390,13 +395,13 @@ mod tests {
     fn ref_patterns_contribute_bindings() {
         do_check_local_name(
             r"
-            fn foo() {
-                if let Some(&from) = bar() {
-                    from<|>;
-                }
-            }
-            ",
-            53,
+fn foo() {
+    if let Some(&from) = bar() {
+        from<|>;
+    }
+}
+",
+            28,
         );
     }
 

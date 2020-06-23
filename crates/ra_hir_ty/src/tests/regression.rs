@@ -15,11 +15,11 @@ fn test() {
 }
 "#),
         @r###"
-    11..37 '{    l... {}; }': ()
-    20..21 'x': ()
-    24..34 'if true {}': ()
-    27..31 'true': bool
-    32..34 '{}': ()
+    10..36 '{    l... {}; }': ()
+    19..20 'x': ()
+    23..33 'if true {}': ()
+    26..30 'true': bool
+    31..33 '{}': ()
     "###
     );
 }
@@ -35,10 +35,10 @@ fn test(x: X) {
 }
 "#),
         @r###"
-    20..21 'x': X
-    26..47 '{     ...eld; }': ()
-    32..33 'x': X
-    32..44 'x.some_field': {unknown}
+    19..20 'x': X
+    25..46 '{     ...eld; }': ()
+    31..32 'x': X
+    31..43 'x.some_field': {unknown}
     "###
     );
 }
@@ -56,14 +56,14 @@ fn test() {
 }
 "#),
         @r###"
-    11..89 '{     ...   } }': ()
-    17..21 'X {}': {unknown}
-    27..87 'match ...     }': ()
-    33..34 'x': {unknown}
-    45..52 'A::B {}': {unknown}
-    56..58 '()': ()
-    68..74 'A::Y()': {unknown}
-    78..80 '()': ()
+    10..88 '{     ...   } }': ()
+    16..20 'X {}': {unknown}
+    26..86 'match ...     }': ()
+    32..33 'x': {unknown}
+    44..51 'A::B {}': {unknown}
+    55..57 '()': ()
+    67..73 'A::Y()': {unknown}
+    77..79 '()': ()
     "###
     );
 }
@@ -78,12 +78,12 @@ fn quux() {
 }
 "#),
         @r###"
-    11..41 '{     ...+ y; }': ()
-    21..22 'y': i32
-    25..27 '92': i32
-    33..34 '1': i32
-    33..38 '1 + y': i32
-    37..38 'y': i32
+    10..40 '{     ...+ y; }': ()
+    20..21 'y': i32
+    24..26 '92': i32
+    32..33 '1': i32
+    32..37 '1 + y': i32
+    36..37 'y': i32
     "###
     );
 }
@@ -100,13 +100,13 @@ fn test() {
 }
 "#),
         @r###"
-    11..48 '{     ...&y]; }': ()
-    21..22 'y': &{unknown}
-    25..32 'unknown': &{unknown}
-    38..45 '[y, &y]': [&&{unknown}; _]
-    39..40 'y': &{unknown}
-    42..44 '&y': &&{unknown}
-    43..44 'y': &{unknown}
+    10..47 '{     ...&y]; }': ()
+    20..21 'y': &{unknown}
+    24..31 'unknown': &{unknown}
+    37..44 '[y, &y]': [&&{unknown}; _]
+    38..39 'y': &{unknown}
+    41..43 '&y': &&{unknown}
+    42..43 'y': &{unknown}
     "###
     );
 }
@@ -122,20 +122,20 @@ fn test() {
 }
 "#),
         @r###"
-    11..80 '{     ...x)]; }': ()
-    21..22 'x': &&{unknown}
-    25..32 'unknown': &&{unknown}
-    42..43 'y': &&{unknown}
-    46..53 'unknown': &&{unknown}
-    59..77 '[(x, y..., &x)]': [(&&&{unknown}, &&&{unknown}); _]
-    60..66 '(x, y)': (&&&{unknown}, &&&{unknown})
-    61..62 'x': &&{unknown}
-    64..65 'y': &&{unknown}
-    68..76 '(&y, &x)': (&&&{unknown}, &&&{unknown})
-    69..71 '&y': &&&{unknown}
-    70..71 'y': &&{unknown}
-    73..75 '&x': &&&{unknown}
-    74..75 'x': &&{unknown}
+    10..79 '{     ...x)]; }': ()
+    20..21 'x': &&{unknown}
+    24..31 'unknown': &&{unknown}
+    41..42 'y': &&{unknown}
+    45..52 'unknown': &&{unknown}
+    58..76 '[(x, y..., &x)]': [(&&&{unknown}, &&&{unknown}); _]
+    59..65 '(x, y)': (&&&{unknown}, &&&{unknown})
+    60..61 'x': &&{unknown}
+    63..64 'y': &&{unknown}
+    67..75 '(&y, &x)': (&&&{unknown}, &&&{unknown})
+    68..70 '&y': &&&{unknown}
+    69..70 'y': &&{unknown}
+    72..74 '&x': &&&{unknown}
+    73..74 'x': &&{unknown}
     "###
     );
 }
@@ -157,12 +157,12 @@ fn write() {
 }
 "#),
         @r###"
-    54..139 '{     ...   } }': ()
-    60..137 'match ...     }': ()
-    66..83 'someth...nknown': Maybe<{unknown}>
-    94..124 'Maybe:...thing)': Maybe<{unknown}>
-    106..123 'ref mu...ething': &mut {unknown}
-    128..130 '()': ()
+    53..138 '{     ...   } }': ()
+    59..136 'match ...     }': ()
+    65..82 'someth...nknown': Maybe<{unknown}>
+    93..123 'Maybe:...thing)': Maybe<{unknown}>
+    105..122 'ref mu...ething': &mut {unknown}
+    127..129 '()': ()
     "###
     );
 }
@@ -178,13 +178,13 @@ fn test_line_buffer() {
 }
 "#),
         @r###"
-    23..53 '{     ...n']; }': ()
-    29..50 '&[0, b...b'\n']': &[u8; _]
-    30..50 '[0, b'...b'\n']': [u8; _]
-    31..32 '0': u8
-    34..39 'b'\n'': u8
-    41..42 '1': u8
-    44..49 'b'\n'': u8
+    22..52 '{     ...n']; }': ()
+    28..49 '&[0, b...b'\n']': &[u8; _]
+    29..49 '[0, b'...b'\n']': [u8; _]
+    30..31 '0': u8
+    33..38 'b'\n'': u8
+    40..41 '1': u8
+    43..48 'b'\n'': u8
     "###
     );
 }
@@ -201,14 +201,14 @@ pub fn compute() {
 }
 "#),
         @r###"
-    18..108 '{     ...   } }': ()
-    24..106 'match ...     }': ()
-    30..37 'nope!()': {unknown}
-    48..94 'SizeSk...tail }': {unknown}
-    82..86 'true': bool
-    82..86 'true': bool
-    88..92 'tail': {unknown}
-    98..100 '{}': ()
+    17..107 '{     ...   } }': ()
+    23..105 'match ...     }': ()
+    29..36 'nope!()': {unknown}
+    47..93 'SizeSk...tail }': {unknown}
+    81..85 'true': bool
+    81..85 'true': bool
+    87..91 'tail': {unknown}
+    97..99 '{}': ()
     "###
     );
 }
@@ -225,14 +225,14 @@ pub fn primitive_type() {
 }
 "#),
         @r###"
-    25..106 '{     ...   } }': ()
-    31..104 'match ...     }': ()
-    37..42 '*self': {unknown}
-    38..42 'self': {unknown}
-    53..91 'Borrow...), ..}': {unknown}
-    74..86 'Primitive(p)': {unknown}
-    84..85 'p': {unknown}
-    95..97 '{}': ()
+    24..105 '{     ...   } }': ()
+    30..103 'match ...     }': ()
+    36..41 '*self': {unknown}
+    37..41 'self': {unknown}
+    52..90 'Borrow...), ..}': {unknown}
+    73..85 'Primitive(p)': {unknown}
+    83..84 'p': {unknown}
+    94..96 '{}': ()
     "###
     );
 }
@@ -259,29 +259,29 @@ fn extra_compiler_flags() {
 }
 "#),
         @r###"
-    27..323 '{     ...   } }': ()
-    33..321 'for co...     }': ()
-    37..44 'content': &{unknown}
-    48..61 'doesnt_matter': {unknown}
-    62..321 '{     ...     }': ()
-    76..80 'name': &&{unknown}
-    83..167 'if doe...     }': &&{unknown}
-    86..99 'doesnt_matter': bool
-    100..129 '{     ...     }': &&{unknown}
-    114..119 'first': &&{unknown}
-    135..167 '{     ...     }': &&{unknown}
-    149..157 '&content': &&{unknown}
-    150..157 'content': &{unknown}
-    182..189 'content': &{unknown}
-    192..314 'if ICE...     }': &{unknown}
-    195..232 'ICE_RE..._VALUE': {unknown}
-    195..248 'ICE_RE...&name)': bool
-    242..247 '&name': &&&{unknown}
-    243..247 'name': &&{unknown}
-    249..277 '{     ...     }': &&{unknown}
-    263..267 'name': &&{unknown}
-    283..314 '{     ...     }': &{unknown}
-    297..304 'content': &{unknown}
+    26..322 '{     ...   } }': ()
+    32..320 'for co...     }': ()
+    36..43 'content': &{unknown}
+    47..60 'doesnt_matter': {unknown}
+    61..320 '{     ...     }': ()
+    75..79 'name': &&{unknown}
+    82..166 'if doe...     }': &&{unknown}
+    85..98 'doesnt_matter': bool
+    99..128 '{     ...     }': &&{unknown}
+    113..118 'first': &&{unknown}
+    134..166 '{     ...     }': &&{unknown}
+    148..156 '&content': &&{unknown}
+    149..156 'content': &{unknown}
+    181..188 'content': &{unknown}
+    191..313 'if ICE...     }': &{unknown}
+    194..231 'ICE_RE..._VALUE': {unknown}
+    194..247 'ICE_RE...&name)': bool
+    241..246 '&name': &&&{unknown}
+    242..246 'name': &&{unknown}
+    248..276 '{     ...     }': &&{unknown}
+    262..266 'name': &&{unknown}
+    282..313 '{     ...     }': &{unknown}
+    296..303 'content': &{unknown}
     "###
     );
 }
@@ -302,11 +302,11 @@ fn test<R>(query_response: Canonical<QueryResponse<R>>) {
 }
 "#),
         @r###"
-    92..106 'query_response': Canonical<QueryResponse<R>>
-    137..167 '{     ...lue; }': ()
-    143..164 '&query....value': &QueryResponse<R>
-    144..158 'query_response': Canonical<QueryResponse<R>>
-    144..164 'query_....value': QueryResponse<R>
+    91..105 'query_response': Canonical<QueryResponse<R>>
+    136..166 '{     ...lue; }': ()
+    142..163 '&query....value': &QueryResponse<R>
+    143..157 'query_response': Canonical<QueryResponse<R>>
+    143..163 'query_....value': QueryResponse<R>
     "###
     );
 }
@@ -322,9 +322,9 @@ fn test() {
 "#),
         @r###"
     !0..4 '0u32': u32
-    45..70 '{     ...()); }': ()
-    55..56 'a': u32
-        "###
+    44..69 '{     ...()); }': ()
+    54..55 'a': u32
+    "###
     );
 }
 
@@ -344,10 +344,10 @@ pub fn main_loop() {
 }
 "#),
     @r###"
-    144..146 '{}': ()
-    169..198 '{     ...t(); }': ()
-    175..193 'FxHash...efault': fn default<{unknown}, FxHasher>() -> HashSet<{unknown}, FxHasher>
-    175..195 'FxHash...ault()': HashSet<{unknown}, FxHasher>
+    143..145 '{}': ()
+    168..197 '{     ...t(); }': ()
+    174..192 'FxHash...efault': fn default<{unknown}, FxHasher>() -> HashSet<{unknown}, FxHasher>
+    174..194 'FxHash...ault()': HashSet<{unknown}, FxHasher>
     "###
     );
 }
@@ -395,9 +395,9 @@ fn test() {
 }
 "#),
         @r###"
-    26..53 '{     ...oo() }': ()
-    32..49 '<Trait...>::foo': {unknown}
-    32..51 '<Trait...:foo()': ()
+    25..52 '{     ...oo() }': ()
+    31..48 '<Trait...>::foo': {unknown}
+    31..50 '<Trait...:foo()': ()
     "###
     );
 }
@@ -495,13 +495,13 @@ fn foo(params: &[usize]) {
 }
 "#),
         @r###"
-    8..14 'params': &[usize]
-    26..81 '{     ...   } }': ()
-    32..79 'match ...     }': ()
-    38..44 'params': &[usize]
-    55..67 '[ps @ .., _]': [usize]
-    65..66 '_': usize
-    71..73 '{}': ()
+    7..13 'params': &[usize]
+    25..80 '{     ...   } }': ()
+    31..78 'match ...     }': ()
+    37..43 'params': &[usize]
+    54..66 '[ps @ .., _]': [usize]
+    64..65 '_': usize
+    70..72 '{}': ()
     "###
     );
 }
@@ -522,13 +522,13 @@ fn foo(b: Bar) {
 }
 "#),
         @r###"
-    36..37 'b': Bar
-    44..96 '{     ...   } }': ()
-    50..94 'match ...     }': ()
-    56..57 'b': Bar
-    68..81 'Bar { a: .. }': Bar
-    77..79 '..': bool
-    85..87 '{}': ()
+    35..36 'b': Bar
+    43..95 '{     ...   } }': ()
+    49..93 'match ...     }': ()
+    55..56 'b': Bar
+    67..80 'Bar { a: .. }': Bar
+    76..78 '..': bool
+    84..86 '{}': ()
     "###
     );
 }
@@ -549,16 +549,16 @@ fn main() {
     a.foo();
 }
 "#), @r###"
-    32..38 'FOO {}': FOO
-    64..68 'self': &FOO
-    70..72 '{}': ()
-    86..120 '{     ...o(); }': ()
-    96..97 'a': &FOO
-    100..104 '&FOO': &FOO
-    101..104 'FOO': FOO
-    110..111 'a': &FOO
-    110..117 'a.foo()': ()
-"###
+    31..37 'FOO {}': FOO
+    63..67 'self': &FOO
+    69..71 '{}': ()
+    85..119 '{     ...o(); }': ()
+    95..96 'a': &FOO
+    99..103 '&FOO': &FOO
+    100..103 'FOO': FOO
+    109..110 'a': &FOO
+    109..116 'a.foo()': ()
+    "###
     );
 }
 
@@ -580,17 +580,17 @@ fn main() {
     let _a = foo!();
 }
 "#), @r###"
-    45..60 '{     loop {} }': T
-    51..58 'loop {}': !
-    56..58 '{}': ()
+    44..59 '{     loop {} }': T
+    50..57 'loop {}': !
+    55..57 '{}': ()
     !0..31 '{letr:...g();r}': Foo
     !4..5 'r': Foo
     !18..26 'anything': fn anything<Foo>() -> Foo
     !18..28 'anything()': Foo
     !29..30 'r': Foo
-    164..188 '{     ...!(); }': ()
-    174..176 '_a': Foo
-"###);
+    163..187 '{     ...!(); }': ()
+    173..175 '_a': Foo
+    "###);
 }
 
 #[test]
@@ -623,13 +623,13 @@ where
 }
 "#),
         @r###"
-    66..70 'self': Self
-    268..272 'self': Self
-    467..471 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
-    489..523 '{     ...     }': ()
-    499..503 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
-    499..509 'self.order': O
-    499..516 'self.o...into()': dyn QueryFragment<DB>
+    65..69 'self': Self
+    267..271 'self': Self
+    466..470 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
+    488..522 '{     ...     }': ()
+    498..502 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
+    498..508 'self.order': O
+    498..515 'self.o...into()': dyn QueryFragment<DB>
     "###
     );
 }
@@ -644,10 +644,10 @@ impl Foo {
 }
 "#),
         @r###"
-    59..73 '{ Self(0i64) }': Foo
-    61..65 'Self': Foo(i64) -> Foo
-    61..71 'Self(0i64)': Foo
-    66..70 '0i64': i64
+    58..72 '{ Self(0i64) }': Foo
+    60..64 'Self': Foo(i64) -> Foo
+    60..70 'Self(0i64)': Foo
+    65..69 '0i64': i64
     "###
     );
     assert_snapshot!(
@@ -658,10 +658,10 @@ impl Foo<i64> {
 }
 "#),
         @r###"
-    65..79 '{ Self(0i64) }': Foo<i64>
-    67..71 'Self': Foo<i64>(i64) -> Foo<i64>
-    67..77 'Self(0i64)': Foo<i64>
-    72..76 '0i64': i64
+    64..78 '{ Self(0i64) }': Foo<i64>
+    66..70 'Self': Foo<i64>(i64) -> Foo<i64>
+    66..76 'Self(0i64)': Foo<i64>
+    71..75 '0i64': i64
     "###
     );
 }
@@ -685,11 +685,11 @@ fn check<T: PrimInt>(i: T) {
 }
 "#),
         @r###"
-    118..122 'self': Self
-    149..150 'i': T
-    155..171 '{     ...w(); }': ()
-    161..162 'i': T
-    161..168 'i.pow()': ()
+    117..121 'self': Self
+    148..149 'i': T
+    154..170 '{     ...w(); }': ()
+    160..161 'i': T
+    160..167 'i.pow()': ()
     "###
     );
 }
@@ -720,13 +720,13 @@ where
 }
 "#),
         @r###"
-    137..140 'key': &K
-    199..215 '{     ...key) }': impl Future<Output = <K as Foo<R>>::Bar>
-    205..208 'bar': fn bar<R, K>(&K) -> impl Future<Output = <K as Foo<R>>::Bar>
-    205..213 'bar(key)': impl Future<Output = <K as Foo<R>>::Bar>
-    209..212 'key': &K
-    229..232 'key': &K
-    291..294 '{ }': ()
+    136..139 'key': &K
+    198..214 '{     ...key) }': impl Future<Output = <K as Foo<R>>::Bar>
+    204..207 'bar': fn bar<R, K>(&K) -> impl Future<Output = <K as Foo<R>>::Bar>
+    204..212 'bar(key)': impl Future<Output = <K as Foo<R>>::Bar>
+    208..211 'key': &K
+    228..231 'key': &K
+    290..293 '{ }': ()
     "###
     );
 }
@@ -776,11 +776,11 @@ pub trait Service<Request> {
 }
 "#),
         @r###"
-    380..384 'self': &mut PeerSet<D>
-    402..425 '{     ...     }': dyn Future<Output = ()>
-    412..419 'loop {}': !
-    417..419 '{}': ()
-    576..580 'self': &mut Self
+    379..383 'self': &mut PeerSet<D>
+    401..424 '{     ...     }': dyn Future<Output = ()>
+    411..418 'loop {}': !
+    416..418 '{}': ()
+    575..579 'self': &mut Self
     "###
     );
 }
