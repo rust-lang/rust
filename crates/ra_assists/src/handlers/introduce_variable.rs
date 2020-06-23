@@ -226,27 +226,31 @@ fn foo() {
         mark::check!(test_introduce_var_last_expr);
         check_assist(
             introduce_variable,
-            "
+            r#"
 fn foo() {
     bar(<|>1 + 1<|>)
-}",
-            "
+}
+"#,
+            r#"
 fn foo() {
     let $0var_name = 1 + 1;
     bar(var_name)
-}",
+}
+"#,
         );
         check_assist(
             introduce_variable,
-            "
+            r#"
 fn foo() {
     <|>bar(1 + 1)<|>
-}",
-            "
+}
+"#,
+            r#"
 fn foo() {
     let $0var_name = bar(1 + 1);
     var_name
-}",
+}
+"#,
         )
     }
 

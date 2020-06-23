@@ -198,8 +198,7 @@ pub(crate) struct FamousDefs<'a, 'b>(pub(crate) &'a Semantics<'b, RootDatabase>,
 #[allow(non_snake_case)]
 impl FamousDefs<'_, '_> {
     #[cfg(test)]
-    pub(crate) const FIXTURE: &'static str = r#"
-//- /libcore.rs crate:core
+    pub(crate) const FIXTURE: &'static str = r#"//- /libcore.rs crate:core
 pub mod convert {
     pub trait From<T> {
         fn from(T) -> Self;
