@@ -540,12 +540,10 @@ fn highlight_element(
 
             let expr = prefix_expr.expr()?;
             let ty = sema.type_of_expr(&expr)?;
-            let mut h = HighlightTag::Operator.into();
             if !ty.is_raw_ptr() {
-                h
+                return None;
             } else {
-                h |= HighlightModifier::Unsafe;
-                h
+                HighlightTag::Operator | HighlightModifier::Unsafe
             }
         }
         T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
