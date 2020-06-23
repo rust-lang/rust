@@ -1075,6 +1075,8 @@ pub enum TerminatorKind<'tcx> {
         discr: Operand<'tcx>,
 
         /// The type of value being tested.
+        /// This is always the same as the type of `discr`.
+        /// FIXME: remove this redundant information. Currently, it is relied on by pretty-printing.
         switch_ty: Ty<'tcx>,
 
         /// Possible values. The locations to branch to in each case
