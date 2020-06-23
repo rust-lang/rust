@@ -58,7 +58,7 @@ pub struct TriviallyCopyPassByRef {
     limit: u64,
 }
 
-impl<'a, 'tcx> TriviallyCopyPassByRef {
+impl<'tcx> TriviallyCopyPassByRef {
     pub fn new(limit: Option<u64>, target: &SessionConfig) -> Self {
         let limit = limit.unwrap_or_else(|| {
             let bit_width = u64::from(target.ptr_width);

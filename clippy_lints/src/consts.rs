@@ -396,7 +396,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         let l = self.expr(left)?;
         let r = self.expr(right);
         match (l, r) {
-            (Constant::Int(l), Some(Constant::Int(r))) => match self.tables.expr_ty(left).kind {
+            (Constant::Int(l), Some(Constant::Int(r))) => match self.tables.expr_ty_opt(left)?.kind {
                 ty::Int(ity) => {
                     let l = sext(self.lcx.tcx, l, ity);
                     let r = sext(self.lcx.tcx, r, ity);
