@@ -223,71 +223,75 @@ impl<N: ItemTreeNode> fmt::Debug for FileItemTreeId<N> {
 
 pub type ItemTreeId<N> = InFile<FileItemTreeId<N>>;
 
-macro_rules! nodes {
-    ( $($node:ident in $fld:ident),+ $(,)? ) => { $(
-        impl ItemTreeNode for $node {
-            fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self {
-                &tree.$fld[index]
+macro_rules! mod_items {
+    ( $( $typ:ident in $fld:ident -> $ast:ty ),+ $(,)? ) => {
+        #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+        pub enum ModItem {
+            $(
+                $typ(FileItemTreeId<$typ>),
+            )+
+        }
+
+        $(
+            impl From<FileItemTreeId<$typ>> for ModItem {
+                fn from(id: FileItemTreeId<$typ>) -> ModItem {
+                    ModItem::$typ(id)
+                }
             }
+        )+
 
+        $(
+            impl ItemTreeNode for $typ {
+                fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self {
+                    &tree.$fld[index]
+                }
 
-            fn id_from_mod_item(mod_item: ModItem) -> Option<FileItemTreeId<Self>> {
-                if let ModItem::$node(id) = mod_item {
-                    Some(id)
-                } else {
-                    None
+                fn id_from_mod_item(mod_item: ModItem) -> Option<FileItemTreeId<Self>> {
+                    if let ModItem::$typ(id) = mod_item {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                }
+
+                fn id_to_mod_item(id: FileItemTreeId<Self>) -> ModItem {
+                    ModItem::$typ(id)
                 }
             }
 
-            fn id_to_mod_item(id: FileItemTreeId<Self>) -> ModItem {
-                ModItem::$node(id)
+            impl ItemTreeSource for $typ {
+                type Source = $ast;
+
+                fn ast_id(&self) -> FileAstId<Self::Source> {
+                    self.ast_id
+                }
             }
-        }
-    )+ };
+
+            impl Index<Idx<$typ>> for ItemTree {
+                type Output = $typ;
+
+                fn index(&self, index: Idx<$typ>) -> &Self::Output {
+                    &self.$fld[index]
+                }
+            }
+        )+
+    };
 }
 
-nodes!(
-    Import in imports,
-    ExternCrate in extern_crates,
-    Function in functions,
-    Struct in structs,
-    Union in unions,
-    Enum in enums,
-    Const in consts,
-    Static in statics,
-    Trait in traits,
-    Impl in impls,
-    TypeAlias in type_aliases,
-    Mod in mods,
-    MacroCall in macro_calls,
-);
-
-macro_rules! source {
-    ( $($node:ident -> $ast:path),+ $(,)? ) => { $(
-        impl ItemTreeSource for $node {
-            type Source = $ast;
-
-            fn ast_id(&self) -> FileAstId<Self::Source> {
-                self.ast_id
-            }
-        }
-    )+ };
-}
-
-source! {
-    Import -> ast::UseItem,
-    ExternCrate -> ast::ExternCrateItem,
-    Function -> ast::FnDef,
-    Struct -> ast::StructDef,
-    Union -> ast::UnionDef,
-    Enum -> ast::EnumDef,
-    Const -> ast::ConstDef,
-    Static -> ast::StaticDef,
-    Trait -> ast::TraitDef,
-    Impl -> ast::ImplDef,
-    TypeAlias -> ast::TypeAliasDef,
-    Mod -> ast::Module,
-    MacroCall -> ast::MacroCall,
+mod_items! {
+    Import in imports -> ast::UseItem,
+    ExternCrate in extern_crates -> ast::ExternCrateItem,
+    Function in functions -> ast::FnDef,
+    Struct in structs -> ast::StructDef,
+    Union in unions -> ast::UnionDef,
+    Enum in enums -> ast::EnumDef,
+    Const in consts -> ast::ConstDef,
+    Static in statics -> ast::StaticDef,
+    Trait in traits -> ast::TraitDef,
+    Impl in impls -> ast::ImplDef,
+    TypeAlias in type_aliases -> ast::TypeAliasDef,
+    Mod in mods -> ast::Module,
+    MacroCall in macro_calls -> ast::MacroCall,
 }
 
 macro_rules! impl_index {
@@ -304,23 +308,7 @@ macro_rules! impl_index {
     };
 }
 
-impl_index!(
-    imports: Import,
-    functions: Function,
-    structs: Struct,
-    fields: Field,
-    unions: Union,
-    enums: Enum,
-    variants: Variant,
-    consts: Const,
-    statics: Static,
-    traits: Trait,
-    impls: Impl,
-    type_aliases: TypeAlias,
-    mods: Mod,
-    macro_calls: MacroCall,
-    exprs: Expr,
-);
+impl_index!(fields: Field, variants: Variant, exprs: Expr);
 
 impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     type Output = N;
@@ -500,23 +488,6 @@ macro_rules! impl_froms {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum ModItem {
-    Import(FileItemTreeId<Import>),
-    ExternCrate(FileItemTreeId<ExternCrate>),
-    Function(FileItemTreeId<Function>),
-    Struct(FileItemTreeId<Struct>),
-    Union(FileItemTreeId<Union>),
-    Enum(FileItemTreeId<Enum>),
-    Const(FileItemTreeId<Const>),
-    Static(FileItemTreeId<Static>),
-    Trait(FileItemTreeId<Trait>),
-    Impl(FileItemTreeId<Impl>),
-    TypeAlias(FileItemTreeId<TypeAlias>),
-    Mod(FileItemTreeId<Mod>),
-    MacroCall(FileItemTreeId<MacroCall>),
-}
-
 impl ModItem {
     pub fn as_assoc_item(&self) -> Option<AssocItem> {
         match self {
@@ -540,22 +511,6 @@ impl ModItem {
         N::id_from_mod_item(self)
     }
 }
-
-impl_froms!(ModItem {
-    Import(FileItemTreeId<Import>),
-    ExternCrate(FileItemTreeId<ExternCrate>),
-    Function(FileItemTreeId<Function>),
-    Struct(FileItemTreeId<Struct>),
-    Union(FileItemTreeId<Union>),
-    Enum(FileItemTreeId<Enum>),
-    Const(FileItemTreeId<Const>),
-    Static(FileItemTreeId<Static>),
-    Trait(FileItemTreeId<Trait>),
-    Impl(FileItemTreeId<Impl>),
-    TypeAlias(FileItemTreeId<TypeAlias>),
-    Mod(FileItemTreeId<Mod>),
-    MacroCall(FileItemTreeId<MacroCall>),
-});
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum AssocItem {
