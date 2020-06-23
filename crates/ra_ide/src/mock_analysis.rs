@@ -38,7 +38,12 @@ impl MockFileData {
 
     fn cfg_options(&self) -> CfgOptions {
         match self {
-            MockFileData::Fixture(f) => f.cfg.clone(),
+            MockFileData::Fixture(f) => {
+                let mut cfg = CfgOptions::default();
+                f.cfg_atoms.iter().for_each(|it| cfg.insert_atom(it.into()));
+                f.cfg_key_values.iter().for_each(|(k, v)| cfg.insert_key_value(k.into(), v.into()));
+                cfg
+            }
             _ => CfgOptions::default(),
         }
     }

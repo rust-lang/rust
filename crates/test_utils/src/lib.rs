@@ -19,7 +19,6 @@ use serde_json::Value;
 use text_size::{TextRange, TextSize};
 
 pub use difference::Changeset as __Changeset;
-pub use ra_cfg::CfgOptions;
 pub use rustc_hash::FxHashMap;
 
 pub use crate::fixture::Fixture;

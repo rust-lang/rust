@@ -1664,7 +1664,6 @@ name = "test_utils"
 version = "0.1.0"
 dependencies = [
  "difference",
- "ra_cfg",
  "rustc-hash",
  "serde_json",
  "stdx",

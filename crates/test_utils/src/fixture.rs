@@ -1,4 +1,3 @@
-use ra_cfg::CfgOptions;
 use rustc_hash::FxHashMap;
 use stdx::split1;
 
@@ -8,7 +7,8 @@ pub struct Fixture {
     pub text: String,
     pub crate_name: Option<String>,
     pub deps: Vec<String>,
-    pub cfg: CfgOptions,
+    pub cfg_atoms: Vec<String>,
+    pub cfg_key_values: Vec<(String, String)>,
     pub edition: Option<String>,
     pub env: FxHashMap<String, String>,
 }
@@ -73,7 +73,8 @@ The offending line: {:?}"#,
         let mut krate = None;
         let mut deps = Vec::new();
         let mut edition = None;
-        let mut cfg = CfgOptions::default();
+        let mut cfg_atoms = Vec::new();
+        let mut cfg_key_values = Vec::new();
         let mut env = FxHashMap::default();
         for component in components[1..].iter() {
             let (key, value) = split1(component, ':').unwrap();
@@ -82,10 +83,10 @@ The offending line: {:?}"#,
                 "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
                 "edition" => edition = Some(value.to_string()),
                 "cfg" => {
-                    for key in value.split(',') {
-                        match split1(key, '=') {
-                            None => cfg.insert_atom(key.into()),
-                            Some((k, v)) => cfg.insert_key_value(k.into(), v.into()),
+                    for entry in value.split(',') {
+                        match split1(entry, '=') {
+                            Some((k, v)) => cfg_key_values.push((k.to_string(), v.to_string())),
+                            None => cfg_atoms.push(entry.to_string()),
                         }
                     }
                 }
@@ -100,7 +101,16 @@ The offending line: {:?}"#,
             }
         }
 
-        Fixture { path, text: String::new(), crate_name: krate, deps, edition, cfg, env }
+        Fixture {
+            path,
+            text: String::new(),
+            crate_name: krate,
+            deps,
+            cfg_atoms,
+            cfg_key_values,
+            edition,
+            env,
+        }
     }
 }
 
@@ -152,7 +162,7 @@ fn indent_len(s: &str) -> usize {
 #[test]
 #[should_panic]
 fn parse_fixture_checks_further_indented_metadata() {
-    parse_fixture(
+    Fixture::parse(
         r"
         //- /lib.rs
           mod bar;

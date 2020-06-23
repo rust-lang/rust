@@ -203,11 +203,15 @@ struct FileMeta {
 
 impl From<&Fixture> for ParsedMeta {
     fn from(f: &Fixture) -> Self {
+        let mut cfg = CfgOptions::default();
+        f.cfg_atoms.iter().for_each(|it| cfg.insert_atom(it.into()));
+        f.cfg_key_values.iter().for_each(|(k, v)| cfg.insert_key_value(k.into(), v.into()));
+
         Self::File(FileMeta {
             path: f.path.to_owned(),
             krate: f.crate_name.to_owned(),
             deps: f.deps.to_owned(),
-            cfg: f.cfg.to_owned(),
+            cfg,
             edition: f
                 .edition
                 .as_ref()
