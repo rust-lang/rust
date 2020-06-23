@@ -659,8 +659,6 @@ impl<'a> Resolver<'a> {
                     return;
                 }
 
-                let via_import = name_binding.is_import() && !name_binding.is_extern_crate();
-
                 let child_accessible =
                     accessible && this.is_accessible_from(name_binding.vis, parent_scope.module);
 
@@ -669,6 +667,13 @@ impl<'a> Resolver<'a> {
                     return;
                 }
 
+                let via_import = name_binding.is_import() && !name_binding.is_extern_crate();
+
+                // There is an assumption elsewhere that paths of variants are in the enum's
+                // declaration and not imported. With this assumption, the variant component is
+                // chopped and the rest of the path is assumed to be the enum's own path. For
+                // errors where a variant is used as the type instead of the enum, this causes
+                // funny looking invalid suggestions, i.e `foo` instead of `foo::MyEnum`.
                 if via_import && name_binding.is_possibly_imported_variant() {
                     return;
                 }
