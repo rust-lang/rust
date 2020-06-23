@@ -2,6 +2,7 @@
 
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::missing_docs_in_private_items)]
+#![allow(clippy::map_identity)]
 
 fn main() {
     let _: Vec<_> = vec![5_i8; 6].into_iter().flat_map(|x| 0..x).collect();
