@@ -61,7 +61,22 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_FILE_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_PATH_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_NO_DATA => return ErrorKind::BrokenPipe,
-        c::ERROR_OPERATION_ABORTED => return ErrorKind::TimedOut,
+        c::ERROR_SEM_TIMEOUT
+        | c::WAIT_TIMEOUT
+        | c::ERROR_DRIVER_CANCEL_TIMEOUT
+        | c::ERROR_OPERATION_ABORTED
+        | c::ERROR_SERVICE_REQUEST_TIMEOUT
+        | c::ERROR_COUNTER_TIMEOUT
+        | c::ERROR_TIMEOUT
+        | c::ERROR_RESOURCE_CALL_TIMED_OUT
+        | c::ERROR_CTX_MODEM_RESPONSE_TIMEOUT
+        | c::ERROR_CTX_CLIENT_QUERY_TIMEOUT
+        | c::FRS_ERR_SYSVOL_POPULATE_TIMEOUT
+        | c::ERROR_DS_TIMELIMIT_EXCEEDED
+        | c::DNS_ERROR_RECORD_TIMED_OUT
+        | c::ERROR_IPSEC_IKE_TIMED_OUT
+        | c::ERROR_RUNLEVEL_SWITCH_TIMEOUT
+        | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return ErrorKind::TimedOut,
         _ => {}
     }
 
