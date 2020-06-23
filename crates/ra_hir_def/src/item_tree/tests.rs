@@ -1,6 +1,6 @@
 use super::{ItemTree, ModItem, ModKind};
 use crate::{db::DefDatabase, test_db::TestDB};
-use hir_expand::db::AstDatabase;
+use hir_expand::{db::AstDatabase, HirFileId, InFile};
 use insta::assert_snapshot;
 use ra_db::fixture::WithFixture;
 use ra_syntax::{ast, AstNode};
@@ -10,37 +10,38 @@ use stdx::format_to;
 
 fn test_inner_items(ra_fixture: &str) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
-    let tree = db.item_tree(file_id.into());
-    let root = db.parse_or_expand(file_id.into()).unwrap();
-    let ast_id_map = db.ast_id_map(file_id.into());
+    let file_id = HirFileId::from(file_id);
+    let tree = db.item_tree(file_id);
+    let root = db.parse_or_expand(file_id).unwrap();
+    let ast_id_map = db.ast_id_map(file_id);
 
     // Traverse the item tree and collect all module/impl/trait-level items as AST nodes.
     let mut outer_items = FxHashSet::default();
     let mut worklist = tree.top_level_items().to_vec();
     while let Some(item) = worklist.pop() {
         let node: ast::ModuleItem = match item {
-            ModItem::Import(it) => tree.source(&db, it).into(),
-            ModItem::ExternCrate(it) => tree.source(&db, it).into(),
-            ModItem::Function(it) => tree.source(&db, it).into(),
-            ModItem::Struct(it) => tree.source(&db, it).into(),
-            ModItem::Union(it) => tree.source(&db, it).into(),
-            ModItem::Enum(it) => tree.source(&db, it).into(),
-            ModItem::Const(it) => tree.source(&db, it).into(),
-            ModItem::Static(it) => tree.source(&db, it).into(),
-            ModItem::TypeAlias(it) => tree.source(&db, it).into(),
+            ModItem::Import(it) => tree.source(&db, InFile::new(file_id, it)).into(),
+            ModItem::ExternCrate(it) => tree.source(&db, InFile::new(file_id, it)).into(),
+            ModItem::Function(it) => tree.source(&db, InFile::new(file_id, it)).into(),
+            ModItem::Struct(it) => tree.source(&db, InFile::new(file_id, it)).into(),
+            ModItem::Union(it) => tree.source(&db, InFile::new(file_id, it)).into(),
+            ModItem::Enum(it) => tree.source(&db, InFile::new(file_id, it)).into(),
+            ModItem::Const(it) => tree.source(&db, InFile::new(file_id, it)).into(),
+            ModItem::Static(it) => tree.source(&db, InFile::new(file_id, it)).into(),
+            ModItem::TypeAlias(it) => tree.source(&db, InFile::new(file_id, it)).into(),
             ModItem::Mod(it) => {
                 if let ModKind::Inline { items } = &tree[it].kind {
                     worklist.extend(items);
                 }
-                tree.source(&db, it).into()
+                tree.source(&db, InFile::new(file_id, it)).into()
             }
             ModItem::Trait(it) => {
                 worklist.extend(tree[it].items.iter().map(|item| ModItem::from(*item)));
-                tree.source(&db, it).into()
+                tree.source(&db, InFile::new(file_id, it)).into()
             }
             ModItem::Impl(it) => {
                 worklist.extend(tree[it].items.iter().map(|item| ModItem::from(*item)));
-                tree.source(&db, it).into()
+                tree.source(&db, InFile::new(file_id, it)).into()
             }
             ModItem::MacroCall(_) => continue,
         };

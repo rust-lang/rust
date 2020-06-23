@@ -166,17 +166,17 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         DefWithBodyId::FunctionId(it) => {
             let loc = it.lookup(&db);
             let tree = db.item_tree(loc.id.file_id);
-            tree.source(&db, loc.id.value).syntax().text_range().start()
+            tree.source(&db, loc.id).syntax().text_range().start()
         }
         DefWithBodyId::ConstId(it) => {
             let loc = it.lookup(&db);
             let tree = db.item_tree(loc.id.file_id);
-            tree.source(&db, loc.id.value).syntax().text_range().start()
+            tree.source(&db, loc.id).syntax().text_range().start()
         }
         DefWithBodyId::StaticId(it) => {
             let loc = it.lookup(&db);
             let tree = db.item_tree(loc.id.file_id);
-            tree.source(&db, loc.id.value).syntax().text_range().start()
+            tree.source(&db, loc.id).syntax().text_range().start()
         }
     });
     for def in defs {

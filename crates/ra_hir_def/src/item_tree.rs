@@ -67,7 +67,6 @@ enum AttrOwner {
 /// The item tree of a source file.
 #[derive(Debug, Eq, PartialEq)]
 pub struct ItemTree {
-    file_id: HirFileId,
     top_level: SmallVec<[ModItem; 1]>,
     attrs: FxHashMap<AttrOwner, Attrs>,
     inner_items: FxHashMap<FileAstId<ast::ModuleItem>, SmallVec<[ModItem; 1]>>,
@@ -81,7 +80,7 @@ impl ItemTree {
         let syntax = if let Some(node) = db.parse_or_expand(file_id) {
             node
         } else {
-            return Arc::new(Self::empty(file_id));
+            return Arc::new(Self::empty());
         };
 
         let hygiene = Hygiene::new(db.upcast(), file_id);
@@ -113,9 +112,8 @@ impl ItemTree {
         Arc::new(item_tree)
     }
 
-    fn empty(file_id: HirFileId) -> Self {
+    fn empty() -> Self {
         Self {
-            file_id,
             top_level: Default::default(),
             attrs: Default::default(),
             inner_items: Default::default(),
@@ -150,19 +148,14 @@ impl ItemTree {
         self.inner_items.values().flatten().copied()
     }
 
-    pub fn source<S: ItemTreeNode>(
-        &self,
-        db: &dyn DefDatabase,
-        of: FileItemTreeId<S>,
-    ) -> S::Source {
+    pub fn source<S: ItemTreeNode>(&self, db: &dyn DefDatabase, of: ItemTreeId<S>) -> S::Source {
         // This unwrap cannot fail, since it has either succeeded above, or resulted in an empty
         // ItemTree (in which case there is no valid `FileItemTreeId` to call this method with).
-        let root = db
-            .parse_or_expand(self.file_id)
-            .expect("parse_or_expand failed on constructed ItemTree");
+        let root =
+            db.parse_or_expand(of.file_id).expect("parse_or_expand failed on constructed ItemTree");
 
-        let id = self[of].ast_id();
-        let map = db.ast_id_map(self.file_id);
+        let id = self[of.value].ast_id();
+        let map = db.ast_id_map(of.file_id);
         let ptr = map.get(id);
         ptr.to_node(&root)
     }

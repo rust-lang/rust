@@ -42,7 +42,7 @@ pub(super) struct Ctx {
 impl Ctx {
     pub(super) fn new(db: &dyn DefDatabase, hygiene: Hygiene, file: HirFileId) -> Self {
         Self {
-            tree: ItemTree::empty(file),
+            tree: ItemTree::empty(),
             hygiene,
             file,
             source_ast_id_map: db.ast_id_map(file),
