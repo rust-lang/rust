@@ -10,8 +10,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
-use rustc_session::parse::feature_err;
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
 
@@ -303,25 +302,22 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             GenericParamKind::Type { default: Some(ref ty), .. } => icx.to_ty(ty),
             GenericParamKind::Const { ty: ref hir_ty, .. } => {
                 let ty = icx.to_ty(hir_ty);
-                if !tcx.features().const_compare_raw_pointers {
-                    let err = match ty.peel_refs().kind {
-                        ty::FnPtr(_) => Some("function pointers"),
-                        ty::RawPtr(_) => Some("raw pointers"),
-                        _ => None,
-                    };
-                    if let Some(unsupported_type) = err {
-                        feature_err(
-                            &tcx.sess.parse_sess,
-                            sym::const_compare_raw_pointers,
+                let err = match ty.peel_refs().kind {
+                    ty::FnPtr(_) => Some("function pointers"),
+                    ty::RawPtr(_) => Some("raw pointers"),
+                    _ => None,
+                };
+                if let Some(unsupported_type) = err {
+                    tcx.sess
+                        .struct_span_err(
                             hir_ty.span,
                             &format!(
-                                "using {} as const generic parameters is unstable",
+                                "using {} as const generic parameters is forbidden",
                                 unsupported_type
                             ),
                         )
                         .emit();
-                    };
-                }
+                };
                 if traits::search_for_structural_match_violation(param.hir_id, param.span, tcx, ty)
                     .is_some()
                 {

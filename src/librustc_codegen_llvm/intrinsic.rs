@@ -12,7 +12,7 @@ use log::debug;
 use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
-use rustc_codegen_ssa::common::TypeKind;
+use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -729,6 +729,16 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 let dst = args[0].deref(self.cx());
                 args[1].val.nontemporal_store(self, dst);
                 return;
+            }
+
+            "ptr_guaranteed_eq" | "ptr_guaranteed_ne" => {
+                let a = args[0].immediate();
+                let b = args[1].immediate();
+                if name == "ptr_guaranteed_eq" {
+                    self.icmp(IntPredicate::IntEQ, a, b)
+                } else {
+                    self.icmp(IntPredicate::IntNE, a, b)
+                }
             }
 
             "ptr_offset_from" => {

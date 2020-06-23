@@ -12,7 +12,7 @@ LL |     let _v = x + 0;
 
 warning: skipping const checks
    |
-help: skipping check for `const_compare_raw_pointers` feature
+help: skipping check that does not even have a feature gate
   --> $DIR/ptr_arith.rs:9:14
    |
 LL |     let _v = x == x;
