@@ -343,7 +343,9 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
     }
 
     /// Outside of token trees, a placeholder can only match a single AST node, whereas in a token
-    /// tree it can match a sequence of tokens.
+    /// tree it can match a sequence of tokens. Note, that this code will only be used when the
+    /// pattern matches the macro invocation. For matches within the macro call, we'll already have
+    /// expanded the macro.
     fn attempt_match_token_tree(
         &mut self,
         match_inputs: &MatchInputs,

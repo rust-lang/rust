@@ -12,7 +12,7 @@ mod tests;
 use crate::matching::Match;
 use hir::Semantics;
 use ra_db::{FileId, FileRange};
-use ra_syntax::{AstNode, SmolStr, SyntaxNode};
+use ra_syntax::{ast, AstNode, SmolStr, SyntaxNode};
 use ra_text_edit::TextEdit;
 use rustc_hash::FxHashMap;
 
@@ -105,6 +105,22 @@ impl<'db> MatchFinder<'db> {
                 }
                 matches_out.matches.push(m);
                 return;
+            }
+        }
+        // If we've got a macro call, we already tried matching it pre-expansion, which is the only
+        // way to match the whole macro, now try expanding it and matching the expansion.
+        if let Some(macro_call) = ast::MacroCall::cast(code.clone()) {
+            if let Some(expanded) = self.sema.expand(&macro_call) {
+                if let Some(tt) = macro_call.token_tree() {
+                    // When matching within a macro expansion, we only want to allow matches of
+                    // nodes that originated entirely from within the token tree of the macro call.
+                    // i.e. we don't want to match something that came from the macro itself.
+                    self.find_matches(
+                        &expanded,
+                        &Some(self.sema.original_range(tt.syntax())),
+                        matches_out,
+                    );
+                }
             }
         }
         for child in code.children() {

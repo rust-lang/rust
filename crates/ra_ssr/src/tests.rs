@@ -355,6 +355,18 @@ fn match_nested_method_calls() {
     );
 }
 
+// Make sure that our node matching semantics don't differ within macro calls.
+#[test]
+fn match_nested_method_calls_with_macro_call() {
+    assert_matches(
+        "$a.z().z().z()",
+        r#"
+            macro_rules! m1 { ($a:expr) => {$a}; }
+            fn f() {m1!(h().i().j().z().z().z().d().e())}"#,
+        &["h().i().j().z().z().z()"],
+    );
+}
+
 #[test]
 fn match_complex_expr() {
     let code = "fn f() -> i32 {foo(bar(40, 2), 42)}";
@@ -545,5 +557,42 @@ fn multiple_rules() {
         &["$a + 1 ==>> add_one($a)", "$a + $b ==>> add($a, $b)"],
         "fn f() -> i32 {3 + 2 + 1}",
         "fn f() -> i32 {add_one(add(3, 2))}",
+    )
+}
+
+#[test]
+fn match_within_macro_invocation() {
+    let code = r#"
+            macro_rules! foo {
+                ($a:stmt; $b:expr) => {
+                    $b
+                };
+            }
+            struct A {}
+            impl A {
+                fn bar() {}
+            }
+            fn f1() {
+                let aaa = A {};
+                foo!(macro_ignores_this(); aaa.bar());
+            }
+        "#;
+    assert_matches("$a.bar()", code, &["aaa.bar()"]);
+}
+
+#[test]
+fn replace_within_macro_expansion() {
+    assert_ssr_transform(
+        "$a.foo() ==>> bar($a)",
+        r#"
+            macro_rules! macro1 {
+                ($a:expr) => {$a}
+            }
+            fn f() {macro1!(5.x().foo().o2())}"#,
+        r#"
+            macro_rules! macro1 {
+                ($a:expr) => {$a}
+            }
+            fn f() {macro1!(bar(5.x()).o2())}"#,
     )
 }
