@@ -278,17 +278,18 @@ impl Ctx {
         let mut has_self_param = false;
         if let Some(param_list) = func.param_list() {
             if let Some(self_param) = param_list.self_param() {
-                let self_type = if let Some(type_ref) = self_param.ascribed_type() {
-                    TypeRef::from_ast(&self.body_ctx, type_ref)
-                } else {
-                    let self_type = TypeRef::Path(name![Self].into());
-                    match self_param.kind() {
-                        ast::SelfParamKind::Owned => self_type,
-                        ast::SelfParamKind::Ref => {
-                            TypeRef::Reference(Box::new(self_type), Mutability::Shared)
-                        }
-                        ast::SelfParamKind::MutRef => {
-                            TypeRef::Reference(Box::new(self_type), Mutability::Mut)
+                let self_type = match self_param.ascribed_type() {
+                    Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
+                    None => {
+                        let self_type = TypeRef::Path(name![Self].into());
+                        match self_param.kind() {
+                            ast::SelfParamKind::Owned => self_type,
+                            ast::SelfParamKind::Ref => {
+                                TypeRef::Reference(Box::new(self_type), Mutability::Shared)
+                            }
+                            ast::SelfParamKind::MutRef => {
+                                TypeRef::Reference(Box::new(self_type), Mutability::Mut)
+                            }
                         }
                     }
                 };
@@ -583,20 +584,21 @@ impl Ctx {
     }
 
     fn lower_type_bounds(&mut self, node: &impl ast::TypeBoundsOwner) -> Vec<TypeBound> {
-        if let Some(bound_list) = node.type_bound_list() {
-            bound_list.bounds().map(|it| TypeBound::from_ast(&self.body_ctx, it)).collect()
-        } else {
-            Vec::new()
+        match node.type_bound_list() {
+            Some(bound_list) => {
+                bound_list.bounds().map(|it| TypeBound::from_ast(&self.body_ctx, it)).collect()
+            }
+            None => Vec::new(),
         }
     }
 
     fn lower_visibility(&self, item: &impl ast::VisibilityOwner) -> RawVisibility {
-        if let Some(vis) = self.forced_visibility.as_ref() {
-            vis.clone()
-        } else {
-            RawVisibility::from_ast_with_hygiene(item.visibility(), &self.hygiene)
+        match &self.forced_visibility {
+            Some(vis) => vis.clone(),
+            None => RawVisibility::from_ast_with_hygiene(item.visibility(), &self.hygiene),
         }
     }
+
     fn lower_type_ref(&self, type_ref: &ast::TypeRef) -> TypeRef {
         TypeRef::from_ast(&self.body_ctx, type_ref.clone())
     }
