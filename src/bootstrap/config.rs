@@ -444,8 +444,7 @@ impl Config {
 
         let toml = file
             .map(|file| {
-                let contents = t!(fs::read_to_string(&file));
-                match toml::from_str(&contents) {
+                fs::read_to_string(&file).ok().map(|contents| match toml::from_str(&contents) {
                     Ok(table) => table,
                     Err(err) => {
                         println!(
@@ -455,8 +454,9 @@ impl Config {
                         );
                         process::exit(2);
                     }
-                }
+                })
             })
+            .flatten()
             .unwrap_or_else(TomlConfig::default);
 
         let build = toml.build.clone().unwrap_or_default();
