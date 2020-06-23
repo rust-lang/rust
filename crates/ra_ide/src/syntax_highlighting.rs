@@ -339,8 +339,8 @@ impl HighlightedRangeStack {
     /// can only modify the last range currently on the stack.
     /// Can be used to do injections that span multiple ranges, like the
     /// doctest injection below.
-    /// If `inject` is set to true, the parent range is deleted instead of
-    /// intersected.
+    /// If `overwrite_parent` is non-optional, the highlighting of the parent range
+    /// is overwritten with the argument.
     ///
     /// Note that `pop` can be simulated by `pop_and_inject(false)` but the
     /// latter is computationally more expensive.
