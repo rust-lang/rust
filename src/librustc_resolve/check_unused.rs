@@ -29,6 +29,7 @@ use crate::Resolver;
 use rustc_ast::ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
+use rustc_ast_lowering::Resolver as ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_middle::ty;
@@ -64,7 +65,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     fn check_import(&mut self, id: ast::NodeId) {
         let mut used = false;
         self.r.per_ns(|this, ns| used |= this.used_imports.contains(&(id, ns)));
-        let def_id = self.r.definitions.local_def_id(id);
+        let def_id = self.r.local_def_id(id);
         if !used {
             if self.r.maybe_unused_trait_imports.contains(&def_id) {
                 // Check later.
@@ -246,7 +247,7 @@ impl Resolver<'_> {
                     }
                 }
                 ImportKind::ExternCrate { .. } => {
-                    let def_id = self.definitions.local_def_id(import.id);
+                    let def_id = self.local_def_id(import.id);
                     self.maybe_unused_extern_crates.push((def_id, import.span));
                 }
                 ImportKind::MacroUse => {

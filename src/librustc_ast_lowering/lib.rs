@@ -54,7 +54,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::config::nightly_options;
 use rustc_session::lint::{builtin::BARE_TRAIT_OBJECTS, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::ParseSess;
@@ -205,6 +205,19 @@ pub trait Resolver {
     fn next_node_id(&mut self) -> NodeId;
 
     fn trait_map(&self) -> &NodeMap<Vec<hir::TraitCandidate>>;
+
+    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId>;
+
+    fn local_def_id(&self, node: NodeId) -> LocalDefId;
+
+    fn create_def(
+        &mut self,
+        parent: LocalDefId,
+        node_id: ast::NodeId,
+        data: DefPathData,
+        expn_id: ExpnId,
+        span: Span,
+    ) -> LocalDefId;
 }
 
 type NtToTokenstream = fn(&Nonterminal, &ParseSess, Span) -> TokenStream;
@@ -436,7 +449,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 match tree.kind {
                     UseTreeKind::Simple(_, id1, id2) => {
                         for &id in &[id1, id2] {
-                            self.lctx.resolver.definitions().create_def_with_parent(
+                            self.lctx.resolver.create_def(
                                 owner,
                                 id,
                                 DefPathData::Misc,
@@ -488,7 +501,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     | ItemKind::Enum(_, ref generics)
                     | ItemKind::TyAlias(_, ref generics, ..)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
-                        let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
+                        let def_id = self.lctx.resolver.local_def_id(item.id);
                         let count = generics
                             .params
                             .iter()
@@ -564,7 +577,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .map(|(&k, v)| (self.node_id_to_hir_id[k].unwrap(), v.clone()))
             .collect();
 
-        self.resolver.definitions().init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
+        let mut def_id_to_hir_id = IndexVec::default();
+
+        for (node_id, hir_id) in self.node_id_to_hir_id.into_iter_enumerated() {
+            if let Some(def_id) = self.resolver.opt_local_def_id(node_id) {
+                if def_id_to_hir_id.len() <= def_id.index() {
+                    def_id_to_hir_id.resize(def_id.index() + 1, None);
+                }
+                def_id_to_hir_id[def_id] = hir_id;
+            }
+        }
+
+        self.resolver.definitions().init_def_id_to_hir_id_mapping(def_id_to_hir_id);
 
         hir::Crate {
             item: hir::CrateItem { module, attrs, span: c.span },
@@ -628,7 +652,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .item_local_id_counters
             .insert(owner, HIR_ID_COUNTER_LOCKED)
             .unwrap_or_else(|| panic!("no `item_local_id_counters` entry for {:?}", owner));
-        let def_id = self.resolver.definitions().local_def_id(owner);
+        let def_id = self.resolver.local_def_id(owner);
         self.current_hir_id_owner.push((def_id, counter));
         let ret = f(self);
         let (new_def_id, new_counter) = self.current_hir_id_owner.pop().unwrap();
@@ -671,8 +695,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug_assert!(local_id != HIR_ID_COUNTER_LOCKED);
 
             *local_id_counter += 1;
-            let owner = this.resolver.definitions().opt_local_def_id(owner).expect(
-                "you forgot to call `create_def_with_parent` or are lowering node-IDs \
+            let owner = this.resolver.opt_local_def_id(owner).expect(
+                "you forgot to call `create_def` or are lowering node-IDs \
                  that do not belong to the current owner",
             );
 
@@ -800,7 +824,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         // Add a definition for the in-band lifetime def.
-        self.resolver.definitions().create_def_with_parent(
+        self.resolver.create_def(
             parent_def_id,
             node_id,
             DefPathData::LifetimeNs(str_name),
@@ -1088,7 +1112,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                     let impl_trait_node_id = self.resolver.next_node_id();
                     let parent_def_id = self.current_hir_id_owner.last().unwrap().0;
-                    self.resolver.definitions().create_def_with_parent(
+                    self.resolver.create_def(
                         parent_def_id,
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
@@ -1154,7 +1178,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             let node_id = self.resolver.next_node_id();
 
                             // Add a definition for the in-band const def.
-                            self.resolver.definitions().create_def_with_parent(
+                            self.resolver.create_def(
                                 parent_def_id,
                                 node_id,
                                 DefPathData::AnonConst,
@@ -1339,7 +1363,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     ImplTraitContext::Universal(in_band_ty_params) => {
                         // Add a definition for the in-band `Param`.
-                        let def_id = self.resolver.definitions().local_def_id(def_node_id);
+                        let def_id = self.resolver.local_def_id(def_node_id);
 
                         let hir_bounds = self.lower_param_bounds(
                             bounds,
@@ -1428,7 +1452,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        let opaque_ty_def_id = self.resolver.definitions().local_def_id(opaque_ty_node_id);
+        let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
 
         self.allocate_hir_id_counter(opaque_ty_node_id);
 
@@ -1620,7 +1644,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let def_node_id = self.context.resolver.next_node_id();
                     let hir_id =
                         self.context.lower_node_id_with_owner(def_node_id, self.opaque_ty_id);
-                    self.context.resolver.definitions().create_def_with_parent(
+                    self.context.resolver.create_def(
                         self.parent,
                         def_node_id,
                         DefPathData::LifetimeNs(name.ident().name),
@@ -1870,7 +1894,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
-        let opaque_ty_def_id = self.resolver.definitions().local_def_id(opaque_ty_node_id);
+        let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
 
         self.allocate_hir_id_counter(opaque_ty_node_id);
 
