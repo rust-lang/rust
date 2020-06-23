@@ -50,6 +50,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 
+mod item_bounds;
 mod type_of;
 
 struct OnlySelfBounds(bool);
@@ -68,6 +69,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         opt_const_param_of: type_of::opt_const_param_of,
         type_of: type_of::type_of,
+        item_bounds: item_bounds::item_bounds,
         generics_of,
         predicates_of,
         predicates_defined_on,
