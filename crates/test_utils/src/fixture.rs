@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 use stdx::split1;
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct FixtureEntry {
+pub struct Fixture {
     pub path: String,
     pub text: String,
     pub crate_name: Option<String>,
@@ -13,19 +13,20 @@ pub struct FixtureEntry {
     pub env: FxHashMap<String, String>,
 }
 
-/// Parses text which looks like this:
-///
-///  ```not_rust
-///  //- some meta
-///  line 1
-///  line 2
-///  // - other meta
-///  ```
-pub fn parse_fixture(ra_fixture: &str) -> Vec<FixtureEntry> {
-    let fixture = indent_first_line(ra_fixture);
-    let margin = fixture_margin(&fixture);
+impl Fixture {
+    /// Parses text which looks like this:
+    ///
+    ///  ```not_rust
+    ///  //- some meta
+    ///  line 1
+    ///  line 2
+    ///  // - other meta
+    ///  ```
+    pub fn parse(ra_fixture: &str) -> Vec<Fixture> {
+        let fixture = indent_first_line(ra_fixture);
+        let margin = fixture_margin(&fixture);
 
-    let mut lines = fixture
+        let mut lines = fixture
         .split('\n') // don't use `.lines` to not drop `\r\n`
         .enumerate()
         .filter_map(|(ix, line)| {
@@ -48,58 +49,59 @@ The offending line: {:?}"#,
             }
         });
 
-    let mut res: Vec<FixtureEntry> = Vec::new();
-    for line in lines.by_ref() {
-        if line.starts_with("//-") {
-            let meta = line["//-".len()..].trim().to_string();
-            let meta = parse_meta(&meta);
-            res.push(meta)
-        } else if let Some(entry) = res.last_mut() {
-            entry.text.push_str(line);
-            entry.text.push('\n');
-        }
-    }
-    res
-}
-
-//- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
-fn parse_meta(meta: &str) -> FixtureEntry {
-    let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
-
-    let path = components[0].to_string();
-    assert!(path.starts_with("/"));
-
-    let mut krate = None;
-    let mut deps = Vec::new();
-    let mut edition = None;
-    let mut cfg = CfgOptions::default();
-    let mut env = FxHashMap::default();
-    for component in components[1..].iter() {
-        let (key, value) = split1(component, ':').unwrap();
-        match key {
-            "crate" => krate = Some(value.to_string()),
-            "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
-            "edition" => edition = Some(value.to_string()),
-            "cfg" => {
-                for key in value.split(',') {
-                    match split1(key, '=') {
-                        None => cfg.insert_atom(key.into()),
-                        Some((k, v)) => cfg.insert_key_value(k.into(), v.into()),
-                    }
-                }
+        let mut res: Vec<Fixture> = Vec::new();
+        for line in lines.by_ref() {
+            if line.starts_with("//-") {
+                let meta = line["//-".len()..].trim().to_string();
+                let meta = Fixture::parse_single(&meta);
+                res.push(meta)
+            } else if let Some(entry) = res.last_mut() {
+                entry.text.push_str(line);
+                entry.text.push('\n');
             }
-            "env" => {
-                for key in value.split(',') {
-                    if let Some((k, v)) = split1(key, '=') {
-                        env.insert(k.into(), v.into());
-                    }
-                }
-            }
-            _ => panic!("bad component: {:?}", component),
         }
+        res
     }
 
-    FixtureEntry { path, text: String::new(), crate_name: krate, deps, edition, cfg, env }
+    //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
+    fn parse_single(meta: &str) -> Fixture {
+        let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
+
+        let path = components[0].to_string();
+        assert!(path.starts_with("/"));
+
+        let mut krate = None;
+        let mut deps = Vec::new();
+        let mut edition = None;
+        let mut cfg = CfgOptions::default();
+        let mut env = FxHashMap::default();
+        for component in components[1..].iter() {
+            let (key, value) = split1(component, ':').unwrap();
+            match key {
+                "crate" => krate = Some(value.to_string()),
+                "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
+                "edition" => edition = Some(value.to_string()),
+                "cfg" => {
+                    for key in value.split(',') {
+                        match split1(key, '=') {
+                            None => cfg.insert_atom(key.into()),
+                            Some((k, v)) => cfg.insert_key_value(k.into(), v.into()),
+                        }
+                    }
+                }
+                "env" => {
+                    for key in value.split(',') {
+                        if let Some((k, v)) = split1(key, '=') {
+                            env.insert(k.into(), v.into());
+                        }
+                    }
+                }
+                _ => panic!("bad component: {:?}", component),
+            }
+        }
+
+        Fixture { path, text: String::new(), crate_name: krate, deps, edition, cfg, env }
+    }
 }
 
 /// Adjusts the indentation of the first line to the minimum indentation of the rest of the lines.
@@ -170,8 +172,8 @@ fn parse_fixture_can_handle_dedented_first_line() {
                    struct Bar;
 ";
     assert_eq!(
-        parse_fixture(fixture),
-        parse_fixture(
+        Fixture::parse(fixture),
+        Fixture::parse(
             "//- /lib.rs
 mod foo;
 //- /foo.rs
@@ -183,7 +185,7 @@ struct Bar;
 
 #[test]
 fn parse_fixture_gets_full_meta() {
-    let parsed = parse_fixture(
+    let parsed = Fixture::parse(
         r"
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
     mod m;

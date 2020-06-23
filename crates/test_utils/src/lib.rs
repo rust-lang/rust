@@ -22,7 +22,7 @@ pub use difference::Changeset as __Changeset;
 pub use ra_cfg::CfgOptions;
 pub use rustc_hash::FxHashMap;
 
-pub use crate::fixture::{parse_fixture, FixtureEntry};
+pub use crate::fixture::Fixture;
 
 pub const CURSOR_MARKER: &str = "<|>";
 

@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use ra_db::{CrateName, Env, FileSet, SourceRoot, VfsPath};
-use test_utils::{extract_offset, extract_range, parse_fixture, FixtureEntry, CURSOR_MARKER};
+use test_utils::{extract_offset, extract_range, Fixture, CURSOR_MARKER};
 
 use crate::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition, FileId, FilePosition, FileRange,
@@ -12,7 +12,7 @@ use crate::{
 #[derive(Debug)]
 enum MockFileData {
     Plain { path: String, content: String },
-    Fixture(FixtureEntry),
+    Fixture(Fixture),
 }
 
 impl MockFileData {
@@ -60,8 +60,8 @@ impl MockFileData {
     }
 }
 
-impl From<FixtureEntry> for MockFileData {
-    fn from(fixture: FixtureEntry) -> Self {
+impl From<Fixture> for MockFileData {
+    fn from(fixture: Fixture) -> Self {
         Self::Fixture(fixture)
     }
 }
@@ -89,7 +89,7 @@ impl MockAnalysis {
     /// ```
     pub fn with_files(fixture: &str) -> MockAnalysis {
         let mut res = MockAnalysis::new();
-        for entry in parse_fixture(fixture) {
+        for entry in Fixture::parse(fixture) {
             res.add_file_fixture(entry);
         }
         res
@@ -100,7 +100,7 @@ impl MockAnalysis {
     pub fn with_files_and_position(fixture: &str) -> (MockAnalysis, FilePosition) {
         let mut position = None;
         let mut res = MockAnalysis::new();
-        for entry in parse_fixture(fixture) {
+        for entry in Fixture::parse(fixture) {
             if entry.text.contains(CURSOR_MARKER) {
                 assert!(position.is_none(), "only one marker (<|>) per fixture is allowed");
                 position = Some(res.add_file_fixture_with_position(entry));
@@ -112,13 +112,13 @@ impl MockAnalysis {
         (res, position)
     }
 
-    pub fn add_file_fixture(&mut self, fixture: FixtureEntry) -> FileId {
+    pub fn add_file_fixture(&mut self, fixture: Fixture) -> FileId {
         let file_id = self.next_id();
         self.files.push(MockFileData::from(fixture));
         file_id
     }
 
-    pub fn add_file_fixture_with_position(&mut self, mut fixture: FixtureEntry) -> FilePosition {
+    pub fn add_file_fixture_with_position(&mut self, mut fixture: Fixture) -> FilePosition {
         let (offset, text) = extract_offset(&fixture.text);
         fixture.text = text;
         let file_id = self.next_id();

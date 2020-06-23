@@ -61,7 +61,7 @@ use std::{str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use rustc_hash::FxHashMap;
-use test_utils::{extract_offset, parse_fixture, FixtureEntry, CURSOR_MARKER};
+use test_utils::{extract_offset, Fixture, CURSOR_MARKER};
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
@@ -107,9 +107,9 @@ fn with_files(
     db: &mut dyn SourceDatabaseExt,
     fixture: &str,
 ) -> (Option<FilePosition>, Vec<FileId>) {
-    let mut files = Vec::new();
-    let fixture = parse_fixture(fixture);
+    let fixture = Fixture::parse(fixture);
 
+    let mut files = Vec::new();
     let mut crate_graph = CrateGraph::default();
     let mut crates = FxHashMap::default();
     let mut crate_deps = Vec::new();
@@ -201,8 +201,8 @@ struct FileMeta {
     env: Env,
 }
 
-impl From<&FixtureEntry> for ParsedMeta {
-    fn from(f: &FixtureEntry) -> Self {
+impl From<&Fixture> for ParsedMeta {
+    fn from(f: &Fixture) -> Self {
         Self::File(FileMeta {
             path: f.path.to_owned(),
             krate: f.crate_name.to_owned(),
