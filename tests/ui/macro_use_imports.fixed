@@ -15,13 +15,13 @@ extern crate macro_use_helper as mac;
 extern crate clippy_mini_macro_test as mini_mac;
 
 mod a {
-    #[macro_use]
+    use mac::{pub_macro, inner_mod_macro, function_macro, ty_macro, pub_in_private_macro};
     use mac;
-    #[macro_use]
+    use mini_mac::ClippyMiniMacroTest;
     use mini_mac;
-    #[macro_use]
+    use mac::{inner::foofoo, inner::try_err};
     use mac::inner;
-    #[macro_use]
+    use mac::inner::nested::string_add;
     use mac::inner::nested;
 
     #[derive(ClippyMiniMacroTest)]

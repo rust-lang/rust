@@ -1,0 +1,46 @@
+error: redundant pattern matching, consider using `is_ok()`
+  --> $DIR/redundant_pattern_matching_const_result.rs:12:12
+   |
+LL |     if let Ok(_) = Ok::<i32, i32>(42) {}
+   |     -------^^^^^--------------------- help: try this: `if Ok::<i32, i32>(42).is_ok()`
+   |
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
+
+error: redundant pattern matching, consider using `is_err()`
+  --> $DIR/redundant_pattern_matching_const_result.rs:14:12
+   |
+LL |     if let Err(_) = Err::<i32, i32>(42) {}
+   |     -------^^^^^^---------------------- help: try this: `if Err::<i32, i32>(42).is_err()`
+
+error: redundant pattern matching, consider using `is_ok()`
+  --> $DIR/redundant_pattern_matching_const_result.rs:16:15
+   |
+LL |     while let Ok(_) = Ok::<i32, i32>(10) {}
+   |     ----------^^^^^--------------------- help: try this: `while Ok::<i32, i32>(10).is_ok()`
+
+error: redundant pattern matching, consider using `is_err()`
+  --> $DIR/redundant_pattern_matching_const_result.rs:18:15
+   |
+LL |     while let Err(_) = Ok::<i32, i32>(10) {}
+   |     ----------^^^^^^--------------------- help: try this: `while Ok::<i32, i32>(10).is_err()`
+
+error: redundant pattern matching, consider using `is_ok()`
+  --> $DIR/redundant_pattern_matching_const_result.rs:20:5
+   |
+LL | /     match Ok::<i32, i32>(42) {
+LL | |         Ok(_) => true,
+LL | |         Err(_) => false,
+LL | |     };
+   | |_____^ help: try this: `Ok::<i32, i32>(42).is_ok()`
+
+error: redundant pattern matching, consider using `is_err()`
+  --> $DIR/redundant_pattern_matching_const_result.rs:25:5
+   |
+LL | /     match Err::<i32, i32>(42) {
+LL | |         Ok(_) => false,
+LL | |         Err(_) => true,
+LL | |     };
+   | |_____^ help: try this: `Err::<i32, i32>(42).is_err()`
+
+error: aborting due to 6 previous errors
+

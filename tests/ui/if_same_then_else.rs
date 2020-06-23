@@ -142,4 +142,16 @@ fn func() {
 
 fn f(val: &[u8]) {}
 
+mod issue_5698 {
+    fn mul_not_always_commutative(x: i32, y: i32) -> i32 {
+        if x == 42 {
+            x * y
+        } else if x == 21 {
+            y * x
+        } else {
+            0
+        }
+    }
+}
+
 fn main() {}
