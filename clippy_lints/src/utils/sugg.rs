@@ -13,6 +13,7 @@ use rustc_span::{BytePos, Pos};
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
+use std::ops::{Add, Sub, Not};
 
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
@@ -307,49 +308,53 @@ impl<'a> Sugg<'a> {
     }
 }
 
-impl std::ops::Add for Sugg<'_> {
-    type Output = Sugg<'static>;
-    fn add(self, rhs: Sugg<'_>) -> Sugg<'static> {
-        make_binop(ast::BinOpKind::Add, &self, &rhs)
+// Copied from the rust standart library, and then edited
+macro_rules! forward_binop_impls_to_ref {
+    (impl $imp:ident, $method:ident for $t:ty, type Output = $o:ty) => {
+        impl $imp<$t> for &$t {
+            type Output = $o;
+
+            fn $method(self, other: $t) -> $o {
+                $imp::$method(self, &other)
+            }
+        }
+
+        impl $imp<&$t> for $t {
+            type Output = $o;
+
+            fn $method(self, other: &$t) -> $o {
+                $imp::$method(&self, other)
+            }
+        }
+
+        impl $imp for $t {
+            type Output = $o;
+
+            fn $method(self, other: $t) -> $o {
+                $imp::$method(&self, &other)
+            }
+        }
     }
 }
 
-impl std::ops::Sub for Sugg<'_> {
-    type Output = Sugg<'static>;
-    fn sub(self, rhs: Sugg<'_>) -> Sugg<'static> {
-        make_binop(ast::BinOpKind::Sub, &self, &rhs)
-    }
-}
-
-impl std::ops::Add<&Sugg<'_>> for Sugg<'_> {
-    type Output = Sugg<'static>;
-    fn add(self, rhs: &Sugg<'_>) -> Sugg<'static> {
-        make_binop(ast::BinOpKind::Add, &self, rhs)
-    }
-}
-
-impl std::ops::Sub<&Sugg<'_>> for Sugg<'_> {
-    type Output = Sugg<'static>;
-    fn sub(self, rhs: &Sugg<'_>) -> Sugg<'static> {
-        make_binop(ast::BinOpKind::Sub, &self, rhs)
-    }
-}
-
-impl std::ops::Add for &Sugg<'_> {
+impl Add for &Sugg<'_> {
     type Output = Sugg<'static>;
     fn add(self, rhs: &Sugg<'_>) -> Sugg<'static> {
         make_binop(ast::BinOpKind::Add, self, rhs)
     }
 }
 
-impl std::ops::Sub for &Sugg<'_> {
+impl Sub for &Sugg<'_> {
     type Output = Sugg<'static>;
     fn sub(self, rhs: &Sugg<'_>) -> Sugg<'static> {
         make_binop(ast::BinOpKind::Sub, self, rhs)
     }
 }
 
-impl std::ops::Not for Sugg<'_> {
+forward_binop_impls_to_ref!(impl Add, add for Sugg<'_>, type Output = Sugg<'static>);
+forward_binop_impls_to_ref!(impl Sub, sub for Sugg<'_>, type Output = Sugg<'static>);
+
+impl Not for Sugg<'_> {
     type Output = Sugg<'static>;
     fn not(self) -> Sugg<'static> {
         make_unop("!", self)
