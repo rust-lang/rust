@@ -90,7 +90,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             let ty = place.ty(&self.body.local_decls, self.tcx).ty;
             let span = self.body.source_info(location).span;
 
-            if !ty.is_copy_modulo_regions(self.tcx, self.param_env, span) {
+            if !ty.is_copy_modulo_regions(self.tcx.at(span), self.param_env) {
                 self.fail(location, format!("`Operand::Copy` with non-`Copy` type {}", ty));
             }
         }
