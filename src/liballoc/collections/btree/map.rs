@@ -490,6 +490,8 @@ struct MergeIter<K, V, I: Iterator<Item = (K, V)>> {
 impl<K: Ord, V> BTreeMap<K, V> {
     /// Makes a new empty BTreeMap with a reasonable choice for B.
     ///
+    /// Does not allocate anything on its own.
+    ///
     /// # Examples
     ///
     /// Basic usage:
