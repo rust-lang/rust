@@ -15,7 +15,7 @@ only way to build a modern version of rustc is a slightly less modern
 version.
 
 This is exactly how `x.py` works: it downloads the current `beta` release of
-rustc, then uses it to compile the nightly compiler. The beta release is
+rustc, then uses it to compile the new compiler. The beta release is
 called `stage0` and the newly built compiler is `stage1` (or `stage0
 artifacts`). To get the full benefits of the new compiler (e.g. optimizations
 and new features), the `stage1` compiler then compiles _itself_ again. This
@@ -62,7 +62,7 @@ components of bootstrap: the main one written in rust, and `bootstrap.py`.
 `stage0` compiler, which will then build the bootstrap binary written in
 Rust.
 
-Because there are two separate codebases being from from `x.py`, they need to
+Because there are two separate codebases behind `x.py`, they need to
 be kept in sync. In particular, both `bootstrap.py` and the bootstrap binary
 parse `config.toml` and read the same command line arguments. `bootstrap.py`
 keeps these in sync by setting various environment variables, and the
