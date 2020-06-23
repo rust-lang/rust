@@ -3,14 +3,14 @@
 use hir_expand::InFile;
 use ra_arena::map::ArenaMap;
 
-use crate::{db::DefDatabase, item_tree::ItemTreeSource, AssocItemLoc, ItemLoc};
+use crate::{db::DefDatabase, item_tree::ItemTreeNode, AssocItemLoc, ItemLoc};
 
 pub trait HasSource {
     type Value;
     fn source(&self, db: &dyn DefDatabase) -> InFile<Self::Value>;
 }
 
-impl<N: ItemTreeSource> HasSource for AssocItemLoc<N> {
+impl<N: ItemTreeNode> HasSource for AssocItemLoc<N> {
     type Value = N::Source;
 
     fn source(&self, db: &dyn DefDatabase) -> InFile<N::Source> {
@@ -23,7 +23,7 @@ impl<N: ItemTreeSource> HasSource for AssocItemLoc<N> {
     }
 }
 
-impl<N: ItemTreeSource> HasSource for ItemLoc<N> {
+impl<N: ItemTreeNode> HasSource for ItemLoc<N> {
     type Value = N::Source;
 
     fn source(&self, db: &dyn DefDatabase) -> InFile<N::Source> {

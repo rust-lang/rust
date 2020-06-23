@@ -153,7 +153,7 @@ impl ItemTree {
         self.inner_items.values().flatten().copied()
     }
 
-    pub fn source<S: ItemTreeSource>(
+    pub fn source<S: ItemTreeNode>(
         &self,
         db: &dyn DefDatabase,
         of: FileItemTreeId<S>,
@@ -173,6 +173,10 @@ impl ItemTree {
 
 /// Trait implemented by all nodes in the item tree.
 pub trait ItemTreeNode: Clone {
+    type Source: AstNode + Into<ast::ModuleItem>;
+
+    fn ast_id(&self) -> FileAstId<Self::Source>;
+
     /// Looks up an instance of `Self` in an item tree.
     fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self;
 
@@ -181,13 +185,6 @@ pub trait ItemTreeNode: Clone {
 
     /// Upcasts a `FileItemTreeId` to a generic `ModItem`.
     fn id_to_mod_item(id: FileItemTreeId<Self>) -> ModItem;
-}
-
-/// Trait for item tree nodes that allow accessing the original AST node.
-pub trait ItemTreeSource: ItemTreeNode {
-    type Source: AstNode + Into<ast::ModuleItem>;
-
-    fn ast_id(&self) -> FileAstId<Self::Source>;
 }
 
 pub struct FileItemTreeId<N: ItemTreeNode> {
@@ -242,6 +239,12 @@ macro_rules! mod_items {
 
         $(
             impl ItemTreeNode for $typ {
+                type Source = $ast;
+
+                fn ast_id(&self) -> FileAstId<Self::Source> {
+                    self.ast_id
+                }
+
                 fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self {
                     &tree.$fld[index]
                 }
@@ -256,14 +259,6 @@ macro_rules! mod_items {
 
                 fn id_to_mod_item(id: FileItemTreeId<Self>) -> ModItem {
                     ModItem::$typ(id)
-                }
-            }
-
-            impl ItemTreeSource for $typ {
-                type Source = $ast;
-
-                fn ast_id(&self) -> FileAstId<Self::Source> {
-                    self.ast_id
                 }
             }
 

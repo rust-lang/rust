@@ -27,7 +27,7 @@ use crate::{
         LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
-    item_tree::{FileItemTreeId, ItemTree, ItemTreeSource},
+    item_tree::{FileItemTreeId, ItemTree, ItemTreeNode},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
     AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
@@ -557,7 +557,7 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn find_inner_item<S: ItemTreeSource>(&self, id: AstId<ast::ModuleItem>) -> FileItemTreeId<S> {
+    fn find_inner_item<S: ItemTreeNode>(&self, id: AstId<ast::ModuleItem>) -> FileItemTreeId<S> {
         let index =
             self.item_trees.iter().position(|(file, _)| *file == id.file_id).unwrap_or_else(|| {
                 panic!("couldn't find item tree for file {:?}", id.file_id);
