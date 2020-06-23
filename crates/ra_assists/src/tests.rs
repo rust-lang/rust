@@ -4,18 +4,18 @@ use hir::Semantics;
 use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
 use ra_ide_db::RootDatabase;
 use ra_syntax::TextRange;
-use test_utils::{
-    assert_eq_text, extract_offset, extract_range, extract_range_or_offset, RangeOrOffset,
-};
+use test_utils::{assert_eq_text, extract_offset, extract_range, extract_range_or_offset};
 
 use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, Assists};
+use stdx::trim_indent;
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
     RootDatabase::with_single_file(text)
 }
 
 pub(crate) fn check_assist(assist: Handler, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(assist, ra_fixture_before, ExpectedResult::After(ra_fixture_after));
+    let ra_fixture_after = trim_indent(ra_fixture_after);
+    check(assist, ra_fixture_before, ExpectedResult::After(&ra_fixture_after));
 }
 
 // FIXME: instead of having a separate function here, maybe use
@@ -65,19 +65,8 @@ enum ExpectedResult<'a> {
 }
 
 fn check(handler: Handler, before: &str, expected: ExpectedResult) {
-    let (text_without_caret, file_with_caret_id, range_or_offset, db) = if before.contains("//-") {
-        let (db, position) = RootDatabase::with_position(before);
-        (
-            db.file_text(position.file_id).as_ref().to_owned(),
-            position.file_id,
-            RangeOrOffset::Offset(position.offset),
-            db,
-        )
-    } else {
-        let (range_or_offset, text_without_caret) = extract_range_or_offset(before);
-        let (db, file_id) = with_single_file(&text_without_caret);
-        (text_without_caret, file_id, range_or_offset, db)
-    };
+    let (db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
+    let text_without_caret = db.file_text(file_with_caret_id).as_ref().to_owned();
 
     let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
 

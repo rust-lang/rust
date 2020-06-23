@@ -30,7 +30,9 @@ impl Fixture {
 
         let mut res: Vec<Fixture> = Vec::new();
 
-        for (ix, line) in lines_with_ends(&fixture).enumerate() {
+        let default = if ra_fixture.contains("//-") { None } else { Some("//- /main.rs") };
+
+        for (ix, line) in default.into_iter().chain(lines_with_ends(&fixture)).enumerate() {
             if line.contains("//-") {
                 assert!(
                     line.starts_with("//-"),

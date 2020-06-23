@@ -158,16 +158,16 @@ mod test {
         check_assist(
             make_raw_string,
             r#"
-            fn f() {
-                let s = <|>"random\nstring";
-            }
-            "#,
+fn f() {
+    let s = <|>"random\nstring";
+}
+"#,
             r##"
-            fn f() {
-                let s = r#"random
+fn f() {
+    let s = r#"random
 string"#;
-            }
-            "##,
+}
+"##,
         )
     }
 
@@ -193,16 +193,16 @@ string"#;
         check_assist(
             make_raw_string,
             r###"
-            fn f() {
-                let s = <|>"#random##\nstring";
-            }
-            "###,
+fn f() {
+    let s = <|>"#random##\nstring";
+}
+"###,
             r####"
-            fn f() {
-                let s = r#"#random##
+fn f() {
+    let s = r#"#random##
 string"#;
-            }
-            "####,
+}
+"####,
         )
     }
 
@@ -211,16 +211,16 @@ string"#;
         check_assist(
             make_raw_string,
             r###"
-            fn f() {
-                let s = <|>"#random\"##\nstring";
-            }
-            "###,
+fn f() {
+    let s = <|>"#random\"##\nstring";
+}
+"###,
             r####"
-            fn f() {
-                let s = r###"#random"##
+fn f() {
+    let s = r###"#random"##
 string"###;
-            }
-            "####,
+}
+"####,
         )
     }
 

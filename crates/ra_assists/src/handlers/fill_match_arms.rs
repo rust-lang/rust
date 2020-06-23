@@ -763,9 +763,9 @@ mod tests {
 fn foo(opt: Option<i32>) {
     match opt<|> {
     }
-}"#;
-        let before =
-            &format!("//- /main.rs crate:main deps:core\n{}{}", before, FamousDefs::FIXTURE);
+}
+"#;
+        let before = &format!("//- /main.rs crate:main deps:core{}{}", before, FamousDefs::FIXTURE);
 
         check_assist(
             fill_match_arms,

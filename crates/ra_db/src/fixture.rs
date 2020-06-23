@@ -61,7 +61,7 @@ use std::{str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use rustc_hash::FxHashMap;
-use test_utils::{extract_offset, Fixture, CURSOR_MARKER};
+use test_utils::{extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER};
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
@@ -86,9 +86,19 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     }
 
     fn with_position(ra_fixture: &str) -> (Self, FilePosition) {
+        let (db, file_id, range_or_offset) = Self::with_range_or_offset(ra_fixture);
+        let offset = match range_or_offset {
+            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Offset(it) => it,
+        };
+        (db, FilePosition { file_id, offset })
+    }
+
+    fn with_range_or_offset(ra_fixture: &str) -> (Self, FileId, RangeOrOffset) {
         let mut db = Self::default();
         let (pos, _) = with_files(&mut db, ra_fixture);
-        (db, pos.unwrap())
+        let (file_id, range_or_offset) = pos.unwrap();
+        (db, file_id, range_or_offset)
     }
 
     fn test_crate(&self) -> CrateId {
@@ -151,7 +161,7 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
 fn with_files(
     db: &mut dyn SourceDatabaseExt,
     fixture: &str,
-) -> (Option<FilePosition>, Vec<FileId>) {
+) -> (Option<(FileId, RangeOrOffset)>, Vec<FileId>) {
     let fixture = Fixture::parse(fixture);
 
     let mut files = Vec::new();
@@ -193,9 +203,9 @@ fn with_files(
         }
 
         let text = if entry.text.contains(CURSOR_MARKER) {
-            let (offset, text) = extract_offset(&entry.text);
+            let (range_or_offset, text) = extract_range_or_offset(&entry.text);
             assert!(file_position.is_none());
-            file_position = Some(FilePosition { file_id, offset });
+            file_position = Some((file_id, range_or_offset));
             text.to_string()
         } else {
             entry.text.to_string()
