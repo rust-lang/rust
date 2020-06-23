@@ -1,19 +1,22 @@
 // error-pattern:cargo-clippy
 
 #![feature(bindings_after_at)]
-#![feature(box_syntax)]
 #![feature(box_patterns)]
+#![feature(box_syntax)]
+#![feature(concat_idents)]
+#![feature(crate_visibility_modifier)]
+#![feature(drain_filter)]
 #![feature(or_patterns)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
-#![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
 #![recursion_limit = "512"]
-#![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
-#![deny(rustc::internal)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
-#![feature(crate_visibility_modifier)]
-#![feature(concat_idents)]
-#![feature(drain_filter)]
+#![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
+#![warn(trivial_casts, trivial_numeric_casts)]
+// warn on lints, that are included in `rust-lang/rust`s bootstrap
+#![warn(rust_2018_idioms, unused_lifetimes)]
+// warn on rustc internal lints
+#![deny(rustc::internal)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
