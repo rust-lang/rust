@@ -56,7 +56,7 @@ fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
     }
 }
 
-fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
+pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
     match node {
         Node::Item(Item {
             kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),

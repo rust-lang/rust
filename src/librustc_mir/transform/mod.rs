@@ -56,6 +56,7 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
         promoted_mir,
         ..*providers
     };
+    instrument_coverage::provide(providers);
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {

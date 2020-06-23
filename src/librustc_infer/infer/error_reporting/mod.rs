@@ -1256,7 +1256,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             (ty::FnDef(did1, substs1), ty::FnPtr(sig2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).subst(self.tcx, substs1);
                 let mut values = self.cmp_fn_sig(&sig1, sig2);
-                values.0.push_normal(format!(
+                values.0.push_highlighted(format!(
                     " {{{}}}",
                     self.tcx.def_path_str_with_substs(*did1, substs1)
                 ));

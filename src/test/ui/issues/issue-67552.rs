@@ -18,7 +18,6 @@ fn identity<T>(x: T) -> T {
 }
 
 fn rec<T>(mut it: T)
-//~^ ERROR reached the recursion limit while instantiating
 where
     T: Iterator,
 {
@@ -26,5 +25,6 @@ where
         T::count(it);
     } else {
         rec(identity(&mut it))
+        //~^ ERROR reached the recursion limit while instantiating
     }
 }

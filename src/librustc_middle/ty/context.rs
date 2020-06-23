@@ -1307,6 +1307,13 @@ impl<'tcx> TyCtxt<'tcx> {
         StableHashingContext::new(self.sess, krate, self.definitions, &*self.cstore)
     }
 
+    #[inline(always)]
+    pub fn create_no_span_stable_hashing_context(self) -> StableHashingContext<'tcx> {
+        let krate = self.gcx.untracked_crate;
+
+        StableHashingContext::ignore_spans(self.sess, krate, self.definitions, &*self.cstore)
+    }
+
     // This method makes sure that we have a DepNode and a Fingerprint for
     // every upstream crate. It needs to be called once right after the tcx is
     // created.

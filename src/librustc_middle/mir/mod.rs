@@ -164,8 +164,8 @@ pub struct Body<'tcx> {
     /// The user may be writing e.g. `&[(SOME_CELL, 42)][i].1` and this would get promoted, because
     /// we'd statically know that no thing with interior mutability will ever be available to the
     /// user without some serious unsafe code.  Now this means that our promoted is actually
-    /// `&[(SOME_CELL, 42)]` and the MIR using it will do the `&promoted[i].1` projection because the
-    /// index may be a runtime value. Such a promoted value is illegal because it has reachable
+    /// `&[(SOME_CELL, 42)]` and the MIR using it will do the `&promoted[i].1` projection because
+    /// the index may be a runtime value. Such a promoted value is illegal because it has reachable
     /// interior mutability. This flag just makes this situation very obvious where the previous
     /// implementation without the flag hid this situation silently.
     /// FIXME(oli-obk): rewrite the promoted during promotion to eliminate the cell components.
@@ -2920,4 +2920,19 @@ impl Location {
             dominators.is_dominated_by(other.block, self.block)
         }
     }
+}
+
+/// Coverage data associated with each function (MIR) instrumented with coverage counters, when
+/// compiled with `-Zinstrument_coverage`. The query `tcx.coverage_data(DefId)` computes these
+/// values on demand (during code generation). This query is only valid after executing the MIR pass
+/// `InstrumentCoverage`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
+pub struct CoverageData {
+    /// A hash value that can be used by the consumer of the coverage profile data to detect
+    /// changes to the instrumented source of the associated MIR body (typically, for an
+    /// individual function).
+    pub hash: u64,
+
+    /// The total number of coverage region counters added to the MIR `Body`.
+    pub num_counters: u32,
 }

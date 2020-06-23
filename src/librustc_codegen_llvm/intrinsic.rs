@@ -23,7 +23,6 @@ use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
-use rustc_span::Symbol;
 use rustc_target::abi::{self, HasDataLayout, LayoutOf, Primitive};
 use rustc_target::spec::PanicStrategy;
 
@@ -141,26 +140,20 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.call(llfn, &[], None)
             }
             "count_code_region" => {
-                if let ty::InstanceDef::Item(fn_def_id) = caller_instance.def {
-                    let caller_fn_path = tcx.def_path_str(fn_def_id);
-                    debug!(
-                        "count_code_region to llvm.instrprof.increment(fn_name={})",
-                        caller_fn_path
-                    );
-
-                    // FIXME(richkadel): (1) Replace raw function name with mangled function name;
-                    // (2) Replace hardcoded `1234` in `hash` with a computed hash (as discussed in)
-                    // the MCP (compiler-team/issues/278); and replace the hardcoded `1` for
-                    // `num_counters` with the actual number of counters per function (when the
-                    // changes are made to inject more than one counter per function).
-                    let (fn_name, _len_val) = self.const_str(Symbol::intern(&caller_fn_path));
-                    let index = args[0].immediate();
-                    let hash = self.const_u64(1234);
-                    let num_counters = self.const_u32(1);
-                    self.instrprof_increment(fn_name, hash, num_counters, index)
-                } else {
-                    bug!("intrinsic count_code_region: no src.instance");
-                }
+                // FIXME(richkadel): The current implementation assumes the MIR for the given
+                // caller_instance represents a single function. Validate and/or correct if inlining
+                // and/or monomorphization invalidates these assumptions.
+                let coverage_data = tcx.coverage_data(caller_instance.def_id());
+                let mangled_fn = tcx.symbol_name(caller_instance);
+                let (mangled_fn_name, _len_val) = self.const_str(mangled_fn.name);
+                let hash = self.const_u64(coverage_data.hash);
+                let num_counters = self.const_u32(coverage_data.num_counters);
+                let index = args[0].immediate();
+                debug!(
+                    "count_code_region to LLVM intrinsic instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
+                    mangled_fn.name, hash, num_counters, index
+                );
+                self.instrprof_increment(mangled_fn_name, hash, num_counters, index)
             }
             "va_start" => self.va_start(args[0].immediate()),
             "va_end" => self.va_end(args[0].immediate()),

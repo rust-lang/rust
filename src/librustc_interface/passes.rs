@@ -101,6 +101,7 @@ pub fn configure_and_expand(
     krate: ast::Crate,
     crate_name: &str,
 ) -> Result<(ast::Crate, BoxedResolver)> {
+    log::trace!("configure_and_expand");
     // Currently, we ignore the name resolution data structures for the purposes of dependency
     // tracking. Instead we will run name resolution and include its output in the hash of each
     // item, much like we do for macro expansion. In other words, the hash reflects not just
@@ -230,6 +231,7 @@ fn configure_and_expand_inner<'a>(
     resolver_arenas: &'a ResolverArenas<'a>,
     metadata_loader: &'a MetadataLoaderDyn,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
+    log::trace!("configure_and_expand_inner");
     pre_expansion_lint(sess, lint_store, &krate);
 
     let mut resolver = Resolver::new(sess, &krate, crate_name, metadata_loader, &resolver_arenas);
@@ -357,6 +359,7 @@ fn configure_and_expand_inner<'a>(
         should_loop |= true;
     }
     if should_loop {
+        log::debug!("replacing bodies with loop {{}}");
         util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
     }
 
@@ -734,7 +737,10 @@ pub fn create_global_ctxt<'tcx>(
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
-    let defs: &'tcx Definitions = arena.alloc(mem::take(&mut resolver_outputs.definitions));
+    let defs: &'tcx Definitions = arena.alloc(mem::replace(
+        &mut resolver_outputs.definitions,
+        Definitions::new(crate_name, sess.local_crate_disambiguator()),
+    ));
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 

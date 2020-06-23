@@ -108,7 +108,7 @@ impl<'a> Resolver<'a> {
                 match outer_res {
                     Res::SelfTy(maybe_trait_defid, maybe_impl_defid) => {
                         if let Some(impl_span) =
-                            maybe_impl_defid.and_then(|def_id| self.definitions.opt_span(def_id))
+                            maybe_impl_defid.and_then(|def_id| self.opt_span(def_id))
                         {
                             err.span_label(
                                 reduce_impl_span_to_impl_keyword(sm, impl_span),
@@ -127,12 +127,12 @@ impl<'a> Resolver<'a> {
                         return err;
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
-                        if let Some(span) = self.definitions.opt_span(def_id) {
+                        if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "type parameter from outer function");
                         }
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
-                        if let Some(span) = self.definitions.opt_span(def_id) {
+                        if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "const parameter from outer function");
                         }
                     }
@@ -846,7 +846,7 @@ impl<'a> Resolver<'a> {
                 Applicability::MaybeIncorrect,
             );
             let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
-                LOCAL_CRATE => self.definitions.opt_span(def_id),
+                LOCAL_CRATE => self.opt_span(def_id),
                 _ => Some(
                     self.session
                         .source_map()

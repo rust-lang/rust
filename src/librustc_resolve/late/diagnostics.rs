@@ -512,7 +512,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 _ => {}
             }
             if !suggested {
-                if let Some(span) = self.r.definitions.opt_span(def_id) {
+                if let Some(span) = self.r.opt_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
                 err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?", path_str));
@@ -536,7 +536,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 if nightly_options::is_nightly_build() {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
-                    if let Some(span) = self.r.definitions.opt_span(def_id) {
+                    if let Some(span) = self.r.opt_span(def_id) {
                         err.span_help(span, msg);
                     } else {
                         err.help(msg);
@@ -593,7 +593,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 bad_struct_syntax_suggestion(def_id);
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), def_id), _) if ns == ValueNS => {
-                if let Some(span) = self.r.definitions.opt_span(def_id) {
+                if let Some(span) = self.r.opt_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
                 err.span_label(span, format!("did you mean `{}( /* fields */ )`?", path_str));
