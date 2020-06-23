@@ -6,9 +6,12 @@
 mod matching;
 mod parsing;
 mod replacing;
+#[macro_use]
+mod errors;
 #[cfg(test)]
 mod tests;
 
+pub use crate::errors::SsrError;
 pub use crate::matching::Match;
 use crate::matching::{record_match_fails_reasons_scope, MatchFailureReason};
 use hir::Semantics;
@@ -40,9 +43,6 @@ pub struct SsrPattern {
     path: Option<SyntaxNode>,
     pattern: Option<SyntaxNode>,
 }
-
-#[derive(Debug, PartialEq)]
-pub struct SsrError(String);
 
 #[derive(Debug, Default)]
 pub struct SsrMatches {
@@ -214,12 +214,6 @@ pub struct MatchDebugInfo {
     /// etc. Will be absent if the pattern can't be parsed as that kind.
     pattern: Result<SyntaxNode, MatchFailureReason>,
     matched: Result<Match, MatchFailureReason>,
-}
-
-impl std::fmt::Display for SsrError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Parse error: {}", self.0)
-    }
 }
 
 impl std::fmt::Debug for MatchDebugInfo {

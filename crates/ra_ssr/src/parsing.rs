@@ -5,16 +5,11 @@
 //! search patterns, we go further and parse the pattern as each kind of thing that we can match.
 //! e.g. expressions, type references etc.
 
+use crate::errors::bail;
 use crate::{SsrError, SsrPattern, SsrRule};
 use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind, T};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::str::FromStr;
-
-/// Returns from the current function with an error, supplied by arguments as for format!
-macro_rules! bail {
-    ($e:expr) => {return Err($crate::SsrError::new($e))};
-    ($fmt:expr, $($arg:tt)+) => {return Err($crate::SsrError::new(format!($fmt, $($arg)+)))}
-}
 
 #[derive(Clone, Debug)]
 pub(crate) struct SsrTemplate {
@@ -246,7 +241,7 @@ fn parse_placeholder(tokens: &mut std::vec::IntoIter<Token>) -> Result<Placehold
                 }
             }
             _ => {
-                bail!("Placeholders should either be $name or ${name:constraints}");
+                bail!("Placeholders should either be $name or ${{name:constraints}}");
             }
         }
     }
@@ -289,7 +284,7 @@ fn expect_token(tokens: &mut std::vec::IntoIter<Token>, expected: &str) -> Resul
         }
         bail!("Expected {} found {}", expected, t.text);
     }
-    bail!("Expected {} found end of stream");
+    bail!("Expected {} found end of stream", expected);
 }
 
 impl NodeKind {
@@ -304,12 +299,6 @@ impl NodeKind {
 impl Placeholder {
     fn new(name: SmolStr, constraints: Vec<Constraint>) -> Self {
         Self { stand_in_name: format!("__placeholder_{}", name), constraints, ident: name }
-    }
-}
-
-impl SsrError {
-    fn new(message: impl Into<String>) -> SsrError {
-        SsrError(message.into())
     }
 }
 
