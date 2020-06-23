@@ -1652,23 +1652,25 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
             .iter()
             .enumerate()
             .map(|(i, &(ref name, ty))| {
+                // Discriminant is always the first field of our variant
+                // when using the enum fallback.
+                let is_artificial_discr = use_enum_fallback(cx) && i == 0;
                 let (size, align) = cx.size_and_align_of(ty);
                 MemberDescription {
                     name: name.to_string(),
-                    type_metadata: if use_enum_fallback(cx) {
-                        match self.tag_type_metadata {
-                            // Discriminant is always the first field of our variant
-                            // when using the enum fallback.
-                            Some(metadata) if i == 0 => metadata,
-                            _ => type_metadata(cx, ty, self.span),
-                        }
+                    type_metadata: if is_artificial_discr {
+                        self.tag_type_metadata.unwrap_or_else(|| type_metadata(cx, ty, self.span))
                     } else {
                         type_metadata(cx, ty, self.span)
                     },
                     offset: self.offsets[i],
                     size,
                     align,
-                    flags: DIFlags::FlagZero,
+                    flags: if is_artificial_discr {
+                        DIFlags::FlagArtificial
+                    } else {
+                        DIFlags::FlagZero
+                    },
                     discriminant: None,
                     source_info: None,
                 }
