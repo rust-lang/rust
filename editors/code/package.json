@@ -426,7 +426,7 @@
                         "Full log"
                     ],
                     "default": "off",
-                    "description": "Trace requests to the rust-analyzer"
+                    "description": "Trace requests to the rust-analyzer (this is usually overly verbose and not recommended for regular users)"
                 },
                 "rust-analyzer.trace.extension": {
                     "description": "Enable logging of VS Code extensions itself",

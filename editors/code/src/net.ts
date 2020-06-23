@@ -60,32 +60,40 @@ export interface GithubRelease {
     }>;
 }
 
+interface DownloadOpts {
+    progressTitle: string;
+    url: string;
+    dest: string;
+    mode?: number;
+}
 
-export async function download(
-    downloadUrl: string,
-    destinationPath: string,
-    progressTitle: string,
-    { mode }: { mode?: number } = {},
-) {
-    await vscode.window.withProgress(
-        {
-            location: vscode.ProgressLocation.Notification,
-            cancellable: false,
-            title: progressTitle
-        },
-        async (progress, _cancellationToken) => {
-            let lastPercentage = 0;
-            await downloadFile(downloadUrl, destinationPath, mode, (readBytes, totalBytes) => {
-                const newPercentage = (readBytes / totalBytes) * 100;
-                progress.report({
-                    message: newPercentage.toFixed(0) + "%",
-                    increment: newPercentage - lastPercentage
+export async function download(opts: DownloadOpts) {
+    // Put the artifact into a temporary folder to prevent partially downloaded files when user kills vscode
+    await withTempDir(async tempDir => {
+        const tempFile = path.join(tempDir, path.basename(opts.dest));
+
+        await vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                cancellable: false,
+                title: opts.progressTitle
+            },
+            async (progress, _cancellationToken) => {
+                let lastPercentage = 0;
+                await downloadFile(opts.url, tempFile, opts.mode, (readBytes, totalBytes) => {
+                    const newPercentage = (readBytes / totalBytes) * 100;
+                    progress.report({
+                        message: newPercentage.toFixed(0) + "%",
+                        increment: newPercentage - lastPercentage
+                    });
+
+                    lastPercentage = newPercentage;
                 });
+            }
+        );
 
-                lastPercentage = newPercentage;
-            });
-        }
-    );
+        await moveFile(tempFile, opts.dest);
+    });
 }
 
 /**
@@ -114,28 +122,23 @@ async function downloadFile(
 
     log.debug("Downloading file of", totalBytes, "bytes size from", url, "to", destFilePath);
 
-    // Put the artifact into a temporary folder to prevent partially downloaded files when user kills vscode
-    await withTempFile(async tempFilePath => {
-        const destFileStream = fs.createWriteStream(tempFilePath, { mode });
+    let readBytes = 0;
+    res.body.on("data", (chunk: Buffer) => {
+        readBytes += chunk.length;
+        onProgress(readBytes, totalBytes);
+    });
 
-        let readBytes = 0;
-        res.body.on("data", (chunk: Buffer) => {
-            readBytes += chunk.length;
-            onProgress(readBytes, totalBytes);
-        });
-
-        await pipeline(res.body, destFileStream);
-        await new Promise<void>(resolve => {
-            destFileStream.on("close", resolve);
-            destFileStream.destroy();
-            // This workaround is awaiting to be removed when vscode moves to newer nodejs version:
-            // https://github.com/rust-analyzer/rust-analyzer/issues/3167
-        });
-        await moveFile(tempFilePath, destFilePath);
+    const destFileStream = fs.createWriteStream(destFilePath, { mode });
+    await pipeline(res.body, destFileStream);
+    await new Promise<void>(resolve => {
+        destFileStream.on("close", resolve);
+        destFileStream.destroy();
+        // This workaround is awaiting to be removed when vscode moves to newer nodejs version:
+        // https://github.com/rust-analyzer/rust-analyzer/issues/3167
     });
 }
 
-async function withTempFile(scope: (tempFilePath: string) => Promise<void>) {
+async function withTempDir(scope: (tempDirPath: string) => Promise<void>) {
     // Based on the great article: https://advancedweb.hu/secure-tempfiles-in-nodejs-without-dependencies/
 
     // `.realpath()` should handle the cases where os.tmpdir() contains symlinks
@@ -144,7 +147,7 @@ async function withTempFile(scope: (tempFilePath: string) => Promise<void>) {
     const tempDir = await fs.promises.mkdtemp(path.join(osTempDir, "rust-analyzer"));
 
     try {
-        return await scope(path.join(tempDir, "file"));
+        return await scope(tempDir);
     } finally {
         // We are good citizens :D
         void fs.promises.rmdir(tempDir, { recursive: true }).catch(log.error);
@@ -161,6 +164,7 @@ async function moveFile(src: fs.PathLike, dest: fs.PathLike) {
             await fs.promises.unlink(src);
         } else {
             log.error(`Failed to rename the file ${src} -> ${dest}`, err);
+            throw err;
         }
     }
 }

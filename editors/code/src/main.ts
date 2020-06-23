@@ -43,12 +43,16 @@ export async function activate(context: vscode.ExtensionContext) {
     const config = new Config(context);
     const state = new PersistentState(context.globalState);
     const serverPath = await bootstrap(config, state).catch(err => {
-        let message = "Failed to bootstrap rust-analyzer.";
+        let message = "bootstrap error. ";
+
         if (err.code === "EBUSY" || err.code === "ETXTBSY") {
-            message += " Other vscode windows might be using rust-analyzer, " +
-                "you should close them and reload this window to retry.";
+            message += "Other vscode windows might be using rust-analyzer, ";
+            message += "you should close them and reload this window to retry. ";
         }
-        message += " Open \"Help > Toggle Developer Tools > Console\" to see the logs";
+
+        message += 'Open "Help > Toggle Developer Tools > Console" to see the logs ';
+        message += '(enable verbose logs with "rust-analyzer.trace.extension")';
+
         log.error("Bootstrap error", err);
         throw new Error(message);
     });
@@ -178,7 +182,11 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
     const dest = path.join(config.globalStoragePath, "rust-analyzer.vsix");
-    await download(artifact.browser_download_url, dest, "Downloading rust-analyzer extension");
+    await download({
+        url: artifact.browser_download_url,
+        dest,
+        progressTitle: "Downloading rust-analyzer extension",
+    });
 
     await vscode.commands.executeCommand("workbench.extensions.installExtension", vscode.Uri.file(dest));
     await fs.unlink(dest);
@@ -299,7 +307,12 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         if (err.code !== "ENOENT") throw err;
     });
 
-    await download(artifact.browser_download_url, dest, "Downloading rust-analyzer server", { mode: 0o755 });
+    await download({
+        url: artifact.browser_download_url,
+        dest,
+        progressTitle: "Downloading rust-analyzer server",
+        mode: 0o755
+    });
 
     // Patching executable if that's NixOS.
     if (await fs.stat("/etc/nixos").then(_ => true).catch(_ => false)) {
