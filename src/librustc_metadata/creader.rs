@@ -10,7 +10,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_expand::base::SyntaxExtension;
-use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::cstore::DepKind;
@@ -896,6 +896,7 @@ impl<'a> CrateLoader<'a> {
         &mut self,
         item: &ast::Item,
         definitions: &Definitions,
+        def_id: LocalDefId,
     ) -> CrateNum {
         match item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
@@ -918,7 +919,6 @@ impl<'a> CrateLoader<'a> {
 
                 let cnum = self.resolve_crate(name, item.span, dep_kind, None);
 
-                let def_id = definitions.opt_local_def_id(item.id).unwrap();
                 let path_len = definitions.def_path(def_id).data.len();
                 self.update_extern_crate(
                     cnum,

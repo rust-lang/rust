@@ -7,6 +7,7 @@ use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::ast::{self, NodeId};
+use rustc_ast_lowering::Resolver as ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, StabilityLevel};
 use rustc_data_structures::fx::FxHashSet;
@@ -190,7 +191,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         )));
 
         let parent_scope = if let Some(module_id) = parent_module_id {
-            let parent_def_id = self.definitions.local_def_id(module_id);
+            let parent_def_id = self.local_def_id(module_id);
             self.definitions.add_parent_module_of_macro_def(expn_id, parent_def_id.to_def_id());
             self.module_map[&parent_def_id]
         } else {
@@ -340,7 +341,9 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId {
-        self.definitions.lint_node_id(expn_id)
+        self.invocation_parents
+            .get(&expn_id)
+            .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[*id])
     }
 
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool {

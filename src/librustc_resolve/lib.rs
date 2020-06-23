@@ -27,6 +27,7 @@ use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
+use rustc_ast_lowering::Resolver as ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;
@@ -36,9 +37,10 @@ use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
-use rustc_hir::definitions::{DefKey, Definitions};
+use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
 use rustc_hir::TraitCandidate;
+use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::hir::exports::ExportMap;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
@@ -256,31 +258,21 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
     }
 }
 
-struct UsePlacementFinder<'d> {
-    definitions: &'d Definitions,
-    target_module: LocalDefId,
+struct UsePlacementFinder {
+    target_module: NodeId,
     span: Option<Span>,
     found_use: bool,
 }
 
-impl<'d> UsePlacementFinder<'d> {
-    fn check(
-        definitions: &'d Definitions,
-        krate: &Crate,
-        target_module: DefId,
-    ) -> (Option<Span>, bool) {
-        if let Some(target_module) = target_module.as_local() {
-            let mut finder =
-                UsePlacementFinder { definitions, target_module, span: None, found_use: false };
-            visit::walk_crate(&mut finder, krate);
-            (finder.span, finder.found_use)
-        } else {
-            (None, false)
-        }
+impl UsePlacementFinder {
+    fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
+        let mut finder = UsePlacementFinder { target_module, span: None, found_use: false };
+        visit::walk_crate(&mut finder, krate);
+        (finder.span, finder.found_use)
     }
 }
 
-impl<'tcx, 'd> Visitor<'tcx> for UsePlacementFinder<'d> {
+impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     fn visit_mod(
         &mut self,
         module: &'tcx ast::Mod,
@@ -291,7 +283,7 @@ impl<'tcx, 'd> Visitor<'tcx> for UsePlacementFinder<'d> {
         if self.span.is_some() {
             return;
         }
-        if self.definitions.local_def_id(node_id) != self.target_module {
+        if node_id != self.target_module {
             visit::walk_mod(self, module);
             return;
         }
@@ -979,6 +971,19 @@ pub struct Resolver<'a> {
     lint_buffer: LintBuffer,
 
     next_node_id: NodeId,
+
+    def_id_to_span: IndexVec<LocalDefId, Span>,
+
+    node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
+    def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
+
+    /// Indices of unnamed struct or variant fields with unresolved attributes.
+    placeholder_field_indices: FxHashMap<NodeId, usize>,
+    /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
+    /// we know what parent node that fragment should be attached to thanks to this table.
+    invocation_parents: FxHashMap<ExpnId, LocalDefId>,
+
+    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1042,7 +1047,7 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
 
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
-impl rustc_ast_lowering::Resolver for Resolver<'_> {
+impl ResolverAstLowering for Resolver<'_> {
     fn def_key(&mut self, id: DefId) -> DefKey {
         if let Some(id) = id.as_local() {
             self.definitions().def_key(id)
@@ -1113,6 +1118,56 @@ impl rustc_ast_lowering::Resolver for Resolver<'_> {
     fn trait_map(&self) -> &NodeMap<Vec<TraitCandidate>> {
         &self.trait_map
     }
+
+    fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
+        self.node_id_to_def_id.get(&node).copied()
+    }
+
+    fn local_def_id(&self, node: NodeId) -> LocalDefId {
+        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+    }
+
+    /// Adds a definition with a parent definition.
+    fn create_def(
+        &mut self,
+        parent: LocalDefId,
+        node_id: ast::NodeId,
+        data: DefPathData,
+        expn_id: ExpnId,
+        span: Span,
+    ) -> LocalDefId {
+        assert!(
+            !self.node_id_to_def_id.contains_key(&node_id),
+            "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
+            node_id,
+            data,
+            self.definitions.def_key(self.node_id_to_def_id[&node_id]),
+        );
+
+        // Find the next free disambiguator for this key.
+        let next_disambiguator = &mut self.next_disambiguator;
+        let next_disambiguator = |parent, data| {
+            let next_disamb = next_disambiguator.entry((parent, data)).or_insert(0);
+            let disambiguator = *next_disamb;
+            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+            disambiguator
+        };
+
+        let def_id = self.definitions.create_def(parent, data, expn_id, next_disambiguator);
+
+        assert_eq!(self.def_id_to_span.push(span), def_id);
+
+        // Some things for which we allocate `LocalDefId`s don't correspond to
+        // anything in the AST, so they don't have a `NodeId`. For these cases
+        // we don't need a mapping from `NodeId` to `LocalDefId`.
+        if node_id != ast::DUMMY_NODE_ID {
+            debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
+            self.node_id_to_def_id.insert(node_id, def_id);
+        }
+        assert_eq!(self.def_id_to_node_id.push(node_id), def_id);
+
+        def_id
+    }
 }
 
 impl<'a> Resolver<'a> {
@@ -1143,8 +1198,18 @@ impl<'a> Resolver<'a> {
         let mut module_map = FxHashMap::default();
         module_map.insert(LocalDefId { local_def_index: CRATE_DEF_INDEX }, graph_root);
 
-        let mut definitions = Definitions::default();
-        definitions.create_root_def(crate_name, session.local_crate_disambiguator());
+        let definitions = Definitions::new(crate_name, session.local_crate_disambiguator());
+        let root = definitions.get_root_def();
+
+        let mut def_id_to_span = IndexVec::default();
+        assert_eq!(def_id_to_span.push(rustc_span::DUMMY_SP), root);
+        let mut def_id_to_node_id = IndexVec::default();
+        assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), root);
+        let mut node_id_to_def_id = FxHashMap::default();
+        node_id_to_def_id.insert(CRATE_NODE_ID, root);
+
+        let mut invocation_parents = FxHashMap::default();
+        invocation_parents.insert(ExpnId::root(), root);
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = session
             .opts
@@ -1263,6 +1328,12 @@ impl<'a> Resolver<'a> {
             variant_vis: Default::default(),
             lint_buffer: LintBuffer::default(),
             next_node_id: NodeId::from_u32(1),
+            def_id_to_span,
+            node_id_to_def_id,
+            def_id_to_node_id,
+            placeholder_field_indices: Default::default(),
+            invocation_parents,
+            next_disambiguator: Default::default(),
         }
     }
 
@@ -1457,7 +1528,7 @@ impl<'a> Resolver<'a> {
     #[inline]
     fn add_to_glob_map(&mut self, import: &Import<'_>, ident: Ident) {
         if import.is_glob() {
-            let def_id = self.definitions.local_def_id(import.id);
+            let def_id = self.local_def_id(import.id);
             self.glob_map.entry(def_id).or_default().insert(ident.name);
         }
     }
@@ -2538,7 +2609,11 @@ impl<'a> Resolver<'a> {
         for UseError { mut err, candidates, def_id, instead, suggestion } in
             self.use_injections.drain(..)
         {
-            let (span, found_use) = UsePlacementFinder::check(&self.definitions, krate, def_id);
+            let (span, found_use) = if let Some(def_id) = def_id.as_local() {
+                UsePlacementFinder::check(krate, self.def_id_to_node_id[def_id])
+            } else {
+                (None, false)
+            };
             if !candidates.is_empty() {
                 diagnostics::show_candidates(&mut err, span, &candidates, instead, found_use);
             } else if let Some((span, msg, sugg, appl)) = suggestion {
@@ -2933,6 +3008,12 @@ impl<'a> Resolver<'a> {
     // For rustdoc.
     pub fn all_macros(&self) -> &FxHashMap<Symbol, Res> {
         &self.all_macros
+    }
+
+    /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
+    #[inline]
+    pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
+        if let Some(def_id) = def_id.as_local() { Some(self.def_id_to_span[def_id]) } else { None }
     }
 }
 

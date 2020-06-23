@@ -1,8 +1,10 @@
+use crate::Resolver;
 use log::debug;
 use rustc_ast::ast::*;
 use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, FnKind};
 use rustc_ast::walk_list;
+use rustc_ast_lowering::Resolver as ResolverAstLowering;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::definitions::*;
@@ -11,26 +13,26 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 
 crate fn collect_definitions(
-    definitions: &mut Definitions,
+    resolver: &mut Resolver<'_>,
     fragment: &AstFragment,
     expansion: ExpnId,
 ) {
-    let parent_def = definitions.invocation_parent(expansion);
-    fragment.visit_with(&mut DefCollector { definitions, parent_def, expansion });
+    let parent_def = resolver.invocation_parents[&expansion];
+    fragment.visit_with(&mut DefCollector { resolver, parent_def, expansion });
 }
 
 /// Creates `DefId`s for nodes in the AST.
-struct DefCollector<'a> {
-    definitions: &'a mut Definitions,
+struct DefCollector<'a, 'b> {
+    resolver: &'a mut Resolver<'b>,
     parent_def: LocalDefId,
     expansion: ExpnId,
 }
 
-impl<'a> DefCollector<'a> {
+impl<'a, 'b> DefCollector<'a, 'b> {
     fn create_def(&mut self, node_id: NodeId, data: DefPathData, span: Span) -> LocalDefId {
         let parent_def = self.parent_def;
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
-        self.definitions.create_def_with_parent(parent_def, node_id, data, self.expansion, span)
+        self.resolver.create_def(parent_def, node_id, data, self.expansion, span)
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
@@ -43,12 +45,13 @@ impl<'a> DefCollector<'a> {
         let index = |this: &Self| {
             index.unwrap_or_else(|| {
                 let node_id = NodeId::placeholder_from_expn_id(this.expansion);
-                this.definitions.placeholder_field_index(node_id)
+                this.resolver.placeholder_field_indices[&node_id]
             })
         };
 
         if field.is_placeholder {
-            self.definitions.set_placeholder_field_index(field.id, index(self));
+            let old_index = self.resolver.placeholder_field_indices.insert(field.id, index(self));
+            assert!(old_index.is_none(), "placeholder field index is reset for a node ID");
             self.visit_macro_invoc(field.id);
         } else {
             let name = field.ident.map_or_else(|| sym::integer(index(self)), |ident| ident.name);
@@ -58,11 +61,13 @@ impl<'a> DefCollector<'a> {
     }
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
-        self.definitions.set_invocation_parent(id.placeholder_to_expn_id(), self.parent_def);
+        let old_parent =
+            self.resolver.invocation_parents.insert(id.placeholder_to_expn_id(), self.parent_def);
+        assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
     }
 }
 
-impl<'a> visit::Visitor<'a> for DefCollector<'a> {
+impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     fn visit_item(&mut self, i: &'a Item) {
         debug!("visit_item: {:?}", i);
 
