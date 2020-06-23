@@ -55,8 +55,7 @@ The offending line: {:?}"#,
         let mut res: Vec<Fixture> = Vec::new();
         for line in lines.by_ref() {
             if line.starts_with("//-") {
-                let meta = line["//-".len()..].trim().to_string();
-                let meta = Fixture::parse_single(&meta);
+                let meta = Fixture::parse_single(line);
                 res.push(meta)
             } else if let Some(entry) = res.last_mut() {
                 entry.text.push_str(line);
@@ -67,7 +66,9 @@ The offending line: {:?}"#,
     }
 
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
-    fn parse_single(meta: &str) -> Fixture {
+    pub fn parse_single(meta: &str) -> Fixture {
+        assert!(meta.starts_with("//-"));
+        let meta = meta["//-".len()..].trim();
         let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
 
         let path = components[0].to_string();
