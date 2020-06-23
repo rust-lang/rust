@@ -893,15 +893,18 @@ def bootstrap(help_triggered):
     build.verbose = args.verbose
     build.clean = args.clean
 
-    try:
-        toml_path = os.getenv('RUST_BOOTSTRAP_CONFIG') or args.config or 'config.toml'
+    # Read from `RUST_BOOTSTRAP_CONFIG`, then `--config`, then fallback to `config.toml` (if it
+    # exists).
+    toml_path = os.getenv('RUST_BOOTSTRAP_CONFIG') or args.config
+    if not toml_path and os.path.exists('config.toml'):
+        toml_path = 'config.toml'
+
+    if toml_path:
         if not os.path.exists(toml_path):
             toml_path = os.path.join(build.rust_root, toml_path)
 
         with open(toml_path) as config:
             build.config_toml = config.read()
-    except (OSError, IOError):
-        pass
 
     config_verbose = build.get_toml('verbose', 'build')
     if config_verbose is not None:
@@ -947,11 +950,12 @@ def bootstrap(help_triggered):
     env["SRC"] = build.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
-    env["BOOTSTRAP_CONFIG"] = toml_path
     env["BUILD_DIR"] = build.build_dir
     env["RUSTC_BOOTSTRAP"] = '1'
     env["CARGO"] = build.cargo()
     env["RUSTC"] = build.rustc()
+    if toml_path:
+        env["BOOTSTRAP_CONFIG"] = toml_path
     if build.rustfmt():
         env["RUSTFMT"] = build.rustfmt()
     run(args, env=env, verbose=build.verbose)
