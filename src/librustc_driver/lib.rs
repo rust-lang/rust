@@ -307,6 +307,7 @@ pub fn run_compiler(
                         compiler.output_file().as_ref().map(|p| &**p),
                     );
                 }
+                trace!("finished pretty-printing");
                 return early_exit();
             }
 
