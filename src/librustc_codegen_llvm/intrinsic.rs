@@ -140,6 +140,9 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.call(llfn, &[], None)
             }
             "count_code_region" => {
+                // FIXME(richkadel): The current implementation assumes the MIR for the given
+                // caller_instance represents a single function. Validate and/or correct if inlining
+                // and/or monomorphization invalidates these assumptions.
                 let coverage_data = tcx.coverage_data(caller_instance.def_id());
                 let mangled_fn = tcx.symbol_name(caller_instance);
                 let (mangled_fn_name, _len_val) = self.const_str(mangled_fn.name);

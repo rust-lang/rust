@@ -5,15 +5,15 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::lang_items;
 use rustc_middle::hir;
 use rustc_middle::ich::StableHashingContext;
-use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::mir::{
     self, traversal, BasicBlock, BasicBlockData, CoverageData, Operand, Place, SourceInfo,
     StatementKind, Terminator, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::FnDef;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{ConstKind, FnDef};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
@@ -26,16 +26,36 @@ pub struct InstrumentCoverage;
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     providers.coverage_data = |tcx, def_id| {
         let mir_body = tcx.optimized_mir(def_id);
+        // FIXME(richkadel): The current implementation assumes the MIR for the given DefId
+        // represents a single function. Validate and/or correct if inlining and/or monomorphization
+        // invalidates these assumptions.
         let count_code_region_fn =
             tcx.require_lang_item(lang_items::CountCodeRegionFnLangItem, None);
         let mut num_counters: u32 = 0;
+        // The `num_counters` argument to `llvm.instrprof.increment` is the number of injected
+        // counters, with each counter having an index from `0..num_counters-1`. MIR optimization
+        // may split and duplicate some BasicBlock sequences. Simply counting the calls may not
+        // not work; but computing the num_counters by adding `1` to the highest index (for a given
+        // instrumented function) is valid.
         for (_, data) in traversal::preorder(mir_body) {
             if let Some(terminator) = &data.terminator {
-                if let TerminatorKind::Call { func: Operand::Constant(func), .. } = &terminator.kind
+                if let TerminatorKind::Call { func: Operand::Constant(func), args, .. } =
+                    &terminator.kind
                 {
                     if let FnDef(called_fn_def_id, _) = func.literal.ty.kind {
                         if called_fn_def_id == count_code_region_fn {
-                            num_counters += 1;
+                            if let Operand::Constant(constant) =
+                                args.get(0).expect("count_code_region has at least one arg")
+                            {
+                                if let ConstKind::Value(ConstValue::Scalar(value)) =
+                                    constant.literal.val
+                                {
+                                    let index = value
+                                        .to_u32()
+                                        .expect("count_code_region index at arg0 is u32");
+                                    num_counters = std::cmp::max(num_counters, index + 1);
+                                }
+                            }
                         }
                     }
                 }
