@@ -441,6 +441,22 @@ The possible values of [`Applicability`][appl] are:
 
 [appl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
 
+### Suggestion Style Guide
+
+- Suggestions should not be a question. In particular, language like "did you
+  mean" should be avoided. Sometimes, it's unclear why a particular suggestion
+  is being made. In these cases, it's better to be upfront about what the
+  suggestion is.
+
+  Compare "did you mean: `Foo`" vs. "there is a struct with a similar name: `Foo`".
+
+- The message should not contain any phrases like "the following", "as shown",
+  etc. Use the span to convey what is being talked about.
+- The message may contain further instruction such as "to do xyz, use" or "to do
+  xyz, use abc".
+- The message may contain a name of a function, variable, or type, but avoid
+  whole expressions.
+
 ## Lints
 
 The compiler linting infrastructure is defined in the [`rustc::lint`][rlint]
