@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use ra_db::{CrateName, Env, FileSet, SourceRoot, VfsPath};
-use test_utils::{extract_offset, extract_range, parse_fixture, FixtureEntry, CURSOR_MARKER};
+use test_utils::{extract_offset, extract_range, Fixture, CURSOR_MARKER};
 
 use crate::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition, FileId, FilePosition, FileRange,
@@ -12,7 +12,7 @@ use crate::{
 #[derive(Debug)]
 enum MockFileData {
     Plain { path: String, content: String },
-    Fixture(FixtureEntry),
+    Fixture(Fixture),
 }
 
 impl MockFileData {
@@ -25,7 +25,7 @@ impl MockFileData {
     fn path(&self) -> &str {
         match self {
             MockFileData::Plain { path, .. } => path.as_str(),
-            MockFileData::Fixture(f) => f.meta.path(),
+            MockFileData::Fixture(f) => f.path.as_str(),
         }
     }
 
@@ -39,7 +39,10 @@ impl MockFileData {
     fn cfg_options(&self) -> CfgOptions {
         match self {
             MockFileData::Fixture(f) => {
-                f.meta.cfg_options().map_or_else(Default::default, |o| o.clone())
+                let mut cfg = CfgOptions::default();
+                f.cfg_atoms.iter().for_each(|it| cfg.insert_atom(it.into()));
+                f.cfg_key_values.iter().for_each(|(k, v)| cfg.insert_key_value(k.into(), v.into()));
+                cfg
             }
             _ => CfgOptions::default(),
         }
@@ -48,7 +51,7 @@ impl MockFileData {
     fn edition(&self) -> Edition {
         match self {
             MockFileData::Fixture(f) => {
-                f.meta.edition().map_or(Edition::Edition2018, |v| Edition::from_str(v).unwrap())
+                f.edition.as_ref().map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap())
             }
             _ => Edition::Edition2018,
         }
@@ -56,14 +59,14 @@ impl MockFileData {
 
     fn env(&self) -> Env {
         match self {
-            MockFileData::Fixture(f) => Env::from(f.meta.env()),
+            MockFileData::Fixture(f) => Env::from(f.env.iter()),
             _ => Env::default(),
         }
     }
 }
 
-impl From<FixtureEntry> for MockFileData {
-    fn from(fixture: FixtureEntry) -> Self {
+impl From<Fixture> for MockFileData {
+    fn from(fixture: Fixture) -> Self {
         Self::Fixture(fixture)
     }
 }
@@ -91,7 +94,7 @@ impl MockAnalysis {
     /// ```
     pub fn with_files(fixture: &str) -> MockAnalysis {
         let mut res = MockAnalysis::new();
-        for entry in parse_fixture(fixture) {
+        for entry in Fixture::parse(fixture) {
             res.add_file_fixture(entry);
         }
         res
@@ -102,7 +105,7 @@ impl MockAnalysis {
     pub fn with_files_and_position(fixture: &str) -> (MockAnalysis, FilePosition) {
         let mut position = None;
         let mut res = MockAnalysis::new();
-        for entry in parse_fixture(fixture) {
+        for entry in Fixture::parse(fixture) {
             if entry.text.contains(CURSOR_MARKER) {
                 assert!(position.is_none(), "only one marker (<|>) per fixture is allowed");
                 position = Some(res.add_file_fixture_with_position(entry));
@@ -114,13 +117,13 @@ impl MockAnalysis {
         (res, position)
     }
 
-    pub fn add_file_fixture(&mut self, fixture: FixtureEntry) -> FileId {
+    pub fn add_file_fixture(&mut self, fixture: Fixture) -> FileId {
         let file_id = self.next_id();
         self.files.push(MockFileData::from(fixture));
         file_id
     }
 
-    pub fn add_file_fixture_with_position(&mut self, mut fixture: FixtureEntry) -> FilePosition {
+    pub fn add_file_fixture_with_position(&mut self, mut fixture: Fixture) -> FilePosition {
         let (offset, text) = extract_offset(&fixture.text);
         fixture.text = text;
         let file_id = self.next_id();

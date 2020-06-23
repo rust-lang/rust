@@ -61,7 +61,7 @@ use std::{str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use rustc_hash::FxHashMap;
-use test_utils::{extract_offset, parse_fixture, parse_single_fixture, FixtureMeta, CURSOR_MARKER};
+use test_utils::{extract_offset, Fixture, CURSOR_MARKER};
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
@@ -80,14 +80,14 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
 
     fn with_files(ra_fixture: &str) -> Self {
         let mut db = Self::default();
-        let pos = with_files(&mut db, ra_fixture);
+        let (pos, _) = with_files(&mut db, ra_fixture);
         assert!(pos.is_none());
         db
     }
 
     fn with_position(ra_fixture: &str) -> (Self, FilePosition) {
         let mut db = Self::default();
-        let pos = with_files(&mut db, ra_fixture);
+        let (pos, _) = with_files(&mut db, ra_fixture);
         (db, pos.unwrap())
     }
 
@@ -109,12 +109,10 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
 
     let source_root = SourceRoot::new_local(file_set);
 
-    let fixture = parse_single_fixture(ra_fixture);
-
-    let crate_graph = if let Some(entry) = fixture {
-        let meta = match ParsedMeta::from(&entry.meta) {
+    let crate_graph = if let Some(meta) = ra_fixture.lines().find(|it| it.contains("//-")) {
+        let entry = Fixture::parse_single(meta.trim());
+        let meta = match ParsedMeta::from(&entry) {
             ParsedMeta::File(it) => it,
-            _ => panic!("with_single_file only support file meta"),
         };
 
         let mut crate_graph = CrateGraph::default();
@@ -150,30 +148,27 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
     file_id
 }
 
-fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosition> {
-    let fixture = parse_fixture(fixture);
+fn with_files(
+    db: &mut dyn SourceDatabaseExt,
+    fixture: &str,
+) -> (Option<FilePosition>, Vec<FileId>) {
+    let fixture = Fixture::parse(fixture);
 
+    let mut files = Vec::new();
     let mut crate_graph = CrateGraph::default();
     let mut crates = FxHashMap::default();
     let mut crate_deps = Vec::new();
     let mut default_crate_root: Option<FileId> = None;
 
     let mut file_set = FileSet::default();
-    let mut source_root_id = WORKSPACE;
-    let mut source_root_prefix = "/".to_string();
+    let source_root_id = WORKSPACE;
+    let source_root_prefix = "/".to_string();
     let mut file_id = FileId(0);
 
     let mut file_position = None;
 
     for entry in fixture.iter() {
-        let meta = match ParsedMeta::from(&entry.meta) {
-            ParsedMeta::Root { path } => {
-                let file_set = std::mem::replace(&mut file_set, FileSet::default());
-                db.set_source_root(source_root_id, Arc::new(SourceRoot::new_local(file_set)));
-                source_root_id.0 += 1;
-                source_root_prefix = path;
-                continue;
-            }
+        let meta = match ParsedMeta::from(entry) {
             ParsedMeta::File(it) => it,
         };
         assert!(meta.path.starts_with(&source_root_prefix));
@@ -210,7 +205,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
         db.set_file_source_root(file_id, source_root_id);
         let path = VfsPath::new_virtual_path(meta.path);
         file_set.insert(file_id, path.into());
-
+        files.push(file_id);
         file_id.0 += 1;
     }
 
@@ -235,11 +230,10 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
     db.set_source_root(source_root_id, Arc::new(SourceRoot::new_local(file_set)));
     db.set_crate_graph(Arc::new(crate_graph));
 
-    file_position
+    (file_position, files)
 }
 
 enum ParsedMeta {
-    Root { path: String },
     File(FileMeta),
 }
 
@@ -252,25 +246,22 @@ struct FileMeta {
     env: Env,
 }
 
-impl From<&FixtureMeta> for ParsedMeta {
-    fn from(meta: &FixtureMeta) -> Self {
-        match meta {
-            FixtureMeta::Root { path } => {
-                // `Self::Root` causes a false warning: 'variant is never constructed: `Root` '
-                // see https://github.com/rust-lang/rust/issues/69018
-                ParsedMeta::Root { path: path.to_owned() }
-            }
-            FixtureMeta::File(f) => Self::File(FileMeta {
-                path: f.path.to_owned(),
-                krate: f.crate_name.to_owned(),
-                deps: f.deps.to_owned(),
-                cfg: f.cfg.to_owned(),
-                edition: f
-                    .edition
-                    .as_ref()
-                    .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
-                env: Env::from(f.env.iter()),
-            }),
-        }
+impl From<&Fixture> for ParsedMeta {
+    fn from(f: &Fixture) -> Self {
+        let mut cfg = CfgOptions::default();
+        f.cfg_atoms.iter().for_each(|it| cfg.insert_atom(it.into()));
+        f.cfg_key_values.iter().for_each(|(k, v)| cfg.insert_key_value(k.into(), v.into()));
+
+        Self::File(FileMeta {
+            path: f.path.to_owned(),
+            krate: f.crate_name.to_owned(),
+            deps: f.deps.to_owned(),
+            cfg,
+            edition: f
+                .edition
+                .as_ref()
+                .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
+            env: Env::from(f.env.iter()),
+        })
     }
 }
