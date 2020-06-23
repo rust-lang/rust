@@ -214,7 +214,7 @@ impl ExprVisitor<'tcx> {
 
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
-        if !ty.is_copy_modulo_regions(self.tcx, self.param_env, DUMMY_SP) {
+        if !ty.is_copy_modulo_regions(self.tcx.at(DUMMY_SP), self.param_env) {
             let msg = "arguments for inline assembly must be copyable";
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             err.note(&format!("`{}` does not implement the Copy trait", ty));

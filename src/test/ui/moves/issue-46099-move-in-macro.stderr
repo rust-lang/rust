@@ -1,0 +1,14 @@
+error[E0382]: use of moved value: `b`
+  --> $DIR/issue-46099-move-in-macro.rs:14:12
+   |
+LL |     let b = Box::new(true);
+   |         - move occurs because `b` has type `std::boxed::Box<bool>`, which does not implement the `Copy` trait
+LL |     test!({b});
+   |            ^
+   |            |
+   |            value moved here
+   |            value used here after move
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

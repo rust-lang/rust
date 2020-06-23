@@ -681,11 +681,10 @@ impl<'tcx> ty::TyS<'tcx> {
     /// winds up being reported as an error during NLL borrow check.
     pub fn is_copy_modulo_regions(
         &'tcx self,
-        tcx: TyCtxt<'tcx>,
+        tcx_at: TyCtxtAt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        span: Span,
     ) -> bool {
-        tcx.at(span).is_copy_raw(param_env.and(self))
+        tcx_at.is_copy_raw(param_env.and(self))
     }
 
     /// Checks whether values of this type `T` have a size known at
@@ -706,13 +705,8 @@ impl<'tcx> ty::TyS<'tcx> {
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
     // FIXME: use `TyCtxtAt` instead of separate `Span`.
-    pub fn is_freeze(
-        &'tcx self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        span: Span,
-    ) -> bool {
-        self.is_trivially_freeze() || tcx.at(span).is_freeze_raw(param_env.and(self))
+    pub fn is_freeze(&'tcx self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.is_trivially_freeze() || tcx_at.is_freeze_raw(param_env.and(self))
     }
 
     /// Fast path helper for testing if a type is `Freeze`.

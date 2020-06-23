@@ -341,7 +341,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                     Place::ty_from(place.local, proj_base, self.body, self.tcx)
                                         .projection_ty(self.tcx, elem)
                                         .ty;
-                                if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
+                                if ty.is_freeze(self.tcx.at(DUMMY_SP), self.param_env) {
                                     has_mut_interior = false;
                                     break;
                                 }
@@ -678,7 +678,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                         let ty = Place::ty_from(place.local, proj_base, self.body, self.tcx)
                             .projection_ty(self.tcx, elem)
                             .ty;
-                        if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
+                        if ty.is_freeze(self.tcx.at(DUMMY_SP), self.param_env) {
                             has_mut_interior = false;
                             break;
                         }

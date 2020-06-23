@@ -172,7 +172,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             if !ty.is_sized(tcx.at(span), param_env) {
                 // !sized means !copy, so this is an unsized move
-                assert!(!ty.is_copy_modulo_regions(tcx, param_env, span));
+                assert!(!ty.is_copy_modulo_regions(tcx.at(span), param_env));
 
                 // As described above, detect the case where we are passing a value of unsized
                 // type, and that value is coming from the deref of a box.

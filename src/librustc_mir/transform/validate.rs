@@ -90,7 +90,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             let ty = place.ty(&self.body.local_decls, self.tcx).ty;
             let span = self.body.source_info(location).span;
 
-            if !ty.is_copy_modulo_regions(self.tcx, self.param_env, span) {
+            if !ty.is_copy_modulo_regions(self.tcx.at(span), self.param_env) {
                 self.fail(location, format!("`Operand::Copy` with non-`Copy` type {}", ty));
             }
         }
@@ -121,7 +121,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             TerminatorKind::Goto { target } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
             }
-            TerminatorKind::SwitchInt { targets, values, .. } => {
+            TerminatorKind::SwitchInt { targets, values, switch_ty, discr } => {
+                let ty = discr.ty(&self.body.local_decls, self.tcx);
+                if ty != *switch_ty {
+                    self.fail(
+                        location,
+                        format!(
+                            "encountered `SwitchInt` terminator with type mismatch: {:?} != {:?}",
+                            ty, switch_ty,
+                        ),
+                    );
+                }
                 if targets.len() != values.len() + 1 {
                     self.fail(
                         location,

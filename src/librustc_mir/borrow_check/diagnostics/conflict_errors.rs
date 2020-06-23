@@ -138,7 +138,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 let move_msg = if move_spans.for_closure() { " into closure" } else { "" };
 
-                if span == move_span {
+                if location == move_out.source {
                     err.span_label(
                         span,
                         format!("value moved{} here, in previous iteration of loop", move_msg),

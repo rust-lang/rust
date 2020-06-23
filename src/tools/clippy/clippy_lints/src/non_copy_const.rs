@@ -110,7 +110,7 @@ impl Source {
 }
 
 fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, source: Source) {
-    if ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP) || is_copy(cx, ty) {
+    if ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env) || is_copy(cx, ty) {
         // An `UnsafeCell` is `!Copy`, and an `UnsafeCell` is also the only type which
         // is `!Freeze`, thus if our type is `Copy` we can be sure it must be `Freeze`
         // as well.

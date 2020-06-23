@@ -91,7 +91,7 @@ where
 
             for component in components {
                 match component.kind {
-                    _ if component.is_copy_modulo_regions(tcx, self.param_env, DUMMY_SP) => (),
+                    _ if component.is_copy_modulo_regions(tcx.at(DUMMY_SP), self.param_env) => (),
 
                     ty::Closure(_, substs) => {
                         for upvar_ty in substs.as_closure().upvar_tys() {
