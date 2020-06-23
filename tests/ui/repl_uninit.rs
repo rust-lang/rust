@@ -18,6 +18,12 @@ fn main() {
     }
 
     unsafe {
+        let taken_v = mem::replace(&mut v, mem::MaybeUninit::uninit().assume_init());
+        let new_v = might_panic(taken_v);
+        std::mem::forget(mem::replace(&mut v, new_v));
+    }
+
+    unsafe {
         let taken_v = mem::replace(&mut v, mem::zeroed());
         let new_v = might_panic(taken_v);
         std::mem::forget(mem::replace(&mut v, new_v));
