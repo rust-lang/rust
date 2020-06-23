@@ -132,7 +132,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                             && self.eq_pat(&l.pat, &r.pat)
                     })
             },
-            (&ExprKind::MethodCall(l_path, _, l_args), &ExprKind::MethodCall(r_path, _, r_args)) => {
+            (&ExprKind::MethodCall(l_path, _, l_args, _), &ExprKind::MethodCall(r_path, _, r_args, _)) => {
                 !self.ignore_fn && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Repeat(ref le, ref ll_id), &ExprKind::Repeat(ref re, ref rl_id)) => {
@@ -539,7 +539,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
                 s.hash(&mut self.s);
             },
-            ExprKind::MethodCall(ref path, ref _tys, args) => {
+            ExprKind::MethodCall(ref path, ref _tys, args, ref _fn_span) => {
                 self.hash_name(path.ident.name);
                 self.hash_exprs(args);
             },
@@ -707,7 +707,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     segment.ident.name.hash(&mut self.s);
                 },
             },
-            TyKind::Def(_, arg_list) => {
+            TyKind::OpaqueDef(_, arg_list) => {
                 for arg in *arg_list {
                     match arg {
                         GenericArg::Lifetime(ref l) => self.hash_lifetime(l),

@@ -49,7 +49,9 @@ fn third_party_crates() -> String {
         if let Some(name) = path.file_name().and_then(OsStr::to_str) {
             for dep in CRATES {
                 if name.starts_with(&format!("lib{}-", dep)) && name.ends_with(".rlib") {
-                    crates.entry(dep).or_insert(path);
+                    if let Some(old) = crates.insert(dep, path.clone()) {
+                        panic!("Found multiple rlibs for crate `{}`: `{:?}` and `{:?}", dep, old, path);
+                    }
                     break;
                 }
             }

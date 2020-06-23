@@ -35,7 +35,7 @@ declare_lint_pass!(OptionEnvUnwrap => [OPTION_ENV_UNWRAP]);
 impl EarlyLintPass for OptionEnvUnwrap {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if_chain! {
-            if let ExprKind::MethodCall(path_segment, args) = &expr.kind;
+            if let ExprKind::MethodCall(path_segment, args, _) = &expr.kind;
             let method_name = path_segment.ident.as_str();
             if method_name == "expect" || method_name == "unwrap";
             if let ExprKind::Call(caller, _) = &args[0].kind;

@@ -379,7 +379,7 @@ pub fn method_calls<'tcx>(
 
     let mut current = expr;
     for _ in 0..max_depth {
-        if let ExprKind::MethodCall(path, span, args) = &current.kind {
+        if let ExprKind::MethodCall(path, span, args, _) = &current.kind {
             if args.iter().any(|e| e.span.from_expansion()) {
                 break;
             }
@@ -406,7 +406,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec
     let mut matched = Vec::with_capacity(methods.len());
     for method_name in methods.iter().rev() {
         // method chains are stored last -> first
-        if let ExprKind::MethodCall(ref path, _, ref args) = current.kind {
+        if let ExprKind::MethodCall(ref path, _, ref args, _) = current.kind {
             if path.ident.name.as_str() == *method_name {
                 if args.iter().any(|e| e.span.from_expansion()) {
                     return None;
@@ -1324,7 +1324,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool 
                 None
             }
         },
-        ExprKind::MethodCall(_, _, _) => cx.tables.type_dependent_def_id(expr.hir_id),
+        ExprKind::MethodCall(_, _, _, _) => cx.tables.type_dependent_def_id(expr.hir_id),
         _ => None,
     };
 
