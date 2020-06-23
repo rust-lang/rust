@@ -79,13 +79,16 @@
         <script>
             const RusfmtTagsUrl = 'https://api.github.com/repos/rust-lang/rustfmt/tags';
             const UrlHash = window.location.hash.replace(/^#/, '');
+            const queryParams = new URLSearchParams(window.location.search);
+            const searchParam = queryParams.get('search');
+            const searchTerm = null !== searchParam ? searchParam : '';
             new Vue({
               el: '#app',
               data: {
                 aboutHtml: '',
                 configurationAboutHtml: '',
                 configurationDescriptions: [],
-                searchCondition: UrlHash,
+                searchCondition: searchTerm,
                 shouldStable: false,
                 version: 'master',
                 oldVersion: undefined,
@@ -126,7 +129,9 @@
                   return marked.parser(ast, {
                     highlight(code, lang) {
                       return hljs.highlight(lang ? lang : 'rust', code).value;
-                    }
+                    },
+                    headerIds: true,
+                    headerPrefix: ''
                   });
                 }
               },
