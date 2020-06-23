@@ -25,11 +25,11 @@ pub struct InstrumentCoverage;
 /// constructing the arguments for `llvm.instrprof.increment`.
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     providers.coverage_data = |tcx, def_id| {
-        let body = tcx.optimized_mir(def_id);
+        let mir_body = tcx.optimized_mir(def_id);
         let count_code_region_fn =
             tcx.require_lang_item(lang_items::CountCodeRegionFnLangItem, None);
         let mut num_counters: u32 = 0;
-        for (_, data) in traversal::preorder(body) {
+        for (_, data) in traversal::preorder(mir_body) {
             if let Some(terminator) = &data.terminator {
                 if let TerminatorKind::Call { func: Operand::Constant(func), .. } = &terminator.kind
                 {
