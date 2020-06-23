@@ -2,7 +2,7 @@
 //! rust-analyzer database from a single string.
 
 use rustc_hash::FxHashMap;
-use stdx::split1;
+use stdx::split_delim;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Fixture {
@@ -81,14 +81,14 @@ The offending line: {:?}"#,
         let mut cfg_key_values = Vec::new();
         let mut env = FxHashMap::default();
         for component in components[1..].iter() {
-            let (key, value) = split1(component, ':').unwrap();
+            let (key, value) = split_delim(component, ':').unwrap();
             match key {
                 "crate" => krate = Some(value.to_string()),
                 "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
                 "edition" => edition = Some(value.to_string()),
                 "cfg" => {
                     for entry in value.split(',') {
-                        match split1(entry, '=') {
+                        match split_delim(entry, '=') {
                             Some((k, v)) => cfg_key_values.push((k.to_string(), v.to_string())),
                             None => cfg_atoms.push(entry.to_string()),
                         }
@@ -96,7 +96,7 @@ The offending line: {:?}"#,
                 }
                 "env" => {
                     for key in value.split(',') {
-                        if let Some((k, v)) = split1(key, '=') {
+                        if let Some((k, v)) = split_delim(key, '=') {
                             env.insert(k.into(), v.into());
                         }
                     }
