@@ -273,9 +273,17 @@ This flag, when combined with other flags, makes them produce extra output.
 This flag allows you to pass the name and location for an external crate of a
 direct dependency. Indirect dependencies (dependencies of dependencies) are
 located using the [`-L` flag](#option-l-search-path). The given crate name is
-added to the [extern prelude], which is the same as specifying `extern crate`
-within the root module. The given crate name does not need to match the name
+added to the [extern prelude], similar to specifying `extern crate` within the
+root module. The given crate name does not need to match the name
 the library was built with.
+
+Specifying `--extern` has one behavior difference from `extern crate`:
+`--extern` merely makes the crate a _candidate_ for being linked; it does not
+actually link it unless it's actively used. In rare occasions you may wish
+to ensure a crate is linked even if you don't actively use it from your
+code: for example, if it changes the global allocator or if it contains
+`#[no_mangle]` symbols for use by other programming languages. In such
+cases you'll need to use `extern crate`.
 
 This flag may be specified multiple times. This flag takes an argument with
 either of the following formats:
