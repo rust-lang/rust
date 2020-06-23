@@ -374,11 +374,14 @@ You can also use `rustdoc` directly to check small fixes. For example,
 `rustdoc src/doc/reference.md` will render reference to `doc/reference.html`.
 The CSS might be messed up, but you can verify that the HTML is right.
 
-Additionally, contributions to the [rustc-dev-guide] are always welcome. Contributions
-can be made directly at [the
-rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide) repo. The issue
-tracker in that repo is also a great way to find things that need doing. There
-are issues for beginners and advanced compiler devs alike!
+Additionally, contributions to the [rustc-dev-guide][rdg] are always welcome.
+Contributions can be made directly at [the rust-lang/rustc-dev-guide
+repo][rdgrepo]. The issue tracker in that repo is also a great way to find
+things that need doing. There are issues for beginners and advanced compiler
+devs alike!
+
+[rdg]: https://rustc-dev-guide.rust-lang.org/
+[rdgrepo]: https://github.com/rust-lang/rustc-dev-guide
 
 ## Issue Triage
 
