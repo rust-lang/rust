@@ -1,0 +1,15 @@
+SOURCE_FILE@0..13
+  USE_ITEM@0..12
+    USE_KW@0..3 "use"
+    WHITESPACE@3..4 " "
+    USE_TREE@4..12
+      PATH@4..12
+        PATH@4..9
+          PATH_SEGMENT@4..9
+            CRATE_KW@4..9 "crate"
+        COLON2@9..11 "::"
+        ERROR@11..12
+          SEMICOLON@11..12 ";"
+  WHITESPACE@12..13 "\n"
+error 11..11: expected identifier
+error 12..12: expected SEMICOLON

@@ -9,8 +9,7 @@ SOURCE_FILE@0..12
             NAME_REF@4..7
               IDENT@4..7 "foo"
         COLON2@7..9 "::"
-        PATH_SEGMENT@9..11
-          ERROR@9..11
-            INT_NUMBER@9..11 "92"
+        ERROR@9..11
+          INT_NUMBER@9..11 "92"
     SEMICOLON@11..12 ";"
 error 9..9: expected identifier

@@ -73,8 +73,10 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
         }
         p.expect(T![>]);
     } else {
+        let mut empty = true;
         if first {
             p.eat(T![::]);
+            empty = false;
         }
         match p.current() {
             IDENT => {
@@ -86,6 +88,12 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
             T![self] | T![super] | T![crate] => p.bump_any(),
             _ => {
                 p.err_recover("expected identifier", items::ITEM_RECOVERY_SET);
+                if empty {
+                    // test_err empty_segment
+                    // use crate::;
+                    m.abandon(p);
+                    return;
+                }
             }
         };
     }
