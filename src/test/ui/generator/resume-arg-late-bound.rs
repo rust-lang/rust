@@ -13,5 +13,6 @@ fn main() {
         *arg = true;
     };
     test(gen);
-    //~^ ERROR type mismatch in function arguments
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
 }

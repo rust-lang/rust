@@ -1,12 +1,10 @@
-error[E0658]: comparing raw pointers inside constant
+error: pointers cannot be reliably compared during const eval.
   --> $DIR/issue-25826.rs:3:30
    |
 LL |     const A: bool = unsafe { id::<u8> as *const () < id::<u16> as *const () };
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
-   = help: add `#![feature(const_compare_raw_pointers)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.

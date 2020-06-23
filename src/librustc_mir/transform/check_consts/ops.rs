@@ -160,17 +160,20 @@ pub struct InlineAsm;
 impl NonConstOp for InlineAsm {}
 
 #[derive(Debug)]
-pub struct LiveDrop;
+pub struct LiveDrop(pub Option<Span>);
 impl NonConstOp for LiveDrop {
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        struct_span_err!(
+        let mut diagnostic = struct_span_err!(
             ccx.tcx.sess,
             span,
             E0493,
             "destructors cannot be evaluated at compile-time"
-        )
-        .span_label(span, format!("{}s cannot evaluate destructors", ccx.const_kind()))
-        .emit();
+        );
+        diagnostic.span_label(span, format!("{}s cannot evaluate destructors", ccx.const_kind()));
+        if let Some(span) = self.0 {
+            diagnostic.span_label(span, "value is dropped here");
+        }
+        diagnostic.emit();
     }
 }
 
@@ -296,18 +299,16 @@ impl NonConstOp for Panic {
 #[derive(Debug)]
 pub struct RawPtrComparison;
 impl NonConstOp for RawPtrComparison {
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_compare_raw_pointers)
-    }
-
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_compare_raw_pointers,
-            span,
-            &format!("comparing raw pointers inside {}", ccx.const_kind()),
-        )
-        .emit();
+        let mut err = ccx
+            .tcx
+            .sess
+            .struct_span_err(span, "pointers cannot be reliably compared during const eval.");
+        err.note(
+            "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> \
+            for more information",
+        );
+        err.emit();
     }
 }
 

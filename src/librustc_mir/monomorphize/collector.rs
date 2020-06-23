@@ -1,7 +1,7 @@
 //! Mono Item Collection
 //! ====================
 //!
-//! This module is responsible for discovering all items that will contribute to
+//! This module is responsible for discovering all items that will contribute
 //! to code generation of the crate. The important part here is that it not only
 //! needs to find syntax-level items (functions, structs, etc) but also all
 //! their monomorphized instantiations. Every non-generic, non-const function
@@ -79,7 +79,7 @@
 //! function or method call (represented by a CALL terminator in MIR). But
 //! calls are not the only thing that might introduce a reference between two
 //! function mono items, and as we will see below, they are just a
-//! specialized of the form described next, and consequently will don't get any
+//! specialization of the form described next, and consequently will not get any
 //! special treatment in the algorithm.
 //!
 //! #### Taking a reference to a function or method
@@ -158,7 +158,7 @@
 //! - Eager mode is meant to be used in conjunction with incremental compilation
 //!   where a stable set of mono items is more important than a minimal
 //!   one. Thus, eager mode will instantiate drop-glue for every drop-able type
-//!   in the crate, even of no drop call for that type exists (yet). It will
+//!   in the crate, even if no drop call for that type exists (yet). It will
 //!   also instantiate default implementations of trait methods, something that
 //!   otherwise is only done on demand.
 //!

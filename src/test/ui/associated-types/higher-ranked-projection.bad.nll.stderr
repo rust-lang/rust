@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/higher-ranked-projection.rs:25:5
+   |
+LL |     foo(());
+   |     ^^^^^^^
+
+error: aborting due to previous error
+

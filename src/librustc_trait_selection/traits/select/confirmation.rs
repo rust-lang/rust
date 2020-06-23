@@ -121,9 +121,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn confirm_projection_candidate(&mut self, obligation: &TraitObligation<'tcx>) {
-        self.infcx.commit_unconditionally(|snapshot| {
-            let result =
-                self.match_projection_obligation_against_definition_bounds(obligation, snapshot);
+        self.infcx.commit_unconditionally(|_| {
+            let result = self.match_projection_obligation_against_definition_bounds(obligation);
             assert!(result);
         })
     }
@@ -265,8 +264,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // First, create the substitutions by matching the impl again,
         // this time not in a probe.
-        self.infcx.commit_unconditionally(|snapshot| {
-            let substs = self.rematch_impl(impl_def_id, obligation, snapshot);
+        self.infcx.commit_unconditionally(|_| {
+            let substs = self.rematch_impl(impl_def_id, obligation);
             debug!("confirm_impl_candidate: substs={:?}", substs);
             let cause = obligation.derived_cause(ImplDerivedObligation);
             ensure_sufficient_stack(|| {
@@ -612,24 +611,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
-                //
-                // FIXME: This condition is arguably too strong -- it would
-                // suffice for the source trait to be a *subtype* of the target
-                // trait. In particular, changing from something like
-                // `for<'a, 'b> Foo<'a, 'b>` to `for<'a> Foo<'a, 'a>` should be
-                // permitted. And, indeed, in the in commit
-                // 904a0bde93f0348f69914ee90b1f8b6e4e0d7cbc, this
-                // condition was loosened. However, when the leak check was
-                // added back, using subtype here actually guides the coercion
-                // code in such a way that it accepts `old-lub-glb-object.rs`.
-                // This is probably a good thing, but I've modified this to `.eq`
-                // because I want to continue rejecting that test (as we have
-                // done for quite some time) before we are firmly comfortable
-                // with what our behavior should be there. -nikomatsakis
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(target, source_trait) // FIXME -- see below
+                    .sup(target, source_trait)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 

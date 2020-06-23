@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/hrtb-exists-forall-fn.rs:17:12
+   |
+LL |     let _: for<'b> fn(&'b u32) = foo();
+   |            ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,10 +1,11 @@
 error[E0271]: type mismatch resolving `for<'x> <UintStruct as TheTrait<&'x isize>>::A == &'x isize`
-  --> $DIR/associated-types-eq-hr.rs:82:5
+  --> $DIR/associated-types-eq-hr.rs:87:5
    |
 LL | fn foo<T>()
    |    --- required by a bound in this
-LL |     where T : for<'x> TheTrait<&'x isize, A = &'x isize>
-   |                                           ------------- required by this bound in `foo`
+LL | where
+LL |     T: for<'x> TheTrait<&'x isize, A = &'x isize>,
+   |                                    ------------- required by this bound in `foo`
 ...
 LL |     foo::<UintStruct>();
    |     ^^^^^^^^^^^^^^^^^ expected `isize`, found `usize`
@@ -13,12 +14,13 @@ LL |     foo::<UintStruct>();
               found reference `&usize`
 
 error[E0271]: type mismatch resolving `for<'x> <IntStruct as TheTrait<&'x isize>>::A == &'x usize`
-  --> $DIR/associated-types-eq-hr.rs:86:5
+  --> $DIR/associated-types-eq-hr.rs:91:5
    |
 LL | fn bar<T>()
    |    --- required by a bound in this
-LL |     where T : for<'x> TheTrait<&'x isize, A = &'x usize>
-   |                                           ------------- required by this bound in `bar`
+LL | where
+LL |     T: for<'x> TheTrait<&'x isize, A = &'x usize>,
+   |                                    ------------- required by this bound in `bar`
 ...
 LL |     bar::<IntStruct>();
    |     ^^^^^^^^^^^^^^^^ expected `usize`, found `isize`
@@ -26,71 +28,86 @@ LL |     bar::<IntStruct>();
    = note: expected reference `&usize`
               found reference `&isize`
 
-error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
-  --> $DIR/associated-types-eq-hr.rs:91:17
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:96:5
    |
-LL | fn tuple_one<T>()
-   |    --------- required by a bound in this
-LL |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>
-   |               ---------------------------------------------------------- required by this bound in `tuple_one`
+LL | / pub trait TheTrait<T> {
+LL | |     type A;
+LL | |
+LL | |     fn get(&self, t: T) -> Self::A;
+LL | | }
+   | |_- trait `TheTrait` defined here
 ...
-LL |     tuple_one::<Tuple>();
-   |                 ^^^^^ the trait `for<'x, 'y> TheTrait<(&'x isize, &'y isize)>` is not implemented for `Tuple`
+LL |       tuple_one::<Tuple>();
+   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
    |
-   = help: the following implementations were found:
-             <Tuple as TheTrait<(&'a isize, &'a isize)>>
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
-error[E0271]: type mismatch resolving `for<'x, 'y> <Tuple as TheTrait<(&'x isize, &'y isize)>>::A == &'x isize`
-  --> $DIR/associated-types-eq-hr.rs:91:5
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:96:5
    |
-LL | fn tuple_one<T>()
-   |    --------- required by a bound in this
-LL |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'x isize>
-   |                                                           ------------- required by this bound in `tuple_one`
+LL | / pub trait TheTrait<T> {
+LL | |     type A;
+LL | |
+LL | |     fn get(&self, t: T) -> Self::A;
+LL | | }
+   | |_- trait `TheTrait` defined here
 ...
-LL |     tuple_one::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'x, found concrete lifetime
+LL |       tuple_one::<Tuple>();
+   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
-error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
-  --> $DIR/associated-types-eq-hr.rs:97:17
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:102:5
    |
-LL | fn tuple_two<T>()
-   |    --------- required by a bound in this
-LL |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>
-   |               ---------------------------------------------------------- required by this bound in `tuple_two`
+LL | / pub trait TheTrait<T> {
+LL | |     type A;
+LL | |
+LL | |     fn get(&self, t: T) -> Self::A;
+LL | | }
+   | |_- trait `TheTrait` defined here
 ...
-LL |     tuple_two::<Tuple>();
-   |                 ^^^^^ the trait `for<'x, 'y> TheTrait<(&'x isize, &'y isize)>` is not implemented for `Tuple`
+LL |       tuple_two::<Tuple>();
+   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
    |
-   = help: the following implementations were found:
-             <Tuple as TheTrait<(&'a isize, &'a isize)>>
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
-error[E0271]: type mismatch resolving `for<'x, 'y> <Tuple as TheTrait<(&'x isize, &'y isize)>>::A == &'y isize`
-  --> $DIR/associated-types-eq-hr.rs:97:5
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:102:5
    |
-LL | fn tuple_two<T>()
-   |    --------- required by a bound in this
-LL |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize), A = &'y isize>
-   |                                                           ------------- required by this bound in `tuple_two`
+LL | / pub trait TheTrait<T> {
+LL | |     type A;
+LL | |
+LL | |     fn get(&self, t: T) -> Self::A;
+LL | | }
+   | |_- trait `TheTrait` defined here
 ...
-LL |     tuple_two::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'x, found concrete lifetime
+LL |       tuple_two::<Tuple>();
+   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+   |
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
-error[E0277]: the trait bound `for<'x, 'y> Tuple: TheTrait<(&'x isize, &'y isize)>` is not satisfied
-  --> $DIR/associated-types-eq-hr.rs:107:18
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:112:5
    |
-LL | fn tuple_four<T>()
-   |    ---------- required by a bound in this
-LL |     where T : for<'x,'y> TheTrait<(&'x isize, &'y isize)>
-   |               ------------------------------------------- required by this bound in `tuple_four`
+LL | / pub trait TheTrait<T> {
+LL | |     type A;
+LL | |
+LL | |     fn get(&self, t: T) -> Self::A;
+LL | | }
+   | |_- trait `TheTrait` defined here
 ...
-LL |     tuple_four::<Tuple>();
-   |                  ^^^^^ the trait `for<'x, 'y> TheTrait<(&'x isize, &'y isize)>` is not implemented for `Tuple`
+LL |       tuple_four::<Tuple>();
+   |       ^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
    |
-   = help: the following implementations were found:
-             <Tuple as TheTrait<(&'a isize, &'a isize)>>
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0271, E0277.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0271`.

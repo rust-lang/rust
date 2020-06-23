@@ -60,7 +60,7 @@ impl<T> RawVec<T, Global> {
     /// `#[rustc_force_min_const_fn]` attribute which requires conformance
     /// with `min_const_fn` but does not necessarily allow calling it in
     /// `stable(...) const fn` / user code not enabling `foo` when
-    /// `#[rustc_const_unstable(feature = "foo", ..)]` is present.
+    /// `#[rustc_const_unstable(feature = "foo", issue = "01234")]` is present.
     pub const NEW: Self = Self::new();
 
     /// Creates the biggest possible `RawVec` (on the system heap)

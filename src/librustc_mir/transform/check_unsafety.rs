@@ -171,21 +171,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     _ => {}
                 }
             }
-            // raw pointer and fn pointer operations are unsafe as it is not clear whether one
-            // pointer would be "less" or "equal" to another, because we cannot know where llvm
-            // or the linker will place various statics in memory. Without this information the
-            // result of a comparison of addresses would differ between runtime and compile-time.
-            Rvalue::BinaryOp(_, ref lhs, _)
-                if self.const_context && self.tcx.features().const_compare_raw_pointers =>
-            {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
-                    self.require_unsafe(
-                        "pointer operation",
-                        "operations on pointers in constants",
-                        UnsafetyViolationKind::General,
-                    );
-                }
-            }
             _ => {}
         }
         self.super_rvalue(rvalue, location);

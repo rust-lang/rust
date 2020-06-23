@@ -2,7 +2,8 @@
 //! where one region is named and the other is anonymous.
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
-use rustc_hir::{FnRetTy, TyKind};
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::FnRetTy;
 use rustc_middle::ty;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
@@ -80,16 +81,21 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
 
             if let FnRetTy::Return(ty) = &fndecl.output {
-                let mut v = ty::TraitObjectVisitor(vec![]);
-                rustc_hir::intravisit::walk_ty(&mut v, ty);
+                let mut v = ty::TraitObjectVisitor(vec![], self.tcx().hir());
+                v.visit_ty(ty);
 
                 debug!("try_report_named_anon_conflict: ret ty {:?}", ty);
                 if sub == &ty::ReStatic
-                    && (matches!(ty.kind, TyKind::OpaqueDef(_, _)) || v.0.len() == 1)
+                    && v.0
+                        .into_iter()
+                        .filter(|t| t.span.desugaring_kind().is_none())
+                        .next()
+                        .is_some()
                 {
+                    // If the failure is due to a `'static` requirement coming from a `dyn` or
+                    // `impl` Trait that *isn't* caused by `async fn` desugaring, handle this case
+                    // better in `static_impl_trait`.
                     debug!("try_report_named_anon_conflict: impl Trait + 'static");
-                    // This is an `impl Trait` or `dyn Trait` return that evaluates de need of
-                    // `'static`. We handle this case better in `static_impl_trait`.
                     return None;
                 }
             }

@@ -1,12 +1,10 @@
-error[E0658]: comparing raw pointers inside static
-  --> $DIR/E0395.rs:6:29
+error: pointers cannot be reliably compared during const eval.
+  --> $DIR/E0395.rs:4:29
    |
 LL | static BAZ: bool = unsafe { (&FOO as *const i32) == (&BAR as *const i32) };
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
-   = help: add `#![feature(const_compare_raw_pointers)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.

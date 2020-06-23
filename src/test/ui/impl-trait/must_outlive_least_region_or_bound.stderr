@@ -87,13 +87,48 @@ LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
    |               help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
 
 error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:33:69
+  --> $DIR/must_outlive_least_region_or_bound.rs:30:65
+   |
+LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
+   |               ---- this data with an anonymous lifetime `'_`... ^ ...is captured here, requiring it to live as long as `'static`
+   |
+help: to declare that the trait object captures data from argument `x`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn elided5(x: &i32) -> (Box<dyn Debug + '_>, impl Debug) { (Box::new(x), x) }
+   |                                       ^^^^
+help: to declare that the `impl Trait` captures data from argument `x`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug + '_) { (Box::new(x), x) }
+   |                                                    ^^^^
+
+error[E0759]: cannot infer an appropriate lifetime
+  --> $DIR/must_outlive_least_region_or_bound.rs:30:69
+   |
+LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
+   |               ---- this data with an anonymous lifetime `'_`...     ^ ...is captured here...
+   |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/must_outlive_least_region_or_bound.rs:30:41
+   |
+LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
+   |                                         ^^^^^^^^^^
+help: to declare that the trait object captures data from argument `x`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn elided5(x: &i32) -> (Box<dyn Debug + '_>, impl Debug) { (Box::new(x), x) }
+   |                                       ^^^^
+help: to declare that the `impl Trait` captures data from argument `x`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug + '_) { (Box::new(x), x) }
+   |                                                    ^^^^
+
+error[E0759]: cannot infer an appropriate lifetime
+  --> $DIR/must_outlive_least_region_or_bound.rs:37:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                      ------- this data with lifetime `'a`...        ^ ...is captured here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:33:34
+  --> $DIR/must_outlive_least_region_or_bound.rs:37:34
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,7 +142,7 @@ LL | fn with_bound<'a>(x: &'static i32) -> impl LifetimeTrait<'a> + 'static { x 
    |                      ^^^^^^^^^^^^
 
 error[E0623]: lifetime mismatch
-  --> $DIR/must_outlive_least_region_or_bound.rs:38:61
+  --> $DIR/must_outlive_least_region_or_bound.rs:42:61
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
    |                                                 -------     ^^^^^^^^^^^^^^^^
@@ -116,7 +151,7 @@ LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32
    |                                                 this parameter and the return type are declared with different lifetimes...
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:43:51
+  --> $DIR/must_outlive_least_region_or_bound.rs:47:51
    |
 LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                 --                ^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
@@ -181,7 +216,7 @@ help: alternatively, add an explicit `'static` bound to this reference
 LL | fn explicit4<'a>(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |                     ^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: aborting due to 14 previous errors
 
 Some errors have detailed explanations: E0310, E0621, E0623, E0759.
 For more information about an error, try `rustc --explain E0310`.

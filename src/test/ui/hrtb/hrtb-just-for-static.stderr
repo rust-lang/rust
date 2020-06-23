@@ -1,31 +1,30 @@
-error[E0277]: the trait bound `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
-  --> $DIR/hrtb-just-for-static.rs:24:17
+error: implementation of `Foo` is not general enough
+  --> $DIR/hrtb-just-for-static.rs:24:5
    |
-LL | fn want_hrtb<T>()
-   |    --------- required by a bound in this
-LL |     where T : for<'a> Foo<&'a isize>
-   |               ---------------------- required by this bound in `want_hrtb`
+LL | / trait Foo<X> {
+LL | |     fn foo(&self, x: X) { }
+LL | | }
+   | |_- trait `Foo` defined here
 ...
-LL |     want_hrtb::<StaticInt>()
-   |                 ^^^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `StaticInt`
+LL |       want_hrtb::<StaticInt>()
+   |       ^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
    |
-   = help: the following implementations were found:
-             <StaticInt as Foo<&'static isize>>
+   = note: `StaticInt` must implement `Foo<&'0 isize>`, for any lifetime `'0`...
+   = note: ...but `StaticInt` actually implements `Foo<&'1 isize>`, for some specific lifetime `'1`
 
-error[E0277]: the trait bound `for<'a> &'a u32: Foo<&'a isize>` is not satisfied
-  --> $DIR/hrtb-just-for-static.rs:30:17
+error: implementation of `Foo` is not general enough
+  --> $DIR/hrtb-just-for-static.rs:30:5
    |
-LL | fn want_hrtb<T>()
-   |    --------- required by a bound in this
-LL |     where T : for<'a> Foo<&'a isize>
-   |               ---------------------- required by this bound in `want_hrtb`
+LL | / trait Foo<X> {
+LL | |     fn foo(&self, x: X) { }
+LL | | }
+   | |_- trait `Foo` defined here
 ...
-LL |     want_hrtb::<&'a u32>()
-   |                 ^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `&'a u32`
+LL |       want_hrtb::<&'a u32>()
+   |       ^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
    |
-   = help: the following implementations were found:
-             <&'a u32 as Foo<&'a isize>>
+   = note: `Foo<&'0 isize>` would have to be implemented for the type `&'a u32`, for any lifetime `'0`...
+   = note: ...but `Foo<&'1 isize>` is actually implemented for the type `&'1 u32`, for some specific lifetime `'1`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0277`.

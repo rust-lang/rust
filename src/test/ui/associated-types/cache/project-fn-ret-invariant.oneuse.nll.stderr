@@ -1,26 +1,26 @@
 error: lifetime may not live long enough
-  --> $DIR/project-fn-ret-invariant.rs:38:12
+  --> $DIR/project-fn-ret-invariant.rs:39:13
    |
-LL | fn baz<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
-   |        -- -- lifetime `'b` defined here
+LL | fn baz<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
+   |        --  -- lifetime `'b` defined here
    |        |
    |        lifetime `'a` defined here
-LL |    let f = foo; // <-- No consistent type can be inferred for `f` here.
-LL |    let a = bar(f, x);
-   |            ^^^^^^^^^ argument requires that `'a` must outlive `'b`
+LL |     let f = foo; // <-- No consistent type can be inferred for `f` here.
+LL |     let a = bar(f, x);
+   |             ^^^^^^^^^ argument requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/project-fn-ret-invariant.rs:39:12
+  --> $DIR/project-fn-ret-invariant.rs:40:13
    |
-LL | fn baz<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
-   |        -- -- lifetime `'b` defined here
+LL | fn baz<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
+   |        --  -- lifetime `'b` defined here
    |        |
    |        lifetime `'a` defined here
 ...
-LL |    let b = bar(f, y);
-   |            ^^^^^^^^^ argument requires that `'b` must outlive `'a`
+LL |     let b = bar(f, y);
+   |             ^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 

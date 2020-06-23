@@ -149,15 +149,12 @@ pub fn poly_project_and_unify_type<'cx, 'tcx>(
     debug!("poly_project_and_unify_type(obligation={:?})", obligation);
 
     let infcx = selcx.infcx();
-    infcx.commit_if_ok(|snapshot| {
-        let (placeholder_predicate, placeholder_map) =
+    infcx.commit_if_ok(|_snapshot| {
+        let (placeholder_predicate, _) =
             infcx.replace_bound_vars_with_placeholders(&obligation.predicate);
 
         let placeholder_obligation = obligation.with(placeholder_predicate);
         let result = project_and_unify_type(selcx, &placeholder_obligation)?;
-        infcx
-            .leak_check(false, &placeholder_map, snapshot)
-            .map_err(|err| MismatchedProjectionTypes { err })?;
         Ok(result)
     })
 }

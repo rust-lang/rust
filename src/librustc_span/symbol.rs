@@ -588,6 +588,8 @@ symbols! {
         proc_macro_non_items,
         proc_macro_path_invoc,
         profiler_runtime,
+        ptr_guaranteed_eq,
+        ptr_guaranteed_ne,
         ptr_offset_from,
         pub_restricted,
         pure,

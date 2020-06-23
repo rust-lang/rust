@@ -38,6 +38,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathHash, Definitions};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::{self, PanicLocationLangItem};
 use rustc_hir::{HirId, ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet, Node, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
@@ -1427,10 +1428,8 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn return_type_impl_or_dyn_trait(
-        &self,
-        scope_def_id: DefId,
-    ) -> Option<&'tcx hir::Ty<'tcx>> {
+    /// Given a `DefId` for an `fn`, return all the `dyn` and `impl` traits in its return type.
+    pub fn return_type_impl_or_dyn_traits(&self, scope_def_id: DefId) -> Vec<&'tcx hir::Ty<'tcx>> {
         let hir_id = self.hir().as_local_hir_id(scope_def_id.expect_local());
         let hir_output = match self.hir().get(hir_id) {
             Node::Item(hir::Item {
@@ -1466,30 +1465,12 @@ impl<'tcx> TyCtxt<'tcx> {
                     ),
                 ..
             }) => ty,
-            _ => return None,
+            _ => return vec![],
         };
 
-        let ret_ty = self.type_of(scope_def_id);
-        match ret_ty.kind {
-            ty::FnDef(_, _) => {
-                let sig = ret_ty.fn_sig(*self);
-                let output = self.erase_late_bound_regions(&sig.output());
-                if output.is_impl_trait() {
-                    let fn_decl = self.hir().fn_decl_by_hir_id(hir_id).unwrap();
-                    if let hir::FnRetTy::Return(ty) = fn_decl.output {
-                        return Some(ty);
-                    }
-                } else {
-                    let mut v = TraitObjectVisitor(vec![]);
-                    rustc_hir::intravisit::walk_ty(&mut v, hir_output);
-                    if v.0.len() == 1 {
-                        return Some(v.0[0]);
-                    }
-                }
-                None
-            }
-            _ => None,
-        }
+        let mut v = TraitObjectVisitor(vec![], self.hir());
+        v.visit_ty(hir_output);
+        v.0
     }
 
     pub fn return_type_impl_trait(&self, scope_def_id: DefId) -> Option<(Ty<'tcx>, Span)> {

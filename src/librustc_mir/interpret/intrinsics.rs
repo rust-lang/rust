@@ -296,6 +296,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let offset_ptr = ptr.ptr_wrapping_signed_offset(offset_bytes, self);
                 self.write_scalar(offset_ptr, dest)?;
             }
+            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
+                // FIXME: return `true` for at least some comparisons where we can reliably
+                // determine the result of runtime (in)equality tests at compile-time.
+                self.write_scalar(Scalar::from_bool(false), dest)?;
+            }
             sym::ptr_offset_from => {
                 let a = self.read_immediate(args[0])?.to_scalar()?;
                 let b = self.read_immediate(args[1])?.to_scalar()?;
