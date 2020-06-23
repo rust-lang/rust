@@ -136,7 +136,7 @@ impl Ctx {
 
     fn collect_inner_items(&mut self, container: &SyntaxNode) {
         let forced_vis = self.forced_visibility.take();
-        let mut inner_items = mem::replace(&mut self.tree.inner_items, FxHashMap::default());
+        let mut inner_items = mem::take(&mut self.tree.inner_items);
         inner_items.extend(
             container.descendants().skip(1).filter_map(ast::ModuleItem::cast).filter_map(|item| {
                 let ast_id = self.source_ast_id_map.ast_id(&item);

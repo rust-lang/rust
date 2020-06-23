@@ -234,10 +234,9 @@ fn collect_items(
             // FIXME: cfg?
             AssocItem::Const(id) => {
                 let item = &item_tree[id];
-                let name = if let Some(name) = item.name.clone() {
-                    name
-                } else {
-                    continue;
+                let name = match item.name.clone() {
+                    Some(name) => name,
+                    None => continue,
                 };
                 let def = ConstLoc { container, id: ItemTreeId::new(file_id, id) }.intern(db);
                 items.push((name, def.into()));
