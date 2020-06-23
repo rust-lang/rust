@@ -13,19 +13,6 @@ pub struct FixtureEntry {
     pub env: FxHashMap<String, String>,
 }
 
-/// Same as `parse_fixture`, except it allow empty fixture
-pub fn parse_single_fixture(ra_fixture: &str) -> Option<FixtureEntry> {
-    if !ra_fixture.lines().any(|it| it.trim_start().starts_with("//-")) {
-        return None;
-    }
-
-    let fixtures = parse_fixture(ra_fixture);
-    if fixtures.len() > 1 {
-        panic!("too many fixtures");
-    }
-    fixtures.into_iter().nth(0)
-}
-
 /// Parses text which looks like this:
 ///
 ///  ```not_rust
