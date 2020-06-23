@@ -25,7 +25,7 @@ impl MockFileData {
     fn path(&self) -> &str {
         match self {
             MockFileData::Plain { path, .. } => path.as_str(),
-            MockFileData::Fixture(f) => f.meta.path.as_str(),
+            MockFileData::Fixture(f) => f.path.as_str(),
         }
     }
 
@@ -38,25 +38,23 @@ impl MockFileData {
 
     fn cfg_options(&self) -> CfgOptions {
         match self {
-            MockFileData::Fixture(f) => f.meta.cfg.clone(),
+            MockFileData::Fixture(f) => f.cfg.clone(),
             _ => CfgOptions::default(),
         }
     }
 
     fn edition(&self) -> Edition {
         match self {
-            MockFileData::Fixture(f) => f
-                .meta
-                .edition
-                .as_ref()
-                .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
+            MockFileData::Fixture(f) => {
+                f.edition.as_ref().map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap())
+            }
             _ => Edition::Edition2018,
         }
     }
 
     fn env(&self) -> Env {
         match self {
-            MockFileData::Fixture(f) => Env::from(f.meta.env.iter()),
+            MockFileData::Fixture(f) => Env::from(f.env.iter()),
             _ => Env::default(),
         }
     }

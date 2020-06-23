@@ -4,13 +4,8 @@ use stdx::split1;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct FixtureEntry {
-    pub meta: FileMeta,
-    pub text: String,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub struct FileMeta {
     pub path: String,
+    pub text: String,
     pub crate_name: Option<String>,
     pub deps: Vec<String>,
     pub cfg: CfgOptions,
@@ -71,7 +66,7 @@ The offending line: {:?}"#,
         if line.starts_with("//-") {
             let meta = line["//-".len()..].trim().to_string();
             let meta = parse_meta(&meta);
-            res.push(FixtureEntry { meta, text: String::new() })
+            res.push(meta)
         } else if let Some(entry) = res.last_mut() {
             entry.text.push_str(line);
             entry.text.push('\n');
@@ -81,7 +76,7 @@ The offending line: {:?}"#,
 }
 
 //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
-fn parse_meta(meta: &str) -> FileMeta {
+fn parse_meta(meta: &str) -> FixtureEntry {
     let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
 
     let path = components[0].to_string();
@@ -117,7 +112,7 @@ fn parse_meta(meta: &str) -> FileMeta {
         }
     }
 
-    FileMeta { path, crate_name: krate, deps, edition, cfg, env }
+    FixtureEntry { path, text: String::new(), crate_name: krate, deps, edition, cfg, env }
 }
 
 /// Adjusts the indentation of the first line to the minimum indentation of the rest of the lines.
@@ -209,12 +204,10 @@ fn parse_fixture_gets_full_meta() {
     );
     assert_eq!(1, parsed.len());
 
-    let parsed = &parsed[0];
-    assert_eq!("mod m;\n\n", parsed.text);
+    let meta = &parsed[0];
+    assert_eq!("mod m;\n\n", meta.text);
 
-    let meta = &parsed.meta;
-    assert_eq!("foo", meta.crate_name().unwrap());
-    assert_eq!("/lib.rs", meta.path());
-    assert!(meta.cfg_options().is_some());
-    assert_eq!(2, meta.env().count());
+    assert_eq!("foo", meta.crate_name.as_ref().unwrap());
+    assert_eq!("/lib.rs", meta.path);
+    assert_eq!(2, meta.env.len());
 }

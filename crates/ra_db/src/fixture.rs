@@ -61,7 +61,9 @@ use std::{str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use rustc_hash::FxHashMap;
-use test_utils::{extract_offset, parse_fixture, parse_single_fixture, CURSOR_MARKER};
+use test_utils::{
+    extract_offset, parse_fixture, parse_single_fixture, FixtureEntry, CURSOR_MARKER,
+};
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
@@ -112,7 +114,7 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
     let fixture = parse_single_fixture(ra_fixture);
 
     let crate_graph = if let Some(entry) = fixture {
-        let meta = match ParsedMeta::from(&entry.meta) {
+        let meta = match ParsedMeta::from(&entry) {
             ParsedMeta::File(it) => it,
         };
 
@@ -165,7 +167,7 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
     let mut file_position = None;
 
     for entry in fixture.iter() {
-        let meta = match ParsedMeta::from(&entry.meta) {
+        let meta = match ParsedMeta::from(entry) {
             ParsedMeta::File(it) => it,
         };
         assert!(meta.path.starts_with(&source_root_prefix));
@@ -243,8 +245,8 @@ struct FileMeta {
     env: Env,
 }
 
-impl From<&test_utils::FileMeta> for ParsedMeta {
-    fn from(f: &test_utils::FileMeta) -> Self {
+impl From<&FixtureEntry> for ParsedMeta {
+    fn from(f: &FixtureEntry) -> Self {
         Self::File(FileMeta {
             path: f.path.to_owned(),
             krate: f.crate_name.to_owned(),
