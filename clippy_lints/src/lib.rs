@@ -1062,7 +1062,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
     let warn_on_all_wildcard_imports = conf.warn_on_all_wildcard_imports;
     store.register_late_pass(move || box wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports));
-    store.register_early_pass(|| box macro_use::MacroUseImports);
     store.register_late_pass(|| box verbose_file_reads::VerboseFileReads);
     store.register_late_pass(|| box redundant_pub_crate::RedundantPubCrate::default());
     store.register_late_pass(|| box unnamed_address::UnnamedAddress);
@@ -1080,6 +1079,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         single_char_binding_names_threshold,
     });
     store.register_early_pass(|| box unnested_or_patterns::UnnestedOrPatterns);
+    store.register_late_pass(|| box macro_use::MacroUseImports::default());
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
