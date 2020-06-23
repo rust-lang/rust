@@ -82,6 +82,13 @@
             const queryParams = new URLSearchParams(window.location.search);
             const searchParam = queryParams.get('search');
             const searchTerm = null !== searchParam ? searchParam : '';
+            const versionParam = queryParams.get('version');
+            const parseVersionParam = (version) => {
+              if (version === 'master') return 'master';
+              if (version.startsWith('v')) return version;
+              return `v${version}`;
+            };
+            const versionNumber = null !== versionParam ? parseVersionParam(versionParam) : 'master';
             new Vue({
               el: '#app',
               data: {
@@ -90,7 +97,7 @@
                 configurationDescriptions: [],
                 searchCondition: searchTerm,
                 shouldStable: false,
-                version: 'master',
+                version: versionNumber,
                 oldVersion: undefined,
                 versionOptions: ['master']
               },
@@ -99,16 +106,20 @@
                   if (this.version !== this.oldVersion) {
                     const ConfigurationMdUrl =
                       `https://raw.githubusercontent.com/rust-lang/rustfmt/${this.version}/Configurations.md`;
-                    const res = await axios.get(ConfigurationMdUrl);
-                    const {
-                      about,
-                      configurationAbout,
-                      configurationDescriptions
-                    } = parseMarkdownAst(res.data);
-                    this.aboutHtml = marked.parser(about);
-                    this.configurationAboutHtml = marked.parser(configurationAbout);
-                    this.configurationDescriptions = configurationDescriptions;
-                    this.oldVersion = this.version;
+                    try {
+                      const res = await axios.get(ConfigurationMdUrl);
+                      const {
+                        about,
+                        configurationAbout,
+                        configurationDescriptions
+                      } = parseMarkdownAst(res.data);
+                      this.aboutHtml = marked.parser(about);
+                      this.configurationAboutHtml = marked.parser(configurationAbout);
+                      this.configurationDescriptions = configurationDescriptions;
+                      this.oldVersion = this.version;
+                    } catch(error) {
+                        this.aboutHtml = "<p>Failed to get configuration options for this version, please select the version from the dropdown above.</p>";
+                    }
                   }
 
                   const ast = this.configurationDescriptions
