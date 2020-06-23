@@ -110,7 +110,7 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
     let source_root = SourceRoot::new_local(file_set);
 
     let crate_graph = if let Some(meta) = ra_fixture.lines().find(|it| it.contains("//-")) {
-        let entry = Fixture::parse_single(meta.trim());
+        let entry = Fixture::parse_meta_line(meta.trim());
         let meta = match ParsedMeta::from(&entry) {
             ParsedMeta::File(it) => it,
         };

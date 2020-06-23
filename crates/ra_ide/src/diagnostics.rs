@@ -283,7 +283,7 @@ fn check_struct_shorthand_initialization(
 mod tests {
     use insta::assert_debug_snapshot;
     use ra_syntax::SourceFile;
-    use stdx::SepBy;
+    use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
     use crate::mock_analysis::{analysis_and_position, single_file};
@@ -325,6 +325,8 @@ mod tests {
     ///  * this diagnostic touches the input cursor position
     ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
     fn check_apply_diagnostic_fix_from_position(fixture: &str, after: &str) {
+        let after = trim_indent(after);
+
         let (analysis, file_position) = analysis_and_position(fixture);
         let diagnostic = analysis.diagnostics(file_position.file_id).unwrap().pop().unwrap();
         let mut fix = diagnostic.fix.unwrap();
@@ -335,21 +337,6 @@ mod tests {
             edit.apply(&mut actual);
             actual
         };
-
-        // Strip indent and empty lines from `after`, to match the behaviour of
-        // `parse_fixture` called from `analysis_and_position`.
-        let margin = fixture
-            .lines()
-            .filter(|it| it.trim_start().starts_with("//-"))
-            .map(|it| it.len() - it.trim_start().len())
-            .next()
-            .expect("empty fixture");
-        let after = after
-            .lines()
-            .filter_map(|line| if line.len() > margin { Some(&line[margin..]) } else { None })
-            .sep_by("\n")
-            .suffix("\n")
-            .to_string();
 
         assert_eq_text!(&after, &actual);
         assert!(
@@ -400,7 +387,6 @@ mod tests {
                 }
                 x / y<|>
             }
-
             //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
@@ -431,7 +417,6 @@ mod tests {
                 }
                 <|>x
             }
-
             //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
@@ -464,7 +449,6 @@ mod tests {
                 }
                 x <|>/ y
             }
-
             //- /core/lib.rs
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
@@ -474,6 +458,7 @@ mod tests {
             use core::result::Result::{self, Ok, Err};
 
             type MyResult<T> = Result<T, ()>;
+
             fn div(x: i32, y: i32) -> MyResult<i32> {
                 if y == 0 {
                     return Err(());

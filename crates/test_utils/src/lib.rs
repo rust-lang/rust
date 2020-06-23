@@ -43,7 +43,7 @@ macro_rules! assert_eq_text {
             if left.trim() == right.trim() {
                 eprintln!("Left:\n{:?}\n\nRight:\n{:?}\n\nWhitespace difference\n", left, right);
             } else {
-                let changeset = $crate::__Changeset::new(right, left, "\n");
+                let changeset = $crate::__Changeset::new(left, right, "\n");
                 eprintln!("Left:\n{}\n\nRight:\n{}\n\nDiff:\n{}\n", left, right, changeset);
             }
             eprintln!($($tt)*);

@@ -310,11 +310,11 @@ mod tests {
                     file_id: FileId(
                         1,
                     ),
-                    full_range: 22..46,
+                    full_range: 23..47,
                     name: "test_foo",
                     kind: FN_DEF,
                     focus_range: Some(
-                        33..41,
+                        34..42,
                     ),
                     container_name: None,
                     description: None,
@@ -335,11 +335,11 @@ mod tests {
                     file_id: FileId(
                         1,
                     ),
-                    full_range: 47..81,
+                    full_range: 49..83,
                     name: "test_foo",
                     kind: FN_DEF,
                     focus_range: Some(
-                        68..76,
+                        70..78,
                     ),
                     container_name: None,
                     description: None,
@@ -360,11 +360,11 @@ mod tests {
                     file_id: FileId(
                         1,
                     ),
-                    full_range: 82..104,
+                    full_range: 85..107,
                     name: "bench",
                     kind: FN_DEF,
                     focus_range: Some(
-                        94..99,
+                        97..102,
                     ),
                     container_name: None,
                     description: None,
@@ -424,7 +424,7 @@ mod tests {
                     file_id: FileId(
                         1,
                     ),
-                    full_range: 22..64,
+                    full_range: 23..65,
                     name: "foo",
                     kind: FN_DEF,
                     focus_range: None,
@@ -489,7 +489,7 @@ mod tests {
                     file_id: FileId(
                         1,
                     ),
-                    full_range: 51..105,
+                    full_range: 52..106,
                     name: "foo",
                     kind: FN_DEF,
                     focus_range: None,

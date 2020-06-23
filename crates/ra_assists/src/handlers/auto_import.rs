@@ -488,16 +488,17 @@ mod tests {
         check_assist(
             auto_import,
             r"
-                    //- /lib.rs crate:crate_with_macro
-                    #[macro_export]
-                    macro_rules! foo {
-                        () => ()
-                    }
+//- /lib.rs crate:crate_with_macro
+#[macro_export]
+macro_rules! foo {
+    () => ()
+}
 
-                    //- /main.rs crate:main deps:crate_with_macro
-                    fn main() {
-                        foo<|>
-                    }",
+//- /main.rs crate:main deps:crate_with_macro
+fn main() {
+    foo<|>
+}
+",
             r"use crate_with_macro::foo;
 
 fn main() {
@@ -847,13 +848,14 @@ fn main() {
         check_assist(
             auto_import,
             r"
-                    //- /lib.rs crate:dep
-                    pub struct Struct;
+//- /lib.rs crate:dep
+pub struct Struct;
 
-                    //- /main.rs crate:main deps:dep
-                    fn main() {
-                        Struct<|>
-                    }",
+//- /main.rs crate:main deps:dep
+fn main() {
+    Struct<|>
+}
+",
             r"use dep::Struct;
 
 fn main() {
@@ -869,20 +871,22 @@ fn main() {
         check_assist(
             auto_import,
             r"
-                    //- /lib.rs crate:dep
-                    pub mod fmt {
-                        pub trait Display {}
-                    }
+//- /lib.rs crate:dep
+pub mod fmt {
+    pub trait Display {}
+}
 
-                    pub fn panic_fmt() {}
+pub fn panic_fmt() {}
 
-                    //- /main.rs crate:main deps:dep
-                    struct S;
+//- /main.rs crate:main deps:dep
+struct S;
 
-                    impl f<|>mt::Display for S {}",
+impl f<|>mt::Display for S {}
+",
             r"use dep::fmt;
 
 struct S;
+
 impl fmt::Display for S {}
 ",
         );
@@ -894,21 +898,20 @@ impl fmt::Display for S {}
         check_assist(
             auto_import,
             r"
-                    //- /lib.rs crate:dep
+//- /lib.rs crate:dep
+macro_rules! mac {
+    () => {
+        pub struct Cheese;
+    };
+}
 
-                    macro_rules! mac {
-                        () => {
-                            pub struct Cheese;
-                        };
-                    }
+mac!();
 
-                    mac!();
-
-                    //- /main.rs crate:main deps:dep
-
-                    fn main() {
-                        Cheese<|>;
-                    }",
+//- /main.rs crate:main deps:dep
+fn main() {
+    Cheese<|>;
+}
+",
             r"use dep::Cheese;
 
 fn main() {
@@ -924,16 +927,15 @@ fn main() {
         check_assist(
             auto_import,
             r"
-                    //- /lib.rs crate:dep
+//- /lib.rs crate:dep
+pub struct FMT;
+pub struct fmt;
 
-                    pub struct FMT;
-                    pub struct fmt;
-
-                    //- /main.rs crate:main deps:dep
-
-                    fn main() {
-                        FMT<|>;
-                    }",
+//- /main.rs crate:main deps:dep
+fn main() {
+    FMT<|>;
+}
+",
             r"use dep::FMT;
 
 fn main() {
