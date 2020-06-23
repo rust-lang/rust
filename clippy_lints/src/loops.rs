@@ -2042,7 +2042,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         if self.state == VarState::DontWarn {
             return;
         }
-        if SpanlessEq::new(self.cx).eq_expr(&expr, self.end_expr) {
+        if expr.hir_id == self.end_expr.hir_id {
             self.past_loop = true;
             return;
         }
