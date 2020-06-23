@@ -8,8 +8,8 @@ use ra_syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
 use stdx::SepBy;
 
 use crate::{
-    call_info::ActiveParameter, Analysis, HighlightModifier, HighlightTag, HighlightedRange,
-    RootDatabase,
+    call_info::ActiveParameter, Analysis, Highlight, HighlightModifier, HighlightTag,
+    HighlightedRange, RootDatabase,
 };
 
 use super::HighlightedRangeStack;
@@ -150,8 +150,7 @@ pub(super) fn highlight_doc_comment(
     let (analysis, tmp_file_id) = Analysis::from_single_file(text);
 
     stack.push();
-    for mut h in analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true, true)).unwrap()
-    {
+    for mut h in analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true)).unwrap() {
         // Determine start offset and end offset in case of multi-line ranges
         let mut start_offset = None;
         let mut end_offset = None;
@@ -183,6 +182,7 @@ pub(super) fn highlight_doc_comment(
     for comment in new_comments {
         stack.add(comment);
     }
-    stack.pop_and_inject(false);
-    stack.pop_and_inject(true);
+    stack.pop_and_inject(None);
+    stack
+        .pop_and_inject(Some(Highlight::from(HighlightTag::Generic) | HighlightModifier::Injected));
 }

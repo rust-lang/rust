@@ -19,7 +19,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         )
     }
 
-    let ranges = highlight(db, file_id, None, false, false);
+    let ranges = highlight(db, file_id, None, false);
     let text = parse.tree().syntax().to_string();
     let mut prev_pos = TextSize::from(0);
     let mut buf = String::new();

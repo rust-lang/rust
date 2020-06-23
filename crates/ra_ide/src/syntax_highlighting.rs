@@ -45,7 +45,6 @@ pub(crate) fn highlight(
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
     syntactic_name_ref_highlighting: bool,
-    should_highlight_punctuation: bool,
 ) -> Vec<HighlightedRange> {
     let _p = profile("highlight");
     let sema = Semantics::new(db);
@@ -108,7 +107,6 @@ pub(crate) fn highlight(
                         &mut bindings_shadow_count,
                         syntactic_name_ref_highlighting,
                         name.syntax().clone().into(),
-                        should_highlight_punctuation,
                     ) {
                         stack.add(HighlightedRange {
                             range: name.syntax().text_range(),
@@ -208,7 +206,6 @@ pub(crate) fn highlight(
             &mut bindings_shadow_count,
             syntactic_name_ref_highlighting,
             element_to_highlight.clone(),
-            true,
         ) {
             stack.add(HighlightedRange { range, highlight, binding_hash });
             if let Some(string) =
@@ -239,7 +236,7 @@ pub(crate) fn highlight(
                             });
                         }
                     }
-                    stack.pop_and_inject(false);
+                    stack.pop_and_inject(None);
                 }
             } else if let Some(string) =
                 element_to_highlight.as_token().cloned().and_then(ast::RawString::cast)
@@ -327,6 +324,17 @@ impl HighlightedRangeStack {
         cloned
     }
 
+    /// Remove the `HighlightRange` of `parent` that's currently covered by `child`.
+    fn intersect_partial(parent: &mut HighlightedRange, child: &HighlightedRange) {
+        assert!(
+            parent.range.start() <= child.range.start()
+                && parent.range.end() >= child.range.start()
+                && child.range.end() > parent.range.end()
+        );
+
+        parent.range = TextRange::new(parent.range.start(), child.range.start());
+    }
+
     /// Similar to `pop`, but can modify arbitrary prior ranges (where `pop`)
     /// can only modify the last range currently on the stack.
     /// Can be used to do injections that span multiple ranges, like the
@@ -336,7 +344,7 @@ impl HighlightedRangeStack {
     ///
     /// Note that `pop` can be simulated by `pop_and_inject(false)` but the
     /// latter is computationally more expensive.
-    fn pop_and_inject(&mut self, inject: bool) {
+    fn pop_and_inject(&mut self, overwrite_parent: Option<Highlight>) {
         let mut children = self.stack.pop().unwrap();
         let prev = self.stack.last_mut().unwrap();
         children.sort_by_key(|range| range.range.start());
@@ -346,26 +354,41 @@ impl HighlightedRangeStack {
             if let Some(idx) =
                 prev.iter().position(|parent| parent.range.contains_range(child.range))
             {
+                if let Some(tag) = overwrite_parent {
+                    prev[idx].highlight = tag;
+                }
+
                 let cloned = Self::intersect(&mut prev[idx], &child);
-                let insert_idx = if inject || prev[idx].range.is_empty() {
+                let insert_idx = if prev[idx].range.is_empty() {
                     prev.remove(idx);
                     idx
                 } else {
                     idx + 1
                 };
                 prev.insert(insert_idx, child);
-                if !inject && !cloned.range.is_empty() {
+                if !cloned.range.is_empty() {
                     prev.insert(insert_idx + 1, cloned);
                 }
-            } else if let Some(_idx) =
-                prev.iter().position(|parent| parent.range.contains(child.range.start()))
-            {
-                unreachable!("child range should be completely contained in parent range");
             } else {
-                let idx = prev
-                    .binary_search_by_key(&child.range.start(), |range| range.range.start())
-                    .unwrap_or_else(|x| x);
-                prev.insert(idx, child);
+                let maybe_idx =
+                    prev.iter().position(|parent| parent.range.contains(child.range.start()));
+                if let (Some(_), Some(idx)) = (overwrite_parent, maybe_idx) {
+                    Self::intersect_partial(&mut prev[idx], &child);
+                    let insert_idx = if prev[idx].range.is_empty() {
+                        prev.remove(idx);
+                        idx
+                    } else {
+                        idx + 1
+                    };
+                    prev.insert(insert_idx, child);
+                } else if let None = maybe_idx {
+                    let idx = prev
+                        .binary_search_by_key(&child.range.start(), |range| range.range.start())
+                        .unwrap_or_else(|x| x);
+                    prev.insert(idx, child);
+                } else {
+                    unreachable!("child range should be completely contained in parent range");
+                }
             }
         }
     }
@@ -433,7 +456,6 @@ fn highlight_element(
     bindings_shadow_count: &mut FxHashMap<Name, u32>,
     syntactic_name_ref_highlighting: bool,
     element: SyntaxElement,
-    should_highlight_punctuation: bool,
 ) -> Option<(Highlight, Option<u64>)> {
     let db = sema.db;
     let mut binding_hash = None;
@@ -550,7 +572,6 @@ fn highlight_element(
             }
         }
 
-        p if should_highlight_punctuation && p.is_punct() => HighlightTag::Punctuation.into(),
         _ => return None,
     };
 
