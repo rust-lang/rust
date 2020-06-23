@@ -136,12 +136,13 @@ fn build_vtable<'tcx>(
         .module
         .declare_data(
             &format!(
-                "__vtable.{}.for.{:?}",
+                "__vtable.{}.for.{:?}.{}",
                 trait_ref
                     .as_ref()
                     .map(|trait_ref| format!("{:?}", trait_ref.skip_binder()).into())
                     .unwrap_or(std::borrow::Cow::Borrowed("???")),
-                layout.ty
+                layout.ty,
+                fx.vtables.len(),
             ),
             Linkage::Local,
             false,
@@ -158,10 +159,7 @@ fn build_vtable<'tcx>(
         )
         .unwrap();
 
-    match fx.module.define_data(data_id, &data_ctx) {
-        Ok(()) | Err(cranelift_module::ModuleError::DuplicateDefinition(_)) => {}
-        err => err.unwrap(),
-    }
+    fx.module.define_data(data_id, &data_ctx).unwrap();
 
     data_id
 }
