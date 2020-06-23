@@ -51,6 +51,7 @@
         - [Salsa](./salsa.md)
     - [Memory Management in Rustc](./memory.md)
     - [Parallel Compilation](./parallel-rustc.md)
+    - [Rustdoc](./rustdoc-internals.md)
 
 - [Part 3: Source Code Representations](./part-3-intro.md)
     - [Command-line arguments](./cli.md)
