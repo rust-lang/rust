@@ -427,8 +427,8 @@ mod tests {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(2) 16..50 27..30 Other",
-            &["FileId(1) 52..55 StructLiteral", "FileId(3) 77..80 StructLiteral"],
+            "Foo STRUCT_DEF FileId(2) 17..51 28..31 Other",
+            &["FileId(1) 53..56 StructLiteral", "FileId(3) 79..82 StructLiteral"],
         );
     }
 
@@ -455,7 +455,7 @@ mod tests {
 
         let (analysis, pos) = analysis_and_position(code);
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
-        check_result(refs, "foo SOURCE_FILE FileId(2) 0..35 Other", &["FileId(1) 13..16 Other"]);
+        check_result(refs, "foo SOURCE_FILE FileId(2) 0..35 Other", &["FileId(1) 14..17 Other"]);
     }
 
     #[test]
@@ -483,7 +483,7 @@ mod tests {
         check_result(
             refs,
             "Foo STRUCT_DEF FileId(3) 0..41 18..21 Other",
-            &["FileId(2) 20..23 Other", "FileId(2) 46..49 StructLiteral"],
+            &["FileId(2) 20..23 Other", "FileId(2) 47..50 StructLiteral"],
         );
     }
 
@@ -510,7 +510,7 @@ mod tests {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) 18..34 25..29 Other",
+            "quux FN_DEF FileId(1) 19..35 26..30 Other",
             &["FileId(2) 16..20 StructLiteral", "FileId(3) 16..20 StructLiteral"],
         );
 
@@ -518,7 +518,7 @@ mod tests {
             analysis.find_all_refs(pos, Some(SearchScope::single_file(bar))).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) 18..34 25..29 Other",
+            "quux FN_DEF FileId(1) 19..35 26..30 Other",
             &["FileId(3) 16..20 StructLiteral"],
         );
     }
@@ -637,8 +637,8 @@ mod tests {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "f FN_DEF FileId(1) 25..34 28..29 Other",
-            &["FileId(2) 11..12 Other", "FileId(2) 27..28 StructLiteral"],
+            "f FN_DEF FileId(1) 26..35 29..30 Other",
+            &["FileId(2) 11..12 Other", "FileId(2) 28..29 StructLiteral"],
         );
     }
 

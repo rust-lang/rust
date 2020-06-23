@@ -178,14 +178,8 @@ fn main() {}
 pub use std::collections::HashMap;
 "#,
                 "range": {
-                    "end": {
-                        "character": 0,
-                        "line": 7
-                    },
-                    "start": {
-                        "character": 0,
-                        "line": 0
-                    }
+                    "end": { "character": 0, "line": 6 },
+                    "start": { "character": 0, "line": 0 }
                 }
             }
         ]),
@@ -244,14 +238,8 @@ fn main() {}
 pub use std::collections::HashMap;
 "#,
                 "range": {
-                    "end": {
-                        "character": 0,
-                        "line": 10
-                    },
-                    "start": {
-                        "character": 0,
-                        "line": 0
-                    }
+                    "end": { "character": 0, "line": 9 },
+                    "start": { "character": 0, "line": 0 }
                 }
             }
         ]),

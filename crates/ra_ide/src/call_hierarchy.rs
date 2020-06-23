@@ -145,12 +145,12 @@ mod tests {
     use crate::mock_analysis::analysis_and_position;
 
     fn check_hierarchy(
-        fixture: &str,
+        ra_fixture: &str,
         expected: &str,
         expected_incoming: &[&str],
         expected_outgoing: &[&str],
     ) {
-        let (analysis, pos) = analysis_and_position(fixture);
+        let (analysis, pos) = analysis_and_position(ra_fixture);
 
         let mut navs = analysis.call_hierarchy(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);
@@ -177,12 +177,12 @@ mod tests {
     fn test_call_hierarchy_on_ref() {
         check_hierarchy(
             r#"
-            //- /lib.rs
-            fn callee() {}
-            fn caller() {
-                call<|>ee();
-            }
-            "#,
+//- /lib.rs
+fn callee() {}
+fn caller() {
+    call<|>ee();
+}
+"#,
             "callee FN_DEF FileId(1) 0..14 3..9",
             &["caller FN_DEF FileId(1) 15..44 18..24 : [33..39]"],
             &[],
@@ -193,12 +193,12 @@ mod tests {
     fn test_call_hierarchy_on_def() {
         check_hierarchy(
             r#"
-            //- /lib.rs
-            fn call<|>ee() {}
-            fn caller() {
-                callee();
-            }
-            "#,
+//- /lib.rs
+fn call<|>ee() {}
+fn caller() {
+    callee();
+}
+"#,
             "callee FN_DEF FileId(1) 0..14 3..9",
             &["caller FN_DEF FileId(1) 15..44 18..24 : [33..39]"],
             &[],
@@ -209,13 +209,13 @@ mod tests {
     fn test_call_hierarchy_in_same_fn() {
         check_hierarchy(
             r#"
-            //- /lib.rs
-            fn callee() {}
-            fn caller() {
-                call<|>ee();
-                callee();
-            }
-            "#,
+//- /lib.rs
+fn callee() {}
+fn caller() {
+    call<|>ee();
+    callee();
+}
+"#,
             "callee FN_DEF FileId(1) 0..14 3..9",
             &["caller FN_DEF FileId(1) 15..58 18..24 : [33..39, 47..53]"],
             &[],
@@ -226,20 +226,20 @@ mod tests {
     fn test_call_hierarchy_in_different_fn() {
         check_hierarchy(
             r#"
-            //- /lib.rs
-            fn callee() {}
-            fn caller1() {
-                call<|>ee();
-            }
+//- /lib.rs
+fn callee() {}
+fn caller1() {
+    call<|>ee();
+}
 
-            fn caller2() {
-                callee();
-            }
-            "#,
+fn caller2() {
+    callee();
+}
+"#,
             "callee FN_DEF FileId(1) 0..14 3..9",
             &[
                 "caller1 FN_DEF FileId(1) 15..45 18..25 : [34..40]",
-                "caller2 FN_DEF FileId(1) 46..76 49..56 : [65..71]",
+                "caller2 FN_DEF FileId(1) 47..77 50..57 : [66..72]",
             ],
             &[],
         );
@@ -249,26 +249,26 @@ mod tests {
     fn test_call_hierarchy_in_tests_mod() {
         check_hierarchy(
             r#"
-            //- /lib.rs cfg:test
-            fn callee() {}
-            fn caller1() {
-                call<|>ee();
-            }
+//- /lib.rs cfg:test
+fn callee() {}
+fn caller1() {
+    call<|>ee();
+}
 
-            #[cfg(test)]
-            mod tests {
-                use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-                #[test]
-                fn test_caller() {
-                    callee();
-                }
-            }
-            "#,
+    #[test]
+    fn test_caller() {
+        callee();
+    }
+}
+"#,
             "callee FN_DEF FileId(1) 0..14 3..9",
             &[
                 "caller1 FN_DEF FileId(1) 15..45 18..25 : [34..40]",
-                "test_caller FN_DEF FileId(1) 93..147 108..119 : [132..138]",
+                "test_caller FN_DEF FileId(1) 95..149 110..121 : [134..140]",
             ],
             &[],
         );
@@ -278,19 +278,19 @@ mod tests {
     fn test_call_hierarchy_in_different_files() {
         check_hierarchy(
             r#"
-            //- /lib.rs
-            mod foo;
-            use foo::callee;
+//- /lib.rs
+mod foo;
+use foo::callee;
 
-            fn caller() {
-                call<|>ee();
-            }
+fn caller() {
+    call<|>ee();
+}
 
-            //- /foo/mod.rs
-            pub fn callee() {}
-            "#,
+//- /foo/mod.rs
+pub fn callee() {}
+"#,
             "callee FN_DEF FileId(2) 0..18 7..13",
-            &["caller FN_DEF FileId(1) 26..55 29..35 : [44..50]"],
+            &["caller FN_DEF FileId(1) 27..56 30..36 : [45..51]"],
             &[],
         );
     }
@@ -299,13 +299,13 @@ mod tests {
     fn test_call_hierarchy_outgoing() {
         check_hierarchy(
             r#"
-            //- /lib.rs
-            fn callee() {}
-            fn call<|>er() {
-                callee();
-                callee();
-            }
-            "#,
+//- /lib.rs
+fn callee() {}
+fn call<|>er() {
+    callee();
+    callee();
+}
+"#,
             "caller FN_DEF FileId(1) 15..58 18..24",
             &[],
             &["callee FN_DEF FileId(1) 0..14 3..9 : [33..39, 47..53]"],
@@ -316,20 +316,20 @@ mod tests {
     fn test_call_hierarchy_outgoing_in_different_files() {
         check_hierarchy(
             r#"
-            //- /lib.rs
-            mod foo;
-            use foo::callee;
+//- /lib.rs
+mod foo;
+use foo::callee;
 
-            fn call<|>er() {
-                callee();
-            }
+fn call<|>er() {
+    callee();
+}
 
-            //- /foo/mod.rs
-            pub fn callee() {}
-            "#,
-            "caller FN_DEF FileId(1) 26..55 29..35",
+//- /foo/mod.rs
+pub fn callee() {}
+"#,
+            "caller FN_DEF FileId(1) 27..56 30..36",
             &[],
-            &["callee FN_DEF FileId(2) 0..18 7..13 : [44..50]"],
+            &["callee FN_DEF FileId(2) 0..18 7..13 : [45..51]"],
         );
     }
 
@@ -337,22 +337,22 @@ mod tests {
     fn test_call_hierarchy_incoming_outgoing() {
         check_hierarchy(
             r#"
-            //- /lib.rs
-            fn caller1() {
-                call<|>er2();
-            }
+//- /lib.rs
+fn caller1() {
+    call<|>er2();
+}
 
-            fn caller2() {
-                caller3();
-            }
+fn caller2() {
+    caller3();
+}
 
-            fn caller3() {
+fn caller3() {
 
-            }
-            "#,
-            "caller2 FN_DEF FileId(1) 32..63 35..42",
+}
+"#,
+            "caller2 FN_DEF FileId(1) 33..64 36..43",
             &["caller1 FN_DEF FileId(1) 0..31 3..10 : [19..26]"],
-            &["caller3 FN_DEF FileId(1) 64..80 67..74 : [51..58]"],
+            &["caller3 FN_DEF FileId(1) 66..83 69..76 : [52..59]"],
         );
     }
 }

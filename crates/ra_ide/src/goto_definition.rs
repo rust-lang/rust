@@ -192,27 +192,27 @@ mod tests {
     #[test]
     fn goto_def_for_module_declaration() {
         check_goto(
-            "
-            //- /lib.rs
-            mod <|>foo;
+            r#"
+//- /lib.rs
+mod <|>foo;
 
-            //- /foo.rs
-            // empty
-            ",
-            "foo SOURCE_FILE FileId(2) 0..10",
-            "// empty\n\n",
+//- /foo.rs
+// empty
+"#,
+            "foo SOURCE_FILE FileId(2) 0..9",
+            "// empty\n",
         );
 
         check_goto(
-            "
-            //- /lib.rs
-            mod <|>foo;
+            r#"
+//- /lib.rs
+mod <|>foo;
 
-            //- /foo/mod.rs
-            // empty
-            ",
-            "foo SOURCE_FILE FileId(2) 0..10",
-            "// empty\n\n",
+//- /foo/mod.rs
+// empty
+"#,
+            "foo SOURCE_FILE FileId(2) 0..9",
+            "// empty\n",
         );
     }
 
@@ -254,14 +254,14 @@ mod tests {
     #[test]
     fn goto_def_for_use_alias() {
         check_goto(
-            "
-            //- /lib.rs
-            use foo as bar<|>;
+            r#"
+//- /lib.rs
+use foo as bar<|>;
 
-
-            //- /foo/lib.rs
-            #[macro_export]
-            macro_rules! foo { () => { () } }",
+//- /foo/lib.rs
+#[macro_export]
+macro_rules! foo { () => { () } }
+"#,
             "SOURCE_FILE FileId(2) 0..50",
             "#[macro_export]\nmacro_rules! foo { () => { () } }\n",
         );
@@ -302,19 +302,19 @@ mod tests {
     #[test]
     fn goto_def_for_macro_defined_fn_with_arg() {
         check_goto(
-            "
-            //- /lib.rs
-            macro_rules! define_fn {
-                ($name:ident) => (fn $name() {})
-            }
+            r#"
+//- /lib.rs
+macro_rules! define_fn {
+    ($name:ident) => (fn $name() {})
+}
 
-            define_fn!(foo);
+define_fn!(foo);
 
-            fn bar() {
-               <|>foo();
-            }
-            ",
-            "foo FN_DEF FileId(1) 64..80 75..78",
+fn bar() {
+   <|>foo();
+}
+"#,
+            "foo FN_DEF FileId(1) 65..81 76..79",
             "define_fn!(foo);|foo",
         );
     }
@@ -322,19 +322,19 @@ mod tests {
     #[test]
     fn goto_def_for_macro_defined_fn_no_arg() {
         check_goto(
-            "
-            //- /lib.rs
-            macro_rules! define_fn {
-                () => (fn foo() {})
-            }
+            r#"
+//- /lib.rs
+macro_rules! define_fn {
+    () => (fn foo() {})
+}
 
-            define_fn!();
+define_fn!();
 
-            fn bar() {
-               <|>foo();
-            }
-            ",
-            "foo FN_DEF FileId(1) 51..64 51..64",
+fn bar() {
+   <|>foo();
+}
+"#,
+            "foo FN_DEF FileId(1) 52..65 52..65",
             "define_fn!();|define_fn!();",
         );
     }
@@ -804,40 +804,40 @@ mod tests {
     #[test]
     fn goto_within_macro() {
         check_goto(
-            "
-            //- /lib.rs
-            macro_rules! id {
-                ($($tt:tt)*) => ($($tt)*)
-            }
+            r#"
+//- /lib.rs
+macro_rules! id {
+    ($($tt:tt)*) => ($($tt)*)
+}
 
-            fn foo() {
-                let x = 1;
-                id!({
-                    let y = <|>x;
-                    let z = y;
-                });
-            }
-            ",
-            "x BIND_PAT FileId(1) 69..70",
+fn foo() {
+    let x = 1;
+    id!({
+        let y = <|>x;
+        let z = y;
+    });
+}
+"#,
+            "x BIND_PAT FileId(1) 70..71",
             "x",
         );
 
         check_goto(
-            "
-            //- /lib.rs
-            macro_rules! id {
-                ($($tt:tt)*) => ($($tt)*)
-            }
+            r#"
+//- /lib.rs
+macro_rules! id {
+    ($($tt:tt)*) => ($($tt)*)
+}
 
-            fn foo() {
-                let x = 1;
-                id!({
-                    let y = x;
-                    let z = <|>y;
-                });
-            }
-            ",
-            "y BIND_PAT FileId(1) 98..99",
+fn foo() {
+    let x = 1;
+    id!({
+        let y = x;
+        let z = <|>y;
+    });
+}
+"#,
+            "y BIND_PAT FileId(1) 99..100",
             "y",
         );
     }

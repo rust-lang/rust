@@ -986,7 +986,6 @@ fn main() {
 ",
             r"
 
-
 pub(crate) fn bar() {
     ${0:todo!()}
 }",

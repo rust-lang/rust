@@ -255,15 +255,14 @@ mod tests {
         check_assist(
             fix_visibility,
             r"
-              //- /main.rs
-              mod foo;
-              fn main() { foo::Foo<|> }
+//- /main.rs
+mod foo;
+fn main() { foo::Foo<|> }
 
-              //- /foo.rs
-              struct Foo;
-              ",
+//- /foo.rs
+struct Foo;
+",
             r"$0pub(crate) struct Foo;
-
 ",
         );
     }
@@ -279,14 +278,14 @@ mod tests {
         );
         check_assist(
             fix_visibility,
-            r"//- /lib.rs
-              mod foo;
-              fn main() { foo::Foo { <|>bar: () }; }
-              //- /foo.rs
-              pub struct Foo { bar: () }
-              ",
+            r"
+//- /lib.rs
+mod foo;
+fn main() { foo::Foo { <|>bar: () }; }
+//- /foo.rs
+pub struct Foo { bar: () }
+",
             r"pub struct Foo { $0pub(crate) bar: () }
-
 ",
         );
         check_assist_not_applicable(
@@ -296,12 +295,13 @@ mod tests {
         );
         check_assist_not_applicable(
             fix_visibility,
-            r"//- /lib.rs
-              mod foo;
-              fn main() { foo::Foo { <|>bar: () }; }
-              //- /foo.rs
-              pub struct Foo { pub bar: () }
-              ",
+            r"
+//- /lib.rs
+mod foo;
+fn main() { foo::Foo { <|>bar: () }; }
+//- /foo.rs
+pub struct Foo { pub bar: () }
+",
         );
     }
 
@@ -316,14 +316,14 @@ mod tests {
         );
         check_assist(
             fix_visibility,
-            r"//- /lib.rs
-              mod foo;
-              fn main() { foo::Foo::Bar { <|>bar: () }; }
-              //- /foo.rs
-              pub enum Foo { Bar { bar: () } }
-              ",
+            r"
+//- /lib.rs
+mod foo;
+fn main() { foo::Foo::Bar { <|>bar: () }; }
+//- /foo.rs
+pub enum Foo { Bar { bar: () } }
+",
             r"pub enum Foo { Bar { $0pub(crate) bar: () } }
-
 ",
         );
         check_assist_not_applicable(
@@ -333,12 +333,13 @@ mod tests {
         );
         check_assist_not_applicable(
             fix_visibility,
-            r"//- /lib.rs
-              mod foo;
-              fn main() { foo::Foo { <|>bar: () }; }
-              //- /foo.rs
-              pub struct Foo { pub bar: () }
-              ",
+            r"
+//- /lib.rs
+mod foo;
+fn main() { foo::Foo { <|>bar: () }; }
+//- /foo.rs
+pub struct Foo { pub bar: () }
+",
         );
     }
 
@@ -355,14 +356,14 @@ mod tests {
         );
         check_assist(
             fix_visibility,
-            r"//- /lib.rs
-              mod foo;
-              fn main() { foo::Foo { <|>bar: () }; }
-              //- /foo.rs
-              pub union Foo { bar: () }
-              ",
+            r"
+//- /lib.rs
+mod foo;
+fn main() { foo::Foo { <|>bar: () }; }
+//- /foo.rs
+pub union Foo { bar: () }
+",
             r"pub union Foo { $0pub(crate) bar: () }
-
 ",
         );
         check_assist_not_applicable(
@@ -372,12 +373,13 @@ mod tests {
         );
         check_assist_not_applicable(
             fix_visibility,
-            r"//- /lib.rs
-              mod foo;
-              fn main() { foo::Foo { <|>bar: () }; }
-              //- /foo.rs
-              pub union Foo { pub bar: () }
-              ",
+            r"
+//- /lib.rs
+mod foo;
+fn main() { foo::Foo { <|>bar: () }; }
+//- /foo.rs
+pub union Foo { pub bar: () }
+",
         );
     }
 
@@ -458,19 +460,18 @@ mod tests {
         check_assist(
             fix_visibility,
             r"
-            //- /main.rs
-            mod foo;
-            fn main() { foo::bar<|>::baz(); }
+//- /main.rs
+mod foo;
+fn main() { foo::bar<|>::baz(); }
 
-            //- /foo.rs
-            mod bar {
-                pub fn baz() {}
-            }
-            ",
+//- /foo.rs
+mod bar {
+    pub fn baz() {}
+}
+",
             r"$0pub(crate) mod bar {
     pub fn baz() {}
 }
-
 ",
         );
 
@@ -486,17 +487,15 @@ mod tests {
         check_assist(
             fix_visibility,
             r"
-            //- /main.rs
-            mod foo;
-            fn main() { foo::bar<|>::baz(); }
+//- /main.rs
+mod foo;
+fn main() { foo::bar<|>::baz(); }
 
-            //- /foo.rs
-            mod bar;
-
-            //- /foo/bar.rs
-            pub fn baz() {}
-            }
-            ",
+//- /foo.rs
+mod bar;
+//- /foo/bar.rs
+pub fn baz() {}
+",
             r"$0pub(crate) mod bar;
 ",
         );
@@ -506,14 +505,16 @@ mod tests {
     fn fix_visibility_of_module_declaration_in_other_file() {
         check_assist(
             fix_visibility,
-            r"//- /main.rs
-              mod foo;
-              fn main() { foo::bar<|>>::baz(); }
+            r"
+//- /main.rs
+mod foo;
+fn main() { foo::bar<|>>::baz(); }
 
-              //- /foo.rs
-              mod bar {
-                  pub fn baz() {}
-              }",
+//- /foo.rs
+mod bar {
+    pub fn baz() {}
+}
+",
             r"$0pub(crate) mod bar {
     pub fn baz() {}
 }
@@ -525,10 +526,12 @@ mod tests {
     fn adds_pub_when_target_is_in_another_crate() {
         check_assist(
             fix_visibility,
-            r"//- /main.rs crate:a deps:foo
-              foo::Bar<|>
-              //- /lib.rs crate:foo
-              struct Bar;",
+            r"
+//- /main.rs crate:a deps:foo
+foo::Bar<|>
+//- /lib.rs crate:foo
+struct Bar;
+",
             r"$0pub struct Bar;
 ",
         )
