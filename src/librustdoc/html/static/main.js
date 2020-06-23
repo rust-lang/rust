@@ -1015,12 +1015,13 @@ function defocusSearchBar() {
                 var aliases = [];
                 var crateAliases = [];
                 var i;
-                if (filterCrates !== undefined &&
-                        ALIASES[filterCrates] &&
-                        ALIASES[filterCrates][query.search]) {
-                    for (i = 0; i < ALIASES[crate][query.search].length; ++i) {
-                        aliases.push(
-                            createAliasFromItem(searchIndex[ALIASES[filterCrates][query.search]]));
+                if (filterCrates !== undefined) {
+                    if (ALIASES[filterCrates] && ALIASES[filterCrates][query.search]) {
+                        for (i = 0; i < ALIASES[filterCrates][query.search].length; ++i) {
+                            aliases.push(
+                                createAliasFromItem(
+                                    searchIndex[ALIASES[filterCrates][query.search][i]]));
+                        }
                     }
                 } else {
                     Object.keys(ALIASES).forEach(function(crate) {
