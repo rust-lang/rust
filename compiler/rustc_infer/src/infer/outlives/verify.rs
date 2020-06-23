@@ -328,8 +328,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         assoc_item_def_id: DefId,
     ) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
-        let predicates = tcx.projection_predicates(assoc_item_def_id);
-        predicates
+        let bounds = tcx.item_bounds(assoc_item_def_id);
+        bounds
             .into_iter()
             .filter_map(|p| p.to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())

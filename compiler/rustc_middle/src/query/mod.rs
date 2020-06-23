@@ -156,7 +156,7 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
-        /// Returns the list of predicates that can be used for
+        /// Returns the list of bounds that can be used for
         /// `SelectionCandidate::ProjectionCandidate` and
         /// `ProjectionTyCandidate::TraitDef`.
         /// Specifically this is the bounds (equivalent to) those
@@ -169,7 +169,7 @@ rustc_queries! {
         ///      ^^^^^^^^^^^^^^^
         ///
         /// `key` is the `DefId` of the associated type or opaque type.
-        query projection_predicates(key: DefId) -> &'tcx ty::List<ty::Predicate<'tcx>> {
+        query item_bounds(key: DefId) -> &'tcx ty::List<ty::Predicate<'tcx>> {
             desc { |tcx| "finding projection predicates for `{}`", tcx.def_path_str(key) }
         }
 

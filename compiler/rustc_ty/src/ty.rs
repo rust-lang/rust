@@ -500,7 +500,7 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
 /// simplify checking that these bounds are met in impls. This means that
 /// a bound such as `for<'b> <Self as X<'b>>::U: Clone` can't be used, as in
 /// `hr-associated-type-bound-1.rs`.
-fn associated_type_projection_predicates(
+fn associated_type_bounds(
     tcx: TyCtxt<'_>,
     assoc_item_def_id: DefId,
 ) -> &'_ ty::List<ty::Predicate<'_>> {
@@ -545,21 +545,14 @@ fn associated_type_projection_predicates(
     });
 
     let result = tcx.mk_predicates(predicates);
-    debug!(
-        "associated_type_projection_predicates({}) = {:?}",
-        tcx.def_path_str(assoc_item_def_id),
-        result
-    );
+    debug!("associated_type_bounds({}) = {:?}", tcx.def_path_str(assoc_item_def_id), result);
     result
 }
 
 /// Opaque types don't have the same issues as associated types: the only
 /// predicates on an opaque type (excluding those it inherits from its parent
 /// item) should be of the form we're expecting.
-fn opaque_type_projection_predicates(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-) -> &'_ ty::List<ty::Predicate<'_>> {
+fn opaque_type_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> &'_ ty::List<ty::Predicate<'_>> {
     let substs = InternalSubsts::identity_for_item(tcx, def_id);
 
     let bounds = tcx.predicates_of(def_id);
@@ -607,15 +600,15 @@ fn opaque_type_projection_predicates(
     });
 
     let result = tcx.mk_predicates(filtered_predicates);
-    debug!("opaque_type_projection_predicates({}) = {:?}", tcx.def_path_str(def_id), result);
+    debug!("opaque_type_bounds({}) = {:?}", tcx.def_path_str(def_id), result);
     result
 }
 
-fn projection_predicates(tcx: TyCtxt<'_>, def_id: DefId) -> &'_ ty::List<ty::Predicate<'_>> {
+fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> &'_ ty::List<ty::Predicate<'_>> {
     match tcx.def_kind(def_id) {
-        DefKind::AssocTy => associated_type_projection_predicates(tcx, def_id),
-        DefKind::OpaqueTy => opaque_type_projection_predicates(tcx, def_id),
-        k => bug!("projection_predicates called on {}", k.descr(def_id)),
+        DefKind::AssocTy => associated_type_bounds(tcx, def_id),
+        DefKind::OpaqueTy => opaque_type_bounds(tcx, def_id),
+        k => bug!("item_bounds called on {}", k.descr(def_id)),
     }
 }
 
@@ -636,7 +629,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,
-        projection_predicates,
+        item_bounds,
         ..*providers
     };
 }

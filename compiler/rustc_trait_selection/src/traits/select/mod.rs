@@ -1171,10 +1171,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let predicates = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
-            ty::Projection(ref data) => {
-                tcx.projection_predicates(data.item_def_id).subst(tcx, data.substs)
-            }
-            ty::Opaque(def_id, substs) => tcx.projection_predicates(def_id).subst(tcx, substs),
+            ty::Projection(ref data) => tcx.item_bounds(data.item_def_id).subst(tcx, data.substs),
+            ty::Opaque(def_id, substs) => tcx.item_bounds(def_id).subst(tcx, substs),
             _ => {
                 span_bug!(
                     obligation.cause.span,
