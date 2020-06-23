@@ -1,63 +1,44 @@
 // error-pattern:cargo-clippy
 
 #![feature(bindings_after_at)]
-#![feature(box_syntax)]
 #![feature(box_patterns)]
+#![feature(box_syntax)]
+#![feature(concat_idents)]
+#![feature(crate_visibility_modifier)]
+#![feature(drain_filter)]
 #![feature(or_patterns)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
-#![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
 #![recursion_limit = "512"]
-#![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
-#![deny(rustc::internal)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
-#![feature(crate_visibility_modifier)]
-#![feature(concat_idents)]
-#![feature(drain_filter)]
+#![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
+#![warn(trivial_casts, trivial_numeric_casts)]
+// warn on lints, that are included in `rust-lang/rust`s bootstrap
+#![warn(rust_2018_idioms, unused_lifetimes)]
+// warn on rustc internal lints
+#![deny(rustc::internal)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
-#[allow(unused_extern_crates)]
 extern crate rustc_ast;
-#[allow(unused_extern_crates)]
 extern crate rustc_ast_pretty;
-#[allow(unused_extern_crates)]
 extern crate rustc_attr;
-#[allow(unused_extern_crates)]
 extern crate rustc_data_structures;
-#[allow(unused_extern_crates)]
-extern crate rustc_driver;
-#[allow(unused_extern_crates)]
 extern crate rustc_errors;
-#[allow(unused_extern_crates)]
 extern crate rustc_hir;
-#[allow(unused_extern_crates)]
 extern crate rustc_hir_pretty;
-#[allow(unused_extern_crates)]
 extern crate rustc_index;
-#[allow(unused_extern_crates)]
 extern crate rustc_infer;
-#[allow(unused_extern_crates)]
 extern crate rustc_lexer;
-#[allow(unused_extern_crates)]
 extern crate rustc_lint;
-#[allow(unused_extern_crates)]
 extern crate rustc_middle;
-#[allow(unused_extern_crates)]
 extern crate rustc_mir;
-#[allow(unused_extern_crates)]
 extern crate rustc_parse;
-#[allow(unused_extern_crates)]
 extern crate rustc_parse_format;
-#[allow(unused_extern_crates)]
 extern crate rustc_session;
-#[allow(unused_extern_crates)]
 extern crate rustc_span;
-#[allow(unused_extern_crates)]
 extern crate rustc_target;
-#[allow(unused_extern_crates)]
 extern crate rustc_trait_selection;
-#[allow(unused_extern_crates)]
 extern crate rustc_typeck;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -82,14 +63,10 @@ use rustc_session::Session;
 /// # Example
 ///
 /// ```
-/// # #![feature(rustc_private)]
-/// # #[allow(unused_extern_crates)]
-/// # extern crate rustc_middle;
-/// # #[allow(unused_extern_crates)]
-/// # extern crate rustc_session;
-/// # #[macro_use]
-/// # use clippy_lints::declare_clippy_lint;
+/// #![feature(rustc_private)]
+/// extern crate rustc_session;
 /// use rustc_session::declare_tool_lint;
+/// use clippy_lints::declare_clippy_lint;
 ///
 /// declare_clippy_lint! {
 ///     /// **What it does:** Checks for ... (describe what the lint matches).
@@ -1062,7 +1039,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box option_env_unwrap::OptionEnvUnwrap);
     let warn_on_all_wildcard_imports = conf.warn_on_all_wildcard_imports;
     store.register_late_pass(move || box wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports));
-    store.register_early_pass(|| box macro_use::MacroUseImports);
     store.register_late_pass(|| box verbose_file_reads::VerboseFileReads);
     store.register_late_pass(|| box redundant_pub_crate::RedundantPubCrate::default());
     store.register_late_pass(|| box unnamed_address::UnnamedAddress);
@@ -1080,6 +1056,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         single_char_binding_names_threshold,
     });
     store.register_early_pass(|| box unnested_or_patterns::UnnestedOrPatterns);
+    store.register_late_pass(|| box macro_use::MacroUseImports::default());
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1187,6 +1164,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::OPTION_OPTION),
         LintId::of(&unicode::NON_ASCII_LITERAL),
         LintId::of(&unicode::UNICODE_NOT_NFC),
+        LintId::of(&unnested_or_patterns::UNNESTED_OR_PATTERNS),
         LintId::of(&unused_self::UNUSED_SELF),
         LintId::of(&wildcard_imports::ENUM_GLOB_USE),
         LintId::of(&wildcard_imports::WILDCARD_IMPORTS),
@@ -1440,7 +1418,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
         LintId::of(&unnecessary_sort_by::UNNECESSARY_SORT_BY),
-        LintId::of(&unnested_or_patterns::UNNESTED_OR_PATTERNS),
         LintId::of(&unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME),
         LintId::of(&unused_io_amount::UNUSED_IO_AMOUNT),
         LintId::of(&unwrap::PANICKING_UNWRAP),
@@ -1624,7 +1601,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::UNNECESSARY_CAST),
         LintId::of(&types::VEC_BOX),
         LintId::of(&unnecessary_sort_by::UNNECESSARY_SORT_BY),
-        LintId::of(&unnested_or_patterns::UNNESTED_OR_PATTERNS),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
         LintId::of(&useless_conversion::USELESS_CONVERSION),
         LintId::of(&zero_div_zero::ZERO_DIVIDED_BY_ZERO),

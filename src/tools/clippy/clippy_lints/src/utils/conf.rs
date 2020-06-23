@@ -106,8 +106,8 @@ macro_rules! define_Conf {
 
 pub use self::helpers::Conf;
 define_Conf! {
-    /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about
-    (blacklisted_names, "blacklisted_names": Vec<String>, ["foo", "bar", "baz", "quux"].iter().map(ToString::to_string).collect()),
+    /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses
+    (blacklisted_names, "blacklisted_names": Vec<String>, ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
     /// Lint: COGNITIVE_COMPLEXITY. The maximum cognitive complexity a function can have
     (cognitive_complexity_threshold, "cognitive_complexity_threshold": u64, 25),
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY. Use the Cognitive Complexity lint instead.

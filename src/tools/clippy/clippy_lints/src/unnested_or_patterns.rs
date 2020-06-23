@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub UNNESTED_OR_PATTERNS,
-    complexity,
+    pedantic,
     "unnested or-patterns, e.g., `Foo(Bar) | Foo(Baz) instead of `Foo(Bar | Baz)`"
 }
 

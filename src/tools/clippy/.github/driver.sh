@@ -26,4 +26,16 @@ unset CARGO_MANIFEST_DIR
 sed -e "s,tests/ui,\$DIR," -e "/= help/d" cstring.stderr > normalized.stderr
 diff normalized.stderr tests/ui/cstring.stderr
 
+
+# make sure "clippy-driver --rustc --arg" and "rustc --arg" behave the same
+SYSROOT=`rustc --print sysroot`
+diff <(LD_LIBRARY_PATH=${SYSROOT}/lib ./target/debug/clippy-driver --rustc --version --verbose) <(rustc --version --verbose)
+
+
+echo "fn main() {}" > target/driver_test.rs
+# we can't run 2 rustcs on the same file at the same time
+CLIPPY=`LD_LIBRARY_PATH=${SYSROOT}/lib ./target/debug/clippy-driver ./target/driver_test.rs --rustc`
+RUSTC=`rustc ./target/driver_test.rs`
+diff <($CLIPPY) <($RUSTC)
+
 # TODO: CLIPPY_CONF_DIR / CARGO_MANIFEST_DIR

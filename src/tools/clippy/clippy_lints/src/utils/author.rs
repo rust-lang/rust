@@ -251,7 +251,10 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 }
             },
             ExprKind::MethodCall(ref _method_name, ref _generics, ref _args, ref _fn_span) => {
-                println!("MethodCall(ref method_name, ref generics, ref args, ref fn_span) = {};", current);
+                println!(
+                    "MethodCall(ref method_name, ref generics, ref args, ref fn_span) = {};",
+                    current
+                );
                 println!("    // unimplemented: `ExprKind::MethodCall` is not further destructured at the moment");
             },
             ExprKind::Tup(ref elements) => {

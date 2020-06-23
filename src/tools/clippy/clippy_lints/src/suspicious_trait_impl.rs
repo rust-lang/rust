@@ -184,7 +184,7 @@ struct BinaryExprVisitor {
     in_binary_expr: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for BinaryExprVisitor {
+impl<'tcx> Visitor<'tcx> for BinaryExprVisitor {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
