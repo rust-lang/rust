@@ -27,6 +27,10 @@ fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
 fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
 //~^ ERROR cannot infer an appropriate lifetime
 
+fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
+//~^ ERROR cannot infer an appropriate lifetime
+//~| ERROR cannot infer an appropriate lifetime
+
 trait LifetimeTrait<'a> {}
 impl<'a> LifetimeTrait<'a> for &'a i32 {}
 

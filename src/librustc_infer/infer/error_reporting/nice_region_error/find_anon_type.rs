@@ -26,7 +26,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         &self,
         region: Region<'tcx>,
         br: &ty::BoundRegion,
-    ) -> Option<(&hir::Ty<'_>, &hir::FnDecl<'_>)> {
+    ) -> Option<(&hir::Ty<'tcx>, &hir::FnDecl<'tcx>)> {
         if let Some(anon_reg) = self.tcx().is_suitable_region(region) {
             let def_id = anon_reg.def_id;
             if let Some(def_id) = def_id.as_local() {
