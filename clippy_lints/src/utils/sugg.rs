@@ -13,7 +13,7 @@ use rustc_span::{BytePos, Pos};
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
-use std::ops::{Add, Sub, Not};
+use std::ops::{Add, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
@@ -334,7 +334,7 @@ macro_rules! forward_binop_impls_to_ref {
                 $imp::$method(&self, &other)
             }
         }
-    }
+    };
 }
 
 impl Add for &Sugg<'_> {
