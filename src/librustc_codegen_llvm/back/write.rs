@@ -23,6 +23,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, SanitizerSet, SwitchWithOptPath};
 use rustc_session::Session;
+use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
 use rustc_target::spec::{CodeModel, RelocModel};
 
@@ -140,7 +141,7 @@ pub fn target_machine_factory(
     // lower atomic operations to single-threaded operations.
     if singlethread
         && sess.target.target.llvm_target.contains("wasm32")
-        && features.iter().any(|s| *s == "+atomics")
+        && sess.target_features.contains(&sym::atomics)
     {
         singlethread = false;
     }
