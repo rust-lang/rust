@@ -5,7 +5,10 @@ LL |     let x: Box<_> = box 1;
    |         - move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
 ...
 LL |         (_, 2) if take(x) => (),
-   |                        ^ value moved here, in previous iteration of loop
+   |                        ^
+   |                        |
+   |                        value moved here
+   |                        value used here after move
 
 error: aborting due to previous error
 
