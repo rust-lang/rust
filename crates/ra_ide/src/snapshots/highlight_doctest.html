@@ -32,7 +32,10 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .control            { font-style: italic; }
 </style>
-<pre><code><span class="keyword">struct</span> <span class="struct declaration">Foo</span> {
+<pre><code><span class="comment documentation">/// ```</span>
+<span class="comment documentation">/// </span><span class="keyword">let</span> _ = <span class="string_literal">"early doctests should not go boom"</span>;
+<span class="comment documentation">/// ```</span>
+<span class="keyword">struct</span> <span class="struct declaration">Foo</span> {
     <span class="field declaration">bar</span>: <span class="builtin_type">bool</span>,
 }
 

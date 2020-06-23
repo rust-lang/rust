@@ -155,17 +155,21 @@ pub(super) fn highlight_doc_comment(
         let mut start_offset = None;
         let mut end_offset = None;
         for (line_start, orig_line_start) in range_mapping.range(..h.range.end()).rev() {
+            // It's possible for orig_line_start - line_start to be negative. Add h.range.start()
+            // here and remove it from the end range after the loop below so that the values are
+            // always non-negative.
+            let offset = h.range.start() + orig_line_start - line_start;
             if line_start <= &h.range.start() {
-                start_offset.get_or_insert(orig_line_start - line_start);
+                start_offset.get_or_insert(offset);
                 break;
             } else {
-                end_offset.get_or_insert(orig_line_start - line_start);
+                end_offset.get_or_insert(offset);
             }
         }
         if let Some(start_offset) = start_offset {
             h.range = TextRange::new(
-                h.range.start() + start_offset,
-                h.range.end() + end_offset.unwrap_or(start_offset),
+                start_offset,
+                h.range.end() + end_offset.unwrap_or(start_offset) - h.range.start(),
             );
 
             stack.add(h);

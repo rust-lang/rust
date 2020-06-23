@@ -291,6 +291,9 @@ fn main() {
 fn test_highlight_doctest() {
     check_highlighting(
         r#"
+/// ```
+/// let _ = "early doctests should not go boom";
+/// ```
 struct Foo {
     bar: bool,
 }
