@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `MyStruct: std::default::Default` is not satisfied
+  --> $DIR/issue-59435.rs:11:5
+   |
+LL |     type MyType: Default;
+   |     --------------------- required by `MyTrait::MyType`
+...
+LL |     default type MyType = MyStruct;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::default::Default` is not implemented for `MyStruct`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
