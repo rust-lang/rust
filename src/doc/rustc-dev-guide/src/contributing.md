@@ -306,14 +306,17 @@ Caused by:
 failed to run: ~/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo build --manifest-path ~/rust/src/bootstrap/Cargo.toml
 ```
 
-If you haven't used the `[patch]`
-section of `Cargo.toml` before, there is [some relevant documentation about it
-in the cargo docs](http://doc.crates.io/manifest.html#the-patch-section). In
-addition to that, you should read the
-[Overriding dependencies](http://doc.crates.io/specifying-dependencies.html#overriding-dependencies)
-section of the documentation as well.
+The [`[patch]`][patchsec] section of `Cargo.toml` can be very useful for
+testing. In addition to that, you should read the [Overriding
+dependencies][overriding] section of the documentation.
 
-Specifically, the following [section in Overriding dependencies](http://doc.crates.io/specifying-dependencies.html#testing-a-bugfix) reveals what the problem is:
+[patchsec]: http://doc.crates.io/manifest.html#the-patch-section
+[overriding]: http://doc.crates.io/specifying-dependencies.html#overriding-dependencies
+
+Specifically, the following [section in Overriding dependencies][testingbugfix]
+reveals what the problem is:
+
+[testingbugfix]: http://doc.crates.io/specifying-dependencies.html#testing-a-bugfix
 
 > Next up we need to ensure that our lock file is updated to use this new
 > version of uuid so our project uses the locally checked out copy instead of
