@@ -964,6 +964,14 @@ impl ToSocketAddrs for (&str, u16) {
     }
 }
 
+#[stable(feature = "string_u16_to_socket_addrs", since = "1.46.0")]
+impl ToSocketAddrs for (String, u16) {
+    type Iter = vec::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
+        (&*self.0, self.1).to_socket_addrs()
+    }
+}
+
 // accepts strings like 'localhost:12345'
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToSocketAddrs for str {
