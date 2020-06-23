@@ -348,6 +348,8 @@ To update test data, run with `UPDATE_EXPECTATIONS` variable:
 env UPDATE_EXPECTATIONS=1 cargo qt
 ```
 
+After adding a new inline test you need to run `cargo xtest codegen` and also update the test data as described above.
+
 # Logging
 
 Logging is done by both rust-analyzer and VS Code, so it might be tricky to

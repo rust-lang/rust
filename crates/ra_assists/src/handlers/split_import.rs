@@ -66,4 +66,14 @@ mod tests {
     fn issue4044() {
         check_assist_not_applicable(split_import, "use crate::<|>:::self;")
     }
+
+    #[test]
+    fn test_empty_use() {
+        check_assist_not_applicable(
+            split_import,
+            r"
+use std::<|>
+fn main() {}",
+        );
+    }
 }

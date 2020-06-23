@@ -127,7 +127,7 @@ fn first_path(path: &ast::Path) -> ast::Path {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
@@ -275,5 +275,15 @@ use foo::{
 bar::baz};
 ",
         )
+    }
+
+    #[test]
+    fn test_empty_use() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+use std::<|>
+fn main() {}",
+        );
     }
 }
