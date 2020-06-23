@@ -372,22 +372,26 @@ impl HighlightedRangeStack {
             } else {
                 let maybe_idx =
                     prev.iter().position(|parent| parent.range.contains(child.range.start()));
-                if let (Some(_), Some(idx)) = (overwrite_parent, maybe_idx) {
-                    Self::intersect_partial(&mut prev[idx], &child);
-                    let insert_idx = if prev[idx].range.is_empty() {
-                        prev.remove(idx);
-                        idx
-                    } else {
-                        idx + 1
-                    };
-                    prev.insert(insert_idx, child);
-                } else if let None = maybe_idx {
-                    let idx = prev
-                        .binary_search_by_key(&child.range.start(), |range| range.range.start())
-                        .unwrap_or_else(|x| x);
-                    prev.insert(idx, child);
-                } else {
-                    unreachable!("child range should be completely contained in parent range");
+                match (overwrite_parent, maybe_idx) {
+                    (Some(_), Some(idx)) => {
+                        Self::intersect_partial(&mut prev[idx], &child);
+                        let insert_idx = if prev[idx].range.is_empty() {
+                            prev.remove(idx);
+                            idx
+                        } else {
+                            idx + 1
+                        };
+                        prev.insert(insert_idx, child);
+                    }
+                    (_, None) => {
+                        let idx = prev
+                            .binary_search_by_key(&child.range.start(), |range| range.range.start())
+                            .unwrap_or_else(|x| x);
+                        prev.insert(idx, child);
+                    }
+                    _ => {
+                        unreachable!("child range should be completely contained in parent range");
+                    }
                 }
             }
         }
