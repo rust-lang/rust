@@ -1917,6 +1917,15 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
+    /// Returns the number of variants of the type `T` cast to a `usize`;
+    /// if `T` has no variants, returns 0. Uninhabited variants will be counted.
+    ///
+    /// The to-be-stabilized version of this intrinsic is
+    /// [`std::mem::variant_count`](../../std/mem/fn.variant_count.html)
+    #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
+    #[cfg(not(bootstrap))]
+    pub fn variant_count<T>() -> usize;
+
     /// Rust's "try catch" construct which invokes the function pointer `try_fn`
     /// with the data pointer `data`.
     ///
@@ -1958,6 +1967,12 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[cfg(not(bootstrap))]
     pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
+}
+
+#[rustc_const_unstable(feature = "variant_count", issue = "73662")]
+#[cfg(bootstrap)]
+pub const fn variant_count<T>() -> usize {
+    0
 }
 
 // Some functions are defined here because they accidentally got made
