@@ -35,16 +35,8 @@ use crate::{
 };
 use smallvec::SmallVec;
 
-/// The item tree of a source file.
-#[derive(Debug, Eq, PartialEq)]
-pub struct ItemTree {
-    file_id: HirFileId,
-    top_level: Vec<ModItem>,
-    top_attrs: Attrs,
-    attrs: FxHashMap<ModItem, Attrs>,
-    empty_attrs: Attrs,
-    inner_items: FxHashMap<FileAstId<ast::ModuleItem>, SmallVec<[ModItem; 1]>>,
-
+#[derive(Default, Debug, Eq, PartialEq)]
+struct ItemTreeData {
     imports: Arena<Import>,
     extern_crates: Arena<ExternCrate>,
     functions: Arena<Function>,
@@ -61,6 +53,26 @@ pub struct ItemTree {
     mods: Arena<Mod>,
     macro_calls: Arena<MacroCall>,
     exprs: Arena<Expr>,
+}
+
+#[derive(Debug, Eq, PartialEq, Hash)]
+enum AttrOwner {
+    /// Attributes on an item.
+    ModItem(ModItem),
+    /// Inner attributes of the source file.
+    TopLevel,
+    // FIXME: Store variant and field attrs, and stop reparsing them in `attrs_query`.
+}
+
+/// The item tree of a source file.
+#[derive(Debug, Eq, PartialEq)]
+pub struct ItemTree {
+    file_id: HirFileId,
+    top_level: SmallVec<[ModItem; 1]>,
+    attrs: FxHashMap<AttrOwner, Attrs>,
+    inner_items: FxHashMap<FileAstId<ast::ModuleItem>, SmallVec<[ModItem; 1]>>,
+
+    data: Option<Box<ItemTreeData>>,
 }
 
 impl ItemTree {
@@ -95,7 +107,9 @@ impl ItemTree {
             }
         };
 
-        item_tree.top_attrs = top_attrs.unwrap_or_default();
+        if let Some(attrs) = top_attrs {
+            item_tree.attrs.insert(AttrOwner::TopLevel, attrs);
+        }
         Arc::new(item_tree)
     }
 
@@ -103,26 +117,9 @@ impl ItemTree {
         Self {
             file_id,
             top_level: Default::default(),
-            top_attrs: Default::default(),
             attrs: Default::default(),
-            empty_attrs: Default::default(),
             inner_items: Default::default(),
-            imports: Default::default(),
-            extern_crates: Default::default(),
-            functions: Default::default(),
-            structs: Default::default(),
-            fields: Default::default(),
-            unions: Default::default(),
-            enums: Default::default(),
-            variants: Default::default(),
-            consts: Default::default(),
-            statics: Default::default(),
-            traits: Default::default(),
-            impls: Default::default(),
-            type_aliases: Default::default(),
-            mods: Default::default(),
-            macro_calls: Default::default(),
-            exprs: Default::default(),
+            data: Default::default(),
         }
     }
 
@@ -134,11 +131,11 @@ impl ItemTree {
 
     /// Returns the inner attributes of the source file.
     pub fn top_level_attrs(&self) -> &Attrs {
-        &self.top_attrs
+        self.attrs.get(&AttrOwner::TopLevel).unwrap_or(&Attrs::EMPTY)
     }
 
     pub fn attrs(&self, of: ModItem) -> &Attrs {
-        self.attrs.get(&of).unwrap_or(&self.empty_attrs)
+        self.attrs.get(&AttrOwner::ModItem(of)).unwrap_or(&Attrs::EMPTY)
     }
 
     /// Returns the lowered inner items that `ast` corresponds to.
@@ -168,6 +165,14 @@ impl ItemTree {
         let map = db.ast_id_map(self.file_id);
         let ptr = map.get(id);
         ptr.to_node(&root)
+    }
+
+    fn data(&self) -> &ItemTreeData {
+        self.data.as_ref().expect("attempted to access data of empty ItemTree")
+    }
+
+    fn data_mut(&mut self) -> &mut ItemTreeData {
+        self.data.get_or_insert_with(Box::default)
     }
 }
 
@@ -246,7 +251,7 @@ macro_rules! mod_items {
                 }
 
                 fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self {
-                    &tree.$fld[index]
+                    &tree.data().$fld[index]
                 }
 
                 fn id_from_mod_item(mod_item: ModItem) -> Option<FileItemTreeId<Self>> {
@@ -266,7 +271,7 @@ macro_rules! mod_items {
                 type Output = $typ;
 
                 fn index(&self, index: Idx<$typ>) -> &Self::Output {
-                    &self.$fld[index]
+                    &self.data().$fld[index]
                 }
             }
         )+
@@ -296,7 +301,7 @@ macro_rules! impl_index {
                 type Output = $t;
 
                 fn index(&self, index: Idx<$t>) -> &Self::Output {
-                    &self.$fld[index]
+                    &self.data().$fld[index]
                 }
             }
         )+

@@ -66,6 +66,10 @@ impl Ctx {
         self.tree
     }
 
+    fn data(&mut self) -> &mut ItemTreeData {
+        self.tree.data_mut()
+    }
+
     fn lower_mod_item(&mut self, item: &ast::ModuleItem, inner: bool) -> Option<ModItems> {
         assert!(inner || self.inner_items.is_empty());
 
@@ -124,7 +128,7 @@ impl Ctx {
     }
 
     fn add_attrs(&mut self, item: ModItem, attrs: Attrs) {
-        match self.tree.attrs.entry(item) {
+        match self.tree.attrs.entry(AttrOwner::ModItem(item)) {
             Entry::Occupied(mut entry) => {
                 *entry.get_mut() = entry.get().merge(attrs);
             }
@@ -169,7 +173,7 @@ impl Ctx {
             ast::StructKind::Unit => StructDefKind::Unit,
         };
         let res = Struct { name, visibility, generic_params, fields, ast_id, kind };
-        Some(id(self.tree.structs.alloc(res)))
+        Some(id(self.data().structs.alloc(res)))
     }
 
     fn lower_fields(&mut self, strukt_kind: &ast::StructKind) -> Fields {
@@ -190,7 +194,7 @@ impl Ctx {
         let start = self.next_field_idx();
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
-                self.tree.fields.alloc(data);
+                self.data().fields.alloc(data);
             }
         }
         let end = self.next_field_idx();
@@ -209,7 +213,7 @@ impl Ctx {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
             if let Some(data) = self.lower_tuple_field(i, &field) {
-                self.tree.fields.alloc(data);
+                self.data().fields.alloc(data);
             }
         }
         let end = self.next_field_idx();
@@ -236,7 +240,7 @@ impl Ctx {
         };
         let ast_id = self.source_ast_id_map.ast_id(union);
         let res = Union { name, visibility, generic_params, fields, ast_id };
-        Some(id(self.tree.unions.alloc(res)))
+        Some(id(self.data().unions.alloc(res)))
     }
 
     fn lower_enum(&mut self, enum_: &ast::EnumDef) -> Option<FileItemTreeId<Enum>> {
@@ -249,14 +253,14 @@ impl Ctx {
         };
         let ast_id = self.source_ast_id_map.ast_id(enum_);
         let res = Enum { name, visibility, generic_params, variants, ast_id };
-        Some(id(self.tree.enums.alloc(res)))
+        Some(id(self.data().enums.alloc(res)))
     }
 
     fn lower_variants(&mut self, variants: &ast::EnumVariantList) -> Range<Idx<Variant>> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
-                self.tree.variants.alloc(data);
+                self.data().variants.alloc(data);
             }
         }
         let end = self.next_variant_idx();
@@ -327,7 +331,7 @@ impl Ctx {
         };
         res.generic_params = self.lower_generic_params(GenericsOwner::Function(&res), func);
 
-        Some(id(self.tree.functions.alloc(res)))
+        Some(id(self.data().functions.alloc(res)))
     }
 
     fn lower_type_alias(
@@ -341,7 +345,7 @@ impl Ctx {
         let generic_params = self.lower_generic_params(GenericsOwner::TypeAlias, type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
         let res = TypeAlias { name, visibility, bounds, generic_params, type_ref, ast_id };
-        Some(id(self.tree.type_aliases.alloc(res)))
+        Some(id(self.data().type_aliases.alloc(res)))
     }
 
     fn lower_static(&mut self, static_: &ast::StaticDef) -> Option<FileItemTreeId<Static>> {
@@ -351,7 +355,7 @@ impl Ctx {
         let mutable = static_.mut_token().is_some();
         let ast_id = self.source_ast_id_map.ast_id(static_);
         let res = Static { name, visibility, mutable, type_ref, ast_id };
-        Some(id(self.tree.statics.alloc(res)))
+        Some(id(self.data().statics.alloc(res)))
     }
 
     fn lower_const(&mut self, konst: &ast::ConstDef) -> FileItemTreeId<Const> {
@@ -360,7 +364,7 @@ impl Ctx {
         let visibility = self.lower_visibility(konst);
         let ast_id = self.source_ast_id_map.ast_id(konst);
         let res = Const { name, visibility, type_ref, ast_id };
-        id(self.tree.consts.alloc(res))
+        id(self.data().consts.alloc(res))
     }
 
     fn lower_module(&mut self, module: &ast::Module) -> Option<FileItemTreeId<Mod>> {
@@ -386,7 +390,7 @@ impl Ctx {
         };
         let ast_id = self.source_ast_id_map.ast_id(module);
         let res = Mod { name, visibility, kind, ast_id };
-        Some(id(self.tree.mods.alloc(res)))
+        Some(id(self.data().mods.alloc(res)))
     }
 
     fn lower_trait(&mut self, trait_def: &ast::TraitDef) -> Option<FileItemTreeId<Trait>> {
@@ -417,7 +421,7 @@ impl Ctx {
             items: items.unwrap_or_default(),
             ast_id,
         };
-        Some(id(self.tree.traits.alloc(res)))
+        Some(id(self.data().traits.alloc(res)))
     }
 
     fn lower_impl(&mut self, impl_def: &ast::ImplDef) -> Option<FileItemTreeId<Impl>> {
@@ -440,7 +444,7 @@ impl Ctx {
             .collect();
         let ast_id = self.source_ast_id_map.ast_id(impl_def);
         let res = Impl { generic_params, target_trait, target_type, is_negative, items, ast_id };
-        Some(id(self.tree.impls.alloc(res)))
+        Some(id(self.data().impls.alloc(res)))
     }
 
     fn lower_use(&mut self, use_item: &ast::UseItem) -> Vec<FileItemTreeId<Import>> {
@@ -451,7 +455,7 @@ impl Ctx {
 
         // Every use item can expand to many `Import`s.
         let mut imports = Vec::new();
-        let tree = &mut self.tree;
+        let tree = self.tree.data_mut();
         ModPath::expand_use_item(
             InFile::new(self.file, use_item.clone()),
             &self.hygiene,
@@ -484,7 +488,7 @@ impl Ctx {
         let is_macro_use = extern_crate.has_atom_attr("macro_use");
 
         let res = ExternCrate { path, alias, visibility, is_macro_use, ast_id };
-        Some(id(self.tree.extern_crates.alloc(res)))
+        Some(id(self.data().extern_crates.alloc(res)))
     }
 
     fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<FileItemTreeId<MacroCall>> {
@@ -511,7 +515,7 @@ impl Ctx {
 
         let is_builtin = attrs.by_key("rustc_builtin_macro").exists();
         let res = MacroCall { name, path, is_export, is_builtin, is_local_inner, ast_id };
-        Some(id(self.tree.macro_calls.alloc(res)))
+        Some(id(self.data().macro_calls.alloc(res)))
     }
 
     fn lower_extern_block(&mut self, block: &ast::ExternBlock) -> Vec<ModItem> {
@@ -619,10 +623,14 @@ impl Ctx {
     }
 
     fn next_field_idx(&self) -> Idx<Field> {
-        Idx::from_raw(RawId::from(self.tree.fields.len() as u32))
+        Idx::from_raw(RawId::from(
+            self.tree.data.as_ref().map_or(0, |data| data.fields.len() as u32),
+        ))
     }
     fn next_variant_idx(&self) -> Idx<Variant> {
-        Idx::from_raw(RawId::from(self.tree.variants.len() as u32))
+        Idx::from_raw(RawId::from(
+            self.tree.data.as_ref().map_or(0, |data| data.variants.len() as u32),
+        ))
     }
 }
 

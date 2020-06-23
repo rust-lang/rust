@@ -38,6 +38,8 @@ impl ops::Deref for Attrs {
 }
 
 impl Attrs {
+    pub const EMPTY: Attrs = Attrs { entries: None };
+
     pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
         match def {
             AttrDefId::ModuleId(module) => {
