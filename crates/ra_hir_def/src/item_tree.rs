@@ -12,7 +12,7 @@ use std::{
     sync::Arc,
 };
 
-use ast::{AstNode, AttrsOwner, ModuleItemOwner, NameOwner, StructKind, TypeAscriptionOwner};
+use ast::{AstNode, AttrsOwner, NameOwner, StructKind, TypeAscriptionOwner};
 use either::Either;
 use hir_expand::{
     ast_id_map::FileAstId,
@@ -73,25 +73,28 @@ impl ItemTree {
         };
 
         let hygiene = Hygiene::new(db.upcast(), file_id);
+        let ctx = lower::Ctx::new(db, hygiene.clone(), file_id);
         let mut top_attrs = None;
-        let (macro_storage, file_storage);
-        let item_owner = match_ast! {
+        let mut item_tree = match_ast! {
             match syntax {
-                ast::MacroItems(items) => {
-                    macro_storage = items;
-                    &macro_storage as &dyn ModuleItemOwner
-                },
                 ast::SourceFile(file) => {
                     top_attrs = Some(Attrs::new(&file, &hygiene));
-                    file_storage = file;
-                    &file_storage
+                    ctx.lower_module_items(&file)
                 },
-                _ => return Arc::new(Self::empty(file_id)),
+                ast::MacroItems(items) => {
+                    ctx.lower_module_items(&items)
+                },
+                // Macros can expand to expressions. We return an empty item tree in this case, but
+                // still need to collect inner items.
+                ast::Expr(e) => {
+                    ctx.lower_inner_items(e.syntax())
+                },
+                _ => {
+                    panic!("cannot create item tree from {:?}", syntax);
+                },
             }
         };
 
-        let ctx = lower::Ctx::new(db, hygiene, file_id);
-        let mut item_tree = ctx.lower(item_owner);
         item_tree.top_attrs = top_attrs.unwrap_or_default();
         Arc::new(item_tree)
     }

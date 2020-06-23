@@ -52,12 +52,17 @@ impl Ctx {
         }
     }
 
-    pub(super) fn lower(mut self, item_owner: &dyn ModuleItemOwner) -> ItemTree {
+    pub(super) fn lower_module_items(mut self, item_owner: &dyn ModuleItemOwner) -> ItemTree {
         self.tree.top_level = item_owner
             .items()
             .flat_map(|item| self.lower_mod_item(&item, false))
             .flat_map(|items| items.0)
             .collect();
+        self.tree
+    }
+
+    pub(super) fn lower_inner_items(mut self, within: &SyntaxNode) -> ItemTree {
+        self.collect_inner_items(within);
         self.tree
     }
 

@@ -564,12 +564,14 @@ impl ExprCollector<'_> {
             });
         let tree = &self.item_trees[index].1;
 
+        // FIXME: This probably breaks with `use` items, since they produce multiple item tree nodes
+
         // Root file (non-macro).
         tree.all_inner_items()
             .chain(tree.top_level_items().iter().copied())
             .filter_map(|mod_item| mod_item.downcast::<S>())
             .find(|tree_id| tree[*tree_id].ast_id().upcast() == id.value)
-            .unwrap()
+            .unwrap_or_else(|| panic!("couldn't find inner item for {:?}", id))
     }
 
     fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
