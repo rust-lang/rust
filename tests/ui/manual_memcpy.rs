@@ -160,12 +160,12 @@ pub fn manual_copy_with_counters(src: &[i32], dst: &mut [i32], dst2: &mut [i32])
     }
 
     let mut count = 3;
-    let mut count = 30;
+    let mut count2 = 30;
     for i in 0..src.len() {
         dst[count] = src[i];
-        dst2[count] = src[i];
+        dst2[count2] = src[i];
         count += 1;
-        count += 1;
+        count2 += 1;
     }
 
     // make sure parentheses are added properly to bitwise operators, which have lower precedence than
