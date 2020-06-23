@@ -424,31 +424,6 @@ fn extern_crate_rename_2015_edition() {
 }
 
 #[test]
-fn import_across_source_roots() {
-    let map = def_map(
-        "
-        //- /main.rs crate:main deps:test_crate
-        use test_crate::a::b::C;
-
-        //- root /test_crate/
-
-        //- /test_crate/lib.rs crate:test_crate
-        pub mod a {
-            pub mod b {
-                pub struct C;
-            }
-        }
-
-        ",
-    );
-
-    assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮C: t v
-    "###);
-}
-
-#[test]
 fn reexport_across_crates() {
     let map = def_map(
         "

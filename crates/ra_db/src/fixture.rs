@@ -114,7 +114,6 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, ra_fixture: &str) -> FileId 
     let crate_graph = if let Some(entry) = fixture {
         let meta = match ParsedMeta::from(&entry.meta) {
             ParsedMeta::File(it) => it,
-            _ => panic!("with_single_file only support file meta"),
         };
 
         let mut crate_graph = CrateGraph::default();
@@ -159,21 +158,14 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
     let mut default_crate_root: Option<FileId> = None;
 
     let mut file_set = FileSet::default();
-    let mut source_root_id = WORKSPACE;
-    let mut source_root_prefix = "/".to_string();
+    let source_root_id = WORKSPACE;
+    let source_root_prefix = "/".to_string();
     let mut file_id = FileId(0);
 
     let mut file_position = None;
 
     for entry in fixture.iter() {
         let meta = match ParsedMeta::from(&entry.meta) {
-            ParsedMeta::Root { path } => {
-                let file_set = std::mem::replace(&mut file_set, FileSet::default());
-                db.set_source_root(source_root_id, Arc::new(SourceRoot::new_local(file_set)));
-                source_root_id.0 += 1;
-                source_root_prefix = path;
-                continue;
-            }
             ParsedMeta::File(it) => it,
         };
         assert!(meta.path.starts_with(&source_root_prefix));
@@ -239,7 +231,6 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
 }
 
 enum ParsedMeta {
-    Root { path: String },
     File(FileMeta),
 }
 
@@ -255,11 +246,6 @@ struct FileMeta {
 impl From<&FixtureMeta> for ParsedMeta {
     fn from(meta: &FixtureMeta) -> Self {
         match meta {
-            FixtureMeta::Root { path } => {
-                // `Self::Root` causes a false warning: 'variant is never constructed: `Root` '
-                // see https://github.com/rust-lang/rust/issues/69018
-                ParsedMeta::Root { path: path.to_owned() }
-            }
             FixtureMeta::File(f) => Self::File(FileMeta {
                 path: f.path.to_owned(),
                 krate: f.crate_name.to_owned(),

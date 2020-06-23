@@ -10,7 +10,6 @@ pub struct FixtureEntry {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum FixtureMeta {
-    Root { path: String },
     File(FileMeta),
 }
 
@@ -27,7 +26,6 @@ pub struct FileMeta {
 impl FixtureMeta {
     pub fn path(&self) -> &str {
         match self {
-            FixtureMeta::Root { path } => &path,
             FixtureMeta::File(f) => &f.path,
         }
     }
@@ -35,21 +33,18 @@ impl FixtureMeta {
     pub fn crate_name(&self) -> Option<&String> {
         match self {
             FixtureMeta::File(f) => f.crate_name.as_ref(),
-            _ => None,
         }
     }
 
     pub fn cfg_options(&self) -> Option<&CfgOptions> {
         match self {
             FixtureMeta::File(f) => Some(&f.cfg),
-            _ => None,
         }
     }
 
     pub fn edition(&self) -> Option<&String> {
         match self {
             FixtureMeta::File(f) => f.edition.as_ref(),
-            _ => None,
         }
     }
 
@@ -63,7 +58,6 @@ impl FixtureMeta {
                 Self {
                     iter: match meta {
                         FixtureMeta::File(f) => Some(f.env.iter()),
-                        _ => None,
                     },
                 }
             }
@@ -145,12 +139,6 @@ The offending line: {:?}"#,
 //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
 fn parse_meta(meta: &str) -> FixtureMeta {
     let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
-
-    if components[0] == "root" {
-        let path = components[1].to_string();
-        assert!(path.starts_with("/") && path.ends_with("/"));
-        return FixtureMeta::Root { path };
-    }
 
     let path = components[0].to_string();
     assert!(path.starts_with("/"));
