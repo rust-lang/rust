@@ -355,7 +355,6 @@ pub struct ExternCrate {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Function {
     pub name: Name,
-    pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub generic_params: GenericParams,
     pub has_self_param: bool,
@@ -368,7 +367,6 @@ pub struct Function {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Struct {
     pub name: Name,
-    pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub generic_params: GenericParams,
     pub fields: Fields,
@@ -389,7 +387,6 @@ pub enum StructDefKind {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Union {
     pub name: Name,
-    pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub generic_params: GenericParams,
     pub fields: Fields,
@@ -399,7 +396,6 @@ pub struct Union {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Enum {
     pub name: Name,
-    pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub generic_params: GenericParams,
     pub variants: Range<Idx<Variant>>,

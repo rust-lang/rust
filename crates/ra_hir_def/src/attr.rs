@@ -107,6 +107,18 @@ impl Attrs {
         Attrs { entries }
     }
 
+    pub fn merge(&self, other: Attrs) -> Attrs {
+        match (&self.entries, &other.entries) {
+            (None, None) => Attrs { entries: None },
+            (Some(entries), None) | (None, Some(entries)) => {
+                Attrs { entries: Some(entries.clone()) }
+            }
+            (Some(a), Some(b)) => {
+                Attrs { entries: Some(a.iter().chain(b.iter()).cloned().collect()) }
+            }
+        }
+    }
+
     pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
         AttrQuery { attrs: self, key }
     }

@@ -40,7 +40,7 @@ impl FunctionData {
             name: func.name.clone(),
             params: func.params.clone(),
             ret_type: func.ret_type.clone(),
-            attrs: func.attrs.clone(),
+            attrs: item_tree.attrs(loc.id.value.into()).clone(),
             has_self_param: func.has_self_param,
             is_unsafe: func.is_unsafe,
             visibility: func.visibility.clone(),
@@ -224,7 +224,8 @@ fn collect_items(
         match item {
             AssocItem::Function(id) => {
                 let item = &item_tree[id];
-                if !item.attrs.is_cfg_enabled(&cfg_options) {
+                let attrs = item_tree.attrs(id.into());
+                if !attrs.is_cfg_enabled(&cfg_options) {
                     continue;
                 }
                 let def = FunctionLoc { container, id: ItemTreeId::new(file_id, id) }.intern(db);

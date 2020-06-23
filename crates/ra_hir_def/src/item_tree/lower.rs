@@ -12,7 +12,7 @@ use ra_syntax::{
     SyntaxNode,
 };
 use smallvec::SmallVec;
-use std::{mem, sync::Arc};
+use std::{collections::hash_map::Entry, mem, sync::Arc};
 
 fn id<N: ItemTreeNode>(index: Idx<N>) -> FileItemTreeId<N> {
     FileItemTreeId { index, _p: PhantomData }
@@ -116,11 +116,22 @@ impl Ctx {
 
         if !attrs.is_empty() {
             for item in items.iter().flat_map(|items| &items.0) {
-                self.tree.attrs.insert(*item, attrs.clone());
+                self.add_attrs(*item, attrs.clone());
             }
         }
 
         items
+    }
+
+    fn add_attrs(&mut self, item: ModItem, attrs: Attrs) {
+        match self.tree.attrs.entry(item) {
+            Entry::Occupied(mut entry) => {
+                *entry.get_mut() = entry.get().merge(attrs);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(attrs);
+            }
+        }
     }
 
     fn collect_inner_items(&mut self, container: &SyntaxNode) {
@@ -147,7 +158,6 @@ impl Ctx {
     }
 
     fn lower_struct(&mut self, strukt: &ast::StructDef) -> Option<FileItemTreeId<Struct>> {
-        let attrs = self.lower_attrs(strukt);
         let visibility = self.lower_visibility(strukt);
         let name = strukt.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Struct, strukt);
@@ -158,7 +168,7 @@ impl Ctx {
             ast::StructKind::Tuple(_) => StructDefKind::Tuple,
             ast::StructKind::Unit => StructDefKind::Unit,
         };
-        let res = Struct { name, attrs, visibility, generic_params, fields, ast_id, kind };
+        let res = Struct { name, visibility, generic_params, fields, ast_id, kind };
         Some(id(self.tree.structs.alloc(res)))
     }
 
@@ -215,7 +225,6 @@ impl Ctx {
     }
 
     fn lower_union(&mut self, union: &ast::UnionDef) -> Option<FileItemTreeId<Union>> {
-        let attrs = self.lower_attrs(union);
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Union, union);
@@ -226,12 +235,11 @@ impl Ctx {
             None => Fields::Record(self.next_field_idx()..self.next_field_idx()),
         };
         let ast_id = self.source_ast_id_map.ast_id(union);
-        let res = Union { name, attrs, visibility, generic_params, fields, ast_id };
+        let res = Union { name, visibility, generic_params, fields, ast_id };
         Some(id(self.tree.unions.alloc(res)))
     }
 
     fn lower_enum(&mut self, enum_: &ast::EnumDef) -> Option<FileItemTreeId<Enum>> {
-        let attrs = self.lower_attrs(enum_);
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Enum, enum_);
@@ -240,7 +248,7 @@ impl Ctx {
             None => self.next_variant_idx()..self.next_variant_idx(),
         };
         let ast_id = self.source_ast_id_map.ast_id(enum_);
-        let res = Enum { name, attrs, visibility, generic_params, variants, ast_id };
+        let res = Enum { name, visibility, generic_params, variants, ast_id };
         Some(id(self.tree.enums.alloc(res)))
     }
 
@@ -263,7 +271,6 @@ impl Ctx {
     }
 
     fn lower_function(&mut self, func: &ast::FnDef) -> Option<FileItemTreeId<Function>> {
-        let attrs = self.lower_attrs(func);
         let visibility = self.lower_visibility(func);
         let name = func.name()?.as_name();
 
@@ -309,7 +316,6 @@ impl Ctx {
         let ast_id = self.source_ast_id_map.ast_id(func);
         let mut res = Function {
             name,
-            attrs,
             visibility,
             generic_params: GenericParams::default(),
             has_self_param,
@@ -390,9 +396,13 @@ impl Ctx {
         let items = trait_def.item_list().map(|list| {
             self.with_inherited_visibility(visibility.clone(), |this| {
                 list.items()
-                    .flat_map(|item| {
+                    .filter_map(|item| {
+                        let attrs = Attrs::new(&item, &this.hygiene);
                         this.collect_inner_items(item.syntax());
-                        this.lower_assoc_item(&item)
+                        this.lower_assoc_item(&item).map(|item| {
+                            this.add_attrs(item.into(), attrs);
+                            item
+                        })
                     })
                     .collect()
             })
@@ -422,6 +432,8 @@ impl Ctx {
             .filter_map(|item| {
                 self.collect_inner_items(item.syntax());
                 let assoc = self.lower_assoc_item(&item)?;
+                let attrs = Attrs::new(&item, &self.hygiene);
+                self.add_attrs(assoc.into(), attrs);
                 Some(assoc)
             })
             .collect();
@@ -506,6 +518,7 @@ impl Ctx {
             list.extern_items()
                 .filter_map(|item| {
                     self.collect_inner_items(item.syntax());
+                    let attrs = Attrs::new(&item, &self.hygiene);
                     let id = match item {
                         ast::ExternItem::FnDef(ast) => {
                             let func = self.lower_function(&ast)?;
@@ -516,6 +529,7 @@ impl Ctx {
                             statik.into()
                         }
                     };
+                    self.add_attrs(id, attrs);
                     Some(id)
                 })
                 .collect()
@@ -576,9 +590,6 @@ impl Ctx {
         }
     }
 
-    fn lower_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
-        Attrs::new(item, &self.hygiene)
-    }
     fn lower_visibility(&self, item: &impl ast::VisibilityOwner) -> RawVisibility {
         if let Some(vis) = self.forced_visibility.as_ref() {
             vis.clone()
