@@ -123,6 +123,28 @@ elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
       -
 else
     echo Invalid image: $image
+
+    # Check whether the image exists for other architectures
+    for arch_dir in "${script_dir}"/host-*; do
+        # Avoid checking non-directories and the current host architecture directory
+        if ! [[ -d "${arch_dir}" ]]; then
+            continue
+        fi
+        if [[ "${arch_dir}" = "${docker_dir}" ]]; then
+            continue
+        fi
+
+        arch_name="$(basename "${arch_dir}" | sed 's/^host-//')"
+        if [[ -f "${arch_dir}/${image}/Dockerfile" ]]; then
+            echo "Note: the image exists for the ${arch_name} host architecture"
+        elif [[ -f "${arch_dir}/disabled/${image}/Dockerfile" ]]; then
+            echo "Note: the disabled image exists for the ${arch_name} host architecture"
+        else
+            continue
+        fi
+        echo "Note: the current host architecture is $(uname -m)"
+    done
+
     exit 1
 fi
 
