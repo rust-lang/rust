@@ -271,7 +271,7 @@ Gnome Builder currently has support for RLS, and there's no way to configure the
 
 ==== GNOME Builder (Nightly)
 
-https://nightly.gnome.org/repo/appstream/org.gnome.Builder.flatpakref[GNOME Builder (Nightly)] has now native support for `rust-analyzer` out of the box. If the `rust-analyzer` binary is not installed GNOME Builder will ask for installing the binary for you when opening up the first time a Rust source file.
+https://nightly.gnome.org/repo/appstream/org.gnome.Builder.flatpakref[GNOME Builder (Nightly)] has now native support for `rust-analyzer` out of the box. If the `rust-analyzer` binary is not available, GNOME Builder can install it when opening a Rust source file.
 
 == Non-Cargo Based Projects
 
