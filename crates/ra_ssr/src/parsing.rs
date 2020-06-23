@@ -39,6 +39,18 @@ pub(crate) struct Placeholder {
     pub(crate) ident: SmolStr,
     /// A unique name used in place of this placeholder when we parse the pattern as Rust code.
     stand_in_name: String,
+    pub(crate) constraints: Vec<Constraint>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Constraint {
+    Kind(NodeKind),
+    Not(Box<Constraint>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum NodeKind {
+    Literal,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -177,6 +189,9 @@ fn validate_rule(rule: &SsrRule) -> Result<(), SsrError> {
             if !defined_placeholders.contains(&placeholder.ident) {
                 undefined.push(format!("${}", placeholder.ident));
             }
+            if !placeholder.constraints.is_empty() {
+                bail!("Replacement placeholders cannot have constraints");
+            }
         }
     }
     if !undefined.is_empty() {
@@ -205,23 +220,90 @@ fn tokenize(source: &str) -> Result<Vec<Token>, SsrError> {
 
 fn parse_placeholder(tokens: &mut std::vec::IntoIter<Token>) -> Result<Placeholder, SsrError> {
     let mut name = None;
+    let mut constraints = Vec::new();
     if let Some(token) = tokens.next() {
         match token.kind {
             SyntaxKind::IDENT => {
                 name = Some(token.text);
             }
+            SyntaxKind::L_CURLY => {
+                let token =
+                    tokens.next().ok_or_else(|| SsrError::new("Unexpected end of placeholder"))?;
+                if token.kind == SyntaxKind::IDENT {
+                    name = Some(token.text);
+                }
+                loop {
+                    let token = tokens
+                        .next()
+                        .ok_or_else(|| SsrError::new("Placeholder is missing closing brace '}'"))?;
+                    match token.kind {
+                        SyntaxKind::COLON => {
+                            constraints.push(parse_constraint(tokens)?);
+                        }
+                        SyntaxKind::R_CURLY => break,
+                        _ => bail!("Unexpected token while parsing placeholder: '{}'", token.text),
+                    }
+                }
+            }
             _ => {
-                bail!("Placeholders should be $name");
+                bail!("Placeholders should either be $name or ${name:constraints}");
             }
         }
     }
     let name = name.ok_or_else(|| SsrError::new("Placeholder ($) with no name"))?;
-    Ok(Placeholder::new(name))
+    Ok(Placeholder::new(name, constraints))
+}
+
+fn parse_constraint(tokens: &mut std::vec::IntoIter<Token>) -> Result<Constraint, SsrError> {
+    let constraint_type = tokens
+        .next()
+        .ok_or_else(|| SsrError::new("Found end of placeholder while looking for a constraint"))?
+        .text
+        .to_string();
+    match constraint_type.as_str() {
+        "kind" => {
+            expect_token(tokens, "(")?;
+            let t = tokens.next().ok_or_else(|| {
+                SsrError::new("Unexpected end of constraint while looking for kind")
+            })?;
+            if t.kind != SyntaxKind::IDENT {
+                bail!("Expected ident, found {:?} while parsing kind constraint", t.kind);
+            }
+            expect_token(tokens, ")")?;
+            Ok(Constraint::Kind(NodeKind::from(&t.text)?))
+        }
+        "not" => {
+            expect_token(tokens, "(")?;
+            let sub = parse_constraint(tokens)?;
+            expect_token(tokens, ")")?;
+            Ok(Constraint::Not(Box::new(sub)))
+        }
+        x => bail!("Unsupported constraint type '{}'", x),
+    }
+}
+
+fn expect_token(tokens: &mut std::vec::IntoIter<Token>, expected: &str) -> Result<(), SsrError> {
+    if let Some(t) = tokens.next() {
+        if t.text == expected {
+            return Ok(());
+        }
+        bail!("Expected {} found {}", expected, t.text);
+    }
+    bail!("Expected {} found end of stream");
+}
+
+impl NodeKind {
+    fn from(name: &SmolStr) -> Result<NodeKind, SsrError> {
+        Ok(match name.as_str() {
+            "literal" => NodeKind::Literal,
+            _ => bail!("Unknown node kind '{}'", name),
+        })
+    }
 }
 
 impl Placeholder {
-    fn new(name: SmolStr) -> Self {
-        Self { stand_in_name: format!("__placeholder_{}", name), ident: name }
+    fn new(name: SmolStr, constraints: Vec<Constraint>) -> Self {
+        Self { stand_in_name: format!("__placeholder_{}", name), constraints, ident: name }
     }
 }
 
@@ -241,7 +323,7 @@ mod tests {
             PatternElement::Token(Token { kind, text: SmolStr::new(text) })
         }
         fn placeholder(name: &str) -> PatternElement {
-            PatternElement::Placeholder(Placeholder::new(SmolStr::new(name)))
+            PatternElement::Placeholder(Placeholder::new(SmolStr::new(name), Vec::new()))
         }
         let result: SsrRule = "foo($a, $b) ==>> bar($b, $a)".parse().unwrap();
         assert_eq!(

@@ -2,7 +2,7 @@
 //! process of matching, placeholder values are recorded.
 
 use crate::{
-    parsing::{Placeholder, SsrTemplate},
+    parsing::{Constraint, NodeKind, Placeholder, SsrTemplate},
     SsrMatches, SsrPattern, SsrRule,
 };
 use hir::Semantics;
@@ -11,6 +11,7 @@ use ra_syntax::ast::{AstNode, AstToken};
 use ra_syntax::{ast, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken};
 use rustc_hash::FxHashMap;
 use std::{cell::Cell, iter::Peekable};
+use test_utils::mark;
 
 // Creates a match error. If we're currently attempting to match some code that we thought we were
 // going to match, as indicated by the --debug-snippet flag, then populate the reason field.
@@ -169,6 +170,9 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
         if let Some(placeholder) =
             match_inputs.get_placeholder(&SyntaxElement::Node(pattern.clone()))
         {
+            for constraint in &placeholder.constraints {
+                self.check_constraint(constraint, code)?;
+            }
             if self.match_out.is_none() {
                 return Ok(());
             }
@@ -287,6 +291,24 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
             }
             None => {
                 fail_match!("Pattern exhausted, while code remains: `{}`", code.text());
+            }
+        }
+        Ok(())
+    }
+
+    fn check_constraint(
+        &self,
+        constraint: &Constraint,
+        code: &SyntaxNode,
+    ) -> Result<(), MatchFailed> {
+        match constraint {
+            Constraint::Kind(kind) => {
+                kind.matches(code)?;
+            }
+            Constraint::Not(sub) => {
+                if self.check_constraint(&*sub, code).is_ok() {
+                    fail_match!("Constraint {:?} failed for '{}'", constraint, code.text());
+                }
             }
         }
         Ok(())
@@ -512,6 +534,21 @@ impl SsrPattern {
             Some(tree) => Ok(tree),
             None => fail_match!("Pattern cannot be parsed as a {}", kind_name),
         }
+    }
+}
+
+impl NodeKind {
+    fn matches(&self, node: &SyntaxNode) -> Result<(), MatchFailed> {
+        let ok = match self {
+            Self::Literal => {
+                mark::hit!(literal_constraint);
+                ast::Literal::can_cast(node.kind())
+            }
+        };
+        if !ok {
+            fail_match!("Code '{}' isn't of kind {:?}", node.text(), self);
+        }
+        Ok(())
     }
 }
 

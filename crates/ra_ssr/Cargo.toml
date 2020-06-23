@@ -17,3 +17,4 @@ ra_db = { path = "../ra_db" }
 ra_ide_db = { path = "../ra_ide_db" }
 hir = { path = "../ra_hir", package = "ra_hir" }
 rustc-hash = "1.1.0"
+test_utils = { path = "../test_utils" }
