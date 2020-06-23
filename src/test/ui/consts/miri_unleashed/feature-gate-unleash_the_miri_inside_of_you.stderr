@@ -2,7 +2,9 @@ error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/feature-gate-unleash_the_miri_inside_of_you.rs:11:20
    |
 LL |     const F: u32 = (U::X, 42).1;
-   |                    ^^^^^^^^^^ constants cannot evaluate destructors
+   |                    ^^^^^^^^^^ - value is dropped here
+   |                    |
+   |                    constants cannot evaluate destructors
 
 error: aborting due to previous error
 

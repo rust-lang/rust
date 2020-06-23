@@ -9,6 +9,9 @@ error[E0493]: destructors cannot be evaluated at compile-time
    |
 LL |     let mut x = Vec::<i32>::new();
    |         ^^^^^ constants cannot evaluate destructors
+...
+LL | };
+   | - value is dropped here
 
 error: aborting due to 2 previous errors
 
