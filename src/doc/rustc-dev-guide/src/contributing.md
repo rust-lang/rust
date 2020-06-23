@@ -202,8 +202,9 @@ git subtree add -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git
 This will create a new commit, which you may not rebase under any circumstances! Delete the commit
 and redo the operation if you need to rebase.
 
-Now you're done, the `src/tools/clippy` directory behaves as if Clippy were part of the rustc
-monorepo, so no one but you (or others that synchronize subtrees) actually needs to use `git subtree`.
+Now you're done, the `src/tools/clippy` directory behaves as if Clippy were
+part of the rustc monorepo, so no one but you (or others that synchronize
+subtrees) actually needs to use `git subtree`.
 
 
 ### External Dependencies (submodules)
