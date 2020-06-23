@@ -36,7 +36,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for wildcard imports `use _::*`.
     ///
-    /// **Why is this bad?** wildcard imports can polute the namespace. This is especially bad if
+    /// **Why is this bad?** wildcard imports can pollute the namespace. This is especially bad if
     /// you try to import something through a wildcard, that already has been imported by name from
     /// a different source:
     ///
