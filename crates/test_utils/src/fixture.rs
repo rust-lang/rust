@@ -1,3 +1,6 @@
+//! Defines `Fixture` -- a convenient way to describe the initial state of
+//! rust-analyzer database from a single string.
+
 use rustc_hash::FxHashMap;
 use stdx::split1;
 

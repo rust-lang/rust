@@ -17,7 +17,7 @@ use lsp_types::{ProgressParams, ProgressParamsValue};
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
 use tempfile::TempDir;
-use test_utils::{find_mismatch, parse_fixture};
+use test_utils::{find_mismatch, Fixture};
 
 use ra_project_model::ProjectManifest;
 use rust_analyzer::{
@@ -68,7 +68,7 @@ impl<'a> Project<'a> {
 
         let mut paths = vec![];
 
-        for entry in parse_fixture(self.fixture) {
+        for entry in Fixture::parse(self.fixture) {
             let path = tmp_dir.path().join(&entry.path['/'.len_utf8()..]);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
