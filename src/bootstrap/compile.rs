@@ -131,27 +131,7 @@ fn copy_third_party_objects(
     compiler: &Compiler,
     target: Interned<String>,
 ) -> Vec<(PathBuf, DependencyType)> {
-    let libdir = builder.sysroot_libdir(*compiler, target);
     let mut target_deps = vec![];
-
-    // Copies libunwind.a compiled to be linked with x86_64-fortanix-unknown-sgx.
-    //
-    // This target needs to be linked to Fortanix's port of llvm's libunwind.
-    // libunwind requires support for rwlock and printing to stderr,
-    // which is provided by std for this target.
-    if target == "x86_64-fortanix-unknown-sgx" {
-        let src_path_env = "X86_FORTANIX_SGX_LIBS";
-        let src =
-            env::var(src_path_env).unwrap_or_else(|_| panic!("{} not found in env", src_path_env));
-        copy_and_stamp(
-            builder,
-            &*libdir,
-            Path::new(&src),
-            "libunwind.a",
-            &mut target_deps,
-            DependencyType::Target,
-        );
-    }
 
     if builder.config.sanitizers && compiler.stage != 0 {
         // The sanitizers are only copied in stage1 or above,

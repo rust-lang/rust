@@ -105,8 +105,6 @@ ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
 ENV TARGETS=$TARGETS,armv7-unknown-linux-gnueabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabi
 
-ENV X86_FORTANIX_SGX_LIBS="/x86_64-fortanix-unknown-sgx/lib/"
-
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
 # we need asm in the search path for gcc-7 (for gnux32) but not in the search path of the
 # cross compilers.
