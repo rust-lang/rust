@@ -26,9 +26,6 @@ const LICENSES: &[&str] = &[
 const EXCEPTIONS: &[(&str, &str)] = &[
     ("mdbook", "MPL-2.0"),                  // mdbook
     ("openssl", "Apache-2.0"),              // cargo, mdbook
-    ("toml-query", "MPL-2.0"),              // mdbook
-    ("toml-query_derive", "MPL-2.0"),       // mdbook
-    ("is-match", "MPL-2.0"),                // mdbook
     ("rdrand", "ISC"),                      // mdbook, rustfmt
     ("fuchsia-cprng", "BSD-3-Clause"),      // mdbook, rustfmt
     ("fuchsia-zircon-sys", "BSD-3-Clause"), // rustdoc, rustc, cargo

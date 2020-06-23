@@ -65,9 +65,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.26"
+version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7825f6833612eb2414095684fcf6c635becf3ce97fe48cf6421321e93bfbd53c"
+checksum = "85bb70cc08ec97ca5450e6eba421deeea5f172c0fc61f78b5357b2a8e8be195f"
 
 [[package]]
 name = "arc-swap"
@@ -529,7 +529,7 @@ dependencies = [
  "if_chain",
  "itertools 0.9.0",
  "lazy_static",
- "pulldown-cmark 0.7.1",
+ "pulldown-cmark",
  "quine-mc_cluskey",
  "quote 1.0.2",
  "regex-syntax",
@@ -808,40 +808,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "darling"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9158d690bc62a3a57c3e45b85e4d50de2008b39345592c64efd79345c7e24be0"
-dependencies = [
- "darling_core",
- "darling_macro",
-]
-
-[[package]]
-name = "darling_core"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2a368589465391e127e10c9e3a08efc8df66fd49b87dc8524c764bbe7f2ef82"
-dependencies = [
- "fnv",
- "ident_case",
- "proc-macro2 0.4.30",
- "quote 0.6.12",
- "syn 0.15.35",
-]
-
-[[package]]
-name = "darling_macro"
-version = "0.8.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "244e8987bd4e174385240cde20a3657f607fb0797563c28255c353b5819a07b1"
-dependencies = [
- "darling_core",
- "quote 0.6.12",
- "syn 0.15.35",
-]
-
-[[package]]
 name = "datafrog"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -987,15 +953,6 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
-]
-
-[[package]]
-name = "error-chain"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07e791d3be96241c77c43846b665ef1384606da2cd2a48730abe606a12906e02"
-dependencies = [
- "backtrace",
 ]
 
 [[package]]
@@ -1342,12 +1299,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9b6c53306532d3c8e8087b44e6580e10db51a023cf9b433cea2ac38066b92da"
 
 [[package]]
-name = "ident_case"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
-
-[[package]]
 name = "idna"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1438,12 +1389,6 @@ checksum = "b2b3ea6ff95e175473f8ffe6a7eb7c00d054240321b84c57051175fe3c1e075e"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "is-match"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e5b386aef33a1c677be65237cb9d32c3f3ef56bd035949710c4bb13083eb053"
 
 [[package]]
 name = "itertools"
@@ -1797,23 +1742,22 @@ dependencies = [
 
 [[package]]
 name = "mdbook"
-version = "0.3.7"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7ec525f7ebccc2dd935c263717250cd37f9a4b264a77c5dbc950ea2734d8159"
+checksum = "2567ffadc0fd26fe15d6f6e0a80639f19f6a50082fdb460d0ae5d1f7298181be"
 dependencies = [
  "ammonia",
+ "anyhow",
  "chrono",
  "clap",
  "elasticlunr-rs",
- "env_logger 0.6.2",
- "error-chain",
+ "env_logger 0.7.1",
  "handlebars",
- "itertools 0.8.0",
  "lazy_static",
  "log",
  "memchr",
  "open",
- "pulldown-cmark 0.6.1",
+ "pulldown-cmark",
  "regex",
  "serde",
  "serde_derive",
@@ -1821,7 +1765,6 @@ dependencies = [
  "shlex",
  "tempfile",
  "toml",
- "toml-query",
 ]
 
 [[package]]
@@ -2413,23 +2356,12 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c205cc82214f3594e2d50686730314f817c67ffa80fe800cf0db78c3c2b9d9e"
-dependencies = [
- "bitflags",
- "getopts",
- "memchr",
- "unicase",
-]
-
-[[package]]
-name = "pulldown-cmark"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e142c3b8f49d2200605ee6ba0b1d757310e9e7a72afe78c36ee2ef67300ee00"
 dependencies = [
  "bitflags",
+ "getopts",
  "memchr",
  "unicase",
 ]
@@ -4091,7 +4023,7 @@ version = "0.0.0"
 dependencies = [
  "itertools 0.8.0",
  "minifier",
- "pulldown-cmark 0.7.1",
+ "pulldown-cmark",
  "rustc-rayon",
  "serde",
  "serde_json",
@@ -4942,32 +4874,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7aabe75941d914b72bf3e5d3932ed92ce0664d49d8432305a8b547c37227724"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "toml-query"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a24369a1894ac8224efcfd567c3d141aea360292f49888e7ec7dcc316527aebb"
-dependencies = [
- "failure",
- "failure_derive",
- "is-match",
- "lazy_static",
- "regex",
- "toml",
- "toml-query_derive",
-]
-
-[[package]]
-name = "toml-query_derive"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c99ca245ec273c7e75c8ee58f47b882d0146f3c2c8495158082c6671e8b5335"
-dependencies = [
- "darling",
- "quote 0.6.12",
- "syn 0.15.35",
 ]
 
 [[package]]

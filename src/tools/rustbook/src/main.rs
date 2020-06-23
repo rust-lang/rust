@@ -51,7 +51,7 @@ fn main() {
 // Build command implementation
 pub fn build(args: &ArgMatches<'_>) -> Result3<()> {
     let book_dir = get_book_dir(args);
-    let mut book = MDBook::load(&book_dir)?;
+    let mut book = load_book(&book_dir)?;
 
     // Set this to allow us to catch bugs in advance.
     book.config.build.create_missing = false;
@@ -67,7 +67,7 @@ pub fn build(args: &ArgMatches<'_>) -> Result3<()> {
 
 fn test(args: &ArgMatches<'_>) -> Result3<()> {
     let book_dir = get_book_dir(args);
-    let mut book = MDBook::load(&book_dir)?;
+    let mut book = load_book(&book_dir)?;
     book.test(vec![])
 }
 
@@ -81,10 +81,16 @@ fn get_book_dir(args: &ArgMatches<'_>) -> PathBuf {
     }
 }
 
+fn load_book(book_dir: &Path) -> Result3<MDBook> {
+    let mut book = MDBook::load(book_dir)?;
+    book.config.set("output.html.input-404", "").unwrap();
+    Ok(book)
+}
+
 fn handle_error(error: mdbook::errors::Error) -> ! {
     eprintln!("Error: {}", error);
 
-    for cause in error.iter().skip(1) {
+    for cause in error.chain().skip(1) {
         eprintln!("\tCaused By: {}", cause);
     }
 
