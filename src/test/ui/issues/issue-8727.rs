@@ -3,12 +3,10 @@
 
 // build-fail
 
-fn generic<T>() {
+fn generic<T>() { //~ WARN function cannot return without recursing
     generic::<Option<T>>();
 }
-//~^^^ ERROR reached the recursion limit while instantiating `generic::<std::option::Option<
-//~| WARN function cannot return without recursing
-
+//~^^ ERROR reached the recursion limit while instantiating `generic::<std::option::Option<
 
 
 fn main () {

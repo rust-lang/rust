@@ -1,11 +1,16 @@
 error: reached the recursion limit while instantiating `function::<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<std::option::Option<usize>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>`
-  --> $DIR/infinite-instantiation.rs:25:1
+  --> $DIR/infinite-instantiation.rs:21:9
+   |
+LL |         function(counter - 1, t.to_option());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `function` defined here
+  --> $DIR/infinite-instantiation.rs:19:1
    |
 LL | / fn function<T:ToOpt + Clone>(counter: usize, t: T) {
-LL | |
 LL | |     if counter > 0 {
 LL | |         function(counter - 1, t.to_option());
-...  |
+LL | |
 LL | |     }
 LL | | }
    | |_^
