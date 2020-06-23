@@ -163,9 +163,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => return,
         }
 
-        let result = self.infcx.probe(|snapshot| {
-            self.match_projection_obligation_against_definition_bounds(obligation, snapshot)
-        });
+        let result = self
+            .infcx
+            .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
 
         if result {
             candidates.vec.push(ProjectionCandidate);
@@ -345,8 +345,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
             |impl_def_id| {
-                self.infcx.probe(|snapshot| {
-                    if let Ok(_substs) = self.match_impl(impl_def_id, obligation, snapshot) {
+                self.infcx.probe(|_| {
+                    if let Ok(_substs) = self.match_impl(impl_def_id, obligation) {
                         candidates.vec.push(ImplCandidate(impl_def_id));
                     }
                 });

@@ -1,33 +1,33 @@
 error: lifetime may not live long enough
-  --> $DIR/hr-subtype.rs:33:13
+  --> $DIR/hr-subtype.rs:39:13
    |
-LL |           fn subtype<'x,'y:'x,'z:'y>() {
-   |                      -- -- lifetime `'y` defined here
+LL |           fn subtype<'x, 'y: 'x, 'z: 'y>() {
+   |                      --  -- lifetime `'y` defined here
    |                      |
    |                      lifetime `'x` defined here
 LL |               gimme::<$t2>(None::<$t1>);
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'x` must outlive `'y`
 ...
 LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
-LL | |                                     fn(Inv<'y>)) }
-   | |__________________________________________________- in this macro invocation
+LL | | fn(Inv<'y>)) }
+   | |______________- in this macro invocation
    |
    = help: consider adding the following bound: `'x: 'y`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: lifetime may not live long enough
-  --> $DIR/hr-subtype.rs:39:13
+  --> $DIR/hr-subtype.rs:45:13
    |
-LL |           fn supertype<'x,'y:'x,'z:'y>() {
-   |                        -- -- lifetime `'y` defined here
+LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {
+   |                        --  -- lifetime `'y` defined here
    |                        |
    |                        lifetime `'x` defined here
 LL |               gimme::<$t1>(None::<$t2>);
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'x` must outlive `'y`
 ...
 LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
-LL | |                                     fn(Inv<'y>)) }
-   | |__________________________________________________- in this macro invocation
+LL | | fn(Inv<'y>)) }
+   | |______________- in this macro invocation
    |
    = help: consider adding the following bound: `'x: 'y`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)

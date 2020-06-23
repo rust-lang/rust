@@ -1,31 +1,18 @@
 error[E0631]: type mismatch in function arguments
-  --> $DIR/issue-60283.rs:14:13
+  --> $DIR/issue-60283.rs:17:13
    |
 LL | pub fn foo<T, F>(_: T, _: F)
    |        --- required by a bound in this
-LL | where T: for<'a> Trait<'a>,
-LL |       F: for<'a> FnMut(<T as Trait<'a>>::Item) {}
-   |          ------------------------------------- required by this bound in `foo`
+...
+LL |     F: for<'a> FnMut(<T as Trait<'a>>::Item),
+   |                ----------------------------- required by this bound in `foo`
 ...
 LL |     foo((), drop)
    |             ^^^^
    |             |
-   |             expected signature of `for<'a> fn(<() as Trait<'a>>::Item) -> _`
-   |             found signature of `fn(_) -> _`
+   |             expected signature of `fn(<() as Trait<'a>>::Item) -> _`
+   |             found signature of `fn(()) -> _`
 
-error[E0271]: type mismatch resolving `for<'a> <fn(_) {std::mem::drop::<_>} as std::ops::FnOnce<(<() as Trait<'a>>::Item,)>>::Output == ()`
-  --> $DIR/issue-60283.rs:14:5
-   |
-LL | pub fn foo<T, F>(_: T, _: F)
-   |        --- required by a bound in this
-LL | where T: for<'a> Trait<'a>,
-LL |       F: for<'a> FnMut(<T as Trait<'a>>::Item) {}
-   |                  ----------------------------- required by this bound in `foo`
-...
-LL |     foo((), drop)
-   |     ^^^ expected bound lifetime parameter 'a, found concrete lifetime
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0271, E0631.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0631`.

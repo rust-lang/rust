@@ -4,23 +4,19 @@
 // longer get an error, because we recognize these two types as
 // equivalent!
 //
-// Whoops -- now that we reinstituted the leak-check, we get an error
-// again.
+// check-pass
 
-fn foo(
-    x: fn(&u8, &u8),
-    y: for<'a> fn(&'a u8, &'a u8),
-) {
+fn foo(x: fn(&u8, &u8), y: for<'a> fn(&'a u8, &'a u8)) {
+    // The two types above are actually equivalent. With the older
+    // leak check, though, we didn't consider them as equivalent, and
+    // hence we gave errors. But now we've fixed that.
     let z = match 22 {
         0 => x,
-        _ => y, //~ ERROR `match` arms have incompatible types
+        _ => y,
     };
 }
 
-fn bar(
-    x: fn(&u8, &u8),
-    y: for<'a> fn(&'a u8, &'a u8),
-) {
+fn foo_cast(x: fn(&u8, &u8), y: for<'a> fn(&'a u8, &'a u8)) {
     let z = match 22 {
         // No error with an explicit cast:
         0 => x as for<'a> fn(&'a u8, &'a u8),
@@ -28,5 +24,4 @@ fn bar(
     };
 }
 
-fn main() {
-}
+fn main() {}

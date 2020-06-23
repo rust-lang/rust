@@ -23,5 +23,5 @@ fn foo<U, T>(_t: T)
 #[rustc_error]
 fn main() { //[good]~ ERROR fatal error triggered by #[rustc_error]
     foo(());
-    //[bad]~^ ERROR type mismatch
+    //[bad]~^ ERROR mismatched types
 }

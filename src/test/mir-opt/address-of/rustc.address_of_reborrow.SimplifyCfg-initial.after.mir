@@ -12,7 +12,7 @@
 | 8: Canonical { max_universe: U0, variables: [], value: Ty(*const [i32]) } at $DIR/address-of.rs:16:12: 16:24
 | 9: Canonical { max_universe: U0, variables: [], value: Ty(*const [i32]) } at $DIR/address-of.rs:16:12: 16:24
 | 10: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], value: Ty(*const ^0) } at $DIR/address-of.rs:18:5: 18:18
-| 11: Canonical { max_universe: U3, variables: [CanonicalVarInfo { kind: Region(U3) }], value: Ty(*const dyn std::marker::Send) } at $DIR/address-of.rs:20:5: 20:25
+| 11: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], value: Ty(*const dyn std::marker::Send) } at $DIR/address-of.rs:20:5: 20:25
 | 12: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], value: Ty(*const ^0) } at $DIR/address-of.rs:23:12: 23:20
 | 13: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], value: Ty(*const ^0) } at $DIR/address-of.rs:23:12: 23:20
 | 14: Canonical { max_universe: U0, variables: [], value: Ty(*const [i32; 10]) } at $DIR/address-of.rs:24:12: 24:28
@@ -22,7 +22,7 @@
 | 18: Canonical { max_universe: U0, variables: [], value: Ty(*const [i32]) } at $DIR/address-of.rs:26:12: 26:24
 | 19: Canonical { max_universe: U0, variables: [], value: Ty(*const [i32]) } at $DIR/address-of.rs:26:12: 26:24
 | 20: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], value: Ty(*mut ^0) } at $DIR/address-of.rs:28:5: 28:16
-| 21: Canonical { max_universe: U6, variables: [CanonicalVarInfo { kind: Region(U6) }], value: Ty(*mut dyn std::marker::Send) } at $DIR/address-of.rs:30:5: 30:23
+| 21: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], value: Ty(*mut dyn std::marker::Send) } at $DIR/address-of.rs:30:5: 30:23
 | 22: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], value: Ty(*mut ^0) } at $DIR/address-of.rs:33:12: 33:18
 | 23: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], value: Ty(*mut ^0) } at $DIR/address-of.rs:33:12: 33:18
 | 24: Canonical { max_universe: U0, variables: [], value: Ty(*mut [i32; 10]) } at $DIR/address-of.rs:34:12: 34:26
