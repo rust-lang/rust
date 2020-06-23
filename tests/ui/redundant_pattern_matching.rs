@@ -1,5 +1,7 @@
 // run-rustfix
 
+#![feature(const_if_match)]
+#![feature(const_loop)]
 #![warn(clippy::all)]
 #![warn(clippy::redundant_pattern_matching)]
 #![allow(clippy::unit_arg, unused_must_use, clippy::needless_bool, deprecated)]
@@ -88,6 +90,7 @@ fn main() {
     takes_bool(x);
 
     issue5504();
+    issue5697();
 
     let _ = if let Some(_) = gen_opt() {
         1
@@ -137,4 +140,43 @@ fn issue5504() {
 
     if let Some(_) = m!() {}
     while let Some(_) = m!() {}
+}
+
+// None of these should be linted because none of the suggested methods
+// are `const fn` without toggling a feature.
+const fn issue5697() {
+    if let Ok(_) = Ok::<i32, i32>(42) {}
+
+    if let Err(_) = Err::<i32, i32>(42) {}
+
+    if let Some(_) = Some(42) {}
+
+    if let None = None::<()> {}
+
+    while let Ok(_) = Ok::<i32, i32>(10) {}
+
+    while let Err(_) = Ok::<i32, i32>(10) {}
+
+    while let Some(_) = Some(42) {}
+
+    while let None = None::<()> {}
+
+    match Ok::<i32, i32>(42) {
+        Ok(_) => true,
+        Err(_) => false,
+    };
+
+    match Err::<i32, i32>(42) {
+        Ok(_) => false,
+        Err(_) => true,
+    };
+    match Some(42) {
+        Some(_) => true,
+        None => false,
+    };
+
+    match None::<()> {
+        Some(_) => false,
+        None => true,
+    };
 }
