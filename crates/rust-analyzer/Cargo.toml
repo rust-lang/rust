@@ -24,7 +24,6 @@ lsp-types = { version = "0.74.0", features = ["proposed"] }
 parking_lot = "0.10.0"
 pico-args = "0.3.1"
 rand = { version = "0.7.3", features = ["small_rng"] }
-relative-path = "1.0.0"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.106", features = ["derive"] }
 serde_json = "1.0.48"
