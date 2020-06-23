@@ -167,7 +167,8 @@ macro_rules! late_lint_mod_passes {
             $args,
             [
                 HardwiredLints: HardwiredLints,
-                ImproperCTypes: ImproperCTypes,
+                ImproperCTypesDeclarations: ImproperCTypesDeclarations,
+                ImproperCTypesDefinitions: ImproperCTypesDefinitions,
                 VariantSizeDifferences: VariantSizeDifferences,
                 BoxPointers: BoxPointers,
                 PathStatements: PathStatements,
