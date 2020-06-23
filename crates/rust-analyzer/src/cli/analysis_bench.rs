@@ -1,6 +1,7 @@
 //! Benchmark operations like highlighting or goto definition.
 
 use std::{
+    convert::TryFrom,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -10,7 +11,7 @@ use std::{
 use anyhow::{format_err, Result};
 use ra_db::{
     salsa::{Database, Durability},
-    FileId, SourceDatabaseExt,
+    AbsPathBuf, FileId,
 };
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
 
@@ -53,8 +54,7 @@ pub fn analysis_bench(
 
     let start = Instant::now();
     eprint!("loading: ");
-    let (mut host, roots) = load_cargo(path, load_output_dirs, with_proc_macro)?;
-    let db = host.raw_database();
+    let (mut host, vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
     eprintln!("{:?}\n", start.elapsed());
 
     let file_id = {
@@ -62,22 +62,9 @@ pub fn analysis_bench(
             BenchWhat::Highlight { path } => path,
             BenchWhat::Complete(pos) | BenchWhat::GotoDef(pos) => &pos.path,
         };
-        let path = std::env::current_dir()?.join(path).canonicalize()?;
-        roots
-            .iter()
-            .find_map(|(source_root_id, project_root)| {
-                if project_root.is_member() {
-                    for file_id in db.source_root(*source_root_id).walk() {
-                        let rel_path = db.file_relative_path(file_id);
-                        let abs_path = rel_path.to_path(project_root.path());
-                        if abs_path == path {
-                            return Some(file_id);
-                        }
-                    }
-                }
-                None
-            })
-            .ok_or_else(|| format_err!("Can't find {}", path.display()))?
+        let path = AbsPathBuf::try_from(path.clone()).unwrap();
+        let path = path.into();
+        vfs.file_id(&path).ok_or_else(|| format_err!("Can't find {}", path))?
     };
 
     match &what {
@@ -149,7 +136,7 @@ fn do_work<F: Fn(&Analysis) -> T, T>(host: &mut AnalysisHost, file_id: FileId, w
             let mut text = host.analysis().file_text(file_id).unwrap().to_string();
             text.push_str("\n/* Hello world */\n");
             let mut change = AnalysisChange::new();
-            change.change_file(file_id, Arc::new(text));
+            change.change_file(file_id, Some(Arc::new(text)));
             host.apply_change(change);
         }
         work(&host.analysis());

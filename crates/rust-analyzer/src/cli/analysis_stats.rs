@@ -28,25 +28,13 @@ pub fn analysis_stats(
     with_proc_macro: bool,
 ) -> Result<()> {
     let db_load_time = Instant::now();
-    let (mut host, roots) = load_cargo(path, load_output_dirs, with_proc_macro)?;
+    let (mut host, vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
     let db = host.raw_database();
-    println!("Database loaded, {} roots, {:?}", roots.len(), db_load_time.elapsed());
+    println!("Database loaded {:?}", db_load_time.elapsed());
     let analysis_time = Instant::now();
     let mut num_crates = 0;
     let mut visited_modules = HashSet::new();
     let mut visit_queue = Vec::new();
-
-    let members =
-        roots
-            .into_iter()
-            .filter_map(|(source_root_id, project_root)| {
-                if with_deps || project_root.is_member() {
-                    Some(source_root_id)
-                } else {
-                    None
-                }
-            })
-            .collect::<HashSet<_>>();
 
     let mut krates = Crate::all(db);
     if randomize {
@@ -55,7 +43,10 @@ pub fn analysis_stats(
     for krate in krates {
         let module = krate.root_module(db).expect("crate without root module");
         let file_id = module.definition_source(db).file_id;
-        if members.contains(&db.file_source_root(file_id.original_file(db))) {
+        let file_id = file_id.original_file(db);
+        let source_root = db.file_source_root(file_id);
+        let source_root = db.source_root(source_root);
+        if !source_root.is_library || with_deps {
             num_crates += 1;
             visit_queue.push(module);
         }
@@ -128,7 +119,7 @@ pub fn analysis_stats(
         if verbosity.is_verbose() {
             let src = f.source(db);
             let original_file = src.file_id.original_file(db);
-            let path = db.file_relative_path(original_file);
+            let path = vfs.file_path(original_file);
             let syntax_range = src.value.syntax().text_range();
             format_to!(msg, " ({:?} {:?})", path, syntax_range);
         }
@@ -196,7 +187,7 @@ pub fn analysis_stats(
                         let root = db.parse_or_expand(src.file_id).unwrap();
                         let node = src.map(|e| e.to_node(&root).syntax().clone());
                         let original_range = original_range(db, node.as_ref());
-                        let path = db.file_relative_path(original_range.file_id);
+                        let path = vfs.file_path(original_range.file_id);
                         let line_index =
                             host.analysis().file_line_index(original_range.file_id).unwrap();
                         let text_range = original_range.range;

@@ -777,11 +777,11 @@ impl ModCollector<'_, '_> {
                     name,
                     path_attr,
                 ) {
-                    Ok((file_id, mod_dir)) => {
+                    Ok((file_id, is_mod_rs, mod_dir)) => {
                         let module_id = self.push_child_module(
                             name.clone(),
                             ast_id,
-                            Some(file_id),
+                            Some((file_id, is_mod_rs)),
                             &visibility,
                         );
                         let raw_items = self.def_collector.db.raw_items(file_id.into());
@@ -814,7 +814,7 @@ impl ModCollector<'_, '_> {
         &mut self,
         name: Name,
         declaration: AstId<ast::Module>,
-        definition: Option<FileId>,
+        definition: Option<(FileId, bool)>,
         visibility: &crate::visibility::RawVisibility,
     ) -> LocalModuleId {
         let vis = self
@@ -827,7 +827,9 @@ impl ModCollector<'_, '_> {
         modules[res].parent = Some(self.module_id);
         modules[res].origin = match definition {
             None => ModuleOrigin::Inline { definition: declaration },
-            Some(definition) => ModuleOrigin::File { declaration, definition },
+            Some((definition, is_mod_rs)) => {
+                ModuleOrigin::File { declaration, definition, is_mod_rs }
+            }
         };
         for (name, mac) in modules[self.module_id].scope.collect_legacy_macros() {
             modules[res].scope.define_legacy_macro(name, mac)

@@ -3,19 +3,20 @@ use std::fmt;
 
 use paths::AbsPathBuf;
 
+#[derive(Debug)]
 pub enum Entry {
     Files(Vec<AbsPathBuf>),
-    Directory { path: AbsPathBuf, globs: Vec<String> },
+    Directory { path: AbsPathBuf, include: Vec<String> },
 }
 
+#[derive(Debug)]
 pub struct Config {
     pub load: Vec<Entry>,
     pub watch: Vec<usize>,
 }
 
 pub enum Message {
-    DidSwitchConfig { n_entries: usize },
-    DidLoadAllEntries,
+    Progress { n_entries_total: usize, n_entries_done: usize },
     Loaded { files: Vec<(AbsPathBuf, Option<Vec<u8>>)> },
 }
 
@@ -32,15 +33,15 @@ pub trait Handle: fmt::Debug {
 
 impl Entry {
     pub fn rs_files_recursively(base: AbsPathBuf) -> Entry {
-        Entry::Directory { path: base, globs: globs(&["*.rs"]) }
+        Entry::Directory { path: base, include: globs(&["*.rs", "!/.git/"]) }
     }
     pub fn local_cargo_package(base: AbsPathBuf) -> Entry {
-        Entry::Directory { path: base, globs: globs(&["*.rs", "!/target/"]) }
+        Entry::Directory { path: base, include: globs(&["*.rs", "!/target/", "!/.git/"]) }
     }
     pub fn cargo_package_dependency(base: AbsPathBuf) -> Entry {
         Entry::Directory {
             path: base,
-            globs: globs(&["*.rs", "!/tests/", "!/examples/", "!/benches/"]),
+            include: globs(&["*.rs", "!/tests/", "!/examples/", "!/benches/", "!/.git/"]),
         }
     }
 }
@@ -55,10 +56,11 @@ impl fmt::Debug for Message {
             Message::Loaded { files } => {
                 f.debug_struct("Loaded").field("n_files", &files.len()).finish()
             }
-            Message::DidSwitchConfig { n_entries } => {
-                f.debug_struct("DidSwitchConfig").field("n_entries", n_entries).finish()
-            }
-            Message::DidLoadAllEntries => f.debug_struct("DidLoadAllEntries").finish(),
+            Message::Progress { n_entries_total, n_entries_done } => f
+                .debug_struct("Progress")
+                .field("n_entries_total", n_entries_total)
+                .field("n_entries_done", n_entries_done)
+                .finish(),
         }
     }
 }

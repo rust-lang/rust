@@ -42,7 +42,7 @@ use ra_syntax::{
     SyntaxNode, SyntaxNodePtr, TextRange, WalkEvent,
 };
 use rayon::prelude::*;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::RootDatabase;
 
@@ -93,11 +93,11 @@ pub trait SymbolsDatabase: hir::db::HirDatabase + SourceDatabaseExt + ParallelDa
     /// The set of "local" (that is, from the current workspace) roots.
     /// Files in local roots are assumed to change frequently.
     #[salsa::input]
-    fn local_roots(&self) -> Arc<Vec<SourceRootId>>;
+    fn local_roots(&self) -> Arc<FxHashSet<SourceRootId>>;
     /// The set of roots for crates.io libraries.
     /// Files in libraries are assumed to never change.
     #[salsa::input]
-    fn library_roots(&self) -> Arc<Vec<SourceRootId>>;
+    fn library_roots(&self) -> Arc<FxHashSet<SourceRootId>>;
 }
 
 fn library_symbols(
@@ -111,7 +111,7 @@ fn library_symbols(
         .map(|&root_id| {
             let root = db.source_root(root_id);
             let files = root
-                .walk()
+                .iter()
                 .map(|it| (it, SourceDatabaseExt::file_text(db, it)))
                 .collect::<Vec<_>>();
             let symbol_index = SymbolIndex::for_files(
@@ -175,7 +175,7 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
         let mut files = Vec::new();
         for &root in db.local_roots().iter() {
             let sr = db.source_root(root);
-            files.extend(sr.walk())
+            files.extend(sr.iter())
         }
 
         let snap = Snap(db.snapshot());

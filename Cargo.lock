@@ -354,9 +354,9 @@ checksum = "5f2a4a2034423744d2cc7ca2068453168dcdb82c438419e639a26bd87839c674"
 
 [[package]]
 name = "fsevent"
-version = "0.4.0"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ab7d1bd1bd33cc98b0889831b72da23c0aa4df9cec7e0702f46ecea04b35db6"
+checksum = "97f347202c95c98805c216f9e1df210e8ebaec9fdb2365700a43c10797a35e63"
 dependencies = [
  "bitflags",
  "fsevent-sys",
@@ -364,9 +364,9 @@ dependencies = [
 
 [[package]]
 name = "fsevent-sys"
-version = "2.0.1"
+version = "3.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f41b048a94555da0f42f1d632e2e19510084fb8e303b0daa2816e733fb3644a0"
+checksum = "77a29c77f1ca394c3e73a9a5d24cfcabb734682d9634fc398f2204a63c994120"
 dependencies = [
  "libc",
 ]
@@ -483,9 +483,9 @@ dependencies = [
 
 [[package]]
 name = "inotify"
-version = "0.7.1"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4816c66d2c8ae673df83366c18341538f234a26d65a9ecea5c348b453ac1d02f"
+checksum = "46dd0a94b393c730779ccfd2a872b67b1eb67be3fc33082e733bdb38b5fde4d4"
 dependencies = [
  "bitflags",
  "inotify-sys",
@@ -766,11 +766,13 @@ dependencies = [
 
 [[package]]
 name = "notify"
-version = "4.0.15"
+version = "5.0.0-pre.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80ae4a7688d1fab81c5bf19c64fc8db920be8d519ce6336ed4e7efe024724dbd"
+checksum = "77d03607cf88b4b160ba0e9ed425fff3cee3b55ac813f0c685b3a3772da37d0e"
 dependencies = [
+ "anymap",
  "bitflags",
+ "crossbeam-channel",
  "filetime",
  "fsevent",
  "fsevent-sys",
@@ -952,7 +954,9 @@ dependencies = [
  "relative-path",
  "rustc-hash",
  "salsa",
+ "stdx",
  "test_utils",
+ "vfs",
 ]
 
 [[package]]
@@ -1233,22 +1237,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_vfs"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbf31a173fc77ec59c27cf39af6baa137b40f4dbd45a8b3eccb1b2e4cfc922c1"
-dependencies = [
- "crossbeam-channel",
- "jod-thread",
- "log",
- "notify",
- "parking_lot",
- "relative-path",
- "rustc-hash",
- "walkdir",
-]
-
-[[package]]
 name = "rand"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1405,7 +1393,6 @@ dependencies = [
  "ra_syntax",
  "ra_text_edit",
  "ra_tt",
- "ra_vfs",
  "rand",
  "rustc-hash",
  "serde",
@@ -1414,6 +1401,8 @@ dependencies = [
  "tempfile",
  "test_utils",
  "threadpool",
+ "vfs",
+ "vfs-notify",
  "winapi 0.3.8",
 ]
 
@@ -1764,11 +1753,22 @@ dependencies = [
 name = "vfs"
 version = "0.1.0"
 dependencies = [
+ "paths",
+ "rustc-hash",
+]
+
+[[package]]
+name = "vfs-notify"
+version = "0.1.0"
+dependencies = [
  "crossbeam-channel",
  "globset",
  "jod-thread",
+ "log",
+ "notify",
  "paths",
  "rustc-hash",
+ "vfs",
  "walkdir",
 ]
 

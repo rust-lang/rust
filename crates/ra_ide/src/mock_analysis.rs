@@ -1,15 +1,12 @@
 //! FIXME: write short doc here
-
-use std::str::FromStr;
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
-use ra_db::{CrateName, Env};
+use ra_db::{CrateName, Env, FileSet, SourceRoot, VfsPath};
 use test_utils::{extract_offset, extract_range, parse_fixture, FixtureEntry, CURSOR_MARKER};
 
 use crate::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition, FileId, FilePosition, FileRange,
-    SourceRootId,
 };
 
 #[derive(Debug)]
@@ -159,9 +156,8 @@ impl MockAnalysis {
     }
     pub fn analysis_host(self) -> AnalysisHost {
         let mut host = AnalysisHost::default();
-        let source_root = SourceRootId(0);
         let mut change = AnalysisChange::new();
-        change.add_root(source_root, true);
+        let mut file_set = FileSet::default();
         let mut crate_graph = CrateGraph::default();
         let mut root_crate = None;
         for (i, data) in self.files.into_iter().enumerate() {
@@ -179,7 +175,6 @@ impl MockAnalysis {
                     cfg_options,
                     env,
                     Default::default(),
-                    Default::default(),
                 ));
             } else if path.ends_with("/lib.rs") {
                 let base = &path[..path.len() - "/lib.rs".len()];
@@ -191,7 +186,6 @@ impl MockAnalysis {
                     cfg_options,
                     env,
                     Default::default(),
-                    Default::default(),
                 );
                 if let Some(root_crate) = root_crate {
                     crate_graph
@@ -199,9 +193,12 @@ impl MockAnalysis {
                         .unwrap();
                 }
             }
-            change.add_file(source_root, file_id, path.into(), Arc::new(data.content().to_owned()));
+            let path = VfsPath::new_virtual_path(path.to_string());
+            file_set.insert(file_id, path);
+            change.change_file(file_id, Some(Arc::new(data.content().to_owned())));
         }
         change.set_crate_graph(crate_graph);
+        change.set_roots(vec![SourceRoot::new_local(file_set)]);
         host.apply_change(change);
         host
     }

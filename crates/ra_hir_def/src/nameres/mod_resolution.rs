@@ -44,7 +44,7 @@ impl ModDir {
         file_id: HirFileId,
         name: &Name,
         attr_path: Option<&SmolStr>,
-    ) -> Result<(FileId, ModDir), String> {
+    ) -> Result<(FileId, bool, ModDir), String> {
         let file_id = file_id.original_file(db.upcast());
 
         let mut candidate_files = Vec::new();
@@ -64,11 +64,12 @@ impl ModDir {
             if let Some(file_id) = db.resolve_path(file_id, candidate.as_str()) {
                 let mut root_non_dir_owner = false;
                 let mut mod_path = RelativePathBuf::new();
-                if !(candidate.ends_with("mod.rs") || attr_path.is_some()) {
+                let is_mod_rs = candidate.ends_with("mod.rs");
+                if !(is_mod_rs || attr_path.is_some()) {
                     root_non_dir_owner = true;
                     mod_path.push(&name.to_string());
                 }
-                return Ok((file_id, ModDir { path: mod_path, root_non_dir_owner }));
+                return Ok((file_id, is_mod_rs, ModDir { path: mod_path, root_non_dir_owner }));
             }
         }
         Err(candidate_files.remove(0))

@@ -1,9 +1,21 @@
 //! Conversion lsp_types types to rust-analyzer specific ones.
+use std::convert::TryFrom;
+
 use ra_db::{FileId, FilePosition, FileRange};
 use ra_ide::{LineCol, LineIndex};
 use ra_syntax::{TextRange, TextSize};
+use vfs::AbsPathBuf;
 
 use crate::{global_state::GlobalStateSnapshot, Result};
+
+pub(crate) fn abs_path(url: &lsp_types::Url) -> Result<AbsPathBuf> {
+    let path = url.to_file_path().map_err(|()| "url is not a file")?;
+    Ok(AbsPathBuf::try_from(path).unwrap())
+}
+
+pub(crate) fn vfs_path(url: &lsp_types::Url) -> Result<vfs::VfsPath> {
+    abs_path(url).map(vfs::VfsPath::from)
+}
 
 pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> TextSize {
     let line_col = LineCol { line: position.line as u32, col_utf16: position.character as u32 };

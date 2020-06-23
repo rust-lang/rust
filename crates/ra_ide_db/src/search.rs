@@ -157,14 +157,14 @@ impl Definition {
         if let Some(Visibility::Public) = vis {
             let source_root_id = db.file_source_root(file_id);
             let source_root = db.source_root(source_root_id);
-            let mut res = source_root.walk().map(|id| (id, None)).collect::<FxHashMap<_, _>>();
+            let mut res = source_root.iter().map(|id| (id, None)).collect::<FxHashMap<_, _>>();
 
             let krate = module.krate();
             for rev_dep in krate.reverse_dependencies(db) {
                 let root_file = rev_dep.root_file(db);
                 let source_root_id = db.file_source_root(root_file);
                 let source_root = db.source_root(source_root_id);
-                res.extend(source_root.walk().map(|id| (id, None)));
+                res.extend(source_root.iter().map(|id| (id, None)));
             }
             return SearchScope::new(res);
         }

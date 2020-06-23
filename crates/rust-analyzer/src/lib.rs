@@ -17,7 +17,6 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
-mod vfs_glob;
 mod caps;
 mod cargo_target_spec;
 mod to_proto;
@@ -29,6 +28,7 @@ pub mod config;
 mod global_state;
 mod diagnostics;
 mod semantic_tokens;
+mod line_endings;
 
 use serde::de::DeserializeOwned;
 

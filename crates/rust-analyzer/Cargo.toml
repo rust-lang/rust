@@ -38,7 +38,8 @@ ra_prof = { path = "../ra_prof" }
 ra_project_model = { path = "../ra_project_model" }
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
-ra_vfs = "0.6.0"
+vfs = { path = "../vfs" }
+vfs-notify = { path = "../vfs-notify" }
 ra_cfg = { path = "../ra_cfg"}
 
 # This should only be used in CLI

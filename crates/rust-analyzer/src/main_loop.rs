@@ -2,11 +2,9 @@
 //! requests/replies and notifications back to the client.
 
 mod handlers;
-mod subscriptions;
 pub(crate) mod request_metrics;
 
 use std::{
-    borrow::Cow,
     env,
     error::Error,
     fmt,
@@ -20,16 +18,12 @@ use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
 use lsp_server::{
     Connection, ErrorCode, Message, Notification, ReqQueue, Request, RequestId, Response,
 };
-use lsp_types::{
-    request::Request as _, DidChangeTextDocumentParams, NumberOrString,
-    TextDocumentContentChangeEvent, WorkDoneProgress, WorkDoneProgressBegin,
-    WorkDoneProgressCreateParams, WorkDoneProgressEnd, WorkDoneProgressReport,
-};
-use ra_flycheck::{CheckTask, Status};
+use lsp_types::{request::Request as _, NumberOrString, TextDocumentContentChangeEvent};
+use ra_flycheck::CheckTask;
 use ra_ide::{Canceled, FileId, LineIndex};
 use ra_prof::profile;
 use ra_project_model::{PackageRoot, ProjectWorkspace};
-use ra_vfs::VfsTask;
+use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
@@ -39,9 +33,10 @@ use crate::{
     from_proto,
     global_state::{file_id_to_url, GlobalState, GlobalStateSnapshot},
     lsp_ext,
-    main_loop::{request_metrics::RequestMetrics, subscriptions::Subscriptions},
+    main_loop::request_metrics::RequestMetrics,
     Result,
 };
+use ra_db::VfsPath;
 
 #[derive(Debug)]
 pub struct LspError {
@@ -128,13 +123,6 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                 .collect::<Vec<_>>()
         };
 
-        let globs = config
-            .files
-            .exclude
-            .iter()
-            .map(|glob| crate::vfs_glob::Glob::new(glob))
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-
         if let FilesWatcher::Client = config.files.watcher {
             let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
                 watchers: workspaces
@@ -159,10 +147,8 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
             connection.sender.send(request.into()).unwrap();
         }
 
-        GlobalState::new(workspaces, config.lru_capacity, &globs, config)
+        GlobalState::new(workspaces, config.lru_capacity, config)
     };
-
-    loop_state.roots_total = global_state.vfs.read().n_roots();
 
     let pool = ThreadPool::default();
     let (task_sender, task_receiver) = unbounded::<Task>();
@@ -192,7 +178,9 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                     break;
                 };
             }
+            assert!(!global_state.vfs.read().0.has_changes());
             loop_turn(&pool, &task_sender, &connection, &mut global_state, &mut loop_state, event)?;
+            assert!(!global_state.vfs.read().0.has_changes());
         }
     }
     global_state.analysis_host.request_cancellation();
@@ -222,7 +210,7 @@ enum Task {
 enum Event {
     Msg(Message),
     Task(Task),
-    Vfs(VfsTask),
+    Vfs(vfs::loader::Message),
     CheckWatcher(CheckTask),
 }
 
@@ -270,11 +258,20 @@ type Incoming = lsp_server::Incoming<(&'static str, Instant)>;
 #[derive(Default)]
 struct LoopState {
     req_queue: ReqQueue<(&'static str, Instant), ReqHandler>,
-    subscriptions: Subscriptions,
-    workspace_loaded: bool,
-    roots_progress_reported: Option<usize>,
-    roots_scanned: usize,
-    roots_total: usize,
+    mem_docs: FxHashSet<VfsPath>,
+    status: Status,
+}
+
+#[derive(Eq, PartialEq)]
+enum Status {
+    Loading,
+    Ready,
+}
+
+impl Default for Status {
+    fn default() -> Self {
+        Status::Loading
+    }
 }
 
 fn loop_turn(
@@ -295,14 +292,36 @@ fn loop_turn(
         log::info!("queued count = {}", queue_count);
     }
 
+    let mut became_ready = false;
     match event {
         Event::Task(task) => {
             on_task(task, &connection.sender, &mut loop_state.req_queue.incoming, global_state);
             global_state.maybe_collect_garbage();
         }
-        Event::Vfs(task) => {
-            global_state.vfs.write().handle_task(task);
-        }
+        Event::Vfs(task) => match task {
+            vfs::loader::Message::Loaded { files } => {
+                let vfs = &mut global_state.vfs.write().0;
+                for (path, contents) in files {
+                    let path = VfsPath::from(path);
+                    if !loop_state.mem_docs.contains(&path) {
+                        vfs.set_file_contents(path, contents)
+                    }
+                }
+            }
+            vfs::loader::Message::Progress { n_entries_total, n_entries_done } => {
+                if n_entries_done == n_entries_done {
+                    loop_state.status = Status::Ready;
+                    became_ready = true;
+                }
+                report_progress(
+                    loop_state,
+                    &connection.sender,
+                    n_entries_done,
+                    n_entries_total,
+                    "roots scanned",
+                )
+            }
+        },
         Event::CheckWatcher(task) => on_check_task(task, global_state, task_sender)?,
         Event::Msg(msg) => match msg {
             Message::Request(req) => on_request(
@@ -324,32 +343,29 @@ fn loop_turn(
         },
     };
 
-    let mut state_changed = global_state.process_changes(&mut loop_state.roots_scanned);
+    let state_changed = global_state.process_changes();
 
-    let show_progress =
-        !loop_state.workspace_loaded && global_state.config.client_caps.work_done_progress;
-
-    if !loop_state.workspace_loaded && loop_state.roots_scanned == loop_state.roots_total {
-        state_changed = true;
-        loop_state.workspace_loaded = true;
+    if became_ready {
         if let Some(flycheck) = &global_state.flycheck {
             flycheck.update();
         }
     }
 
-    if show_progress {
-        send_startup_progress(&connection.sender, loop_state);
-    }
+    if loop_state.status == Status::Ready && (state_changed || became_ready) {
+        let subscriptions = loop_state
+            .mem_docs
+            .iter()
+            .map(|path| global_state.vfs.read().0.file_id(&path).unwrap())
+            .collect::<Vec<_>>();
 
-    if state_changed && loop_state.workspace_loaded {
         update_file_notifications_on_threadpool(
             pool,
             global_state.snapshot(),
             task_sender.clone(),
-            loop_state.subscriptions.subscriptions(),
+            subscriptions.clone(),
         );
         pool.execute({
-            let subs = loop_state.subscriptions.subscriptions();
+            let subs = subscriptions;
             let snap = global_state.snapshot();
             move || snap.analysis().prime_caches(subs).unwrap_or_else(|_: Canceled| ())
         });
@@ -465,7 +481,7 @@ fn on_request(
 
 fn on_notification(
     msg_sender: &Sender<Message>,
-    state: &mut GlobalState,
+    global_state: &mut GlobalState,
     loop_state: &mut LoopState,
     not: Notification,
 ) -> Result<()> {
@@ -484,12 +500,15 @@ fn on_notification(
     };
     let not = match notification_cast::<lsp_types::notification::DidOpenTextDocument>(not) {
         Ok(params) => {
-            let uri = params.text_document.uri;
-            let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
-            if let Some(file_id) =
-                state.vfs.write().add_file_overlay(&path, params.text_document.text)
-            {
-                loop_state.subscriptions.add_sub(FileId(file_id.0));
+            if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
+                if !loop_state.mem_docs.insert(path.clone()) {
+                    log::error!("duplicate DidOpenTextDocument: {}", path)
+                }
+                global_state
+                    .vfs
+                    .write()
+                    .0
+                    .set_file_contents(path, Some(params.text_document.text.into_bytes()));
             }
             return Ok(());
         }
@@ -497,23 +516,13 @@ fn on_notification(
     };
     let not = match notification_cast::<lsp_types::notification::DidChangeTextDocument>(not) {
         Ok(params) => {
-            let DidChangeTextDocumentParams { text_document, content_changes } = params;
-            let world = state.snapshot();
-            let file_id = from_proto::file_id(&world, &text_document.uri)?;
-            let line_index = world.analysis().file_line_index(file_id)?;
-            let uri = text_document.uri;
-            let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
-            state.vfs.write().change_file_overlay(&path, |old_text| {
-                apply_document_changes(old_text, Cow::Borrowed(&line_index), content_changes);
-            });
-            return Ok(());
-        }
-        Err(not) => not,
-    };
-    let not = match notification_cast::<lsp_types::notification::DidSaveTextDocument>(not) {
-        Ok(_params) => {
-            if let Some(flycheck) = &state.flycheck {
-                flycheck.update();
+            if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
+                assert!(loop_state.mem_docs.contains(&path));
+                let vfs = &mut global_state.vfs.write().0;
+                let file_id = vfs.file_id(&path).unwrap();
+                let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
+                apply_document_changes(&mut text, params.content_changes);
+                vfs.set_file_contents(path, Some(text.into_bytes()))
             }
             return Ok(());
         }
@@ -521,15 +530,30 @@ fn on_notification(
     };
     let not = match notification_cast::<lsp_types::notification::DidCloseTextDocument>(not) {
         Ok(params) => {
-            let uri = params.text_document.uri;
-            let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
-            if let Some(file_id) = state.vfs.write().remove_file_overlay(path.as_path()) {
-                loop_state.subscriptions.remove_sub(FileId(file_id.0));
+            if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
+                if !loop_state.mem_docs.remove(&path) {
+                    log::error!("orphan DidCloseTextDocument: {}", path)
+                }
+                if let Some(path) = path.as_path() {
+                    global_state.loader.invalidate(path.to_path_buf());
+                }
             }
-            let params =
-                lsp_types::PublishDiagnosticsParams { uri, diagnostics: Vec::new(), version: None };
+            let params = lsp_types::PublishDiagnosticsParams {
+                uri: params.text_document.uri,
+                diagnostics: Vec::new(),
+                version: None,
+            };
             let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
             msg_sender.send(not.into()).unwrap();
+            return Ok(());
+        }
+        Err(not) => not,
+    };
+    let not = match notification_cast::<lsp_types::notification::DidSaveTextDocument>(not) {
+        Ok(_params) => {
+            if let Some(flycheck) = &global_state.flycheck {
+                flycheck.update();
+            }
             return Ok(());
         }
         Err(not) => not,
@@ -575,11 +599,10 @@ fn on_notification(
     };
     let not = match notification_cast::<lsp_types::notification::DidChangeWatchedFiles>(not) {
         Ok(params) => {
-            let mut vfs = state.vfs.write();
             for change in params.changes {
-                let uri = change.uri;
-                let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
-                vfs.notify_changed(path)
+                if let Ok(path) = from_proto::abs_path(&change.uri) {
+                    global_state.loader.invalidate(path)
+                }
             }
             return Ok(());
         }
@@ -594,9 +617,9 @@ fn on_notification(
 
 fn apply_document_changes(
     old_text: &mut String,
-    mut line_index: Cow<'_, LineIndex>,
     content_changes: Vec<TextDocumentContentChangeEvent>,
 ) {
+    let mut line_index = LineIndex::new(old_text);
     // The changes we got must be applied sequentially, but can cross lines so we
     // have to keep our line index updated.
     // Some clients (e.g. Code) sort the ranges in reverse. As an optimization, we
@@ -621,7 +644,7 @@ fn apply_document_changes(
         match change.range {
             Some(range) => {
                 if !index_valid.covers(range.end.line) {
-                    line_index = Cow::Owned(LineIndex::new(&old_text));
+                    line_index = LineIndex::new(&old_text);
                 }
                 index_valid = IndexValid::UpToLineExclusive(range.start.line);
                 let range = from_proto::text_range(&line_index, range);
@@ -652,18 +675,11 @@ fn on_check_task(
                 &workspace_root,
             );
             for diag in diagnostics {
-                let path = diag
-                    .location
-                    .uri
-                    .to_file_path()
-                    .map_err(|()| format!("invalid uri: {}", diag.location.uri))?;
-                let file_id = match global_state.vfs.read().path2file(&path) {
+                let path = from_proto::vfs_path(&diag.location.uri)?;
+                let file_id = match global_state.vfs.read().0.file_id(&path) {
                     Some(file) => FileId(file.0),
                     None => {
-                        log::error!(
-                            "File with cargo diagnostic not found in VFS: {}",
-                            path.display()
-                        );
+                        log::error!("File with cargo diagnostic not found in VFS: {}", path);
                         return Ok(());
                     }
                 };
@@ -679,7 +695,7 @@ fn on_check_task(
         CheckTask::Status(status) => {
             if global_state.config.client_caps.work_done_progress {
                 let progress = match status {
-                    Status::Being => {
+                    ra_flycheck::Status::Being => {
                         lsp_types::WorkDoneProgress::Begin(lsp_types::WorkDoneProgressBegin {
                             title: "Running `cargo check`".to_string(),
                             cancellable: Some(false),
@@ -687,14 +703,14 @@ fn on_check_task(
                             percentage: None,
                         })
                     }
-                    Status::Progress(target) => {
+                    ra_flycheck::Status::Progress(target) => {
                         lsp_types::WorkDoneProgress::Report(lsp_types::WorkDoneProgressReport {
                             cancellable: Some(false),
                             message: Some(target),
                             percentage: None,
                         })
                     }
-                    Status::End => {
+                    ra_flycheck::Status::End => {
                         lsp_types::WorkDoneProgress::End(lsp_types::WorkDoneProgressEnd {
                             message: None,
                         })
@@ -720,7 +736,7 @@ fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state:
     let subscriptions = state.diagnostics.handle_task(task);
 
     for file_id in subscriptions {
-        let url = file_id_to_url(&state.vfs.read(), file_id);
+        let url = file_id_to_url(&state.vfs.read().0, file_id);
         let diagnostics = state.diagnostics.diagnostics_for(file_id).cloned().collect();
         let params = lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None };
         let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
@@ -728,57 +744,46 @@ fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state:
     }
 }
 
-fn send_startup_progress(sender: &Sender<Message>, loop_state: &mut LoopState) {
-    let total: usize = loop_state.roots_total;
-    let prev = loop_state.roots_progress_reported;
-    let progress = loop_state.roots_scanned;
-    loop_state.roots_progress_reported = Some(progress);
+fn report_progress(
+    loop_state: &mut LoopState,
+    sender: &Sender<Message>,
+    done: usize,
+    total: usize,
+    message: &str,
+) {
+    let token = lsp_types::ProgressToken::String(format!("rustAnalyzer/{}", message));
+    let message = Some(format!("{}/{} {}", done, total, message));
+    let percentage = Some(100.0 * done as f64 / total.max(1) as f64);
+    let work_done_progress = if done == 0 {
+        let work_done_progress_create = loop_state.req_queue.outgoing.register(
+            lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
+            lsp_types::WorkDoneProgressCreateParams { token: token.clone() },
+            DO_NOTHING,
+        );
+        sender.send(work_done_progress_create.into()).unwrap();
 
-    match (prev, loop_state.workspace_loaded) {
-        (None, false) => {
-            let request = loop_state.req_queue.outgoing.register(
-                lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
-                WorkDoneProgressCreateParams {
-                    token: lsp_types::ProgressToken::String("rustAnalyzer/startup".into()),
-                },
-                DO_NOTHING,
-            );
-            sender.send(request.into()).unwrap();
-            send_startup_progress_notif(
-                sender,
-                WorkDoneProgress::Begin(WorkDoneProgressBegin {
-                    title: "rust-analyzer".into(),
-                    cancellable: None,
-                    message: Some(format!("{}/{} packages", progress, total)),
-                    percentage: Some(100.0 * progress as f64 / total as f64),
-                }),
-            );
-        }
-        (Some(prev), false) if progress != prev => send_startup_progress_notif(
-            sender,
-            WorkDoneProgress::Report(WorkDoneProgressReport {
-                cancellable: None,
-                message: Some(format!("{}/{} packages", progress, total)),
-                percentage: Some(100.0 * progress as f64 / total as f64),
-            }),
-        ),
-        (_, true) => send_startup_progress_notif(
-            sender,
-            WorkDoneProgress::End(WorkDoneProgressEnd {
-                message: Some(format!("rust-analyzer loaded, {} packages", progress)),
-            }),
-        ),
-        _ => {}
-    }
-
-    fn send_startup_progress_notif(sender: &Sender<Message>, work_done_progress: WorkDoneProgress) {
-        let notif =
-            notification_new::<lsp_types::notification::Progress>(lsp_types::ProgressParams {
-                token: lsp_types::ProgressToken::String("rustAnalyzer/startup".into()),
-                value: lsp_types::ProgressParamsValue::WorkDone(work_done_progress),
-            });
-        sender.send(notif.into()).unwrap();
-    }
+        lsp_types::WorkDoneProgress::Begin(lsp_types::WorkDoneProgressBegin {
+            title: "rust-analyzer".into(),
+            cancellable: None,
+            message,
+            percentage,
+        })
+    } else if done < total {
+        lsp_types::WorkDoneProgress::Report(lsp_types::WorkDoneProgressReport {
+            cancellable: None,
+            message,
+            percentage,
+        })
+    } else {
+        assert!(done == total);
+        lsp_types::WorkDoneProgress::End(lsp_types::WorkDoneProgressEnd { message })
+    };
+    let notification =
+        notification_new::<lsp_types::notification::Progress>(lsp_types::ProgressParams {
+            token,
+            value: lsp_types::ProgressParamsValue::WorkDone(work_done_progress),
+        });
+    sender.send(notification.into()).unwrap();
 }
 
 struct PoolDispatcher<'a> {
@@ -976,18 +981,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::Cow;
-
     use lsp_types::{Position, Range, TextDocumentContentChangeEvent};
-    use ra_ide::LineIndex;
+
+    use super::*;
 
     #[test]
-    fn apply_document_changes() {
-        fn run(text: &mut String, changes: Vec<TextDocumentContentChangeEvent>) {
-            let line_index = Cow::Owned(LineIndex::new(&text));
-            super::apply_document_changes(text, line_index, changes);
-        }
-
+    fn test_apply_document_changes() {
         macro_rules! c {
             [$($sl:expr, $sc:expr; $el:expr, $ec:expr => $text:expr),+] => {
                 vec![$(TextDocumentContentChangeEvent {
@@ -1002,9 +1001,9 @@ mod tests {
         }
 
         let mut text = String::new();
-        run(&mut text, vec![]);
+        apply_document_changes(&mut text, vec![]);
         assert_eq!(text, "");
-        run(
+        apply_document_changes(
             &mut text,
             vec![TextDocumentContentChangeEvent {
                 range: None,
@@ -1013,36 +1012,39 @@ mod tests {
             }],
         );
         assert_eq!(text, "the");
-        run(&mut text, c![0, 3; 0, 3 => " quick"]);
+        apply_document_changes(&mut text, c![0, 3; 0, 3 => " quick"]);
         assert_eq!(text, "the quick");
-        run(&mut text, c![0, 0; 0, 4 => "", 0, 5; 0, 5 => " foxes"]);
+        apply_document_changes(&mut text, c![0, 0; 0, 4 => "", 0, 5; 0, 5 => " foxes"]);
         assert_eq!(text, "quick foxes");
-        run(&mut text, c![0, 11; 0, 11 => "\ndream"]);
+        apply_document_changes(&mut text, c![0, 11; 0, 11 => "\ndream"]);
         assert_eq!(text, "quick foxes\ndream");
-        run(&mut text, c![1, 0; 1, 0 => "have "]);
+        apply_document_changes(&mut text, c![1, 0; 1, 0 => "have "]);
         assert_eq!(text, "quick foxes\nhave dream");
-        run(&mut text, c![0, 0; 0, 0 => "the ", 1, 4; 1, 4 => " quiet", 1, 16; 1, 16 => "s\n"]);
+        apply_document_changes(
+            &mut text,
+            c![0, 0; 0, 0 => "the ", 1, 4; 1, 4 => " quiet", 1, 16; 1, 16 => "s\n"],
+        );
         assert_eq!(text, "the quick foxes\nhave quiet dreams\n");
-        run(&mut text, c![0, 15; 0, 15 => "\n", 2, 17; 2, 17 => "\n"]);
+        apply_document_changes(&mut text, c![0, 15; 0, 15 => "\n", 2, 17; 2, 17 => "\n"]);
         assert_eq!(text, "the quick foxes\n\nhave quiet dreams\n\n");
-        run(
+        apply_document_changes(
             &mut text,
             c![1, 0; 1, 0 => "DREAM", 2, 0; 2, 0 => "they ", 3, 0; 3, 0 => "DON'T THEY?"],
         );
         assert_eq!(text, "the quick foxes\nDREAM\nthey have quiet dreams\nDON'T THEY?\n");
-        run(&mut text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
+        apply_document_changes(&mut text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
         assert_eq!(text, "the quick \nthey have quiet dreams\n");
 
         text = String::from("❤️");
-        run(&mut text, c![0, 0; 0, 0 => "a"]);
+        apply_document_changes(&mut text, c![0, 0; 0, 0 => "a"]);
         assert_eq!(text, "a❤️");
 
         text = String::from("a\nb");
-        run(&mut text, c![0, 1; 1, 0 => "\nțc", 0, 1; 1, 1 => "d"]);
+        apply_document_changes(&mut text, c![0, 1; 1, 0 => "\nțc", 0, 1; 1, 1 => "d"]);
         assert_eq!(text, "adcb");
 
         text = String::from("a\nb");
-        run(&mut text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
+        apply_document_changes(&mut text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
         assert_eq!(text, "ațc\ncb");
     }
 }

@@ -9,26 +9,22 @@ use ra_db::{
     SourceRootId,
 };
 use ra_prof::{memory_usage, profile, Bytes};
-use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
 
 use crate::{symbol_index::SymbolsDatabase, RootDatabase};
 
 #[derive(Default)]
 pub struct AnalysisChange {
-    new_roots: Vec<(SourceRootId, bool)>,
-    roots_changed: FxHashMap<SourceRootId, RootChange>,
-    files_changed: Vec<(FileId, Arc<String>)>,
+    roots: Option<Vec<SourceRoot>>,
+    files_changed: Vec<(FileId, Option<Arc<String>>)>,
     crate_graph: Option<CrateGraph>,
 }
 
 impl fmt::Debug for AnalysisChange {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut d = fmt.debug_struct("AnalysisChange");
-        if !self.new_roots.is_empty() {
-            d.field("new_roots", &self.new_roots);
-        }
-        if !self.roots_changed.is_empty() {
-            d.field("roots_changed", &self.roots_changed);
+        if let Some(roots) = &self.roots {
+            d.field("roots", roots);
         }
         if !self.files_changed.is_empty() {
             d.field("files_changed", &self.files_changed.len());
@@ -45,28 +41,12 @@ impl AnalysisChange {
         AnalysisChange::default()
     }
 
-    pub fn add_root(&mut self, root_id: SourceRootId, is_local: bool) {
-        self.new_roots.push((root_id, is_local));
+    pub fn set_roots(&mut self, roots: Vec<SourceRoot>) {
+        self.roots = Some(roots);
     }
 
-    pub fn add_file(
-        &mut self,
-        root_id: SourceRootId,
-        file_id: FileId,
-        path: RelativePathBuf,
-        text: Arc<String>,
-    ) {
-        let file = AddFile { file_id, path, text };
-        self.roots_changed.entry(root_id).or_default().added.push(file);
-    }
-
-    pub fn change_file(&mut self, file_id: FileId, new_text: Arc<String>) {
+    pub fn change_file(&mut self, file_id: FileId, new_text: Option<Arc<String>>) {
         self.files_changed.push((file_id, new_text))
-    }
-
-    pub fn remove_file(&mut self, root_id: SourceRootId, file_id: FileId, path: RelativePathBuf) {
-        let file = RemoveFile { file_id, path };
-        self.roots_changed.entry(root_id).or_default().removed.push(file);
     }
 
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
@@ -114,56 +94,37 @@ impl RootDatabase {
         let _p = profile("RootDatabase::apply_change");
         self.request_cancellation();
         log::info!("apply_change {:?}", change);
-        if !change.new_roots.is_empty() {
-            let mut local_roots = Vec::clone(&self.local_roots());
-            let mut libraries = Vec::clone(&self.library_roots());
-            for (root_id, is_local) in change.new_roots {
-                let root =
-                    if is_local { SourceRoot::new_local() } else { SourceRoot::new_library() };
+        if let Some(roots) = change.roots {
+            let mut local_roots = FxHashSet::default();
+            let mut library_roots = FxHashSet::default();
+            for (idx, root) in roots.into_iter().enumerate() {
+                let root_id = SourceRootId(idx as u32);
                 let durability = durability(&root);
-                self.set_source_root_with_durability(root_id, Arc::new(root), durability);
-                if is_local {
-                    local_roots.push(root_id);
+                if root.is_library {
+                    library_roots.insert(root_id);
                 } else {
-                    libraries.push(root_id)
+                    local_roots.insert(root_id);
                 }
+                for file_id in root.iter() {
+                    self.set_file_source_root_with_durability(file_id, root_id, durability);
+                }
+                self.set_source_root_with_durability(root_id, Arc::new(root), durability);
             }
             self.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
-            self.set_library_roots_with_durability(Arc::new(libraries), Durability::HIGH);
+            self.set_library_roots_with_durability(Arc::new(library_roots), Durability::HIGH);
         }
 
-        for (root_id, root_change) in change.roots_changed {
-            self.apply_root_change(root_id, root_change);
-        }
         for (file_id, text) in change.files_changed {
             let source_root_id = self.file_source_root(file_id);
             let source_root = self.source_root(source_root_id);
             let durability = durability(&source_root);
+            // XXX: can't actually remove the file, just reset the text
+            let text = text.unwrap_or_default();
             self.set_file_text_with_durability(file_id, text, durability)
         }
         if let Some(crate_graph) = change.crate_graph {
             self.set_crate_graph_with_durability(Arc::new(crate_graph), Durability::HIGH)
         }
-    }
-
-    fn apply_root_change(&mut self, root_id: SourceRootId, root_change: RootChange) {
-        let mut source_root = SourceRoot::clone(&self.source_root(root_id));
-        let durability = durability(&source_root);
-        for add_file in root_change.added {
-            self.set_file_text_with_durability(add_file.file_id, add_file.text, durability);
-            self.set_file_relative_path_with_durability(
-                add_file.file_id,
-                add_file.path.clone(),
-                durability,
-            );
-            self.set_file_source_root_with_durability(add_file.file_id, root_id, durability);
-            source_root.insert_file(add_file.path, add_file.file_id);
-        }
-        for remove_file in root_change.removed {
-            self.set_file_text_with_durability(remove_file.file_id, Default::default(), durability);
-            source_root.remove_file(&remove_file.path);
-        }
-        self.set_source_root_with_durability(root_id, Arc::new(source_root), durability);
     }
 
     pub fn maybe_collect_garbage(&mut self) {

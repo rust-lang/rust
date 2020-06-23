@@ -47,7 +47,7 @@ use std::sync::Arc;
 use ra_cfg::CfgOptions;
 use ra_db::{
     salsa::{self, ParallelDatabase},
-    CheckCanceled, Env, FileLoader, SourceDatabase,
+    CheckCanceled, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
 };
 use ra_ide_db::{
     symbol_index::{self, FileSymbol},
@@ -78,7 +78,8 @@ pub use crate::{
 pub use hir::Documentation;
 pub use ra_assists::{Assist, AssistConfig, AssistId, ResolvedAssist};
 pub use ra_db::{
-    Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRootId,
+    Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,
+    SourceRootId,
 };
 pub use ra_ide_db::{
     change::AnalysisChange,
@@ -212,11 +213,14 @@ impl Analysis {
     // `AnalysisHost` for creating a fully-featured analysis.
     pub fn from_single_file(text: String) -> (Analysis, FileId) {
         let mut host = AnalysisHost::default();
-        let source_root = SourceRootId(0);
-        let mut change = AnalysisChange::new();
-        change.add_root(source_root, true);
-        let mut crate_graph = CrateGraph::default();
         let file_id = FileId(0);
+        let mut file_set = FileSet::default();
+        file_set.insert(file_id, VfsPath::new_virtual_path("/main.rs".to_string()));
+        let source_root = SourceRoot::new_local(file_set);
+
+        let mut change = AnalysisChange::new();
+        change.set_roots(vec![source_root]);
+        let mut crate_graph = CrateGraph::default();
         // FIXME: cfg options
         // Default to enable test for single file.
         let mut cfg_options = CfgOptions::default();
@@ -228,9 +232,8 @@ impl Analysis {
             cfg_options,
             Env::default(),
             Default::default(),
-            Default::default(),
         );
-        change.add_file(source_root, file_id, "main.rs".into(), Arc::new(text));
+        change.change_file(file_id, Some(Arc::new(text)));
         change.set_crate_graph(crate_graph);
         host.apply_change(change);
         (host.analysis(), file_id)

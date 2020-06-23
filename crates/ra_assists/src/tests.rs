@@ -1,10 +1,8 @@
 mod generated;
 
-use std::sync::Arc;
-
 use hir::Semantics;
 use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
-use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
+use ra_ide_db::RootDatabase;
 use ra_syntax::TextRange;
 use test_utils::{
     assert_eq_text, extract_offset, extract_range, extract_range_or_offset, RangeOrOffset,
@@ -13,11 +11,7 @@ use test_utils::{
 use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, Assists};
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
-    let (mut db, file_id) = RootDatabase::with_single_file(text);
-    // FIXME: ideally, this should be done by the above `RootDatabase::with_single_file`,
-    // but it looks like this might need specialization? :(
-    db.set_local_roots(Arc::new(vec![db.file_source_root(file_id)]));
-    (db, file_id)
+    RootDatabase::with_single_file(text)
 }
 
 pub(crate) fn check_assist(assist: Handler, ra_fixture_before: &str, ra_fixture_after: &str) {
@@ -72,8 +66,7 @@ enum ExpectedResult<'a> {
 
 fn check(handler: Handler, before: &str, expected: ExpectedResult) {
     let (text_without_caret, file_with_caret_id, range_or_offset, db) = if before.contains("//-") {
-        let (mut db, position) = RootDatabase::with_position(before);
-        db.set_local_roots(Arc::new(vec![db.file_source_root(position.file_id)]));
+        let (db, position) = RootDatabase::with_position(before);
         (
             db.file_text(position.file_id).as_ref().to_owned(),
             position.file_id,

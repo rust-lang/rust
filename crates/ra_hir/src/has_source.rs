@@ -2,7 +2,7 @@
 
 use either::Either;
 use hir_def::{
-    nameres::ModuleSource,
+    nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource as _},
     Lookup, VariantId,
 };
@@ -27,6 +27,14 @@ impl Module {
     pub fn definition_source(self, db: &dyn HirDatabase) -> InFile<ModuleSource> {
         let def_map = db.crate_def_map(self.id.krate);
         def_map[self.id.local_id].definition_source(db.upcast())
+    }
+
+    pub fn is_mod_rs(self, db: &dyn HirDatabase) -> bool {
+        let def_map = db.crate_def_map(self.id.krate);
+        match def_map[self.id.local_id].origin {
+            ModuleOrigin::File { is_mod_rs, .. } => is_mod_rs,
+            _ => false,
+        }
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.

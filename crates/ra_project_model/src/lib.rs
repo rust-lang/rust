@@ -13,7 +13,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use ra_cfg::CfgOptions;
-use ra_db::{CrateGraph, CrateName, Edition, Env, ExternSource, ExternSourceId, FileId};
+use ra_db::{CrateGraph, CrateName, Edition, Env, FileId};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde_json::from_reader;
 
@@ -246,7 +246,6 @@ impl ProjectWorkspace {
     pub fn to_crate_graph(
         &self,
         target: Option<&str>,
-        extern_source_roots: &FxHashMap<PathBuf, ExternSourceId>,
         proc_macro_client: &ProcMacroClient,
         load: &mut dyn FnMut(&Path) -> Option<FileId>,
     ) -> CrateGraph {
@@ -280,14 +279,10 @@ impl ProjectWorkspace {
                         };
 
                         let mut env = Env::default();
-                        let mut extern_source = ExternSource::default();
                         if let Some(out_dir) = &krate.out_dir {
                             // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
                             if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
                                 env.set("OUT_DIR", out_dir);
-                            }
-                            if let Some(&extern_source_id) = extern_source_roots.get(out_dir) {
-                                extern_source.set_extern_path(&out_dir, extern_source_id);
                             }
                         }
                         let proc_macro = krate
@@ -304,7 +299,6 @@ impl ProjectWorkspace {
                                 None,
                                 cfg_options,
                                 env,
-                                extern_source,
                                 proc_macro.unwrap_or_default(),
                             ),
                         ))
@@ -341,7 +335,6 @@ impl ProjectWorkspace {
                         let file_id = load(&sysroot[krate].root)?;
 
                         let env = Env::default();
-                        let extern_source = ExternSource::default();
                         let proc_macro = vec![];
                         let crate_name = CrateName::new(&sysroot[krate].name)
                             .expect("Sysroot crate names should not contain dashes");
@@ -352,7 +345,6 @@ impl ProjectWorkspace {
                             Some(crate_name),
                             cfg_options.clone(),
                             env,
-                            extern_source,
                             proc_macro,
                         );
                         Some((krate, crate_id))
@@ -409,14 +401,10 @@ impl ProjectWorkspace {
                                 opts
                             };
                             let mut env = Env::default();
-                            let mut extern_source = ExternSource::default();
                             if let Some(out_dir) = &cargo[pkg].out_dir {
                                 // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
                                 if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
                                     env.set("OUT_DIR", out_dir);
-                                }
-                                if let Some(&extern_source_id) = extern_source_roots.get(out_dir) {
-                                    extern_source.set_extern_path(&out_dir, extern_source_id);
                                 }
                             }
                             let proc_macro = cargo[pkg]
@@ -431,7 +419,6 @@ impl ProjectWorkspace {
                                 Some(CrateName::normalize_dashes(&cargo[pkg].name)),
                                 cfg_options,
                                 env,
-                                extern_source,
                                 proc_macro.clone(),
                             );
                             if cargo[tgt].kind == TargetKind::Lib {
