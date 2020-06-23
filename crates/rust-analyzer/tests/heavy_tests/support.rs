@@ -9,9 +9,7 @@ use std::{
 use crossbeam_channel::{after, select, Receiver};
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{
-    notification::{DidOpenTextDocument, Exit},
-    request::Shutdown,
-    DidOpenTextDocumentParams, TextDocumentIdentifier, TextDocumentItem, Url, WorkDoneProgress,
+    notification::Exit, request::Shutdown, TextDocumentIdentifier, Url, WorkDoneProgress,
 };
 use lsp_types::{ProgressParams, ProgressParamsValue};
 use serde::Serialize;
@@ -66,13 +64,10 @@ impl<'a> Project<'a> {
             ra_prof::init_from(crate::PROFILE);
         });
 
-        let mut paths = vec![];
-
         for entry in Fixture::parse(self.fixture) {
             let path = tmp_dir.path().join(&entry.path['/'.len_utf8()..]);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
-            paths.push((path, entry.text));
         }
 
         let mut roots =
@@ -102,7 +97,7 @@ impl<'a> Project<'a> {
             f(&mut config)
         }
 
-        Server::new(tmp_dir, config, paths)
+        Server::new(tmp_dir, config)
     }
 }
 
@@ -120,7 +115,7 @@ pub struct Server {
 }
 
 impl Server {
-    fn new(dir: TempDir, config: Config, files: Vec<(PathBuf, String)>) -> Server {
+    fn new(dir: TempDir, config: Config) -> Server {
         let (connection, client) = Connection::memory();
 
         let _thread = jod_thread::Builder::new()
@@ -128,20 +123,7 @@ impl Server {
             .spawn(move || main_loop(config, connection).unwrap())
             .expect("failed to spawn a thread");
 
-        let res =
-            Server { req_id: Cell::new(1), dir, messages: Default::default(), client, _thread };
-
-        for (path, text) in files {
-            res.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
-                text_document: TextDocumentItem {
-                    uri: Url::from_file_path(path).unwrap(),
-                    language_id: "rust".to_string(),
-                    version: 0,
-                    text,
-                },
-            })
-        }
-        res
+        Server { req_id: Cell::new(1), dir, messages: Default::default(), client, _thread }
     }
 
     pub fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
