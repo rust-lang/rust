@@ -20,47 +20,25 @@
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
-#[allow(unused_extern_crates)]
 extern crate rustc_ast;
-#[allow(unused_extern_crates)]
 extern crate rustc_ast_pretty;
-#[allow(unused_extern_crates)]
 extern crate rustc_attr;
-#[allow(unused_extern_crates)]
 extern crate rustc_data_structures;
-#[allow(unused_extern_crates)]
-extern crate rustc_driver;
-#[allow(unused_extern_crates)]
 extern crate rustc_errors;
-#[allow(unused_extern_crates)]
 extern crate rustc_hir;
-#[allow(unused_extern_crates)]
 extern crate rustc_hir_pretty;
-#[allow(unused_extern_crates)]
 extern crate rustc_index;
-#[allow(unused_extern_crates)]
 extern crate rustc_infer;
-#[allow(unused_extern_crates)]
 extern crate rustc_lexer;
-#[allow(unused_extern_crates)]
 extern crate rustc_lint;
-#[allow(unused_extern_crates)]
 extern crate rustc_middle;
-#[allow(unused_extern_crates)]
 extern crate rustc_mir;
-#[allow(unused_extern_crates)]
 extern crate rustc_parse;
-#[allow(unused_extern_crates)]
 extern crate rustc_parse_format;
-#[allow(unused_extern_crates)]
 extern crate rustc_session;
-#[allow(unused_extern_crates)]
 extern crate rustc_span;
-#[allow(unused_extern_crates)]
 extern crate rustc_target;
-#[allow(unused_extern_crates)]
 extern crate rustc_trait_selection;
-#[allow(unused_extern_crates)]
 extern crate rustc_typeck;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -85,14 +63,10 @@ use rustc_session::Session;
 /// # Example
 ///
 /// ```
-/// # #![feature(rustc_private)]
-/// # #[allow(unused_extern_crates)]
-/// # extern crate rustc_middle;
-/// # #[allow(unused_extern_crates)]
-/// # extern crate rustc_session;
-/// # #[macro_use]
-/// # use clippy_lints::declare_clippy_lint;
+/// #![feature(rustc_private)]
+/// extern crate rustc_session;
 /// use rustc_session::declare_tool_lint;
+/// use clippy_lints::declare_clippy_lint;
 ///
 /// declare_clippy_lint! {
 ///     /// **What it does:** Checks for ... (describe what the lint matches).
