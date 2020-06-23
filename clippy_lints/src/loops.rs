@@ -28,7 +28,7 @@ use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
-use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceWithHirId, PlaceBase};
+use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::iter::{once, Iterator};
 use std::mem;
 
@@ -1580,13 +1580,13 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr<'_>) -> Option<Hi
     None
 }
 
-fn check_for_mutation<'a, 'tcx> (
+fn check_for_mutation<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     body: &Expr<'_>,
     bound_ids: &[Option<HirId>],
 ) -> (Option<Span>, Option<Span>) {
     let mut delegate = MutatePairDelegate {
-        cx: cx,
+        cx,
         hir_id_low: bound_ids[0],
         hir_id_high: bound_ids[1],
         span_low: None,

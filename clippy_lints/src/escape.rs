@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_target::abi::LayoutOf;
-use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceWithHirId, PlaceBase};
+use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 use crate::utils::span_lint;
 
