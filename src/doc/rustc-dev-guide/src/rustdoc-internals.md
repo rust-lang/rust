@@ -192,6 +192,3 @@ runtime. These tests don't have as thorough of a writeup, but a broad example
 that features results in all tabs can be found in `basic.js`. The basic idea is
 that you match a given `QUERY` with a set of `EXPECTED` results, complete with
 the full item path of each item.
-
-You can run tests using the name of the folder. For example,
-`x.py test --stage 1 src/test/rustdoc` will run the output tests using a stage1 rustdoc.
