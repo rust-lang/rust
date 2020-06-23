@@ -25,9 +25,11 @@ before running your command.
 
 ## Filesystem layout
 
-- Each directory, excluding `scripts` and `disabled`, corresponds to a docker image
-- `scripts` contains files shared by docker images
-- `disabled` contains images that are not built on CI
+- Each host architecture has its own `host-{arch}` directory, and those
+  directories contain a subdirectory for each Docker image (plus the `disabled`
+  subdirectory).
+- `host-{arch}/disabled` contains images that are not built on CI.
+- `scripts` contains files shared by multiple Docker images.
 
 ## Docker Toolbox on Windows
 

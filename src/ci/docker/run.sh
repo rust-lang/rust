@@ -27,8 +27,9 @@ do
   shift
 done
 
-docker_dir="`dirname $script`"
-ci_dir="`dirname $docker_dir`"
+script_dir="`dirname $script`"
+docker_dir="${script_dir}/host-$(uname -m)"
+ci_dir="`dirname $script_dir`"
 src_dir="`dirname $ci_dir`"
 root_dir="`dirname $src_dir`"
 
@@ -51,7 +52,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       rm -f "$copied_files"
       for i in $(sed -n -e 's/^COPY \(.*\) .*$/\1/p' "$docker_dir/$image/Dockerfile"); do
         # List the file names
-        find "$docker_dir/$i" -type f >> $copied_files
+        find "$script_dir/$i" -type f >> $copied_files
       done
       # Sort the file names and cat the content into the hash key
       sort $copied_files | xargs cat >> $hash_key
@@ -73,10 +74,10 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
 
     dockerfile="$docker_dir/$image/Dockerfile"
     if [ -x /usr/bin/cygpath ]; then
-        context="`cygpath -w $docker_dir`"
+        context="`cygpath -w $script_dir`"
         dockerfile="`cygpath -w $dockerfile`"
     else
-        context="$docker_dir"
+        context="$script_dir"
     fi
     retry docker \
       build \
