@@ -24,6 +24,7 @@ fn matches_to_edit_at_offset(matches: &SsrMatches, relative_start: TextSize) -> 
 
 fn render_replace(match_info: &Match) -> String {
     let mut out = String::new();
+    let match_start = match_info.matched_node.text_range().start();
     for r in &match_info.template.tokens {
         match r {
             PatternElement::Token(t) => out.push_str(t.text.as_str()),
@@ -32,7 +33,14 @@ fn render_replace(match_info: &Match) -> String {
                     match_info.placeholder_values.get(&Var(p.ident.to_string()))
                 {
                     let range = &placeholder_value.range.range;
-                    let mut matched_text = placeholder_value.node.text().to_string();
+                    let mut matched_text = if let Some(node) = &placeholder_value.node {
+                        node.text().to_string()
+                    } else {
+                        let relative_range = range.checked_sub(match_start).unwrap();
+                        match_info.matched_node.text().to_string()
+                            [usize::from(relative_range.start())..usize::from(relative_range.end())]
+                            .to_string()
+                    };
                     let edit =
                         matches_to_edit_at_offset(&placeholder_value.inner_matches, range.start());
                     edit.apply(&mut matched_text);

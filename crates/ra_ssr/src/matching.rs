@@ -61,8 +61,9 @@ pub(crate) struct Var(pub String);
 /// Information about a placeholder bound in a match.
 #[derive(Debug)]
 pub(crate) struct PlaceholderMatch {
-    /// The node that the placeholder matched to.
-    pub(crate) node: SyntaxNode,
+    /// The node that the placeholder matched to. If set, then we'll search for further matches
+    /// within this node. It isn't set when we match tokens within a macro call's token tree.
+    pub(crate) node: Option<SyntaxNode>,
     pub(crate) range: FileRange,
     /// More matches, found within `node`.
     pub(crate) inner_matches: SsrMatches,
@@ -195,6 +196,7 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
             SyntaxKind::RECORD_FIELD_LIST => {
                 self.attempt_match_record_field_list(match_inputs, pattern, code)
             }
+            SyntaxKind::TOKEN_TREE => self.attempt_match_token_tree(match_inputs, pattern, code),
             _ => self.attempt_match_node_children(match_inputs, pattern, code),
         }
     }
@@ -340,6 +342,90 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
         Ok(())
     }
 
+    /// Outside of token trees, a placeholder can only match a single AST node, whereas in a token
+    /// tree it can match a sequence of tokens.
+    fn attempt_match_token_tree(
+        &mut self,
+        match_inputs: &MatchInputs,
+        pattern: &SyntaxNode,
+        code: &ra_syntax::SyntaxNode,
+    ) -> Result<(), MatchFailed> {
+        let mut pattern = PatternIterator::new(pattern).peekable();
+        let mut children = code.children_with_tokens();
+        while let Some(child) = children.next() {
+            if let Some(placeholder) = pattern.peek().and_then(|p| match_inputs.get_placeholder(p))
+            {
+                pattern.next();
+                let next_pattern_token = pattern
+                    .peek()
+                    .and_then(|p| match p {
+                        SyntaxElement::Token(t) => Some(t.clone()),
+                        SyntaxElement::Node(n) => n.first_token(),
+                    })
+                    .map(|p| p.text().to_string());
+                let first_matched_token = child.clone();
+                let mut last_matched_token = child;
+                // Read code tokens util we reach one equal to the next token from our pattern
+                // or we reach the end of the token tree.
+                while let Some(next) = children.next() {
+                    match &next {
+                        SyntaxElement::Token(t) => {
+                            if Some(t.to_string()) == next_pattern_token {
+                                pattern.next();
+                                break;
+                            }
+                        }
+                        SyntaxElement::Node(n) => {
+                            if let Some(first_token) = n.first_token() {
+                                if Some(first_token.to_string()) == next_pattern_token {
+                                    if let Some(SyntaxElement::Node(p)) = pattern.next() {
+                                        // We have a subtree that starts with the next token in our pattern.
+                                        self.attempt_match_token_tree(match_inputs, &p, &n)?;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    };
+                    last_matched_token = next;
+                }
+                if let Some(match_out) = &mut self.match_out {
+                    match_out.placeholder_values.insert(
+                        Var(placeholder.ident.to_string()),
+                        PlaceholderMatch::from_range(FileRange {
+                            file_id: self.sema.original_range(code).file_id,
+                            range: first_matched_token
+                                .text_range()
+                                .cover(last_matched_token.text_range()),
+                        }),
+                    );
+                }
+                continue;
+            }
+            // Match literal (non-placeholder) tokens.
+            match child {
+                SyntaxElement::Token(token) => {
+                    self.attempt_match_token(&mut pattern, &token)?;
+                }
+                SyntaxElement::Node(node) => match pattern.next() {
+                    Some(SyntaxElement::Node(p)) => {
+                        self.attempt_match_token_tree(match_inputs, &p, &node)?;
+                    }
+                    Some(SyntaxElement::Token(p)) => fail_match!(
+                        "Pattern has token '{}', code has subtree '{}'",
+                        p.text(),
+                        node.text()
+                    ),
+                    None => fail_match!("Pattern has nothing, code has '{}'", node.text()),
+                },
+            }
+        }
+        if let Some(p) = pattern.next() {
+            fail_match!("Reached end of token tree in code, but pattern still has {:?}", p);
+        }
+        Ok(())
+    }
+
     fn next_non_trivial(&mut self, code_it: &mut SyntaxElementChildren) -> Option<SyntaxElement> {
         loop {
             let c = code_it.next();
@@ -399,7 +485,11 @@ fn recording_match_fail_reasons() -> bool {
 
 impl PlaceholderMatch {
     fn new(node: &SyntaxNode, range: FileRange) -> Self {
-        Self { node: node.clone(), range, inner_matches: SsrMatches::default() }
+        Self { node: Some(node.clone()), range, inner_matches: SsrMatches::default() }
+    }
+
+    fn from_range(range: FileRange) -> Self {
+        Self { node: None, range, inner_matches: SsrMatches::default() }
     }
 }
 
@@ -484,7 +574,14 @@ mod tests {
         assert_eq!(matches.matches.len(), 1);
         assert_eq!(matches.matches[0].matched_node.text(), "foo(1+2)");
         assert_eq!(matches.matches[0].placeholder_values.len(), 1);
-        assert_eq!(matches.matches[0].placeholder_values[&Var("x".to_string())].node.text(), "1+2");
+        assert_eq!(
+            matches.matches[0].placeholder_values[&Var("x".to_string())]
+                .node
+                .as_ref()
+                .unwrap()
+                .text(),
+            "1+2"
+        );
 
         let edit = crate::replacing::matches_to_edit(&matches);
         let mut after = input.to_string();

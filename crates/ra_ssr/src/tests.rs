@@ -427,6 +427,45 @@ fn match_reordered_struct_instantiation() {
 }
 
 #[test]
+fn match_macro_invocation() {
+    assert_matches("foo!($a)", "fn() {foo(foo!(foo()))}", &["foo!(foo())"]);
+    assert_matches("foo!(41, $a, 43)", "fn() {foo!(41, 42, 43)}", &["foo!(41, 42, 43)"]);
+    assert_no_match("foo!(50, $a, 43)", "fn() {foo!(41, 42, 43}");
+    assert_no_match("foo!(41, $a, 50)", "fn() {foo!(41, 42, 43}");
+    assert_matches("foo!($a())", "fn() {foo!(bar())}", &["foo!(bar())"]);
+}
+
+// When matching within a macro expansion, we only allow matches of nodes that originated from
+// the macro call, not from the macro definition.
+#[test]
+fn no_match_expression_from_macro() {
+    assert_no_match(
+        "$a.clone()",
+        r#"
+            macro_rules! m1 {
+                () => {42.clone()}
+            }
+            fn f1() {m1!()}
+            "#,
+    );
+}
+
+// We definitely don't want to allow matching of an expression that part originates from the
+// macro call `42` and part from the macro definition `.clone()`.
+#[test]
+fn no_match_split_expression() {
+    assert_no_match(
+        "$a.clone()",
+        r#"
+            macro_rules! m1 {
+                ($x:expr) => {$x.clone()}
+            }
+            fn f1() {m1!(42)}
+            "#,
+    );
+}
+
+#[test]
 fn replace_function_call() {
     assert_ssr_transform("foo() ==>> bar()", "fn f1() {foo(); foo();}", "fn f1() {bar(); bar();}");
 }
@@ -464,6 +503,20 @@ fn replace_struct_init() {
         "Foo {a: $a, b: $b} ==>> Foo::new($a, $b)",
         "fn f1() {Foo{b: 1, a: 2}}",
         "fn f1() {Foo::new(2, 1)}",
+    );
+}
+
+#[test]
+fn replace_macro_invocations() {
+    assert_ssr_transform(
+        "try!($a) ==>> $a?",
+        "fn f1() -> Result<(), E> {bar(try!(foo()));}",
+        "fn f1() -> Result<(), E> {bar(foo()?);}",
+    );
+    assert_ssr_transform(
+        "foo!($a($b)) ==>> foo($b, $a)",
+        "fn f1() {foo!(abc(def() + 2));}",
+        "fn f1() {foo(def() + 2, abc);}",
     );
 }
 
