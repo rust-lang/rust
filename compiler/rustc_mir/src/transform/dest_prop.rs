@@ -115,7 +115,12 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
+// Empirical measurements have resulted in some observations:
+// - Running on a body with a single block and 500 locals takes barely any time
+// - Running on a body with ~400 blocks and ~300 relevant locals takes "too long"
+// ...so we just limit both to somewhat reasonable-ish looking values.
 const MAX_LOCALS: usize = 500;
+const MAX_BLOCKS: usize = 250;
 
 pub struct DestinationPropagation;
 
@@ -157,6 +162,15 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 source.def_id(),
                 relevant,
                 MAX_LOCALS
+            );
+            return;
+        }
+        if body.basic_blocks().len() > MAX_BLOCKS {
+            warn!(
+                "too many blocks in {:?} ({}, max is {}), not optimizing",
+                source.def_id(),
+                body.basic_blocks().len(),
+                MAX_BLOCKS
             );
             return;
         }
