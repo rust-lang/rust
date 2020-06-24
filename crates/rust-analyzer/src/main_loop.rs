@@ -1,9 +1,5 @@
 //! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
-
-mod handlers;
-pub(crate) mod request_metrics;
-
 use std::{
     env,
     error::Error,
@@ -19,6 +15,7 @@ use lsp_server::{
     Connection, ErrorCode, Message, Notification, ReqQueue, Request, RequestId, Response,
 };
 use lsp_types::{request::Request as _, NumberOrString, TextDocumentContentChangeEvent};
+use ra_db::VfsPath;
 use ra_flycheck::CheckTask;
 use ra_ide::{Canceled, FileId, LineIndex};
 use ra_prof::profile;
@@ -32,11 +29,10 @@ use crate::{
     diagnostics::DiagnosticTask,
     from_proto,
     global_state::{file_id_to_url, GlobalState, GlobalStateSnapshot},
-    lsp_ext,
-    main_loop::request_metrics::RequestMetrics,
+    handlers, lsp_ext,
+    request_metrics::RequestMetrics,
     Result,
 };
-use ra_db::VfsPath;
 
 #[derive(Debug)]
 pub struct LspError {

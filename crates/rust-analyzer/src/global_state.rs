@@ -20,7 +20,7 @@ use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
     from_proto,
     line_endings::LineEndings,
-    main_loop::request_metrics::{LatestRequests, RequestMetrics},
+    request_metrics::{LatestRequests, RequestMetrics},
     to_proto::url_from_abs_path,
     Result,
 };

@@ -38,7 +38,7 @@ use crate::{
     to_proto, LspError, Result,
 };
 
-pub fn handle_analyzer_status(snap: GlobalStateSnapshot, _: ()) -> Result<String> {
+pub(crate) fn handle_analyzer_status(snap: GlobalStateSnapshot, _: ()) -> Result<String> {
     let _p = profile("handle_analyzer_status");
     let mut buf = snap.status();
     format_to!(buf, "\n\nrequests:\n");
@@ -50,7 +50,7 @@ pub fn handle_analyzer_status(snap: GlobalStateSnapshot, _: ()) -> Result<String
     Ok(buf)
 }
 
-pub fn handle_syntax_tree(
+pub(crate) fn handle_syntax_tree(
     snap: GlobalStateSnapshot,
     params: lsp_ext::SyntaxTreeParams,
 ) -> Result<String> {
@@ -62,7 +62,7 @@ pub fn handle_syntax_tree(
     Ok(res)
 }
 
-pub fn handle_expand_macro(
+pub(crate) fn handle_expand_macro(
     snap: GlobalStateSnapshot,
     params: lsp_ext::ExpandMacroParams,
 ) -> Result<Option<lsp_ext::ExpandedMacro>> {
@@ -75,7 +75,7 @@ pub fn handle_expand_macro(
     Ok(res.map(|it| lsp_ext::ExpandedMacro { name: it.name, expansion: it.expansion }))
 }
 
-pub fn handle_selection_range(
+pub(crate) fn handle_selection_range(
     snap: GlobalStateSnapshot,
     params: lsp_types::SelectionRangeParams,
 ) -> Result<Option<Vec<lsp_types::SelectionRange>>> {
@@ -118,7 +118,7 @@ pub fn handle_selection_range(
     Ok(Some(res?))
 }
 
-pub fn handle_matching_brace(
+pub(crate) fn handle_matching_brace(
     snap: GlobalStateSnapshot,
     params: lsp_ext::MatchingBraceParams,
 ) -> Result<Vec<Position>> {
@@ -140,7 +140,7 @@ pub fn handle_matching_brace(
     Ok(res)
 }
 
-pub fn handle_join_lines(
+pub(crate) fn handle_join_lines(
     snap: GlobalStateSnapshot,
     params: lsp_ext::JoinLinesParams,
 ) -> Result<Vec<lsp_types::TextEdit>> {
@@ -163,7 +163,7 @@ pub fn handle_join_lines(
     Ok(res)
 }
 
-pub fn handle_on_enter(
+pub(crate) fn handle_on_enter(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<Vec<lsp_ext::SnippetTextEdit>>> {
@@ -180,7 +180,7 @@ pub fn handle_on_enter(
 }
 
 // Don't forget to add new trigger characters to `ServerCapabilities` in `caps.rs`.
-pub fn handle_on_type_formatting(
+pub(crate) fn handle_on_type_formatting(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentOnTypeFormattingParams,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
@@ -219,7 +219,7 @@ pub fn handle_on_type_formatting(
     Ok(Some(change))
 }
 
-pub fn handle_document_symbol(
+pub(crate) fn handle_document_symbol(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
@@ -287,7 +287,7 @@ pub fn handle_document_symbol(
     }
 }
 
-pub fn handle_workspace_symbol(
+pub(crate) fn handle_workspace_symbol(
     snap: GlobalStateSnapshot,
     params: lsp_types::WorkspaceSymbolParams,
 ) -> Result<Option<Vec<SymbolInformation>>> {
@@ -331,7 +331,7 @@ pub fn handle_workspace_symbol(
     }
 }
 
-pub fn handle_goto_definition(
+pub(crate) fn handle_goto_definition(
     snap: GlobalStateSnapshot,
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
@@ -346,7 +346,7 @@ pub fn handle_goto_definition(
     Ok(Some(res))
 }
 
-pub fn handle_goto_implementation(
+pub(crate) fn handle_goto_implementation(
     snap: GlobalStateSnapshot,
     params: lsp_types::request::GotoImplementationParams,
 ) -> Result<Option<lsp_types::request::GotoImplementationResponse>> {
@@ -361,7 +361,7 @@ pub fn handle_goto_implementation(
     Ok(Some(res))
 }
 
-pub fn handle_goto_type_definition(
+pub(crate) fn handle_goto_type_definition(
     snap: GlobalStateSnapshot,
     params: lsp_types::request::GotoTypeDefinitionParams,
 ) -> Result<Option<lsp_types::request::GotoTypeDefinitionResponse>> {
@@ -376,7 +376,7 @@ pub fn handle_goto_type_definition(
     Ok(Some(res))
 }
 
-pub fn handle_parent_module(
+pub(crate) fn handle_parent_module(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
@@ -387,7 +387,7 @@ pub fn handle_parent_module(
     Ok(Some(res))
 }
 
-pub fn handle_runnables(
+pub(crate) fn handle_runnables(
     snap: GlobalStateSnapshot,
     params: lsp_ext::RunnablesParams,
 ) -> Result<Vec<lsp_ext::Runnable>> {
@@ -446,7 +446,7 @@ pub fn handle_runnables(
     Ok(res)
 }
 
-pub fn handle_completion(
+pub(crate) fn handle_completion(
     snap: GlobalStateSnapshot,
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
@@ -488,7 +488,7 @@ pub fn handle_completion(
     Ok(Some(items.into()))
 }
 
-pub fn handle_folding_range(
+pub(crate) fn handle_folding_range(
     snap: GlobalStateSnapshot,
     params: FoldingRangeParams,
 ) -> Result<Option<Vec<FoldingRange>>> {
@@ -505,7 +505,7 @@ pub fn handle_folding_range(
     Ok(Some(res))
 }
 
-pub fn handle_signature_help(
+pub(crate) fn handle_signature_help(
     snap: GlobalStateSnapshot,
     params: lsp_types::SignatureHelpParams,
 ) -> Result<Option<lsp_types::SignatureHelp>> {
@@ -529,7 +529,7 @@ pub fn handle_signature_help(
     }))
 }
 
-pub fn handle_hover(
+pub(crate) fn handle_hover(
     snap: GlobalStateSnapshot,
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_ext::Hover>> {
@@ -555,7 +555,7 @@ pub fn handle_hover(
     Ok(Some(hover))
 }
 
-pub fn handle_prepare_rename(
+pub(crate) fn handle_prepare_rename(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
@@ -573,7 +573,7 @@ pub fn handle_prepare_rename(
     Ok(Some(PrepareRenameResponse::Range(range)))
 }
 
-pub fn handle_rename(
+pub(crate) fn handle_rename(
     snap: GlobalStateSnapshot,
     params: RenameParams,
 ) -> Result<Option<WorkspaceEdit>> {
@@ -597,7 +597,7 @@ pub fn handle_rename(
     Ok(Some(workspace_edit))
 }
 
-pub fn handle_references(
+pub(crate) fn handle_references(
     snap: GlobalStateSnapshot,
     params: lsp_types::ReferenceParams,
 ) -> Result<Option<Vec<Location>>> {
@@ -624,7 +624,7 @@ pub fn handle_references(
     Ok(Some(locations))
 }
 
-pub fn handle_formatting(
+pub(crate) fn handle_formatting(
     snap: GlobalStateSnapshot,
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
@@ -739,7 +739,7 @@ fn handle_fixes(
     Ok(())
 }
 
-pub fn handle_code_action(
+pub(crate) fn handle_code_action(
     snap: GlobalStateSnapshot,
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<Vec<lsp_ext::CodeAction>>> {
@@ -774,7 +774,7 @@ pub fn handle_code_action(
     Ok(Some(res))
 }
 
-pub fn handle_resolve_code_action(
+pub(crate) fn handle_resolve_code_action(
     snap: GlobalStateSnapshot,
     params: lsp_ext::ResolveCodeActionParams,
 ) -> Result<Option<lsp_ext::SnippetWorkspaceEdit>> {
@@ -792,7 +792,7 @@ pub fn handle_resolve_code_action(
     Ok(to_proto::resolved_code_action(&snap, assist.clone())?.edit)
 }
 
-pub fn handle_code_lens(
+pub(crate) fn handle_code_lens(
     snap: GlobalStateSnapshot,
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
@@ -873,7 +873,7 @@ enum CodeLensResolveData {
     Impls(lsp_types::request::GotoImplementationParams),
 }
 
-pub fn handle_code_lens_resolve(
+pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
     code_lens: CodeLens,
 ) -> Result<CodeLens> {
@@ -910,7 +910,7 @@ pub fn handle_code_lens_resolve(
     }
 }
 
-pub fn handle_document_highlight(
+pub(crate) fn handle_document_highlight(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<DocumentHighlight>>> {
@@ -937,7 +937,7 @@ pub fn handle_document_highlight(
     Ok(Some(res))
 }
 
-pub fn handle_ssr(
+pub(crate) fn handle_ssr(
     snap: GlobalStateSnapshot,
     params: lsp_ext::SsrParams,
 ) -> Result<lsp_types::WorkspaceEdit> {
@@ -947,7 +947,10 @@ pub fn handle_ssr(
     to_proto::workspace_edit(&snap, source_change)
 }
 
-pub fn publish_diagnostics(snap: &GlobalStateSnapshot, file_id: FileId) -> Result<DiagnosticTask> {
+pub(crate) fn publish_diagnostics(
+    snap: &GlobalStateSnapshot,
+    file_id: FileId,
+) -> Result<DiagnosticTask> {
     let _p = profile("publish_diagnostics");
     let line_index = snap.analysis().file_line_index(file_id)?;
     let diagnostics: Vec<Diagnostic> = snap
@@ -967,7 +970,7 @@ pub fn publish_diagnostics(snap: &GlobalStateSnapshot, file_id: FileId) -> Resul
     Ok(DiagnosticTask::SetNative(file_id, diagnostics))
 }
 
-pub fn handle_inlay_hints(
+pub(crate) fn handle_inlay_hints(
     snap: GlobalStateSnapshot,
     params: InlayHintsParams,
 ) -> Result<Vec<InlayHint>> {
@@ -982,7 +985,7 @@ pub fn handle_inlay_hints(
         .collect())
 }
 
-pub fn handle_call_hierarchy_prepare(
+pub(crate) fn handle_call_hierarchy_prepare(
     snap: GlobalStateSnapshot,
     params: CallHierarchyPrepareParams,
 ) -> Result<Option<Vec<CallHierarchyItem>>> {
@@ -1004,7 +1007,7 @@ pub fn handle_call_hierarchy_prepare(
     Ok(Some(res))
 }
 
-pub fn handle_call_hierarchy_incoming(
+pub(crate) fn handle_call_hierarchy_incoming(
     snap: GlobalStateSnapshot,
     params: CallHierarchyIncomingCallsParams,
 ) -> Result<Option<Vec<CallHierarchyIncomingCall>>> {
@@ -1039,7 +1042,7 @@ pub fn handle_call_hierarchy_incoming(
     Ok(Some(res))
 }
 
-pub fn handle_call_hierarchy_outgoing(
+pub(crate) fn handle_call_hierarchy_outgoing(
     snap: GlobalStateSnapshot,
     params: CallHierarchyOutgoingCallsParams,
 ) -> Result<Option<Vec<CallHierarchyOutgoingCall>>> {
@@ -1074,7 +1077,7 @@ pub fn handle_call_hierarchy_outgoing(
     Ok(Some(res))
 }
 
-pub fn handle_semantic_tokens(
+pub(crate) fn handle_semantic_tokens(
     snap: GlobalStateSnapshot,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
@@ -1089,7 +1092,7 @@ pub fn handle_semantic_tokens(
     Ok(Some(semantic_tokens.into()))
 }
 
-pub fn handle_semantic_tokens_range(
+pub(crate) fn handle_semantic_tokens_range(
     snap: GlobalStateSnapshot,
     params: SemanticTokensRangeParams,
 ) -> Result<Option<SemanticTokensRangeResult>> {
