@@ -207,7 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
 
                 if let &ty::PredicateKind::Projection(proj_predicate) =
-                    obligation.predicate.ignore_qualifiers().skip_binder().kind()
+                    obligation.predicate.ignore_quantifiers().skip_binder().kind()
                 {
                     // Given a Projection predicate, we can potentially infer
                     // the complete signature.
@@ -632,7 +632,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // will be our output.
         let output_ty = self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
             if let &ty::PredicateKind::Projection(proj_predicate) =
-                obligation.predicate.ignore_qualifiers().skip_binder().kind()
+                obligation.predicate.ignore_quantifiers().skip_binder().kind()
             {
                 self.deduce_future_output_from_projection(
                     obligation.cause.span,

@@ -80,7 +80,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
             ChalkEnvironmentClause::Predicate(predicate) => {
                 // FIXME(chalk): forall
                 match predicate
-                    .ignore_qualifiers_with_unbound_vars(interner.tcx)
+                    .ignore_quantifiers_with_unbound_vars(interner.tcx)
                     .skip_binder()
                     .kind()
                 {
@@ -191,7 +191,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
 impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predicate<'tcx> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::GoalData<RustInterner<'tcx>> {
         // FIXME(chalk): forall
-        match self.ignore_qualifiers_with_unbound_vars(interner.tcx).skip_binder().kind() {
+        match self.ignore_quantifiers_with_unbound_vars(interner.tcx).skip_binder().kind() {
             ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", self),
             &ty::PredicateKind::Trait(predicate, _) => {
                 ty::Binder::bind(predicate).lower_into(interner)
@@ -561,7 +561,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
         interner: &RustInterner<'tcx>,
     ) -> Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>> {
         // FIXME(chalk): forall
-        match self.ignore_qualifiers_with_unbound_vars(interner.tcx).skip_binder().kind() {
+        match self.ignore_quantifiers_with_unbound_vars(interner.tcx).skip_binder().kind() {
             ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", self),
             &ty::PredicateKind::Trait(predicate, _) => {
                 let predicate = ty::Binder::bind(predicate);

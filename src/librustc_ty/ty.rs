@@ -392,7 +392,7 @@ fn associated_type_projection_predicates(
 
     let predicates = item_predicates.filter_map(|obligation| {
         let pred = obligation.predicate;
-        match pred.ignore_qualifiers().skip_binder().kind() {
+        match pred.ignore_quantifiers().skip_binder().kind() {
             ty::PredicateKind::Trait(tr, _) => {
                 if let ty::Projection(p) = tr.self_ty().kind {
                     if p == assoc_item_ty {
@@ -443,7 +443,7 @@ fn opaque_type_projection_predicates(
 
     let filtered_predicates = predicates.filter_map(|obligation| {
         let pred = obligation.predicate;
-        match pred.ignore_qualifiers().skip_binder().kind() {
+        match pred.ignore_quantifiers().skip_binder().kind() {
             ty::PredicateKind::Trait(tr, _) => {
                 if let ty::Opaque(opaque_def_id, opaque_substs) = tr.self_ty().kind {
                     if opaque_def_id == def_id && opaque_substs == substs {

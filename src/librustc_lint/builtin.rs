@@ -1210,7 +1210,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
             for &(predicate, span) in predicates.predicates {
                 // We don't actually look inside of the predicate,
                 // so it is safe to skip this binder here.
-                let predicate_kind_name = match predicate.ignore_qualifiers().skip_binder().kind() {
+                let predicate_kind_name = match predicate.ignore_quantifiers().skip_binder().kind() {
                     Trait(..) => "Trait",
                     TypeOutlives(..) |
                     RegionOutlives(..) => "Lifetime",
@@ -1500,7 +1500,7 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.ignore_qualifiers().skip_binder().kind() {
+            .filter_map(|(pred, _)| match pred.ignore_quantifiers().skip_binder().kind() {
                 &ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match a {
                     ty::ReEarlyBound(ebr) if ebr.index == index => Some(b),
                     _ => None,
@@ -1516,7 +1516,7 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.ignore_qualifiers().skip_binder().kind() {
+            .filter_map(|(pred, _)| match pred.ignore_quantifiers().skip_binder().kind() {
                 &ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     a.is_param(index).then_some(b)
                 }

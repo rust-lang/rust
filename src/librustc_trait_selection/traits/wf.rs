@@ -196,7 +196,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
         };
 
     // It is fine to skip the binder as we don't care about regions here.
-    match pred.ignore_qualifiers().skip_binder().kind() {
+    match pred.ignore_quantifiers().skip_binder().kind() {
         ty::PredicateKind::Projection(proj) => {
             // The obligation comes not from the current `impl` nor the `trait` being implemented,
             // but rather from a "second order" obligation, where an associated type has a

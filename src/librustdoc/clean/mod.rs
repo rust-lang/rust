@@ -480,7 +480,7 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
 
 impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
-        match self.ignore_qualifiers().skip_binder().kind() {
+        match self.ignore_quantifiers().skip_binder().kind() {
             &ty::PredicateKind::Trait(pred, _) => Some(ty::Binder::bind(pred).clean(cx)),
             &ty::PredicateKind::Subtype(pred) => Some(ty::Binder::bind(pred).clean(cx)),
             &ty::PredicateKind::RegionOutlives(pred) => ty::Binder::bind(pred).clean(cx),
@@ -755,7 +755,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
             .flat_map(|(p, _)| {
                 let mut projection = None;
                 let param_idx = (|| {
-                    match p.ignore_qualifiers().skip_binder().kind() {
+                    match p.ignore_quantifiers().skip_binder().kind() {
                         &ty::PredicateKind::Trait(pred, _constness) => {
                             if let ty::Param(param) = pred.self_ty().kind {
                                 return Some(param.index);
@@ -1662,9 +1662,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     .iter()
                     .filter_map(|predicate| {
                         // Note: The substs of opaque types can contain unbound variables,
-                        // meaning that we have to use `ignore_qualifiers_with_unbound_vars` here.
+                        // meaning that we have to use `ignore_quantifiers_with_unbound_vars` here.
                         let trait_ref = match predicate
-                            .ignore_qualifiers_with_unbound_vars(cx.tcx)
+                            .ignore_quantifiers_with_unbound_vars(cx.tcx)
                             .skip_binder()
                             .kind()
                         {
@@ -1692,7 +1692,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             .iter()
                             .filter_map(|pred| {
                                 if let ty::PredicateKind::Projection(proj) = pred
-                                    .ignore_qualifiers_with_unbound_vars(cx.tcx)
+                                    .ignore_quantifiers_with_unbound_vars(cx.tcx)
                                     .skip_binder()
                                     .kind()
                                 {

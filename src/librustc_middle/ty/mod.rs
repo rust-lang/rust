@@ -1050,7 +1050,7 @@ impl<'tcx> Predicate<'tcx> {
     }
 
     /// Skips `PredicateKind::ForAll`.
-    pub fn ignore_qualifiers(self) -> Binder<Predicate<'tcx>> {
+    pub fn ignore_quantifiers(self) -> Binder<Predicate<'tcx>> {
         match self.kind() {
             &PredicateKind::ForAll(binder) => binder,
             ty::PredicateKind::Projection(..)
@@ -1073,7 +1073,10 @@ impl<'tcx> Predicate<'tcx> {
     ///
     /// Do not use this method if you may end up just skipping the binder, as this
     /// would leave the unbound variables at an incorrect binding level.
-    pub fn ignore_qualifiers_with_unbound_vars(self, tcx: TyCtxt<'tcx>) -> Binder<Predicate<'tcx>> {
+    pub fn ignore_quantifiers_with_unbound_vars(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Binder<Predicate<'tcx>> {
         match self.kind() {
             &PredicateKind::ForAll(binder) => binder,
             ty::PredicateKind::Projection(..)
@@ -1090,7 +1093,7 @@ impl<'tcx> Predicate<'tcx> {
     }
 
     /// Wraps `self` with the given qualifier if this predicate has any unbound variables.
-    pub fn potentially_qualified(
+    pub fn potentially_quantified(
         self,
         tcx: TyCtxt<'tcx>,
         qualifier: impl FnOnce(Binder<Predicate<'tcx>>) -> PredicateKind<'tcx>,
@@ -1249,9 +1252,9 @@ impl<'tcx> Predicate<'tcx> {
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
         let substs = trait_ref.skip_binder().substs;
-        let pred = *self.ignore_qualifiers().skip_binder();
+        let pred = *self.ignore_quantifiers().skip_binder();
         let new = pred.subst(tcx, substs);
-        if new != pred { new.potentially_qualified(tcx, PredicateKind::ForAll) } else { self }
+        if new != pred { new.potentially_quantified(tcx, PredicateKind::ForAll) } else { self }
     }
 }
 
@@ -1451,7 +1454,7 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 
 impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_ref(self) -> Option<PolyTraitRef<'tcx>> {
-        self.ignore_qualifiers()
+        self.ignore_quantifiers()
             .map_bound(|pred| match pred.kind() {
                 &PredicateKind::Trait(ref t, _) => Some(t.trait_ref),
                 PredicateKind::Projection(..)
@@ -1469,7 +1472,7 @@ impl<'tcx> Predicate<'tcx> {
     }
 
     pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
-        self.ignore_qualifiers()
+        self.ignore_quantifiers()
             .map_bound(|pred| match pred.kind() {
                 &PredicateKind::TypeOutlives(data) => Some(data),
                 PredicateKind::Trait(..)

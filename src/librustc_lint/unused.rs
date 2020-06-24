@@ -148,7 +148,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     for (predicate, _) in cx.tcx.predicates_of(def).predicates {
                         // We only look at the `DefId`, so it is safe to skip the binder here.
                         if let ty::PredicateKind::Trait(ref poly_trait_predicate, _) =
-                            predicate.ignore_qualifiers().skip_binder().kind()
+                            predicate.ignore_quantifiers().skip_binder().kind()
                         {
                             let def_id = poly_trait_predicate.trait_ref.def_id;
                             let descr_pre =

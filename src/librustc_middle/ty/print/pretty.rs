@@ -577,7 +577,7 @@ pub trait PrettyPrinter<'tcx>:
                         //
                         // FIXME(lcnr): Find out why exactly this is the case :)
                         if let ty::PredicateKind::Trait(pred, _) = predicate
-                            .ignore_qualifiers_with_unbound_vars(self.tcx())
+                            .ignore_quantifiers_with_unbound_vars(self.tcx())
                             .skip_binder()
                             .kind()
                         {

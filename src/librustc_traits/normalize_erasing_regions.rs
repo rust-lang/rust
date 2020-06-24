@@ -40,7 +40,7 @@ fn normalize_generic_arg_after_erasing_regions<'tcx>(
 }
 
 fn not_outlives_predicate(p: &ty::Predicate<'tcx>) -> bool {
-    match p.ignore_qualifiers().skip_binder().kind() {
+    match p.ignore_quantifiers().skip_binder().kind() {
         ty::PredicateKind::RegionOutlives(..) | ty::PredicateKind::TypeOutlives(..) => false,
         ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", p),
         ty::PredicateKind::Trait(..)

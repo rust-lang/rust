@@ -2400,7 +2400,7 @@ fn bounds_from_generic_predicates<'tcx>(
     let mut projections = vec![];
     for (predicate, _) in predicates.predicates {
         debug!("predicate {:?}", predicate);
-        match predicate.ignore_qualifiers().skip_binder().kind() {
+        match predicate.ignore_quantifiers().skip_binder().kind() {
             ty::PredicateKind::Trait(trait_predicate, _) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
@@ -3894,7 +3894,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .pending_obligations()
             .into_iter()
             .filter_map(move |obligation| {
-                match obligation.predicate.ignore_qualifiers().skip_binder().kind() {
+                match obligation.predicate.ignore_quantifiers().skip_binder().kind() {
                     ty::PredicateKind::ForAll(_) => {
                         bug!("unexpected predicate: {:?}", obligation.predicate)
                     }
@@ -4250,7 +4250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             if let ty::PredicateKind::Trait(predicate, _) =
-                error.obligation.predicate.ignore_qualifiers().skip_binder().kind()
+                error.obligation.predicate.ignore_quantifiers().skip_binder().kind()
             {
                 // Collect the argument position for all arguments that could have caused this
                 // `FulfillmentError`.
@@ -4299,7 +4299,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let hir::QPath::Resolved(_, path) = &qpath {
                     for error in errors {
                         if let ty::PredicateKind::Trait(predicate, _) =
-                            error.obligation.predicate.ignore_qualifiers().skip_binder().kind()
+                            error.obligation.predicate.ignore_quantifiers().skip_binder().kind()
                         {
                             // If any of the type arguments in this path segment caused the
                             // `FullfillmentError`, point at its span (#61860).
@@ -5377,7 +5377,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty: expected,
                 })
                 .to_predicate(self.tcx)
-                .potentially_qualified(self.tcx, ty::PredicateKind::ForAll);
+                .potentially_quantified(self.tcx, ty::PredicateKind::ForAll);
                 let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
 
                 debug!("suggest_missing_await: trying obligation {:?}", obligation);

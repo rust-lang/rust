@@ -552,7 +552,7 @@ fn type_param_predicates(
     let extra_predicates = extend.into_iter().chain(
         icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty, OnlySelfBounds(true))
             .into_iter()
-            .filter(|(predicate, _)| match predicate.ignore_qualifiers().skip_binder().kind() {
+            .filter(|(predicate, _)| match predicate.ignore_quantifiers().skip_binder().kind() {
                 ty::PredicateKind::Trait(data, _) => data.self_ty().is_param(index),
                 _ => false,
             }),
@@ -1004,7 +1004,7 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
     // which will, in turn, reach indirect supertraits.
     for &(pred, span) in superbounds {
         debug!("superbound: {:?}", pred);
-        if let ty::PredicateKind::Trait(bound, _) = pred.ignore_qualifiers().skip_binder().kind() {
+        if let ty::PredicateKind::Trait(bound, _) = pred.ignore_quantifiers().skip_binder().kind() {
             tcx.at(span).super_predicates_of(bound.def_id());
         }
     }
@@ -1962,7 +1962,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                             predicates.push((
                                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, region))
                                     .to_predicate(tcx)
-                                    .potentially_qualified(tcx, ty::PredicateKind::ForAll),
+                                    .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                                 lifetime.span,
                             ))
                         }
@@ -1982,7 +1982,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                     let pred = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
                         .to_predicate(icx.tcx);
 
-                    (pred.potentially_qualified(icx.tcx, ty::PredicateKind::ForAll), span)
+                    (pred.potentially_quantified(icx.tcx, ty::PredicateKind::ForAll), span)
                 }))
             }
 
@@ -2112,7 +2112,7 @@ fn predicates_from_bound<'tcx>(
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(param_ty, region))
                 .to_predicate(astconv.tcx())
-                .potentially_qualified(astconv.tcx(), ty::PredicateKind::ForAll);
+                .potentially_quantified(astconv.tcx(), ty::PredicateKind::ForAll);
             vec![(pred, lifetime.span)]
         }
     }

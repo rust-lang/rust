@@ -582,7 +582,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         while !queue.is_empty() {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
-            let trait_pred = match obligation.predicate.ignore_qualifiers().skip_binder().kind() {
+            let trait_pred = match obligation.predicate.ignore_quantifiers().skip_binder().kind() {
                 &ty::PredicateKind::Trait(trait_pred, _)
                     if traits.contains(&trait_pred.def_id()) =>
                 {

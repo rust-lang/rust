@@ -138,7 +138,7 @@ impl Elaborator<'tcx> {
     fn elaborate(&mut self, obligation: &PredicateObligation<'tcx>) {
         let tcx = self.visited.tcx;
 
-        match obligation.predicate.ignore_qualifiers().skip_binder().kind() {
+        match obligation.predicate.ignore_quantifiers().skip_binder().kind() {
             ty::PredicateKind::ForAll(_) => {
                 bug!("unexpected predicate: {:?}", obligation.predicate)
             }

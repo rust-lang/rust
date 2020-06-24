@@ -199,7 +199,7 @@ fn unconstrained_parent_impl_substs<'tcx>(
     // unconstrained parameters.
     for (predicate, _) in impl_generic_predicates.predicates.iter() {
         if let ty::PredicateKind::Projection(proj) =
-            predicate.ignore_qualifiers().skip_binder().kind()
+            predicate.ignore_quantifiers().skip_binder().kind()
         {
             let projection_ty = proj.projection_ty;
             let projected_ty = proj.ty;
@@ -361,7 +361,7 @@ fn check_predicates<'tcx>(
 
 fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tcx>, span: Span) {
     debug!("can_specialize_on(predicate = {:?})", predicate);
-    match predicate.ignore_qualifiers().skip_binder().kind() {
+    match predicate.ignore_quantifiers().skip_binder().kind() {
         // Global predicates are either always true or always false, so we
         // are fine to specialize on.
         _ if predicate.is_global() => (),
@@ -394,7 +394,7 @@ fn trait_predicate_kind<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicate: ty::Predicate<'tcx>,
 ) -> Option<TraitSpecializationKind> {
-    match predicate.ignore_qualifiers().skip_binder().kind() {
+    match predicate.ignore_quantifiers().skip_binder().kind() {
         ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", predicate),
         ty::PredicateKind::Trait(pred, hir::Constness::NotConst) => {
             Some(tcx.trait_def(pred.def_id()).specialization_kind)
