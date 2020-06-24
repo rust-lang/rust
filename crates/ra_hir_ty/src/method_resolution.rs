@@ -271,6 +271,33 @@ pub fn iterate_method_candidates<T>(
     mode: LookupMode,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
+    let mut slot = None;
+    iterate_method_candidates_impl(
+        ty,
+        db,
+        env,
+        krate,
+        traits_in_scope,
+        name,
+        mode,
+        &mut |ty, item| {
+            slot = callback(ty, item);
+            slot.is_some()
+        },
+    );
+    slot
+}
+
+pub fn iterate_method_candidates_impl(
+    ty: &Canonical<Ty>,
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    krate: CrateId,
+    traits_in_scope: &FxHashSet<TraitId>,
+    name: Option<&Name>,
+    mode: LookupMode,
+    callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
+) -> bool {
     match mode {
         LookupMode::MethodCall => {
             // For method calls, rust first does any number of autoderef, and then one
@@ -298,19 +325,19 @@ pub fn iterate_method_candidates<T>(
 
             let deref_chain = autoderef_method_receiver(db, krate, ty);
             for i in 0..deref_chain.len() {
-                if let Some(result) = iterate_method_candidates_with_autoref(
+                if iterate_method_candidates_with_autoref(
                     &deref_chain[i..],
                     db,
                     env.clone(),
                     krate,
                     traits_in_scope,
                     name,
-                    &mut callback,
+                    callback,
                 ) {
-                    return Some(result);
+                    return true;
                 }
             }
-            None
+            false
         }
         LookupMode::Path => {
             // No autoderef for path lookups
@@ -321,22 +348,22 @@ pub fn iterate_method_candidates<T>(
                 krate,
                 traits_in_scope,
                 name,
-                &mut callback,
+                callback,
             )
         }
     }
 }
 
-fn iterate_method_candidates_with_autoref<T>(
+fn iterate_method_candidates_with_autoref(
     deref_chain: &[Canonical<Ty>],
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
-    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
-) -> Option<T> {
-    if let Some(result) = iterate_method_candidates_by_receiver(
+    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
+) -> bool {
+    if iterate_method_candidates_by_receiver(
         &deref_chain[0],
         &deref_chain[1..],
         db,
@@ -346,13 +373,13 @@ fn iterate_method_candidates_with_autoref<T>(
         name,
         &mut callback,
     ) {
-        return Some(result);
+        return true;
     }
     let refed = Canonical {
         num_vars: deref_chain[0].num_vars,
         value: Ty::apply_one(TypeCtor::Ref(Mutability::Shared), deref_chain[0].value.clone()),
     };
-    if let Some(result) = iterate_method_candidates_by_receiver(
+    if iterate_method_candidates_by_receiver(
         &refed,
         deref_chain,
         db,
@@ -362,13 +389,13 @@ fn iterate_method_candidates_with_autoref<T>(
         name,
         &mut callback,
     ) {
-        return Some(result);
+        return true;
     }
     let ref_muted = Canonical {
         num_vars: deref_chain[0].num_vars,
         value: Ty::apply_one(TypeCtor::Ref(Mutability::Mut), deref_chain[0].value.clone()),
     };
-    if let Some(result) = iterate_method_candidates_by_receiver(
+    if iterate_method_candidates_by_receiver(
         &ref_muted,
         deref_chain,
         db,
@@ -378,12 +405,12 @@ fn iterate_method_candidates_with_autoref<T>(
         name,
         &mut callback,
     ) {
-        return Some(result);
+        return true;
     }
-    None
+    false
 }
 
-fn iterate_method_candidates_by_receiver<T>(
+fn iterate_method_candidates_by_receiver(
     receiver_ty: &Canonical<Ty>,
     rest_of_deref_chain: &[Canonical<Ty>],
     db: &dyn HirDatabase,
@@ -391,20 +418,18 @@ fn iterate_method_candidates_by_receiver<T>(
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
-    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
-) -> Option<T> {
+    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
+) -> bool {
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that.
     for self_ty in std::iter::once(receiver_ty).chain(rest_of_deref_chain) {
-        if let Some(result) =
-            iterate_inherent_methods(self_ty, db, name, Some(receiver_ty), krate, &mut callback)
-        {
-            return Some(result);
+        if iterate_inherent_methods(self_ty, db, name, Some(receiver_ty), krate, &mut callback) {
+            return true;
         }
     }
     for self_ty in std::iter::once(receiver_ty).chain(rest_of_deref_chain) {
-        if let Some(result) = iterate_trait_method_candidates(
+        if iterate_trait_method_candidates(
             self_ty,
             db,
             env.clone(),
@@ -414,40 +439,28 @@ fn iterate_method_candidates_by_receiver<T>(
             Some(receiver_ty),
             &mut callback,
         ) {
-            return Some(result);
+            return true;
         }
     }
-    None
+    false
 }
 
-fn iterate_method_candidates_for_self_ty<T>(
+fn iterate_method_candidates_for_self_ty(
     self_ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
-    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
-) -> Option<T> {
-    if let Some(result) = iterate_inherent_methods(self_ty, db, name, None, krate, &mut callback) {
-        return Some(result);
+    mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
+) -> bool {
+    if iterate_inherent_methods(self_ty, db, name, None, krate, &mut callback) {
+        return true;
     }
-    if let Some(result) = iterate_trait_method_candidates(
-        self_ty,
-        db,
-        env,
-        krate,
-        traits_in_scope,
-        name,
-        None,
-        &mut callback,
-    ) {
-        return Some(result);
-    }
-    None
+    iterate_trait_method_candidates(self_ty, db, env, krate, traits_in_scope, name, None, callback)
 }
 
-fn iterate_trait_method_candidates<T>(
+fn iterate_trait_method_candidates(
     self_ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
@@ -455,8 +468,8 @@ fn iterate_trait_method_candidates<T>(
     traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
-    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
-) -> Option<T> {
+    callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
+) -> bool {
     // if ty is `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait =
         self_ty.value.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
@@ -489,23 +502,27 @@ fn iterate_trait_method_candidates<T>(
                 }
             }
             known_implemented = true;
-            if let Some(result) = callback(&self_ty.value, *item) {
-                return Some(result);
+            if callback(&self_ty.value, *item) {
+                return true;
             }
         }
     }
-    None
+    false
 }
 
-fn iterate_inherent_methods<T>(
+fn iterate_inherent_methods(
     self_ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
     krate: CrateId,
-    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
-) -> Option<T> {
-    for krate in self_ty.value.def_crates(db, krate)? {
+    callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
+) -> bool {
+    let def_crates = match self_ty.value.def_crates(db, krate) {
+        Some(k) => k,
+        None => return false,
+    };
+    for krate in def_crates {
         let impls = db.impls_in_crate(krate);
 
         for impl_def in impls.lookup_impl_defs(&self_ty.value) {
@@ -521,13 +538,13 @@ fn iterate_inherent_methods<T>(
                     test_utils::mark::hit!(impl_self_type_match_without_receiver);
                     continue;
                 }
-                if let Some(result) = callback(&self_ty.value, item) {
-                    return Some(result);
+                if callback(&self_ty.value, item) {
+                    return true;
                 }
             }
         }
     }
-    None
+    false
 }
 
 /// Returns the self type for the index trait call.
