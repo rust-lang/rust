@@ -25,15 +25,13 @@ async fn async_fn_test() {
     foo().await;
 }
 
-// FIXME: We need "checksum" to prevent matching with the wrong (duplicate) file
-//        metadata, even when -C codegen-units=1.
-// CHECK-DAG:  [[FILE:!.*]] = !DIFile(filename: "{{.*}}generator-debug-msvc.rs", {{.*}}, checksum:
+// FIXME: No way to reliably check the filename.
 
 // CHECK-DAG:  [[GEN_FN:!.*]] = !DINamespace(name: "generator_test"
 // CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_union_type, name: "generator-0", scope: [[GEN_FN]],
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, scope: [[GEN]],
 // For brevity, we just check the struct name and members of the last variant.
-// CHECK-SAME: file: [[FILE]], line: 14,
+// CHECK-SAME: file: [[FILE:![0-9]*]], line: 14,
 // CHECK-SAME: flags: DIFlagArtificial
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, scope: [[GEN]],
 // CHECK-SAME: file: [[FILE]], line: 18,

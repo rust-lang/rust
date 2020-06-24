@@ -25,9 +25,7 @@ async fn async_fn_test() {
     foo().await;
 }
 
-// FIXME: We need "checksum" to prevent matching with the wrong (duplicate) file
-//        metadata, even when -C codegen-units=1.
-// CHECK-DAG:  [[FILE:!.*]] = !DIFile(filename: "{{.*}}generator-debug.rs", {{.*}}, checksum:
+// FIXME: No way to reliably check the filename.
 
 // CHECK-DAG:  [[GEN_FN:!.*]] = !DINamespace(name: "generator_test"
 // CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "generator-0", scope: [[GEN_FN]], {{.*}}flags: DIFlagArtificial
@@ -35,7 +33,7 @@ async fn async_fn_test() {
 // CHECK-SAME: flags: DIFlagArtificial
 // CHECK-SAME: discriminator: [[DISC:![0-9]*]]
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "0", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 14,
+// CHECK-SAME: file: [[FILE:![0-9]*]], line: 14,
 // CHECK-SAME: flags: DIFlagArtificial
 // CHECK:      {{!.*}} = !DICompositeType(tag: DW_TAG_structure_type, name: "Unresumed", scope: [[GEN]],
 // CHECK-SAME: flags: DIFlagArtificial
