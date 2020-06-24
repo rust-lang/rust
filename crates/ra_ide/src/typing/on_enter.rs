@@ -78,6 +78,7 @@ mod tests {
     use test_utils::assert_eq_text;
 
     use crate::mock_analysis::single_file_with_position;
+    use stdx::trim_indent;
 
     fn apply_on_enter(before: &str) -> Option<String> {
         let (analysis, position) = single_file_with_position(&before);
@@ -89,6 +90,7 @@ mod tests {
     }
 
     fn do_check(ra_fixture_before: &str, ra_fixture_after: &str) {
+        let ra_fixture_after = &trim_indent(ra_fixture_after);
         let actual = apply_on_enter(ra_fixture_before).unwrap();
         assert_eq_text!(ra_fixture_after, &actual);
     }

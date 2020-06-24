@@ -136,12 +136,6 @@ impl MockAnalysis {
         self.files.push(MockFileData::new(path.to_string(), text.to_string()));
         file_id
     }
-    fn add_file_with_position(&mut self, path: &str, text: &str) -> FilePosition {
-        let (offset, text) = extract_offset(text);
-        let file_id = self.next_id();
-        self.files.push(MockFileData::new(path.to_string(), text));
-        FilePosition { file_id, offset }
-    }
     fn add_file_with_range(&mut self, path: &str, text: &str) -> FileRange {
         let (range, text) = extract_range(text);
         let file_id = self.next_id();
@@ -229,9 +223,7 @@ pub fn single_file(ra_fixture: &str) -> (Analysis, FileId) {
 
 /// Creates analysis for a single file, returns position marked with <|>.
 pub fn single_file_with_position(ra_fixture: &str) -> (Analysis, FilePosition) {
-    let mut mock = MockAnalysis::new();
-    let pos = mock.add_file_with_position("/main.rs", ra_fixture);
-    (mock.analysis(), pos)
+    analysis_and_position(ra_fixture)
 }
 
 /// Creates analysis for a single file, returns range marked with a pair of <|>.

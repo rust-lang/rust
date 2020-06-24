@@ -212,8 +212,8 @@ mod tests {
         [
             CompletionItem {
                 label: "my",
-                source_range: 27..29,
-                delete: 27..29,
+                source_range: 10..12,
+                delete: 10..12,
                 insert: "my",
                 kind: Module,
                 documentation: Documentation(
@@ -243,8 +243,8 @@ mod tests {
         [
             CompletionItem {
                 label: "Bar",
-                source_range: 31..31,
-                delete: 31..31,
+                source_range: 14..14,
+                delete: 14..14,
                 insert: "Bar",
                 kind: Struct,
             },
@@ -271,15 +271,15 @@ mod tests {
         [
             CompletionItem {
                 label: "Foo",
-                source_range: 31..31,
-                delete: 31..31,
+                source_range: 14..14,
+                delete: 14..14,
                 insert: "Foo",
                 kind: Struct,
             },
             CompletionItem {
                 label: "PublicBar",
-                source_range: 31..31,
-                delete: 31..31,
+                source_range: 14..14,
+                delete: 14..14,
                 insert: "PublicBar",
                 kind: Struct,
             },
@@ -304,8 +304,8 @@ mod tests {
         [
             CompletionItem {
                 label: "Bar",
-                source_range: 30..30,
-                delete: 30..30,
+                source_range: 13..13,
+                delete: 13..13,
                 insert: "Bar",
                 kind: Struct,
             },
@@ -1145,8 +1145,8 @@ mod tests {
         [
             CompletionItem {
                 label: "bar()",
-                source_range: 185..185,
-                delete: 185..185,
+                source_range: 88..88,
+                delete: 88..88,
                 insert: "bar()$0",
                 kind: Function,
                 lookup: "bar",
@@ -1154,8 +1154,8 @@ mod tests {
             },
             CompletionItem {
                 label: "foo()",
-                source_range: 185..185,
-                delete: 185..185,
+                source_range: 88..88,
+                delete: 88..88,
                 insert: "foo()$0",
                 kind: Function,
                 lookup: "foo",
@@ -1185,16 +1185,16 @@ mod tests {
         [
             CompletionItem {
                 label: "foo!(…)",
-                source_range: 179..179,
-                delete: 179..179,
+                source_range: 82..82,
+                delete: 82..82,
                 insert: "foo!($0)",
                 kind: Macro,
                 detail: "#[macro_export]\nmacro_rules! foo",
             },
             CompletionItem {
                 label: "main()",
-                source_range: 179..179,
-                delete: 179..179,
+                source_range: 82..82,
+                delete: 82..82,
                 insert: "main()$0",
                 kind: Function,
                 lookup: "main",
@@ -1230,22 +1230,22 @@ mod tests {
         [
             CompletionItem {
                 label: "RIGHT_CONST",
-                source_range: 57..57,
-                delete: 57..57,
+                source_range: 24..24,
+                delete: 24..24,
                 insert: "RIGHT_CONST",
                 kind: Const,
             },
             CompletionItem {
                 label: "RightType",
-                source_range: 57..57,
-                delete: 57..57,
+                source_range: 24..24,
+                delete: 24..24,
                 insert: "RightType",
                 kind: Struct,
             },
             CompletionItem {
                 label: "right_fn()",
-                source_range: 57..57,
-                delete: 57..57,
+                source_range: 24..24,
+                delete: 24..24,
                 insert: "right_fn()$0",
                 kind: Function,
                 lookup: "right_fn",
@@ -1269,8 +1269,8 @@ mod tests {
         [
             CompletionItem {
                 label: "foo()",
-                source_range: 93..94,
-                delete: 93..94,
+                source_range: 60..61,
+                delete: 60..61,
                 insert: "foo()$0",
                 kind: Function,
                 lookup: "foo",
@@ -1278,8 +1278,8 @@ mod tests {
             },
             CompletionItem {
                 label: "main()",
-                source_range: 93..94,
-                delete: 93..94,
+                source_range: 60..61,
+                delete: 60..61,
                 insert: "main()$0",
                 kind: Function,
                 lookup: "main",
@@ -1308,15 +1308,15 @@ mod tests {
         [
             CompletionItem {
                 label: "z",
-                source_range: 57..57,
-                delete: 57..57,
+                source_range: 24..24,
+                delete: 24..24,
                 insert: "z",
                 kind: Module,
             },
             CompletionItem {
                 label: "z()",
-                source_range: 57..57,
-                delete: 57..57,
+                source_range: 24..24,
+                delete: 24..24,
                 insert: "z()$0",
                 kind: Function,
                 lookup: "z",
@@ -1347,8 +1347,8 @@ mod tests {
         [
             CompletionItem {
                 label: "new()",
-                source_range: 292..292,
-                delete: 292..292,
+                source_range: 179..179,
+                delete: 179..179,
                 insert: "new()$0",
                 kind: Function,
                 lookup: "new",

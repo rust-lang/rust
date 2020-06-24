@@ -443,16 +443,16 @@ mod tests {
     #[test]
     fn hover_shows_type_of_an_expression() {
         let (analysis, position) = single_file_with_position(
-            "
-            pub fn foo() -> u32 { 1 }
+            r#"
+pub fn foo() -> u32 { 1 }
 
-            fn main() {
-                let foo_test = foo()<|>;
-            }
-            ",
+fn main() {
+    let foo_test = foo()<|>;
+}
+"#,
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(hover.range, TextRange::new(95.into(), 100.into()));
+        assert_eq!(hover.range, TextRange::new(58.into(), 63.into()));
         assert_eq!(trim_markup_opt(hover.info.first()), Some("u32"));
     }
 
