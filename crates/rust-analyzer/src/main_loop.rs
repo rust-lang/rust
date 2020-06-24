@@ -300,7 +300,7 @@ fn loop_turn(
         pool.execute({
             let subs = subscriptions;
             let snap = global_state.snapshot();
-            move || snap.analysis().prime_caches(subs).unwrap_or_else(|_: Canceled| ())
+            move || snap.analysis.prime_caches(subs).unwrap_or_else(|_: Canceled| ())
         });
     }
 

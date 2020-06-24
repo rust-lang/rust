@@ -440,7 +440,7 @@ pub(crate) fn location(
     frange: FileRange,
 ) -> Result<lsp_types::Location> {
     let url = url(snap, frange.file_id);
-    let line_index = snap.analysis().file_line_index(frange.file_id)?;
+    let line_index = snap.analysis.file_line_index(frange.file_id)?;
     let range = range(&line_index, frange.range);
     let loc = lsp_types::Location::new(url, range);
     Ok(loc)
@@ -453,7 +453,7 @@ pub(crate) fn location_link(
 ) -> Result<lsp_types::LocationLink> {
     let origin_selection_range = match src {
         Some(src) => {
-            let line_index = snap.analysis().file_line_index(src.file_id)?;
+            let line_index = snap.analysis.file_line_index(src.file_id)?;
             let range = range(&line_index, src.range);
             Some(range)
         }
@@ -473,7 +473,7 @@ fn location_info(
     snap: &GlobalStateSnapshot,
     target: NavigationTarget,
 ) -> Result<(lsp_types::Url, lsp_types::Range, lsp_types::Range)> {
-    let line_index = snap.analysis().file_line_index(target.file_id())?;
+    let line_index = snap.analysis.file_line_index(target.file_id())?;
 
     let target_uri = url(snap, target.file_id());
     let target_range = range(&line_index, target.full_range());
@@ -516,7 +516,7 @@ pub(crate) fn snippet_text_document_edit(
     source_file_edit: SourceFileEdit,
 ) -> Result<lsp_ext::SnippetTextDocumentEdit> {
     let text_document = versioned_text_document_identifier(snap, source_file_edit.file_id, None);
-    let line_index = snap.analysis().file_line_index(source_file_edit.file_id)?;
+    let line_index = snap.analysis.file_line_index(source_file_edit.file_id)?;
     let line_endings = snap.file_line_endings(source_file_edit.file_id);
     let edits = source_file_edit
         .edit
