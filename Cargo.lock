@@ -1174,6 +1174,7 @@ dependencies = [
  "anyhow",
  "cargo_metadata",
  "log",
+ "paths",
  "ra_arena",
  "ra_cfg",
  "ra_db",

@@ -310,11 +310,10 @@ impl ProjectFolders {
 
             let mut file_set_roots: Vec<VfsPath> = vec![];
 
-            let path = AbsPathBuf::try_from(path).unwrap();
             let entry = if root.is_member() {
-                vfs::loader::Entry::local_cargo_package(path.clone())
+                vfs::loader::Entry::local_cargo_package(path.to_path_buf())
             } else {
-                vfs::loader::Entry::cargo_package_dependency(path.clone())
+                vfs::loader::Entry::cargo_package_dependency(path.to_path_buf())
             };
             res.load.push(entry);
             if root.is_member() {
@@ -329,7 +328,7 @@ impl ProjectFolders {
                 }
                 file_set_roots.push(out_dir.into());
             }
-            file_set_roots.push(path.into());
+            file_set_roots.push(path.to_path_buf().into());
 
             if root.is_member() {
                 local_filesets.push(fsc.len());

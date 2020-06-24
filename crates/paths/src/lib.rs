@@ -28,6 +28,12 @@ impl AsRef<Path> for AbsPathBuf {
     }
 }
 
+impl AsRef<AbsPath> for AbsPathBuf {
+    fn as_ref(&self) -> &AbsPath {
+        self.as_path()
+    }
+}
+
 impl TryFrom<PathBuf> for AbsPathBuf {
     type Error = PathBuf;
     fn try_from(path_buf: PathBuf) -> Result<AbsPathBuf, PathBuf> {
@@ -45,9 +51,19 @@ impl TryFrom<&str> for AbsPathBuf {
     }
 }
 
+impl PartialEq<AbsPath> for AbsPathBuf {
+    fn eq(&self, other: &AbsPath) -> bool {
+        self.as_path() == other
+    }
+}
+
 impl AbsPathBuf {
+    pub fn assert(path: PathBuf) -> AbsPathBuf {
+        AbsPathBuf::try_from(path)
+            .unwrap_or_else(|path| panic!("expected absolute path, got {}", path.display()))
+    }
     pub fn as_path(&self) -> &AbsPath {
-        AbsPath::new_unchecked(self.0.as_path())
+        AbsPath::assert(self.0.as_path())
     }
     pub fn pop(&mut self) -> bool {
         self.0.pop()
@@ -77,15 +93,19 @@ impl<'a> TryFrom<&'a Path> for &'a AbsPath {
         if !path.is_absolute() {
             return Err(path);
         }
-        Ok(AbsPath::new_unchecked(path))
+        Ok(AbsPath::assert(path))
     }
 }
 
 impl AbsPath {
-    fn new_unchecked(path: &Path) -> &AbsPath {
+    pub fn assert(path: &Path) -> &AbsPath {
+        assert!(path.is_absolute());
         unsafe { &*(path as *const Path as *const AbsPath) }
     }
 
+    pub fn parent(&self) -> Option<&AbsPath> {
+        self.0.parent().map(AbsPath::assert)
+    }
     pub fn join(&self, path: impl AsRef<Path>) -> AbsPathBuf {
         self.as_ref().join(path).try_into().unwrap()
     }

@@ -1,15 +1,12 @@
 //! FIXME: write short doc here
 
-use std::{
-    env, ops,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{convert::TryFrom, env, ops, path::Path, process::Command};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, format_err, Result};
 use ra_arena::{Arena, Idx};
 
 use crate::output;
+use paths::{AbsPath, AbsPathBuf};
 
 #[derive(Default, Debug, Clone)]
 pub struct Sysroot {
@@ -21,7 +18,7 @@ pub type SysrootCrate = Idx<SysrootCrateData>;
 #[derive(Debug, Clone)]
 pub struct SysrootCrateData {
     pub name: String,
-    pub root: PathBuf,
+    pub root: AbsPathBuf,
     pub deps: Vec<SysrootCrate>,
 }
 
@@ -53,7 +50,7 @@ impl Sysroot {
         self.crates.iter().map(|(id, _data)| id)
     }
 
-    pub fn discover(cargo_toml: &Path) -> Result<Sysroot> {
+    pub fn discover(cargo_toml: &AbsPath) -> Result<Sysroot> {
         let src = get_or_install_rust_src(cargo_toml)?;
         let mut sysroot = Sysroot { crates: Arena::default() };
         for name in SYSROOT_CRATES.trim().lines() {
@@ -86,16 +83,18 @@ impl Sysroot {
     }
 }
 
-fn get_or_install_rust_src(cargo_toml: &Path) -> Result<PathBuf> {
+fn get_or_install_rust_src(cargo_toml: &AbsPath) -> Result<AbsPathBuf> {
     if let Ok(path) = env::var("RUST_SRC_PATH") {
-        return Ok(path.into());
+        let path = AbsPathBuf::try_from(path.as_str())
+            .map_err(|path| format_err!("RUST_SRC_PATH must be absolute: {}", path.display()))?;
+        return Ok(path);
     }
     let current_dir = cargo_toml.parent().unwrap();
     let mut rustc = Command::new(ra_toolchain::rustc());
     rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
     let rustc_output = output(rustc)?;
     let stdout = String::from_utf8(rustc_output.stdout)?;
-    let sysroot_path = Path::new(stdout.trim());
+    let sysroot_path = AbsPath::assert(Path::new(stdout.trim()));
     let src_path = sysroot_path.join("lib/rustlib/src/rust/src");
 
     if !src_path.exists() {
@@ -116,7 +115,7 @@ fn get_or_install_rust_src(cargo_toml: &Path) -> Result<PathBuf> {
 }
 
 impl SysrootCrateData {
-    pub fn root_dir(&self) -> &Path {
+    pub fn root_dir(&self) -> &AbsPath {
         self.root.parent().unwrap()
     }
 }

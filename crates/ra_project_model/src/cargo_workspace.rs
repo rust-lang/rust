@@ -1,14 +1,10 @@
 //! FIXME: write short doc here
 
-use std::{
-    ffi::OsStr,
-    ops,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{ffi::OsStr, ops, path::Path, process::Command};
 
 use anyhow::{Context, Result};
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
+use paths::{AbsPath, AbsPathBuf};
 use ra_arena::{Arena, Idx};
 use ra_db::Edition;
 use rustc_hash::FxHashMap;
@@ -20,11 +16,14 @@ use rustc_hash::FxHashMap;
 /// `CrateGraph`. `CrateGraph` is lower-level: it knows only about the crates,
 /// while this knows about `Packages` & `Targets`: purely cargo-related
 /// concepts.
+///
+/// We use absolute paths here, `cargo metadata` guarantees to always produce
+/// abs paths.
 #[derive(Debug, Clone)]
 pub struct CargoWorkspace {
     packages: Arena<PackageData>,
     targets: Arena<TargetData>,
-    workspace_root: PathBuf,
+    workspace_root: AbsPathBuf,
 }
 
 impl ops::Index<Package> for CargoWorkspace {
@@ -80,15 +79,15 @@ pub type Target = Idx<TargetData>;
 pub struct PackageData {
     pub version: String,
     pub name: String,
-    pub manifest: PathBuf,
+    pub manifest: AbsPathBuf,
     pub targets: Vec<Target>,
     pub is_member: bool,
     pub dependencies: Vec<PackageDependency>,
     pub edition: Edition,
     pub features: Vec<String>,
     pub cfgs: Vec<String>,
-    pub out_dir: Option<PathBuf>,
-    pub proc_macro_dylib_path: Option<PathBuf>,
+    pub out_dir: Option<AbsPathBuf>,
+    pub proc_macro_dylib_path: Option<AbsPathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -101,7 +100,7 @@ pub struct PackageDependency {
 pub struct TargetData {
     pub package: Package,
     pub name: String,
-    pub root: PathBuf,
+    pub root: AbsPathBuf,
     pub kind: TargetKind,
     pub is_proc_macro: bool,
 }
@@ -135,7 +134,7 @@ impl TargetKind {
 }
 
 impl PackageData {
-    pub fn root(&self) -> &Path {
+    pub fn root(&self) -> &AbsPath {
         self.manifest.parent().unwrap()
     }
 }
@@ -193,7 +192,7 @@ impl CargoWorkspace {
             let pkg = packages.alloc(PackageData {
                 name,
                 version: version.to_string(),
-                manifest: manifest_path,
+                manifest: AbsPathBuf::assert(manifest_path),
                 targets: Vec::new(),
                 is_member,
                 edition,
@@ -210,7 +209,7 @@ impl CargoWorkspace {
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
                     name: meta_tgt.name,
-                    root: meta_tgt.src_path.clone(),
+                    root: AbsPathBuf::assert(meta_tgt.src_path.clone()),
                     kind: TargetKind::new(meta_tgt.kind.as_slice()),
                     is_proc_macro,
                 });
@@ -246,16 +245,17 @@ impl CargoWorkspace {
             packages[source].features.extend(node.features);
         }
 
-        Ok(CargoWorkspace { packages, targets, workspace_root: meta.workspace_root })
+        let workspace_root = AbsPathBuf::assert(meta.workspace_root);
+        Ok(CargoWorkspace { packages, targets, workspace_root: workspace_root })
     }
 
     pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + ExactSizeIterator + 'a {
         self.packages.iter().map(|(id, _pkg)| id)
     }
 
-    pub fn target_by_root(&self, root: &Path) -> Option<Target> {
+    pub fn target_by_root(&self, root: &AbsPath) -> Option<Target> {
         self.packages()
-            .filter_map(|pkg| self[pkg].targets.iter().find(|&&it| self[it].root == root))
+            .filter_map(|pkg| self[pkg].targets.iter().find(|&&it| &self[it].root == root))
             .next()
             .copied()
     }
@@ -279,8 +279,8 @@ impl CargoWorkspace {
 
 #[derive(Debug, Clone, Default)]
 pub struct ExternResources {
-    out_dirs: FxHashMap<PackageId, PathBuf>,
-    proc_dylib_paths: FxHashMap<PackageId, PathBuf>,
+    out_dirs: FxHashMap<PackageId, AbsPathBuf>,
+    proc_dylib_paths: FxHashMap<PackageId, AbsPathBuf>,
     cfgs: FxHashMap<PackageId, Vec<String>>,
 }
 
@@ -308,6 +308,7 @@ pub fn load_extern_resources(
         if let Ok(message) = message {
             match message {
                 Message::BuildScriptExecuted(BuildScript { package_id, out_dir, cfgs, .. }) => {
+                    let out_dir = AbsPathBuf::assert(out_dir);
                     res.out_dirs.insert(package_id.clone(), out_dir);
                     res.cfgs.insert(package_id, cfgs);
                 }
@@ -317,7 +318,8 @@ pub fn load_extern_resources(
                         // Skip rmeta file
                         if let Some(filename) = message.filenames.iter().find(|name| is_dylib(name))
                         {
-                            res.proc_dylib_paths.insert(package_id, filename.clone());
+                            let filename = AbsPathBuf::assert(filename.clone());
+                            res.proc_dylib_paths.insert(package_id, filename);
                         }
                     }
                 }

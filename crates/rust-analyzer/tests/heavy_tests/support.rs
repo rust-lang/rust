@@ -17,6 +17,7 @@ use serde_json::{to_string_pretty, Value};
 use tempfile::TempDir;
 use test_utils::{find_mismatch, Fixture};
 
+use ra_db::AbsPathBuf;
 use ra_project_model::ProjectManifest;
 use rust_analyzer::{
     config::{ClientCapsConfig, Config, FilesConfig, FilesWatcher, LinkedProject},
@@ -70,10 +71,11 @@ impl<'a> Project<'a> {
             fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
         }
 
+        let tmp_dir_path = AbsPathBuf::assert(tmp_dir.path().to_path_buf());
         let mut roots =
-            self.roots.into_iter().map(|root| tmp_dir.path().join(root)).collect::<Vec<_>>();
+            self.roots.into_iter().map(|root| tmp_dir_path.join(root)).collect::<Vec<_>>();
         if roots.is_empty() {
-            roots.push(tmp_dir.path().to_path_buf());
+            roots.push(tmp_dir_path.clone());
         }
         let linked_projects = roots
             .into_iter()
@@ -91,7 +93,7 @@ impl<'a> Project<'a> {
             with_sysroot: self.with_sysroot,
             linked_projects,
             files: FilesConfig { watcher: FilesWatcher::Client, exclude: Vec::new() },
-            ..Config::default()
+            ..Config::new(tmp_dir_path)
         };
         if let Some(f) = &self.config {
             f(&mut config)
