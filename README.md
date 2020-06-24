@@ -1,7 +1,7 @@
 # The Rust Programming Language 
 
 This is the main source code repository for [Rust]. It contains the compiler,
-standard library and documentation.
+standard library, and documentation. 
 
 [Rust]: https://www.rust-lang.org
 
@@ -54,9 +54,8 @@ or reading the [rustc dev guide][rustcguidebuild].
     $ cp config.toml.example config.toml
     ```
 
-    It is recommended that you set the `prefix` value in the `[install]` 
-    section to a directory that you have write permissions if you plan to use 
-    the Rust build system to create an installation. (using `./x.py install`)
+    If you plan to use `x.py install` to create an installation, it is recommended
+    that you set the `prefix` value in the `[install]` section to a directory.
 
     Create install directory if you are not installing in default directory
 
