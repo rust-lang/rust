@@ -322,7 +322,7 @@ impl Ctx {
         let mut res = Function {
             name,
             visibility,
-            generic_params: GenericParams::default(),
+            generic_params: GenericParamsId::EMPTY,
             has_self_param,
             is_unsafe: func.unsafe_token().is_some(),
             params,
@@ -545,7 +545,7 @@ impl Ctx {
         &mut self,
         owner: GenericsOwner<'_>,
         node: &impl ast::TypeParamsOwner,
-    ) -> GenericParams {
+    ) -> GenericParamsId {
         let mut sm = &mut ArenaMap::default();
         let mut generics = GenericParams::default();
         match owner {
@@ -584,7 +584,8 @@ impl Ctx {
                 generics.fill(&self.body_ctx, &mut sm, node);
             }
         }
-        generics
+
+        self.data().generics.alloc(generics)
     }
 
     fn lower_type_bounds(&mut self, node: &impl ast::TypeBoundsOwner) -> Vec<TypeBound> {

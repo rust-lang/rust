@@ -76,11 +76,36 @@ impl fmt::Debug for RawVisibilityId {
     }
 }
 
+#[derive(Default, Debug, Eq, PartialEq)]
+struct GenericParamsStorage {
+    arena: Arena<GenericParams>,
+}
+
+impl GenericParamsStorage {
+    fn alloc(&mut self, params: GenericParams) -> GenericParamsId {
+        if params.types.is_empty() && params.where_predicates.is_empty() {
+            return GenericParamsId::EMPTY;
+        }
+
+        GenericParamsId(self.arena.alloc(params).into_raw().into())
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct GenericParamsId(u32);
+
+impl GenericParamsId {
+    pub const EMPTY: Self = GenericParamsId(u32::max_value());
+}
+
 static VIS_PUB: RawVisibility = RawVisibility::Public;
 static VIS_PRIV: RawVisibility =
     RawVisibility::Module(ModPath { kind: PathKind::Super(0), segments: Vec::new() });
 static VIS_PUB_CRATE: RawVisibility =
     RawVisibility::Module(ModPath { kind: PathKind::Crate, segments: Vec::new() });
+
+static EMPTY_GENERICS: GenericParams =
+    GenericParams { types: Arena::new(), where_predicates: Vec::new() };
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
@@ -102,6 +127,7 @@ struct ItemTreeData {
     exprs: Arena<Expr>,
 
     vis: ItemVisibilities,
+    generics: GenericParamsStorage,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -364,6 +390,17 @@ impl Index<RawVisibilityId> for ItemTree {
     }
 }
 
+impl Index<GenericParamsId> for ItemTree {
+    type Output = GenericParams;
+
+    fn index(&self, index: GenericParamsId) -> &Self::Output {
+        match index {
+            GenericParamsId::EMPTY => &EMPTY_GENERICS,
+            _ => &self.data().generics.arena[Idx::from_raw(index.0.into())],
+        }
+    }
+}
+
 impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     type Output = N;
     fn index(&self, id: FileItemTreeId<N>) -> &N {
@@ -398,7 +435,7 @@ pub struct ExternCrate {
 pub struct Function {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: GenericParams,
+    pub generic_params: GenericParamsId,
     pub has_self_param: bool,
     pub is_unsafe: bool,
     pub params: Vec<TypeRef>,
@@ -410,7 +447,7 @@ pub struct Function {
 pub struct Struct {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: GenericParams,
+    pub generic_params: GenericParamsId,
     pub fields: Fields,
     pub ast_id: FileAstId<ast::StructDef>,
     pub kind: StructDefKind,
@@ -430,7 +467,7 @@ pub enum StructDefKind {
 pub struct Union {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: GenericParams,
+    pub generic_params: GenericParamsId,
     pub fields: Fields,
     pub ast_id: FileAstId<ast::UnionDef>,
 }
@@ -439,7 +476,7 @@ pub struct Union {
 pub struct Enum {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: GenericParams,
+    pub generic_params: GenericParamsId,
     pub variants: Range<Idx<Variant>>,
     pub ast_id: FileAstId<ast::EnumDef>,
 }
@@ -466,7 +503,7 @@ pub struct Static {
 pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: GenericParams,
+    pub generic_params: GenericParamsId,
     pub auto: bool,
     pub items: Vec<AssocItem>,
     pub ast_id: FileAstId<ast::TraitDef>,
@@ -474,7 +511,7 @@ pub struct Trait {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Impl {
-    pub generic_params: GenericParams,
+    pub generic_params: GenericParamsId,
     pub target_trait: Option<TypeRef>,
     pub target_type: TypeRef,
     pub is_negative: bool,
@@ -488,7 +525,7 @@ pub struct TypeAlias {
     pub visibility: RawVisibilityId,
     /// Bounds on the type alias itself. Only valid in trait declarations, eg. `type Assoc: Copy;`.
     pub bounds: Vec<TypeBound>,
-    pub generic_params: GenericParams,
+    pub generic_params: GenericParamsId,
     pub type_ref: Option<TypeRef>,
     pub ast_id: FileAstId<ast::TypeAliasDef>,
 }

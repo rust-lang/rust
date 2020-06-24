@@ -80,43 +80,43 @@ impl GenericParams {
                 let id = id.lookup(db).id;
                 let tree = db.item_tree(id.file_id);
                 let item = &tree[id.value];
-                item.generic_params.clone()
+                tree[item.generic_params].clone()
             }
             GenericDefId::AdtId(AdtId::StructId(id)) => {
                 let id = id.lookup(db).id;
                 let tree = db.item_tree(id.file_id);
                 let item = &tree[id.value];
-                item.generic_params.clone()
+                tree[item.generic_params].clone()
             }
             GenericDefId::AdtId(AdtId::EnumId(id)) => {
                 let id = id.lookup(db).id;
                 let tree = db.item_tree(id.file_id);
                 let item = &tree[id.value];
-                item.generic_params.clone()
+                tree[item.generic_params].clone()
             }
             GenericDefId::AdtId(AdtId::UnionId(id)) => {
                 let id = id.lookup(db).id;
                 let tree = db.item_tree(id.file_id);
                 let item = &tree[id.value];
-                item.generic_params.clone()
+                tree[item.generic_params].clone()
             }
             GenericDefId::TraitId(id) => {
                 let id = id.lookup(db).id;
                 let tree = db.item_tree(id.file_id);
                 let item = &tree[id.value];
-                item.generic_params.clone()
+                tree[item.generic_params].clone()
             }
             GenericDefId::TypeAliasId(id) => {
                 let id = id.lookup(db).id;
                 let tree = db.item_tree(id.file_id);
                 let item = &tree[id.value];
-                item.generic_params.clone()
+                tree[item.generic_params].clone()
             }
             GenericDefId::ImplId(id) => {
                 let id = id.lookup(db).id;
                 let tree = db.item_tree(id.file_id);
                 let item = &tree[id.value];
-                item.generic_params.clone()
+                tree[item.generic_params].clone()
             }
             GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => GenericParams::default(),
         };
