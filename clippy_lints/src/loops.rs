@@ -875,7 +875,7 @@ impl std::ops::Sub for &MinifyingSugg<'static> {
     fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
         match (self.as_str(), rhs.as_str()) {
             (_, "0") => self.clone(),
-            ("0", _) => MinifyingSugg(sugg::make_unop("-", rhs.0.clone())),
+            ("0", _) => MinifyingSugg(-(rhs.0.clone())),
             (x, y) if x == y => MinifyingSugg::non_paren("0"),
             (_, _) => MinifyingSugg(&self.0 - &rhs.0),
         }
@@ -898,7 +898,7 @@ impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
     fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
         match (self.as_str(), rhs.as_str()) {
             (_, "0") => self,
-            ("0", _) => MinifyingSugg(sugg::make_unop("-", rhs.0.clone())),
+            ("0", _) => MinifyingSugg(-(rhs.0.clone())),
             (x, y) if x == y => MinifyingSugg::non_paren("0"),
             (_, _) => MinifyingSugg(self.0 - &rhs.0),
         }

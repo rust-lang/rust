@@ -13,7 +13,7 @@ use rustc_span::{BytePos, Pos};
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
-use std::ops::{Add, Not, Sub};
+use std::ops::{Add, Neg, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
@@ -353,6 +353,13 @@ impl Sub for &Sugg<'_> {
 
 forward_binop_impls_to_ref!(impl Add, add for Sugg<'_>, type Output = Sugg<'static>);
 forward_binop_impls_to_ref!(impl Sub, sub for Sugg<'_>, type Output = Sugg<'static>);
+
+impl Neg for Sugg<'_> {
+    type Output = Sugg<'static>;
+    fn neg(self) -> Sugg<'static> {
+        make_unop("-", self)
+    }
+}
 
 impl Not for Sugg<'_> {
     type Output = Sugg<'static>;
