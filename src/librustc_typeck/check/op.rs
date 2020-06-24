@@ -9,7 +9,9 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
-use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_param, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -254,6 +256,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !lhs_ty.references_error() && !rhs_ty.references_error() {
                     let source_map = self.tcx.sess.source_map();
 
+                    let note = |err: &mut DiagnosticBuilder<'_>, missing_trait| {
+                        err.note(&format!(
+                            "the trait `{}` is not implemented for `{}`",
+                            missing_trait, lhs_ty
+                        ));
+                    };
                     match is_assign {
                         IsAssign::Yes => {
                             let mut err = struct_span_err!(
@@ -286,10 +294,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             rty.peel_refs(),
                                             lstring,
                                         );
-                                        err.span_suggestion(
-                                            lhs_expr.span,
+                                        err.span_suggestion_verbose(
+                                            lhs_expr.span.shrink_to_lo(),
                                             msg,
-                                            format!("*{}", lstring),
+                                            "*".to_string(),
                                             rustc_errors::Applicability::MachineApplicable,
                                         );
                                         suggested_deref = true;
@@ -310,6 +318,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 _ => None,
                             };
                             if let Some(missing_trait) = missing_trait {
+                                let mut visitor = TypeParamVisitor(vec![]);
+                                visitor.visit_ty(lhs_ty);
+
+                                let mut sugg = false;
                                 if op.node == hir::BinOpKind::Add
                                     && self.check_str_addition(
                                         lhs_expr, rhs_expr, lhs_ty, rhs_ty, &mut err, true, op,
@@ -318,18 +330,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " += "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::Param(p) = lhs_ty.kind {
-                                    suggest_constraining_param(
-                                        self.tcx,
-                                        self.body_id,
-                                        &mut err,
-                                        lhs_ty,
-                                        rhs_ty,
-                                        missing_trait,
-                                        p,
-                                        false,
-                                    );
-                                } else if !suggested_deref {
+                                    sugg = true;
+                                } else if let [ty] = &visitor.0[..] {
+                                    if let ty::Param(p) = ty.kind {
+                                        // FIXME: This *guesses* that constraining the type param
+                                        // will make the operation available, but this is only true
+                                        // when the corresponding trait has a blanked
+                                        // implementation, like the following:
+                                        // `impl<'a> PartialEq for &'a [T] where T: PartialEq {}`
+                                        // The correct thing to do would be to verify this
+                                        // projection would hold.
+                                        if *ty != lhs_ty {
+                                            note(&mut err, missing_trait);
+                                        }
+                                        suggest_constraining_param(
+                                            self.tcx,
+                                            self.body_id,
+                                            &mut err,
+                                            ty,
+                                            rhs_ty,
+                                            missing_trait,
+                                            p,
+                                            false,
+                                        );
+                                        sugg = true;
+                                    }
+                                }
+                                if !sugg && !suggested_deref {
                                     suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
                                 }
                             }
@@ -458,18 +485,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         .is_ok()
                                 } {
                                     if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
-                                        err.help(&format!(
-                                            "`{}` can be used on '{}', you can \
-                                            dereference `{2}`: `*{2}`",
-                                            op.node.as_str(),
-                                            rty.peel_refs(),
-                                            lstring
-                                        ));
+                                        err.span_suggestion_verbose(
+                                            lhs_expr.span.shrink_to_lo(),
+                                            &format!(
+                                                "`{}` can be used on `{}`, you can dereference \
+                                                 `{}`",
+                                                op.node.as_str(),
+                                                rty.peel_refs(),
+                                                lstring,
+                                            ),
+                                            "*".to_string(),
+                                            Applicability::MachineApplicable,
+                                        );
                                         suggested_deref = true;
                                     }
                                 }
                             }
                             if let Some(missing_trait) = missing_trait {
+                                let mut visitor = TypeParamVisitor(vec![]);
+                                visitor.visit_ty(lhs_ty);
+
+                                let mut sugg = false;
                                 if op.node == hir::BinOpKind::Add
                                     && self.check_str_addition(
                                         lhs_expr, rhs_expr, lhs_ty, rhs_ty, &mut err, false, op,
@@ -478,18 +514,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " + "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::Param(p) = lhs_ty.kind {
-                                    suggest_constraining_param(
-                                        self.tcx,
-                                        self.body_id,
-                                        &mut err,
-                                        lhs_ty,
-                                        rhs_ty,
-                                        missing_trait,
-                                        p,
-                                        use_output,
-                                    );
-                                } else if !suggested_deref && !involves_fn {
+                                    sugg = true;
+                                } else if let [ty] = &visitor.0[..] {
+                                    if let ty::Param(p) = ty.kind {
+                                        // FIXME: This *guesses* that constraining the type param
+                                        // will make the operation available, but this is only true
+                                        // when the corresponding trait has a blanked
+                                        // implementation, like the following:
+                                        // `impl<'a> PartialEq for &'a [T] where T: PartialEq {}`
+                                        // The correct thing to do would be to verify this
+                                        // projection would hold.
+                                        if *ty != lhs_ty {
+                                            note(&mut err, missing_trait);
+                                        }
+                                        suggest_constraining_param(
+                                            self.tcx,
+                                            self.body_id,
+                                            &mut err,
+                                            ty,
+                                            rhs_ty,
+                                            missing_trait,
+                                            p,
+                                            use_output,
+                                        );
+                                        sugg = true;
+                                    }
+                                }
+                                if !sugg && !suggested_deref && !involves_fn {
                                     suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
                                 }
                             }
@@ -928,8 +979,7 @@ fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_tra
     if let Adt(def, _) = ty.peel_refs().kind {
         if def.did.is_local() {
             err.note(&format!(
-                "an implementation of `{}` might \
-                be missing for `{}`",
+                "an implementation of `{}` might be missing for `{}`",
                 missing_trait, ty
             ));
         }
@@ -973,5 +1023,16 @@ fn suggest_constraining_param(
     } else {
         let span = tcx.def_span(param_def_id);
         err.span_label(span, msg);
+    }
+}
+
+struct TypeParamVisitor<'tcx>(Vec<Ty<'tcx>>);
+
+impl<'tcx> TypeVisitor<'tcx> for TypeParamVisitor<'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+        if let ty::Param(_) = ty.kind {
+            self.0.push(ty);
+        }
+        ty.super_visit_with(self)
     }
 }

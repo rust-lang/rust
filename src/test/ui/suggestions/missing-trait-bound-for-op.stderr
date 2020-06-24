@@ -1,0 +1,17 @@
+error[E0369]: binary operation `==` cannot be applied to type `&[T]`
+  --> $DIR/missing-trait-bound-for-op.rs:7:17
+   |
+LL |         if head == prefix {
+   |            ---- ^^ ------ &[T]
+   |            |
+   |            &[T]
+   |
+   = note: the trait `std::cmp::PartialEq` is not implemented for `&[T]`
+help: consider restricting type parameter `T`
+   |
+LL | pub fn strip_prefix<'a, T: std::cmp::PartialEq>(s: &'a [T], prefix: &[T]) -> Option<&'a [T]> {
+   |                          ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.
