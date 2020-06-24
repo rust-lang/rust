@@ -5,6 +5,7 @@ use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use ra_db::CrateId;
 use rustc_hash::FxHashMap;
+use test_utils::mark;
 
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, HasModule, ImplId,
@@ -126,18 +127,26 @@ impl ItemScope {
         let mut changed = false;
         let existing = self.visible.entry(name).or_default();
 
-        if existing.types.is_none() && def.types.is_some() {
-            existing.types = def.types;
-            changed = true;
+        macro_rules! check_changed {
+            ($changed:ident, $existing:expr, $def:expr) => {
+                match ($existing, $def) {
+                    (None, Some(_)) => {
+                        $existing = $def;
+                        $changed = true;
+                    }
+                    (Some(e), Some(d)) if e.0 != d.0 => {
+                        mark::hit!(import_shadowed);
+                        $existing = $def;
+                        $changed = true;
+                    }
+                    _ => {}
+                }
+            };
         }
-        if existing.values.is_none() && def.values.is_some() {
-            existing.values = def.values;
-            changed = true;
-        }
-        if existing.macros.is_none() && def.macros.is_some() {
-            existing.macros = def.macros;
-            changed = true;
-        }
+
+        check_changed!(changed, existing.types, def.types);
+        check_changed!(changed, existing.values, def.values);
+        check_changed!(changed, existing.macros, def.macros);
 
         changed
     }
