@@ -1,16 +1,15 @@
 error[E0369]: binary operation `==` cannot be applied to type `&[T]`
-  --> $DIR/missing-trait-bound-for-op.rs:7:17
+  --> $DIR/missing-trait-bound-for-op.rs:4:15
    |
-LL |         if head == prefix {
-   |            ---- ^^ ------ &[T]
-   |            |
-   |            &[T]
+LL |     let _ = s == t;
+   |             - ^^ - &[T]
+   |             |
+   |             &[T]
    |
-   = note: the trait `std::cmp::PartialEq` is not implemented for `&[T]`
 help: consider restricting type parameter `T`
    |
-LL | pub fn strip_prefix<'a, T: std::cmp::PartialEq>(s: &'a [T], prefix: &[T]) -> Option<&'a [T]> {
-   |                          ^^^^^^^^^^^^^^^^^^^^^
+LL | pub fn foo<T: std::cmp::PartialEq>(s: &[T], t: &[T]) {
+   |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

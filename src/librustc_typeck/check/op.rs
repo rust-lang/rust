@@ -8,6 +8,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
+use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
 use rustc_middle::ty::{
     self, suggest_constraining_type_param, Ty, TyCtxt, TypeFoldable, TypeVisitor,
@@ -436,29 +437,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // we don't want the note in the else clause to be emitted
                     } else if let [ty] = &visitor.0[..] {
                         if let ty::Param(p) = ty.kind {
-                            // FIXME: This *guesses* that constraining the type param
-                            // will make the operation available, but this is only true
-                            // when the corresponding trait has a blanket
-                            // implementation, like the following:
-                            // `impl<'a> PartialEq for &'a [T] where T: PartialEq {}`
-                            // The correct thing to do would be to verify this
-                            // projection would hold.
-                            if *ty != lhs_ty {
+                            // Check if the method would be found if the type param wasn't
+                            // involved. If so, it means that adding a trait bound to the param is
+                            // enough. Otherwise we do not give the suggestion.
+                            let mut eraser = TypeParamEraser(&self, expr.span);
+                            let needs_bound = self
+                                .lookup_op_method(
+                                    eraser.fold_ty(lhs_ty),
+                                    &[eraser.fold_ty(rhs_ty)],
+                                    Op::Binary(op, is_assign),
+                                )
+                                .is_ok();
+                            if needs_bound {
+                                suggest_constraining_param(
+                                    self.tcx,
+                                    self.body_id,
+                                    &mut err,
+                                    ty,
+                                    rhs_ty,
+                                    missing_trait,
+                                    p,
+                                    use_output,
+                                );
+                            } else if *ty != lhs_ty {
+                                // When we know that a missing bound is responsible, we don't show
+                                // this note as it is redundant.
                                 err.note(&format!(
                                     "the trait `{}` is not implemented for `{}`",
                                     missing_trait, lhs_ty
                                 ));
                             }
-                            suggest_constraining_param(
-                                self.tcx,
-                                self.body_id,
-                                &mut err,
-                                ty,
-                                rhs_ty,
-                                missing_trait,
-                                p,
-                                use_output,
-                            );
                         } else {
                             bug!("type param visitor stored a non type param: {:?}", ty.kind);
                         }
@@ -656,10 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     err.span_label(
                         ex.span,
-                        format!(
-                            "cannot apply unary operator `{}`",
-                            op.as_str()
-                        ),
+                        format!("cannot apply unary operator `{}`", op.as_str()),
                     );
                     match actual.kind {
                         Uint(_) if op == hir::UnOp::UnNeg => {
@@ -952,5 +957,23 @@ impl<'tcx> TypeVisitor<'tcx> for TypeParamVisitor<'tcx> {
             self.0.push(ty);
         }
         ty.super_visit_with(self)
+    }
+}
+
+struct TypeParamEraser<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, Span);
+
+impl TypeFolder<'tcx> for TypeParamEraser<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.0.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.kind {
+            ty::Param(_) => self.0.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::MiscVariable,
+                span: self.1,
+            }),
+            _ => ty.super_fold_with(self),
+        }
     }
 }
