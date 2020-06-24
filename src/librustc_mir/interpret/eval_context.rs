@@ -230,8 +230,14 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // late-bound lifetimes are still around and can lead to type
     // differences. So we compare ignoring lifetimes.
     if equal_up_to_regions(tcx, param_env, src.ty, dest.ty) {
-        // Make sure the layout is equal, too -- just to be safe. Miri really needs layout equality.
-        assert_eq!(src.layout, dest.layout);
+        // Make sure the layout is equal, too -- just to be safe. Miri really
+        // needs layout equality. For performance reason we skip this check when
+        // the types are equal. Equal types *can* have different layouts when
+        // enum downcast is involved (as enum variants carry the type of the
+        // enum), but those should never occur in assignments.
+        if cfg!(debug_assertions) || src.ty != dest.ty {
+            assert_eq!(src.layout, dest.layout);
+        }
         true
     } else {
         false
