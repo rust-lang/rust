@@ -5,8 +5,8 @@ mod project_json;
 mod sysroot;
 
 use std::{
-    fs::{read_dir, File, ReadDir},
-    io::{self, BufReader},
+    fs::{self, read_dir, ReadDir},
+    io,
     path::Path,
     process::{Command, Output},
 };
@@ -14,13 +14,12 @@ use std::{
 use anyhow::{bail, Context, Result};
 use paths::{AbsPath, AbsPathBuf};
 use ra_cfg::CfgOptions;
-use ra_db::{CrateGraph, CrateName, Edition, Env, FileId};
+use ra_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde_json::from_reader;
 
 pub use crate::{
     cargo_workspace::{CargoConfig, CargoWorkspace, Package, Target, TargetKind},
-    project_json::ProjectJson,
+    project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,
 };
 pub use ra_proc_macro::ProcMacroClient;
@@ -30,7 +29,7 @@ pub enum ProjectWorkspace {
     /// Project workspace was discovered by running `cargo metadata` and `rustc --print sysroot`.
     Cargo { cargo: CargoWorkspace, sysroot: Sysroot },
     /// Project workspace was manually specified using a `rust-project.json` file.
-    Json { project: ProjectJson, project_location: AbsPathBuf },
+    Json { project: ProjectJson },
 }
 
 /// `PackageRoot` describes a package root folder.
@@ -156,17 +155,15 @@ impl ProjectWorkspace {
     ) -> Result<ProjectWorkspace> {
         let res = match manifest {
             ProjectManifest::ProjectJson(project_json) => {
-                let file = File::open(&project_json).with_context(|| {
-                    format!("Failed to open json file {}", project_json.display())
+                let file = fs::read_to_string(&project_json).with_context(|| {
+                    format!("Failed to read json file {}", project_json.display())
                 })?;
-                let reader = BufReader::new(file);
+                let data = serde_json::from_str(&file).with_context(|| {
+                    format!("Failed to deserialize json file {}", project_json.display())
+                })?;
                 let project_location = project_json.parent().unwrap().to_path_buf();
-                ProjectWorkspace::Json {
-                    project: from_reader(reader).with_context(|| {
-                        format!("Failed to deserialize json file {}", project_json.display())
-                    })?,
-                    project_location,
-                }
+                let project = ProjectJson::new(&project_location, data);
+                ProjectWorkspace::Json { project }
             }
             ProjectManifest::CargoToml(cargo_toml) => {
                 let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_features)
@@ -198,11 +195,9 @@ impl ProjectWorkspace {
     /// the root is a member of the current workspace
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
-            ProjectWorkspace::Json { project, project_location } => project
-                .roots
-                .iter()
-                .map(|r| PackageRoot::new_member(project_location.join(&r.path)))
-                .collect(),
+            ProjectWorkspace::Json { project } => {
+                project.roots.iter().map(|r| PackageRoot::new_member(r.path.clone())).collect()
+            }
             ProjectWorkspace::Cargo { cargo, sysroot } => cargo
                 .packages()
                 .map(|pkg| PackageRoot {
@@ -219,11 +214,11 @@ impl ProjectWorkspace {
 
     pub fn proc_macro_dylib_paths(&self) -> Vec<AbsPathBuf> {
         match self {
-            ProjectWorkspace::Json { project, project_location } => project
+            ProjectWorkspace::Json { project } => project
                 .crates
                 .iter()
                 .filter_map(|krate| krate.proc_macro_dylib_path.as_ref())
-                .map(|it| project_location.join(it))
+                .cloned()
                 .collect(),
             ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => cargo
                 .packages()
@@ -246,36 +241,18 @@ impl ProjectWorkspace {
         &self,
         target: Option<&str>,
         proc_macro_client: &ProcMacroClient,
-        load: &mut dyn FnMut(&Path) -> Option<FileId>,
+        load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     ) -> CrateGraph {
         let mut crate_graph = CrateGraph::default();
         match self {
-            ProjectWorkspace::Json { project, project_location } => {
+            ProjectWorkspace::Json { project } => {
                 let crates: FxHashMap<_, _> = project
                     .crates
                     .iter()
                     .enumerate()
                     .filter_map(|(seq_index, krate)| {
-                        let file_path = project_location.join(&krate.root_module);
+                        let file_path = &krate.root_module;
                         let file_id = load(&file_path)?;
-                        let edition = match krate.edition {
-                            project_json::Edition::Edition2015 => Edition::Edition2015,
-                            project_json::Edition::Edition2018 => Edition::Edition2018,
-                        };
-                        let cfg_options = {
-                            let mut opts = CfgOptions::default();
-                            for cfg in &krate.cfg {
-                                match cfg.find('=') {
-                                    None => opts.insert_atom(cfg.into()),
-                                    Some(pos) => {
-                                        let key = &cfg[..pos];
-                                        let value = cfg[pos + 1..].trim_matches('"');
-                                        opts.insert_key_value(key.into(), value.into());
-                                    }
-                                }
-                            }
-                            opts
-                        };
 
                         let mut env = Env::default();
                         if let Some(out_dir) = &krate.out_dir {
@@ -290,13 +267,13 @@ impl ProjectWorkspace {
                             .map(|it| proc_macro_client.by_dylib_path(&it));
                         // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
                         Some((
-                            project_json::CrateId(seq_index),
+                            CrateId(seq_index as u32),
                             crate_graph.add_crate_root(
                                 file_id,
-                                edition,
+                                krate.edition,
                                 // FIXME json definitions can store the crate name
                                 None,
-                                cfg_options,
+                                krate.cfg.clone(),
                                 env,
                                 proc_macro.unwrap_or_default(),
                             ),
@@ -306,8 +283,8 @@ impl ProjectWorkspace {
 
                 for (id, krate) in project.crates.iter().enumerate() {
                     for dep in &krate.deps {
-                        let from_crate_id = project_json::CrateId(id);
-                        let to_crate_id = dep.krate;
+                        let from_crate_id = CrateId(id as u32);
+                        let to_crate_id = dep.crate_id;
                         if let (Some(&from), Some(&to)) =
                             (crates.get(&from_crate_id), crates.get(&to_crate_id))
                         {
@@ -523,7 +500,7 @@ impl ProjectWorkspace {
         crate_graph
     }
 
-    pub fn workspace_root_for(&self, path: &Path) -> Option<&Path> {
+    pub fn workspace_root_for(&self, path: &Path) -> Option<&AbsPath> {
         match self {
             ProjectWorkspace::Cargo { cargo, .. } => {
                 Some(cargo.workspace_root()).filter(|root| path.starts_with(root))
@@ -531,7 +508,7 @@ impl ProjectWorkspace {
             ProjectWorkspace::Json { project: ProjectJson { roots, .. }, .. } => roots
                 .iter()
                 .find(|root| path.starts_with(&root.path))
-                .map(|root| root.path.as_ref()),
+                .map(|root| root.path.as_path()),
         }
     }
 }

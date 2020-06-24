@@ -419,7 +419,7 @@ pub fn handle_runnables(
                     location: None,
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
-                        workspace_root: Some(spec.workspace_root.clone()),
+                        workspace_root: Some(spec.workspace_root.clone().into()),
                         cargo_args: vec![
                             cmd.to_string(),
                             "--package".to_string(),

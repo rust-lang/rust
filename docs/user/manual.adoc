@@ -322,6 +322,8 @@ There are tree ways to feed `rust-project.json` to rust-analyzer:
 * Specify `"rust-analyzer.linkedProjects": [ "path/to/rust-project.json" ]` in the settings (and make sure that your LSP client sends settings as a part of initialize request).
 * Specify `"rust-analyzer.linkedProjects": [ { "roots": [...], "crates": [...] }]` inline.
 
+Relative paths are interpreted relative to `rust-project.json` file location or (for inline JSON) relative to `rootUri`.
+
 See https://github.com/rust-analyzer/rust-project.json-example for a small example.
 
 == Features

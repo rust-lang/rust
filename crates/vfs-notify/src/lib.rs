@@ -45,7 +45,7 @@ impl loader::Handle for LoaderHandle {
     fn invalidate(&mut self, path: AbsPathBuf) {
         self.sender.send(Message::Invalidate(path)).unwrap();
     }
-    fn load_sync(&mut self, path: &AbsPathBuf) -> Option<Vec<u8>> {
+    fn load_sync(&mut self, path: &AbsPath) -> Option<Vec<u8>> {
         read(path)
     }
 }

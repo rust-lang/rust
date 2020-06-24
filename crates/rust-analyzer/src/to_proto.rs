@@ -663,7 +663,7 @@ pub(crate) fn runnable(
         location: Some(location),
         kind: lsp_ext::RunnableKind::Cargo,
         args: lsp_ext::CargoRunnable {
-            workspace_root: workspace_root,
+            workspace_root: workspace_root.map(|it| it.into()),
             cargo_args,
             executable_args,
         },

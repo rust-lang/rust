@@ -1,7 +1,7 @@
 //! Object safe interface for file watching and reading.
 use std::fmt;
 
-use paths::AbsPathBuf;
+use paths::{AbsPath, AbsPathBuf};
 
 #[derive(Debug)]
 pub enum Entry {
@@ -28,7 +28,7 @@ pub trait Handle: fmt::Debug {
         Self: Sized;
     fn set_config(&mut self, config: Config);
     fn invalidate(&mut self, path: AbsPathBuf);
-    fn load_sync(&mut self, path: &AbsPathBuf) -> Option<Vec<u8>>;
+    fn load_sync(&mut self, path: &AbsPath) -> Option<Vec<u8>>;
 }
 
 impl Entry {

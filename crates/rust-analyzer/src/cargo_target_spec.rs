@@ -1,8 +1,7 @@
 //! See `CargoTargetSpec`
 
-use std::path::PathBuf;
-
 use ra_cfg::CfgExpr;
+use ra_db::AbsPathBuf;
 use ra_ide::{FileId, RunnableKind, TestId};
 use ra_project_model::{self, TargetKind};
 
@@ -14,7 +13,7 @@ use crate::{global_state::GlobalStateSnapshot, Result};
 /// build/test/run the target.
 #[derive(Clone)]
 pub(crate) struct CargoTargetSpec {
-    pub(crate) workspace_root: PathBuf,
+    pub(crate) workspace_root: AbsPathBuf,
     pub(crate) package: String,
     pub(crate) target: String,
     pub(crate) target_kind: TargetKind,

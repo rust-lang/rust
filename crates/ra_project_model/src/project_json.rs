@@ -2,11 +2,15 @@
 
 use std::path::PathBuf;
 
+use paths::{AbsPath, AbsPathBuf};
+use ra_cfg::CfgOptions;
+use ra_db::{CrateId, Dependency, Edition};
 use rustc_hash::FxHashSet;
 use serde::Deserialize;
+use stdx::split_delim;
 
 /// Roots and crates that compose this Rust project.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct ProjectJson {
     pub(crate) roots: Vec<Root>,
     pub(crate) crates: Vec<Crate>,
@@ -14,82 +18,100 @@ pub struct ProjectJson {
 
 /// A root points to the directory which contains Rust crates. rust-analyzer watches all files in
 /// all roots. Roots might be nested.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(transparent)]
+#[derive(Clone, Debug)]
 pub struct Root {
-    pub(crate) path: PathBuf,
+    pub(crate) path: AbsPathBuf,
 }
 
 /// A crate points to the root module of a crate and lists the dependencies of the crate. This is
 /// useful in creating the crate graph.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct Crate {
-    pub(crate) root_module: PathBuf,
+    pub(crate) root_module: AbsPathBuf,
     pub(crate) edition: Edition,
-    pub(crate) deps: Vec<Dep>,
-
-    #[serde(default)]
-    pub(crate) cfg: FxHashSet<String>,
-
-    pub(crate) out_dir: Option<PathBuf>,
-    pub(crate) proc_macro_dylib_path: Option<PathBuf>,
+    pub(crate) deps: Vec<Dependency>,
+    pub(crate) cfg: CfgOptions,
+    pub(crate) out_dir: Option<AbsPathBuf>,
+    pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize)]
+impl ProjectJson {
+    pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
+        ProjectJson {
+            roots: data.roots.into_iter().map(|path| Root { path: base.join(path) }).collect(),
+            crates: data
+                .crates
+                .into_iter()
+                .map(|crate_data| Crate {
+                    root_module: base.join(crate_data.root_module),
+                    edition: crate_data.edition.into(),
+                    deps: crate_data
+                        .deps
+                        .into_iter()
+                        .map(|dep_data| Dependency {
+                            crate_id: CrateId(dep_data.krate as u32),
+                            name: dep_data.name.into(),
+                        })
+                        .collect::<Vec<_>>(),
+                    cfg: {
+                        let mut cfg = CfgOptions::default();
+                        for entry in &crate_data.cfg {
+                            match split_delim(entry, '=') {
+                                Some((key, value)) => {
+                                    cfg.insert_key_value(key.into(), value.into());
+                                }
+                                None => cfg.insert_atom(entry.into()),
+                            }
+                        }
+                        cfg
+                    },
+                    out_dir: crate_data.out_dir.map(|it| base.join(it)),
+                    proc_macro_dylib_path: crate_data.proc_macro_dylib_path.map(|it| base.join(it)),
+                })
+                .collect::<Vec<_>>(),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ProjectJsonData {
+    roots: Vec<PathBuf>,
+    crates: Vec<CrateData>,
+}
+
+#[derive(Deserialize)]
+struct CrateData {
+    root_module: PathBuf,
+    edition: EditionData,
+    deps: Vec<DepData>,
+    #[serde(default)]
+    cfg: FxHashSet<String>,
+    out_dir: Option<PathBuf>,
+    proc_macro_dylib_path: Option<PathBuf>,
+}
+
+#[derive(Deserialize)]
 #[serde(rename = "edition")]
-pub enum Edition {
+enum EditionData {
     #[serde(rename = "2015")]
     Edition2015,
     #[serde(rename = "2018")]
     Edition2018,
 }
 
-/// Identifies a crate by position in the crates array.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[serde(transparent)]
-pub struct CrateId(pub usize);
-
-/// A dependency of a crate, identified by its id in the crates array and name.
-#[derive(Clone, Debug, Deserialize)]
-pub struct Dep {
-    #[serde(rename = "crate")]
-    pub(crate) krate: CrateId,
-    pub(crate) name: String,
+impl From<EditionData> for Edition {
+    fn from(data: EditionData) -> Self {
+        match data {
+            EditionData::Edition2015 => Edition::Edition2015,
+            EditionData::Edition2018 => Edition::Edition2018,
+        }
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn test_crate_deserialization() {
-        let raw_json = json!(    {
-            "crate_id": 2,
-            "root_module": "this/is/a/file/path.rs",
-            "deps": [
-              {
-                "crate": 1,
-                "name": "some_dep_crate"
-              },
-            ],
-            "edition": "2015",
-            "cfg": [
-              "atom_1",
-              "atom_2",
-              "feature=feature_1",
-              "feature=feature_2",
-              "other=value",
-            ],
-
-        });
-
-        let krate: Crate = serde_json::from_value(raw_json).unwrap();
-
-        assert!(krate.cfg.contains(&"atom_1".to_string()));
-        assert!(krate.cfg.contains(&"atom_2".to_string()));
-        assert!(krate.cfg.contains(&"feature=feature_1".to_string()));
-        assert!(krate.cfg.contains(&"feature=feature_2".to_string()));
-        assert!(krate.cfg.contains(&"other=value".to_string()));
-    }
+#[derive(Deserialize)]
+struct DepData {
+    /// Identifies a crate by position in the crates array.
+    #[serde(rename = "crate")]
+    krate: usize,
+    name: String,
 }

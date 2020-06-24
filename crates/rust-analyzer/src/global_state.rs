@@ -3,7 +3,7 @@
 //!
 //! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
-use std::{convert::TryFrom, path::Path, sync::Arc};
+use std::{convert::TryFrom, sync::Arc};
 
 use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
@@ -13,7 +13,7 @@ use ra_flycheck::{Flycheck, FlycheckConfig};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
 use stdx::format_to;
-use vfs::{file_set::FileSetConfig, loader::Handle, AbsPathBuf};
+use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf};
 
 use crate::{
     config::{Config, FilesWatcher},
@@ -31,7 +31,7 @@ fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> 
     workspaces.iter().find_map(|w| match w {
         ProjectWorkspace::Cargo { cargo, .. } => {
             let cargo_project_root = cargo.workspace_root().to_path_buf();
-            Some(Flycheck::new(config.clone(), cargo_project_root))
+            Some(Flycheck::new(config.clone(), cargo_project_root.into()))
         }
         ProjectWorkspace::Json { .. } => {
             log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
@@ -112,10 +112,9 @@ impl GlobalState {
 
         // Create crate graph from all the workspaces
         let mut crate_graph = CrateGraph::default();
-        let mut load = |path: &Path| {
-            let path = AbsPathBuf::try_from(path.to_path_buf()).ok()?;
-            let contents = loader.load_sync(&path);
-            let path = vfs::VfsPath::from(path);
+        let mut load = |path: &AbsPath| {
+            let contents = loader.load_sync(path);
+            let path = vfs::VfsPath::from(path.to_path_buf());
             vfs.set_file_contents(path.clone(), contents);
             vfs.file_id(&path)
         };

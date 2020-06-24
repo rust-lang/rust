@@ -1183,6 +1183,7 @@ dependencies = [
  "rustc-hash",
  "serde",
  "serde_json",
+ "stdx",
 ]
 
 [[package]]
