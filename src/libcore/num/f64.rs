@@ -9,6 +9,7 @@
 //! new code should use the associated constants directly on the primitive type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::convert::FloatToInt;
 #[cfg(not(test))]
@@ -643,7 +644,9 @@ impl f64 {
     where
         Self: FloatToInt<Int>,
     {
-        FloatToInt::<Int>::to_int_unchecked(self)
+        // SAFETY: the caller must uphold the safety contract for
+        // `FloatToInt::to_int_unchecked`.
+        unsafe { FloatToInt::<Int>::to_int_unchecked(self) }
     }
 
     /// Raw transmutation to `u64`.

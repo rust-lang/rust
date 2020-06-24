@@ -44,6 +44,8 @@
 #![feature(option_unwrap_none)]
 #![feature(peekable_next_if)]
 #![feature(partition_point)]
+#![feature(unsafe_block_in_unsafe_fn)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;
 

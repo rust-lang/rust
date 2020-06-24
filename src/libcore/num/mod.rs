@@ -3,6 +3,7 @@
 //! Numeric traits and functions for the built-in numeric types.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::convert::Infallible;
 use crate::fmt;
@@ -74,7 +75,8 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 #[rustc_const_stable(feature = "nonzero", since = "1.34.0")]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
-                    Self(n)
+                    // SAFETY: this is guaranteed to be safe by the caller.
+                    unsafe { Self(n) }
                 }
 
                 /// Creates a non-zero if the given value is not zero.
@@ -762,7 +764,9 @@ cannot occur. This results in undefined behavior when `self + rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
-                intrinsics::unchecked_add(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_add`.
+                unsafe { intrinsics::unchecked_add(self, rhs) }
             }
         }
 
@@ -804,7 +808,9 @@ cannot occur. This results in undefined behavior when `self - rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
-                intrinsics::unchecked_sub(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_sub`.
+                unsafe { intrinsics::unchecked_sub(self, rhs) }
             }
         }
 
@@ -846,7 +852,9 @@ cannot occur. This results in undefined behavior when `self * rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
-                intrinsics::unchecked_mul(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_mul`.
+                unsafe { intrinsics::unchecked_mul(self, rhs) }
             }
         }
 
@@ -2998,7 +3006,9 @@ cannot occur. This results in undefined behavior when `self + rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
-                intrinsics::unchecked_add(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_add`.
+                unsafe { intrinsics::unchecked_add(self, rhs) }
             }
         }
 
@@ -3038,7 +3048,9 @@ cannot occur. This results in undefined behavior when `self - rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
-                intrinsics::unchecked_sub(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_sub`.
+                unsafe { intrinsics::unchecked_sub(self, rhs) }
             }
         }
 
@@ -3078,7 +3090,9 @@ cannot occur. This results in undefined behavior when `self * rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
-                intrinsics::unchecked_mul(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_mul`.
+                unsafe { intrinsics::unchecked_mul(self, rhs) }
             }
         }
 
