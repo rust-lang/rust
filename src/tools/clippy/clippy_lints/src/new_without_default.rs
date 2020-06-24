@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// To fix the lint, and a `Default` implementation that delegates to `new`:
+    /// To fix the lint, add a `Default` implementation that delegates to `new`:
     ///
     /// ```ignore
     /// struct Foo(Bar);

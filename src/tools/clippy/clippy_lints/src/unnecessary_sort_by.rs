@@ -95,7 +95,10 @@ fn mirrored_exprs(
         // The two exprs are method calls.
         // Check to see that the function is the same and the arguments are mirrored
         // This is enough because the receiver of the method is listed in the arguments
-        (ExprKind::MethodCall(left_segment, _, left_args, _), ExprKind::MethodCall(right_segment, _, right_args, _)) => {
+        (
+            ExprKind::MethodCall(left_segment, _, left_args, _),
+            ExprKind::MethodCall(right_segment, _, right_args, _),
+        ) => {
             left_segment.ident == right_segment.ident
                 && left_args
                     .iter()

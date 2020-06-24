@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for `let _ = sync_lock`
     ///
     /// **Why is this bad?** This statement immediately drops the lock instead of
-    /// extending it's lifetime to the end of the scope, which is often not intended.
+    /// extending its lifetime to the end of the scope, which is often not intended.
     /// To extend lock lifetime to the end of the scope, use an underscore-prefixed
     /// name instead (i.e. _lock). If you want to explicitly drop the lock,
     /// `std::mem::drop` conveys your intention better and is less error-prone.

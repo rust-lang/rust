@@ -28,7 +28,7 @@ use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
-use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceWithHirId, PlaceBase};
+use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::iter::{once, Iterator};
 use std::mem;
 
@@ -1497,7 +1497,7 @@ struct MutatePairDelegate<'a, 'tcx> {
     span_high: Option<Span>,
 }
 
-impl<'a, 'tcx> Delegate<'tcx> for MutatePairDelegate<'a, 'tcx> {
+impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
@@ -1525,7 +1525,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutatePairDelegate<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MutatePairDelegate<'a, 'tcx> {
+impl MutatePairDelegate<'_, '_> {
     fn mutation_span(&self) -> (Option<Span>, Option<Span>) {
         (self.span_low, self.span_high)
     }
@@ -1580,13 +1580,13 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr<'_>) -> Option<Hi
     None
 }
 
-fn check_for_mutation<'a, 'tcx> (
+fn check_for_mutation<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     body: &Expr<'_>,
     bound_ids: &[Option<HirId>],
 ) -> (Option<Span>, Option<Span>) {
     let mut delegate = MutatePairDelegate {
-        cx: cx,
+        cx,
         hir_id_low: bound_ids[0],
         hir_id_high: bound_ids[1],
         span_low: None,
@@ -2042,7 +2042,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         if self.state == VarState::DontWarn {
             return;
         }
-        if SpanlessEq::new(self.cx).eq_expr(&expr, self.end_expr) {
+        if expr.hir_id == self.end_expr.hir_id {
             self.past_loop = true;
             return;
         }
@@ -2292,7 +2292,7 @@ struct HasBreakOrReturnVisitor {
     has_break_or_return: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for HasBreakOrReturnVisitor {
+impl<'tcx> Visitor<'tcx> for HasBreakOrReturnVisitor {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {

@@ -135,33 +135,59 @@ fn check_replace_option_with_none(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest
     }
 }
 
-fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, expr_span: Span) {
-    if let ExprKind::Call(ref repl_func, ref repl_args) = src.kind {
-        if_chain! {
-            if repl_args.is_empty();
-            if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
-            if let Some(repl_def_id) = cx.tables.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
-            then {
-                if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, repl_def_id) {
-                    span_lint_and_help(
-                        cx,
-                        MEM_REPLACE_WITH_UNINIT,
-                        expr_span,
-                        "replacing with `mem::uninitialized()`",
-                        None,
-                        "consider using the `take_mut` crate instead",
-                    );
-                } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id) &&
-                        !cx.tables.expr_ty(src).is_primitive() {
-                    span_lint_and_help(
-                        cx,
-                        MEM_REPLACE_WITH_UNINIT,
-                        expr_span,
-                        "replacing with `mem::zeroed()`",
-                        None,
-                        "consider using a default value or the `take_mut` crate instead",
-                    );
-                }
+fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
+    if_chain! {
+        // check if replacement is mem::MaybeUninit::uninit().assume_init()
+        if let Some(method_def_id) = cx.tables.type_dependent_def_id(src.hir_id);
+        if cx.tcx.is_diagnostic_item(sym::assume_init, method_def_id);
+        then {
+            let mut applicability = Applicability::MachineApplicable;
+            span_lint_and_sugg(
+                cx,
+                MEM_REPLACE_WITH_UNINIT,
+                expr_span,
+                "replacing with `mem::MaybeUninit::uninit().assume_init()`",
+                "consider using",
+                format!(
+                    "std::ptr::read({})",
+                    snippet_with_applicability(cx, dest.span, "", &mut applicability)
+                ),
+                applicability,
+            );
+            return;
+        }
+    }
+
+    if_chain! {
+        if let ExprKind::Call(ref repl_func, ref repl_args) = src.kind;
+        if repl_args.is_empty();
+        if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
+        if let Some(repl_def_id) = cx.tables.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
+        then {
+            if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, repl_def_id) {
+                let mut applicability = Applicability::MachineApplicable;
+                span_lint_and_sugg(
+                    cx,
+                    MEM_REPLACE_WITH_UNINIT,
+                    expr_span,
+                    "replacing with `mem::uninitialized()`",
+                    "consider using",
+                    format!(
+                        "std::ptr::read({})",
+                        snippet_with_applicability(cx, dest.span, "", &mut applicability)
+                    ),
+                    applicability,
+                );
+            } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id) &&
+                    !cx.tables.expr_ty(src).is_primitive() {
+                span_lint_and_help(
+                    cx,
+                    MEM_REPLACE_WITH_UNINIT,
+                    expr_span,
+                    "replacing with `mem::zeroed()`",
+                    None,
+                    "consider using a default value or the `take_mut` crate instead",
+                );
             }
         }
     }
@@ -209,7 +235,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
             if let [dest, src] = &**func_args;
             then {
                 check_replace_option_with_none(cx, src, dest, expr.span);
-                check_replace_with_uninit(cx, src, expr.span);
+                check_replace_with_uninit(cx, src, dest, expr.span);
                 check_replace_with_default(cx, src, dest, expr.span);
             }
         }
