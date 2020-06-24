@@ -2,7 +2,6 @@ use super::*;
 
 use rustc_ast::ast;
 use rustc_ast::with_default_globals;
-use rustc_span;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::Ident;
 

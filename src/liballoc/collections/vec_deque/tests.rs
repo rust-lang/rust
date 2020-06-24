@@ -1,7 +1,5 @@
 use super::*;
 
-use test;
-
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_push_back_100(b: &mut test::Bencher) {
