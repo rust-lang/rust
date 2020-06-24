@@ -76,7 +76,7 @@ exclude_labels = [
 ]
 
 [notify-zulip."I-prioritize"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "I-prioritize #{number} {title}"
 message_on_add = """\
 @*WG-prioritization* issue #{number} has been requested for prioritization.
@@ -91,7 +91,7 @@ message_on_remove = "Issue #{number}'s prioritization request has been removed."
 
 [notify-zulip."I-nominated"]
 required_labels = ["T-compiler"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "I-prioritize #{number} {title}"
 message_on_add = """\
 #{number} has been nominated for discussion in `T-compiler` meeting.
@@ -108,7 +108,7 @@ message_on_add = """\
 message_on_remove = "#{number}'s nomination has been removed."
 
 [notify-zulip."beta-nominated"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "Backport #{number} {title}"
 message_on_add = """\
 PR #{number} has been requested for beta backport.
@@ -122,7 +122,7 @@ Prepare agenda entry:
 message_on_remove = "PR #{number}'s beta backport request has been removed."
 
 [notify-zulip."stable-nominated"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "Backport #{number} {title}"
 message_on_add = """\
 PR #{number} has been requested for stable backport.
@@ -137,7 +137,7 @@ message_on_remove = "PR #{number}'s stable backport request has been removed."
 
 [notify-zulip."S-waiting-on-team"]
 required_labels = ["T-compiler"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "S-waiting-on-team #{number} {title}"
 message_on_add = """\
 PR #{number} is waiting on `T-compiler`.
@@ -151,7 +151,7 @@ PR #{number} is waiting on `T-compiler`.
 message_on_remove = "PR #{number}'s is no longer waiting on `T-compiler`."
 
 [notify-zulip."P-critical"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "P-critical #{number} {title}"
 message_on_add = """\
 Issue #{number} has been assigned `P-critical`.
@@ -167,7 +167,7 @@ Issue #{number} has been assigned `P-critical`.
 
 [notify-zulip."P-high"]
 required_labels = ["regression-from-stable-to-[bn]*"] # only nightly and beta regressions
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "P-high regression #{number} {title}"
 message_on_add = """\
 Issue #{number} has been assigned `P-high` and is a regression.
