@@ -256,23 +256,23 @@ fn glob_shadowed_def() {
         "###,
     );
     assert_snapshot!(map, @r###"
-    crate
-    Bar: t v
-    bar: t
-    baz: t
-    foo: t
-
-    crate::bar
-    baz: t
-
-    crate::bar::baz
-    Bar: t v
-
-    crate::foo
-    baz: t
-
-    crate::foo::baz
-    Foo: t v
+        ⋮crate
+        ⋮Bar: t v
+        ⋮bar: t
+        ⋮baz: t
+        ⋮foo: t
+        ⋮
+        ⋮crate::bar
+        ⋮baz: t
+        ⋮
+        ⋮crate::bar::baz
+        ⋮Bar: t v
+        ⋮
+        ⋮crate::foo
+        ⋮baz: t
+        ⋮
+        ⋮crate::foo::baz
+        ⋮Foo: t v
     "###
     );
 }
