@@ -11,7 +11,7 @@ git-repository-url = "https://github.com/rust-lang/rustc-dev-guide"
 
 [output.html.fold]
 enable = true
-level = 1
+level = 0
 
 [output.linkcheck]
 follow-web-links = true
