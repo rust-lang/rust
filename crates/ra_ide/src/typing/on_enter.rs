@@ -77,11 +77,11 @@ fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
 mod tests {
     use test_utils::assert_eq_text;
 
-    use crate::mock_analysis::single_file_with_position;
+    use crate::mock_analysis::analysis_and_position;
     use stdx::trim_indent;
 
     fn apply_on_enter(before: &str) -> Option<String> {
-        let (analysis, position) = single_file_with_position(&before);
+        let (analysis, position) = analysis_and_position(&before);
         let result = analysis.on_enter(position).unwrap()?;
 
         let mut actual = analysis.file_text(position.file_id).unwrap().to_string();

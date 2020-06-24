@@ -399,7 +399,7 @@ mod tests {
     use ra_db::FileLoader;
     use ra_syntax::TextRange;
 
-    use crate::mock_analysis::{analysis_and_position, single_file_with_position};
+    use crate::mock_analysis::analysis_and_position;
 
     fn trim_markup(s: &str) -> &str {
         s.trim_start_matches("```rust\n").trim_end_matches("\n```")
@@ -442,7 +442,7 @@ mod tests {
 
     #[test]
     fn hover_shows_type_of_an_expression() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             r#"
 pub fn foo() -> u32 { 1 }
 
@@ -641,7 +641,7 @@ fn main() {
 
     #[test]
     fn hover_some() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
             enum Option<T> { Some(T) }
             use Option::Some;
@@ -654,7 +654,7 @@ fn main() {
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("Option\n```\n\n```rust\nSome"));
 
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
             enum Option<T> { Some(T) }
             use Option::Some;
@@ -720,21 +720,21 @@ The Some variant
 
     #[test]
     fn hover_for_local_variable() {
-        let (analysis, position) = single_file_with_position("fn func(foo: i32) { fo<|>o; }");
+        let (analysis, position) = analysis_and_position("fn func(foo: i32) { fo<|>o; }");
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
     }
 
     #[test]
     fn hover_for_local_variable_pat() {
-        let (analysis, position) = single_file_with_position("fn func(fo<|>o: i32) {}");
+        let (analysis, position) = analysis_and_position("fn func(fo<|>o: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
     }
 
     #[test]
     fn hover_local_var_edge() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
 fn func(foo: i32) { if true { <|>foo; }; }
 ",
@@ -745,14 +745,14 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn hover_for_param_edge() {
-        let (analysis, position) = single_file_with_position("fn func(<|>foo: i32) {}");
+        let (analysis, position) = analysis_and_position("fn func(<|>foo: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
     }
 
     #[test]
     fn test_hover_infer_associated_method_result() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
             struct Thing { x: u32 }
 
@@ -773,7 +773,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_infer_associated_method_exact() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
             mod wrapper {
                 struct Thing { x: u32 }
@@ -799,7 +799,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_infer_associated_const_in_pattern() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
             struct X;
             impl X {
@@ -821,7 +821,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_self() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
             struct Thing { x: u32 }
             impl Thing {
@@ -835,7 +835,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
         assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
 
         /* FIXME: revive these tests
-                let (analysis, position) = single_file_with_position(
+                let (analysis, position) = analysis_and_position(
                     "
                     struct Thing { x: u32 }
                     impl Thing {
@@ -849,7 +849,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let hover = analysis.hover(position).unwrap().unwrap();
                 assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
 
-                let (analysis, position) = single_file_with_position(
+                let (analysis, position) = analysis_and_position(
                     "
                     enum Thing { A }
                     impl Thing {
@@ -862,7 +862,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let hover = analysis.hover(position).unwrap().unwrap();
                 assert_eq!(trim_markup_opt(hover.info.first()), Some("enum Thing"));
 
-                let (analysis, position) = single_file_with_position(
+                let (analysis, position) = analysis_and_position(
                     "
                     enum Thing { A }
                     impl Thing {
@@ -878,7 +878,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_shadowing_pat() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
             fn x() {}
 
@@ -894,7 +894,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_macro_invocation() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
             macro_rules! foo {
                 () => {}
@@ -911,7 +911,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_tuple_field() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
             struct TS(String, i32<|>);
             ",

@@ -2,7 +2,7 @@
 
 use crate::{
     completion::{completion_item::CompletionKind, CompletionConfig},
-    mock_analysis::{analysis_and_position, single_file_with_position},
+    mock_analysis::analysis_and_position,
     CompletionItem,
 };
 use hir::Semantics;
@@ -33,7 +33,7 @@ fn get_all_completion_items(code: &str, options: &CompletionConfig) -> Vec<Compl
     let (analysis, position) = if code.contains("//-") {
         analysis_and_position(code)
     } else {
-        single_file_with_position(code)
+        analysis_and_position(code)
     };
     analysis.completions(options, position).unwrap().unwrap().into()
 }
@@ -55,7 +55,7 @@ pub(crate) fn completion_list_with_options(
 }
 
 pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -> bool) {
-    let (analysis, pos) = single_file_with_position(code);
+    let (analysis, pos) = analysis_and_position(code);
     analysis
         .with_db(|db| {
             let sema = Semantics::new(db);

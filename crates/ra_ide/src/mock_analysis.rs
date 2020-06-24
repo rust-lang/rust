@@ -221,11 +221,6 @@ pub fn single_file(ra_fixture: &str) -> (Analysis, FileId) {
     (mock.analysis(), file_id)
 }
 
-/// Creates analysis for a single file, returns position marked with <|>.
-pub fn single_file_with_position(ra_fixture: &str) -> (Analysis, FilePosition) {
-    analysis_and_position(ra_fixture)
-}
-
 /// Creates analysis for a single file, returns range marked with a pair of <|>.
 pub fn single_file_with_range(ra_fixture: &str) -> (Analysis, FileRange) {
     let mut mock = MockAnalysis::new();

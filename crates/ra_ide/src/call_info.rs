@@ -215,7 +215,7 @@ impl CallInfo {
 mod tests {
     use test_utils::mark;
 
-    use crate::mock_analysis::single_file_with_position;
+    use crate::mock_analysis::analysis_and_position;
 
     use super::*;
 
@@ -231,7 +231,7 @@ mod tests {
     }
 
     fn call_info_helper(text: &str) -> Option<CallInfo> {
-        let (analysis, position) = single_file_with_position(text);
+        let (analysis, position) = analysis_and_position(text);
         analysis.call_info(position).unwrap()
     }
 
@@ -530,7 +530,7 @@ By default this method stops actor's `Context`."#
     #[test]
     fn call_info_bad_offset() {
         mark::check!(call_info_bad_offset);
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             r#"fn foo(x: u32, y: u32) -> u32 {x + y}
                fn bar() { foo <|> (3, ); }"#,
         );

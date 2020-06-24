@@ -191,7 +191,7 @@ fn get_struct_def_name_for_struct_literal_search(
 #[cfg(test)]
 mod tests {
     use crate::{
-        mock_analysis::{analysis_and_position, single_file_with_position, MockAnalysis},
+        mock_analysis::{analysis_and_position, MockAnalysis},
         Declaration, Reference, ReferenceSearchResult, SearchScope,
     };
 
@@ -653,7 +653,7 @@ fn main() {
     }
 
     fn get_all_refs(ra_fixture: &str) -> ReferenceSearchResult {
-        let (analysis, position) = single_file_with_position(ra_fixture);
+        let (analysis, position) = analysis_and_position(ra_fixture);
         analysis.find_all_refs(position, None).unwrap().unwrap()
     }
 

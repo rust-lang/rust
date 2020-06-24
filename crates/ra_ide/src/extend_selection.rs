@@ -315,12 +315,12 @@ fn adj_comments(comment: &ast::Comment, dir: Direction) -> ast::Comment {
 
 #[cfg(test)]
 mod tests {
-    use crate::mock_analysis::single_file_with_position;
+    use crate::mock_analysis::analysis_and_position;
 
     use super::*;
 
     fn do_check(before: &str, afters: &[&str]) {
-        let (analysis, position) = single_file_with_position(&before);
+        let (analysis, position) = analysis_and_position(&before);
         let before = analysis.file_text(position.file_id).unwrap();
         let range = TextRange::empty(position.offset);
         let mut frange = FileRange { file_id: position.file_id, range };
