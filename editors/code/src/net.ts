@@ -1,8 +1,10 @@
 import fetch from "node-fetch";
 import * as vscode from "vscode";
 import * as stream from "stream";
+import * as crypto from "crypto";
 import * as fs from "fs";
 import * as util from "util";
+import * as path from "path";
 import { log, assert } from "./util";
 
 const pipeline = util.promisify(stream.pipeline);
@@ -68,7 +70,9 @@ interface DownloadOpts {
 export async function download(opts: DownloadOpts) {
     // Put artifact into a temporary file (in the same dir for simplicity)
     // to prevent partially downloaded files when user kills vscode
-    const tempFile = `${opts.dest}.tmp`;
+    const dest = path.parse(opts.dest);
+    const randomHex = crypto.randomBytes(5).toString("hex");
+    const tempFile = path.join(dest.dir, `${dest.name}${randomHex}`);
 
     await vscode.window.withProgress(
         {
