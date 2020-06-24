@@ -5,6 +5,7 @@ use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use ra_db::CrateId;
 use rustc_hash::FxHashMap;
+use test_utils::mark;
 
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, HasModule, ImplId,
@@ -126,41 +127,26 @@ impl ItemScope {
         let mut changed = false;
         let existing = self.visible.entry(name).or_default();
 
-        match (existing.types, def.types) {
-            (None, Some(_)) => {
-                existing.types = def.types;
-                changed = true;
-            }
-            (Some(e), Some(d)) if e.0 != d.0 => {
-                existing.types = def.types;
-                changed = true;
-            }
-            _ => {}
+        macro_rules! check_changed {
+            ($changed:ident, $existing:expr, $def:expr) => {
+                match ($existing, $def) {
+                    (None, Some(_)) => {
+                        $existing = $def;
+                        $changed = true;
+                    }
+                    (Some(e), Some(d)) if e.0 != d.0 => {
+                        mark::hit!(import_shadowed);
+                        $existing = $def;
+                        $changed = true;
+                    }
+                    _ => {}
+                }
+            };
         }
 
-        match (existing.values, def.values) {
-            (None, Some(_)) => {
-                existing.values = def.values;
-                changed = true;
-            }
-            (Some(e), Some(d)) if e.0 != d.0 => {
-                existing.values = def.values;
-                changed = true;
-            }
-            _ => {}
-        }
-
-        match (existing.macros, def.macros) {
-            (None, Some(_)) => {
-                existing.macros = def.macros;
-                changed = true;
-            }
-            (Some(e), Some(d)) if e.0 != d.0 => {
-                existing.macros = def.macros;
-                changed = true;
-            }
-            _ => {}
-        }
+        check_changed!(changed, existing.types, def.types);
+        check_changed!(changed, existing.values, def.values);
+        check_changed!(changed, existing.macros, def.macros);
 
         changed
     }
