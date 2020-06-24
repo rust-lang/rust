@@ -585,12 +585,17 @@ impl Conflicts<'a> {
 
     fn record_terminator_conflicts(&mut self, term: &Terminator<'_>) {
         match &term.kind {
-            TerminatorKind::DropAndReplace { location, value, target: _, unwind: _ } => {
+            TerminatorKind::DropAndReplace {
+                place: dropped_place,
+                value,
+                target: _,
+                unwind: _,
+            } => {
                 if let Some(place) = value.place() {
-                    if !place.is_indirect() && !location.is_indirect() {
+                    if !place.is_indirect() && !dropped_place.is_indirect() {
                         self.record_local_conflict(
                             place.local,
-                            location.local,
+                            dropped_place.local,
                             "DropAndReplace operand overlap",
                         );
                     }
@@ -613,6 +618,7 @@ impl Conflicts<'a> {
                 destination: Some((dest_place, _)),
                 cleanup: _,
                 from_hir_call: _,
+                fn_span: _,
             } => {
                 // No arguments may overlap with the destination.
                 for arg in args.iter().chain(Some(func)) {
@@ -701,7 +707,7 @@ impl Conflicts<'a> {
                                     InlineAsmOperand::Out { reg: _, late: _, place: None }
                                     | InlineAsmOperand::Const { value: _ }
                                     | InlineAsmOperand::SymFn { value: _ }
-                                    | InlineAsmOperand::SymStatic { value: _ } => {}
+                                    | InlineAsmOperand::SymStatic { def_id: _ } => {}
                                 }
                             }
                         }
@@ -717,7 +723,7 @@ impl Conflicts<'a> {
                         | InlineAsmOperand::In { reg: _, value: _ }
                         | InlineAsmOperand::Out { reg: _, late: _, place: None }
                         | InlineAsmOperand::SymFn { value: _ }
-                        | InlineAsmOperand::SymStatic { value: _ } => {}
+                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }
                 }
             }
@@ -732,7 +738,7 @@ impl Conflicts<'a> {
             | TerminatorKind::Drop { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {}
         }
     }
@@ -759,7 +765,7 @@ impl Conflicts<'a> {
     }
 
     /// Merges the conflicts of `a` and `b`, so that each one inherits all conflicts of the other.
-    /// 
+    ///
     /// `can_unify` must have returned `true` for the same locals, or this may panic or lead to
     /// miscompiles.
     ///
