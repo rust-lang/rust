@@ -450,19 +450,17 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let imported_source_files = if tag == TAG_VALID_SPAN_LOCAL {
             self.cdata().imported_source_files(sess)
         } else {
-            // FIXME: We don't decode dependencies of proc-macros.
-            // Remove this once #69976 is merged
+            // When we encode a proc-macro crate, all `Span`s should be encoded
+            // with `TAG_VALID_SPAN_LOCAL`
             if self.cdata().root.is_proc_macro_crate() {
-                debug!(
-                    "SpecializedDecoder<Span>::specialized_decode: skipping span for proc-macro crate {:?}",
-                    self.cdata().cnum
-                );
                 // Decode `CrateNum` as u32 - using `CrateNum::decode` will ICE
                 // since we don't have `cnum_map` populated.
-                // This advances the decoder position so that we can continue
-                // to read metadata.
-                let _ = u32::decode(self)?;
-                return Ok(DUMMY_SP);
+                let cnum = u32::decode(self)?;
+                panic!(
+                    "Decoding of crate {:?} tried to access proc-macro dep {:?}",
+                    self.cdata().root.name,
+                    cnum
+                );
             }
             // tag is TAG_VALID_SPAN_FOREIGN, checked by `debug_assert` above
             let cnum = CrateNum::decode(self)?;
@@ -990,8 +988,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         DefKind::Macro(macro_kind(raw_macro)),
                         self.local_def_id(def_index),
                     );
-                    let ident = Ident::from_str(raw_macro.name());
-                    callback(Export { ident, res, vis: ty::Visibility::Public, span: DUMMY_SP });
+                    let ident = self.item_ident(def_index, sess);
+                    callback(Export {
+                        ident,
+                        res,
+                        vis: ty::Visibility::Public,
+                        span: self.get_span(def_index, sess),
+                    });
                 }
             }
             return;

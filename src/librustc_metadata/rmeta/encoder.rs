@@ -16,6 +16,7 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_hir::lang_items;
 use rustc_hir::{AnonConst, GenericParamKind};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLib};
@@ -51,7 +52,20 @@ struct EncodeContext<'tcx> {
     interpret_allocs_inverse: Vec<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
-    source_file_cache: Lrc<SourceFile>,
+    // The `usize` is an index into the `MonotonicVec`
+    // that stores the `SourceFile`
+    source_file_cache: (Lrc<SourceFile>, usize),
+    // The indices (into the `SourceMap`'s `MonotonicVec`)
+    // of all of the `SourceFiles` that we need to serialize.
+    // When we serialize a `Span`, we insert the index of its
+    // `SourceFile` into the `GrowableBitSet`.
+    //
+    // This needs to be a `GrowableBitSet` and not a
+    // regular `BitSet` because we may actually import new `SourceFiles`
+    // during metadata encoding, due to executing a query
+    // with a result containing a foreign `Span`.
+    required_source_files: Option<GrowableBitSet<usize>>,
+    is_proc_macro: bool,
 }
 
 macro_rules! encoder_methods {
@@ -154,17 +168,22 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         // The Span infrastructure should make sure that this invariant holds:
         debug_assert!(span.lo <= span.hi);
 
-        if !self.source_file_cache.contains(span.lo) {
+        if !self.source_file_cache.0.contains(span.lo) {
             let source_map = self.tcx.sess.source_map();
             let source_file_index = source_map.lookup_source_file_idx(span.lo);
-            self.source_file_cache = source_map.files()[source_file_index].clone();
+            self.source_file_cache =
+                (source_map.files()[source_file_index].clone(), source_file_index);
         }
 
-        if !self.source_file_cache.contains(span.hi) {
+        if !self.source_file_cache.0.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
             return TAG_INVALID_SPAN.encode(self);
         }
+
+        let source_files = self.required_source_files.as_mut().expect("Already encoded SourceMap!");
+        // Record the fact that we need to encode the data for this `SourceFile`
+        source_files.insert(self.source_file_cache.1);
 
         // There are two possible cases here:
         // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
@@ -176,7 +195,13 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         // 2. This span comes from our own crate. No special hamdling is needed - we just
         // write `TAG_VALID_SPAN_LOCAL` to let the deserializer know that it should use
         // our own source map information.
-        let (tag, lo, hi) = if self.source_file_cache.is_imported() {
+        //
+        // If we're a proc-macro crate, we always treat this as a local `Span`.
+        // In `encode_source_map`, we serialize foreign `SourceFile`s into our metadata
+        // if we're a proc-macro crate.
+        // This allows us to avoid loading the dependencies of proc-macro crates: all of
+        // the information we need to decode `Span`s is stored in the proc-macro crate.
+        let (tag, lo, hi) = if self.source_file_cache.0.is_imported() && !self.is_proc_macro {
             // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
             // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
             // are relative to the source map information for the 'foreign' crate whose CrateNum
@@ -188,13 +213,13 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
             // Span that can be used without any additional trouble.
             let external_start_pos = {
                 // Introduce a new scope so that we drop the 'lock()' temporary
-                match &*self.source_file_cache.external_src.lock() {
+                match &*self.source_file_cache.0.external_src.lock() {
                     ExternalSource::Foreign { original_start_pos, .. } => *original_start_pos,
                     src => panic!("Unexpected external source {:?}", src),
                 }
             };
-            let lo = (span.lo - self.source_file_cache.start_pos) + external_start_pos;
-            let hi = (span.hi - self.source_file_cache.start_pos) + external_start_pos;
+            let lo = (span.lo - self.source_file_cache.0.start_pos) + external_start_pos;
+            let hi = (span.hi - self.source_file_cache.0.start_pos) + external_start_pos;
 
             (TAG_VALID_SPAN_FOREIGN, lo, hi)
         } else {
@@ -212,7 +237,7 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         if tag == TAG_VALID_SPAN_FOREIGN {
             // This needs to be two lines to avoid holding the `self.source_file_cache`
             // while calling `cnum.encode(self)`
-            let cnum = self.source_file_cache.cnum;
+            let cnum = self.source_file_cache.0.cnum;
             cnum.encode(self)?;
         }
         Ok(())
@@ -386,17 +411,24 @@ impl<'tcx> EncodeContext<'tcx> {
         let all_source_files = source_map.files();
 
         let (working_dir, _cwd_remapped) = self.tcx.sess.working_dir.clone();
+        // By replacing the `Option` with `None`, we ensure that we can't
+        // accidentally serialize any more `Span`s after the source map encoding
+        // is done.
+        let required_source_files = self.required_source_files.take().unwrap();
 
         let adapted = all_source_files
             .iter()
-            .filter(|source_file| {
-                // No need to re-export imported source_files, as any downstream
-                // crate will import them from their original source.
-                // FIXME(eddyb) the `Span` encoding should take that into account.
-                !source_file.is_imported()
+            .enumerate()
+            .filter(|(idx, source_file)| {
+                // Only serialize `SourceFile`s that were used
+                // during the encoding of a `Span`
+                required_source_files.contains(*idx) &&
+                // Don't serialize imported `SourceFile`s, unless
+                // we're in a proc-macro crate.
+                (!source_file.is_imported() || self.is_proc_macro)
             })
-            .map(|source_file| {
-                match source_file.name {
+            .map(|(_, source_file)| {
+                let mut adapted = match source_file.name {
                     // This path of this SourceFile has been modified by
                     // path-remapping, so we use it verbatim (and avoid
                     // cloning the whole map in the process).
@@ -419,15 +451,30 @@ impl<'tcx> EncodeContext<'tcx> {
 
                     // expanded code, not from a file
                     _ => source_file.clone(),
+                };
+
+                // We're serializing this `SourceFile` into our crate metadata,
+                // so mark it as coming from this crate.
+                // This also ensures that we don't try to deserialize the
+                // `CrateNum` for a proc-macro dependency - since proc macro
+                // dependencies aren't loaded when we deserialize a proc-macro,
+                // trying to remap the `CrateNum` would fail.
+                if self.is_proc_macro {
+                    Lrc::make_mut(&mut adapted).cnum = LOCAL_CRATE;
                 }
+                adapted
             })
             .collect::<Vec<_>>();
 
         self.lazy(adapted.iter().map(|rc| &**rc))
     }
 
+    fn is_proc_macro(&self) -> bool {
+        self.tcx.sess.crate_types().contains(&CrateType::ProcMacro)
+    }
+
     fn encode_crate_root(&mut self) -> Lazy<CrateRoot<'tcx>> {
-        let is_proc_macro = self.tcx.sess.crate_types().contains(&CrateType::ProcMacro);
+        let is_proc_macro = self.is_proc_macro();
 
         let mut i = self.position();
 
@@ -457,11 +504,6 @@ impl<'tcx> EncodeContext<'tcx> {
         let native_lib_bytes = self.position() - i;
 
         let foreign_modules = self.encode_foreign_modules();
-
-        // Encode source_map
-        i = self.position();
-        let source_map = self.encode_source_map();
-        let source_map_bytes = self.position() - i;
 
         // Encode DefPathTable
         i = self.position();
@@ -514,11 +556,18 @@ impl<'tcx> EncodeContext<'tcx> {
         let proc_macro_data_bytes = self.position() - i;
 
         // Encode exported symbols info. This is prefetched in `encode_metadata` so we encode
-        // this last to give the prefetching as much time as possible to complete.
+        // this late to give the prefetching as much time as possible to complete.
         i = self.position();
         let exported_symbols = self.tcx.exported_symbols(LOCAL_CRATE);
         let exported_symbols = self.encode_exported_symbols(&exported_symbols);
         let exported_symbols_bytes = self.position() - i;
+
+        // Encode source_map. This needs to be done last,
+        // since encoding `Span`s tells us which `SourceFiles` we actually
+        // need to encode.
+        i = self.position();
+        let source_map = self.encode_source_map();
+        let source_map_bytes = self.position() - i;
 
         let attrs = tcx.hir().krate_attrs();
         let has_default_lib_allocator = attr::contains_name(&attrs, sym::default_lib_allocator);
@@ -1854,6 +1903,8 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // Will be filled with the root position after encoding everything.
     encoder.emit_raw_bytes(&[0, 0, 0, 0]);
 
+    let source_map_files = tcx.sess.source_map().files();
+
     let mut ecx = EncodeContext {
         opaque: encoder,
         tcx,
@@ -1861,10 +1912,13 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         lazy_state: LazyState::NoNode,
         type_shorthands: Default::default(),
         predicate_shorthands: Default::default(),
-        source_file_cache: tcx.sess.source_map().files()[0].clone(),
+        source_file_cache: (source_map_files[0].clone(), 0),
         interpret_allocs: Default::default(),
         interpret_allocs_inverse: Default::default(),
+        required_source_files: Some(GrowableBitSet::with_capacity(source_map_files.len())),
+        is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
     };
+    drop(source_map_files);
 
     // Encode the rustc version string in a predictable location.
     rustc_version().encode(&mut ecx).unwrap();
