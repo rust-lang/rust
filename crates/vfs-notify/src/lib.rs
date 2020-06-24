@@ -199,7 +199,7 @@ impl LoaderActor {
                         let is_dir = entry.file_type().is_dir();
                         let is_file = entry.file_type().is_file();
                         let abs_path = AbsPathBuf::try_from(entry.into_path()).unwrap();
-                        if is_dir {
+                        if is_dir && watch {
                             self.watch(abs_path.clone());
                         }
                         let rel_path = abs_path.strip_prefix(&path)?;
