@@ -607,12 +607,12 @@ pub trait PrettyPrinter<'tcx>:
                     }
                     // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                     // by looking up the projections associated with the def_id.
-                    let bounds = self.tcx().predicates_of(def_id).instantiate(self.tcx(), substs);
+                    let bounds = self.tcx().item_bounds(def_id).subst(self.tcx(), substs);
 
                     let mut first = true;
                     let mut is_sized = false;
                     p!("impl");
-                    for predicate in bounds.predicates {
+                    for predicate in bounds {
                         // Note: We can't use `to_opt_poly_trait_ref` here as `predicate`
                         // may contain unbound variables. We therefore do this manually.
                         //

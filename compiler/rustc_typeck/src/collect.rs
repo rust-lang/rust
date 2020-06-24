@@ -70,6 +70,7 @@ pub fn provide(providers: &mut Providers) {
         opt_const_param_of: type_of::opt_const_param_of,
         type_of: type_of::type_of,
         item_bounds: item_bounds::item_bounds,
+        explicit_item_bounds: item_bounds::explicit_item_bounds,
         generics_of,
         predicates_of,
         predicates_defined_on,
@@ -1728,7 +1729,6 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
-    let mut is_trait_associated_type = None;
 
     let icx = ItemCtxt::new(tcx, def_id);
     let constness = icx.default_constness_for_trait_bounds();
@@ -1741,12 +1741,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     let mut predicates: FxIndexSet<(ty::Predicate<'_>, Span)> = FxIndexSet::default();
 
     let ast_generics = match node {
-        Node::TraitItem(item) => {
-            if let hir::TraitItemKind::Type(bounds, _) = item.kind {
-                is_trait_associated_type = Some((bounds, item.span));
-            }
-            &item.generics
-        }
+        Node::TraitItem(item) => &item.generics,
 
         Node::ImplItem(item) => &item.generics,
 
@@ -1764,44 +1759,26 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                 | ItemKind::Struct(_, ref generics)
                 | ItemKind::Union(_, ref generics) => generics,
 
-                ItemKind::Trait(_, _, ref generics, .., items) => {
-                    is_trait = Some((ty::TraitRef::identity(tcx, def_id), items));
+                ItemKind::Trait(_, _, ref generics, ..) => {
+                    is_trait = Some(ty::TraitRef::identity(tcx, def_id));
                     generics
                 }
                 ItemKind::TraitAlias(ref generics, _) => {
-                    is_trait = Some((ty::TraitRef::identity(tcx, def_id), &[]));
+                    is_trait = Some(ty::TraitRef::identity(tcx, def_id));
                     generics
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
-                    ref bounds,
+                    bounds: _,
                     impl_trait_fn,
                     ref generics,
                     origin: _,
                 }) => {
-                    let bounds_predicates = ty::print::with_no_queries(|| {
-                        let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                        let opaque_ty = tcx.mk_opaque(def_id, substs);
-
-                        // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
-                        let bounds = AstConv::compute_bounds(
-                            &icx,
-                            opaque_ty,
-                            bounds,
-                            SizedByDefault::Yes,
-                            tcx.def_span(def_id),
-                        );
-
-                        bounds.predicates(tcx, opaque_ty)
-                    });
                     if impl_trait_fn.is_some() {
-                        // opaque types
-                        return ty::GenericPredicates {
-                            parent: None,
-                            predicates: tcx.arena.alloc_from_iter(bounds_predicates),
-                        };
+                        // return-position impl trait
+                        // TODO: Investigate why we have this special case?
+                        return ty::GenericPredicates { parent: None, predicates: &[] };
                     } else {
-                        // named opaque types
-                        predicates.extend(bounds_predicates);
+                        // type alias impl trait
                         generics
                     }
                 }
@@ -1827,7 +1804,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     // and the explicit where-clauses, but to get the full set of predicates
     // on a trait we need to add in the supertrait bounds and bounds found on
     // associated types.
-    if let Some((_trait_ref, _)) = is_trait {
+    if let Some(_trait_ref) = is_trait {
         predicates.extend(tcx.super_predicates_of(def_id).predicates.iter().cloned());
     }
 
@@ -1994,24 +1971,6 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
         }
     }
 
-    // Add predicates from associated type bounds (`type X: Bound`)
-    if tcx.features().generic_associated_types {
-        // New behavior: bounds declared on associate type are predicates of that
-        // associated type. Not the default because it needs more testing.
-        if let Some((bounds, span)) = is_trait_associated_type {
-            let projection_ty =
-                tcx.mk_projection(def_id, InternalSubsts::identity_for_item(tcx, def_id));
-
-            predicates.extend(associated_item_bounds(tcx, def_id, bounds, projection_ty, span))
-        }
-    } else if let Some((self_trait_ref, trait_items)) = is_trait {
-        // Current behavior: bounds declared on associate type are predicates
-        // of its parent trait.
-        predicates.extend(trait_items.iter().flat_map(|trait_item_ref| {
-            trait_associated_item_predicates(tcx, def_id, self_trait_ref, trait_item_ref)
-        }))
-    }
-
     if tcx.features().const_evaluatable_checked {
         predicates.extend(const_evaluatable_predicates_of(tcx, def_id.expect_local()));
     }
@@ -2153,55 +2112,6 @@ fn projection_ty_from_predicates(
         }
     }
     projection_ty
-}
-
-fn trait_associated_item_predicates(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    self_trait_ref: ty::TraitRef<'tcx>,
-    trait_item_ref: &hir::TraitItemRef,
-) -> Vec<(ty::Predicate<'tcx>, Span)> {
-    let trait_item = tcx.hir().trait_item(trait_item_ref.id);
-    let item_def_id = tcx.hir().local_def_id(trait_item_ref.id.hir_id);
-    let bounds = match trait_item.kind {
-        hir::TraitItemKind::Type(ref bounds, _) => bounds,
-        _ => return Vec::new(),
-    };
-
-    if !tcx.generics_of(item_def_id).params.is_empty() {
-        // For GATs the substs provided to the mk_projection call below are
-        // wrong. We should emit a feature gate error if we get here so skip
-        // this type.
-        tcx.sess.delay_span_bug(trait_item.span, "gats used without feature gate");
-        return Vec::new();
-    }
-
-    let assoc_ty = tcx.mk_projection(
-        tcx.hir().local_def_id(trait_item.hir_id).to_def_id(),
-        self_trait_ref.substs,
-    );
-
-    associated_item_bounds(tcx, def_id, bounds, assoc_ty, trait_item.span)
-}
-
-fn associated_item_bounds(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    bounds: &'tcx [hir::GenericBound<'tcx>],
-    projection_ty: Ty<'tcx>,
-    span: Span,
-) -> Vec<(ty::Predicate<'tcx>, Span)> {
-    let bounds = AstConv::compute_bounds(
-        &ItemCtxt::new(tcx, def_id),
-        projection_ty,
-        bounds,
-        SizedByDefault::Yes,
-        span,
-    );
-
-    let predicates = bounds.predicates(tcx, projection_ty);
-
-    predicates
 }
 
 /// Converts a specific `GenericBound` from the AST into a set of

@@ -965,6 +965,14 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.super_predicates[def_id] <- self.tcx.super_predicates_of(def_id));
     }
 
+    fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
+        let bounds = self.tcx.explicit_item_bounds(def_id);
+        if !bounds.is_empty() {
+            record!(self.tables.explicit_item_bounds[def_id] <- bounds);
+        }
+    }
+
     fn encode_info_for_trait_item(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_info_for_trait_item({:?})", def_id);
         let tcx = self.tcx;
@@ -1017,7 +1025,10 @@ impl EncodeContext<'a, 'tcx> {
                     has_self: trait_item.fn_has_self_parameter,
                 }))
             }
-            ty::AssocKind::Type => EntryKind::AssocType(container),
+            ty::AssocKind::Type => {
+                self.encode_explicit_item_bounds(def_id);
+                EntryKind::AssocType(container)
+            }
         });
         record!(self.tables.visibility[def_id] <- trait_item.vis);
         record!(self.tables.span[def_id] <- ast_item.span);

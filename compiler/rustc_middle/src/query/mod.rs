@@ -169,8 +169,13 @@ rustc_queries! {
         ///      ^^^^^^^^^^^^^^^
         ///
         /// `key` is the `DefId` of the associated type or opaque type.
+        query explicit_item_bounds(key: DefId) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+            desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
+        }
+
+        /// Elaborated the predicates from `explicit_item_bounds`.
         query item_bounds(key: DefId) -> &'tcx ty::List<ty::Predicate<'tcx>> {
-            desc { |tcx| "finding projection predicates for `{}`", tcx.def_path_str(key) }
+            desc { |tcx| "elaborating item bounds for `{}`", tcx.def_path_str(key) }
         }
 
         query projection_ty_from_predicates(key: (DefId, DefId)) -> Option<ty::ProjectionTy<'tcx>> {

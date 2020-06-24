@@ -1,126 +1,113 @@
-use rustc_hir::def::DefKind;
+use super::ItemCtxt;
+use crate::astconv::{AstConv, SizedByDefault};
+use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
+use rustc_span::Span;
 
-/// For associated types we allow bounds written on the associated type
-/// (`type X: Trait`) to be used as candidates. We also allow the same bounds
-/// when desugared as bounds on the trait `where Self::X: Trait`.
+/// For associated types we include both bounds written on the type
+/// (`type X: Trait`) and predicates from the trait: `where Self::X: Trait`.
 ///
 /// Note that this filtering is done with the items identity substs to
 /// simplify checking that these bounds are met in impls. This means that
 /// a bound such as `for<'b> <Self as X<'b>>::U: Clone` can't be used, as in
 /// `hr-associated-type-bound-1.rs`.
-fn associated_type_bounds(
-    tcx: TyCtxt<'_>,
+fn associated_type_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
     assoc_item_def_id: DefId,
-) -> &'_ ty::List<ty::Predicate<'_>> {
-    let generic_trait_bounds = tcx.predicates_of(assoc_item_def_id);
-    // We include predicates from the trait as well to handle
-    // `where Self::X: Trait`.
-    let item_bounds = generic_trait_bounds.instantiate_identity(tcx);
-    let item_predicates = util::elaborate_predicates(tcx, item_bounds.predicates.into_iter());
+    bounds: &'tcx [hir::GenericBound<'tcx>],
+    span: Span,
+) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+    let item_ty = tcx.mk_projection(
+        assoc_item_def_id,
+        InternalSubsts::identity_for_item(tcx, assoc_item_def_id),
+    );
 
-    let assoc_item_ty = ty::ProjectionTy {
-        item_def_id: assoc_item_def_id,
-        substs: InternalSubsts::identity_for_item(tcx, assoc_item_def_id),
-    };
+    let bounds = AstConv::compute_bounds(
+        &ItemCtxt::new(tcx, assoc_item_def_id),
+        item_ty,
+        bounds,
+        SizedByDefault::Yes,
+        span,
+    );
 
-    let predicates = item_predicates.filter_map(|obligation| {
-        let pred = obligation.predicate;
-        match pred.kind() {
-            ty::PredicateKind::Trait(tr, _) => {
-                if let ty::Projection(p) = *tr.skip_binder().self_ty().kind() {
-                    if p == assoc_item_ty {
-                        return Some(pred);
-                    }
-                }
-            }
+    let trait_def_id = tcx.associated_item(assoc_item_def_id).container.id();
+    let trait_predicates = tcx.predicates_of(trait_def_id);
+
+    let bounds_from_parent =
+        trait_predicates.predicates.iter().copied().filter(|(pred, _)| match pred.kind() {
+            ty::PredicateKind::Trait(tr, _) => tr.skip_binder().self_ty() == item_ty,
             ty::PredicateKind::Projection(proj) => {
-                if let ty::Projection(p) = *proj.skip_binder().projection_ty.self_ty().kind() {
-                    if p == assoc_item_ty {
-                        return Some(pred);
-                    }
-                }
+                proj.skip_binder().projection_ty.self_ty() == item_ty
             }
-            ty::PredicateKind::TypeOutlives(outlives) => {
-                if let ty::Projection(p) = *outlives.skip_binder().0.kind() {
-                    if p == assoc_item_ty {
-                        return Some(pred);
-                    }
-                }
-            }
-            _ => {}
-        }
-        None
-    });
+            ty::PredicateKind::TypeOutlives(outlives) => outlives.skip_binder().0 == item_ty,
+            _ => false,
+        });
 
-    let result = tcx.mk_predicates(predicates);
-    debug!("associated_type_bounds({}) = {:?}", tcx.def_path_str(assoc_item_def_id), result);
-    result
+    let all_bounds = tcx
+        .arena
+        .alloc_from_iter(bounds.predicates(tcx, item_ty).into_iter().chain(bounds_from_parent));
+    debug!("associated_type_bounds({}) = {:?}", tcx.def_path_str(assoc_item_def_id), all_bounds);
+    all_bounds
 }
 
-/// Opaque types don't have the same issues as associated types: the only
-/// predicates on an opaque type (excluding those it inherits from its parent
-/// item) should be of the form we're expecting.
-fn opaque_type_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> &'_ ty::List<ty::Predicate<'_>> {
-    let substs = InternalSubsts::identity_for_item(tcx, def_id);
+/// Opaque types don't inherit bounds from their parent: for return position
+/// impl trait it isn't possible to write a suitable predicate on the
+/// containing function and for type-alias impl trait we don't have a backwards
+/// compatibility issue.
+fn opaque_type_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    opaque_def_id: DefId,
+    bounds: &'tcx [hir::GenericBound<'tcx>],
+    span: Span,
+) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+    let item_ty =
+        tcx.mk_opaque(opaque_def_id, InternalSubsts::identity_for_item(tcx, opaque_def_id));
 
-    let bounds = tcx.predicates_of(def_id);
-    let predicates =
-        util::elaborate_predicates(tcx, bounds.predicates.iter().map(|&(pred, _)| pred));
-
-    let filtered_predicates = predicates.filter_map(|obligation| {
-        let pred = obligation.predicate;
-        match pred.kind() {
-            ty::PredicateKind::Trait(tr, _) => {
-                if let ty::Opaque(opaque_def_id, opaque_substs) = *tr.skip_binder().self_ty().kind()
-                {
-                    if opaque_def_id == def_id && opaque_substs == substs {
-                        return Some(pred);
-                    }
-                }
-            }
-            ty::PredicateKind::Projection(proj) => {
-                if let ty::Opaque(opaque_def_id, opaque_substs) =
-                    *proj.skip_binder().projection_ty.self_ty().kind()
-                {
-                    if opaque_def_id == def_id && opaque_substs == substs {
-                        return Some(pred);
-                    }
-                }
-            }
-            ty::PredicateKind::TypeOutlives(outlives) => {
-                if let ty::Opaque(opaque_def_id, opaque_substs) = *outlives.skip_binder().0.kind() {
-                    if opaque_def_id == def_id && opaque_substs == substs {
-                        return Some(pred);
-                    }
-                } else {
-                    // These can come from elaborating other predicates
-                    return None;
-                }
-            }
-            // These can come from elaborating other predicates
-            ty::PredicateKind::RegionOutlives(_) => return None,
-            _ => {}
-        }
-        tcx.sess.delay_span_bug(
-            obligation.cause.span(tcx),
-            &format!("unexpected predicate {:?} on opaque type", pred),
-        );
-        None
+    let bounds = ty::print::with_no_queries(|| {
+        AstConv::compute_bounds(
+            &ItemCtxt::new(tcx, opaque_def_id),
+            item_ty,
+            bounds,
+            SizedByDefault::Yes,
+            span,
+        )
     });
 
-    let result = tcx.mk_predicates(filtered_predicates);
-    debug!("opaque_type_bounds({}) = {:?}", tcx.def_path_str(def_id), result);
-    result
+    let bounds = bounds.predicates(tcx, item_ty);
+    debug!("opaque_type_bounds({}) = {:?}", tcx.def_path_str(opaque_def_id), bounds);
+
+    tcx.arena.alloc_slice(&bounds)
+}
+
+pub(super) fn explicit_item_bounds(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> &'_ [(ty::Predicate<'_>, Span)] {
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    match tcx.hir().get(hir_id) {
+        hir::Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Type(bounds, _),
+            span,
+            ..
+        }) => associated_type_bounds(tcx, def_id, bounds, *span),
+        hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }),
+            span,
+            ..
+        }) => opaque_type_bounds(tcx, def_id, bounds, *span),
+        _ => bug!("item_bounds called on {:?}", def_id),
+    }
 }
 
 pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> &'_ ty::List<ty::Predicate<'_>> {
-    match tcx.def_kind(def_id) {
-        DefKind::AssocTy => associated_type_bounds(tcx, def_id),
-        DefKind::OpaqueTy => opaque_type_bounds(tcx, def_id),
-        k => bug!("item_bounds called on {}", k.descr(def_id)),
-    }
+    tcx.mk_predicates(
+        util::elaborate_predicates(
+            tcx,
+            tcx.explicit_item_bounds(def_id).iter().map(|&(bound, _span)| bound),
+        )
+        .map(|obligation| obligation.predicate),
+    )
 }

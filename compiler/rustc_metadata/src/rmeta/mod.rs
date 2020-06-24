@@ -295,13 +295,11 @@ define_tables! {
     generics: Table<DefIndex, Lazy<ty::Generics>>,
     explicit_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
     expn_that_defined: Table<DefIndex, Lazy<ExpnId>>,
-    // FIXME(eddyb) this would ideally be `Lazy<[...]>` but `ty::Predicate`
-    // doesn't handle shorthands in its own (de)serialization impls,
-    // as it's an `enum` for which we want to derive (de)serialization,
-    // so the `ty::codec` APIs handle the whole `&'tcx [...]` at once.
-    // Also, as an optimization, a missing entry indicates an empty `&[]`.
-    inferred_outlives: Table<DefIndex, Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>,
+    // As an optimization, a missing entry indicates an empty `&[]`.
+    inferred_outlives: Table<DefIndex, Lazy!([(ty::Predicate<'tcx>, Span)])>,
     super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
+    // As an optimization, a missing entry indicates an empty `&[]`.
+    explicit_item_bounds: Table<DefIndex, Lazy!([(ty::Predicate<'tcx>, Span)])>,
     mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
     mir_abstract_consts: Table<DefIndex, Lazy!(&'tcx [mir::abstract_const::Node<'tcx>])>,
