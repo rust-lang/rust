@@ -260,7 +260,7 @@ impl CargoWorkspace {
             .copied()
     }
 
-    pub fn workspace_root(&self) -> &Path {
+    pub fn workspace_root(&self) -> &AbsPath {
         &self.workspace_root
     }
 

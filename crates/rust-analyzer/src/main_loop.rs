@@ -114,10 +114,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                         .ok()
                     }
                     LinkedProject::InlineJsonProject(it) => {
-                        Some(ra_project_model::ProjectWorkspace::Json {
-                            project: it.clone(),
-                            project_location: config.root_path.clone(),
-                        })
+                        Some(ra_project_model::ProjectWorkspace::Json { project: it.clone() })
                     }
                 })
                 .collect::<Vec<_>>()

@@ -1,13 +1,13 @@
 //! Loads a Cargo project into a static instance of analysis, without support
 //! for incorporating changes.
-use std::{convert::TryFrom, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 
 use anyhow::Result;
 use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{AbsPathBuf, CrateGraph};
 use ra_ide::{AnalysisChange, AnalysisHost};
 use ra_project_model::{CargoConfig, ProcMacroClient, ProjectManifest, ProjectWorkspace};
-use vfs::loader::Handle;
+use vfs::{loader::Handle, AbsPath};
 
 use crate::global_state::{ProjectFolders, SourceRootConfig};
 
@@ -39,10 +39,9 @@ pub fn load_cargo(
         ProcMacroClient::dummy()
     };
 
-    let crate_graph = ws.to_crate_graph(None, &proc_macro_client, &mut |path: &Path| {
-        let path = AbsPathBuf::try_from(path.to_path_buf()).unwrap();
-        let contents = loader.load_sync(&path);
-        let path = vfs::VfsPath::from(path);
+    let crate_graph = ws.to_crate_graph(None, &proc_macro_client, &mut |path: &AbsPath| {
+        let contents = loader.load_sync(path);
+        let path = vfs::VfsPath::from(path.to_path_buf());
         vfs.set_file_contents(path.clone(), contents);
         vfs.file_id(&path)
     });

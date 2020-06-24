@@ -14,7 +14,7 @@ use lsp_types::ClientCapabilities;
 use ra_db::AbsPathBuf;
 use ra_flycheck::FlycheckConfig;
 use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
-use ra_project_model::{CargoConfig, JsonProject, ProjectManifest};
+use ra_project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]
@@ -47,7 +47,7 @@ pub struct Config {
 #[derive(Debug, Clone)]
 pub enum LinkedProject {
     ProjectManifest(ProjectManifest),
-    InlineJsonProject(JsonProject),
+    InlineJsonProject(ProjectJson),
 }
 
 impl From<ProjectManifest> for LinkedProject {
@@ -56,8 +56,8 @@ impl From<ProjectManifest> for LinkedProject {
     }
 }
 
-impl From<JsonProject> for LinkedProject {
-    fn from(v: JsonProject) -> Self {
+impl From<ProjectJson> for LinkedProject {
+    fn from(v: ProjectJson) -> Self {
         LinkedProject::InlineJsonProject(v)
     }
 }
@@ -273,19 +273,19 @@ impl Config {
             self.lens = LensConfig::NO_LENS;
         }
 
-        if let Some(linked_projects) = get::<Vec<ManifestOrJsonProject>>(value, "/linkedProjects") {
+        if let Some(linked_projects) = get::<Vec<ManifestOrProjectJson>>(value, "/linkedProjects") {
             if !linked_projects.is_empty() {
                 self.linked_projects.clear();
                 for linked_project in linked_projects {
                     let linked_project = match linked_project {
-                        ManifestOrJsonProject::Manifest(it) => {
+                        ManifestOrProjectJson::Manifest(it) => {
                             let path = self.root_path.join(it);
                             match ProjectManifest::from_manifest_file(path) {
                                 Ok(it) => it.into(),
                                 Err(_) => continue,
                             }
                         }
-                        ManifestOrJsonProject::JsonProject(it) => it.into(),
+                        ManifestOrProjectJson::ProjectJson(it) => ProjectJson::new(&self.root_path, it).into(),
                     };
                     self.linked_projects.push(linked_project);
                 }
@@ -371,7 +371,7 @@ impl Config {
 
 #[derive(Deserialize)]
 #[serde(untagged)]
-enum ManifestOrJsonProject {
+enum ManifestOrProjectJson {
     Manifest(PathBuf),
-    JsonProject(JsonProject),
+    ProjectJson(ProjectJsonData),
 }
