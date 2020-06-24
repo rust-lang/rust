@@ -43,8 +43,8 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
-        a: &T,
-        b: &T,
+        a: T,
+        b: T,
     ) -> RelateResult<'tcx, T> {
         match variance {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
@@ -85,8 +85,8 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
 
     fn binders<T>(
         &mut self,
-        a: &ty::Binder<T>,
-        b: &ty::Binder<T>,
+        a: ty::Binder<T>,
+        b: ty::Binder<T>,
     ) -> RelateResult<'tcx, ty::Binder<T>>
     where
         T: Relate<'tcx>,
@@ -112,8 +112,8 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
 
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let mut sub = self.fields.sub(self.a_is_expected);
-        sub.relate(&v, &a)?;
-        sub.relate(&v, &b)?;
+        sub.relate(v, a)?;
+        sub.relate(v, b)?;
         Ok(())
     }
 }

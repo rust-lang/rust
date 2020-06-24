@@ -271,7 +271,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                         },
                         ty::Variance::Invariant,
                     )
-                    .relate(&v1, &v2)?;
+                    .relate(v1, v2)?;
                 }
 
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
@@ -285,7 +285,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                         },
                         ty::Variance::Invariant,
                     )
-                    .relate(&v1, &v2)?;
+                    .relate(v1, v2)?;
                 }
 
                 _ => {

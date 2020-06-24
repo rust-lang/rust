@@ -82,7 +82,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace_exp(a_is_expected, a, b).sub(&a, &b)
+        self.trace_exp(a_is_expected, a, b).sub(a, b)
     }
 
     /// Makes `actual <: expected`. For example, if type-checking a
@@ -109,7 +109,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace_exp(a_is_expected, a, b).eq(&a, &b)
+        self.trace_exp(a_is_expected, a, b).eq(a, b)
     }
 
     /// Makes `expected <: actual`.
@@ -117,7 +117,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).eq(&expected, &actual)
+        self.trace(expected, actual).eq(expected, actual)
     }
 
     pub fn relate<T>(self, expected: T, variance: ty::Variance, actual: T) -> InferResult<'tcx, ()>
@@ -147,7 +147,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).lub(&expected, &actual)
+        self.trace(expected, actual).lub(expected, actual)
     }
 
     /// Computes the greatest-lower-bound, or mutual subtype, of two
@@ -157,7 +157,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.trace(expected, actual).glb(&expected, &actual)
+        self.trace(expected, actual).glb(expected, actual)
     }
 
     /// Sets the "trace" values that will be used for
@@ -186,7 +186,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
 impl<'a, 'tcx> Trace<'a, 'tcx> {
     /// Makes `a <: b` where `a` may or may not be expected (if
     /// `a_is_expected` is true, then `a` is expected).
-    pub fn sub<T>(self, a: &T, b: &T) -> InferResult<'tcx, ()>
+    pub fn sub<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
@@ -203,7 +203,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
 
     /// Makes `a == b`; the expectation is set by the call to
     /// `trace()`.
-    pub fn eq<T>(self, a: &T, b: &T) -> InferResult<'tcx, ()>
+    pub fn eq<T>(self, a: T, b: T) -> InferResult<'tcx, ()>
     where
         T: Relate<'tcx>,
     {
@@ -218,7 +218,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
         })
     }
 
-    pub fn lub<T>(self, a: &T, b: &T) -> InferResult<'tcx, T>
+    pub fn lub<T>(self, a: T, b: T) -> InferResult<'tcx, T>
     where
         T: Relate<'tcx>,
     {
@@ -233,7 +233,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
         })
     }
 
-    pub fn glb<T>(self, a: &T, b: &T) -> InferResult<'tcx, T>
+    pub fn glb<T>(self, a: T, b: T) -> InferResult<'tcx, T>
     where
         T: Relate<'tcx>,
     {
