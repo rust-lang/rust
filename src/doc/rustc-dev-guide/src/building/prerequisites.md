@@ -23,8 +23,8 @@ need `llvm-config`. See [this section for more info][sysllvm].
 These are not so much requirements as _recommendations_:
 
 * ~15GB of free disk space (~25GB or more if doing incremental builds).
-* >= 8GB RAM
-* >= 4 cores
+* \>= 8GB RAM
+* \>= 4 cores
 * Internet access
 
 Beefier machines will lead to much faster builds. If your machine is not very
