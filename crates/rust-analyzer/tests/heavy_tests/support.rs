@@ -19,7 +19,7 @@ use test_utils::{find_mismatch, Fixture};
 
 use ra_project_model::ProjectManifest;
 use rust_analyzer::{
-    config::{ClientCapsConfig, Config, LinkedProject},
+    config::{ClientCapsConfig, Config, FilesConfig, FilesWatcher, LinkedProject},
     main_loop,
 };
 
@@ -90,9 +90,9 @@ impl<'a> Project<'a> {
             },
             with_sysroot: self.with_sysroot,
             linked_projects,
+            files: FilesConfig { watcher: FilesWatcher::Client, exclude: Vec::new() },
             ..Config::default()
         };
-
         if let Some(f) = &self.config {
             f(&mut config)
         }
@@ -173,8 +173,14 @@ impl Server {
         self.client.sender.send(r.into()).unwrap();
         while let Some(msg) = self.recv() {
             match msg {
-                Message::Request(req) if req.method == "window/workDoneProgress/create" => (),
-                Message::Request(req) => panic!("unexpected request: {:?}", req),
+                Message::Request(req) => {
+                    if req.method != "window/workDoneProgress/create"
+                        && !(req.method == "client/registerCapability"
+                            && req.params.to_string().contains("workspace/didChangeWatchedFiles"))
+                    {
+                        panic!("unexpected request: {:?}", req)
+                    }
+                }
                 Message::Notification(_) => (),
                 Message::Response(res) => {
                     assert_eq!(res.id, id);
