@@ -67,8 +67,8 @@ pub(crate) fn load(
     // wait until Vfs has loaded all roots
     for task in receiver {
         match task {
-            vfs::loader::Message::Progress { n_entries_done, n_entries_total } => {
-                if n_entries_done == n_entries_total {
+            vfs::loader::Message::Progress { n_done, n_total } => {
+                if n_done == n_total {
                     break;
                 }
             }

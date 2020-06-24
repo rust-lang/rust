@@ -89,8 +89,8 @@ impl LoaderActor {
             match event {
                 Event::Message(msg) => match msg {
                     Message::Config(config) => {
-                        let n_entries_total = config.load.len();
-                        self.send(loader::Message::Progress { n_entries_total, n_entries_done: 0 });
+                        let n_total = config.load.len();
+                        self.send(loader::Message::Progress { n_total, n_done: 0 });
 
                         self.unwatch_all();
                         self.config.clear();
@@ -99,10 +99,7 @@ impl LoaderActor {
                             let watch = config.watch.contains(&i);
                             let files = self.load_entry(entry, watch);
                             self.send(loader::Message::Loaded { files });
-                            self.send(loader::Message::Progress {
-                                n_entries_total,
-                                n_entries_done: i + 1,
-                            });
+                            self.send(loader::Message::Progress { n_total, n_done: i + 1 });
                         }
                         self.config.sort_by(|x, y| x.0.cmp(&y.0));
                     }
@@ -199,7 +196,7 @@ impl LoaderActor {
                         let is_dir = entry.file_type().is_dir();
                         let is_file = entry.file_type().is_file();
                         let abs_path = AbsPathBuf::try_from(entry.into_path()).unwrap();
-                        if is_dir {
+                        if is_dir && watch {
                             self.watch(abs_path.clone());
                         }
                         let rel_path = abs_path.strip_prefix(&path)?;

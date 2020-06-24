@@ -305,18 +305,12 @@ fn loop_turn(
                     }
                 }
             }
-            vfs::loader::Message::Progress { n_entries_total, n_entries_done } => {
-                if n_entries_done == n_entries_done {
+            vfs::loader::Message::Progress { n_total, n_done } => {
+                if n_done == n_total {
                     loop_state.status = Status::Ready;
                     became_ready = true;
                 }
-                report_progress(
-                    loop_state,
-                    &connection.sender,
-                    n_entries_done,
-                    n_entries_total,
-                    "roots scanned",
-                )
+                report_progress(loop_state, &connection.sender, n_done, n_total, "roots scanned")
             }
         },
         Event::CheckWatcher(task) => on_check_task(task, global_state, task_sender)?,
