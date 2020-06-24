@@ -366,7 +366,7 @@ impl TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
         // After we do so, it should be totally fine to skip the binders.
         let anon_a = self.tcx.anonymize_late_bound_regions(&a);
         let anon_b = self.tcx.anonymize_late_bound_regions(&b);
-        self.relate(*anon_a.skip_binder(), *anon_b.skip_binder())?;
+        self.relate(anon_a.skip_binder(), anon_b.skip_binder())?;
 
         Ok(a.clone())
     }

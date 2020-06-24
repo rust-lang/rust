@@ -122,7 +122,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) -> OnUnimplementedNote {
         let def_id =
             self.impl_similar_to(trait_ref, obligation).unwrap_or_else(|| trait_ref.def_id());
-        let trait_ref = *trait_ref.skip_binder();
+        let trait_ref = trait_ref.skip_binder();
 
         let mut flags = vec![];
         flags.push((
@@ -219,7 +219,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
         if let ty::Dynamic(traits, _) = self_ty.kind {
-            for t in *traits.skip_binder() {
+            for t in traits.skip_binder() {
                 if let ty::ExistentialPredicate::Trait(trait_ref) = t {
                     flags.push((sym::_Self, Some(self.tcx.def_path_str(trait_ref.def_id))))
                 }
