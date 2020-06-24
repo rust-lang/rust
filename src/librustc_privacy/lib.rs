@@ -89,7 +89,7 @@ where
             &ty::PredicateKind::ForAll(pred) => {
                 // This visitor does not care about bound regions as we only
                 // look at `DefId`s.
-                self.visit_predicate(*pred.skip_binder())
+                self.visit_predicate(pred.skip_binder())
             }
             &ty::PredicateKind::Trait(ty::TraitPredicate { trait_ref }, _) => {
                 self.visit_trait(trait_ref)

@@ -201,7 +201,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_predicate(&mut self, pred: &ty::Predicate<'_>) {
+    fn add_predicate(&mut self, pred: ty::Predicate<'_>) {
         self.add_flags(pred.inner.flags);
         self.add_exclusive_binder(pred.inner.outer_exclusive_binder);
     }
@@ -223,7 +223,7 @@ impl FlagComputation {
                 self.add_ty(a);
                 self.add_ty(b);
             }
-            ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
+            &ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
                 self.add_projection_ty(projection_ty);
                 self.add_ty(ty);
             }

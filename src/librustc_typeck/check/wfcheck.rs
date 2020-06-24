@@ -828,7 +828,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     debug!("check_where_clauses: predicates={:?}", predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations =
-        predicates.predicates.iter().zip(predicates.spans.iter()).flat_map(|(p, &sp)| {
+        predicates.predicates.iter().zip(predicates.spans.iter()).flat_map(|(&p, &sp)| {
             traits::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, sp)
         });
 

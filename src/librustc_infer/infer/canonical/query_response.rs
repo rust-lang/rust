@@ -526,7 +526,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
         unsubstituted_region_constraints.iter().map(move |constraint| {
             let ty::OutlivesPredicate(k1, r2) =
-                *substitute_value(self.tcx, result_subst, constraint).skip_binder();
+                substitute_value(self.tcx, result_subst, constraint).skip_binder();
 
             let predicate = match k1.unpack() {
                 GenericArgKind::Lifetime(r1) => {

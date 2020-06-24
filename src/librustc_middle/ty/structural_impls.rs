@@ -1000,7 +1000,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         let new = ty::PredicateKind::super_fold_with(&self.inner.kind, folder);
-        if new != self.inner.kind { folder.tcx().mk_predicate(new) } else { *self }
+        folder.tcx().reuse_or_mk_predicate(*self, new)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {

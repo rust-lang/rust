@@ -1252,7 +1252,7 @@ impl<'tcx> Predicate<'tcx> {
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
         let substs = trait_ref.skip_binder().substs;
-        let pred = *self.ignore_quantifiers().skip_binder();
+        let pred = self.ignore_quantifiers().skip_binder();
         let new = pred.subst(tcx, substs);
         if new != pred { new.potentially_quantified(tcx, PredicateKind::ForAll) } else { self }
     }

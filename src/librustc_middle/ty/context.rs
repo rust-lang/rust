@@ -2132,9 +2132,18 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_predicate(&self, kind: PredicateKind<'tcx>) -> Predicate<'tcx> {
+    pub fn mk_predicate(self, kind: PredicateKind<'tcx>) -> Predicate<'tcx> {
         let inner = self.interners.intern_predicate(kind);
         Predicate { inner }
+    }
+
+    #[inline]
+    pub fn reuse_or_mk_predicate(
+        self,
+        pred: Predicate<'tcx>,
+        kind: PredicateKind<'tcx>,
+    ) -> Predicate<'tcx> {
+        if *pred.kind() != kind { self.mk_predicate(kind) } else { pred }
     }
 
     pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {
