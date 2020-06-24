@@ -16,7 +16,7 @@ pub struct Config {
 }
 
 pub enum Message {
-    Progress { n_entries_total: usize, n_entries_done: usize },
+    Progress { n_total: usize, n_done: usize },
     Loaded { files: Vec<(AbsPathBuf, Option<Vec<u8>>)> },
 }
 
@@ -56,10 +56,10 @@ impl fmt::Debug for Message {
             Message::Loaded { files } => {
                 f.debug_struct("Loaded").field("n_files", &files.len()).finish()
             }
-            Message::Progress { n_entries_total, n_entries_done } => f
+            Message::Progress { n_total, n_done } => f
                 .debug_struct("Progress")
-                .field("n_entries_total", n_entries_total)
-                .field("n_entries_done", n_entries_done)
+                .field("n_total", n_total)
+                .field("n_done", n_done)
                 .finish(),
         }
     }
