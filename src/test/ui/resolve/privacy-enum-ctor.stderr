@@ -132,7 +132,7 @@ LL |     let _: E = m::n::Z;
    |            ^
 help: consider importing this enum
    |
-LL | use m::n::Z;
+LL | use m::Z;
    |
 
 error[E0423]: expected value, found enum `m::n::Z`
@@ -165,7 +165,7 @@ LL |     let _: E = m::n::Z::Fn;
    |            ^
 help: consider importing this enum
    |
-LL | use m::n::Z;
+LL | use m::Z;
    |
 
 error[E0412]: cannot find type `Z` in this scope
@@ -183,7 +183,7 @@ LL |     let _: E = m::n::Z::Struct;
    |            ^
 help: consider importing this enum
    |
-LL | use m::n::Z;
+LL | use m::Z;
    |
 
 error[E0423]: expected value, found struct variant `m::n::Z::Struct`
@@ -212,7 +212,7 @@ LL |     let _: E = m::n::Z::Unit {};
    |            ^
 help: consider importing this enum
    |
-LL | use m::n::Z;
+LL | use m::Z;
    |
 
 error[E0603]: enum `Z` is private

@@ -703,6 +703,13 @@ impl<'a> NameBinding<'a> {
             }
     }
 
+    fn is_possibly_imported_variant(&self) -> bool {
+        match self.kind {
+            NameBindingKind::Import { binding, .. } => binding.is_possibly_imported_variant(),
+            _ => self.is_variant(),
+        }
+    }
+
     // We sometimes need to treat variants as `pub` for backwards compatibility.
     fn pseudo_vis(&self) -> ty::Visibility {
         if self.is_variant() && self.res().def_id().is_local() {

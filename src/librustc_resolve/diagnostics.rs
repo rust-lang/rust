@@ -643,18 +643,18 @@ impl<'a> Resolver<'a> {
         let not_local_module = crate_name.name != kw::Crate;
         let mut worklist =
             vec![(start_module, Vec::<ast::PathSegment>::new(), true, not_local_module)];
+        let mut worklist_via_import = vec![];
 
-        while let Some((in_module, path_segments, accessible, in_module_is_extern)) = worklist.pop()
+        while let Some((in_module, path_segments, accessible, in_module_is_extern)) =
+            match worklist.pop() {
+                None => worklist_via_import.pop(),
+                Some(x) => Some(x),
+            }
         {
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
-                // avoid imports entirely
-                if name_binding.is_import() && !name_binding.is_extern_crate() {
-                    return;
-                }
-
-                // avoid non-importable candidates as well
+                // avoid non-importable candidates
                 if !name_binding.is_importable() {
                     return;
                 }
@@ -664,6 +664,17 @@ impl<'a> Resolver<'a> {
 
                 // do not venture inside inaccessible items of other crates
                 if in_module_is_extern && !child_accessible {
+                    return;
+                }
+
+                let via_import = name_binding.is_import() && !name_binding.is_extern_crate();
+
+                // There is an assumption elsewhere that paths of variants are in the enum's
+                // declaration and not imported. With this assumption, the variant component is
+                // chopped and the rest of the path is assumed to be the enum's own path. For
+                // errors where a variant is used as the type instead of the enum, this causes
+                // funny looking invalid suggestions, i.e `foo` instead of `foo::MyEnum`.
+                if via_import && name_binding.is_possibly_imported_variant() {
                     return;
                 }
 
@@ -724,7 +735,8 @@ impl<'a> Resolver<'a> {
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id().unwrap()) {
-                            worklist.push((module, path_segments, child_accessible, is_extern));
+                            if via_import { &mut worklist_via_import } else { &mut worklist }
+                                .push((module, path_segments, child_accessible, is_extern));
                         }
                     }
                 }
