@@ -20,7 +20,7 @@ use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
     from_proto,
     line_endings::LineEndings,
-    main_loop::request_metrics::{LatestRequests, RequestMetrics},
+    request_metrics::{LatestRequests, RequestMetrics},
     to_proto::url_from_abs_path,
     Result,
 };
@@ -46,32 +46,32 @@ fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> 
 /// snapshot of the file systems, and `analysis_host`, which stores our
 /// incremental salsa database.
 #[derive(Debug)]
-pub struct GlobalState {
-    pub config: Config,
-    pub workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub analysis_host: AnalysisHost,
-    pub loader: Box<dyn vfs::loader::Handle>,
-    pub task_receiver: Receiver<vfs::loader::Message>,
-    pub flycheck: Option<Flycheck>,
-    pub diagnostics: DiagnosticCollection,
-    pub proc_macro_client: ProcMacroClient,
+pub(crate) struct GlobalState {
+    pub(crate) config: Config,
+    pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) analysis_host: AnalysisHost,
+    pub(crate) loader: Box<dyn vfs::loader::Handle>,
+    pub(crate) task_receiver: Receiver<vfs::loader::Message>,
+    pub(crate) flycheck: Option<Flycheck>,
+    pub(crate) diagnostics: DiagnosticCollection,
+    pub(crate) proc_macro_client: ProcMacroClient,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
     source_root_config: SourceRootConfig,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
-pub struct GlobalStateSnapshot {
-    pub config: Config,
-    pub workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub analysis: Analysis,
-    pub check_fixes: CheckFixes,
+pub(crate) struct GlobalStateSnapshot {
+    pub(crate) config: Config,
+    pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) analysis: Analysis,
+    pub(crate) check_fixes: CheckFixes,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
 }
 
 impl GlobalState {
-    pub fn new(
+    pub(crate) fn new(
         workspaces: Vec<ProjectWorkspace>,
         lru_capacity: Option<usize>,
         config: Config,
@@ -241,7 +241,7 @@ impl GlobalStateSnapshot {
         self.vfs.read().1[&id]
     }
 
-    pub fn anchored_path(&self, file_id: FileId, path: &str) -> Url {
+    pub(crate) fn anchored_path(&self, file_id: FileId, path: &str) -> Url {
         let mut base = self.vfs.read().0.file_path(file_id);
         base.pop();
         let path = base.join(path);
@@ -264,7 +264,7 @@ impl GlobalStateSnapshot {
         })
     }
 
-    pub fn status(&self) -> String {
+    pub(crate) fn status(&self) -> String {
         let mut buf = String::new();
         if self.workspaces.is_empty() {
             buf.push_str("no workspaces\n")
@@ -349,7 +349,7 @@ pub(crate) struct SourceRootConfig {
 }
 
 impl SourceRootConfig {
-    pub fn partition(&self, vfs: &vfs::Vfs) -> Vec<SourceRoot> {
+    pub(crate) fn partition(&self, vfs: &vfs::Vfs) -> Vec<SourceRoot> {
         self.fsc
             .partition(vfs)
             .into_iter()

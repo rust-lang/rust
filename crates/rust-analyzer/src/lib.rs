@@ -17,18 +17,20 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
+mod global_state;
+mod main_loop;
+mod handlers;
 mod caps;
 mod cargo_target_spec;
 mod to_proto;
 mod from_proto;
-mod main_loop;
+mod semantic_tokens;
 mod markdown;
+mod diagnostics;
+mod line_endings;
+mod request_metrics;
 pub mod lsp_ext;
 pub mod config;
-mod global_state;
-mod diagnostics;
-mod semantic_tokens;
-mod line_endings;
 
 use serde::de::DeserializeOwned;
 
