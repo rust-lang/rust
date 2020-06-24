@@ -6,9 +6,12 @@ development.
 
 There are six parts to this guide:
 
-1. [Building, Debugging, and Contributing to `rustc`][p1]: Contains information that should be useful no matter how
-   you are contributing, such as procedures for contribution, building the
-   compiler, etc.
+1. [Building and Debugging to `rustc`][p1]: Contains information that should be
+   useful no matter how you are contributing, about building, debugging,
+   profiling, etc.
+2. [Contributing to `rustc`][p1-5]: Contains information that should be useful
+   no matter how you are contributing, about procedures for contribution,
+   stabilizing features, etc.
 2. [High-Level Compiler Architecture][p2]: Discusses the high-level
    architecture of the compiler and stages of the compile process.
 3. [Source Code Representation][p3]: Describes the process of taking raw source code from the user and
@@ -19,7 +22,8 @@ There are six parts to this guide:
 6. [Appendices][app] at the end with useful reference information. There are a
    few of these with different information, inluding a glossary.
 
-[p1]: ./part-1-intro.md
+[p1]: ./getting-started.md
+[p1-5]: ./compiler-team.md
 [p2]: ./part-2-intro.md
 [p3]: ./part-3-intro.md
 [p4]: ./part-4-intro.md
