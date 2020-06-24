@@ -167,7 +167,7 @@ impl GlobalState {
         res
     }
 
-    pub fn update_configuration(&mut self, config: Config) {
+    pub(crate) fn update_configuration(&mut self, config: Config) {
         self.analysis_host.update_lru_capacity(config.lru_capacity);
         if config.check != self.config.check {
             self.flycheck =
@@ -177,7 +177,7 @@ impl GlobalState {
         self.config = config;
     }
 
-    pub fn process_changes(&mut self) -> bool {
+    pub(crate) fn process_changes(&mut self) -> bool {
         let change = {
             let mut change = AnalysisChange::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
@@ -215,7 +215,7 @@ impl GlobalState {
         true
     }
 
-    pub fn snapshot(&self) -> GlobalStateSnapshot {
+    pub(crate) fn snapshot(&self) -> GlobalStateSnapshot {
         GlobalStateSnapshot {
             config: self.config.clone(),
             workspaces: Arc::clone(&self.workspaces),
@@ -226,11 +226,11 @@ impl GlobalState {
         }
     }
 
-    pub fn maybe_collect_garbage(&mut self) {
+    pub(crate) fn maybe_collect_garbage(&mut self) {
         self.analysis_host.maybe_collect_garbage()
     }
 
-    pub fn collect_garbage(&mut self) {
+    pub(crate) fn collect_garbage(&mut self) {
         self.analysis_host.collect_garbage()
     }
 

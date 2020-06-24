@@ -37,12 +37,32 @@ use serde::de::DeserializeOwned;
 pub type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
 pub use crate::{
     caps::server_capabilities,
-    main_loop::LspError,
     main_loop::{main_loop, show_message},
 };
+use std::fmt;
 
 pub fn from_json<T: DeserializeOwned>(what: &'static str, json: serde_json::Value) -> Result<T> {
     let res = T::deserialize(&json)
         .map_err(|e| format!("Failed to deserialize {}: {}; {}", what, e, json))?;
     Ok(res)
 }
+
+#[derive(Debug)]
+struct LspError {
+    code: i32,
+    message: String,
+}
+
+impl LspError {
+    fn new(code: i32, message: String) -> LspError {
+        LspError { code, message }
+    }
+}
+
+impl fmt::Display for LspError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Language Server request failed with {}. ({})", self.code, self.message)
+    }
+}
+
+impl std::error::Error for LspError {}
