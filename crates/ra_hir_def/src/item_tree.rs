@@ -23,6 +23,7 @@ use hir_expand::{
 use ra_arena::{Arena, Idx, RawId};
 use ra_syntax::{ast, match_ast};
 use rustc_hash::FxHashMap;
+use smallvec::SmallVec;
 use test_utils::mark;
 
 use crate::{
@@ -33,26 +34,6 @@ use crate::{
     type_ref::{Mutability, TypeBound, TypeRef},
     visibility::RawVisibility,
 };
-use smallvec::SmallVec;
-
-#[derive(Default, Debug, Eq, PartialEq)]
-struct ItemVisibilities {
-    arena: Arena<RawVisibility>,
-}
-
-impl ItemVisibilities {
-    fn alloc(&mut self, vis: RawVisibility) -> RawVisibilityId {
-        match &vis {
-            RawVisibility::Public => RawVisibilityId::PUB,
-            RawVisibility::Module(path) if path.segments.is_empty() => match &path.kind {
-                PathKind::Super(0) => RawVisibilityId::PRIV,
-                PathKind::Crate => RawVisibilityId::PUB_CRATE,
-                _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
-            },
-            _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
-        }
-    }
-}
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct RawVisibilityId(u32);
@@ -76,67 +57,11 @@ impl fmt::Debug for RawVisibilityId {
     }
 }
 
-#[derive(Default, Debug, Eq, PartialEq)]
-struct GenericParamsStorage {
-    arena: Arena<GenericParams>,
-}
-
-impl GenericParamsStorage {
-    fn alloc(&mut self, params: GenericParams) -> GenericParamsId {
-        if params.types.is_empty() && params.where_predicates.is_empty() {
-            return GenericParamsId::EMPTY;
-        }
-
-        GenericParamsId(self.arena.alloc(params).into_raw().into())
-    }
-}
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct GenericParamsId(u32);
 
 impl GenericParamsId {
     pub const EMPTY: Self = GenericParamsId(u32::max_value());
-}
-
-static VIS_PUB: RawVisibility = RawVisibility::Public;
-static VIS_PRIV: RawVisibility =
-    RawVisibility::Module(ModPath { kind: PathKind::Super(0), segments: Vec::new() });
-static VIS_PUB_CRATE: RawVisibility =
-    RawVisibility::Module(ModPath { kind: PathKind::Crate, segments: Vec::new() });
-
-static EMPTY_GENERICS: GenericParams =
-    GenericParams { types: Arena::new(), where_predicates: Vec::new() };
-
-#[derive(Default, Debug, Eq, PartialEq)]
-struct ItemTreeData {
-    imports: Arena<Import>,
-    extern_crates: Arena<ExternCrate>,
-    functions: Arena<Function>,
-    structs: Arena<Struct>,
-    fields: Arena<Field>,
-    unions: Arena<Union>,
-    enums: Arena<Enum>,
-    variants: Arena<Variant>,
-    consts: Arena<Const>,
-    statics: Arena<Static>,
-    traits: Arena<Trait>,
-    impls: Arena<Impl>,
-    type_aliases: Arena<TypeAlias>,
-    mods: Arena<Mod>,
-    macro_calls: Arena<MacroCall>,
-    exprs: Arena<Expr>,
-
-    vis: ItemVisibilities,
-    generics: GenericParamsStorage,
-}
-
-#[derive(Debug, Eq, PartialEq, Hash)]
-enum AttrOwner {
-    /// Attributes on an item.
-    ModItem(ModItem),
-    /// Inner attributes of the source file.
-    TopLevel,
-    // FIXME: Store variant and field attrs, and stop reparsing them in `attrs_query`.
 }
 
 /// The item tree of a source file.
@@ -288,6 +213,81 @@ impl ItemTree {
     fn data_mut(&mut self) -> &mut ItemTreeData {
         self.data.get_or_insert_with(Box::default)
     }
+}
+
+#[derive(Default, Debug, Eq, PartialEq)]
+struct ItemVisibilities {
+    arena: Arena<RawVisibility>,
+}
+
+impl ItemVisibilities {
+    fn alloc(&mut self, vis: RawVisibility) -> RawVisibilityId {
+        match &vis {
+            RawVisibility::Public => RawVisibilityId::PUB,
+            RawVisibility::Module(path) if path.segments.is_empty() => match &path.kind {
+                PathKind::Super(0) => RawVisibilityId::PRIV,
+                PathKind::Crate => RawVisibilityId::PUB_CRATE,
+                _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
+            },
+            _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
+        }
+    }
+}
+
+static VIS_PUB: RawVisibility = RawVisibility::Public;
+static VIS_PRIV: RawVisibility =
+    RawVisibility::Module(ModPath { kind: PathKind::Super(0), segments: Vec::new() });
+static VIS_PUB_CRATE: RawVisibility =
+    RawVisibility::Module(ModPath { kind: PathKind::Crate, segments: Vec::new() });
+
+#[derive(Default, Debug, Eq, PartialEq)]
+struct GenericParamsStorage {
+    arena: Arena<GenericParams>,
+}
+
+impl GenericParamsStorage {
+    fn alloc(&mut self, params: GenericParams) -> GenericParamsId {
+        if params.types.is_empty() && params.where_predicates.is_empty() {
+            return GenericParamsId::EMPTY;
+        }
+
+        GenericParamsId(self.arena.alloc(params).into_raw().into())
+    }
+}
+
+static EMPTY_GENERICS: GenericParams =
+    GenericParams { types: Arena::new(), where_predicates: Vec::new() };
+
+#[derive(Default, Debug, Eq, PartialEq)]
+struct ItemTreeData {
+    imports: Arena<Import>,
+    extern_crates: Arena<ExternCrate>,
+    functions: Arena<Function>,
+    structs: Arena<Struct>,
+    fields: Arena<Field>,
+    unions: Arena<Union>,
+    enums: Arena<Enum>,
+    variants: Arena<Variant>,
+    consts: Arena<Const>,
+    statics: Arena<Static>,
+    traits: Arena<Trait>,
+    impls: Arena<Impl>,
+    type_aliases: Arena<TypeAlias>,
+    mods: Arena<Mod>,
+    macro_calls: Arena<MacroCall>,
+    exprs: Arena<Expr>,
+
+    vis: ItemVisibilities,
+    generics: GenericParamsStorage,
+}
+
+#[derive(Debug, Eq, PartialEq, Hash)]
+enum AttrOwner {
+    /// Attributes on an item.
+    ModItem(ModItem),
+    /// Inner attributes of the source file.
+    TopLevel,
+    // FIXME: Store variant and field attrs, and stop reparsing them in `attrs_query`.
 }
 
 /// Trait implemented by all nodes in the item tree.
