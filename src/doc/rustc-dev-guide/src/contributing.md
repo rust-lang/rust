@@ -306,7 +306,7 @@ Caused by:
 failed to run: ~/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo build --manifest-path ~/rust/src/bootstrap/Cargo.toml
 ```
 
-The [`[patch]`][patchsec] section of `Cargo.toml` can be very useful for
+The [`\[patch\]`][patchsec] section of `Cargo.toml` can be very useful for
 testing. In addition to that, you should read the [Overriding
 dependencies][overriding] section of the documentation.
 
