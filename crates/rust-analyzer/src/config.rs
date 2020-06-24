@@ -11,6 +11,7 @@ use std::{ffi::OsString, path::PathBuf};
 
 use crate::diagnostics::DiagnosticsConfig;
 use lsp_types::ClientCapabilities;
+use ra_db::AbsPathBuf;
 use ra_flycheck::FlycheckConfig;
 use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
 use ra_project_model::{CargoConfig, JsonProject, ProjectManifest};
@@ -40,7 +41,7 @@ pub struct Config {
 
     pub with_sysroot: bool,
     pub linked_projects: Vec<LinkedProject>,
-    pub root_path: PathBuf,
+    pub root_path: AbsPathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -131,8 +132,8 @@ pub struct ClientCapsConfig {
     pub hover_actions: bool,
 }
 
-impl Default for Config {
-    fn default() -> Self {
+impl Config {
+    pub fn new(root_path: AbsPathBuf) -> Self {
         Config {
             client_caps: ClientCapsConfig::default(),
 
@@ -171,18 +172,16 @@ impl Default for Config {
             lens: LensConfig::default(),
             hover: HoverConfig::default(),
             linked_projects: Vec::new(),
-            root_path: PathBuf::new(),
+            root_path,
         }
     }
-}
 
-impl Config {
     #[rustfmt::skip]
     pub fn update(&mut self, value: &serde_json::Value) {
         log::info!("Config::update({:#})", value);
 
         let client_caps = self.client_caps.clone();
-        *self = Default::default();
+        *self = Config::new(self.root_path.clone());
         self.client_caps = client_caps;
 
         set(value, "/withSysroot", &mut self.with_sysroot);
@@ -279,9 +278,12 @@ impl Config {
                 self.linked_projects.clear();
                 for linked_project in linked_projects {
                     let linked_project = match linked_project {
-                        ManifestOrJsonProject::Manifest(it) => match ProjectManifest::from_manifest_file(it) {
-                            Ok(it) => it.into(),
-                            Err(_) => continue,
+                        ManifestOrJsonProject::Manifest(it) => {
+                            let path = self.root_path.join(it);
+                            match ProjectManifest::from_manifest_file(path) {
+                                Ok(it) => it.into(),
+                                Err(_) => continue,
+                            }
                         }
                         ManifestOrJsonProject::JsonProject(it) => it.into(),
                     };

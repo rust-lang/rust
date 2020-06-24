@@ -16,7 +16,7 @@ pub fn load_cargo(
     load_out_dirs_from_check: bool,
     with_proc_macro: bool,
 ) -> Result<(AnalysisHost, vfs::Vfs)> {
-    let root = std::env::current_dir()?.join(root);
+    let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
     let ws = ProjectWorkspace::load(
         root,

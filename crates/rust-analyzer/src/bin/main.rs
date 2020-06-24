@@ -3,6 +3,8 @@
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
 mod args;
 
+use std::convert::TryFrom;
+
 use lsp_server::Connection;
 use rust_analyzer::{
     cli,
@@ -10,8 +12,10 @@ use rust_analyzer::{
     from_json, Result,
 };
 
-use crate::args::HelpPrinted;
+use ra_db::AbsPathBuf;
 use ra_project_model::ProjectManifest;
+
+use crate::args::HelpPrinted;
 
 fn main() -> Result<()> {
     setup_logging()?;
@@ -20,6 +24,9 @@ fn main() -> Result<()> {
         Err(HelpPrinted) => return Ok(()),
     };
     match args.command {
+        args::Command::RunServer => run_server()?,
+        args::Command::ProcMacro => ra_proc_macro_srv::cli::run()?,
+
         args::Command::Parse { no_dump } => cli::parse(no_dump)?,
         args::Command::Symbols => cli::symbols()?,
         args::Command::Highlight { rainbow } => cli::highlight(rainbow)?,
@@ -41,7 +48,6 @@ fn main() -> Result<()> {
             load_output_dirs,
             with_proc_macro,
         )?,
-
         args::Command::Bench { path, what, load_output_dirs, with_proc_macro } => {
             cli::analysis_bench(
                 args.verbosity,
@@ -51,13 +57,9 @@ fn main() -> Result<()> {
                 with_proc_macro,
             )?
         }
-
         args::Command::Diagnostics { path, load_output_dirs, with_proc_macro, all } => {
             cli::diagnostics(path.as_ref(), load_output_dirs, with_proc_macro, all)?
         }
-
-        args::Command::ProcMacro => run_proc_macro_srv()?,
-        args::Command::RunServer => run_server()?,
         args::Command::Version => println!("rust-analyzer {}", env!("REV")),
     }
     Ok(())
@@ -67,11 +69,6 @@ fn setup_logging() -> Result<()> {
     std::env::set_var("RUST_BACKTRACE", "short");
     env_logger::try_init_from_env("RA_LOG")?;
     ra_prof::init();
-    Ok(())
-}
-
-fn run_proc_macro_srv() -> Result<()> {
-    ra_proc_macro_srv::cli::run()?;
     Ok(())
 }
 
@@ -103,14 +100,23 @@ fn run_server() -> Result<()> {
     }
 
     let config = {
-        let mut config = Config::default();
+        let root_path = match initialize_params
+            .root_uri
+            .and_then(|it| it.to_file_path().ok())
+            .and_then(|it| AbsPathBuf::try_from(it).ok())
+        {
+            Some(it) => it,
+            None => {
+                let cwd = std::env::current_dir()?;
+                AbsPathBuf::assert(cwd)
+            }
+        };
+
+        let mut config = Config::new(root_path);
         if let Some(value) = &initialize_params.initialization_options {
             config.update(value);
         }
         config.update_caps(&initialize_params.capabilities);
-        let cwd = std::env::current_dir()?;
-        config.root_path =
-            initialize_params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
 
         if config.linked_projects.is_empty() {
             let workspace_roots = initialize_params
@@ -119,6 +125,7 @@ fn run_server() -> Result<()> {
                     workspaces
                         .into_iter()
                         .filter_map(|it| it.uri.to_file_path().ok())
+                        .filter_map(|it| AbsPathBuf::try_from(it).ok())
                         .collect::<Vec<_>>()
                 })
                 .filter(|workspaces| !workspaces.is_empty())

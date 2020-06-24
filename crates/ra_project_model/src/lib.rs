@@ -7,11 +7,12 @@ mod sysroot;
 use std::{
     fs::{read_dir, File, ReadDir},
     io::{self, BufReader},
-    path::{Path, PathBuf},
+    path::Path,
     process::{Command, Output},
 };
 
 use anyhow::{bail, Context, Result};
+use paths::{AbsPath, AbsPathBuf};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateName, Edition, Env, FileId};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -29,7 +30,7 @@ pub enum ProjectWorkspace {
     /// Project workspace was discovered by running `cargo metadata` and `rustc --print sysroot`.
     Cargo { cargo: CargoWorkspace, sysroot: Sysroot },
     /// Project workspace was manually specified using a `rust-project.json` file.
-    Json { project: JsonProject, project_location: PathBuf },
+    Json { project: JsonProject, project_location: AbsPathBuf },
 }
 
 /// `PackageRoot` describes a package root folder.
@@ -38,22 +39,22 @@ pub enum ProjectWorkspace {
 #[derive(Debug, Clone)]
 pub struct PackageRoot {
     /// Path to the root folder
-    path: PathBuf,
+    path: AbsPathBuf,
     /// Is a member of the current workspace
     is_member: bool,
-    out_dir: Option<PathBuf>,
+    out_dir: Option<AbsPathBuf>,
 }
 impl PackageRoot {
-    pub fn new_member(path: PathBuf) -> PackageRoot {
+    pub fn new_member(path: AbsPathBuf) -> PackageRoot {
         Self { path, is_member: true, out_dir: None }
     }
-    pub fn new_non_member(path: PathBuf) -> PackageRoot {
+    pub fn new_non_member(path: AbsPathBuf) -> PackageRoot {
         Self { path, is_member: false, out_dir: None }
     }
-    pub fn path(&self) -> &Path {
+    pub fn path(&self) -> &AbsPath {
         &self.path
     }
-    pub fn out_dir(&self) -> Option<&Path> {
+    pub fn out_dir(&self) -> Option<&AbsPath> {
         self.out_dir.as_deref()
     }
     pub fn is_member(&self) -> bool {
@@ -63,12 +64,12 @@ impl PackageRoot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum ProjectManifest {
-    ProjectJson(PathBuf),
-    CargoToml(PathBuf),
+    ProjectJson(AbsPathBuf),
+    CargoToml(AbsPathBuf),
 }
 
 impl ProjectManifest {
-    pub fn from_manifest_file(path: PathBuf) -> Result<ProjectManifest> {
+    pub fn from_manifest_file(path: AbsPathBuf) -> Result<ProjectManifest> {
         if path.ends_with("rust-project.json") {
             return Ok(ProjectManifest::ProjectJson(path));
         }
@@ -78,7 +79,7 @@ impl ProjectManifest {
         bail!("project root must point to Cargo.toml or rust-project.json: {}", path.display())
     }
 
-    pub fn discover_single(path: &Path) -> Result<ProjectManifest> {
+    pub fn discover_single(path: &AbsPath) -> Result<ProjectManifest> {
         let mut candidates = ProjectManifest::discover(path)?;
         let res = match candidates.pop() {
             None => bail!("no projects"),
@@ -91,23 +92,23 @@ impl ProjectManifest {
         Ok(res)
     }
 
-    pub fn discover(path: &Path) -> io::Result<Vec<ProjectManifest>> {
+    pub fn discover(path: &AbsPath) -> io::Result<Vec<ProjectManifest>> {
         if let Some(project_json) = find_in_parent_dirs(path, "rust-project.json") {
             return Ok(vec![ProjectManifest::ProjectJson(project_json)]);
         }
         return find_cargo_toml(path)
             .map(|paths| paths.into_iter().map(ProjectManifest::CargoToml).collect());
 
-        fn find_cargo_toml(path: &Path) -> io::Result<Vec<PathBuf>> {
+        fn find_cargo_toml(path: &AbsPath) -> io::Result<Vec<AbsPathBuf>> {
             match find_in_parent_dirs(path, "Cargo.toml") {
                 Some(it) => Ok(vec![it]),
                 None => Ok(find_cargo_toml_in_child_dir(read_dir(path)?)),
             }
         }
 
-        fn find_in_parent_dirs(path: &Path, target_file_name: &str) -> Option<PathBuf> {
+        fn find_in_parent_dirs(path: &AbsPath, target_file_name: &str) -> Option<AbsPathBuf> {
             if path.ends_with(target_file_name) {
-                return Some(path.to_owned());
+                return Some(path.to_path_buf());
             }
 
             let mut curr = Some(path);
@@ -123,17 +124,18 @@ impl ProjectManifest {
             None
         }
 
-        fn find_cargo_toml_in_child_dir(entities: ReadDir) -> Vec<PathBuf> {
+        fn find_cargo_toml_in_child_dir(entities: ReadDir) -> Vec<AbsPathBuf> {
             // Only one level down to avoid cycles the easy way and stop a runaway scan with large projects
             entities
                 .filter_map(Result::ok)
                 .map(|it| it.path().join("Cargo.toml"))
                 .filter(|it| it.exists())
+                .map(AbsPathBuf::assert)
                 .collect()
         }
     }
 
-    pub fn discover_all(paths: &[impl AsRef<Path>]) -> Vec<ProjectManifest> {
+    pub fn discover_all(paths: &[impl AsRef<AbsPath>]) -> Vec<ProjectManifest> {
         let mut res = paths
             .iter()
             .filter_map(|it| ProjectManifest::discover(it.as_ref()).ok())
@@ -158,15 +160,12 @@ impl ProjectWorkspace {
                     format!("Failed to open json file {}", project_json.display())
                 })?;
                 let reader = BufReader::new(file);
-                let project_location = match project_json.parent() {
-                    Some(parent) => PathBuf::from(parent),
-                    None => PathBuf::new(),
-                };
+                let project_location = project_json.parent().unwrap().to_path_buf();
                 ProjectWorkspace::Json {
                     project: from_reader(reader).with_context(|| {
                         format!("Failed to deserialize json file {}", project_json.display())
                     })?,
-                    project_location: project_location,
+                    project_location,
                 }
             }
             ProjectManifest::CargoToml(cargo_toml) => {
@@ -218,13 +217,13 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn proc_macro_dylib_paths(&self) -> Vec<PathBuf> {
+    pub fn proc_macro_dylib_paths(&self) -> Vec<AbsPathBuf> {
         match self {
-            ProjectWorkspace::Json { project, .. } => project
+            ProjectWorkspace::Json { project, project_location } => project
                 .crates
                 .iter()
                 .filter_map(|krate| krate.proc_macro_dylib_path.as_ref())
-                .cloned()
+                .map(|it| project_location.join(it))
                 .collect(),
             ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => cargo
                 .packages()

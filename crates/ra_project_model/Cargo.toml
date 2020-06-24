@@ -18,6 +18,7 @@ ra_cfg = { path = "../ra_cfg" }
 ra_db = { path = "../ra_db" }
 ra_toolchain = { path = "../ra_toolchain" }
 ra_proc_macro =  { path = "../ra_proc_macro" }
+paths =  { path = "../paths" }
 
 serde = { version = "1.0.106", features = ["derive"] }
 serde_json = "1.0.48"
