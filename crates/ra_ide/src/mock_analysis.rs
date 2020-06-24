@@ -105,10 +105,13 @@ impl MockAnalysis {
     pub fn with_files_and_position(fixture: &str) -> (MockAnalysis, FilePosition) {
         let mut position = None;
         let mut res = MockAnalysis::new();
-        for entry in Fixture::parse(fixture) {
+        for mut entry in Fixture::parse(fixture) {
             if entry.text.contains(CURSOR_MARKER) {
                 assert!(position.is_none(), "only one marker (<|>) per fixture is allowed");
-                position = Some(res.add_file_fixture_with_position(entry));
+                let (offset, text) = extract_offset(&entry.text);
+                entry.text = text;
+                let file_id = res.add_file_fixture(entry);
+                position = Some(FilePosition { file_id, offset });
             } else {
                 res.add_file_fixture(entry);
             }
@@ -123,19 +126,12 @@ impl MockAnalysis {
         file_id
     }
 
-    fn add_file_fixture_with_position(&mut self, mut fixture: Fixture) -> FilePosition {
-        let (offset, text) = extract_offset(&fixture.text);
-        fixture.text = text;
-        let file_id = self.next_id();
-        self.files.push(MockFileData::from(fixture));
-        FilePosition { file_id, offset }
-    }
-
     pub fn add_file(&mut self, path: &str, text: &str) -> FileId {
         let file_id = self.next_id();
         self.files.push(MockFileData::new(path.to_string(), text.to_string()));
         file_id
     }
+
     fn add_file_with_range(&mut self, path: &str, text: &str) -> FileRange {
         let (range, text) = extract_range(text);
         let file_id = self.next_id();
