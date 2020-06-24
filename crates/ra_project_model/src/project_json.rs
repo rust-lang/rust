@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Deserialize)]
-pub struct JsonProject {
+pub struct ProjectJson {
     pub(crate) roots: Vec<Root>,
     pub(crate) crates: Vec<Crate>,
 }

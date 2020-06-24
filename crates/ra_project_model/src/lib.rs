@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 mod cargo_workspace;
-mod json_project;
+mod project_json;
 mod sysroot;
 
 use std::{
@@ -20,7 +20,7 @@ use serde_json::from_reader;
 
 pub use crate::{
     cargo_workspace::{CargoConfig, CargoWorkspace, Package, Target, TargetKind},
-    json_project::JsonProject,
+    project_json::ProjectJson,
     sysroot::Sysroot,
 };
 pub use ra_proc_macro::ProcMacroClient;
@@ -30,7 +30,7 @@ pub enum ProjectWorkspace {
     /// Project workspace was discovered by running `cargo metadata` and `rustc --print sysroot`.
     Cargo { cargo: CargoWorkspace, sysroot: Sysroot },
     /// Project workspace was manually specified using a `rust-project.json` file.
-    Json { project: JsonProject, project_location: AbsPathBuf },
+    Json { project: ProjectJson, project_location: AbsPathBuf },
 }
 
 /// `PackageRoot` describes a package root folder.
@@ -259,8 +259,8 @@ impl ProjectWorkspace {
                         let file_path = project_location.join(&krate.root_module);
                         let file_id = load(&file_path)?;
                         let edition = match krate.edition {
-                            json_project::Edition::Edition2015 => Edition::Edition2015,
-                            json_project::Edition::Edition2018 => Edition::Edition2018,
+                            project_json::Edition::Edition2015 => Edition::Edition2015,
+                            project_json::Edition::Edition2018 => Edition::Edition2018,
                         };
                         let cfg_options = {
                             let mut opts = CfgOptions::default();
@@ -290,7 +290,7 @@ impl ProjectWorkspace {
                             .map(|it| proc_macro_client.by_dylib_path(&it));
                         // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
                         Some((
-                            json_project::CrateId(seq_index),
+                            project_json::CrateId(seq_index),
                             crate_graph.add_crate_root(
                                 file_id,
                                 edition,
@@ -306,7 +306,7 @@ impl ProjectWorkspace {
 
                 for (id, krate) in project.crates.iter().enumerate() {
                     for dep in &krate.deps {
-                        let from_crate_id = json_project::CrateId(id);
+                        let from_crate_id = project_json::CrateId(id);
                         let to_crate_id = dep.krate;
                         if let (Some(&from), Some(&to)) =
                             (crates.get(&from_crate_id), crates.get(&to_crate_id))
@@ -528,7 +528,7 @@ impl ProjectWorkspace {
             ProjectWorkspace::Cargo { cargo, .. } => {
                 Some(cargo.workspace_root()).filter(|root| path.starts_with(root))
             }
-            ProjectWorkspace::Json { project: JsonProject { roots, .. }, .. } => roots
+            ProjectWorkspace::Json { project: ProjectJson { roots, .. }, .. } => roots
                 .iter()
                 .find(|root| path.starts_with(&root.path))
                 .map(|root| root.path.as_ref()),

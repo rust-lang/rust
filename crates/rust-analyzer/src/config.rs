@@ -14,7 +14,7 @@ use lsp_types::ClientCapabilities;
 use ra_db::AbsPathBuf;
 use ra_flycheck::FlycheckConfig;
 use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
-use ra_project_model::{CargoConfig, JsonProject, ProjectManifest};
+use ra_project_model::{CargoConfig, ProjectJson, ProjectManifest};
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]
@@ -47,7 +47,7 @@ pub struct Config {
 #[derive(Debug, Clone)]
 pub enum LinkedProject {
     ProjectManifest(ProjectManifest),
-    InlineJsonProject(JsonProject),
+    InlineJsonProject(ProjectJson),
 }
 
 impl From<ProjectManifest> for LinkedProject {
@@ -56,8 +56,8 @@ impl From<ProjectManifest> for LinkedProject {
     }
 }
 
-impl From<JsonProject> for LinkedProject {
-    fn from(v: JsonProject) -> Self {
+impl From<ProjectJson> for LinkedProject {
+    fn from(v: ProjectJson) -> Self {
         LinkedProject::InlineJsonProject(v)
     }
 }
@@ -373,5 +373,5 @@ impl Config {
 #[serde(untagged)]
 enum ManifestOrJsonProject {
     Manifest(PathBuf),
-    JsonProject(JsonProject),
+    JsonProject(ProjectJson),
 }
