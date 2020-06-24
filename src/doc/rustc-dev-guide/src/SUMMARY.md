@@ -23,9 +23,7 @@
 - [Profiling the compiler](./profiling.md)
     - [with the linux perf tool](./profiling/with_perf.md)
 - [crates.io Dependencies](./crates-io.md)
-- [Errors and Lints](diagnostics.md)
-    - [`LintStore`](./diagnostics/lintstore.md)
-    - [Diagnostic Codes](./diagnostics/diagnostic-codes.md)
+
 
 # Contributing to Rust
 
@@ -120,6 +118,9 @@
         - [Error reporting](./borrow_check/region_inference/error_reporting.md)
     - [Two-phase-borrows](./borrow_check/two_phase_borrows.md)
 - [Parameter Environments](./param_env.md)
+- [Errors and Lints](diagnostics.md)
+    - [`LintStore`](./diagnostics/lintstore.md)
+    - [Diagnostic Codes](./diagnostics/diagnostic-codes.md)
 
 # MIR to Binaries
 
