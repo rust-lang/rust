@@ -40,6 +40,41 @@ pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
     }
 }
 
+pub mod monotonic {
+    use std::ops::{Deref, DerefMut};
+
+    /// A `MonotonicVec` is a `Vec` which can only be grown.
+    /// Once inserted, an element can never be removed or swapped,
+    /// guaranteeing that any indices into a `MonotonicVec` are stable
+    // This is declared in its own module to ensure that the private
+    // field is inaccessible
+    pub struct MonotonicVec<T>(Vec<T>);
+    impl<T> MonotonicVec<T> {
+        pub fn new(val: Vec<T>) -> MonotonicVec<T> {
+            MonotonicVec(val)
+        }
+
+        pub fn push(&mut self, val: T) {
+            self.0.push(val);
+        }
+    }
+
+    impl<T> Default for MonotonicVec<T> {
+        fn default() -> Self {
+            MonotonicVec::new(vec![])
+        }
+    }
+
+    impl<T> Deref for MonotonicVec<T> {
+        type Target = Vec<T>;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl<T> !DerefMut for MonotonicVec<T> {}
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
 pub struct Spanned<T> {
     pub node: T,
@@ -125,7 +160,7 @@ impl StableSourceFileId {
 
 #[derive(Default)]
 pub(super) struct SourceMapFiles {
-    source_files: Vec<Lrc<SourceFile>>,
+    source_files: monotonic::MonotonicVec<Lrc<SourceFile>>,
     stable_id_to_source_file: FxHashMap<StableSourceFileId, Lrc<SourceFile>>,
 }
 
@@ -199,7 +234,9 @@ impl SourceMap {
         Ok(bytes)
     }
 
-    pub fn files(&self) -> MappedLockGuard<'_, Vec<Lrc<SourceFile>>> {
+    // By returning a `MonotonicVec`, we ensure that consumers cannot invalidate
+    // any existing indices pointing into `files`.
+    pub fn files(&self) -> MappedLockGuard<'_, monotonic::MonotonicVec<Lrc<SourceFile>>> {
         LockGuard::map(self.files.borrow(), |files| &mut files.source_files)
     }
 
@@ -912,6 +949,8 @@ impl SourceMap {
     }
 
     // Returns the index of the `SourceFile` (in `self.files`) that contains `pos`.
+    // This index is guaranteed to be valid for the lifetime of this `SourceMap`,
+    // since `source_files` is a `MonotonicVec`
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
         self.files
             .borrow()
