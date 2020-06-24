@@ -1009,6 +1009,8 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(never_type)]
+///
 /// use std::mem;
 ///
 /// enum Void {}
