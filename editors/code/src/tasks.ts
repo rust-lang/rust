@@ -83,7 +83,7 @@ export async function buildCargoTask(
             const customExec = await vscode.commands.executeCommand(runnerCommand, runnerArgs);
             if (customExec) {
                 if (customExec instanceof vscode.ShellExecution) {
-                    exec = customExec as vscode.ShellExecution;
+                    exec = customExec;
                 } else {
                     log.debug("Invalid cargo ShellExecution", customExec);
                     throw "Invalid cargo ShellExecution.";
@@ -98,7 +98,7 @@ export async function buildCargoTask(
     }
 
     if (!exec) {
-        exec = new vscode.ShellExecution(toolchain.cargoPath(), args, definition)
+        exec = new vscode.ShellExecution(toolchain.cargoPath(), args, definition);
     }
 
     return new vscode.Task(
