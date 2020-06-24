@@ -271,6 +271,63 @@ fn test() {
 }
 
 #[test]
+fn infer_pattern_match_string_literal() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+fn test() {
+    let s: &str = "hello";
+    match s {
+        "hello" => {}
+        _ => {}
+    }
+}
+"#, true),
+    @r###"
+    10..98 '{     ...   } }': ()
+    20..21 's': &str
+    30..37 '"hello"': &str
+    43..96 'match ...     }': ()
+    49..50 's': &str
+    61..68 '"hello"': &str
+    61..68 '"hello"': &str
+    72..74 '{}': ()
+    83..84 '_': &str
+    88..90 '{}': ()
+    "###
+    );
+}
+
+#[test]
+fn infer_pattern_match_or() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+fn test() {
+    let s: &str = "hello";
+    match s {
+        "hello" | "world" => {}
+        _ => {}
+    }
+}
+"#, true),
+    @r###"
+    10..108 '{     ...   } }': ()
+    20..21 's': &str
+    30..37 '"hello"': &str
+    43..106 'match ...     }': ()
+    49..50 's': &str
+    61..68 '"hello"': &str
+    61..68 '"hello"': &str
+    61..78 '"hello...world"': &str
+    71..78 '"world"': &str
+    71..78 '"world"': &str
+    82..84 '{}': ()
+    93..94 '_': &str
+    98..100 '{}': ()
+    "###
+    );
+}
+
+#[test]
 fn infer_pattern_match_arr() {
     assert_snapshot!(
         infer(r#"
