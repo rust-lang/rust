@@ -73,18 +73,21 @@ pub enum PlaceBase {
     Upvar(ty::UpvarId),
 }
 
-#[derive(Clone, Debug)]
-pub enum ProjectionKind<'tcx> {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProjectionKind {
     /// A dereference of a pointer, reference or `Box<T>` of the given type
-    Deref(Ty<'tcx>),
+    Deref,
     /// An index or a field
     Other,
 }
 
 #[derive(Clone, Debug)]
 pub struct Projection<'tcx> {
+    // Type after the projection is being applied.
+    ty: Ty<'tcx>,
+
     /// Defines the type of access
-    kind: ProjectionKind<'tcx>,
+    kind: ProjectionKind,
 }
 
 /// A `Place` represents how a value is located in memory.
@@ -92,8 +95,8 @@ pub struct Projection<'tcx> {
 /// This is an HIR version of `mir::Place`
 #[derive(Clone, Debug)]
 pub struct Place<'tcx> {
-    /// The type of the `Place`
-    pub ty: Ty<'tcx>,
+    /// The type of the `PlaceBase`
+    pub base_ty: Ty<'tcx>,
     /// The "outermost" place that holds this value.
     pub base: PlaceBase,
     /// How this place is derived from the base place.
@@ -115,13 +118,13 @@ pub struct PlaceWithHirId<'tcx> {
 impl<'tcx> PlaceWithHirId<'tcx> {
     crate fn new(
         hir_id: hir::HirId,
-        ty: Ty<'tcx>,
+        base_ty: Ty<'tcx>,
         base: PlaceBase,
         projections: Vec<Projection<'tcx>>,
     ) -> PlaceWithHirId<'tcx> {
         PlaceWithHirId {
             hir_id: hir_id,
-            place: Place { ty: ty, base: base, projections: projections },
+            place: Place { base_ty: base_ty, base: base, projections: projections },
         }
     }
 }
@@ -134,9 +137,25 @@ impl<'tcx> Place<'tcx> {
     /// `x: &*const u32` and the `Place` is `**x`, then the types returned are
     ///`*const u32` then `&*const u32`.
     crate fn deref_tys(&self) -> impl Iterator<Item = Ty<'tcx>> + '_ {
-        self.projections.iter().rev().filter_map(|proj| {
-            if let ProjectionKind::Deref(deref_ty) = proj.kind { Some(deref_ty) } else { None }
+        self.projections.iter().enumerate().rev().filter_map(move |(index, proj)| {
+            if ProjectionKind::Deref == proj.kind {
+                Some(self.ty_before_projection(index))
+            } else {
+                None
+            }
         })
+    }
+
+    // Returns the type of this `Place` after all projections have been applied.
+    pub fn ty(&self) -> Ty<'tcx> {
+        self.projections.last().map_or_else(|| self.base_ty, |proj| proj.ty)
+    }
+
+    // Returns the type of this `Place` immediately before `projection_index`th projection
+    // is applied.
+    crate fn ty_before_projection(&self, projection_index: usize) -> Ty<'tcx> {
+        assert!(projection_index < self.projections.len());
+        if projection_index == 0 { self.base_ty } else { self.projections[projection_index - 1].ty }
     }
 }
 
@@ -516,8 +535,13 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) -> PlaceWithHirId<'tcx> {
         let mut projections = base_place.place.projections;
-        projections.push(Projection { kind: ProjectionKind::Other });
-        let ret = PlaceWithHirId::new(node.hir_id(), ty, base_place.place.base, projections);
+        projections.push(Projection { kind: ProjectionKind::Other, ty: ty });
+        let ret = PlaceWithHirId::new(
+            node.hir_id(),
+            base_place.place.base_ty,
+            base_place.place.base,
+            projections,
+        );
         debug!("cat_field ret {:?}", ret);
         ret
     }
@@ -552,18 +576,23 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> McResult<PlaceWithHirId<'tcx>> {
         debug!("cat_deref: base_place={:?}", base_place);
 
-        let base_ty = base_place.place.ty;
-        let deref_ty = match base_ty.builtin_deref(true) {
+        let base_curr_ty = base_place.place.ty();
+        let deref_ty = match base_curr_ty.builtin_deref(true) {
             Some(mt) => mt.ty,
             None => {
-                debug!("explicit deref of non-derefable type: {:?}", base_ty);
+                debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
                 return Err(());
             }
         };
         let mut projections = base_place.place.projections;
-        projections.push(Projection { kind: ProjectionKind::Deref(base_ty) });
+        projections.push(Projection { kind: ProjectionKind::Deref, ty: deref_ty });
 
-        let ret = PlaceWithHirId::new(node.hir_id(), deref_ty, base_place.place.base, projections);
+        let ret = PlaceWithHirId::new(
+            node.hir_id(),
+            base_place.place.base_ty,
+            base_place.place.base,
+            projections,
+        );
         debug!("cat_deref ret {:?}", ret);
         Ok(ret)
     }
@@ -687,7 +716,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
 
             PatKind::Slice(before, ref slice, after) => {
-                let element_ty = match place_with_id.place.ty.builtin_index() {
+                let element_ty = match place_with_id.place.ty().builtin_index() {
                     Some(ty) => ty,
                     None => {
                         debug!("explicit index of non-indexable type {:?}", place_with_id);
