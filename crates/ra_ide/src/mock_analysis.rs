@@ -79,9 +79,6 @@ pub struct MockAnalysis {
 }
 
 impl MockAnalysis {
-    pub fn new() -> MockAnalysis {
-        MockAnalysis::default()
-    }
     /// Creates `MockAnalysis` using a fixture data in the following format:
     ///
     /// ```not_rust
@@ -93,7 +90,7 @@ impl MockAnalysis {
     /// struct Baz;
     /// ```
     pub fn with_files(fixture: &str) -> MockAnalysis {
-        let mut res = MockAnalysis::new();
+        let mut res = MockAnalysis::default();
         for entry in Fixture::parse(fixture) {
             res.add_file_fixture(entry);
         }
@@ -104,7 +101,7 @@ impl MockAnalysis {
     /// whose position is also returned.
     pub fn with_files_and_position(fixture: &str) -> (MockAnalysis, FilePosition) {
         let mut position = None;
-        let mut res = MockAnalysis::new();
+        let mut res = MockAnalysis::default();
         for mut entry in Fixture::parse(fixture) {
             if entry.text.contains(CURSOR_MARKER) {
                 assert!(position.is_none(), "only one marker (<|>) per fixture is allowed");
@@ -213,7 +210,7 @@ pub fn single_file(ra_fixture: &str) -> (Analysis, FileId) {
 
 /// Creates analysis for a single file, returns range marked with a pair of <|>.
 pub fn single_file_with_range(ra_fixture: &str) -> (Analysis, FileRange) {
-    let mut mock = MockAnalysis::new();
+    let mut mock = MockAnalysis::default();
     let pos = mock.add_file_with_range("/main.rs", ra_fixture);
     (mock.analysis(), pos)
 }
