@@ -1,6 +1,4 @@
 // aux-build:weird-hygiene.rs
-// check-pass
-// FIXME: This should actually error, see PR #73084
 
 #![feature(stmt_expr_attributes)]
 #![feature(proc_macro_hygiene)]
@@ -22,7 +20,7 @@ macro_rules! other {
 
         #[derive(WeirdDerive)]
         enum MyEnum {
-            Value = (stringify!($tokens + hidden_ident), 1).1
+            Value = (stringify!($tokens + hidden_ident), 1).1 //~ ERROR cannot find
         }
 
         inner!();
@@ -33,7 +31,7 @@ macro_rules! invoke_it {
     ($token:expr) => {
         #[recollect_attr] {
             $token;
-            hidden_ident
+            hidden_ident //~ ERROR cannot find
         }
     }
 }
