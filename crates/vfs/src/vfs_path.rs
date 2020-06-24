@@ -5,7 +5,7 @@ use paths::{AbsPath, AbsPathBuf};
 
 /// Long-term, we want to support files which do not reside in the file-system,
 /// so we treat VfsPaths as opaque identifiers.
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct VfsPath(VfsPathRepr);
 
 impl VfsPath {
@@ -50,7 +50,7 @@ impl VfsPath {
     }
 }
 
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 enum VfsPathRepr {
     PathBuf(AbsPathBuf),
     VirtualPath(VirtualPath),
@@ -67,6 +67,21 @@ impl fmt::Display for VfsPath {
         match &self.0 {
             VfsPathRepr::PathBuf(it) => fmt::Display::fmt(&it.display(), f),
             VfsPathRepr::VirtualPath(VirtualPath(it)) => fmt::Display::fmt(it, f),
+        }
+    }
+}
+
+impl fmt::Debug for VfsPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl fmt::Debug for VfsPathRepr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self {
+            VfsPathRepr::PathBuf(it) => fmt::Debug::fmt(&it.display(), f),
+            VfsPathRepr::VirtualPath(VirtualPath(it)) => fmt::Debug::fmt(&it, f),
         }
     }
 }
