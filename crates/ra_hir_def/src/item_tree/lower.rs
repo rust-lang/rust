@@ -82,7 +82,13 @@ impl Ctx {
             | ast::ModuleItem::TypeAliasDef(_)
             | ast::ModuleItem::ConstDef(_)
             | ast::ModuleItem::StaticDef(_)
-            | ast::ModuleItem::MacroCall(_) => self.collect_inner_items(item.syntax()),
+            | ast::ModuleItem::MacroCall(_) => {
+                // Skip this if we're already collecting inner items. We'll descend into all nodes
+                // already.
+                if !inner {
+                    self.collect_inner_items(item.syntax());
+                }
+            }
 
             // These are handled in their respective `lower_X` method (since we can't just blindly
             // walk them).
@@ -403,7 +409,8 @@ impl Ctx {
     fn lower_trait(&mut self, trait_def: &ast::TraitDef) -> Option<FileItemTreeId<Trait>> {
         let name = trait_def.name()?.as_name();
         let visibility = self.lower_visibility(trait_def);
-        let generic_params = self.lower_generic_params(GenericsOwner::Trait(trait_def), trait_def);
+        let generic_params =
+            self.lower_generic_params_and_inner_items(GenericsOwner::Trait(trait_def), trait_def);
         let auto = trait_def.auto_token().is_some();
         let items = trait_def.item_list().map(|list| {
             self.with_inherited_visibility(visibility, |this| {
@@ -432,7 +439,8 @@ impl Ctx {
     }
 
     fn lower_impl(&mut self, impl_def: &ast::ImplDef) -> Option<FileItemTreeId<Impl>> {
-        let generic_params = self.lower_generic_params(GenericsOwner::Impl, impl_def);
+        let generic_params =
+            self.lower_generic_params_and_inner_items(GenericsOwner::Impl, impl_def);
         let target_trait = impl_def.target_trait().map(|tr| self.lower_type_ref(&tr));
         let target_type = self.lower_type_ref(&impl_def.target_type()?);
         let is_negative = impl_def.excl_token().is_some();
@@ -548,6 +556,23 @@ impl Ctx {
         })
     }
 
+    /// Lowers generics defined on `node` and collects inner items defined within.
+    fn lower_generic_params_and_inner_items(
+        &mut self,
+        owner: GenericsOwner<'_>,
+        node: &impl ast::TypeParamsOwner,
+    ) -> GenericParamsId {
+        // Generics are part of item headers and may contain inner items we need to collect.
+        if let Some(params) = node.type_param_list() {
+            self.collect_inner_items(params.syntax());
+        }
+        if let Some(clause) = node.where_clause() {
+            self.collect_inner_items(clause.syntax());
+        }
+
+        self.lower_generic_params(owner, node)
+    }
+
     fn lower_generic_params(
         &mut self,
         owner: GenericsOwner<'_>,
@@ -617,7 +642,7 @@ impl Ctx {
         TypeRef::from_ast(&self.body_ctx, type_ref.clone())
     }
     fn lower_type_ref_opt(&self, type_ref: Option<ast::TypeRef>) -> TypeRef {
-        TypeRef::from_ast_opt(&self.body_ctx, type_ref)
+        type_ref.map(|ty| self.lower_type_ref(&ty)).unwrap_or(TypeRef::Error)
     }
 
     /// Forces the visibility `vis` to be used for all items lowered during execution of `f`.

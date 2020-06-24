@@ -374,10 +374,16 @@ fn cursed_inner_items() {
 
         impl En {
             fn assoc() {
-                trait InnerTrait {}
-                struct InnerStruct {}
-                impl InnerTrait for InnerStruct {}
+                trait InnerTrait<T = [u8; { fn f() {} }]> {}
+                struct InnerStruct<T = [u8; { fn f() {} }]> {}
+                impl<T = [u8; { fn f() {} }]> InnerTrait for InnerStruct {}
             }
+        }
+
+        trait Tr<T = [u8; { fn f() {} }]> {
+            type AssocTy = [u8; { fn f() {} }];
+
+            const AssocConst: [u8; { fn f() {} }];
         }
     ",
     );
