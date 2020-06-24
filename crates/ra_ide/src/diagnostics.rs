@@ -348,8 +348,10 @@ mod tests {
         );
     }
 
-    fn check_apply_diagnostic_fix(before: &str, after: &str) {
-        let (analysis, file_id) = single_file(before);
+    fn check_apply_diagnostic_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
+        let ra_fixture_after = &trim_indent(ra_fixture_after);
+        let (analysis, file_id) = single_file(ra_fixture_before);
+        let before = analysis.file_text(file_id).unwrap();
         let diagnostic = analysis.diagnostics(file_id).unwrap().pop().unwrap();
         let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
@@ -358,7 +360,7 @@ mod tests {
             edit.apply(&mut actual);
             actual
         };
-        assert_eq_text!(after, &actual);
+        assert_eq_text!(ra_fixture_after, &actual);
     }
 
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
@@ -709,7 +711,7 @@ mod tests {
         [
             Diagnostic {
                 message: "Missing structure fields:\n- b\n",
-                range: 224..233,
+                range: 127..136,
                 severity: Error,
                 fix: Some(
                     Fix {
@@ -855,22 +857,22 @@ fn main() {
     fn test_add_field_from_usage() {
         check_apply_diagnostic_fix(
             r"
-            fn main() {
-                Foo { bar: 3, baz: false};
-            }
-            struct Foo {
-                bar: i32
-            }
-            ",
+fn main() {
+    Foo { bar: 3, baz: false};
+}
+struct Foo {
+    bar: i32
+}
+",
             r"
-            fn main() {
-                Foo { bar: 3, baz: false};
-            }
-            struct Foo {
-                bar: i32,
-                baz: bool
-            }
-            ",
+fn main() {
+    Foo { bar: 3, baz: false};
+}
+struct Foo {
+    bar: i32,
+    baz: bool
+}
+",
         )
     }
 }

@@ -85,15 +85,15 @@ mod tests {
                 "#,
             ),
             @r###"
-            [
-                CompletionItem {
-                    label: "collections",
-                    source_range: 21..24,
-                    delete: 21..24,
-                    insert: "collections",
-                },
-            ]
-            "###
+        [
+            CompletionItem {
+                label: "collections",
+                source_range: 4..7,
+                delete: 4..7,
+                insert: "collections",
+            },
+        ]
+        "###
         );
     }
 
@@ -157,16 +157,16 @@ mod tests {
                 "
             ),
             @r###"
-            [
-                CompletionItem {
-                    label: "Enum",
-                    source_range: 231..233,
-                    delete: 231..233,
-                    insert: "Enum",
-                    kind: Enum,
-                },
-            ]
-            "###
+        [
+            CompletionItem {
+                label: "Enum",
+                source_range: 102..104,
+                delete: 102..104,
+                insert: "Enum",
+                kind: Enum,
+            },
+        ]
+        "###
         );
     }
 
@@ -186,8 +186,8 @@ mod tests {
         [
             CompletionItem {
                 label: "quux(…)",
-                source_range: 91..91,
-                delete: 91..91,
+                source_range: 42..42,
+                delete: 42..42,
                 insert: "quux(${1:x})$0",
                 kind: Function,
                 lookup: "quux",
@@ -196,16 +196,16 @@ mod tests {
             },
             CompletionItem {
                 label: "x",
-                source_range: 91..91,
-                delete: 91..91,
+                source_range: 42..42,
+                delete: 42..42,
                 insert: "x",
                 kind: Binding,
                 detail: "i32",
             },
             CompletionItem {
                 label: "y",
-                source_range: 91..91,
-                delete: 91..91,
+                source_range: 42..42,
+                delete: 42..42,
                 insert: "y",
                 kind: Binding,
                 detail: "i32",
@@ -235,23 +235,23 @@ mod tests {
         [
             CompletionItem {
                 label: "a",
-                source_range: 242..242,
-                delete: 242..242,
+                source_range: 129..129,
+                delete: 129..129,
                 insert: "a",
                 kind: Binding,
             },
             CompletionItem {
                 label: "b",
-                source_range: 242..242,
-                delete: 242..242,
+                source_range: 129..129,
+                delete: 129..129,
                 insert: "b",
                 kind: Binding,
                 detail: "i32",
             },
             CompletionItem {
                 label: "quux()",
-                source_range: 242..242,
-                delete: 242..242,
+                source_range: 129..129,
+                delete: 129..129,
                 insert: "quux()$0",
                 kind: Function,
                 lookup: "quux",
@@ -278,8 +278,8 @@ mod tests {
         [
             CompletionItem {
                 label: "quux()",
-                source_range: 95..95,
-                delete: 95..95,
+                source_range: 46..46,
+                delete: 46..46,
                 insert: "quux()$0",
                 kind: Function,
                 lookup: "quux",
@@ -287,8 +287,8 @@ mod tests {
             },
             CompletionItem {
                 label: "x",
-                source_range: 95..95,
-                delete: 95..95,
+                source_range: 46..46,
+                delete: 46..46,
                 insert: "x",
                 kind: Binding,
             },
@@ -314,15 +314,15 @@ mod tests {
         [
             CompletionItem {
                 label: "index",
-                source_range: 107..107,
-                delete: 107..107,
+                source_range: 58..58,
+                delete: 58..58,
                 insert: "index",
                 kind: Binding,
             },
             CompletionItem {
                 label: "test()",
-                source_range: 107..107,
-                delete: 107..107,
+                source_range: 58..58,
+                delete: 58..58,
                 insert: "test()$0",
                 kind: Function,
                 lookup: "test",
@@ -347,15 +347,15 @@ mod tests {
         [
             CompletionItem {
                 label: "T",
-                source_range: 52..52,
-                delete: 52..52,
+                source_range: 19..19,
+                delete: 19..19,
                 insert: "T",
                 kind: TypeParam,
             },
             CompletionItem {
                 label: "quux()",
-                source_range: 52..52,
-                delete: 52..52,
+                source_range: 19..19,
+                delete: 19..19,
                 insert: "quux()$0",
                 kind: Function,
                 lookup: "quux",
@@ -380,22 +380,22 @@ mod tests {
         [
             CompletionItem {
                 label: "Self",
-                source_range: 54..54,
-                delete: 54..54,
+                source_range: 21..21,
+                delete: 21..21,
                 insert: "Self",
                 kind: TypeParam,
             },
             CompletionItem {
                 label: "T",
-                source_range: 54..54,
-                delete: 54..54,
+                source_range: 21..21,
+                delete: 21..21,
                 insert: "T",
                 kind: TypeParam,
             },
             CompletionItem {
                 label: "X<…>",
-                source_range: 54..54,
-                delete: 54..54,
+                source_range: 21..21,
+                delete: 21..21,
                 insert: "X<$0>",
                 kind: Struct,
                 lookup: "X",
@@ -419,15 +419,15 @@ mod tests {
         [
             CompletionItem {
                 label: "Self",
-                source_range: 48..48,
-                delete: 48..48,
+                source_range: 15..15,
+                delete: 15..15,
                 insert: "Self",
                 kind: TypeParam,
             },
             CompletionItem {
                 label: "X",
-                source_range: 48..48,
-                delete: 48..48,
+                source_range: 15..15,
+                delete: 15..15,
                 insert: "X",
                 kind: Enum,
             },
@@ -452,22 +452,22 @@ mod tests {
         [
             CompletionItem {
                 label: "Baz",
-                source_range: 105..105,
-                delete: 105..105,
+                source_range: 40..40,
+                delete: 40..40,
                 insert: "Baz",
                 kind: Enum,
             },
             CompletionItem {
                 label: "Foo",
-                source_range: 105..105,
-                delete: 105..105,
+                source_range: 40..40,
+                delete: 40..40,
                 insert: "Foo",
                 kind: Struct,
             },
             CompletionItem {
                 label: "quux()",
-                source_range: 105..105,
-                delete: 105..105,
+                source_range: 40..40,
+                delete: 40..40,
                 insert: "quux()$0",
                 kind: Function,
                 lookup: "quux",
@@ -520,15 +520,15 @@ mod tests {
         [
             CompletionItem {
                 label: "Bar",
-                source_range: 117..117,
-                delete: 117..117,
+                source_range: 52..52,
+                delete: 52..52,
                 insert: "Bar",
                 kind: Struct,
             },
             CompletionItem {
                 label: "quux()",
-                source_range: 117..117,
-                delete: 117..117,
+                source_range: 52..52,
+                delete: 52..52,
                 insert: "quux()$0",
                 kind: Function,
                 lookup: "quux",
@@ -552,15 +552,15 @@ mod tests {
         [
             CompletionItem {
                 label: "Foo",
-                source_range: 55..55,
-                delete: 55..55,
+                source_range: 22..22,
+                delete: 22..22,
                 insert: "Foo",
                 kind: Struct,
             },
             CompletionItem {
                 label: "x()",
-                source_range: 55..55,
-                delete: 55..55,
+                source_range: 22..22,
+                delete: 22..22,
                 insert: "x()$0",
                 kind: Function,
                 lookup: "x",
@@ -589,16 +589,16 @@ mod tests {
         [
             CompletionItem {
                 label: "bar",
-                source_range: 146..146,
-                delete: 146..146,
+                source_range: 65..65,
+                delete: 65..65,
                 insert: "bar",
                 kind: Binding,
                 detail: "i32",
             },
             CompletionItem {
                 label: "foo()",
-                source_range: 146..146,
-                delete: 146..146,
+                source_range: 65..65,
+                delete: 65..65,
                 insert: "foo()$0",
                 kind: Function,
                 lookup: "foo",
@@ -1001,16 +1001,16 @@ mod tests {
         [
             CompletionItem {
                 label: "m!(…)",
-                source_range: 145..145,
-                delete: 145..145,
+                source_range: 80..80,
+                delete: 80..80,
                 insert: "m!($0)",
                 kind: Macro,
                 detail: "macro_rules! m",
             },
             CompletionItem {
                 label: "quux(…)",
-                source_range: 145..145,
-                delete: 145..145,
+                source_range: 80..80,
+                delete: 80..80,
                 insert: "quux(${1:x})$0",
                 kind: Function,
                 lookup: "quux",
@@ -1019,16 +1019,16 @@ mod tests {
             },
             CompletionItem {
                 label: "x",
-                source_range: 145..145,
-                delete: 145..145,
+                source_range: 80..80,
+                delete: 80..80,
                 insert: "x",
                 kind: Binding,
                 detail: "i32",
             },
             CompletionItem {
                 label: "y",
-                source_range: 145..145,
-                delete: 145..145,
+                source_range: 80..80,
+                delete: 80..80,
                 insert: "y",
                 kind: Binding,
                 detail: "i32",
@@ -1054,16 +1054,16 @@ mod tests {
         [
             CompletionItem {
                 label: "m!(…)",
-                source_range: 145..146,
-                delete: 145..146,
+                source_range: 80..81,
+                delete: 80..81,
                 insert: "m!($0)",
                 kind: Macro,
                 detail: "macro_rules! m",
             },
             CompletionItem {
                 label: "quux(…)",
-                source_range: 145..146,
-                delete: 145..146,
+                source_range: 80..81,
+                delete: 80..81,
                 insert: "quux(${1:x})$0",
                 kind: Function,
                 lookup: "quux",
@@ -1072,16 +1072,16 @@ mod tests {
             },
             CompletionItem {
                 label: "x",
-                source_range: 145..146,
-                delete: 145..146,
+                source_range: 80..81,
+                delete: 80..81,
                 insert: "x",
                 kind: Binding,
                 detail: "i32",
             },
             CompletionItem {
                 label: "y",
-                source_range: 145..146,
-                delete: 145..146,
+                source_range: 80..81,
+                delete: 80..81,
                 insert: "y",
                 kind: Binding,
                 detail: "i32",
@@ -1107,16 +1107,16 @@ mod tests {
         [
             CompletionItem {
                 label: "m!(…)",
-                source_range: 145..146,
-                delete: 145..146,
+                source_range: 80..81,
+                delete: 80..81,
                 insert: "m!($0)",
                 kind: Macro,
                 detail: "macro_rules! m",
             },
             CompletionItem {
                 label: "quux(…)",
-                source_range: 145..146,
-                delete: 145..146,
+                source_range: 80..81,
+                delete: 80..81,
                 insert: "quux(${1:x})$0",
                 kind: Function,
                 lookup: "quux",
@@ -1125,16 +1125,16 @@ mod tests {
             },
             CompletionItem {
                 label: "x",
-                source_range: 145..146,
-                delete: 145..146,
+                source_range: 80..81,
+                delete: 80..81,
                 insert: "x",
                 kind: Binding,
                 detail: "i32",
             },
             CompletionItem {
                 label: "y",
-                source_range: 145..146,
-                delete: 145..146,
+                source_range: 80..81,
+                delete: 80..81,
                 insert: "y",
                 kind: Binding,
                 detail: "i32",
@@ -1160,14 +1160,14 @@ mod tests {
         [
             CompletionItem {
                 label: "Quux",
-                source_range: 82..82,
-                delete: 82..82,
+                source_range: 33..33,
+                delete: 33..33,
                 insert: "Quux",
             },
             CompletionItem {
                 label: "main()",
-                source_range: 82..82,
-                delete: 82..82,
+                source_range: 33..33,
+                delete: 33..33,
                 insert: "main()$0",
                 kind: Function,
                 lookup: "main",
@@ -1201,15 +1201,15 @@ mod tests {
         [
             CompletionItem {
                 label: "Foo",
-                source_range: 248..250,
-                delete: 248..250,
+                source_range: 103..105,
+                delete: 103..105,
                 insert: "Foo",
                 kind: Enum,
             },
             CompletionItem {
                 label: "Foo::Bar",
-                source_range: 248..250,
-                delete: 248..250,
+                source_range: 103..105,
+                delete: 103..105,
                 insert: "Foo::Bar",
                 kind: EnumVariant,
                 lookup: "Bar",
@@ -1217,8 +1217,8 @@ mod tests {
             },
             CompletionItem {
                 label: "Foo::Baz",
-                source_range: 248..250,
-                delete: 248..250,
+                source_range: 103..105,
+                delete: 103..105,
                 insert: "Foo::Baz",
                 kind: EnumVariant,
                 lookup: "Baz",
@@ -1226,8 +1226,8 @@ mod tests {
             },
             CompletionItem {
                 label: "Foo::Quux",
-                source_range: 248..250,
-                delete: 248..250,
+                source_range: 103..105,
+                delete: 103..105,
                 insert: "Foo::Quux",
                 kind: EnumVariant,
                 lookup: "Quux",
@@ -1262,15 +1262,15 @@ mod tests {
         [
             CompletionItem {
                 label: "Foo",
-                source_range: 219..221,
-                delete: 219..221,
+                source_range: 90..92,
+                delete: 90..92,
                 insert: "Foo",
                 kind: Enum,
             },
             CompletionItem {
                 label: "Foo::Bar",
-                source_range: 219..221,
-                delete: 219..221,
+                source_range: 90..92,
+                delete: 90..92,
                 insert: "Foo::Bar",
                 kind: EnumVariant,
                 lookup: "Bar",
@@ -1278,8 +1278,8 @@ mod tests {
             },
             CompletionItem {
                 label: "Foo::Baz",
-                source_range: 219..221,
-                delete: 219..221,
+                source_range: 90..92,
+                delete: 90..92,
                 insert: "Foo::Baz",
                 kind: EnumVariant,
                 lookup: "Baz",
@@ -1287,8 +1287,8 @@ mod tests {
             },
             CompletionItem {
                 label: "Foo::Quux",
-                source_range: 219..221,
-                delete: 219..221,
+                source_range: 90..92,
+                delete: 90..92,
                 insert: "Foo::Quux",
                 kind: EnumVariant,
                 lookup: "Quux",
@@ -1319,15 +1319,15 @@ mod tests {
         [
             CompletionItem {
                 label: "Foo",
-                source_range: 185..186,
-                delete: 185..186,
+                source_range: 72..73,
+                delete: 72..73,
                 insert: "Foo",
                 kind: Enum,
             },
             CompletionItem {
                 label: "Foo::Bar",
-                source_range: 185..186,
-                delete: 185..186,
+                source_range: 72..73,
+                delete: 72..73,
                 insert: "Foo::Bar",
                 kind: EnumVariant,
                 lookup: "Bar",
@@ -1335,8 +1335,8 @@ mod tests {
             },
             CompletionItem {
                 label: "Foo::Baz",
-                source_range: 185..186,
-                delete: 185..186,
+                source_range: 72..73,
+                delete: 72..73,
                 insert: "Foo::Baz",
                 kind: EnumVariant,
                 lookup: "Baz",
@@ -1344,8 +1344,8 @@ mod tests {
             },
             CompletionItem {
                 label: "Foo::Quux",
-                source_range: 185..186,
-                delete: 185..186,
+                source_range: 72..73,
+                delete: 72..73,
                 insert: "Foo::Quux",
                 kind: EnumVariant,
                 lookup: "Quux",
@@ -1353,8 +1353,8 @@ mod tests {
             },
             CompletionItem {
                 label: "main()",
-                source_range: 185..186,
-                delete: 185..186,
+                source_range: 72..73,
+                delete: 72..73,
                 insert: "main()$0",
                 kind: Function,
                 lookup: "main",
@@ -1381,8 +1381,8 @@ mod tests {
         [
             CompletionItem {
                 label: "f()",
-                source_range: 98..99,
-                delete: 98..99,
+                source_range: 49..50,
+                delete: 49..50,
                 insert: "f()$0",
                 kind: Function,
                 lookup: "f",
@@ -1390,15 +1390,15 @@ mod tests {
             },
             CompletionItem {
                 label: "m",
-                source_range: 98..99,
-                delete: 98..99,
+                source_range: 49..50,
+                delete: 49..50,
                 insert: "m",
                 kind: Module,
             },
             CompletionItem {
                 label: "m::E::V",
-                source_range: 98..99,
-                delete: 98..99,
+                source_range: 49..50,
+                delete: 49..50,
                 insert: "m::E::V",
                 kind: EnumVariant,
                 lookup: "V",

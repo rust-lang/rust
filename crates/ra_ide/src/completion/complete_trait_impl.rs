@@ -256,24 +256,24 @@ mod tests {
         [
             CompletionItem {
                 label: "const TEST_CONST: u16 = ",
-                source_range: 209..210,
-                delete: 209..210,
+                source_range: 112..113,
+                delete: 112..113,
                 insert: "const TEST_CONST: u16 = ",
                 kind: Const,
                 lookup: "TEST_CONST",
             },
             CompletionItem {
                 label: "fn test()",
-                source_range: 209..210,
-                delete: 209..210,
+                source_range: 112..113,
+                delete: 112..113,
                 insert: "fn test() {\n    $0\n}",
                 kind: Function,
                 lookup: "test",
             },
             CompletionItem {
                 label: "type TestType = ",
-                source_range: 209..210,
-                delete: 209..210,
+                source_range: 112..113,
+                delete: 112..113,
                 insert: "type TestType = ",
                 kind: TypeAlias,
                 lookup: "TestType",
@@ -322,8 +322,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn test()",
-                source_range: 139..140,
-                delete: 139..140,
+                source_range: 66..67,
+                delete: 66..67,
                 insert: "fn test() {\n    $0\n}",
                 kind: Function,
                 lookup: "test",
@@ -351,8 +351,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: 141..142,
-                delete: 138..142,
+                source_range: 68..69,
+                delete: 65..69,
                 insert: "fn foo() {\n    $0\n}",
                 kind: Function,
                 lookup: "foo",
@@ -383,8 +383,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo_bar()",
-                source_range: 200..201,
-                delete: 197..201,
+                source_range: 103..104,
+                delete: 100..104,
                 insert: "fn foo_bar() {\n    $0\n}",
                 kind: Function,
                 lookup: "foo_bar",
@@ -434,8 +434,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: 144..145,
-                delete: 141..145,
+                source_range: 71..72,
+                delete: 68..72,
                 insert: "fn foo<T>() {\n    $0\n}",
                 kind: Function,
                 lookup: "foo",
@@ -463,8 +463,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: 166..167,
-                delete: 163..167,
+                source_range: 93..94,
+                delete: 90..94,
                 insert: "fn foo<T>()\nwhere T: Into<String> {\n    $0\n}",
                 kind: Function,
                 lookup: "foo",
@@ -490,8 +490,8 @@ mod tests {
         [
             CompletionItem {
                 label: "type SomeType = ",
-                source_range: 124..125,
-                delete: 119..125,
+                source_range: 63..64,
+                delete: 58..64,
                 insert: "type SomeType = ",
                 kind: TypeAlias,
                 lookup: "SomeType",
@@ -517,8 +517,8 @@ mod tests {
         [
             CompletionItem {
                 label: "const SOME_CONST: u16 = ",
-                source_range: 133..134,
-                delete: 127..134,
+                source_range: 72..73,
+                delete: 66..73,
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
                 lookup: "SOME_CONST",
@@ -544,8 +544,8 @@ mod tests {
         [
             CompletionItem {
                 label: "const SOME_CONST: u16 = ",
-                source_range: 138..139,
-                delete: 132..139,
+                source_range: 77..78,
+                delete: 71..78,
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
                 lookup: "SOME_CONST",

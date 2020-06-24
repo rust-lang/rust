@@ -117,13 +117,13 @@ impl MockAnalysis {
         (res, position)
     }
 
-    pub fn add_file_fixture(&mut self, fixture: Fixture) -> FileId {
+    fn add_file_fixture(&mut self, fixture: Fixture) -> FileId {
         let file_id = self.next_id();
         self.files.push(MockFileData::from(fixture));
         file_id
     }
 
-    pub fn add_file_fixture_with_position(&mut self, mut fixture: Fixture) -> FilePosition {
+    fn add_file_fixture_with_position(&mut self, mut fixture: Fixture) -> FilePosition {
         let (offset, text) = extract_offset(&fixture.text);
         fixture.text = text;
         let file_id = self.next_id();
@@ -136,13 +136,7 @@ impl MockAnalysis {
         self.files.push(MockFileData::new(path.to_string(), text.to_string()));
         file_id
     }
-    pub fn add_file_with_position(&mut self, path: &str, text: &str) -> FilePosition {
-        let (offset, text) = extract_offset(text);
-        let file_id = self.next_id();
-        self.files.push(MockFileData::new(path.to_string(), text));
-        FilePosition { file_id, offset }
-    }
-    pub fn add_file_with_range(&mut self, path: &str, text: &str) -> FileRange {
+    fn add_file_with_range(&mut self, path: &str, text: &str) -> FileRange {
         let (range, text) = extract_range(text);
         let file_id = self.next_id();
         self.files.push(MockFileData::new(path.to_string(), text));
@@ -222,16 +216,9 @@ pub fn analysis_and_position(ra_fixture: &str) -> (Analysis, FilePosition) {
 
 /// Creates analysis for a single file.
 pub fn single_file(ra_fixture: &str) -> (Analysis, FileId) {
-    let mut mock = MockAnalysis::new();
-    let file_id = mock.add_file("/main.rs", ra_fixture);
+    let mock = MockAnalysis::with_files(ra_fixture);
+    let file_id = mock.id_of("/main.rs");
     (mock.analysis(), file_id)
-}
-
-/// Creates analysis for a single file, returns position marked with <|>.
-pub fn single_file_with_position(ra_fixture: &str) -> (Analysis, FilePosition) {
-    let mut mock = MockAnalysis::new();
-    let pos = mock.add_file_with_position("/main.rs", ra_fixture);
-    (mock.analysis(), pos)
 }
 
 /// Creates analysis for a single file, returns range marked with a pair of <|>.

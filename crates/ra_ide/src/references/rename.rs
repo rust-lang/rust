@@ -271,11 +271,10 @@ fn rename_reference(
 mod tests {
     use insta::assert_debug_snapshot;
     use ra_text_edit::TextEditBuilder;
+    use stdx::trim_indent;
     use test_utils::{assert_eq_text, mark};
 
-    use crate::{
-        mock_analysis::analysis_and_position, mock_analysis::single_file_with_position, FileId,
-    };
+    use crate::{mock_analysis::analysis_and_position, FileId};
 
     #[test]
     fn test_rename_to_underscore() {
@@ -309,7 +308,7 @@ mod tests {
 
     #[test]
     fn test_rename_to_invalid_identifier() {
-        let (analysis, position) = single_file_with_position(
+        let (analysis, position) = analysis_and_position(
             "
     fn main() {
         let i<|> = 1;
@@ -1053,8 +1052,9 @@ pub mod foo<|>;
         );
     }
 
-    fn test_rename(text: &str, new_name: &str, expected: &str) {
-        let (analysis, position) = single_file_with_position(text);
+    fn test_rename(ra_fixture_before: &str, new_name: &str, ra_fixture_after: &str) {
+        let ra_fixture_after = &trim_indent(ra_fixture_after);
+        let (analysis, position) = analysis_and_position(ra_fixture_before);
         let source_change = analysis.rename(position, new_name).unwrap();
         let mut text_edit_builder = TextEditBuilder::default();
         let mut file_id: Option<FileId> = None;
@@ -1068,6 +1068,6 @@ pub mod foo<|>;
         }
         let mut result = analysis.file_text(file_id.unwrap()).unwrap().to_string();
         text_edit_builder.finish().apply(&mut result);
-        assert_eq_text!(expected, &*result);
+        assert_eq_text!(ra_fixture_after, &*result);
     }
 }
