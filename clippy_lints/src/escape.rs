@@ -150,7 +150,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                     return;
                 }
 
-                if is_non_trait_box(cmt.place.ty) && !self.is_large_box(cmt.place.ty) {
+                if is_non_trait_box(cmt.place.ty()) && !self.is_large_box(cmt.place.ty()) {
                     self.set.insert(cmt.hir_id);
                 }
                 return;
