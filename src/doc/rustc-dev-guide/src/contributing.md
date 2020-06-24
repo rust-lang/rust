@@ -320,7 +320,7 @@ reveals what the problem is:
 
 > Next up we need to ensure that our lock file is updated to use this new
 > version of uuid so our project uses the locally checked out copy instead of
-> one from crates.io. The way [patch] works is that it'll load the dependency
+> one from crates.io. The way `\[patch\]` works is that it'll load the dependency
 > at ../path/to/uuid and then whenever crates.io is queried for versions of
 > uuid it'll also return the local version.
 >
