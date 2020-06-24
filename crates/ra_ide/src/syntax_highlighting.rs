@@ -236,7 +236,7 @@ pub(crate) fn highlight(
                             });
                         }
                     }
-                    stack.pop_and_inject(false);
+                    stack.pop_and_inject(None);
                 }
             } else if let Some(string) =
                 element_to_highlight.as_token().cloned().and_then(ast::RawString::cast)
@@ -324,16 +324,27 @@ impl HighlightedRangeStack {
         cloned
     }
 
+    /// Remove the `HighlightRange` of `parent` that's currently covered by `child`.
+    fn intersect_partial(parent: &mut HighlightedRange, child: &HighlightedRange) {
+        assert!(
+            parent.range.start() <= child.range.start()
+                && parent.range.end() >= child.range.start()
+                && child.range.end() > parent.range.end()
+        );
+
+        parent.range = TextRange::new(parent.range.start(), child.range.start());
+    }
+
     /// Similar to `pop`, but can modify arbitrary prior ranges (where `pop`)
     /// can only modify the last range currently on the stack.
     /// Can be used to do injections that span multiple ranges, like the
     /// doctest injection below.
-    /// If `delete` is set to true, the parent range is deleted instead of
-    /// intersected.
+    /// If `overwrite_parent` is non-optional, the highlighting of the parent range
+    /// is overwritten with the argument.
     ///
     /// Note that `pop` can be simulated by `pop_and_inject(false)` but the
     /// latter is computationally more expensive.
-    fn pop_and_inject(&mut self, delete: bool) {
+    fn pop_and_inject(&mut self, overwrite_parent: Option<Highlight>) {
         let mut children = self.stack.pop().unwrap();
         let prev = self.stack.last_mut().unwrap();
         children.sort_by_key(|range| range.range.start());
@@ -343,26 +354,45 @@ impl HighlightedRangeStack {
             if let Some(idx) =
                 prev.iter().position(|parent| parent.range.contains_range(child.range))
             {
+                if let Some(tag) = overwrite_parent {
+                    prev[idx].highlight = tag;
+                }
+
                 let cloned = Self::intersect(&mut prev[idx], &child);
-                let insert_idx = if delete || prev[idx].range.is_empty() {
+                let insert_idx = if prev[idx].range.is_empty() {
                     prev.remove(idx);
                     idx
                 } else {
                     idx + 1
                 };
                 prev.insert(insert_idx, child);
-                if !delete && !cloned.range.is_empty() {
+                if !cloned.range.is_empty() {
                     prev.insert(insert_idx + 1, cloned);
                 }
-            } else if let Some(_idx) =
-                prev.iter().position(|parent| parent.range.contains(child.range.start()))
-            {
-                unreachable!("child range should be completely contained in parent range");
             } else {
-                let idx = prev
-                    .binary_search_by_key(&child.range.start(), |range| range.range.start())
-                    .unwrap_or_else(|x| x);
-                prev.insert(idx, child);
+                let maybe_idx =
+                    prev.iter().position(|parent| parent.range.contains(child.range.start()));
+                match (overwrite_parent, maybe_idx) {
+                    (Some(_), Some(idx)) => {
+                        Self::intersect_partial(&mut prev[idx], &child);
+                        let insert_idx = if prev[idx].range.is_empty() {
+                            prev.remove(idx);
+                            idx
+                        } else {
+                            idx + 1
+                        };
+                        prev.insert(insert_idx, child);
+                    }
+                    (_, None) => {
+                        let idx = prev
+                            .binary_search_by_key(&child.range.start(), |range| range.range.start())
+                            .unwrap_or_else(|x| x);
+                        prev.insert(idx, child);
+                    }
+                    _ => {
+                        unreachable!("child range should be completely contained in parent range");
+                    }
+                }
             }
         }
     }
@@ -516,11 +546,9 @@ fn highlight_element(
             let ty = sema.type_of_expr(&expr)?;
             if !ty.is_raw_ptr() {
                 return None;
+            } else {
+                HighlightTag::Operator | HighlightModifier::Unsafe
             }
-
-            let mut h = Highlight::new(HighlightTag::Operator);
-            h |= HighlightModifier::Unsafe;
-            h
         }
         T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
             Highlight::new(HighlightTag::Macro)

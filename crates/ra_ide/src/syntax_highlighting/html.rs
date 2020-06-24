@@ -64,6 +64,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .lifetime           { color: #DFAF8F; font-style: italic; }
 .comment            { color: #7F9F7F; }
+.documentation      { color: #629755; }
+.injected           { opacity: 0.65 ; }
 .struct, .enum      { color: #7CB8BB; }
 .enum_variant       { color: #BDE0F3; }
 .string_literal     { color: #CC9393; }

@@ -27,6 +27,7 @@ pub enum HighlightTag {
     Field,
     FormatSpecifier,
     Function,
+    Generic,
     Keyword,
     Lifetime,
     Macro,
@@ -57,6 +58,7 @@ pub enum HighlightModifier {
     /// not.
     Definition,
     Documentation,
+    Injected,
     Mutable,
     Unsafe,
 }
@@ -77,6 +79,7 @@ impl HighlightTag {
             HighlightTag::Field => "field",
             HighlightTag::FormatSpecifier => "format_specifier",
             HighlightTag::Function => "function",
+            HighlightTag::Generic => "generic",
             HighlightTag::Keyword => "keyword",
             HighlightTag::Lifetime => "lifetime",
             HighlightTag::Macro => "macro",
@@ -110,6 +113,7 @@ impl HighlightModifier {
         HighlightModifier::ControlFlow,
         HighlightModifier::Definition,
         HighlightModifier::Documentation,
+        HighlightModifier::Injected,
         HighlightModifier::Mutable,
         HighlightModifier::Unsafe,
     ];
@@ -120,6 +124,7 @@ impl HighlightModifier {
             HighlightModifier::ControlFlow => "control",
             HighlightModifier::Definition => "declaration",
             HighlightModifier::Documentation => "documentation",
+            HighlightModifier::Injected => "injected",
             HighlightModifier::Mutable => "mutable",
             HighlightModifier::Unsafe => "unsafe",
         }

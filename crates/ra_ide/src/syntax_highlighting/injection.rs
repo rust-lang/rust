@@ -8,8 +8,8 @@ use ra_syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
 use stdx::SepBy;
 
 use crate::{
-    call_info::ActiveParameter, Analysis, HighlightModifier, HighlightTag, HighlightedRange,
-    RootDatabase,
+    call_info::ActiveParameter, Analysis, Highlight, HighlightModifier, HighlightTag,
+    HighlightedRange, RootDatabase,
 };
 
 use super::HighlightedRangeStack;
@@ -172,6 +172,7 @@ pub(super) fn highlight_doc_comment(
                 h.range.end() + end_offset.unwrap_or(start_offset) - h.range.start(),
             );
 
+            h.highlight |= HighlightModifier::Injected;
             stack.add(h);
         }
     }
@@ -181,6 +182,7 @@ pub(super) fn highlight_doc_comment(
     for comment in new_comments {
         stack.add(comment);
     }
-    stack.pop_and_inject(false);
-    stack.pop_and_inject(true);
+    stack.pop_and_inject(None);
+    stack
+        .pop_and_inject(Some(Highlight::from(HighlightTag::Generic) | HighlightModifier::Injected));
 }

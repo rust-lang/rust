@@ -295,6 +295,7 @@ fn semantic_token_type_and_modifiers(
         HighlightTag::SelfType => lsp_types::SemanticTokenType::TYPE,
         HighlightTag::Field => lsp_types::SemanticTokenType::PROPERTY,
         HighlightTag::Function => lsp_types::SemanticTokenType::FUNCTION,
+        HighlightTag::Generic => semantic_tokens::GENERIC,
         HighlightTag::Module => lsp_types::SemanticTokenType::NAMESPACE,
         HighlightTag::Constant => {
             mods |= semantic_tokens::CONSTANT;
@@ -331,6 +332,7 @@ fn semantic_token_type_and_modifiers(
             HighlightModifier::Attribute => semantic_tokens::ATTRIBUTE_MODIFIER,
             HighlightModifier::Definition => lsp_types::SemanticTokenModifier::DECLARATION,
             HighlightModifier::Documentation => lsp_types::SemanticTokenModifier::DOCUMENTATION,
+            HighlightModifier::Injected => semantic_tokens::INJECTED,
             HighlightModifier::ControlFlow => semantic_tokens::CONTROL_FLOW,
             HighlightModifier::Mutable => semantic_tokens::MUTABLE,
             HighlightModifier::Unsafe => semantic_tokens::UNSAFE,
