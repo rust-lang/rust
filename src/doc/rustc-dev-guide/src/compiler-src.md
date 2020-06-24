@@ -53,14 +53,14 @@ something like this:
                 - [`rustc_middle`] and most of the other crates depend on a
                   handful of crates representing the early parts of the
                   compiler (e.g. the parser), fundamental data structures (e.g.
-                  [`Span`]), or error reporting: [`rustc_data_strucutres`],
+                  [`Span`]), or error reporting: [`rustc_data_structures`],
                   [`rustc_span`], [`rustc_errors`], etc.
 
 [main]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/fn.main.html
 [`rustc_driver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/index.html
 [`rustc_interface`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html
 [`rustc_middle`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/index.html
-[`rustc_data_strucutres`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_strucutres/index.html
+[`rustc_data_structures`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/index.html
 [`rustc_span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/index.html
 [`Span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 [`rustc_errors`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
