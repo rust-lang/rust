@@ -306,7 +306,7 @@ fn loop_turn(
                 }
             }
             vfs::loader::Message::Progress { n_entries_total, n_entries_done } => {
-                if n_entries_done == n_entries_done {
+                if n_entries_done == n_entries_total {
                     loop_state.status = Status::Ready;
                     became_ready = true;
                 }
