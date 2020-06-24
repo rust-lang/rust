@@ -1,4 +1,4 @@
-# The Rust Programming Language 
+<img height = "50" src = "https://img.shields.io/badge/Rust-Programming%20Language-black?style=flat&logo=rust">
 
 This is the main source code repository for [Rust]. It contains the compiler,
 standard library, and documentation. 
@@ -17,9 +17,9 @@ Read ["Installation"] from [The Book].
 _Note: If you wish to contribute to the compiler, you should read [this
 chapter][rustcguidebuild] of the rustc-dev-guide instead of this section._
 
-The Rust build system has a Python script called `x.py` to bootstrap when building
-the compiler. More information about it can be found by running `./x.py --help`
-or reading the [rustc dev guide][rustcguidebuild].
+The Rust build system uses a Python script called x.py to build the compiler,
+which manages the bootstrapping process. More information about it can be found 
+by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
 
 [rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 
