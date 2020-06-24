@@ -762,7 +762,7 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
         GenericParamKind::Type { default } => {
             visit_opt(default, |default| vis.visit_ty(default));
         }
-        GenericParamKind::Const { ty } => {
+        GenericParamKind::Const { ty, kw_span: _ } => {
             vis.visit_ty(ty);
         }
     }
