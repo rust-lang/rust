@@ -57,7 +57,6 @@ pub enum TypeError<'tcx> {
     /// type).
     CyclicTy(Ty<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
-    ProjectionBoundsLength(ExpectedFound<usize>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
     ObjectUnsafeCoercion(DefId),
     ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
@@ -174,13 +173,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                     tcx.def_path_str(values.found)
                 )
             }),
-            ProjectionBoundsLength(ref values) => write!(
-                f,
-                "expected {} associated type binding{}, found {}",
-                values.expected,
-                pluralize!(values.expected),
-                values.found
-            ),
             ExistentialMismatch(ref values) => report_maybe_different(
                 f,
                 &format!("trait `{}`", values.expected),
@@ -216,7 +208,6 @@ impl<'tcx> TypeError<'tcx> {
             | RegionsPlaceholderMismatch
             | Traits(_)
             | ProjectionMismatched(_)
-            | ProjectionBoundsLength(_)
             | ExistentialMismatch(_)
             | ConstMismatch(_)
             | IntrinsicCast
