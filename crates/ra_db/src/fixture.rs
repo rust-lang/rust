@@ -132,10 +132,17 @@ fn with_files(
 
     let mut file_position = None;
 
-    for entry in fixture.iter() {
-        let meta = match ParsedMeta::from(entry) {
-            ParsedMeta::File(it) => it,
+    for entry in fixture {
+        let text = if entry.text.contains(CURSOR_MARKER) {
+            let (range_or_offset, text) = extract_range_or_offset(&entry.text);
+            assert!(file_position.is_none());
+            file_position = Some((file_id, range_or_offset));
+            text.to_string()
+        } else {
+            entry.text.clone()
         };
+
+        let meta = FileMeta::from(entry);
         assert!(meta.path.starts_with(&source_root_prefix));
 
         if let Some(krate) = meta.krate {
@@ -156,15 +163,6 @@ fn with_files(
             assert!(default_crate_root.is_none());
             default_crate_root = Some(file_id);
         }
-
-        let text = if entry.text.contains(CURSOR_MARKER) {
-            let (range_or_offset, text) = extract_range_or_offset(&entry.text);
-            assert!(file_position.is_none());
-            file_position = Some((file_id, range_or_offset));
-            text.to_string()
-        } else {
-            entry.text.to_string()
-        };
 
         db.set_file_text(file_id, Arc::new(text));
         db.set_file_source_root(file_id, source_root_id);
@@ -198,10 +196,6 @@ fn with_files(
     (file_position, files)
 }
 
-enum ParsedMeta {
-    File(FileMeta),
-}
-
 struct FileMeta {
     path: String,
     krate: Option<String>,
@@ -211,22 +205,22 @@ struct FileMeta {
     env: Env,
 }
 
-impl From<&Fixture> for ParsedMeta {
-    fn from(f: &Fixture) -> Self {
+impl From<Fixture> for FileMeta {
+    fn from(f: Fixture) -> FileMeta {
         let mut cfg = CfgOptions::default();
         f.cfg_atoms.iter().for_each(|it| cfg.insert_atom(it.into()));
         f.cfg_key_values.iter().for_each(|(k, v)| cfg.insert_key_value(k.into(), v.into()));
 
-        Self::File(FileMeta {
-            path: f.path.to_owned(),
-            krate: f.crate_name.to_owned(),
-            deps: f.deps.to_owned(),
+        FileMeta {
+            path: f.path,
+            krate: f.krate,
+            deps: f.deps,
             cfg,
             edition: f
                 .edition
                 .as_ref()
                 .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
             env: Env::from(f.env.iter()),
-        })
+        }
     }
 }

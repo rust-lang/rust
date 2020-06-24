@@ -8,7 +8,7 @@ use stdx::{lines_with_ends, split_delim, trim_indent};
 pub struct Fixture {
     pub path: String,
     pub text: String,
-    pub crate_name: Option<String>,
+    pub krate: Option<String>,
     pub deps: Vec<String>,
     pub cfg_atoms: Vec<String>,
     pub cfg_key_values: Vec<(String, String)>,
@@ -56,7 +56,7 @@ impl Fixture {
     }
 
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
-    pub fn parse_meta_line(meta: &str) -> Fixture {
+    fn parse_meta_line(meta: &str) -> Fixture {
         assert!(meta.starts_with("//-"));
         let meta = meta["//-".len()..].trim();
         let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
@@ -98,7 +98,7 @@ impl Fixture {
         Fixture {
             path,
             text: String::new(),
-            crate_name: krate,
+            krate: krate,
             deps,
             cfg_atoms,
             cfg_key_values,
@@ -136,7 +136,7 @@ fn parse_fixture_gets_full_meta() {
     let meta = &parsed[0];
     assert_eq!("mod m;\n", meta.text);
 
-    assert_eq!("foo", meta.crate_name.as_ref().unwrap());
+    assert_eq!("foo", meta.krate.as_ref().unwrap());
     assert_eq!("/lib.rs", meta.path);
     assert_eq!(2, meta.env.len());
 }
