@@ -32,8 +32,9 @@ use crate::clean::inline;
 use crate::clean::types::Type::{QPath, ResolvedPath};
 use crate::core::DocContext;
 use crate::doctree;
-use crate::html::item_type::ItemType;
-use crate::html::render::{cache, ExternalLocation};
+use crate::formats::cache::cache;
+use crate::formats::item_type::ItemType;
+use crate::html::render::cache::ExternalLocation;
 
 use self::FnRetTy::*;
 use self::ItemEnum::*;
@@ -1172,7 +1173,7 @@ impl GetDefId for Type {
     fn def_id(&self) -> Option<DefId> {
         match *self {
             ResolvedPath { did, .. } => Some(did),
-            Primitive(p) => crate::html::render::cache().primitive_locations.get(&p).cloned(),
+            Primitive(p) => cache().primitive_locations.get(&p).cloned(),
             BorrowedRef { type_: box Generic(..), .. } => {
                 Primitive(PrimitiveType::Reference).def_id()
             }

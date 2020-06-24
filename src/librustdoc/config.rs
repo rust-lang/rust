@@ -254,7 +254,7 @@ pub struct RenderOptions {
 
 /// Temporary storage for data obtained during `RustdocVisitor::clean()`.
 /// Later on moved into `CACHE_KEY`.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct RenderInfo {
     pub inlined: FxHashSet<DefId>,
     pub external_paths: crate::core::ExternalPaths,

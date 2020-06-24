@@ -11,13 +11,15 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_span::def_id::DefId;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{self, PrimitiveType};
+use crate::formats::cache::cache;
+use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
-use crate::html::item_type::ItemType;
-use crate::html::render::{self, cache, CURRENT_DEPTH};
+use crate::html::render::cache::ExternalLocation;
+use crate::html::render::CURRENT_DEPTH;
 
 pub trait Print {
     fn print(self, buffer: &mut Buffer);
@@ -493,9 +495,9 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
                 fqp,
                 shortty,
                 match cache.extern_locations[&did.krate] {
-                    (.., render::Remote(ref s)) => s.to_string(),
-                    (.., render::Local) => "../".repeat(depth),
-                    (.., render::Unknown) => return None,
+                    (.., ExternalLocation::Remote(ref s)) => s.to_string(),
+                    (.., ExternalLocation::Local) => "../".repeat(depth),
+                    (.., ExternalLocation::Unknown) => return None,
                 },
             )
         }
@@ -574,12 +576,12 @@ fn primitive_link(
             }
             Some(&def_id) => {
                 let loc = match m.extern_locations[&def_id.krate] {
-                    (ref cname, _, render::Remote(ref s)) => Some((cname, s.to_string())),
-                    (ref cname, _, render::Local) => {
+                    (ref cname, _, ExternalLocation::Remote(ref s)) => Some((cname, s.to_string())),
+                    (ref cname, _, ExternalLocation::Local) => {
                         let len = CURRENT_DEPTH.with(|s| s.get());
                         Some((cname, "../".repeat(len)))
                     }
-                    (.., render::Unknown) => None,
+                    (.., ExternalLocation::Unknown) => None,
                 };
                 if let Some((cname, root)) = loc {
                     write!(

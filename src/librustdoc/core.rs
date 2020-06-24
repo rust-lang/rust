@@ -44,9 +44,9 @@ pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 pub struct DocContext<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub resolver: Rc<RefCell<interface::BoxedResolver>>,
-    /// Later on moved into `html::render::CACHE_KEY`
+    /// Later on moved into `formats::cache::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
-    /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
+    /// Later on moved through `clean::Crate` into `formats::cache::CACHE_KEY`
     pub external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
