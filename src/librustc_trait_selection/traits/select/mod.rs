@@ -748,8 +748,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             && stack.iter().skip(1).any(|prev| {
                 stack.obligation.param_env == prev.obligation.param_env
                     && self.match_fresh_trait_refs(
-                        &stack.fresh_trait_ref,
-                        &prev.fresh_trait_ref,
+                        stack.fresh_trait_ref,
+                        prev.fresh_trait_ref,
                         prev.obligation.param_env,
                     )
             })
@@ -1944,8 +1944,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn match_fresh_trait_refs(
         &self,
-        previous: &ty::PolyTraitRef<'tcx>,
-        current: &ty::PolyTraitRef<'tcx>,
+        previous: ty::PolyTraitRef<'tcx>,
+        current: ty::PolyTraitRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
         let mut matcher = ty::_match::Match::new(self.tcx(), param_env);

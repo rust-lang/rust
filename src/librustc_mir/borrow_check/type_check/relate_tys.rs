@@ -31,7 +31,7 @@ pub(super) fn relate_types<'tcx>(
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         v,
     )
-    .relate(&a, &b)?;
+    .relate(a, b)?;
     Ok(())
 }
 

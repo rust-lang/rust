@@ -159,6 +159,7 @@ where
         }
     }
 
+    // FIXME: consider taking `ty::Binder` directly, without the reference.
     fn create_scope(
         &mut self,
         value: &ty::Binder<impl TypeFoldable<'tcx>>,
@@ -369,7 +370,7 @@ where
             universe,
         };
 
-        generalizer.relate(&value, &value)
+        generalizer.relate(value, value)
     }
 }
 
@@ -495,8 +496,8 @@ where
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
-        a: &T,
-        b: &T,
+        a: T,
+        b: T,
     ) -> RelateResult<'tcx, T> {
         debug!("relate_with_variance(variance={:?}, a={:?}, b={:?})", variance, a, b);
 
@@ -613,8 +614,8 @@ where
 
     fn binders<T>(
         &mut self,
-        a: &ty::Binder<T>,
-        b: &ty::Binder<T>,
+        a: ty::Binder<T>,
+        b: ty::Binder<T>,
     ) -> RelateResult<'tcx, ty::Binder<T>>
     where
         T: Relate<'tcx>,
@@ -640,11 +641,10 @@ where
 
         debug!("binders({:?}: {:?}, ambient_variance={:?})", a, b, self.ambient_variance);
 
-        if !a.skip_binder().has_escaping_bound_vars() && !b.skip_binder().has_escaping_bound_vars()
-        {
+        if let (Some(a), Some(b)) = (a.no_bound_vars(), b.no_bound_vars()) {
             // Fast path for the common case.
-            self.relate(a.skip_binder(), b.skip_binder())?;
-            return Ok(a.clone());
+            self.relate(a, b)?;
+            return Ok(ty::Binder::bind(a));
         }
 
         if self.ambient_covariance() {
@@ -654,8 +654,8 @@ where
             // instantiation of B (i.e., B instantiated with
             // universals).
 
-            let b_scope = self.create_scope(b, UniversallyQuantified(true));
-            let a_scope = self.create_scope(a, UniversallyQuantified(false));
+            let b_scope = self.create_scope(&b, UniversallyQuantified(true));
+            let a_scope = self.create_scope(&a, UniversallyQuantified(false));
 
             debug!("binders: a_scope = {:?} (existential)", a_scope);
             debug!("binders: b_scope = {:?} (universal)", b_scope);
@@ -683,7 +683,7 @@ where
             //   subtyping (i.e., `&'b u32 <: &{P} u32`).
             let variance = ::std::mem::replace(&mut self.ambient_variance, ty::Variance::Covariant);
 
-            self.relate(a.skip_binder(), b.skip_binder())?;
+            self.relate(*a.skip_binder(), *b.skip_binder())?;
 
             self.ambient_variance = variance;
 
@@ -698,8 +698,8 @@ where
             // instantiation of B (i.e., B instantiated with
             // existentials). Opposite of above.
 
-            let a_scope = self.create_scope(a, UniversallyQuantified(true));
-            let b_scope = self.create_scope(b, UniversallyQuantified(false));
+            let a_scope = self.create_scope(&a, UniversallyQuantified(true));
+            let b_scope = self.create_scope(&b, UniversallyQuantified(false));
 
             debug!("binders: a_scope = {:?} (universal)", a_scope);
             debug!("binders: b_scope = {:?} (existential)", b_scope);
@@ -712,7 +712,7 @@ where
             let variance =
                 ::std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
 
-            self.relate(a.skip_binder(), b.skip_binder())?;
+            self.relate(*a.skip_binder(), *b.skip_binder())?;
 
             self.ambient_variance = variance;
 
@@ -839,8 +839,8 @@ where
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
-        a: &T,
-        b: &T,
+        a: T,
+        b: T,
     ) -> RelateResult<'tcx, T> {
         debug!(
             "TypeGeneralizer::relate_with_variance(variance={:?}, a={:?}, b={:?})",
@@ -890,7 +890,7 @@ where
                     match variables.probe(vid) {
                         TypeVariableValue::Known { value: u } => {
                             drop(variables);
-                            self.relate(&u, &u)
+                            self.relate(u, u)
                         }
                         TypeVariableValue::Unknown { universe: _universe } => {
                             if self.ambient_variance == ty::Bivariant {
@@ -984,7 +984,7 @@ where
                 let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);
                 match var_value.val.known() {
-                    Some(u) => self.relate(&u, &u),
+                    Some(u) => self.relate(u, u),
                     None => {
                         let new_var_id = variable_table.new_key(ConstVarValue {
                             origin: var_value.origin,
@@ -1001,8 +1001,8 @@ where
 
     fn binders<T>(
         &mut self,
-        a: &ty::Binder<T>,
-        _: &ty::Binder<T>,
+        a: ty::Binder<T>,
+        _: ty::Binder<T>,
     ) -> RelateResult<'tcx, ty::Binder<T>>
     where
         T: Relate<'tcx>,
@@ -1010,7 +1010,7 @@ where
         debug!("TypeGeneralizer::binders(a={:?})", a);
 
         self.first_free_index.shift_in(1);
-        let result = self.relate(a.skip_binder(), a.skip_binder())?;
+        let result = self.relate(*a.skip_binder(), *a.skip_binder())?;
         self.first_free_index.shift_out(1);
         Ok(ty::Binder::bind(result))
     }
