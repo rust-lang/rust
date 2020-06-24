@@ -116,6 +116,9 @@ impl<T> Arena<T> {
     ) -> impl Iterator<Item = (Idx<T>, &T)> + ExactSizeIterator + DoubleEndedIterator {
         self.data.iter().enumerate().map(|(idx, value)| (Idx::from_raw(RawId(idx as u32)), value))
     }
+    pub fn shrink_to_fit(&mut self) {
+        self.data.shrink_to_fit();
+    }
 }
 
 impl<T> Default for Arena<T> {

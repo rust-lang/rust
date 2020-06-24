@@ -184,6 +184,7 @@ impl ItemTree {
         if let Some(attrs) = top_attrs {
             item_tree.attrs.insert(AttrOwner::TopLevel, attrs);
         }
+        item_tree.shrink_to_fit();
         Arc::new(item_tree)
     }
 
@@ -193,6 +194,51 @@ impl ItemTree {
             attrs: Default::default(),
             inner_items: Default::default(),
             data: Default::default(),
+        }
+    }
+
+    fn shrink_to_fit(&mut self) {
+        if let Some(data) = &mut self.data {
+            let ItemTreeData {
+                imports,
+                extern_crates,
+                functions,
+                structs,
+                fields,
+                unions,
+                enums,
+                variants,
+                consts,
+                statics,
+                traits,
+                impls,
+                type_aliases,
+                mods,
+                macro_calls,
+                exprs,
+                vis,
+                generics,
+            } = &mut **data;
+
+            imports.shrink_to_fit();
+            extern_crates.shrink_to_fit();
+            functions.shrink_to_fit();
+            structs.shrink_to_fit();
+            fields.shrink_to_fit();
+            unions.shrink_to_fit();
+            enums.shrink_to_fit();
+            variants.shrink_to_fit();
+            consts.shrink_to_fit();
+            statics.shrink_to_fit();
+            traits.shrink_to_fit();
+            impls.shrink_to_fit();
+            type_aliases.shrink_to_fit();
+            mods.shrink_to_fit();
+            macro_calls.shrink_to_fit();
+            exprs.shrink_to_fit();
+
+            vis.arena.shrink_to_fit();
+            generics.arena.shrink_to_fit();
         }
     }
 
