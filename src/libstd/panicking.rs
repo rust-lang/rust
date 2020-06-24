@@ -258,6 +258,7 @@ pub mod panic_count {
         LOCAL_PANIC_COUNT.with(|c| c.get())
     }
 
+    #[inline]
     pub fn is_zero() -> bool {
         if GLOBAL_PANIC_COUNT.load(Ordering::Relaxed) == 0 {
             // Fast path: if `GLOBAL_PANIC_COUNT` is zero, all threads
@@ -265,8 +266,16 @@ pub mod panic_count {
             // equal to zero, so TLS access can be avoided.
             true
         } else {
-            LOCAL_PANIC_COUNT.with(|c| c.get() == 0)
+            is_zero_slow_path()
         }
+    }
+
+    // Slow path is in a separate function to reduce the amount of code
+    // inlined from `is_zero`.
+    #[inline(never)]
+    #[cold]
+    fn is_zero_slow_path() -> bool {
+        LOCAL_PANIC_COUNT.with(|c| c.get() == 0)
     }
 }
 
@@ -350,6 +359,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
 }
 
 /// Determines whether the current thread is unwinding because of panic.
+#[inline]
 pub fn panicking() -> bool {
     !panic_count::is_zero()
 }
