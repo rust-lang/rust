@@ -61,7 +61,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
         crate::trap::trap_unreachable(&mut fx, "function has uninhabited argument");
     } else {
         tcx.sess.time("codegen clif ir", || {
-            tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_block, true));
+            tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_block));
             codegen_fn_content(&mut fx);
         });
     }

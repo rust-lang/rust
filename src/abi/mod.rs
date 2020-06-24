@@ -306,7 +306,6 @@ fn local_place<'tcx>(
 pub(crate) fn codegen_fn_prelude<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     start_block: Block,
-    should_codegen_locals: bool,
 ) {
     let ssa_analyzed = crate::analyze::analyze(fx);
 
@@ -424,17 +423,13 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
         }
     }
 
-    // HACK should_codegen_locals required for the ``implement `<Box<F> as FnOnce>::call_once`
-    // without `alloca``` hack in `base::trans_fn`.
-    if should_codegen_locals {
-        for local in fx.mir.vars_and_temps_iter() {
-            let ty = fx.monomorphize(&fx.mir.local_decls[local].ty);
-            let layout = fx.layout_of(ty);
+    for local in fx.mir.vars_and_temps_iter() {
+        let ty = fx.monomorphize(&fx.mir.local_decls[local].ty);
+        let layout = fx.layout_of(ty);
 
-            let is_ssa = ssa_analyzed[local] == crate::analyze::SsaKind::Ssa;
+        let is_ssa = ssa_analyzed[local] == crate::analyze::SsaKind::Ssa;
 
-            local_place(fx, local, layout, is_ssa);
-        }
+        local_place(fx, local, layout, is_ssa);
     }
 
     fx.bcx
