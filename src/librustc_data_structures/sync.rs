@@ -358,7 +358,6 @@ cfg_if! {
         use parking_lot::Mutex as InnerLock;
         use parking_lot::RwLock as InnerRwLock;
 
-        use std;
         use std::thread;
         pub use rayon::{join, scope};
 

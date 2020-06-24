@@ -7,7 +7,6 @@
 #![deny(warnings)]
 
 use serde::Serialize;
-use toml;
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;

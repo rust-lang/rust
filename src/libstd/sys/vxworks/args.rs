@@ -56,7 +56,6 @@ mod imp {
     use crate::ffi::{CStr, OsString};
     use crate::marker::PhantomData;
     use crate::ptr;
-    use libc;
 
     use crate::sys_common::mutex::Mutex;
 

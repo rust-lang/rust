@@ -13,7 +13,6 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 mod imp {
     use crate::io;
     use core::sync::atomic::{AtomicBool, Ordering::Relaxed};
-    use libc;
 
     pub fn fill_bytes(v: &mut [u8]) {
         static RNG_INIT: AtomicBool = AtomicBool::new(false);

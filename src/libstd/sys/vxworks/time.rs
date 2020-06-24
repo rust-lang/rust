@@ -1,7 +1,6 @@
 use crate::cmp::Ordering;
 use crate::time::Duration;
 use ::core::hash::{Hash, Hasher};
-use libc;
 
 pub use self::inner::{Instant, SystemTime, UNIX_EPOCH};
 use crate::convert::TryInto;
@@ -104,7 +103,6 @@ mod inner {
     use crate::fmt;
     use crate::sys::cvt;
     use crate::time::Duration;
-    use libc;
 
     use super::Timespec;
 
