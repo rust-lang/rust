@@ -1511,13 +1511,7 @@ pub fn is_range_literal(sm: &SourceMap, expr: &Expr<'_>) -> bool {
     // Check whether a span corresponding to a range expression is a
     // range literal, rather than an explicit struct or `new()` call.
     fn is_lit(sm: &SourceMap, span: &Span) -> bool {
-        let end_point = sm.end_point(*span);
-
-        if let Ok(end_string) = sm.span_to_snippet(end_point) {
-            !(end_string.ends_with('}') || end_string.ends_with(')'))
-        } else {
-            false
-        }
+        sm.span_to_snippet(*span).map(|range_src| range_src.contains("..")).unwrap_or(false)
     };
 
     match expr.kind {
