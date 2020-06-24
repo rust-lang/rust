@@ -363,16 +363,17 @@ mod tests {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: true, type_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
-                range: 106..107,
+                range: 69..70,
                 kind: ParameterHint,
                 label: "a",
             },
             InlayHint {
-                range: 109..110,
+                range: 72..73,
                 kind: ParameterHint,
                 label: "b",
             },
-        ]"###);
+        ]
+        "###);
     }
 
     #[test]
@@ -399,11 +400,12 @@ mod tests {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ type_hints: true, parameter_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
-                range: 97..99,
+                range: 60..62,
                 kind: TypeHint,
                 label: "i32",
             },
-        ]"###);
+        ]
+        "###);
     }
     #[test]
     fn default_generic_types_should_not_be_displayed() {
@@ -423,12 +425,12 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
-                range: 69..71,
+                range: 68..70,
                 kind: TypeHint,
                 label: "Test<i32>",
             },
             InlayHint {
-                range: 107..113,
+                range: 106..112,
                 kind: TypeHint,
                 label: "&Test<i32>",
             },
@@ -480,57 +482,57 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
-                range: 193..197,
+                range: 192..196,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 236..244,
+                range: 235..243,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 275..279,
+                range: 274..278,
                 kind: TypeHint,
                 label: "&str",
             },
             InlayHint {
-                range: 539..543,
+                range: 538..542,
                 kind: TypeHint,
                 label: "(i32, char)",
             },
             InlayHint {
-                range: 566..567,
+                range: 565..566,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 570..571,
+                range: 569..570,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 573..574,
+                range: 572..573,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 577..578,
+                range: 576..577,
                 kind: TypeHint,
                 label: "f64",
             },
             InlayHint {
-                range: 580..581,
+                range: 579..580,
                 kind: TypeHint,
                 label: "f64",
             },
             InlayHint {
-                range: 584..585,
+                range: 583..584,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 627..628,
+                range: 626..627,
                 kind: TypeHint,
                 label: "i32",
             },
@@ -560,47 +562,47 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
-                range: 21..30,
+                range: 20..29,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 57..66,
+                range: 56..65,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 115..123,
+                range: 114..122,
                 kind: TypeHint,
                 label: "|…| -> i32",
             },
             InlayHint {
-                range: 127..128,
+                range: 126..127,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 130..131,
+                range: 129..130,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 133..134,
+                range: 132..133,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 136..137,
+                range: 135..136,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 201..213,
+                range: 200..212,
                 kind: TypeHint,
                 label: "&|…| -> i32",
             },
             InlayHint {
-                range: 236..245,
+                range: 235..244,
                 kind: TypeHint,
                 label: "|| -> i32",
             },
@@ -624,12 +626,12 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
-                range: 21..30,
+                range: 20..29,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 44..53,
+                range: 43..52,
                 kind: TypeHint,
                 label: "i32",
             },
@@ -674,57 +676,57 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
-                range: 188..192,
+                range: 187..191,
                 kind: TypeHint,
                 label: "CustomOption<Test>",
             },
             InlayHint {
-                range: 267..271,
+                range: 266..270,
                 kind: TypeHint,
                 label: "&CustomOption<Test>",
             },
             InlayHint {
-                range: 300..304,
+                range: 299..303,
                 kind: TypeHint,
                 label: "&Test",
             },
             InlayHint {
-                range: 341..342,
+                range: 340..341,
                 kind: TypeHint,
                 label: "&CustomOption<u32>",
             },
             InlayHint {
-                range: 344..345,
+                range: 343..344,
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: 387..388,
+                range: 386..387,
                 kind: TypeHint,
                 label: "&CustomOption<u32>",
             },
             InlayHint {
-                range: 393..394,
+                range: 392..393,
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: 441..442,
+                range: 440..441,
                 kind: TypeHint,
                 label: "&u32",
             },
             InlayHint {
-                range: 448..449,
+                range: 447..448,
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: 500..501,
+                range: 499..500,
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: 543..544,
+                range: 542..543,
                 kind: TypeHint,
                 label: "&u8",
             },
@@ -769,57 +771,57 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
-                range: 188..192,
+                range: 187..191,
                 kind: TypeHint,
                 label: "CustomOption<Test>",
             },
             InlayHint {
-                range: 273..277,
+                range: 272..276,
                 kind: TypeHint,
                 label: "&CustomOption<Test>",
             },
             InlayHint {
-                range: 309..313,
+                range: 308..312,
                 kind: TypeHint,
                 label: "&Test",
             },
             InlayHint {
-                range: 353..354,
+                range: 352..353,
                 kind: TypeHint,
                 label: "&CustomOption<u32>",
             },
             InlayHint {
-                range: 356..357,
+                range: 355..356,
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: 402..403,
+                range: 401..402,
                 kind: TypeHint,
                 label: "&CustomOption<u32>",
             },
             InlayHint {
-                range: 408..409,
+                range: 407..408,
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: 459..460,
+                range: 458..459,
                 kind: TypeHint,
                 label: "&u32",
             },
             InlayHint {
-                range: 466..467,
+                range: 465..466,
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: 521..522,
+                range: 520..521,
                 kind: TypeHint,
                 label: "&u8",
             },
             InlayHint {
-                range: 567..568,
+                range: 566..567,
                 kind: TypeHint,
                 label: "&u8",
             },
@@ -864,52 +866,52 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
-                range: 252..256,
+                range: 251..255,
                 kind: TypeHint,
                 label: "CustomOption<Test>",
             },
             InlayHint {
-                range: 277..281,
+                range: 276..280,
                 kind: TypeHint,
                 label: "Test",
             },
             InlayHint {
-                range: 310..311,
+                range: 309..310,
                 kind: TypeHint,
                 label: "CustomOption<u32>",
             },
             InlayHint {
-                range: 313..314,
+                range: 312..313,
                 kind: TypeHint,
                 label: "u8",
             },
             InlayHint {
-                range: 348..349,
+                range: 347..348,
                 kind: TypeHint,
                 label: "CustomOption<u32>",
             },
             InlayHint {
-                range: 354..355,
+                range: 353..354,
                 kind: TypeHint,
                 label: "u8",
             },
             InlayHint {
-                range: 394..395,
+                range: 393..394,
                 kind: TypeHint,
                 label: "u32",
             },
             InlayHint {
-                range: 401..402,
+                range: 400..401,
                 kind: TypeHint,
                 label: "u8",
             },
             InlayHint {
-                range: 445..446,
+                range: 444..445,
                 kind: TypeHint,
                 label: "u8",
             },
             InlayHint {
-                range: 480..481,
+                range: 479..480,
                 kind: TypeHint,
                 label: "u8",
             },
@@ -936,17 +938,17 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
         [
             InlayHint {
-                range: 74..75,
+                range: 73..74,
                 kind: TypeHint,
                 label: "Smol<u32>",
             },
             InlayHint {
-                range: 98..99,
+                range: 97..98,
                 kind: TypeHint,
                 label: "VeryLongOuterName<…>",
             },
             InlayHint {
-                range: 137..138,
+                range: 136..137,
                 kind: TypeHint,
                 label: "Smol<Smol<…>>",
             },
@@ -1024,77 +1026,77 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
         [
             InlayHint {
-                range: 798..809,
+                range: 797..808,
                 kind: TypeHint,
                 label: "i32",
             },
             InlayHint {
-                range: 842..843,
+                range: 841..842,
                 kind: ParameterHint,
                 label: "foo",
             },
             InlayHint {
-                range: 845..846,
+                range: 844..845,
                 kind: ParameterHint,
                 label: "bar",
             },
             InlayHint {
-                range: 848..855,
+                range: 847..854,
                 kind: ParameterHint,
                 label: "msg",
             },
             InlayHint {
-                range: 860..871,
+                range: 859..870,
                 kind: ParameterHint,
                 label: "last",
             },
             InlayHint {
-                range: 914..917,
+                range: 913..916,
                 kind: ParameterHint,
                 label: "param",
             },
             InlayHint {
-                range: 937..939,
+                range: 936..938,
                 kind: ParameterHint,
                 label: "&self",
             },
             InlayHint {
-                range: 941..945,
+                range: 940..944,
                 kind: ParameterHint,
                 label: "param",
             },
             InlayHint {
-                range: 980..989,
+                range: 979..988,
                 kind: ParameterHint,
                 label: "file_id",
             },
             InlayHint {
-                range: 999..1012,
+                range: 998..1011,
                 kind: ParameterHint,
                 label: "name",
             },
             InlayHint {
-                range: 1022..1026,
+                range: 1021..1025,
                 kind: ParameterHint,
                 label: "focus_range",
             },
             InlayHint {
-                range: 1036..1048,
+                range: 1035..1047,
                 kind: ParameterHint,
                 label: "full_range",
             },
             InlayHint {
-                range: 1058..1071,
+                range: 1057..1070,
                 kind: ParameterHint,
                 label: "kind",
             },
             InlayHint {
-                range: 1081..1085,
+                range: 1080..1084,
                 kind: ParameterHint,
                 label: "docs",
             },
             InlayHint {
-                range: 1095..1099,
+                range: 1094..1098,
                 kind: ParameterHint,
                 label: "description",
             },
@@ -1239,16 +1241,17 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
-                range: 232..269,
+                range: 147..172,
                 kind: ChainingHint,
                 label: "B",
             },
             InlayHint {
-                range: 232..239,
+                range: 147..154,
                 kind: ChainingHint,
                 label: "A",
             },
-        ]"###);
+        ]
+        "###);
     }
 
     #[test]
@@ -1293,12 +1296,12 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
-                range: 252..323,
+                range: 143..190,
                 kind: ChainingHint,
                 label: "C",
             },
             InlayHint {
-                range: 252..300,
+                range: 143..179,
                 kind: ChainingHint,
                 label: "B",
             },
@@ -1331,15 +1334,16 @@ fn main() {
         assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
         [
             InlayHint {
-                range: 403..452,
+                range: 246..283,
                 kind: ChainingHint,
                 label: "B<X<i32, bool>>",
             },
             InlayHint {
-                range: 403..422,
+                range: 246..265,
                 kind: ChainingHint,
                 label: "A<X<i32, bool>>",
             },
-        ]"###);
+        ]
+        "###);
     }
 }

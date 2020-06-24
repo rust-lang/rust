@@ -75,18 +75,15 @@ fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::{assert_eq_text, extract_offset};
+    use test_utils::assert_eq_text;
 
-    use crate::mock_analysis::single_file;
-
-    use super::*;
+    use crate::mock_analysis::single_file_with_position;
 
     fn apply_on_enter(before: &str) -> Option<String> {
-        let (offset, before) = extract_offset(before);
-        let (analysis, file_id) = single_file(&before);
-        let result = analysis.on_enter(FilePosition { offset, file_id }).unwrap()?;
+        let (analysis, position) = single_file_with_position(&before);
+        let result = analysis.on_enter(position).unwrap()?;
 
-        let mut actual = before.to_string();
+        let mut actual = analysis.file_text(position.file_id).unwrap().to_string();
         result.apply(&mut actual);
         Some(actual)
     }
