@@ -31,7 +31,7 @@ fn test_inner_items(ra_fixture: &str) {
             ModItem::TypeAlias(it) => tree.source(&db, InFile::new(file_id, it)).into(),
             ModItem::Mod(it) => {
                 if let ModKind::Inline { items } = &tree[it].kind {
-                    worklist.extend(items);
+                    worklist.extend(&**items);
                 }
                 tree.source(&db, InFile::new(file_id, it)).into()
             }
@@ -125,14 +125,14 @@ fn fmt_mod_item(out: &mut String, tree: &ItemTree, item: ModItem) {
         }
         ModItem::Trait(it) => {
             format_to!(out, "{:?}", tree[it]);
-            for item in &tree[it].items {
+            for item in &*tree[it].items {
                 fmt_mod_item(&mut children, tree, ModItem::from(*item));
                 format_to!(children, "\n");
             }
         }
         ModItem::Impl(it) => {
             format_to!(out, "{:?}", tree[it]);
-            for item in &tree[it].items {
+            for item in &*tree[it].items {
                 fmt_mod_item(&mut children, tree, ModItem::from(*item));
                 format_to!(children, "\n");
             }
@@ -144,7 +144,7 @@ fn fmt_mod_item(out: &mut String, tree: &ItemTree, item: ModItem) {
             format_to!(out, "{:?}", tree[it]);
             match &tree[it].kind {
                 ModKind::Inline { items } => {
-                    for item in items {
+                    for item in &**items {
                         fmt_mod_item(&mut children, tree, *item);
                         format_to!(children, "\n");
                     }

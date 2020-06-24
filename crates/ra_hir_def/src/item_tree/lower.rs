@@ -325,7 +325,7 @@ impl Ctx {
             generic_params: GenericParamsId::EMPTY,
             has_self_param,
             is_unsafe: func.unsafe_token().is_some(),
-            params,
+            params: params.into_boxed_slice(),
             ret_type,
             ast_id,
         };
@@ -344,7 +344,14 @@ impl Ctx {
         let bounds = self.lower_type_bounds(type_alias);
         let generic_params = self.lower_generic_params(GenericsOwner::TypeAlias, type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
-        let res = TypeAlias { name, visibility, bounds, generic_params, type_ref, ast_id };
+        let res = TypeAlias {
+            name,
+            visibility,
+            bounds: bounds.into_boxed_slice(),
+            generic_params,
+            type_ref,
+            ast_id,
+        };
         Some(id(self.data().type_aliases.alloc(res)))
     }
 
@@ -384,7 +391,7 @@ impl Ctx {
                     })
                     .unwrap_or_else(|| {
                         mark::hit!(name_res_works_for_broken_modules);
-                        Vec::new()
+                        Box::new([]) as Box<[_]>
                     }),
             }
         };
@@ -552,7 +559,7 @@ impl Ctx {
             GenericsOwner::Function(func) => {
                 generics.fill(&self.body_ctx, sm, node);
                 // lower `impl Trait` in arguments
-                for param in &func.params {
+                for param in &*func.params {
                     generics.fill_implicit_impl_trait_args(param);
                 }
             }

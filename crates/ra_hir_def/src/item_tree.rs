@@ -438,7 +438,7 @@ pub struct Function {
     pub generic_params: GenericParamsId,
     pub has_self_param: bool,
     pub is_unsafe: bool,
-    pub params: Vec<TypeRef>,
+    pub params: Box<[TypeRef]>,
     pub ret_type: TypeRef,
     pub ast_id: FileAstId<ast::FnDef>,
 }
@@ -505,7 +505,7 @@ pub struct Trait {
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
     pub auto: bool,
-    pub items: Vec<AssocItem>,
+    pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::TraitDef>,
 }
 
@@ -515,7 +515,7 @@ pub struct Impl {
     pub target_trait: Option<TypeRef>,
     pub target_type: TypeRef,
     pub is_negative: bool,
-    pub items: Vec<AssocItem>,
+    pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::ImplDef>,
 }
 
@@ -524,7 +524,7 @@ pub struct TypeAlias {
     pub name: Name,
     pub visibility: RawVisibilityId,
     /// Bounds on the type alias itself. Only valid in trait declarations, eg. `type Assoc: Copy;`.
-    pub bounds: Vec<TypeBound>,
+    pub bounds: Box<[TypeBound]>,
     pub generic_params: GenericParamsId,
     pub type_ref: Option<TypeRef>,
     pub ast_id: FileAstId<ast::TypeAliasDef>,
@@ -541,7 +541,7 @@ pub struct Mod {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ModKind {
     /// `mod m { ... }`
-    Inline { items: Vec<ModItem> },
+    Inline { items: Box<[ModItem]> },
 
     /// `mod m;`
     Outline {},

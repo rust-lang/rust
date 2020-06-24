@@ -38,7 +38,7 @@ impl FunctionData {
 
         Arc::new(FunctionData {
             name: func.name.clone(),
-            params: func.params.clone(),
+            params: func.params.to_vec(),
             ret_type: func.ret_type.clone(),
             attrs: item_tree.attrs(loc.id.value.into()).clone(),
             has_self_param: func.has_self_param,
@@ -70,7 +70,7 @@ impl TypeAliasData {
             name: typ.name.clone(),
             type_ref: typ.type_ref.clone(),
             visibility: item_tree[typ.visibility].clone(),
-            bounds: typ.bounds.clone(),
+            bounds: typ.bounds.to_vec(),
         })
     }
 }
