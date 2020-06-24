@@ -20,11 +20,12 @@ use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
     from_proto,
     line_endings::LineEndings,
+    main_loop::ReqQueue,
     request_metrics::{LatestRequests, RequestMetrics},
     to_proto::url_from_abs_path,
     Result,
 };
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> Option<Flycheck> {
     // FIXME: Figure out the multi-workspace situation
@@ -40,12 +41,23 @@ fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> 
     })
 }
 
+#[derive(Eq, PartialEq)]
+pub(crate) enum Status {
+    Loading,
+    Ready,
+}
+
+impl Default for Status {
+    fn default() -> Self {
+        Status::Loading
+    }
+}
+
 /// `GlobalState` is the primary mutable state of the language server
 ///
 /// The most interesting components are `vfs`, which stores a consistent
 /// snapshot of the file systems, and `analysis_host`, which stores our
 /// incremental salsa database.
-#[derive(Debug)]
 pub(crate) struct GlobalState {
     pub(crate) config: Config,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
@@ -54,10 +66,13 @@ pub(crate) struct GlobalState {
     pub(crate) task_receiver: Receiver<vfs::loader::Message>,
     pub(crate) flycheck: Option<Flycheck>,
     pub(crate) diagnostics: DiagnosticCollection,
-    pub(crate) proc_macro_client: ProcMacroClient,
+    pub(crate) mem_docs: FxHashSet<VfsPath>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
+    pub(crate) status: Status,
+    pub(crate) req_queue: ReqQueue,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
     source_root_config: SourceRootConfig,
+    _proc_macro_client: ProcMacroClient,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -75,6 +90,7 @@ impl GlobalState {
         workspaces: Vec<ProjectWorkspace>,
         lru_capacity: Option<usize>,
         config: Config,
+        req_queue: ReqQueue,
     ) -> GlobalState {
         let mut change = AnalysisChange::new();
 
@@ -136,13 +152,16 @@ impl GlobalState {
             workspaces: Arc::new(workspaces),
             analysis_host,
             loader,
-            vfs: Arc::new(RwLock::new((vfs, FxHashMap::default()))),
             task_receiver,
-            latest_requests: Default::default(),
             flycheck,
             diagnostics: Default::default(),
-            proc_macro_client,
+            mem_docs: FxHashSet::default(),
+            vfs: Arc::new(RwLock::new((vfs, FxHashMap::default()))),
+            status: Status::default(),
+            req_queue,
+            latest_requests: Default::default(),
             source_root_config: project_folders.source_root_config,
+            _proc_macro_client: proc_macro_client,
         };
         res.process_changes();
         res
