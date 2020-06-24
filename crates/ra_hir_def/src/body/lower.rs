@@ -57,17 +57,15 @@ impl LowerCtx {
 
 pub(super) fn lower(
     db: &dyn DefDatabase,
-    file_id: HirFileId,
     def: DefWithBodyId,
     expander: Expander,
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
-    let item_tree = db.item_tree(file_id);
+    let item_tree = db.item_tree(expander.current_file_id);
     ExprCollector {
         db,
         def,
-        expander,
         source_map: BodySourceMap::default(),
         body: Body {
             exprs: Arena::default(),
@@ -76,7 +74,8 @@ pub(super) fn lower(
             body_expr: dummy_expr_id(),
             item_scope: Default::default(),
         },
-        item_trees: vec![(file_id, item_tree)],
+        item_trees: vec![(expander.current_file_id, item_tree)],
+        expander,
     }
     .collect(params, body)
 }

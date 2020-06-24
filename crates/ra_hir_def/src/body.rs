@@ -243,7 +243,7 @@ impl Body {
             }
         };
         let expander = Expander::new(db, file_id, module);
-        let (body, source_map) = Body::new(db, file_id, def, expander, params, body);
+        let (body, source_map) = Body::new(db, def, expander, params, body);
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -253,13 +253,12 @@ impl Body {
 
     fn new(
         db: &dyn DefDatabase,
-        file_id: HirFileId,
         def: DefWithBodyId,
         expander: Expander,
         params: Option<ast::ParamList>,
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
-        lower::lower(db, file_id, def, expander, params, body)
+        lower::lower(db, def, expander, params, body)
     }
 }
 
