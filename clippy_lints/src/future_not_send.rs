@@ -91,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                             cx.tcx.infer_ctxt().enter(|infcx| {
                                 for FulfillmentError { obligation, .. } in send_errors {
                                     infcx.maybe_note_obligation_cause_for_async_await(db, &obligation);
-                                    if let Trait(trait_pred, _) = obligation.predicate.ignore_qualifiers().skip_binder().kind() {
+                                    if let Trait(trait_pred, _) = obligation.predicate.ignore_quantifiers().skip_binder().kind() {
                                         db.note(&format!(
                                             "`{}` doesn't implement `{}`",
                                             trait_pred.self_ty(),
