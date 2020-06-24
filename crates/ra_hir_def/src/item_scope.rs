@@ -126,17 +126,40 @@ impl ItemScope {
         let mut changed = false;
         let existing = self.visible.entry(name).or_default();
 
-        if existing.types.is_none() && def.types.is_some() {
-            existing.types = def.types;
-            changed = true;
+        match (existing.types, def.types) {
+            (None, Some(_)) => {
+                existing.types = def.types;
+                changed = true;
+            }
+            (Some(e), Some(d)) if e.0 != d.0 => {
+                existing.types = def.types;
+                changed = true;
+            }
+            _ => {}
         }
-        if existing.values.is_none() && def.values.is_some() {
-            existing.values = def.values;
-            changed = true;
+
+        match (existing.values, def.values) {
+            (None, Some(_)) => {
+                existing.values = def.values;
+                changed = true;
+            }
+            (Some(e), Some(d)) if e.0 != d.0 => {
+                existing.values = def.values;
+                changed = true;
+            }
+            _ => {}
         }
-        if existing.macros.is_none() && def.macros.is_some() {
-            existing.macros = def.macros;
-            changed = true;
+
+        match (existing.macros, def.macros) {
+            (None, Some(_)) => {
+                existing.macros = def.macros;
+                changed = true;
+            }
+            (Some(e), Some(d)) if e.0 != d.0 => {
+                existing.macros = def.macros;
+                changed = true;
+            }
+            _ => {}
         }
 
         changed

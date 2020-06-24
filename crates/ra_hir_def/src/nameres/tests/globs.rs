@@ -229,3 +229,149 @@ fn glob_enum_group() {
     "###
     );
 }
+
+#[test]
+fn glob_shadowed_def() {
+    let db = TestDB::with_files(
+        r###"
+        //- /lib.rs
+        mod foo;
+        mod bar;
+
+        use foo::*;
+        use bar::Baz;
+
+        //- /foo.rs
+        pub struct Baz;
+
+        //- /bar.rs
+        pub struct Baz;
+        "###,
+    );
+    let krate = db.test_crate();
+
+    let crate_def_map = db.crate_def_map(krate);
+    let (_, root_module) = crate_def_map
+        .modules
+        .iter()
+        .find(|(_, module_data)| module_data.parent.is_none())
+        .expect("Root module not found");
+    let visible_entries = root_module.scope.entries().collect::<Vec<_>>();
+    insta::assert_debug_snapshot!(
+        visible_entries,
+        @r###"
+    [
+        (
+            Name(
+                Text(
+                    "Baz",
+                ),
+            ),
+            PerNs {
+                types: Some(
+                    (
+                        AdtId(
+                            StructId(
+                                StructId(
+                                    1,
+                                ),
+                            ),
+                        ),
+                        Module(
+                            ModuleId {
+                                krate: CrateId(
+                                    0,
+                                ),
+                                local_id: Idx::<ModuleData>(0),
+                            },
+                        ),
+                    ),
+                ),
+                values: Some(
+                    (
+                        AdtId(
+                            StructId(
+                                StructId(
+                                    1,
+                                ),
+                            ),
+                        ),
+                        Module(
+                            ModuleId {
+                                krate: CrateId(
+                                    0,
+                                ),
+                                local_id: Idx::<ModuleData>(0),
+                            },
+                        ),
+                    ),
+                ),
+                macros: None,
+            },
+        ),
+        (
+            Name(
+                Text(
+                    "bar",
+                ),
+            ),
+            PerNs {
+                types: Some(
+                    (
+                        ModuleId(
+                            ModuleId {
+                                krate: CrateId(
+                                    0,
+                                ),
+                                local_id: Idx::<ModuleData>(2),
+                            },
+                        ),
+                        Module(
+                            ModuleId {
+                                krate: CrateId(
+                                    0,
+                                ),
+                                local_id: Idx::<ModuleData>(0),
+                            },
+                        ),
+                    ),
+                ),
+                values: None,
+                macros: None,
+            },
+        ),
+        (
+            Name(
+                Text(
+                    "foo",
+                ),
+            ),
+            PerNs {
+                types: Some(
+                    (
+                        ModuleId(
+                            ModuleId {
+                                krate: CrateId(
+                                    0,
+                                ),
+                                local_id: Idx::<ModuleData>(1),
+                            },
+                        ),
+                        Module(
+                            ModuleId {
+                                krate: CrateId(
+                                    0,
+                                ),
+                                local_id: Idx::<ModuleData>(0),
+                            },
+                        ),
+                    ),
+                ),
+                values: None,
+                macros: None,
+            },
+        ),
+    ]
+    "###
+    );
+}
