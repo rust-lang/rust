@@ -47,7 +47,6 @@
 //! path and, upon success, we run macro expansion and "collect module" phase on
 //! the result
 
-pub(crate) mod raw;
 mod collector;
 mod mod_resolution;
 mod path_resolution;

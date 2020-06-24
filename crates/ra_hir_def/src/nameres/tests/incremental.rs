@@ -58,44 +58,6 @@ fn typing_inside_a_function_should_not_invalidate_def_map() {
 }
 
 #[test]
-fn adding_inner_items_should_not_invalidate_def_map() {
-    check_def_map_is_not_recomputed(
-        r"
-        //- /lib.rs
-        struct S { a: i32}
-        enum E { A }
-        trait T {
-            fn a() {}
-        }
-        mod foo;<|>
-        impl S {
-            fn a() {}
-        }
-        use crate::foo::bar::Baz;
-        //- /foo/mod.rs
-        pub mod bar;
-
-        //- /foo/bar.rs
-        pub struct Baz;
-        ",
-        r"
-        struct S { a: i32, b: () }
-        enum E { A, B }
-        trait T {
-            fn a() {}
-            fn b() {}
-        }
-        mod foo;<|>
-        impl S {
-            fn a() {}
-            fn b() {}
-        }
-        use crate::foo::bar::Baz;
-        ",
-    );
-}
-
-#[test]
 fn typing_inside_a_macro_should_not_invalidate_def_map() {
     let (mut db, pos) = TestDB::with_position(
         r"

@@ -25,6 +25,8 @@ pub mod item_scope;
 pub mod dyn_map;
 pub mod keys;
 
+pub mod item_tree;
+
 pub mod adt;
 pub mod data;
 pub mod generics;
@@ -48,7 +50,7 @@ pub mod import_map;
 #[cfg(test)]
 mod test_db;
 
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 
 use hir_expand::{
     ast_id_map::FileAstId, eager::expand_eager_macro, hygiene::Hygiene, AstId, HirFileId, InFile,
@@ -56,10 +58,13 @@ use hir_expand::{
 };
 use ra_arena::Idx;
 use ra_db::{impl_intern_key, salsa, CrateId};
-use ra_syntax::{ast, AstNode};
+use ra_syntax::ast;
 
-use crate::body::Expander;
 use crate::builtin_type::BuiltinType;
+use item_tree::{
+    Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, ModItem, Static, Struct, Trait,
+    TypeAlias, Union,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
@@ -70,16 +75,62 @@ pub struct ModuleId {
 /// An ID of a module, **local** to a specific crate
 pub type LocalModuleId = Idx<nameres::ModuleData>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ItemLoc<N: AstNode> {
+#[derive(Debug)]
+pub struct ItemLoc<N: ItemTreeNode> {
     pub container: ContainerId,
-    pub ast_id: AstId<N>,
+    pub id: ItemTreeId<N>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AssocItemLoc<N: AstNode> {
+impl<N: ItemTreeNode> Clone for ItemLoc<N> {
+    fn clone(&self) -> Self {
+        Self { container: self.container, id: self.id }
+    }
+}
+
+impl<N: ItemTreeNode> Copy for ItemLoc<N> {}
+
+impl<N: ItemTreeNode> PartialEq for ItemLoc<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.container == other.container && self.id == other.id
+    }
+}
+
+impl<N: ItemTreeNode> Eq for ItemLoc<N> {}
+
+impl<N: ItemTreeNode> Hash for ItemLoc<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.container.hash(state);
+        self.id.hash(state);
+    }
+}
+
+#[derive(Debug)]
+pub struct AssocItemLoc<N: ItemTreeNode> {
     pub container: AssocContainerId,
-    pub ast_id: AstId<N>,
+    pub id: ItemTreeId<N>,
+}
+
+impl<N: ItemTreeNode> Clone for AssocItemLoc<N> {
+    fn clone(&self) -> Self {
+        Self { container: self.container, id: self.id }
+    }
+}
+
+impl<N: ItemTreeNode> Copy for AssocItemLoc<N> {}
+
+impl<N: ItemTreeNode> PartialEq for AssocItemLoc<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.container == other.container && self.id == other.id
+    }
+}
+
+impl<N: ItemTreeNode> Eq for AssocItemLoc<N> {}
+
+impl<N: ItemTreeNode> Hash for AssocItemLoc<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.container.hash(state);
+        self.id.hash(state);
+    }
 }
 
 macro_rules! impl_intern {
@@ -104,22 +155,22 @@ macro_rules! impl_intern {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FunctionId(salsa::InternId);
-type FunctionLoc = AssocItemLoc<ast::FnDef>;
+type FunctionLoc = AssocItemLoc<Function>;
 impl_intern!(FunctionId, FunctionLoc, intern_function, lookup_intern_function);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructId(salsa::InternId);
-type StructLoc = ItemLoc<ast::StructDef>;
+type StructLoc = ItemLoc<Struct>;
 impl_intern!(StructId, StructLoc, intern_struct, lookup_intern_struct);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnionId(salsa::InternId);
-pub type UnionLoc = ItemLoc<ast::UnionDef>;
+pub type UnionLoc = ItemLoc<Union>;
 impl_intern!(UnionId, UnionLoc, intern_union, lookup_intern_union);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EnumId(salsa::InternId);
-pub type EnumLoc = ItemLoc<ast::EnumDef>;
+pub type EnumLoc = ItemLoc<Enum>;
 impl_intern!(EnumId, EnumLoc, intern_enum, lookup_intern_enum);
 
 // FIXME: rename to `VariantId`, only enums can ave variants
@@ -141,27 +192,27 @@ pub type LocalFieldId = Idx<adt::FieldData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
-type ConstLoc = AssocItemLoc<ast::ConstDef>;
+type ConstLoc = AssocItemLoc<Const>;
 impl_intern!(ConstId, ConstLoc, intern_const, lookup_intern_const);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StaticId(salsa::InternId);
-pub type StaticLoc = ItemLoc<ast::StaticDef>;
+pub type StaticLoc = ItemLoc<Static>;
 impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TraitId(salsa::InternId);
-pub type TraitLoc = ItemLoc<ast::TraitDef>;
+pub type TraitLoc = ItemLoc<Trait>;
 impl_intern!(TraitId, TraitLoc, intern_trait, lookup_intern_trait);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAliasId(salsa::InternId);
-type TypeAliasLoc = AssocItemLoc<ast::TypeAliasDef>;
+type TypeAliasLoc = AssocItemLoc<TypeAlias>;
 impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_alias);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ImplId(salsa::InternId);
-type ImplLoc = ItemLoc<ast::ImplDef>;
+type ImplLoc = ItemLoc<Impl>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -365,7 +416,7 @@ impl HasModule for AssocContainerId {
     }
 }
 
-impl<N: AstNode> HasModule for AssocItemLoc<N> {
+impl<N: ItemTreeNode> HasModule for AssocItemLoc<N> {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         self.container.module(db)
     }
@@ -388,6 +439,16 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::FunctionId(it) => it.lookup(db).module(db),
             DefWithBodyId::StaticId(it) => it.lookup(db).module(db),
             DefWithBodyId::ConstId(it) => it.lookup(db).module(db),
+        }
+    }
+}
+
+impl DefWithBodyId {
+    pub fn as_mod_item(self, db: &dyn db::DefDatabase) -> ModItem {
+        match self {
+            DefWithBodyId::FunctionId(it) => it.lookup(db).id.value.into(),
+            DefWithBodyId::StaticId(it) => it.lookup(db).id.value.into(),
+            DefWithBodyId::ConstId(it) => it.lookup(db).id.value.into(),
         }
     }
 }

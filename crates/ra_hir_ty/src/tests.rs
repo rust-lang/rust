@@ -67,8 +67,8 @@ fn type_at_pos_displayed(
     panic!("Can't find expression")
 }
 
-fn type_at(content: &str) -> String {
-    let (db, file_pos) = TestDB::with_position(content);
+fn type_at(ra_fixture: &str) -> String {
+    let (db, file_pos) = TestDB::with_position(ra_fixture);
     type_at_pos(&db, file_pos)
 }
 
@@ -164,13 +164,19 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     visit_module(&db, &crate_def_map, module.local_id, &mut |it| defs.push(it));
     defs.sort_by_key(|def| match def {
         DefWithBodyId::FunctionId(it) => {
-            it.lookup(&db).ast_id.to_node(&db).syntax().text_range().start()
+            let loc = it.lookup(&db);
+            let tree = db.item_tree(loc.id.file_id);
+            tree.source(&db, loc.id).syntax().text_range().start()
         }
         DefWithBodyId::ConstId(it) => {
-            it.lookup(&db).ast_id.to_node(&db).syntax().text_range().start()
+            let loc = it.lookup(&db);
+            let tree = db.item_tree(loc.id.file_id);
+            tree.source(&db, loc.id).syntax().text_range().start()
         }
         DefWithBodyId::StaticId(it) => {
-            it.lookup(&db).ast_id.to_node(&db).syntax().text_range().start()
+            let loc = it.lookup(&db);
+            let tree = db.item_tree(loc.id.file_id);
+            tree.source(&db, loc.id).syntax().text_range().start()
         }
     });
     for def in defs {

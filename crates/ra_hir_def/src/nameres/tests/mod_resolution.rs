@@ -20,8 +20,11 @@ fn name_res_works_for_broken_modules() {
         ",
     );
     assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮Baz: _
+crate
+Baz: _
+foo: t
+
+crate::foo
     "###);
 }
 
@@ -719,10 +722,7 @@ fn unresolved_module_diagnostics() {
                         ),
                     ),
                 ),
-                value: FileAstId {
-                    raw: Idx::<SyntaxNodePtr>(1),
-                    _ty: PhantomData,
-                },
+                value: FileAstId::<ra_syntax::ast::generated::nodes::Module>(1),
             },
             candidate: "bar.rs",
         },

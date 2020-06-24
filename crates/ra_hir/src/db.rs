@@ -6,7 +6,7 @@ pub use hir_def::db::{
     ExprScopesQuery, FunctionDataQuery, GenericParamsQuery, ImplDataQuery, ImportMapQuery,
     InternConstQuery, InternDatabase, InternDatabaseStorage, InternEnumQuery, InternFunctionQuery,
     InternImplQuery, InternStaticQuery, InternStructQuery, InternTraitQuery, InternTypeAliasQuery,
-    InternUnionQuery, LangItemQuery, ModuleLangItemsQuery, RawItemsQuery, StaticDataQuery,
+    InternUnionQuery, ItemTreeQuery, LangItemQuery, ModuleLangItemsQuery, StaticDataQuery,
     StructDataQuery, TraitDataQuery, TypeAliasDataQuery, UnionDataQuery,
 };
 pub use hir_expand::db::{

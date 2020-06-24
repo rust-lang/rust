@@ -5,7 +5,7 @@ use either::Either;
 use hir_expand::{
     hygiene::Hygiene,
     name::{name, AsName, Name},
-    HirFileId, MacroDefId, MacroDefKind,
+    AstId, HirFileId, MacroDefId, MacroDefKind,
 };
 use ra_arena::Arena;
 use ra_syntax::{
@@ -27,6 +27,7 @@ use crate::{
         LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
+    item_tree::{FileItemTreeId, ItemTree, ItemTreeNode},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
     AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
@@ -35,6 +36,8 @@ use crate::{
 
 use super::{ExprSource, PatSource};
 use ast::AstChildren;
+use rustc_hash::FxHashMap;
+use std::sync::Arc;
 
 pub(crate) struct LowerCtx {
     hygiene: Hygiene,
@@ -60,10 +63,10 @@ pub(super) fn lower(
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
+    let item_tree = db.item_tree(expander.current_file_id);
     ExprCollector {
         db,
         def,
-        expander,
         source_map: BodySourceMap::default(),
         body: Body {
             exprs: Arena::default(),
@@ -72,6 +75,12 @@ pub(super) fn lower(
             body_expr: dummy_expr_id(),
             item_scope: Default::default(),
         },
+        item_trees: {
+            let mut map = FxHashMap::default();
+            map.insert(expander.current_file_id, item_tree);
+            map
+        },
+        expander,
     }
     .collect(params, body)
 }
@@ -82,6 +91,8 @@ struct ExprCollector<'a> {
     expander: Expander,
     body: Body,
     source_map: BodySourceMap,
+
+    item_trees: FxHashMap<HirFileId, Arc<ItemTree>>,
 }
 
 impl ExprCollector<'_> {
@@ -533,6 +544,9 @@ impl ExprCollector<'_> {
                             self.source_map
                                 .expansions
                                 .insert(macro_call, self.expander.current_file_id);
+
+                            let item_tree = self.db.item_tree(self.expander.current_file_id);
+                            self.item_trees.insert(self.expander.current_file_id, item_tree);
                             let id = self.collect_expr(expansion);
                             self.expander.exit(self.db, mark);
                             id
@@ -545,6 +559,19 @@ impl ExprCollector<'_> {
             // FIXME implement HIR for these:
             ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
+    }
+
+    fn find_inner_item<S: ItemTreeNode>(&self, id: AstId<ast::ModuleItem>) -> FileItemTreeId<S> {
+        let tree = &self.item_trees[&id.file_id];
+
+        // FIXME: This probably breaks with `use` items, since they produce multiple item tree nodes
+
+        // Root file (non-macro).
+        tree.all_inner_items()
+            .chain(tree.top_level_items().iter().copied())
+            .filter_map(|mod_item| mod_item.downcast::<S>())
+            .find(|tree_id| tree[*tree_id].ast_id().upcast() == id.value)
+            .unwrap_or_else(|| panic!("couldn't find inner item for {:?}", id))
     }
 
     fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
@@ -578,56 +605,102 @@ impl ExprCollector<'_> {
 
     fn collect_block_items(&mut self, block: &ast::BlockExpr) {
         let container = ContainerId::DefWithBodyId(self.def);
-        for item in block.items() {
-            let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
-                ast::ModuleItem::FnDef(def) => {
-                    let ast_id = self.expander.ast_id(&def);
-                    (
-                        FunctionLoc { container: container.into(), ast_id }.intern(self.db).into(),
-                        def.name(),
-                    )
-                }
-                ast::ModuleItem::TypeAliasDef(def) => {
-                    let ast_id = self.expander.ast_id(&def);
-                    (
-                        TypeAliasLoc { container: container.into(), ast_id }.intern(self.db).into(),
-                        def.name(),
-                    )
-                }
-                ast::ModuleItem::ConstDef(def) => {
-                    let ast_id = self.expander.ast_id(&def);
-                    (
-                        ConstLoc { container: container.into(), ast_id }.intern(self.db).into(),
-                        def.name(),
-                    )
-                }
-                ast::ModuleItem::StaticDef(def) => {
-                    let ast_id = self.expander.ast_id(&def);
-                    (StaticLoc { container, ast_id }.intern(self.db).into(), def.name())
-                }
-                ast::ModuleItem::StructDef(def) => {
-                    let ast_id = self.expander.ast_id(&def);
-                    (StructLoc { container, ast_id }.intern(self.db).into(), def.name())
-                }
-                ast::ModuleItem::EnumDef(def) => {
-                    let ast_id = self.expander.ast_id(&def);
-                    (EnumLoc { container, ast_id }.intern(self.db).into(), def.name())
-                }
-                ast::ModuleItem::UnionDef(def) => {
-                    let ast_id = self.expander.ast_id(&def);
-                    (UnionLoc { container, ast_id }.intern(self.db).into(), def.name())
-                }
-                ast::ModuleItem::TraitDef(def) => {
-                    let ast_id = self.expander.ast_id(&def);
-                    (TraitLoc { container, ast_id }.intern(self.db).into(), def.name())
-                }
-                ast::ModuleItem::ExternBlock(_) => continue, // FIXME: collect from extern blocks
-                ast::ModuleItem::ImplDef(_)
-                | ast::ModuleItem::UseItem(_)
-                | ast::ModuleItem::ExternCrateItem(_)
-                | ast::ModuleItem::Module(_)
-                | ast::ModuleItem::MacroCall(_) => continue,
-            };
+
+        let items = block
+            .items()
+            .filter_map(|item| {
+                let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
+                    ast::ModuleItem::FnDef(def) => {
+                        let ast_id = self.expander.ast_id(&def);
+                        let id = self.find_inner_item(ast_id.map(|id| id.upcast()));
+                        (
+                            FunctionLoc { container: container.into(), id: ast_id.with_value(id) }
+                                .intern(self.db)
+                                .into(),
+                            def.name(),
+                        )
+                    }
+                    ast::ModuleItem::TypeAliasDef(def) => {
+                        let ast_id = self.expander.ast_id(&def);
+                        let id = self.find_inner_item(ast_id.map(|id| id.upcast()));
+                        (
+                            TypeAliasLoc { container: container.into(), id: ast_id.with_value(id) }
+                                .intern(self.db)
+                                .into(),
+                            def.name(),
+                        )
+                    }
+                    ast::ModuleItem::ConstDef(def) => {
+                        let ast_id = self.expander.ast_id(&def);
+                        let id = self.find_inner_item(ast_id.map(|id| id.upcast()));
+                        (
+                            ConstLoc { container: container.into(), id: ast_id.with_value(id) }
+                                .intern(self.db)
+                                .into(),
+                            def.name(),
+                        )
+                    }
+                    ast::ModuleItem::StaticDef(def) => {
+                        let ast_id = self.expander.ast_id(&def);
+                        let id = self.find_inner_item(ast_id.map(|id| id.upcast()));
+                        (
+                            StaticLoc { container, id: ast_id.with_value(id) }
+                                .intern(self.db)
+                                .into(),
+                            def.name(),
+                        )
+                    }
+                    ast::ModuleItem::StructDef(def) => {
+                        let ast_id = self.expander.ast_id(&def);
+                        let id = self.find_inner_item(ast_id.map(|id| id.upcast()));
+                        (
+                            StructLoc { container, id: ast_id.with_value(id) }
+                                .intern(self.db)
+                                .into(),
+                            def.name(),
+                        )
+                    }
+                    ast::ModuleItem::EnumDef(def) => {
+                        let ast_id = self.expander.ast_id(&def);
+                        let id = self.find_inner_item(ast_id.map(|id| id.upcast()));
+                        (
+                            EnumLoc { container, id: ast_id.with_value(id) }.intern(self.db).into(),
+                            def.name(),
+                        )
+                    }
+                    ast::ModuleItem::UnionDef(def) => {
+                        let ast_id = self.expander.ast_id(&def);
+                        let id = self.find_inner_item(ast_id.map(|id| id.upcast()));
+                        (
+                            UnionLoc { container, id: ast_id.with_value(id) }
+                                .intern(self.db)
+                                .into(),
+                            def.name(),
+                        )
+                    }
+                    ast::ModuleItem::TraitDef(def) => {
+                        let ast_id = self.expander.ast_id(&def);
+                        let id = self.find_inner_item(ast_id.map(|id| id.upcast()));
+                        (
+                            TraitLoc { container, id: ast_id.with_value(id) }
+                                .intern(self.db)
+                                .into(),
+                            def.name(),
+                        )
+                    }
+                    ast::ModuleItem::ExternBlock(_) => return None, // FIXME: collect from extern blocks
+                    ast::ModuleItem::ImplDef(_)
+                    | ast::ModuleItem::UseItem(_)
+                    | ast::ModuleItem::ExternCrateItem(_)
+                    | ast::ModuleItem::Module(_)
+                    | ast::ModuleItem::MacroCall(_) => return None,
+                };
+
+                Some((def, name))
+            })
+            .collect::<Vec<_>>();
+
+        for (def, name) in items {
             self.body.item_scope.define_def(def);
             if let Some(name) = name {
                 let vis = crate::visibility::Visibility::Public; // FIXME determine correctly
