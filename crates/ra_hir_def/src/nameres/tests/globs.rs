@@ -276,3 +276,49 @@ fn glob_shadowed_def() {
     "###
     );
 }
+
+#[test]
+fn glob_shadowed_def_reversed() {
+    let map = def_map(
+        r###"
+        //- /lib.rs
+        mod foo;
+        mod bar;
+
+        use bar::baz;
+        use foo::*;
+
+        use baz::Bar;
+
+        //- /foo.rs
+        pub mod baz {
+            pub struct Foo;
+        }
+
+        //- /bar.rs
+        pub mod baz {
+            pub struct Bar;
+        }
+        "###,
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮Bar: t v
+        ⋮bar: t
+        ⋮baz: t
+        ⋮foo: t
+        ⋮
+        ⋮crate::bar
+        ⋮baz: t
+        ⋮
+        ⋮crate::bar::baz
+        ⋮Bar: t v
+        ⋮
+        ⋮crate::foo
+        ⋮baz: t
+        ⋮
+        ⋮crate::foo::baz
+        ⋮Foo: t v
+    "###
+    );
+}

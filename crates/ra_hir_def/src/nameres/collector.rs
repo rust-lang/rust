@@ -380,26 +380,35 @@ impl DefCollector<'_> {
 
         while self.unresolved_imports.len() < n_previous_unresolved {
             n_previous_unresolved = self.unresolved_imports.len();
-            let imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
-            for mut directive in imports {
+            let mut imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
+            for mut directive in &mut imports {
                 directive.status = self.resolve_import(directive.module_id, &directive.import);
+            }
 
-                match directive.status {
-                    PartialResolvedImport::Indeterminate(_) => {
-                        self.record_resolved_import(&directive);
-                        // FIXME: For avoid performance regression,
-                        // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
-                        self.resolved_imports.push(directive)
-                    }
-                    PartialResolvedImport::Resolved(_) => {
-                        self.record_resolved_import(&directive);
-                        self.resolved_imports.push(directive)
-                    }
-                    PartialResolvedImport::Unresolved => {
-                        self.unresolved_imports.push(directive);
+            let (glob_imports, non_glob_imports): (Vec<_>, Vec<_>) =
+                imports.into_iter().partition(|directive| directive.import.is_glob);
+            let mut record = |imports: Vec<ImportDirective>| {
+                for directive in imports {
+                    match directive.status {
+                        PartialResolvedImport::Indeterminate(_) => {
+                            self.record_resolved_import(&directive);
+                            // FIXME: For avoid performance regression,
+                            // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
+                            self.resolved_imports.push(directive)
+                        }
+                        PartialResolvedImport::Resolved(_) => {
+                            self.record_resolved_import(&directive);
+                            self.resolved_imports.push(directive)
+                        }
+                        PartialResolvedImport::Unresolved => {
+                            self.unresolved_imports.push(directive);
+                        }
                     }
                 }
-            }
+            };
+
+            record(glob_imports);
+            record(non_glob_imports);
         }
     }
 
