@@ -2,11 +2,12 @@
 
 [About this guide](./about-this-guide.md)
 
+[Getting Started](./getting-started.md)
+
 ---
 
 # Building and debugging `rustc`
 
-- [Getting Started](./getting-started.md)
 - [How to Build and Run the Compiler](./building/how-to-build-and-run.md)
     - [Prerequisites](./building/prerequisites.md)
     - [Suggested Workflows](./building/suggested.md)
