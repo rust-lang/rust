@@ -1,137 +1,149 @@
 # High-level overview of the compiler source
 
-## Crate structure
+> **NOTE**: The structure of the repository is going through a lot of
+> transitions. In particular, we want to get to a point eventually where the
+> top-level directory has separate directories for the compiler, build-system,
+> std libs, etc, rather than one huge `src/` directory.
 
-The main Rust repository consists of a `src` directory, under which
-there live many crates. These crates contain the sources for the
-standard library and the compiler.  This document, of course, focuses
-on the latter.
+## Workspace structure
 
-Rustc consists of a number of crates, including `rustc_ast`,
-`rustc`, `rustc_target`, `rustc_codegen`, `rustc_driver`, and
-many more. The source for each crate can be found in a directory
-like `src/libXXX`, where `XXX` is the crate name.
+The `rust-lang/rust` repository consists of a single large cargo workspace
+containing the compiler, the standard library (core, alloc, std, etc), and
+`rustdoc`, along with the build system and bunch of tools and submodules for
+building a full Rust distribution.
 
-(N.B. The names and divisions of these crates are not set in
-stone and may change over time. For the time being, we tend towards a
-finer-grained division to help with compilation time, though as incremental
-compilation improves, that may change.)
+As of this writing, this structure is gradually undergoing some transformation
+to make it a bit less monolithic and more approachable, especially to
+newcommers.
 
-The dependency structure of these crates is roughly a diamond:
+> Eventually, the hope is for the standard library to live in a `stdlib/`
+> directory, while the compiler lives in `compiler/`. However, as of this
+> writing, both live in `src/`.
 
-```text
-                  rustc_driver
-                /      |       \
-              /        |         \
-            /          |           \
-          /            v             \
-rustc_codegen  rustc_borrowck   ...  rustc_metadata
-          \            |            /
-            \          |          /
-              \        |        /
-                \      v      /
-                  rustc_middle
-                       |
-                       v
-                   rustc_ast
-                    /    \
-                  /       \
-           rustc_span  rustc_builtin_macros
-```
+The repository consists of a `src` directory, under which there live many
+crates, which are the source for the compiler, standard library, etc, as
+mentioned above.
 
-The `rustc_driver` crate, at the top of this lattice, is effectively
-the "main" function for the rust compiler. It doesn't have much "real
-code", but instead ties together all of the code defined in the other
-crates and defines the overall flow of execution. (As we transition
-more and more to the [query model], however, the
-"flow" of compilation is becoming less centrally defined.)
+## Standard library
 
-At the other extreme, the `rustc_middle` crate defines the common and
-pervasive data structures that all the rest of the compiler uses
-(e.g. how to represent types, traits, and the program itself). It
-also contains some amount of the compiler itself, although that is
-relatively limited.
+The standard library crates are obviously named `libstd`, `libcore`,
+`liballoc`, etc. There is also `libproc_macro`, `libtest`, and other runtime
+libraries.
 
-Finally, all the crates in the bulge in the middle define the bulk of
-the compiler – they all depend on `rustc_middle`, so that they can make use
-of the various types defined there, and they export public routines
-that `rustc_driver` will invoke as needed (more and more, what these
-crates export are "query definitions", but those are covered later
-on).
+This code is fairly similar to most other Rust crates except that it must be
+built in a special way because it can use unstable features.
 
-Below `rustc_middle` lie various crates that make up the parser and error
-reporting mechanism. They are also an internal part
-of the compiler and not intended to be stable (though they do wind up
-getting used by some crates in the wild; a practice we hope to
-gradually phase out).
+## Compiler
 
-## The main stages of compilation
+The compiler crates all have names starting with `librustc_*`. These are a large
+collection of interdependent crates. There is also the `rustc` crate which is
+the actual binary. It doesn't actually do anything besides calling the compiler
+main function elsewhere.
 
-The Rust compiler is in a bit of transition right now. It used to be a
-purely "pass-based" compiler, where we ran a number of passes over the
-entire program, and each did a particular check of transformation. We
-are gradually replacing this pass-based code with an alternative setup
-based on on-demand **queries**. In the query-model, we work backwards,
-executing a *query* that expresses our ultimate goal (e.g. "compile
-this crate"). This query in turn may make other queries (e.g. "get me
-a list of all modules in the crate"). Those queries make other queries
-that ultimately bottom out in the base operations, like parsing the
-input, running the type-checker, and so forth. This on-demand model
-permits us to do exciting things like only do the minimal amount of
-work needed to type-check a single function. It also helps with
-incremental compilation. (For details on defining queries, check out
-the [query model].)
+The dependency structure of these crates is complex, but roughly it is
+something like this:
 
-Regardless of the general setup, the basic operations that the
-compiler must perform are the same. The only thing that changes is
-whether these operations are invoked front-to-back, or on demand.  In
-order to compile a Rust crate, these are the general steps that we
-take:
+- `rustc` (the binary) calls [`rustc_driver::main`][main].
+    - [`rustc_driver`] depends on a lot of other crates, but the main one is
+      [`rustc_interface`].
+        - [`rustc_interface`] depends on most of the other compiler crates. It
+          is a fairly generic interface for driving the whole compilation.
+            - The most of the other `rustc_*` crates depend on [`rustc_middle`],
+              which defines a lot of central data structures in the compiler.
+                - [`rustc_middle`] and most of the other crates depend on a
+                  handful of crates representing the early parts of the
+                  compiler (e.g. the parser), fundamental data structures (e.g.
+                  [`Span`]), or error reporting: [`rustc_data_strucutres`],
+                  [`rustc_span`], [`rustc_errors`], etc.
 
-1. **Parsing input**
-    - this processes the `.rs` files and produces the AST
-      ("abstract syntax tree")
-    - the AST is defined in `src/librustc_ast/ast.rs`. It is intended to match the lexical
-      syntax of the Rust language quite closely.
-2. **Name resolution, macro expansion, and configuration**
-    - once parsing is complete, we process the AST recursively, resolving
-      paths and expanding macros. This same process also processes `#[cfg]`
-      nodes, and hence may strip things out of the AST as well.
-3. **Lowering to HIR**
-    - Once name resolution completes, we convert the AST into the HIR,
-      or "[high-level intermediate representation]". The HIR is defined in
-      `src/librustc_middle/hir/`; that module also includes the [lowering] code.
-    - The HIR is a lightly desugared variant of the AST. It is more processed
-      than the AST and more suitable for the analyses that follow.
-      It is **not** required to match the syntax of the Rust language.
-    - As a simple example, in the **AST**, we preserve the parentheses
-      that the user wrote, so `((1 + 2) + 3)` and `1 + 2 + 3` parse
-      into distinct trees, even though they are equivalent. In the
-      HIR, however, parentheses nodes are removed, and those two
-      expressions are represented in the same way.
-3. **Type-checking and subsequent analyses**
-    - An important step in processing the HIR is to perform type
-      checking. This process assigns types to every HIR expression,
-      for example, and also is responsible for resolving some
-      "type-dependent" paths, such as field accesses (`x.f` – we
-      can't know what field `f` is being accessed until we know the
-      type of `x`) and associated type references (`T::Item` – we
-      can't know what type `Item` is until we know what `T` is).
-    - Type checking creates "side-tables" (`TypeckTables`) that include
-      the types of expressions, the way to resolve methods, and so forth.
-    - After type-checking, we can do other analyses, such as privacy checking.
-4. **Lowering to MIR and post-processing**
-    - Once type-checking is done, we can lower the HIR into MIR ("middle IR"),
-      which is a **very** desugared version of Rust, well suited to borrowck
-      but also to certain high-level optimizations.
-5. **Translation to LLVM and LLVM optimizations**
-    - From MIR, we can produce LLVM IR.
-    - LLVM then runs its various optimizations, which produces a number of
-      `.o` files (one for each "codegen unit").
-6. **Linking**
-    - Finally, those `.o` files are linked together.
+[main]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/fn.main.html
+[`rustc_driver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/index.html
+[`rustc_interface`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html
+[`rustc_middle`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/index.html
+[`rustc_data_strucutres`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_strucutres/index.html
+[`rustc_span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/index.html
+[`Span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
+[`rustc_errors`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
 
+You can see the exact dependencies by reading the `Cargo.toml` for the various
+crates, just like a normal Rust crate.
 
-[query model]: query.html
-[high-level intermediate representation]: hir.html
-[lowering]: lowering.html
+You may ask why the compiler is broken into so many crates. There are two major reasons:
+
+1. Organization. The compiler is a _huge_ codebase; it would be an impossibly large crate.
+2. Compile time. By breaking the compiler into multiple crates, we can take
+   better advantage of incremental/parallel compilation using cargo. In
+   particular, we try to have as few dependencies between crates as possible so
+   that we dont' have to rebuild as many crates if you change one.
+
+Most of this book is about the compiler, so we won't have any further
+explanation of these crates here.
+
+One final thing: [`src/llvm-project`] is a submodule for our fork of LLVM.
+
+[`src/llvm-project`]: https://github.com/rust-lang/rust/tree/master/src
+
+## rustdoc
+
+The bulk of `rustdoc` is in [`librustdoc`]. However, the `rustdoc` binary
+itself is [`src/tools/rustdoc`], which does nothing except call [`rustdoc::main`].
+
+There is also javascript and CSS for the rustdocs in [`src/tools/rustdoc-js`]
+and [`src/tools/rustdoc-themes`].
+
+You can read more about rustdoc in [this chapter][rustdocch].
+
+[`librustdoc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/index.html
+[`rustdoc::main`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/fn.main.html
+[`src/tools/rustdoc`]:  https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc
+[`src/tools/rustdoc-js`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc-js
+[`src/tools/rustdoc-themes`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc-themes
+
+[rustdocch]: ./rustdoc-internals.md
+
+## Tests
+
+The test suite for all of the above is in [`src/test/`]. You can read more
+about the test suite [in this chapter][testsch].
+
+The test harness itself is in [`src/tools/compiletest`].
+
+[testsch]: ./tests/intro.md
+
+[`src/test/`]: https://github.com/rust-lang/rust/tree/master/src/test
+[`src/tools/compiletest`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
+
+## Build System
+
+There are a number of tools in the repository just for building the compiler,
+standard library, rustdoc, etc, along with testing, building a full Rust
+distribution, etc.
+
+One of the primary tools is [`src/bootstrap`]. You can read more about
+bootstrapping [in this chapter][bootstch]. The process may also use other tools
+from `src/tools/`, such as [`tidy`] or [`compiletest`].
+
+[`src/bootstrap`]: https://github.com/rust-lang/rust/tree/master/src/bootstrap
+[`tidy`]: https://github.com/rust-lang/rust/tree/master/src/tools/tidy
+[`compiletest`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
+
+[bootstch]: ./building/bootstrapping.md
+
+## Other
+
+There are a lot of other things in the `rust-lang/rust` repo that are related
+to building a full rust distribution. Most of the time you don't need to worry
+about them.
+
+These include:
+- [`src/ci`]: The CI configuration. This actually quite extensive because we
+  run a lot of tests on a lot of platforms.
+- [`src/doc`]: Various documentation, including submodules for a few books.
+- [`src/etc`]: Miscellaneous utilities.
+- [`src/tools/rustc-workspace-hack`], and others: Various workarounds to make cargo work with bootstrapping.
+- And more...
+
+[`src/ci`]: https://github.com/rust-lang/rust/tree/master/src/ci
+[`src/doc`]: https://github.com/rust-lang/rust/tree/master/src/doc
+[`src/etc`]: https://github.com/rust-lang/rust/tree/master/src/etc
+[`src/tools/rustc-workspace-hack`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustc-workspace-hack
