@@ -104,7 +104,7 @@ fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<St
 mod tests {
     use test_utils::assert_eq_text;
 
-    use crate::mock_analysis::{single_file, analysis_and_range};
+    use crate::mock_analysis::{analysis_and_range, single_file};
 
     #[test]
     fn test_syntax_tree_without_range() {
