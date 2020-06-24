@@ -474,7 +474,7 @@ Here is the list of currently supported register classes:
 | AArch64 | `reg` | `x[0-28]`, `x30` | `r` |
 | AArch64 | `vreg` | `v[0-31]` | `w` |
 | AArch64 | `vreg_low16` | `v[0-15]` | `x` |
-| ARM | `reg` | `r[0-r10]`, `r12`, `r14` | `r` |
+| ARM | `reg` | `r[0-5]` `r7`\*, `r[8-10]`, `r11`\*, `r12`, `r14` | `r` |
 | ARM (Thumb) | `reg_thumb` | `r[0-r7]` | `l` |
 | ARM (ARM) | `reg_thumb` | `r[0-r10]`, `r12`, `r14` | `l` |
 | ARM | `sreg` | `s[0-31]` | `t` |
@@ -497,6 +497,8 @@ Here is the list of currently supported register classes:
 > Note #2: On x86-64 the high byte registers (e.g. `ah`) are only available when used as an explicit register. Specifying the `reg_byte` register class for an operand will always allocate a low byte register.
 >
 > Note #3: NVPTX doesn't have a fixed register set, so named registers are not supported.
+>
+> Note #4: On ARM the frame pointer is either `r7` or `r11` depending on the platform.
 
 Additional register classes may be added in the future based on demand (e.g. MMX, x87, etc).
 
@@ -591,7 +593,9 @@ Some registers cannot be used for input or output operands:
 | Architecture | Unsupported register | Reason |
 | ------------ | -------------------- | ------ |
 | All | `sp` | The stack pointer must be restored to its original value at the end of an asm code block. |
-| All | `bp` (x86), `r11` (ARM), `x29` (AArch64), `x8` (RISC-V), `fr` (Hexagon) | The frame pointer cannot be used as an input or output. |
+| All | `bp` (x86), `x29` (AArch64), `x8` (RISC-V), `fr` (Hexagon) | The frame pointer cannot be used as an input or output. |
+| ARM | `r7` or `r11` | On ARM the frame pointer can be either `r7` or `r11` depending on the target. The frame pointer cannot be used as an input or output. |
+| ARM | `r6` | `r6` is used internally by LLVM as a base pointer and therefore cannot be used as an input or output. |
 | x86 | `k0` | This is a constant zero register which can't be modified. |
 | x86 | `ip` | This is the program counter, not a real register. |
 | x86 | `mm[0-7]` | MMX registers are not currently supported (but may be in the future). |

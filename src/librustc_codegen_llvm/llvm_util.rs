@@ -156,6 +156,10 @@ const ARM_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("vfp2", Some(sym::arm_target_feature)),
     ("vfp3", Some(sym::arm_target_feature)),
     ("vfp4", Some(sym::arm_target_feature)),
+    // This is needed for inline assembly, but shouldn't be stabilized as-is
+    // since it should be enabled per-function using #[instruction_set], not
+    // #[target_feature].
+    ("thumb-mode", Some(sym::arm_target_feature)),
 ];
 
 const AARCH64_WHITELIST: &[(&str, Option<Symbol>)] = &[
