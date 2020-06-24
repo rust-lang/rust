@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use ra_db::{CrateName, Env, FileSet, SourceRoot, VfsPath};
-use test_utils::{extract_offset, extract_range, Fixture, CURSOR_MARKER};
+use test_utils::{extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER};
 
 use crate::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition, FileId, FilePosition, FileRange,
@@ -11,27 +11,18 @@ use crate::{
 
 #[derive(Debug)]
 enum MockFileData {
-    Plain { path: String, content: String },
     Fixture(Fixture),
 }
 
 impl MockFileData {
-    fn new(path: String, content: String) -> Self {
-        // `Self::Plain` causes a false warning: 'variant is never constructed: `Plain` '
-        // see https://github.com/rust-lang/rust/issues/69018
-        MockFileData::Plain { path, content }
-    }
-
     fn path(&self) -> &str {
         match self {
-            MockFileData::Plain { path, .. } => path.as_str(),
             MockFileData::Fixture(f) => f.path.as_str(),
         }
     }
 
     fn content(&self) -> &str {
         match self {
-            MockFileData::Plain { content, .. } => content,
             MockFileData::Fixture(f) => f.text.as_str(),
         }
     }
@@ -44,7 +35,6 @@ impl MockFileData {
                 f.cfg_key_values.iter().for_each(|(k, v)| cfg.insert_key_value(k.into(), v.into()));
                 cfg
             }
-            _ => CfgOptions::default(),
         }
     }
 
@@ -53,14 +43,12 @@ impl MockFileData {
             MockFileData::Fixture(f) => {
                 f.edition.as_ref().map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap())
             }
-            _ => Edition::Edition2018,
         }
     }
 
     fn env(&self) -> Env {
         match self {
             MockFileData::Fixture(f) => Env::from(f.env.iter()),
-            _ => Env::default(),
         }
     }
 }
@@ -89,31 +77,38 @@ impl MockAnalysis {
     /// //- /foo.rs
     /// struct Baz;
     /// ```
-    pub fn with_files(fixture: &str) -> MockAnalysis {
-        let mut res = MockAnalysis::default();
-        for entry in Fixture::parse(fixture) {
-            res.add_file_fixture(entry);
-        }
+    pub fn with_files(ra_fixture: &str) -> MockAnalysis {
+        let (res, pos) = MockAnalysis::with_fixture(ra_fixture);
+        assert!(pos.is_none());
         res
     }
 
     /// Same as `with_files`, but requires that a single file contains a `<|>` marker,
     /// whose position is also returned.
     pub fn with_files_and_position(fixture: &str) -> (MockAnalysis, FilePosition) {
+        let (res, position) = MockAnalysis::with_fixture(fixture);
+        let (file_id, range_or_offset) = position.expect("expected a marker (<|>)");
+        let offset = match range_or_offset {
+            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Offset(it) => it,
+        };
+        (res, FilePosition { file_id, offset })
+    }
+
+    fn with_fixture(fixture: &str) -> (MockAnalysis, Option<(FileId, RangeOrOffset)>) {
         let mut position = None;
         let mut res = MockAnalysis::default();
         for mut entry in Fixture::parse(fixture) {
             if entry.text.contains(CURSOR_MARKER) {
                 assert!(position.is_none(), "only one marker (<|>) per fixture is allowed");
-                let (offset, text) = extract_offset(&entry.text);
+                let (range_or_offset, text) = extract_range_or_offset(&entry.text);
                 entry.text = text;
                 let file_id = res.add_file_fixture(entry);
-                position = Some(FilePosition { file_id, offset });
+                position = Some((file_id, range_or_offset));
             } else {
                 res.add_file_fixture(entry);
             }
         }
-        let position = position.expect("expected a marker (<|>)");
         (res, position)
     }
 
@@ -123,12 +118,6 @@ impl MockAnalysis {
         file_id
     }
 
-    fn add_file_with_range(&mut self, path: &str, text: &str) -> FileRange {
-        let (range, text) = extract_range(text);
-        let file_id = self.next_id();
-        self.files.push(MockFileData::new(path.to_string(), text));
-        FileRange { file_id, range }
-    }
     pub fn id_of(&self, path: &str) -> FileId {
         let (idx, _) = self
             .files
@@ -209,8 +198,12 @@ pub fn single_file(ra_fixture: &str) -> (Analysis, FileId) {
 }
 
 /// Creates analysis for a single file, returns range marked with a pair of <|>.
-pub fn single_file_with_range(ra_fixture: &str) -> (Analysis, FileRange) {
-    let mut mock = MockAnalysis::default();
-    let pos = mock.add_file_with_range("/main.rs", ra_fixture);
-    (mock.analysis(), pos)
+pub fn analysis_and_range(ra_fixture: &str) -> (Analysis, FileRange) {
+    let (res, position) = MockAnalysis::with_fixture(ra_fixture);
+    let (file_id, range_or_offset) = position.expect("expected a marker (<|>)");
+    let range = match range_or_offset {
+        RangeOrOffset::Range(it) => it,
+        RangeOrOffset::Offset(_) => panic!(),
+    };
+    (res.analysis(), FileRange { file_id, range })
 }

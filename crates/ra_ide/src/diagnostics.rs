@@ -573,10 +573,9 @@ mod tests {
 
             impl Expr {
                 fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
-                    Expr::Bin { <|> }
+                    Expr::Bin { }
                 }
             }
-
         ";
         let after = r"
             enum Expr {
@@ -585,10 +584,9 @@ mod tests {
 
             impl Expr {
                 fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
-                    Expr::Bin { lhs: (), rhs: () <|> }
+                    Expr::Bin { lhs: (), rhs: () }
                 }
             }
-
         ";
         check_apply_diagnostic_fix(before, after);
     }
