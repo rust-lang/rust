@@ -29,11 +29,58 @@ use crate::{
     attr::Attrs,
     db::DefDatabase,
     generics::GenericParams,
-    path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path},
+    path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TypeBound, TypeRef},
     visibility::RawVisibility,
 };
 use smallvec::SmallVec;
+
+#[derive(Default, Debug, Eq, PartialEq)]
+struct ItemVisibilities {
+    arena: Arena<RawVisibility>,
+}
+
+impl ItemVisibilities {
+    fn alloc(&mut self, vis: RawVisibility) -> RawVisibilityId {
+        match &vis {
+            RawVisibility::Public => RawVisibilityId::PUB,
+            RawVisibility::Module(path) if path.segments.is_empty() => match &path.kind {
+                PathKind::Super(0) => RawVisibilityId::PRIV,
+                PathKind::Crate => RawVisibilityId::PUB_CRATE,
+                _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
+            },
+            _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct RawVisibilityId(u32);
+
+impl RawVisibilityId {
+    pub const PUB: Self = RawVisibilityId(u32::max_value());
+    pub const PRIV: Self = RawVisibilityId(u32::max_value() - 1);
+    pub const PUB_CRATE: Self = RawVisibilityId(u32::max_value() - 2);
+}
+
+impl fmt::Debug for RawVisibilityId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut f = f.debug_tuple("RawVisibilityId");
+        match *self {
+            Self::PUB => f.field(&"pub"),
+            Self::PRIV => f.field(&"pub(self)"),
+            Self::PUB_CRATE => f.field(&"pub(crate)"),
+            _ => f.field(&self.0),
+        };
+        f.finish()
+    }
+}
+
+static VIS_PUB: RawVisibility = RawVisibility::Public;
+static VIS_PRIV: RawVisibility =
+    RawVisibility::Module(ModPath { kind: PathKind::Super(0), segments: Vec::new() });
+static VIS_PUB_CRATE: RawVisibility =
+    RawVisibility::Module(ModPath { kind: PathKind::Crate, segments: Vec::new() });
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
@@ -53,6 +100,8 @@ struct ItemTreeData {
     mods: Arena<Mod>,
     macro_calls: Arena<MacroCall>,
     exprs: Arena<Expr>,
+
+    vis: ItemVisibilities,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -303,6 +352,18 @@ macro_rules! impl_index {
 
 impl_index!(fields: Field, variants: Variant, exprs: Expr);
 
+impl Index<RawVisibilityId> for ItemTree {
+    type Output = RawVisibility;
+    fn index(&self, index: RawVisibilityId) -> &Self::Output {
+        match index {
+            RawVisibilityId::PRIV => &VIS_PRIV,
+            RawVisibilityId::PUB => &VIS_PUB,
+            RawVisibilityId::PUB_CRATE => &VIS_PUB_CRATE,
+            _ => &self.data().vis.arena[Idx::from_raw(index.0.into())],
+        }
+    }
+}
+
 impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     type Output = N;
     fn index(&self, id: FileItemTreeId<N>) -> &N {
@@ -315,7 +376,7 @@ impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
 pub struct Import {
     pub path: ModPath,
     pub alias: Option<ImportAlias>,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     pub is_glob: bool,
     pub is_prelude: bool,
     /// AST ID of the `use` or `extern crate` item this import was derived from. Note that many
@@ -327,7 +388,7 @@ pub struct Import {
 pub struct ExternCrate {
     pub path: ModPath,
     pub alias: Option<ImportAlias>,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     /// Whether this is a `#[macro_use] extern crate ...`.
     pub is_macro_use: bool,
     pub ast_id: FileAstId<ast::ExternCrateItem>,
@@ -336,7 +397,7 @@ pub struct ExternCrate {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Function {
     pub name: Name,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     pub generic_params: GenericParams,
     pub has_self_param: bool,
     pub is_unsafe: bool,
@@ -348,7 +409,7 @@ pub struct Function {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Struct {
     pub name: Name,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     pub generic_params: GenericParams,
     pub fields: Fields,
     pub ast_id: FileAstId<ast::StructDef>,
@@ -368,7 +429,7 @@ pub enum StructDefKind {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Union {
     pub name: Name,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     pub generic_params: GenericParams,
     pub fields: Fields,
     pub ast_id: FileAstId<ast::UnionDef>,
@@ -377,7 +438,7 @@ pub struct Union {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Enum {
     pub name: Name,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     pub generic_params: GenericParams,
     pub variants: Range<Idx<Variant>>,
     pub ast_id: FileAstId<ast::EnumDef>,
@@ -387,7 +448,7 @@ pub struct Enum {
 pub struct Const {
     /// const _: () = ();
     pub name: Option<Name>,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     pub type_ref: TypeRef,
     pub ast_id: FileAstId<ast::ConstDef>,
 }
@@ -395,7 +456,7 @@ pub struct Const {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Static {
     pub name: Name,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     pub mutable: bool,
     pub type_ref: TypeRef,
     pub ast_id: FileAstId<ast::StaticDef>,
@@ -404,7 +465,7 @@ pub struct Static {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Trait {
     pub name: Name,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     pub generic_params: GenericParams,
     pub auto: bool,
     pub items: Vec<AssocItem>,
@@ -424,7 +485,7 @@ pub struct Impl {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeAlias {
     pub name: Name,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     /// Bounds on the type alias itself. Only valid in trait declarations, eg. `type Assoc: Copy;`.
     pub bounds: Vec<TypeBound>,
     pub generic_params: GenericParams,
@@ -435,7 +496,7 @@ pub struct TypeAlias {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Mod {
     pub name: Name,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
     pub kind: ModKind,
     pub ast_id: FileAstId<ast::Module>,
 }
@@ -549,5 +610,5 @@ pub enum Fields {
 pub struct Field {
     pub name: Name,
     pub type_ref: TypeRef,
-    pub visibility: RawVisibility,
+    pub visibility: RawVisibilityId,
 }

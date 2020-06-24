@@ -219,31 +219,31 @@ inner attrs: Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments
 
 top-level items:
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_on_use"))] }, input: None }]) }]
-Import { path: ModPath { kind: Plain, segments: [Name(Text("a"))] }, alias: None, visibility: Module(ModPath { kind: Super(0), segments: [] }), is_glob: false, is_prelude: false, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::UseItem>(0) }
+Import { path: ModPath { kind: Plain, segments: [Name(Text("a"))] }, alias: None, visibility: RawVisibilityId("pub(self)"), is_glob: false, is_prelude: false, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::UseItem>(0) }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_on_use"))] }, input: None }]) }]
-Import { path: ModPath { kind: Plain, segments: [Name(Text("b"))] }, alias: None, visibility: Module(ModPath { kind: Super(0), segments: [] }), is_glob: true, is_prelude: false, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::UseItem>(0) }
+Import { path: ModPath { kind: Plain, segments: [Name(Text("b"))] }, alias: None, visibility: RawVisibilityId("pub(self)"), is_glob: true, is_prelude: false, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::UseItem>(0) }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("ext_crate"))] }, input: None }]) }]
-ExternCrate { path: ModPath { kind: Plain, segments: [Name(Text("krate"))] }, alias: None, visibility: Module(ModPath { kind: Super(0), segments: [] }), is_macro_use: false, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::ExternCrateItem>(1) }
+ExternCrate { path: ModPath { kind: Plain, segments: [Name(Text("krate"))] }, alias: None, visibility: RawVisibilityId("pub(self)"), is_macro_use: false, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::ExternCrateItem>(1) }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("on_trait"))] }, input: None }]) }]
-Trait { name: Name(Text("Tr")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 2, data: [TypeParamData { name: Some(Name(Text("Self"))), default: None, provenance: TraitSelf }, TypeParamData { name: Some(Name(Text("U"))), default: None, provenance: TypeParamList }] }, where_predicates: [] }, auto: false, items: [TypeAlias(Idx::<TypeAlias>(0)), Const(Idx::<Const>(0)), Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::TraitDef>(2) }
+Trait { name: Name(Text("Tr")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 2, data: [TypeParamData { name: Some(Name(Text("Self"))), default: None, provenance: TraitSelf }, TypeParamData { name: Some(Name(Text("U"))), default: None, provenance: TypeParamList }] }, where_predicates: [] }, auto: false, items: [TypeAlias(Idx::<TypeAlias>(0)), Const(Idx::<Const>(0)), Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::TraitDef>(2) }
 > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("assoc_ty"))] }, input: None }]) }]
-> TypeAlias { name: Name(Text("AssocTy")), visibility: Module(ModPath { kind: Super(0), segments: [] }), bounds: [Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Tr"))] }, generic_args: [Some(GenericArgs { args: [Type(Tuple([]))], has_self_type: false, bindings: [] })] })], generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, type_ref: None, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::TypeAliasDef>(8) }
+> TypeAlias { name: Name(Text("AssocTy")), visibility: RawVisibilityId("pub(self)"), bounds: [Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Tr"))] }, generic_args: [Some(GenericArgs { args: [Type(Tuple([]))], has_self_type: false, bindings: [] })] })], generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, type_ref: None, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::TypeAliasDef>(8) }
 > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("assoc_const"))] }, input: None }]) }]
-> Const { name: Some(Name(Text("CONST"))), visibility: Module(ModPath { kind: Super(0), segments: [] }), type_ref: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("u8"))] }, generic_args: [None] }), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::ConstDef>(9) }
+> Const { name: Some(Name(Text("CONST"))), visibility: RawVisibilityId("pub(self)"), type_ref: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("u8"))] }, generic_args: [None] }), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::ConstDef>(9) }
 > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("assoc_method"))] }, input: None }]) }]
-> Function { name: Name(Text("method")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: true, is_unsafe: false, params: [Reference(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Self"))] }, generic_args: [None] }), Shared)], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(10) }
+> Function { name: Name(Text("method")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: true, is_unsafe: false, params: [Reference(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Self"))] }, generic_args: [None] }), Shared)], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(10) }
 > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("assoc_dfl_method"))] }, input: None }]) }]
-> Function { name: Name(Text("dfl_method")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: true, is_unsafe: false, params: [Reference(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Self"))] }, generic_args: [None] }), Mut)], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(11) }
+> Function { name: Name(Text("dfl_method")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: true, is_unsafe: false, params: [Reference(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Self"))] }, generic_args: [None] }), Mut)], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(11) }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("struct0"))] }, input: None }]) }]
-Struct { name: Name(Text("Struct0")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("T"))), default: Some(Tuple([])), provenance: TypeParamList }] }, where_predicates: [] }, fields: Unit, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(3), kind: Unit }
+Struct { name: Name(Text("Struct0")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("T"))), default: Some(Tuple([])), provenance: TypeParamList }] }, where_predicates: [] }, fields: Unit, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(3), kind: Unit }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("struct1"))] }, input: None }]) }]
-Struct { name: Name(Text("Struct1")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("T"))), default: None, provenance: TypeParamList }] }, where_predicates: [] }, fields: Tuple(Idx::<Field>(0)..Idx::<Field>(1)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(4), kind: Tuple }
+Struct { name: Name(Text("Struct1")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("T"))), default: None, provenance: TypeParamList }] }, where_predicates: [] }, fields: Tuple(Idx::<Field>(0)..Idx::<Field>(1)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(4), kind: Tuple }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("struct2"))] }, input: None }]) }]
-Struct { name: Name(Text("Struct2")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("T"))), default: None, provenance: TypeParamList }] }, where_predicates: [] }, fields: Record(Idx::<Field>(1)..Idx::<Field>(2)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(5), kind: Record }
+Struct { name: Name(Text("Struct2")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("T"))), default: None, provenance: TypeParamList }] }, where_predicates: [] }, fields: Record(Idx::<Field>(1)..Idx::<Field>(2)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(5), kind: Record }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("en"))] }, input: None }]) }]
-Enum { name: Name(Text("En")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, variants: Idx::<Variant>(0)..Idx::<Variant>(1), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::EnumDef>(6) }
+Enum { name: Name(Text("En")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, variants: Idx::<Variant>(0)..Idx::<Variant>(1), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::EnumDef>(6) }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("un"))] }, input: None }]) }]
-Union { name: Name(Text("Un")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, fields: Record(Idx::<Field>(3)..Idx::<Field>(4)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::UnionDef>(7) }
+Union { name: Name(Text("Un")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, fields: Record(Idx::<Field>(3)..Idx::<Field>(4)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::UnionDef>(7) }
     "###);
 }
 
@@ -267,12 +267,12 @@ inner attrs: Attrs { entries: None }
 
 top-level items:
 Impl { generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("T"))), default: None, provenance: TypeParamList }] }, where_predicates: [WherePredicate { target: TypeRef(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("T"))] }, generic_args: [None] })), bound: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("A"))] }, generic_args: [None] }) }] }, target_trait: Some(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("D"))] }, generic_args: [None] })), target_type: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Response"))] }, generic_args: [Some(GenericArgs { args: [Type(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("T"))] }, generic_args: [None] }))], has_self_type: false, bindings: [] })] }), is_negative: false, items: [Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::ImplDef>(0) }
-> Function { name: Name(Text("foo")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
+> Function { name: Name(Text("foo")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
 
 inner items:
 
 for AST FileAstId::<ra_syntax::ast::generated::nodes::ModuleItem>(2):
-Function { name: Name(Text("end")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("W"))), default: None, provenance: TypeParamList }] }, where_predicates: [WherePredicate { target: TypeRef(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("W"))] }, generic_args: [None] })), bound: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Write"))] }, generic_args: [None] }) }] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
+Function { name: Name(Text("end")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("W"))), default: None, provenance: TypeParamList }] }, where_predicates: [WherePredicate { target: TypeRef(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("W"))] }, generic_args: [None] })), bound: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Write"))] }, generic_args: [None] }) }] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
 
     "###);
 }
@@ -296,9 +296,9 @@ inner attrs: Attrs { entries: None }
 
 top-level items:
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_a"))] }, input: None }, Attr { path: ModPath { kind: Plain, segments: [Name(Text("block_attr"))] }, input: None }]) }]
-Function { name: Name(Text("a")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
+Function { name: Name(Text("a")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_b"))] }, input: None }, Attr { path: ModPath { kind: Plain, segments: [Name(Text("block_attr"))] }, input: None }]) }]
-Function { name: Name(Text("b")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
+Function { name: Name(Text("b")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
     "###);
 }
 
@@ -321,11 +321,11 @@ inner attrs: Attrs { entries: None }
 
 top-level items:
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("trait_attr"))] }, input: None }]) }]
-Trait { name: Name(Text("Tr")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("Self"))), default: None, provenance: TraitSelf }] }, where_predicates: [] }, auto: false, items: [Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::TraitDef>(0) }
+Trait { name: Name(Text("Tr")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 1, data: [TypeParamData { name: Some(Name(Text("Self"))), default: None, provenance: TraitSelf }] }, where_predicates: [] }, auto: false, items: [Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::TraitDef>(0) }
 > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_a"))] }, input: None }]) }]
-> Function { name: Name(Text("a")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
+> Function { name: Name(Text("a")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
 > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_b"))] }, input: None }]) }]
-> Function { name: Name(Text("b")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
+> Function { name: Name(Text("b")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
     "###);
 }
 
@@ -350,9 +350,9 @@ top-level items:
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("impl_attr"))] }, input: None }]) }]
 Impl { generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, target_trait: None, target_type: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Ty"))] }, generic_args: [None] }), is_negative: false, items: [Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::ImplDef>(0) }
 > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_a"))] }, input: None }]) }]
-> Function { name: Name(Text("a")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
+> Function { name: Name(Text("a")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
 > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_b"))] }, input: None }]) }]
-> Function { name: Name(Text("b")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
+> Function { name: Name(Text("b")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
     "###);
 }
 
@@ -398,13 +398,13 @@ fn inner_item_attrs() {
 inner attrs: Attrs { entries: None }
 
 top-level items:
-Function { name: Name(Text("foo")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(0) }
+Function { name: Name(Text("foo")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(0) }
 
 inner items:
 
 for AST FileAstId::<ra_syntax::ast::generated::nodes::ModuleItem>(1):
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("on_inner"))] }, input: None }]) }]
-Function { name: Name(Text("inner")), visibility: Module(ModPath { kind: Super(0), segments: [] }), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
+Function { name: Name(Text("inner")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParams { types: Arena { len: 0, data: [] }, where_predicates: [] }, has_self_param: false, is_unsafe: false, params: [], ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
 
     "###);
 }

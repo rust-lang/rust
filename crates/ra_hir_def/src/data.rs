@@ -43,7 +43,7 @@ impl FunctionData {
             attrs: item_tree.attrs(loc.id.value.into()).clone(),
             has_self_param: func.has_self_param,
             is_unsafe: func.is_unsafe,
-            visibility: func.visibility.clone(),
+            visibility: item_tree[func.visibility].clone(),
         })
     }
 }
@@ -69,7 +69,7 @@ impl TypeAliasData {
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
             type_ref: typ.type_ref.clone(),
-            visibility: typ.visibility.clone(),
+            visibility: item_tree[typ.visibility].clone(),
             bounds: typ.bounds.clone(),
         })
     }
@@ -175,7 +175,7 @@ impl ConstData {
         Arc::new(ConstData {
             name: konst.name.clone(),
             type_ref: konst.type_ref.clone(),
-            visibility: konst.visibility.clone(),
+            visibility: item_tree[konst.visibility].clone(),
         })
     }
 }
@@ -197,7 +197,7 @@ impl StaticData {
         Arc::new(StaticData {
             name: Some(statik.name.clone()),
             type_ref: statik.type_ref.clone(),
-            visibility: statik.visibility.clone(),
+            visibility: item_tree[statik.visibility].clone(),
             mutable: statik.mutable,
         })
     }

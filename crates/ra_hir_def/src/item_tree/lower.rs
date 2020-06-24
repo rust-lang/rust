@@ -36,7 +36,7 @@ pub(super) struct Ctx {
     source_ast_id_map: Arc<AstIdMap>,
     body_ctx: crate::body::LowerCtx,
     inner_items: Vec<ModItem>,
-    forced_visibility: Option<RawVisibility>,
+    forced_visibility: Option<RawVisibilityId>,
 }
 
 impl Ctx {
@@ -201,7 +201,7 @@ impl Ctx {
         start..end
     }
 
-    fn lower_record_field(&self, field: &ast::RecordFieldDef) -> Option<Field> {
+    fn lower_record_field(&mut self, field: &ast::RecordFieldDef) -> Option<Field> {
         let name = field.name()?.as_name();
         let visibility = self.lower_visibility(field);
         let type_ref = self.lower_type_ref(&field.ascribed_type()?);
@@ -220,7 +220,7 @@ impl Ctx {
         start..end
     }
 
-    fn lower_tuple_field(&self, idx: usize, field: &ast::TupleFieldDef) -> Option<Field> {
+    fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleFieldDef) -> Option<Field> {
         let name = Name::new_tuple_field(idx);
         let visibility = self.lower_visibility(field);
         let type_ref = self.lower_type_ref(&field.type_ref()?);
@@ -399,7 +399,7 @@ impl Ctx {
         let generic_params = self.lower_generic_params(GenericsOwner::Trait(trait_def), trait_def);
         let auto = trait_def.auto_token().is_some();
         let items = trait_def.item_list().map(|list| {
-            self.with_inherited_visibility(visibility.clone(), |this| {
+            self.with_inherited_visibility(visibility, |this| {
                 list.items()
                     .filter_map(|item| {
                         let attrs = Attrs::new(&item, &this.hygiene);
@@ -463,7 +463,7 @@ impl Ctx {
                 imports.push(id(tree.imports.alloc(Import {
                     path,
                     alias,
-                    visibility: visibility.clone(),
+                    visibility,
                     is_glob,
                     is_prelude,
                     ast_id,
@@ -596,11 +596,13 @@ impl Ctx {
         }
     }
 
-    fn lower_visibility(&self, item: &impl ast::VisibilityOwner) -> RawVisibility {
-        match &self.forced_visibility {
-            Some(vis) => vis.clone(),
+    fn lower_visibility(&mut self, item: &impl ast::VisibilityOwner) -> RawVisibilityId {
+        let vis = match self.forced_visibility {
+            Some(vis) => return vis,
             None => RawVisibility::from_ast_with_hygiene(item.visibility(), &self.hygiene),
-        }
+        };
+
+        self.data().vis.alloc(vis)
     }
 
     fn lower_type_ref(&self, type_ref: &ast::TypeRef) -> TypeRef {
@@ -613,7 +615,7 @@ impl Ctx {
     /// Forces the visibility `vis` to be used for all items lowered during execution of `f`.
     fn with_inherited_visibility<R>(
         &mut self,
-        vis: RawVisibility,
+        vis: RawVisibilityId,
         f: impl FnOnce(&mut Self) -> R,
     ) -> R {
         let old = mem::replace(&mut self.forced_visibility, Some(vis));

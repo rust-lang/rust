@@ -20,7 +20,9 @@ use test_utils::mark;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    item_tree::{self, ItemTree, ItemTreeId, MacroCall, Mod, ModItem, ModKind, StructDefKind},
+    item_tree::{
+        self, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, Mod, ModItem, ModKind, StructDefKind,
+    },
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
         BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
@@ -114,26 +116,28 @@ struct Import {
     pub is_macro_use: bool,
 }
 
-impl From<item_tree::Import> for Import {
-    fn from(it: item_tree::Import) -> Self {
+impl Import {
+    fn from_use(tree: &ItemTree, id: FileItemTreeId<item_tree::Import>) -> Self {
+        let it = &tree[id];
+        let visibility = &tree[it.visibility];
         Self {
-            path: it.path,
-            alias: it.alias,
-            visibility: it.visibility,
+            path: it.path.clone(),
+            alias: it.alias.clone(),
+            visibility: visibility.clone(),
             is_glob: it.is_glob,
             is_prelude: it.is_prelude,
             is_extern_crate: false,
             is_macro_use: false,
         }
     }
-}
 
-impl From<item_tree::ExternCrate> for Import {
-    fn from(it: item_tree::ExternCrate) -> Self {
+    fn from_extern_crate(tree: &ItemTree, id: FileItemTreeId<item_tree::ExternCrate>) -> Self {
+        let it = &tree[id];
+        let visibility = &tree[it.visibility];
         Self {
-            path: it.path,
-            alias: it.alias,
-            visibility: it.visibility,
+            path: it.path.clone(),
+            alias: it.alias.clone(),
+            visibility: visibility.clone(),
             is_glob: false,
             is_prelude: false,
             is_extern_crate: true,
@@ -761,14 +765,14 @@ impl ModCollector<'_, '_> {
                     ModItem::Import(import_id) => {
                         self.def_collector.unresolved_imports.push(ImportDirective {
                             module_id: self.module_id,
-                            import: self.item_tree[import_id].clone().into(),
+                            import: Import::from_use(&self.item_tree, import_id),
                             status: PartialResolvedImport::Unresolved,
                         })
                     }
                     ModItem::ExternCrate(import_id) => {
                         self.def_collector.unresolved_imports.push(ImportDirective {
                             module_id: self.module_id,
-                            import: self.item_tree[import_id].clone().into(),
+                            import: Import::from_extern_crate(&self.item_tree, import_id),
                             status: PartialResolvedImport::Unresolved,
                         })
                     }
@@ -795,7 +799,7 @@ impl ModCollector<'_, '_> {
                             .intern(self.def_collector.db)
                             .into(),
                             name: &func.name,
-                            visibility: &func.visibility,
+                            visibility: &self.item_tree[func.visibility],
                             has_constructor: false,
                         });
                     }
@@ -812,7 +816,7 @@ impl ModCollector<'_, '_> {
                                 .intern(self.def_collector.db)
                                 .into(),
                             name: &it.name,
-                            visibility: &it.visibility,
+                            visibility: &self.item_tree[it.visibility],
                             has_constructor: it.kind != StructDefKind::Record,
                         });
                     }
@@ -829,7 +833,7 @@ impl ModCollector<'_, '_> {
                                 .intern(self.def_collector.db)
                                 .into(),
                             name: &it.name,
-                            visibility: &it.visibility,
+                            visibility: &self.item_tree[it.visibility],
                             has_constructor: false,
                         });
                     }
@@ -846,7 +850,7 @@ impl ModCollector<'_, '_> {
                                 .intern(self.def_collector.db)
                                 .into(),
                             name: &it.name,
-                            visibility: &it.visibility,
+                            visibility: &self.item_tree[it.visibility],
                             has_constructor: false,
                         });
                     }
@@ -862,7 +866,7 @@ impl ModCollector<'_, '_> {
                                 .intern(self.def_collector.db)
                                 .into(),
                                 name,
-                                visibility: &it.visibility,
+                                visibility: &self.item_tree[it.visibility],
                                 has_constructor: false,
                             });
                         }
@@ -875,7 +879,7 @@ impl ModCollector<'_, '_> {
                                 .intern(self.def_collector.db)
                                 .into(),
                             name: &it.name,
-                            visibility: &it.visibility,
+                            visibility: &self.item_tree[it.visibility],
                             has_constructor: false,
                         });
                     }
@@ -887,7 +891,7 @@ impl ModCollector<'_, '_> {
                                 .intern(self.def_collector.db)
                                 .into(),
                             name: &it.name,
-                            visibility: &it.visibility,
+                            visibility: &self.item_tree[it.visibility],
                             has_constructor: false,
                         });
                     }
@@ -902,7 +906,7 @@ impl ModCollector<'_, '_> {
                             .intern(self.def_collector.db)
                             .into(),
                             name: &it.name,
-                            visibility: &it.visibility,
+                            visibility: &self.item_tree[it.visibility],
                             has_constructor: false,
                         });
                     }
@@ -935,7 +939,7 @@ impl ModCollector<'_, '_> {
                     module.name.clone(),
                     AstId::new(self.file_id, module.ast_id),
                     None,
-                    &module.visibility,
+                    &self.item_tree[module.visibility],
                 );
 
                 ModCollector {
@@ -965,7 +969,7 @@ impl ModCollector<'_, '_> {
                             module.name.clone(),
                             ast_id,
                             Some((file_id, is_mod_rs)),
-                            &module.visibility,
+                            &self.item_tree[module.visibility],
                         );
                         let item_tree = self.def_collector.db.item_tree(file_id.into());
                         ModCollector {
