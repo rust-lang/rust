@@ -126,12 +126,6 @@ impl MockAnalysis {
         file_id
     }
 
-    pub fn add_file(&mut self, path: &str, text: &str) -> FileId {
-        let file_id = self.next_id();
-        self.files.push(MockFileData::new(path.to_string(), text.to_string()));
-        file_id
-    }
-
     fn add_file_with_range(&mut self, path: &str, text: &str) -> FileRange {
         let (range, text) = extract_range(text);
         let file_id = self.next_id();

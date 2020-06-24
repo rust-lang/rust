@@ -2,10 +2,7 @@ use std::fs;
 
 use test_utils::{assert_eq_text, project_dir, read_text};
 
-use crate::{
-    mock_analysis::{single_file, MockAnalysis},
-    FileRange, TextRange,
-};
+use crate::{mock_analysis::single_file, FileRange, TextRange};
 
 #[test]
 fn test_highlighting() {
@@ -127,12 +124,10 @@ fn accidentally_quadratic() {
     let file = project_dir().join("crates/ra_syntax/test_data/accidentally_quadratic");
     let src = fs::read_to_string(file).unwrap();
 
-    let mut mock = MockAnalysis::new();
-    let file_id = mock.add_file("/main.rs", &src);
-    let host = mock.analysis_host();
+    let (analysis, file_id) = single_file(&src);
 
     // let t = std::time::Instant::now();
-    let _ = host.analysis().highlight(file_id).unwrap();
+    let _ = analysis.highlight(file_id).unwrap();
     // eprintln!("elapsed: {:?}", t.elapsed());
 }
 
