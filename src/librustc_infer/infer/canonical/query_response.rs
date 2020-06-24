@@ -525,12 +525,10 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         result_subst: &'a CanonicalVarValues<'tcx>,
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
         unsubstituted_region_constraints.iter().map(move |constraint| {
-            let constraint = substitute_value(self.tcx, result_subst, constraint);
+            let ty::OutlivesPredicate(k1, r2) =
+                *substitute_value(self.tcx, result_subst, constraint).skip_binder();
 
-            let to_predicate = |ty::OutlivesPredicate(k1, r2): ty::OutlivesPredicate<
-                GenericArg<'tcx>,
-                ty::Region<'tcx>,
-            >| match k1.unpack() {
+            let predicate = match k1.unpack() {
                 GenericArgKind::Lifetime(r1) => {
                     ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
                         .to_predicate(self.tcx)
@@ -541,16 +539,11 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 }
                 GenericArgKind::Const(..) => {
                     // Consts cannot outlive one another, so we don't expect to
-                    // ecounter this branch.
+                    // encounter this branch.
                     span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
                 }
-            };
-
-            let predicate = if let Some(constraint) = constraint.no_bound_vars() {
-                to_predicate(constraint)
-            } else {
-                ty::PredicateKind::ForAll(constraint.map_bound(to_predicate)).to_predicate(self.tcx)
-            };
+            }
+            .potentially_quantified(self.tcx, ty::PredicateKind::ForAll);
 
             Obligation::new(cause.clone(), param_env, predicate)
         })
