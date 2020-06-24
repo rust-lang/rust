@@ -36,6 +36,7 @@ use crate::{
 
 use super::{ExprSource, PatSource};
 use ast::AstChildren;
+use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
 pub(crate) struct LowerCtx {
@@ -74,7 +75,11 @@ pub(super) fn lower(
             body_expr: dummy_expr_id(),
             item_scope: Default::default(),
         },
-        item_trees: vec![(expander.current_file_id, item_tree)],
+        item_trees: {
+            let mut map = FxHashMap::default();
+            map.insert(expander.current_file_id, item_tree);
+            map
+        },
         expander,
     }
     .collect(params, body)
@@ -87,7 +92,7 @@ struct ExprCollector<'a> {
     body: Body,
     source_map: BodySourceMap,
 
-    item_trees: Vec<(HirFileId, Arc<ItemTree>)>,
+    item_trees: FxHashMap<HirFileId, Arc<ItemTree>>,
 }
 
 impl ExprCollector<'_> {
@@ -541,7 +546,7 @@ impl ExprCollector<'_> {
                                 .insert(macro_call, self.expander.current_file_id);
 
                             let item_tree = self.db.item_tree(self.expander.current_file_id);
-                            self.item_trees.push((self.expander.current_file_id, item_tree));
+                            self.item_trees.insert(self.expander.current_file_id, item_tree);
                             let id = self.collect_expr(expansion);
                             self.expander.exit(self.db, mark);
                             id
@@ -557,11 +562,7 @@ impl ExprCollector<'_> {
     }
 
     fn find_inner_item<S: ItemTreeNode>(&self, id: AstId<ast::ModuleItem>) -> FileItemTreeId<S> {
-        let index =
-            self.item_trees.iter().position(|(file, _)| *file == id.file_id).unwrap_or_else(|| {
-                panic!("couldn't find item tree for file {:?}", id.file_id);
-            });
-        let tree = &self.item_trees[index].1;
+        let tree = &self.item_trees[&id.file_id];
 
         // FIXME: This probably breaks with `use` items, since they produce multiple item tree nodes
 
