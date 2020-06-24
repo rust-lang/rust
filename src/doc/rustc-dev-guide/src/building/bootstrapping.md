@@ -71,7 +71,8 @@ read by the other.
 
 ### Adding a setting to config.toml
 
-This section is a work in progress. In the meantime, you can see an example contribution [here][bootstrap-build].
+This section is a work in progress. In the meantime, you can see an example
+contribution [here][bootstrap-build].
 
 [bootstrap-build]: https://github.com/rust-lang/rust/pull/71994
 
