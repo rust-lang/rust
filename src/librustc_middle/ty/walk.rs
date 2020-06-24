@@ -133,7 +133,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             ty::Dynamic(obj, lt) => {
                 stack.push(lt.into());
                 stack.extend(obj.iter().rev().flat_map(|predicate| {
-                    let (substs, opt_ty) = match *predicate.skip_binder() {
+                    let (substs, opt_ty) = match predicate.skip_binder() {
                         ty::ExistentialPredicate::Trait(tr) => (tr.substs, None),
                         ty::ExistentialPredicate::Projection(p) => (p.substs, Some(p.ty)),
                         ty::ExistentialPredicate::AutoTrait(_) =>

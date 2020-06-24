@@ -1802,7 +1802,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Calling `skip_binder` is okay because the predicates are re-bound.
         let regular_trait_predicates = existential_trait_refs
-            .map(|trait_ref| ty::ExistentialPredicate::Trait(*trait_ref.skip_binder()));
+            .map(|trait_ref| ty::ExistentialPredicate::Trait(trait_ref.skip_binder()));
         let auto_trait_predicates = auto_traits
             .into_iter()
             .map(|trait_ref| ty::ExistentialPredicate::AutoTrait(trait_ref.trait_ref().def_id()));
@@ -1810,7 +1810,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .chain(auto_trait_predicates)
             .chain(
                 existential_projections
-                    .map(|x| ty::ExistentialPredicate::Projection(*x.skip_binder())),
+                    .map(|x| ty::ExistentialPredicate::Projection(x.skip_binder())),
             )
             .collect::<SmallVec<[_; 8]>>();
         v.sort_by(|a, b| a.stable_cmp(tcx, b));

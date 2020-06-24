@@ -88,13 +88,13 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::GeneratorWitness(ref ts) => {
+            &ty::GeneratorWitness(ts) => {
                 let mut computation = FlagComputation::new();
-                computation.add_tys(&ts.skip_binder()[..]);
+                computation.add_tys(ts.skip_binder());
                 self.add_bound_computation(computation);
             }
 
-            &ty::Closure(_, ref substs) => {
+            &ty::Closure(_, substs) => {
                 self.add_substs(substs);
             }
 
@@ -122,7 +122,7 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::Projection(ref data) => {
+            &ty::Projection(data) => {
                 self.add_flags(TypeFlags::HAS_TY_PROJECTION);
                 self.add_projection_ty(data);
             }
@@ -211,7 +211,7 @@ impl FlagComputation {
 
                 self.add_bound_computation(computation);
             }
-            ty::PredicateKind::Projection(projection) => {
+            &ty::PredicateKind::Projection(projection) => {
                 let mut computation = FlagComputation::new();
                 let ty::ProjectionPredicate { projection_ty, ty } = projection.skip_binder();
                 computation.add_projection_ty(projection_ty);
@@ -298,7 +298,7 @@ impl FlagComputation {
         self.add_ty(projection.ty);
     }
 
-    fn add_projection_ty(&mut self, projection_ty: &ty::ProjectionTy<'_>) {
+    fn add_projection_ty(&mut self, projection_ty: ty::ProjectionTy<'_>) {
         self.add_substs(projection_ty.substs);
     }
 

@@ -159,10 +159,9 @@ where
         }
     }
 
-    // FIXME: consider taking `ty::Binder` directly, without the reference.
     fn create_scope(
         &mut self,
-        value: &ty::Binder<impl TypeFoldable<'tcx>>,
+        value: ty::Binder<impl Relate<'tcx>>,
         universally_quantified: UniversallyQuantified,
     ) -> BoundRegionScope<'tcx> {
         let mut scope = BoundRegionScope::default();
@@ -654,8 +653,8 @@ where
             // instantiation of B (i.e., B instantiated with
             // universals).
 
-            let b_scope = self.create_scope(&b, UniversallyQuantified(true));
-            let a_scope = self.create_scope(&a, UniversallyQuantified(false));
+            let b_scope = self.create_scope(b, UniversallyQuantified(true));
+            let a_scope = self.create_scope(a, UniversallyQuantified(false));
 
             debug!("binders: a_scope = {:?} (existential)", a_scope);
             debug!("binders: b_scope = {:?} (universal)", b_scope);
@@ -683,7 +682,7 @@ where
             //   subtyping (i.e., `&'b u32 <: &{P} u32`).
             let variance = ::std::mem::replace(&mut self.ambient_variance, ty::Variance::Covariant);
 
-            self.relate(*a.skip_binder(), *b.skip_binder())?;
+            self.relate(a.skip_binder(), b.skip_binder())?;
 
             self.ambient_variance = variance;
 
@@ -698,8 +697,8 @@ where
             // instantiation of B (i.e., B instantiated with
             // existentials). Opposite of above.
 
-            let a_scope = self.create_scope(&a, UniversallyQuantified(true));
-            let b_scope = self.create_scope(&b, UniversallyQuantified(false));
+            let a_scope = self.create_scope(a, UniversallyQuantified(true));
+            let b_scope = self.create_scope(b, UniversallyQuantified(false));
 
             debug!("binders: a_scope = {:?} (universal)", a_scope);
             debug!("binders: b_scope = {:?} (existential)", b_scope);
@@ -712,7 +711,7 @@ where
             let variance =
                 ::std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
 
-            self.relate(*a.skip_binder(), *b.skip_binder())?;
+            self.relate(a.skip_binder(), b.skip_binder())?;
 
             self.ambient_variance = variance;
 
@@ -1010,7 +1009,7 @@ where
         debug!("TypeGeneralizer::binders(a={:?})", a);
 
         self.first_free_index.shift_in(1);
-        let result = self.relate(*a.skip_binder(), *a.skip_binder())?;
+        let result = self.relate(a.skip_binder(), a.skip_binder())?;
         self.first_free_index.shift_out(1);
         Ok(ty::Binder::bind(result))
     }

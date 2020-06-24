@@ -123,7 +123,7 @@ where
     T: HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.skip_binder().hash_stable(hcx, hasher);
+        self.as_ref().skip_binder().hash_stable(hcx, hasher);
     }
 }
 

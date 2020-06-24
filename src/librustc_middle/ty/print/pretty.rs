@@ -189,7 +189,7 @@ pub trait PrettyPrinter<'tcx>:
     where
         T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
     {
-        value.skip_binder().print(self)
+        value.as_ref().skip_binder().print(self)
     }
 
     /// Prints comma-separated elements.
