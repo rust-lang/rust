@@ -556,19 +556,25 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
                 "Linker does not support -static-pie command line option. Retrying with -static instead."
             );
             // Mirror `add_(pre,post)_link_objects` to replace CRT objects.
-            let fallback = crt_objects_fallback(sess, crate_type);
+            let self_contained = crt_objects_fallback(sess, crate_type);
             let opts = &sess.target.target.options;
-            let pre_objects =
-                if fallback { &opts.pre_link_objects_fallback } else { &opts.pre_link_objects };
-            let post_objects =
-                if fallback { &opts.post_link_objects_fallback } else { &opts.post_link_objects };
+            let pre_objects = if self_contained {
+                &opts.pre_link_objects_fallback
+            } else {
+                &opts.pre_link_objects
+            };
+            let post_objects = if self_contained {
+                &opts.post_link_objects_fallback
+            } else {
+                &opts.post_link_objects
+            };
             let get_objects = |objects: &CrtObjects, kind| {
                 objects
                     .get(&kind)
                     .iter()
                     .copied()
                     .flatten()
-                    .map(|obj| get_object_file_path(sess, obj, fallback).into_os_string())
+                    .map(|obj| get_object_file_path(sess, obj, self_contained).into_os_string())
                     .collect::<Vec<_>>()
             };
             let pre_objects_static_pie = get_objects(pre_objects, LinkOutputKind::StaticPicExe);
@@ -1301,12 +1307,13 @@ fn add_pre_link_objects(
     cmd: &mut dyn Linker,
     sess: &Session,
     link_output_kind: LinkOutputKind,
-    fallback: bool,
+    self_contained: bool,
 ) {
     let opts = &sess.target.target.options;
-    let objects = if fallback { &opts.pre_link_objects_fallback } else { &opts.pre_link_objects };
+    let objects =
+        if self_contained { &opts.pre_link_objects_fallback } else { &opts.pre_link_objects };
     for obj in objects.get(&link_output_kind).iter().copied().flatten() {
-        cmd.add_object(&get_object_file_path(sess, obj, fallback));
+        cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
 }
 
@@ -1315,12 +1322,13 @@ fn add_post_link_objects(
     cmd: &mut dyn Linker,
     sess: &Session,
     link_output_kind: LinkOutputKind,
-    fallback: bool,
+    self_contained: bool,
 ) {
     let opts = &sess.target.target.options;
-    let objects = if fallback { &opts.post_link_objects_fallback } else { &opts.post_link_objects };
+    let objects =
+        if self_contained { &opts.post_link_objects_fallback } else { &opts.post_link_objects };
     for obj in objects.get(&link_output_kind).iter().copied().flatten() {
-        cmd.add_object(&get_object_file_path(sess, obj, fallback));
+        cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
 }
 
