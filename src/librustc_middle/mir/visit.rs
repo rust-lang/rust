@@ -216,10 +216,13 @@ macro_rules! make_mir_visitor {
                 self.super_var_debug_info(var_debug_info);
             }
 
-            fn visit_local(&mut self,
-                            _local: & $($mutability)? Local,
-                            _context: PlaceContext,
-                            _location: Location) {
+            fn visit_local(
+                &mut self,
+                _local: & $($mutability)? Local,
+                _context: PlaceContext,
+                _has_projections: bool,
+                _location: Location
+            ) {
             }
 
             fn visit_source_scope(&mut self,
@@ -357,6 +360,7 @@ macro_rules! make_mir_visitor {
                         self.visit_local(
                             local,
                             PlaceContext::NonUse(NonUseContext::StorageLive),
+                            false,
                             location
                         );
                     }
@@ -364,6 +368,7 @@ macro_rules! make_mir_visitor {
                         self.visit_local(
                             local,
                             PlaceContext::NonUse(NonUseContext::StorageDead),
+                            false,
                             location
                         );
                     }
@@ -428,6 +433,7 @@ macro_rules! make_mir_visitor {
                         self.visit_local(
                             & $($mutability)? local,
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Move),
+                            false,
                             location,
                         );
 
@@ -880,11 +886,11 @@ macro_rules! visit_place_fns {
             context: PlaceContext,
             location: Location,
         ) {
-            self.visit_local(&mut place.local, context, location);
-
             if let Some(new_projection) = self.process_projection(&place.projection, location) {
                 place.projection = self.tcx().intern_place_elems(&new_projection);
             }
+
+            self.visit_local(&mut place.local, context, !place.projection.is_empty(), location);
         }
 
         fn process_projection(
@@ -922,6 +928,7 @@ macro_rules! visit_place_fns {
                     self.visit_local(
                         &mut new_local,
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                        false,
                         location,
                     );
 
@@ -937,16 +944,6 @@ macro_rules! visit_place_fns {
     };
 
     () => {
-        fn visit_projection(
-            &mut self,
-            local: Local,
-            projection: &[PlaceElem<'tcx>],
-            context: PlaceContext,
-            location: Location,
-        ) {
-            self.super_projection(local, projection, context, location);
-        }
-
         fn visit_projection_elem(
             &mut self,
             local: Local,
@@ -958,33 +955,57 @@ macro_rules! visit_place_fns {
             self.super_projection_elem(local, proj_base, elem, context, location);
         }
 
-        fn super_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
-            let mut context = context;
-
-            if !place.projection.is_empty() {
-                context = if context.is_mutating_use() {
-                    PlaceContext::MutatingUse(MutatingUseContext::Projection)
-                } else {
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-                };
-            }
-
-            self.visit_local(&place.local, context, location);
-
-            self.visit_projection(place.local, &place.projection, context, location);
+        /// Visits each `ProjectionElem`, starting with the outermost one and working in, along
+        /// with a slice of all the projections we have yet to visit.
+        ///
+        /// For `(*(x.y)).z`, this gives us, in order:
+        /// - outermost=`Field(z)` base=`[Field(y), Deref]` context=`Copy`
+        /// - outermost=`Deref`    base=`[Field(y)]`        context=`Copy`
+        /// - outermost=`Field(y)` base=`[]`                context=`Deref`
+        ///
+        /// Finally, `x` will be visited by `visit_local`.
+        ///
+        /// Context is preserved as we move inwards unless we see a `Deref` projection, so both
+        /// `x.y = 4` and `x = 4` are treated as a `MutatingPlaceContext::Store`. `Deref`
+        /// projections are handled specially since they change what memory is referred to by a
+        /// `Place`.  For example, `*x = 4` is very different from `x = 4` when we want to know the
+        /// possible definitions of `x`.
+        fn super_place(
+            &mut self,
+            place: &Place<'tcx>,
+            mut context: PlaceContext,
+            location: Location,
+        ) {
+            self.super_projection(place.local, place.projection, &mut context, location);
+            self.visit_local(&place.local, context, !place.projection.is_empty(), location);
         }
 
         fn super_projection(
             &mut self,
             local: Local,
-            projection: &[PlaceElem<'tcx>],
-            context: PlaceContext,
+            mut projection: &[PlaceElem<'tcx>],
+            context: &mut PlaceContext,
             location: Location,
         ) {
-            let mut cursor = projection;
-            while let &[ref proj_base @ .., elem] = cursor {
-                cursor = proj_base;
-                self.visit_projection_elem(local, cursor, elem, context, location);
+            while let [base @ .., outermost] = projection {
+                self.visit_projection_elem(local, base, *outermost, *context, location);
+                projection = base;
+
+                match outermost {
+                    ProjectionElem::Deref => {
+                        if context.is_mutating_use() {
+                            *context = PlaceContext::MutatingUse(MutatingUseContext::Deref);
+                        } else {
+                            *context = PlaceContext::NonMutatingUse(NonMutatingUseContext::Deref);
+                        };
+                    }
+
+                    ProjectionElem::Field(..)
+                    | ProjectionElem::Index(_)
+                    | ProjectionElem::Subslice { .. }
+                    | ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Downcast(..) => {}
+                }
             }
         }
 
@@ -1004,6 +1025,7 @@ macro_rules! visit_place_fns {
                     self.visit_local(
                         &local,
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                        false,
                         location,
                     );
                 }
@@ -1081,13 +1103,8 @@ pub enum NonMutatingUseContext {
     UniqueBorrow,
     /// AddressOf for *const pointer.
     AddressOf,
-    /// Used as base for another place, e.g., `x` in `x.y`. Will not mutate the place.
-    /// For example, the projection `x.y` is not marked as a mutation in these cases:
-    ///
-    ///     z = x.y;
-    ///     f(&x.y);
-    ///
-    Projection,
+    /// A dereference, e.g., `*x` or `*x.f[0]`.
+    Deref,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1108,13 +1125,8 @@ pub enum MutatingUseContext {
     Borrow,
     /// AddressOf for *mut pointer.
     AddressOf,
-    /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
-    /// For example, the projection `x.y` is marked as a mutation in these cases:
-    ///
-    ///     x.y = ...;
-    ///     f(&mut x.y);
-    ///
-    Projection,
+    /// A dereference, e.g., `*x` or `*x.f[0]`.
+    Deref,
     /// Retagging, a "Stacked Borrows" shadow state operation
     Retag,
 }
