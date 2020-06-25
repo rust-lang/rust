@@ -98,7 +98,6 @@ impl Read for StdinRaw {
     }
 }
 impl StdinRaw {
-    #[cfg(any(unix, windows))]
     #[stable(since = "1.46.0", feature = "stdin_nonblocking")]
     pub unsafe fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
@@ -394,7 +393,6 @@ impl Stdin {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(unix, windows))]
     #[stable(since = "1.46.0", feature = "stdin_nonblocking")]
     pub unsafe fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.lock().set_nonblocking(nonblocking)
@@ -495,7 +493,6 @@ impl StdinLock<'_> {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(unix, windows))]
     #[stable(since = "1.46.0", feature = "stdin_nonblocking")]
     pub unsafe fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         match self.inner.get_ref() {
