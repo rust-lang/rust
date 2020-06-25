@@ -178,8 +178,8 @@ impl ItemTree {
         self.attrs.get(&AttrOwner::TopLevel).unwrap_or(&Attrs::EMPTY)
     }
 
-    pub fn attrs(&self, of: ModItem) -> &Attrs {
-        self.attrs.get(&AttrOwner::ModItem(of)).unwrap_or(&Attrs::EMPTY)
+    pub fn attrs(&self, of: AttrOwner) -> &Attrs {
+        self.attrs.get(&of).unwrap_or(&Attrs::EMPTY)
     }
 
     /// Returns the lowered inner items that `ast` corresponds to.
@@ -282,15 +282,32 @@ struct ItemTreeData {
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-enum AttrOwner {
+pub enum AttrOwner {
     /// Attributes on an item.
     ModItem(ModItem),
     /// Inner attributes of the source file.
     TopLevel,
+
+    Variant(Idx<Variant>),
+    Field(Idx<Field>),
     // FIXME: Store variant and field attrs, and stop reparsing them in `attrs_query`.
 }
 
-/// Trait implemented by all nodes in the item tree.
+macro_rules! from_attrs {
+    ( $( $var:ident($t:ty) ),+ ) => {
+        $(
+            impl From<$t> for AttrOwner {
+                fn from(t: $t) -> AttrOwner {
+                    AttrOwner::$var(t)
+                }
+            }
+        )+
+    };
+}
+
+from_attrs!(ModItem(ModItem), Variant(Idx<Variant>), Field(Idx<Field>));
+
+/// Trait implemented by all item nodes in the item tree.
 pub trait ItemTreeNode: Clone {
     type Source: AstNode + Into<ast::ModuleItem>;
 

@@ -208,5 +208,5 @@ where
 fn attrs_from_item_tree<N: ItemTreeNode>(id: ItemTreeId<N>, db: &dyn DefDatabase) -> Attrs {
     let tree = db.item_tree(id.file_id);
     let mod_item = N::id_to_mod_item(id.value);
-    tree.attrs(mod_item).clone()
+    tree.attrs(mod_item.into()).clone()
 }

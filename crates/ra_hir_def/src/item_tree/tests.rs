@@ -92,7 +92,7 @@ fn print_item_tree(ra_fixture: &str) -> String {
 }
 
 fn fmt_mod_item(out: &mut String, tree: &ItemTree, item: ModItem) {
-    let attrs = tree.attrs(item);
+    let attrs = tree.attrs(item.into());
     if !attrs.is_empty() {
         format_to!(out, "#[{:?}]\n", attrs);
     }

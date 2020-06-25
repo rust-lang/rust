@@ -126,15 +126,15 @@ impl Ctx {
 
         if !attrs.is_empty() {
             for item in items.iter().flat_map(|items| &items.0) {
-                self.add_attrs(*item, attrs.clone());
+                self.add_attrs((*item).into(), attrs.clone());
             }
         }
 
         items
     }
 
-    fn add_attrs(&mut self, item: ModItem, attrs: Attrs) {
-        match self.tree.attrs.entry(AttrOwner::ModItem(item)) {
+    fn add_attrs(&mut self, item: AttrOwner, attrs: Attrs) {
+        match self.tree.attrs.entry(item) {
             Entry::Occupied(mut entry) => {
                 *entry.get_mut() = entry.get().merge(attrs);
             }
@@ -200,7 +200,8 @@ impl Ctx {
         let start = self.next_field_idx();
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
-                self.data().fields.alloc(data);
+                let idx = self.data().fields.alloc(data);
+                self.add_attrs(idx.into(), Attrs::new(&field, &self.hygiene));
             }
         }
         let end = self.next_field_idx();
@@ -219,7 +220,8 @@ impl Ctx {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
             if let Some(data) = self.lower_tuple_field(i, &field) {
-                self.data().fields.alloc(data);
+                let idx = self.data().fields.alloc(data);
+                self.add_attrs(idx.into(), Attrs::new(&field, &self.hygiene));
             }
         }
         let end = self.next_field_idx();
@@ -266,7 +268,8 @@ impl Ctx {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
-                self.data().variants.alloc(data);
+                let idx = self.data().variants.alloc(data);
+                self.add_attrs(idx.into(), Attrs::new(&variant, &self.hygiene));
             }
         }
         let end = self.next_variant_idx();
@@ -419,7 +422,7 @@ impl Ctx {
                         let attrs = Attrs::new(&item, &this.hygiene);
                         this.collect_inner_items(item.syntax());
                         this.lower_assoc_item(&item).map(|item| {
-                            this.add_attrs(item.into(), attrs);
+                            this.add_attrs(ModItem::from(item).into(), attrs);
                             item
                         })
                     })
@@ -453,7 +456,7 @@ impl Ctx {
                 self.collect_inner_items(item.syntax());
                 let assoc = self.lower_assoc_item(&item)?;
                 let attrs = Attrs::new(&item, &self.hygiene);
-                self.add_attrs(assoc.into(), attrs);
+                self.add_attrs(ModItem::from(assoc).into(), attrs);
                 Some(assoc)
             })
             .collect();
@@ -539,7 +542,7 @@ impl Ctx {
                 .filter_map(|item| {
                     self.collect_inner_items(item.syntax());
                     let attrs = Attrs::new(&item, &self.hygiene);
-                    let id = match item {
+                    let id: ModItem = match item {
                         ast::ExternItem::FnDef(ast) => {
                             let func = self.lower_function(&ast)?;
                             func.into()
@@ -549,7 +552,7 @@ impl Ctx {
                             statik.into()
                         }
                     };
-                    self.add_attrs(id, attrs);
+                    self.add_attrs(id.into(), attrs);
                     Some(id)
                 })
                 .collect()
