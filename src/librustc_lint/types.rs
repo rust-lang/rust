@@ -14,7 +14,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, LayoutOf, TagEncoding, VariantIdx, Variants};
 use rustc_target::spec::abi::Abi;
 
@@ -498,10 +498,24 @@ declare_lint! {
     "proper use of libc types in foreign modules"
 }
 
-declare_lint_pass!(ImproperCTypes => [IMPROPER_CTYPES]);
+declare_lint_pass!(ImproperCTypesDeclarations => [IMPROPER_CTYPES]);
+
+declare_lint! {
+    IMPROPER_CTYPES_DEFINITIONS,
+    Warn,
+    "proper use of libc types in foreign item definitions"
+}
+
+declare_lint_pass!(ImproperCTypesDefinitions => [IMPROPER_CTYPES_DEFINITIONS]);
+
+enum ImproperCTypesMode {
+    Declarations,
+    Definitions,
+}
 
 struct ImproperCTypesVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
+    mode: ImproperCTypesMode,
 }
 
 enum FfiResult<'tcx> {
@@ -804,6 +818,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some("consider using a struct instead".into()),
             },
 
+            ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _)
+                if {
+                    matches!(self.mode, ImproperCTypesMode::Definitions)
+                        && ty.is_sized(self.cx.tcx.at(DUMMY_SP), self.cx.param_env)
+                } =>
+            {
+                FfiSafe
+            }
+
             ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
                 self.check_type_for_ffi(cache, ty)
             }
@@ -811,20 +834,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Array(inner_ty, _) => self.check_type_for_ffi(cache, inner_ty),
 
             ty::FnPtr(sig) => {
-                match sig.abi() {
-                    Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic | Abi::RustCall => {
-                        return FfiUnsafe {
-                            ty,
-                            reason: "this function pointer has Rust-specific calling convention"
+                if self.is_internal_abi(sig.abi()) {
+                    return FfiUnsafe {
+                        ty,
+                        reason: "this function pointer has Rust-specific calling convention".into(),
+                        help: Some(
+                            "consider using an `extern fn(...) -> ...` \
+                                    function pointer instead"
                                 .into(),
-                            help: Some(
-                                "consider using an `extern fn(...) -> ...` \
-                                        function pointer instead"
-                                    .into(),
-                            ),
-                        };
-                    }
-                    _ => {}
+                        ),
+                    };
                 }
 
                 let sig = cx.erase_late_bound_regions(&sig);
@@ -857,7 +876,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiUnsafe { ty, reason: "opaque types have no C equivalent".into(), help: None }
             }
 
+            // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
+            //  so they are currently ignored for the purposes of this lint.
+            ty::Param(..) | ty::Projection(..)
+                if matches!(self.mode, ImproperCTypesMode::Definitions) =>
+            {
+                FfiSafe
+            }
+
             ty::Param(..)
+            | ty::Projection(..)
             | ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)
@@ -865,7 +893,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
             | ty::Placeholder(..)
-            | ty::Projection(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }
     }
@@ -877,9 +904,20 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         note: &str,
         help: Option<&str>,
     ) {
-        self.cx.struct_span_lint(IMPROPER_CTYPES, sp, |lint| {
-            let mut diag =
-                lint.build(&format!("`extern` block uses type `{}`, which is not FFI-safe", ty));
+        let lint = match self.mode {
+            ImproperCTypesMode::Declarations => IMPROPER_CTYPES,
+            ImproperCTypesMode::Definitions => IMPROPER_CTYPES_DEFINITIONS,
+        };
+
+        self.cx.struct_span_lint(lint, sp, |lint| {
+            let item_description = match self.mode {
+                ImproperCTypesMode::Declarations => "block",
+                ImproperCTypesMode::Definitions => "fn",
+            };
+            let mut diag = lint.build(&format!(
+                "`extern` {} uses type `{}`, which is not FFI-safe",
+                item_description, ty
+            ));
             diag.span_label(sp, "not FFI-safe");
             if let Some(help) = help {
                 diag.help(help);
@@ -947,7 +985,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         // it is only OK to use this function because extern fns cannot have
         // any generic types right now:
-        let ty = self.cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+        let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
 
         // C doesn't really support passing arrays by value - the only way to pass an array by value
         // is through a struct. So, first test that the top level isn't an array, and then
@@ -997,15 +1035,22 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let ty = self.cx.tcx.type_of(def_id);
         self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
+
+    fn is_internal_abi(&self, abi: Abi) -> bool {
+        if let Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
+            true
+        } else {
+            false
+        }
+    }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypesDeclarations {
     fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem<'_>) {
-        let mut vis = ImproperCTypesVisitor { cx };
+        let mut vis = ImproperCTypesVisitor { cx, mode: ImproperCTypesMode::Declarations };
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id);
-        if let Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
-            // Don't worry about types in internal ABIs.
-        } else {
+
+        if !vis.is_internal_abi(abi) {
             match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
                     vis.check_foreign_fn(it.hir_id, decl);
@@ -1015,6 +1060,31 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
                 }
                 hir::ForeignItemKind::Type => (),
             }
+        }
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypesDefinitions {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'a, 'tcx>,
+        kind: hir::intravisit::FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl<'_>,
+        _: &'tcx hir::Body<'_>,
+        _: Span,
+        hir_id: hir::HirId,
+    ) {
+        use hir::intravisit::FnKind;
+
+        let abi = match kind {
+            FnKind::ItemFn(_, _, header, ..) => header.abi,
+            FnKind::Method(_, sig, ..) => sig.header.abi,
+            _ => return,
+        };
+
+        let mut vis = ImproperCTypesVisitor { cx, mode: ImproperCTypesMode::Definitions };
+        if !vis.is_internal_abi(abi) {
+            vis.check_foreign_fn(hir_id, decl);
         }
     }
 }

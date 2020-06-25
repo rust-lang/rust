@@ -38,6 +38,7 @@ pub struct LargeStruct(i64, i64, i64, i64, i64, i64, i64, i64);
 
 #[cfg(target_arch = "x86_64")]
 #[inline(never)]
+#[allow(improper_ctypes_definitions)]
 pub extern "sysv64" fn large_struct_by_val(mut foo: LargeStruct) -> LargeStruct {
     foo.0 *= 1;
     foo.1 *= 2;

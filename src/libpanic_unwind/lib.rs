@@ -81,6 +81,7 @@ extern "C" {
 mod dwarf;
 
 #[rustc_std_internal_symbol]
+#[cfg_attr(not(bootstrap), allow(improper_ctypes_definitions))]
 pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static) {
     Box::into_raw(imp::cleanup(payload))
 }
