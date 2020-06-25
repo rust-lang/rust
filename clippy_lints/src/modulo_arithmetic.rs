@@ -37,8 +37,8 @@ struct OperandInfo {
 }
 
 fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<OperandInfo> {
-    match constant(cx, cx.tables, operand) {
-        Some((Constant::Int(v), _)) => match cx.tables.expr_ty(expr).kind {
+    match constant(cx, cx.tables(), operand) {
+        Some((Constant::Int(v), _)) => match cx.tables().expr_ty(expr).kind {
             ty::Int(ity) => {
                 let value = sext(cx.tcx, v, ity);
                 return Some(OperandInfo {
@@ -106,7 +106,7 @@ fn check_const_operands<'a, 'tcx>(
 }
 
 fn check_non_const_operands<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, operand: &Expr<'_>) {
-    let operand_type = cx.tables.expr_ty(operand);
+    let operand_type = cx.tables().expr_ty(operand);
     if might_have_negative_value(operand_type) {
         span_lint_and_then(
             cx,

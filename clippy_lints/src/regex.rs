@@ -82,7 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
         if_chain! {
             if self.last.is_none();
             if let Some(ref expr) = block.expr;
-            if match_type(cx, cx.tables.expr_ty(expr), &paths::REGEX);
+            if match_type(cx, cx.tables().expr_ty(expr), &paths::REGEX);
             if let Some(span) = is_expn_of(expr.span, "regex");
             then {
                 if !self.spans.contains(&span) {
@@ -111,7 +111,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
             if let ExprKind::Call(ref fun, ref args) = expr.kind;
             if let ExprKind::Path(ref qpath) = fun.kind;
             if args.len() == 1;
-            if let Some(def_id) = cx.tables.qpath_res(qpath, fun.hir_id).opt_def_id();
+            if let Some(def_id) = cx.tables().qpath_res(qpath, fun.hir_id).opt_def_id();
             then {
                 if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
                    match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
@@ -140,7 +140,7 @@ fn str_span(base: Span, c: regex_syntax::ast::Span, offset: u16) -> Span {
 }
 
 fn const_str<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) -> Option<String> {
-    constant(cx, cx.tables, e).and_then(|(c, _)| match c {
+    constant(cx, cx.tables(), e).and_then(|(c, _)| match c {
         Constant::Str(s) => Some(s),
         _ => None,
     })

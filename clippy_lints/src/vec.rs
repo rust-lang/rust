@@ -37,7 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessVec {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_chain! {
-            if let ty::Ref(_, ty, _) = cx.tables.expr_ty_adjusted(expr).kind;
+            if let ty::Ref(_, ty, _) = cx.tables().expr_ty_adjusted(expr).kind;
             if let ty::Slice(..) = ty.kind;
             if let ExprKind::AddrOf(BorrowKind::Ref, _, ref addressee) = expr.kind;
             if let Some(vec_args) = higher::vec_macro(cx, addressee);
@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessVec {
         if_chain! {
             if let Some((_, arg, _)) = higher::for_loop(expr);
             if let Some(vec_args) = higher::vec_macro(cx, arg);
-            if is_copy(cx, vec_type(cx.tables.expr_ty_adjusted(arg)));
+            if is_copy(cx, vec_type(cx.tables().expr_ty_adjusted(arg)));
             then {
                 // report the error around the `vec!` not inside `<std macros>:`
                 let span = arg.span
@@ -70,7 +70,7 @@ fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecA
     let mut applicability = Applicability::MachineApplicable;
     let snippet = match *vec_args {
         higher::VecArgs::Repeat(elem, len) => {
-            if constant(cx, cx.tables, len).is_some() {
+            if constant(cx, cx.tables(), len).is_some() {
                 format!(
                     "&[{}; {}]",
                     snippet_with_applicability(cx, elem.span, "elem", &mut applicability),

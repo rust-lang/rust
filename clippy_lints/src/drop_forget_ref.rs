@@ -119,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DropForgetRef {
                 let lint;
                 let msg;
                 let arg = &args[0];
-                let arg_ty = cx.tables.expr_ty(arg);
+                let arg_ty = cx.tables().expr_ty(arg);
 
                 if let ty::Ref(..) = arg_ty.kind {
                     if match_def_path(cx, def_id, &paths::DROP) {

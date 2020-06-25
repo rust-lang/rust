@@ -138,7 +138,7 @@ fn check_replace_option_with_none(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest
 fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if_chain! {
         // check if replacement is mem::MaybeUninit::uninit().assume_init()
-        if let Some(method_def_id) = cx.tables.type_dependent_def_id(src.hir_id);
+        if let Some(method_def_id) = cx.tables().type_dependent_def_id(src.hir_id);
         if cx.tcx.is_diagnostic_item(sym::assume_init, method_def_id);
         then {
             let mut applicability = Applicability::MachineApplicable;
@@ -162,7 +162,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Ex
         if let ExprKind::Call(ref repl_func, ref repl_args) = src.kind;
         if repl_args.is_empty();
         if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
-        if let Some(repl_def_id) = cx.tables.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
+        if let Some(repl_def_id) = cx.tables().qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
         then {
             if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, repl_def_id) {
                 let mut applicability = Applicability::MachineApplicable;
@@ -179,7 +179,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Ex
                     applicability,
                 );
             } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id) &&
-                    !cx.tables.expr_ty(src).is_primitive() {
+                    !cx.tables().expr_ty(src).is_primitive() {
                 span_lint_and_help(
                     cx,
                     MEM_REPLACE_WITH_UNINIT,
@@ -198,7 +198,7 @@ fn check_replace_with_default(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &E
         if_chain! {
             if !in_external_macro(cx.tcx.sess, expr_span);
             if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
-            if let Some(repl_def_id) = cx.tables.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
+            if let Some(repl_def_id) = cx.tables().qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
             if match_def_path(cx, repl_def_id, &paths::DEFAULT_TRAIT_METHOD);
             then {
                 span_lint_and_then(
@@ -230,7 +230,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
             // Check that `expr` is a call to `mem::replace()`
             if let ExprKind::Call(ref func, ref func_args) = expr.kind;
             if let ExprKind::Path(ref func_qpath) = func.kind;
-            if let Some(def_id) = cx.tables.qpath_res(func_qpath, func.hir_id).opt_def_id();
+            if let Some(def_id) = cx.tables().qpath_res(func_qpath, func.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::MEM_REPLACE);
             if let [dest, src] = &**func_args;
             then {

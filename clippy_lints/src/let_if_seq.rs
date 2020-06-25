@@ -73,7 +73,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 then {
                     let span = stmt.span.to(if_.span);
 
-                    let has_interior_mutability = !cx.tables.node_type(canonical_id).is_freeze(
+                    let has_interior_mutability = !cx.tables().node_type(canonical_id).is_freeze(
                         cx.tcx.at(span),
                         cx.param_env,
                     );

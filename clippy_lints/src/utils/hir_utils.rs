@@ -32,7 +32,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         Self {
             cx,
-            tables: cx.tables,
+            tables: cx.tables(),
             ignore_fn: false,
         }
     }
@@ -40,7 +40,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn ignore_fn(self) -> Self {
         Self {
             cx: self.cx,
-            tables: self.cx.tables,
+            tables: self.cx.tables(),
             ignore_fn: true,
         }
     }

@@ -42,7 +42,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeStackArrays {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::Repeat(_, _) = expr.kind;
-            if let ty::Array(element_type, cst) = cx.tables.expr_ty(expr).kind;
+            if let ty::Array(element_type, cst) = cx.tables().expr_ty(expr).kind;
             if let ConstKind::Value(val) = cst.val;
             if let ConstValue::Scalar(element_count) = val;
             if let Ok(element_count) = element_count.to_machine_usize(&cx.tcx);

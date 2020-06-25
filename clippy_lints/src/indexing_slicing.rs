@@ -88,7 +88,7 @@ declare_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Index(ref array, ref index) = &expr.kind {
-            let ty = cx.tables.expr_ty(array);
+            let ty = cx.tables().expr_ty(array);
             if let Some(range) = higher::range(cx, index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.kind {
@@ -143,7 +143,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                 // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.kind {
                     // Index is a constant uint.
-                    if let Some(..) = constant(cx, cx.tables, index) {
+                    if let Some(..) = constant(cx, cx.tables(), index) {
                         // Let rustc's `const_err` lint handle constant `usize` indexing on arrays.
                         return;
                     }
@@ -169,14 +169,14 @@ fn to_const_range<'a, 'tcx>(
     range: higher::Range<'_>,
     array_size: u128,
 ) -> (Option<u128>, Option<u128>) {
-    let s = range.start.map(|expr| constant(cx, cx.tables, expr).map(|(c, _)| c));
+    let s = range.start.map(|expr| constant(cx, cx.tables(), expr).map(|(c, _)| c));
     let start = match s {
         Some(Some(Constant::Int(x))) => Some(x),
         Some(_) => None,
         None => Some(0),
     };
 
-    let e = range.end.map(|expr| constant(cx, cx.tables, expr).map(|(c, _)| c));
+    let e = range.end.map(|expr| constant(cx, cx.tables(), expr).map(|(c, _)| c));
     let end = match e {
         Some(Some(Constant::Int(x))) => {
             if range.limits == RangeLimits::Closed {

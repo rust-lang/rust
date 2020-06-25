@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ErasingOp {
 }
 
 fn check(cx: &LateContext<'_, '_>, e: &Expr<'_>, span: Span) {
-    if let Some(Constant::Int(0)) = constant_simple(cx, cx.tables, e) {
+    if let Some(Constant::Int(0)) = constant_simple(cx, cx.tables(), e) {
         span_lint(
             cx,
             ERASING_OP,

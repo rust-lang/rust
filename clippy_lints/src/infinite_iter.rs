@@ -230,13 +230,14 @@ fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Finitene
                 }
             }
             if method.ident.name == sym!(last) && args.len() == 1 {
-                let not_double_ended = get_trait_def_id(cx, &paths::DOUBLE_ENDED_ITERATOR)
-                    .map_or(false, |id| !implements_trait(cx, cx.tables.expr_ty(&args[0]), id, &[]));
+                let not_double_ended = get_trait_def_id(cx, &paths::DOUBLE_ENDED_ITERATOR).map_or(false, |id| {
+                    !implements_trait(cx, cx.tables().expr_ty(&args[0]), id, &[])
+                });
                 if not_double_ended {
                     return is_infinite(cx, &args[0]);
                 }
             } else if method.ident.name == sym!(collect) {
-                let ty = cx.tables.expr_ty(expr);
+                let ty = cx.tables().expr_ty(expr);
                 if INFINITE_COLLECTORS.iter().any(|path| match_type(cx, ty, path)) {
                     return is_infinite(cx, &args[0]);
                 }

@@ -63,8 +63,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
 
             ExprKind::MethodCall(ref name, .., ref args, _) => {
                 if match_trait_method(cx, e, &paths::INTO) && &*name.ident.as_str() == "into" {
-                    let a = cx.tables.expr_ty(e);
-                    let b = cx.tables.expr_ty(&args[0]);
+                    let a = cx.tables().expr_ty(e);
+                    let b = cx.tables().expr_ty(&args[0]);
                     if TyS::same_type(a, b) {
                         let sugg = snippet_with_macro_callsite(cx, args[0].span, "<expr>").to_string();
                         span_lint_and_sugg(
@@ -79,8 +79,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                     }
                 }
                 if match_trait_method(cx, e, &paths::INTO_ITERATOR) && &*name.ident.as_str() == "into_iter" {
-                    let a = cx.tables.expr_ty(e);
-                    let b = cx.tables.expr_ty(&args[0]);
+                    let a = cx.tables().expr_ty(e);
+                    let b = cx.tables().expr_ty(&args[0]);
                     if TyS::same_type(a, b) {
                         let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
                         span_lint_and_sugg(
@@ -96,8 +96,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                 }
                 if match_trait_method(cx, e, &paths::TRY_INTO_TRAIT) && &*name.ident.as_str() == "try_into" {
                     if_chain! {
-                        let a = cx.tables.expr_ty(e);
-                        let b = cx.tables.expr_ty(&args[0]);
+                        let a = cx.tables().expr_ty(e);
+                        let b = cx.tables().expr_ty(&args[0]);
                         if is_type_diagnostic_item(cx, a, sym!(result_type));
                         if let ty::Adt(_, substs) = a.kind;
                         if let Some(a_type) = substs.types().next();
@@ -121,9 +121,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                 if_chain! {
                     if args.len() == 1;
                     if let ExprKind::Path(ref qpath) = path.kind;
-                    if let Some(def_id) = cx.tables.qpath_res(qpath, path.hir_id).opt_def_id();
-                    let a = cx.tables.expr_ty(e);
-                    let b = cx.tables.expr_ty(&args[0]);
+                    if let Some(def_id) = cx.tables().qpath_res(qpath, path.hir_id).opt_def_id();
+                    let a = cx.tables().expr_ty(e);
+                    let b = cx.tables().expr_ty(&args[0]);
 
                     then {
                         if_chain! {

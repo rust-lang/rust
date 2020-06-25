@@ -11,7 +11,7 @@ pub fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<
     let arith_lhs = &args[1][0];
     let arith_rhs = &args[1][1];
 
-    let ty = cx.tables.expr_ty(arith_lhs);
+    let ty = cx.tables().expr_ty(arith_lhs);
     if !ty.is_integral() {
         return;
     }
@@ -101,7 +101,7 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>) -> Opti
         }
     }
 
-    let ty = cx.tables.expr_ty(expr);
+    let ty = cx.tables().expr_ty(expr);
     let ty_str = ty.to_string();
 
     // `std::T::MAX` `std::T::MIN` constants

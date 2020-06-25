@@ -50,7 +50,7 @@ fn is_integer_division<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Ex
         if let hir::ExprKind::Binary(binop, left, right) = &expr.kind;
         if let hir::BinOpKind::Div = &binop.node;
         then {
-            let (left_ty, right_ty) = (cx.tables.expr_ty(left), cx.tables.expr_ty(right));
+            let (left_ty, right_ty) = (cx.tables().expr_ty(left), cx.tables().expr_ty(right));
             return left_ty.is_integral() && right_ty.is_integral();
         }
     }

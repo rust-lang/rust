@@ -43,8 +43,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {
         if_chain! {
             if let ExprKind::Binary(Spanned { node: BinOpKind::Div, .. }, ref left, ref right) = expr.kind;
             if let ExprKind::MethodCall(ref method_path, _ , ref args, _) = left.kind;
-            if match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(&args[0])), &paths::DURATION);
-            if let Some((Constant::Int(divisor), _)) = constant(cx, cx.tables, right);
+            if match_type(cx, walk_ptrs_ty(cx.tables().expr_ty(&args[0])), &paths::DURATION);
+            if let Some((Constant::Int(divisor), _)) = constant(cx, cx.tables(), right);
             then {
                 let suggested_fn = match (method_path.ident.as_str().as_ref(), divisor) {
                     ("subsec_micros", 1_000) | ("subsec_nanos", 1_000_000) => "subsec_millis",

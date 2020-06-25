@@ -88,13 +88,13 @@ fn is_vec_indexing<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>)
 }
 
 fn is_vector(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
-    let ty = cx.tables.expr_ty(expr);
+    let ty = cx.tables().expr_ty(expr);
     let ty = walk_ptrs_ty(ty);
     is_type_diagnostic_item(cx, ty, sym!(vec_type))
 }
 
 fn is_full_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
-    let ty = cx.tables.expr_ty(expr);
+    let ty = cx.tables().expr_ty(expr);
     let ty = walk_ptrs_ty(ty);
     match_type(cx, ty, &utils::paths::RANGE_FULL)
 }
