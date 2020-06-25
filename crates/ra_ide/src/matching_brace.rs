@@ -32,7 +32,10 @@ pub fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<TextSize> {
         return None;
     }
     let matching_kind = BRACES[brace_idx ^ 1];
-    let matching_node = parent.children_with_tokens().find(|node| node.kind() == matching_kind)?;
+    let matching_node = parent
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find(|node| node.kind() == matching_kind && node != &brace_token)?;
     Some(matching_node.text_range().start())
 }
 
@@ -57,6 +60,7 @@ mod tests {
 
         do_check("struct Foo { a: i32, }<|>", "struct Foo <|>{ a: i32, }");
         do_check("fn main() { |x: i32|<|> x * 2;}", "fn main() { <|>|x: i32| x * 2;}");
+        do_check("fn main() { <|>|x: i32| x * 2;}", "fn main() { |x: i32<|>| x * 2;}");
 
         {
             mark::check!(pipes_not_braces);
