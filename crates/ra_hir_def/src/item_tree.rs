@@ -682,9 +682,27 @@ pub struct Variant {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldIds {
+    range: Range<u32>,
+}
+
+impl FieldIds {
+    fn new(range: Range<Idx<Field>>) -> Self {
+        Self { range: range.start.into_raw().into()..range.end.into_raw().into() }
+    }
+}
+
+impl Iterator for FieldIds {
+    type Item = Idx<Field>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.range.next().map(|raw| Idx::from_raw(raw.into()))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Fields {
-    Record(Range<Idx<Field>>),
-    Tuple(Range<Idx<Field>>),
+    Record(FieldIds),
+    Tuple(FieldIds),
     Unit,
 }
 
