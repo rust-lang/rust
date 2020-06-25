@@ -26,7 +26,7 @@ use crate::{
         dummy_expr_id, ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal,
         LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
-    item_scope::BuiltinShadowMode,
+    item_scope::{BuiltinShadowMode, ImportType},
     item_tree::{FileItemTreeId, ItemTree, ItemTreeNode},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
@@ -81,6 +81,7 @@ pub(super) fn lower(
             map
         },
         expander,
+        import_types: FxHashMap::default(),
     }
     .collect(params, body)
 }
@@ -93,6 +94,7 @@ struct ExprCollector<'a> {
     source_map: BodySourceMap,
 
     item_trees: FxHashMap<HirFileId, Arc<ItemTree>>,
+    import_types: FxHashMap<Name, ImportType>,
 }
 
 impl ExprCollector<'_> {
@@ -711,8 +713,10 @@ impl ExprCollector<'_> {
                     _ => true,
                 };
                 self.body.item_scope.push_res(
+                    &mut self.import_types,
                     name.as_name(),
                     crate::per_ns::PerNs::from_def(def, vis, has_constructor),
+                    ImportType::Named,
                 );
             }
         }

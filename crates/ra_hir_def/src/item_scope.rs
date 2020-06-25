@@ -12,6 +12,28 @@ use crate::{
     Lookup, MacroDefId, ModuleDefId, TraitId,
 };
 
+#[derive(Copy, Clone)]
+pub(crate) enum ImportType {
+    Glob,
+    Named,
+}
+
+impl ImportType {
+    fn is_glob(&self) -> bool {
+        match self {
+            ImportType::Glob => true,
+            ImportType::Named => false,
+        }
+    }
+
+    fn is_named(&self) -> bool {
+        match self {
+            ImportType::Glob => false,
+            ImportType::Named => true,
+        }
+    }
+}
+
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
     visible: FxHashMap<Name, PerNs>,
@@ -123,23 +145,30 @@ impl ItemScope {
         self.legacy_macros.insert(name, mac);
     }
 
-    pub(crate) fn push_res(&mut self, name: Name, def: PerNs) -> bool {
+    pub(crate) fn push_res(
+        &mut self,
+        existing_import_map: &mut FxHashMap<Name, ImportType>,
+        name: Name,
+        def: PerNs,
+        def_import_type: ImportType,
+    ) -> bool {
         let mut changed = false;
-        let existing = self.visible.entry(name).or_default();
+        let existing = self.visible.entry(name.clone()).or_default();
+        let existing_import_type = existing_import_map.entry(name).or_insert(def_import_type);
 
         macro_rules! check_changed {
-            ($changed:ident, ($existing:ident/$def:ident).$field:ident) => {
+            ($changed:ident, ($existing:ident/$def:ident).$field:ident, $existing_import_type:ident, $def_import_type:ident) => {
                 match ($existing.$field, $def.$field) {
                     (None, Some(_)) => {
-                        $existing.from_glob = $def.from_glob;
+                        *existing_import_type = $def_import_type;
                         $existing.$field = $def.$field;
                         $changed = true;
                     }
-                    // Only update if the new def came from a specific import and the existing
-                    // import came from a glob import.
-                    (Some(_), Some(_)) if $existing.from_glob && !$def.from_glob => {
+                    (Some(_), Some(_))
+                        if $existing_import_type.is_glob() && $def_import_type.is_named() =>
+                    {
                         mark::hit!(import_shadowed);
-                        $existing.from_glob = $def.from_glob;
+                        *$existing_import_type = $def_import_type;
                         $existing.$field = $def.$field;
                         $changed = true;
                     }
@@ -148,9 +177,9 @@ impl ItemScope {
             };
         }
 
-        check_changed!(changed, (existing / def).types);
-        check_changed!(changed, (existing / def).values);
-        check_changed!(changed, (existing / def).macros);
+        check_changed!(changed, (existing / def).types, existing_import_type, def_import_type);
+        check_changed!(changed, (existing / def).values, existing_import_type, def_import_type);
+        check_changed!(changed, (existing / def).macros, existing_import_type, def_import_type);
 
         changed
     }

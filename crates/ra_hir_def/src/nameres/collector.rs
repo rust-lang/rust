@@ -20,6 +20,7 @@ use test_utils::mark;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
+    item_scope::ImportType,
     item_tree::{
         self, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, Mod, ModItem, ModKind, StructDefKind,
     },
@@ -80,6 +81,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> Cr
         mod_dirs: FxHashMap::default(),
         cfg_options,
         proc_macros,
+        import_types: FxHashMap::default(),
     };
     collector.collect();
     collector.finish()
@@ -186,6 +188,7 @@ struct DefCollector<'a> {
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
     proc_macros: Vec<(Name, ProcMacroExpander)>,
+    import_types: FxHashMap<Name, ImportType>,
 }
 
 impl DefCollector<'_> {
@@ -305,7 +308,7 @@ impl DefCollector<'_> {
                 self.def_map.root,
                 &[(name, PerNs::macros(macro_, Visibility::Public))],
                 Visibility::Public,
-                false,
+                ImportType::Named,
             );
         }
     }
@@ -331,7 +334,7 @@ impl DefCollector<'_> {
             self.def_map.root,
             &[(name, PerNs::macros(macro_, Visibility::Public))],
             Visibility::Public,
-            false,
+            ImportType::Named,
         );
     }
 
@@ -478,7 +481,7 @@ impl DefCollector<'_> {
                             .filter(|(_, res)| !res.is_none())
                             .collect::<Vec<_>>();
 
-                        self.update(module_id, &items, vis, true);
+                        self.update(module_id, &items, vis, ImportType::Glob);
                     } else {
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
@@ -500,7 +503,7 @@ impl DefCollector<'_> {
                             .filter(|(_, res)| !res.is_none())
                             .collect::<Vec<_>>();
 
-                        self.update(module_id, &items, vis, true);
+                        self.update(module_id, &items, vis, ImportType::Glob);
                         // record the glob import in case we add further items
                         let glob = self.glob_imports.entry(m.local_id).or_default();
                         if !glob.iter().any(|(mid, _)| *mid == module_id) {
@@ -530,7 +533,7 @@ impl DefCollector<'_> {
                             (name, res)
                         })
                         .collect::<Vec<_>>();
-                    self.update(module_id, &resolutions, vis, true);
+                    self.update(module_id, &resolutions, vis, ImportType::Glob);
                 }
                 Some(d) => {
                     log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
@@ -556,7 +559,7 @@ impl DefCollector<'_> {
                         }
                     }
 
-                    self.update(module_id, &[(name, def)], vis, false);
+                    self.update(module_id, &[(name, def)], vis, ImportType::Named);
                 }
                 None => mark::hit!(bogus_paths),
             }
@@ -568,9 +571,9 @@ impl DefCollector<'_> {
         module_id: LocalModuleId,
         resolutions: &[(Name, PerNs)],
         vis: Visibility,
-        is_from_glob: bool,
+        import_type: ImportType,
     ) {
-        self.update_recursive(module_id, resolutions, vis, is_from_glob, 0)
+        self.update_recursive(module_id, resolutions, vis, import_type, 0)
     }
 
     fn update_recursive(
@@ -582,7 +585,7 @@ impl DefCollector<'_> {
         vis: Visibility,
         // All resolutions are imported with this glob status; the glob status
         // in the `PerNs` values are ignored and overwritten
-        is_from_glob: bool,
+        import_type: ImportType,
         depth: usize,
     ) {
         if depth > 100 {
@@ -592,8 +595,12 @@ impl DefCollector<'_> {
         let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            changed |=
-                scope.push_res(name.clone(), res.with_visibility(vis).from_glob(is_from_glob));
+            changed |= scope.push_res(
+                &mut self.import_types,
+                name.clone(),
+                res.with_visibility(vis),
+                import_type,
+            );
         }
 
         if !changed {
@@ -616,7 +623,7 @@ impl DefCollector<'_> {
                 glob_importing_module,
                 resolutions,
                 glob_import_vis,
-                true,
+                ImportType::Glob,
                 depth + 1,
             );
         }
@@ -940,7 +947,7 @@ impl ModCollector<'_, '_> {
                         self.module_id,
                         &[(name.clone(), PerNs::from_def(id, vis, has_constructor))],
                         vis,
-                        false,
+                        ImportType::Named,
                     )
                 }
             }
@@ -1047,7 +1054,7 @@ impl ModCollector<'_, '_> {
             self.module_id,
             &[(name, PerNs::from_def(def, vis, false))],
             vis,
-            false,
+            ImportType::Named,
         );
         res
     }
@@ -1177,6 +1184,7 @@ mod tests {
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
             proc_macros: Default::default(),
+            import_types: FxHashMap::default(),
         };
         collector.collect();
         collector.def_map
