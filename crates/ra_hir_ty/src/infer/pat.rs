@@ -184,7 +184,7 @@ impl<'a> InferenceContext<'a> {
                 self.write_pat_ty(pat, bound_ty);
                 return inner_ty;
             }
-            Pat::Slice { prefix, slice: _slice, suffix } => {
+            Pat::Slice { prefix, slice, suffix } => {
                 let (container_ty, elem_ty) = match &expected {
                     ty_app!(TypeCtor::Array, st) => (TypeCtor::Array, st.as_single().clone()),
                     ty_app!(TypeCtor::Slice, st) => (TypeCtor::Slice, st.as_single().clone()),
@@ -195,7 +195,12 @@ impl<'a> InferenceContext<'a> {
                     self.infer_pat(*pat_id, &elem_ty, default_bm);
                 }
 
-                Ty::apply_one(container_ty, elem_ty)
+                let pat_ty = Ty::apply_one(container_ty, elem_ty);
+                if let Some(slice_pat_id) = slice {
+                    self.infer_pat(*slice_pat_id, &pat_ty, default_bm);
+                }
+
+                pat_ty
             }
             Pat::Wild => expected.clone(),
             Pat::Range { start, end } => {
