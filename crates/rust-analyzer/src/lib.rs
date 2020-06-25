@@ -30,6 +30,7 @@ mod diagnostics;
 mod line_endings;
 mod request_metrics;
 mod lsp_utils;
+mod thread_pool;
 pub mod lsp_ext;
 pub mod config;
 
