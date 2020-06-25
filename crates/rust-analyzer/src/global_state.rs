@@ -20,8 +20,9 @@ use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
     from_proto,
     line_endings::LineEndings,
-    main_loop::ReqQueue,
+    main_loop::{ReqQueue, Task},
     request_metrics::{LatestRequests, RequestMetrics},
+    thread_pool::TaskPool,
     to_proto::url_from_abs_path,
     Result,
 };
@@ -66,6 +67,7 @@ impl Default for Status {
 /// incremental salsa database.
 pub(crate) struct GlobalState {
     pub(crate) config: Config,
+    pub(crate) task_pool: (TaskPool<Task>, Receiver<Task>),
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) loader: Box<dyn vfs::loader::Handle>,
     pub(crate) task_receiver: Receiver<vfs::loader::Message>,
@@ -153,8 +155,15 @@ impl GlobalState {
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
+
+        let task_pool = {
+            let (sender, receiver) = unbounded();
+            (TaskPool::new(sender), receiver)
+        };
+
         let mut res = GlobalState {
             config,
+            task_pool,
             analysis_host,
             loader,
             task_receiver,
