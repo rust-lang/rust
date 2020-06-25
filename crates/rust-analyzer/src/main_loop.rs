@@ -1,9 +1,7 @@
 //! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
 use std::{
-    env,
-    error::Error,
-    fmt,
+    env, fmt,
     ops::Range,
     panic,
     sync::Arc,
@@ -11,16 +9,13 @@ use std::{
 };
 
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
-use lsp_server::{
-    Connection, ErrorCode, Message, Notification, ReqQueue, Request, RequestId, Response,
-};
+use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{request::Request as _, NumberOrString, TextDocumentContentChangeEvent};
 use ra_db::VfsPath;
 use ra_flycheck::CheckTask;
 use ra_ide::{Canceled, FileId, LineIndex};
 use ra_prof::profile;
 use ra_project_model::{PackageRoot, ProjectWorkspace};
-use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
@@ -28,33 +23,11 @@ use crate::{
     config::{Config, FilesWatcher, LinkedProject},
     diagnostics::DiagnosticTask,
     from_proto,
-    global_state::{file_id_to_url, GlobalState, GlobalStateSnapshot},
+    global_state::{file_id_to_url, GlobalState, GlobalStateSnapshot, Status},
     handlers, lsp_ext,
     request_metrics::RequestMetrics,
-    Result,
+    LspError, Result,
 };
-
-#[derive(Debug)]
-pub struct LspError {
-    pub code: i32,
-    pub message: String,
-}
-
-impl LspError {
-    pub const UNKNOWN_FILE: i32 = -32900;
-
-    pub fn new(code: i32, message: String) -> LspError {
-        LspError { code, message }
-    }
-}
-
-impl fmt::Display for LspError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Language Server request failed with {}. ({})", self.code, self.message)
-    }
-}
-
-impl Error for LspError {}
 
 pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     log::info!("initial config: {:#?}", config);
@@ -78,7 +51,6 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
-    let mut loop_state = LoopState::default();
     let mut global_state = {
         let workspaces = {
             if config.linked_projects.is_empty() && config.notifications.cargo_toml_not_found {
@@ -116,6 +88,8 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                 .collect::<Vec<_>>()
         };
 
+        let mut req_queue = ReqQueue::default();
+
         if let FilesWatcher::Client = config.files.watcher {
             let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
                 watchers: workspaces
@@ -132,7 +106,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
             let params = lsp_types::RegistrationParams { registrations: vec![registration] };
-            let request = loop_state.req_queue.outgoing.register(
+            let request = req_queue.outgoing.register(
                 lsp_types::request::RegisterCapability::METHOD.to_string(),
                 params,
                 DO_NOTHING,
@@ -140,7 +114,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
             connection.sender.send(request.into()).unwrap();
         }
 
-        GlobalState::new(workspaces, config.lru_capacity, config)
+        GlobalState::new(workspaces, config.lru_capacity, config, req_queue)
     };
 
     let pool = ThreadPool::default();
@@ -172,15 +146,13 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                 };
             }
             assert!(!global_state.vfs.read().0.has_changes());
-            loop_turn(&pool, &task_sender, &connection, &mut global_state, &mut loop_state, event)?;
+            loop_turn(&pool, &task_sender, &connection, &mut global_state, event)?;
             assert!(!global_state.vfs.read().0.has_changes());
         }
     }
     global_state.analysis_host.request_cancellation();
     log::info!("waiting for tasks to finish...");
-    task_receiver.into_iter().for_each(|task| {
-        on_task(task, &connection.sender, &mut loop_state.req_queue.incoming, &mut global_state)
-    });
+    task_receiver.into_iter().for_each(|task| on_task(task, &connection.sender, &mut global_state));
     log::info!("...tasks have finished");
     log::info!("joining threadpool...");
     pool.join();
@@ -244,35 +216,15 @@ impl fmt::Debug for Event {
     }
 }
 
-type ReqHandler = fn(&mut GlobalState, Response);
+pub(crate) type ReqHandler = fn(&mut GlobalState, Response);
+pub(crate) type ReqQueue = lsp_server::ReqQueue<(&'static str, Instant), ReqHandler>;
 const DO_NOTHING: ReqHandler = |_, _| ();
-type Incoming = lsp_server::Incoming<(&'static str, Instant)>;
-
-#[derive(Default)]
-struct LoopState {
-    req_queue: ReqQueue<(&'static str, Instant), ReqHandler>,
-    mem_docs: FxHashSet<VfsPath>,
-    status: Status,
-}
-
-#[derive(Eq, PartialEq)]
-enum Status {
-    Loading,
-    Ready,
-}
-
-impl Default for Status {
-    fn default() -> Self {
-        Status::Loading
-    }
-}
 
 fn loop_turn(
     pool: &ThreadPool,
     task_sender: &Sender<Task>,
     connection: &Connection,
     global_state: &mut GlobalState,
-    loop_state: &mut LoopState,
     event: Event,
 ) -> Result<()> {
     let loop_start = Instant::now();
@@ -288,7 +240,7 @@ fn loop_turn(
     let mut became_ready = false;
     match event {
         Event::Task(task) => {
-            on_task(task, &connection.sender, &mut loop_state.req_queue.incoming, global_state);
+            on_task(task, &connection.sender, global_state);
             global_state.maybe_collect_garbage();
         }
         Event::Vfs(task) => match task {
@@ -296,35 +248,29 @@ fn loop_turn(
                 let vfs = &mut global_state.vfs.write().0;
                 for (path, contents) in files {
                     let path = VfsPath::from(path);
-                    if !loop_state.mem_docs.contains(&path) {
+                    if !global_state.mem_docs.contains(&path) {
                         vfs.set_file_contents(path, contents)
                     }
                 }
             }
             vfs::loader::Message::Progress { n_total, n_done } => {
                 if n_done == n_total {
-                    loop_state.status = Status::Ready;
+                    global_state.status = Status::Ready;
                     became_ready = true;
                 }
-                report_progress(loop_state, &connection.sender, n_done, n_total, "roots scanned")
+                report_progress(global_state, &connection.sender, n_done, n_total, "roots scanned")
             }
         },
         Event::CheckWatcher(task) => on_check_task(task, global_state, task_sender)?,
         Event::Msg(msg) => match msg {
-            Message::Request(req) => on_request(
-                global_state,
-                &mut loop_state.req_queue.incoming,
-                pool,
-                task_sender,
-                &connection.sender,
-                loop_start,
-                req,
-            )?,
+            Message::Request(req) => {
+                on_request(global_state, pool, task_sender, &connection.sender, loop_start, req)?
+            }
             Message::Notification(not) => {
-                on_notification(&connection.sender, global_state, loop_state, not)?;
+                on_notification(&connection.sender, global_state, not)?;
             }
             Message::Response(resp) => {
-                let handler = loop_state.req_queue.outgoing.complete(resp.id.clone());
+                let handler = global_state.req_queue.outgoing.complete(resp.id.clone());
                 handler(global_state, resp)
             }
         },
@@ -338,8 +284,8 @@ fn loop_turn(
         }
     }
 
-    if loop_state.status == Status::Ready && (state_changed || became_ready) {
-        let subscriptions = loop_state
+    if global_state.status == Status::Ready && (state_changed || became_ready) {
+        let subscriptions = global_state
             .mem_docs
             .iter()
             .map(|path| global_state.vfs.read().0.file_id(&path).unwrap())
@@ -354,7 +300,7 @@ fn loop_turn(
         pool.execute({
             let subs = subscriptions;
             let snap = global_state.snapshot();
-            move || snap.analysis().prime_caches(subs).unwrap_or_else(|_: Canceled| ())
+            move || snap.analysis.prime_caches(subs).unwrap_or_else(|_: Canceled| ())
         });
     }
 
@@ -373,18 +319,15 @@ fn loop_turn(
     Ok(())
 }
 
-fn on_task(
-    task: Task,
-    msg_sender: &Sender<Message>,
-    incoming_requests: &mut Incoming,
-    state: &mut GlobalState,
-) {
+fn on_task(task: Task, msg_sender: &Sender<Message>, global_state: &mut GlobalState) {
     match task {
         Task::Respond(response) => {
-            if let Some((method, start)) = incoming_requests.complete(response.id.clone()) {
+            if let Some((method, start)) =
+                global_state.req_queue.incoming.complete(response.id.clone())
+            {
                 let duration = start.elapsed();
                 log::info!("handled req#{} in {:?}", response.id, duration);
-                state.complete_request(RequestMetrics {
+                global_state.complete_request(RequestMetrics {
                     id: response.id.clone(),
                     method: method.to_string(),
                     duration,
@@ -395,13 +338,12 @@ fn on_task(
         Task::Notify(n) => {
             msg_sender.send(n.into()).unwrap();
         }
-        Task::Diagnostic(task) => on_diagnostic_task(task, msg_sender, state),
+        Task::Diagnostic(task) => on_diagnostic_task(task, msg_sender, global_state),
     }
 }
 
 fn on_request(
     global_state: &mut GlobalState,
-    incoming_requests: &mut Incoming,
     pool: &ThreadPool,
     task_sender: &Sender<Task>,
     msg_sender: &Sender<Message>,
@@ -414,7 +356,6 @@ fn on_request(
         global_state,
         task_sender,
         msg_sender,
-        incoming_requests,
         request_received,
     };
     pool_dispatcher
@@ -469,7 +410,6 @@ fn on_request(
 fn on_notification(
     msg_sender: &Sender<Message>,
     global_state: &mut GlobalState,
-    loop_state: &mut LoopState,
     not: Notification,
 ) -> Result<()> {
     let not = match notification_cast::<lsp_types::notification::Cancel>(not) {
@@ -478,7 +418,7 @@ fn on_notification(
                 NumberOrString::Number(id) => id.into(),
                 NumberOrString::String(id) => id.into(),
             };
-            if let Some(response) = loop_state.req_queue.incoming.cancel(id) {
+            if let Some(response) = global_state.req_queue.incoming.cancel(id) {
                 msg_sender.send(response.into()).unwrap()
             }
             return Ok(());
@@ -488,7 +428,7 @@ fn on_notification(
     let not = match notification_cast::<lsp_types::notification::DidOpenTextDocument>(not) {
         Ok(params) => {
             if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                if !loop_state.mem_docs.insert(path.clone()) {
+                if !global_state.mem_docs.insert(path.clone()) {
                     log::error!("duplicate DidOpenTextDocument: {}", path)
                 }
                 global_state
@@ -504,7 +444,7 @@ fn on_notification(
     let not = match notification_cast::<lsp_types::notification::DidChangeTextDocument>(not) {
         Ok(params) => {
             if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                assert!(loop_state.mem_docs.contains(&path));
+                assert!(global_state.mem_docs.contains(&path));
                 let vfs = &mut global_state.vfs.write().0;
                 let file_id = vfs.file_id(&path).unwrap();
                 let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
@@ -518,7 +458,7 @@ fn on_notification(
     let not = match notification_cast::<lsp_types::notification::DidCloseTextDocument>(not) {
         Ok(params) => {
             if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                if !loop_state.mem_docs.remove(&path) {
+                if !global_state.mem_docs.remove(&path) {
                     log::error!("orphan DidCloseTextDocument: {}", path)
                 }
                 if let Some(path) = path.as_path() {
@@ -549,7 +489,7 @@ fn on_notification(
         Ok(_) => {
             // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
             // this notification's parameters should be ignored and the actual config queried separately.
-            let request = loop_state.req_queue.outgoing.register(
+            let request = global_state.req_queue.outgoing.register(
                 lsp_types::request::WorkspaceConfiguration::METHOD.to_string(),
                 lsp_types::ConfigurationParams {
                     items: vec![lsp_types::ConfigurationItem {
@@ -732,7 +672,7 @@ fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state:
 }
 
 fn report_progress(
-    loop_state: &mut LoopState,
+    global_state: &mut GlobalState,
     sender: &Sender<Message>,
     done: usize,
     total: usize,
@@ -742,7 +682,7 @@ fn report_progress(
     let message = Some(format!("{}/{} {}", done, total, message));
     let percentage = Some(100.0 * done as f64 / total.max(1) as f64);
     let work_done_progress = if done == 0 {
-        let work_done_progress_create = loop_state.req_queue.outgoing.register(
+        let work_done_progress_create = global_state.req_queue.outgoing.register(
             lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
             lsp_types::WorkDoneProgressCreateParams { token: token.clone() },
             DO_NOTHING,
@@ -777,7 +717,6 @@ struct PoolDispatcher<'a> {
     req: Option<Request>,
     pool: &'a ThreadPool,
     global_state: &'a mut GlobalState,
-    incoming_requests: &'a mut Incoming,
     msg_sender: &'a Sender<Message>,
     task_sender: &'a Sender<Task>,
     request_received: Instant,
@@ -806,7 +745,7 @@ impl<'a> PoolDispatcher<'a> {
             result_to_task::<R>(id, result)
         })
         .map_err(|_| format!("sync task {:?} panicked", R::METHOD))?;
-        on_task(task, self.msg_sender, self.incoming_requests, self.global_state);
+        on_task(task, self.msg_sender, self.global_state);
         Ok(self)
     }
 
@@ -853,7 +792,10 @@ impl<'a> PoolDispatcher<'a> {
                 return None;
             }
         };
-        self.incoming_requests.register(id.clone(), (R::METHOD, self.request_received));
+        self.global_state
+            .req_queue
+            .incoming
+            .register(id.clone(), (R::METHOD, self.request_received));
         Some((id, params))
     }
 
@@ -882,14 +824,7 @@ where
     let response = match result {
         Ok(resp) => Response::new_ok(id, &resp),
         Err(e) => match e.downcast::<LspError>() {
-            Ok(lsp_error) => {
-                if lsp_error.code == LspError::UNKNOWN_FILE {
-                    // Work-around for https://github.com/rust-analyzer/rust-analyzer/issues/1521
-                    Response::new_ok(id, ())
-                } else {
-                    Response::new_err(id, lsp_error.code, lsp_error.message)
-                }
-            }
+            Ok(lsp_error) => Response::new_err(id, lsp_error.code, lsp_error.message),
             Err(e) => {
                 if is_canceled(&e) {
                     Response::new_err(

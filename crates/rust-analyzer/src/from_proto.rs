@@ -37,7 +37,7 @@ pub(crate) fn file_position(
     tdpp: lsp_types::TextDocumentPositionParams,
 ) -> Result<FilePosition> {
     let file_id = file_id(world, &tdpp.text_document.uri)?;
-    let line_index = world.analysis().file_line_index(file_id)?;
+    let line_index = world.analysis.file_line_index(file_id)?;
     let offset = offset(&*line_index, tdpp.position);
     Ok(FilePosition { file_id, offset })
 }
@@ -48,7 +48,7 @@ pub(crate) fn file_range(
     range: lsp_types::Range,
 ) -> Result<FileRange> {
     let file_id = file_id(world, &text_document_identifier.uri)?;
-    let line_index = world.analysis().file_line_index(file_id)?;
+    let line_index = world.analysis.file_line_index(file_id)?;
     let range = text_range(&line_index, range);
     Ok(FileRange { file_id, range })
 }
