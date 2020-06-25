@@ -81,7 +81,7 @@ pub(crate) struct GlobalState {
     pub(crate) req_queue: ReqQueue,
     latest_requests: Arc<RwLock<LatestRequests>>,
     source_root_config: SourceRootConfig,
-    _proc_macro_client: ProcMacroClient,
+    proc_macro_client: ProcMacroClient,
     workspaces: Arc<Vec<ProjectWorkspace>>,
 }
 
@@ -103,14 +103,48 @@ impl GlobalState {
         config: Config,
         req_queue: ReqQueue,
     ) -> GlobalState {
+        let (task_sender, task_receiver) = unbounded::<vfs::loader::Message>();
+
+        let loader = {
+            let loader = vfs_notify::NotifyHandle::spawn(Box::new(move |msg| {
+                task_sender.send(msg).unwrap()
+            }));
+            Box::new(loader)
+        };
+
+        let task_pool = {
+            let (sender, receiver) = unbounded();
+            (TaskPool::new(sender), receiver)
+        };
+
+        let mut res = GlobalState {
+            sender,
+            config,
+            task_pool,
+            analysis_host: AnalysisHost::new(lru_capacity),
+            loader,
+            task_receiver,
+            flycheck: None,
+            diagnostics: Default::default(),
+            mem_docs: FxHashSet::default(),
+            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
+            status: Status::default(),
+            req_queue,
+            latest_requests: Default::default(),
+            source_root_config: SourceRootConfig::default(),
+            proc_macro_client: ProcMacroClient::dummy(),
+            workspaces: Arc::new(Vec::new()),
+        };
+        res.reload(workspaces);
+        res
+    }
+
+    pub(crate) fn reload(&mut self, workspaces: Vec<ProjectWorkspace>) {
         let mut change = AnalysisChange::new();
 
         let project_folders = ProjectFolders::new(&workspaces);
 
-        let (task_sender, task_receiver) = unbounded::<vfs::loader::Message>();
-        let mut vfs = vfs::Vfs::default();
-
-        let proc_macro_client = match &config.proc_macro_srv {
+        self.proc_macro_client = match &self.config.proc_macro_srv {
             None => ProcMacroClient::dummy(),
             Some((path, args)) => match ProcMacroClient::extern_process(path.into(), args) {
                 Ok(it) => it,
@@ -124,66 +158,41 @@ impl GlobalState {
                 }
             },
         };
-
-        let mut loader = {
-            let loader = vfs_notify::NotifyHandle::spawn(Box::new(move |msg| {
-                task_sender.send(msg).unwrap()
-            }));
-            Box::new(loader)
-        };
-        let watch = match config.files.watcher {
+        let watch = match self.config.files.watcher {
             FilesWatcher::Client => vec![],
             FilesWatcher::Notify => project_folders.watch,
         };
-        loader.set_config(vfs::loader::Config { load: project_folders.load, watch });
+        self.loader.set_config(vfs::loader::Config { load: project_folders.load, watch });
 
         // Create crate graph from all the workspaces
-        let mut crate_graph = CrateGraph::default();
-        let mut load = |path: &AbsPath| {
-            let contents = loader.load_sync(path);
-            let path = vfs::VfsPath::from(path.to_path_buf());
-            vfs.set_file_contents(path.clone(), contents);
-            vfs.file_id(&path)
+        let crate_graph = {
+            let mut crate_graph = CrateGraph::default();
+            let vfs = &mut self.vfs.write().0;
+            let loader = &mut self.loader;
+            let mut load = |path: &AbsPath| {
+                let contents = loader.load_sync(path);
+                let path = vfs::VfsPath::from(path.to_path_buf());
+                vfs.set_file_contents(path.clone(), contents);
+                vfs.file_id(&path)
+            };
+            for ws in workspaces.iter() {
+                crate_graph.extend(ws.to_crate_graph(
+                    self.config.cargo.target.as_deref(),
+                    &self.proc_macro_client,
+                    &mut load,
+                ));
+            }
+
+            crate_graph
         };
-        for ws in workspaces.iter() {
-            crate_graph.extend(ws.to_crate_graph(
-                config.cargo.target.as_deref(),
-                &proc_macro_client,
-                &mut load,
-            ));
-        }
         change.set_crate_graph(crate_graph);
 
-        let flycheck = config.check.as_ref().and_then(|c| create_flycheck(&workspaces, c));
+        self.flycheck = self.config.check.as_ref().and_then(|c| create_flycheck(&workspaces, c));
+        self.source_root_config = project_folders.source_root_config;
+        self.workspaces = Arc::new(workspaces);
 
-        let mut analysis_host = AnalysisHost::new(lru_capacity);
-        analysis_host.apply_change(change);
-
-        let task_pool = {
-            let (sender, receiver) = unbounded();
-            (TaskPool::new(sender), receiver)
-        };
-
-        let mut res = GlobalState {
-            sender,
-            config,
-            task_pool,
-            analysis_host,
-            loader,
-            task_receiver,
-            flycheck,
-            diagnostics: Default::default(),
-            mem_docs: FxHashSet::default(),
-            vfs: Arc::new(RwLock::new((vfs, FxHashMap::default()))),
-            status: Status::default(),
-            req_queue,
-            latest_requests: Default::default(),
-            source_root_config: project_folders.source_root_config,
-            _proc_macro_client: proc_macro_client,
-            workspaces: Arc::new(workspaces),
-        };
-        res.process_changes();
-        res
+        self.analysis_host.apply_change(change);
+        self.process_changes();
     }
 
     pub(crate) fn update_configuration(&mut self, config: Config) {
