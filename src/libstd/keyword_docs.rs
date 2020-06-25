@@ -965,20 +965,21 @@ mod move_keyword {}
 
 #[doc(keyword = "mut")]
 //
-/// A mutable binding, reference, or pointer.
+/// A mutable variable, reference, or pointer.
 ///
-/// `mut` can be used in several situations. The first is mutable bindings,
+/// `mut` can be used in several situations. The first is mutable variables,
 /// which can be used anywhere you can bind a value to a variable name. Some
 /// examples:
 ///
-/// ```
-/// // A mutable binding in the parameter list of a function.
+/// ```rust
+/// // A mutable variable in the parameter list of a function.
 /// fn foo(mut x: u8, y: u8) -> u8 {
 ///     x += y;
 ///     x
 /// }
 ///
-/// // A mutable binding for a variable.
+/// // Modifying a mutable variable.
+/// # #[allow(unused_assignments)]
 /// let mut a = 5;
 /// a = 6;
 ///
@@ -986,17 +987,17 @@ mod move_keyword {}
 /// assert_eq!(a, 6);
 /// ```
 ///
-/// The second is references. They can be created from `mut` bindings and must
-/// be unique: no other binding can have a mutable reference, nor a simple
-/// reference.
+/// The second is mutable references. They can be created from `mut` variables
+/// and must be unique: no other variables can have a mutable reference, nor a
+/// shared reference.
 ///
-/// ```
+/// ```rust
 /// // Taking a mutable reference.
 /// fn push_two(v: &mut Vec<u8>) {
 ///     v.push(2);
 /// }
 ///
-/// // You cannot take a mutable reference to a non-mutable variable.
+/// // A mutable reference cannot be taken to a non-mutable variable.
 /// let mut v = vec![0, 1];
 /// // Passing a mutable reference.
 /// push_two(&mut v);
@@ -1004,10 +1005,18 @@ mod move_keyword {}
 /// assert_eq!(v, vec![0, 1, 2]);
 /// ```
 ///
-/// Mutable pointers work much like mutable references, with the added
-/// possibility of being nul. The syntax is `*mut Type`.
+/// ```rust,compile_fail,E0502
+/// let mut v = vec![0, 1];
+/// let mut_ref_v = &mut v;
+/// ##[allow(unused)]
+/// let ref_v = &v;
+/// mut_ref_v.push(2);
+/// ```
 ///
-/// You can find more information on mutable references and pointers in the
+/// Mutable raw pointers work much like mutable references, with the added
+/// possibility of not pointing to a valid object. The syntax is `*mut Type`.
+///
+/// More information on mutable references and pointers can be found in```
 /// [Reference].
 ///
 /// [Reference]: ../reference/types/pointer.html#mutable-references-mut
