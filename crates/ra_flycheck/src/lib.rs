@@ -17,9 +17,6 @@ pub use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion,
 };
 
-type Progress = ra_progress::Progress<(), String>;
-type ProgressSource = ra_progress::ProgressSource<(), String>;
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
     CargoCommand {
@@ -59,15 +56,11 @@ pub struct Flycheck {
 }
 
 impl Flycheck {
-    pub fn new(
-        config: FlycheckConfig,
-        workspace_root: PathBuf,
-        progress_src: ProgressSource,
-    ) -> Flycheck {
+    pub fn new(config: FlycheckConfig, workspace_root: PathBuf) -> Flycheck {
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
         let handle = jod_thread::spawn(move || {
-            FlycheckThread::new(config, workspace_root, progress_src).run(&task_send, &cmd_recv);
+            FlycheckThread::new(config, workspace_root).run(&task_send, &cmd_recv);
         });
         Flycheck { task_recv, cmd_send, handle }
     }
@@ -85,6 +78,16 @@ pub enum CheckTask {
 
     /// Request adding a diagnostic with fixes included to a file
     AddDiagnostic { workspace_root: PathBuf, diagnostic: Diagnostic },
+
+    /// Request check progress notification to client
+    Status(Status),
+}
+
+#[derive(Debug)]
+pub enum Status {
+    Being,
+    Progress(String),
+    End,
 }
 
 pub enum CheckCommand {
@@ -96,8 +99,6 @@ struct FlycheckThread {
     config: FlycheckConfig,
     workspace_root: PathBuf,
     last_update_req: Option<Instant>,
-    progress_src: ProgressSource,
-    progress: Option<Progress>,
     // XXX: drop order is significant
     message_recv: Receiver<CheckEvent>,
     /// WatchThread exists to wrap around the communication needed to be able to
@@ -109,17 +110,11 @@ struct FlycheckThread {
 }
 
 impl FlycheckThread {
-    fn new(
-        config: FlycheckConfig,
-        workspace_root: PathBuf,
-        progress_src: ProgressSource,
-    ) -> FlycheckThread {
+    fn new(config: FlycheckConfig, workspace_root: PathBuf) -> FlycheckThread {
         FlycheckThread {
             config,
             workspace_root,
-            progress_src,
             last_update_req: None,
-            progress: None,
             message_recv: never(),
             check_process: None,
         }
@@ -157,9 +152,9 @@ impl FlycheckThread {
         }
     }
 
-    fn clean_previous_results(&mut self, task_send: &Sender<CheckTask>) {
+    fn clean_previous_results(&self, task_send: &Sender<CheckTask>) {
         task_send.send(CheckTask::ClearDiagnostics).unwrap();
-        self.progress = None;
+        task_send.send(CheckTask::Status(Status::End)).unwrap();
     }
 
     fn should_recheck(&mut self) -> bool {
@@ -178,17 +173,18 @@ impl FlycheckThread {
         }
     }
 
-    fn handle_message(&mut self, msg: CheckEvent, task_send: &Sender<CheckTask>) {
+    fn handle_message(&self, msg: CheckEvent, task_send: &Sender<CheckTask>) {
         match msg {
             CheckEvent::Begin => {
-                self.progress = Some(self.progress_src.begin(()));
+                task_send.send(CheckTask::Status(Status::Being)).unwrap();
             }
-            CheckEvent::End => self.progress = None,
+
+            CheckEvent::End => {
+                task_send.send(CheckTask::Status(Status::End)).unwrap();
+            }
+
             CheckEvent::Msg(Message::CompilerArtifact(msg)) => {
-                self.progress
-                    .as_mut()
-                    .expect("check process reported progress without the 'Begin' notification")
-                    .report(msg.target.name);
+                task_send.send(CheckTask::Status(Status::Progress(msg.target.name))).unwrap();
             }
 
             CheckEvent::Msg(Message::CompilerMessage(msg)) => {

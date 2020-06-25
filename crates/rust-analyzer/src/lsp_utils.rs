@@ -1,10 +1,10 @@
 //! Utilities for LSP-related boilerplate code.
+use std::error::Error;
 
 use crossbeam_channel::Sender;
-use lsp_server::{Message, Notification, Request, RequestId};
+use lsp_server::{Message, Notification};
 use ra_db::Canceled;
 use serde::{de::DeserializeOwned, Serialize};
-use std::error::Error;
 
 pub fn show_message(
     typ: lsp_types::MessageType,
@@ -41,12 +41,4 @@ where
     N::Params: Serialize,
 {
     Notification::new(N::METHOD.to_string(), params)
-}
-
-pub(crate) fn request_new<R>(id: RequestId, params: R::Params) -> Request
-where
-    R: lsp_types::request::Request,
-    R::Params: Serialize,
-{
-    Request::new(id, R::METHOD.to_string(), params)
 }

@@ -27,11 +27,7 @@ use crate::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-fn create_flycheck(
-    workspaces: &[ProjectWorkspace],
-    config: &FlycheckConfig,
-    progress_src: &ProgressSource<(), String>,
-) -> Option<Flycheck> {
+fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> Option<Flycheck> {
     // FIXME: Figure out the multi-workspace situation
     workspaces.iter().find_map(move |w| match w {
         ProjectWorkspace::Cargo { cargo, .. } => {
@@ -147,12 +143,7 @@ impl GlobalState {
         }
         change.set_crate_graph(crate_graph);
 
-        let (flycheck_progress_receiver, flycheck_progress_src) =
-            ProgressSource::real_if(config.client_caps.work_done_progress);
-        let flycheck = config
-            .check
-            .as_ref()
-            .and_then(|c| create_flycheck(&workspaces, c, &flycheck_progress_src));
+        let flycheck = config.check.as_ref().and_then(|c| create_flycheck(&workspaces, c));
 
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
@@ -162,8 +153,6 @@ impl GlobalState {
             loader,
             task_receiver,
             flycheck,
-            flycheck_progress_src,
-            flycheck_progress_receiver,
             diagnostics: Default::default(),
             mem_docs: FxHashSet::default(),
             vfs: Arc::new(RwLock::new((vfs, FxHashMap::default()))),
@@ -181,10 +170,8 @@ impl GlobalState {
     pub(crate) fn update_configuration(&mut self, config: Config) {
         self.analysis_host.update_lru_capacity(config.lru_capacity);
         if config.check != self.config.check {
-            self.flycheck = config
-                .check
-                .as_ref()
-                .and_then(|it| create_flycheck(&self.workspaces, it, &self.flycheck_progress_src));
+            self.flycheck =
+                config.check.as_ref().and_then(|it| create_flycheck(&self.workspaces, it));
         }
 
         self.config = config;

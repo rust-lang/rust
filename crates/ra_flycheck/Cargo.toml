@@ -14,4 +14,3 @@ cargo_metadata = "0.10.0"
 serde_json = "1.0.48"
 jod-thread = "0.1.1"
 ra_toolchain = { path = "../ra_toolchain" }
-ra_progress = { path = "../ra_progress" }
