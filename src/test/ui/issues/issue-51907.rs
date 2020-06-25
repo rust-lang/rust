@@ -6,7 +6,9 @@ trait Foo {
 
 struct Bar;
 impl Foo for Bar {
+    #[allow(improper_ctypes_definitions)]
     extern fn borrow(&self) {}
+    #[allow(improper_ctypes_definitions)]
     extern fn take(self: Box<Self>) {}
 }
 
