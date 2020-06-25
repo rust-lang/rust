@@ -11,17 +11,14 @@ use lsp_types::{notification::Notification as _, request::Request as _};
 use ra_db::VfsPath;
 use ra_ide::{Canceled, FileId};
 use ra_prof::profile;
-use ra_project_model::{PackageRoot, ProjectWorkspace};
 
 use crate::{
-    config::{Config, FilesWatcher, LinkedProject},
+    config::Config,
     dispatch::{NotificationDispatcher, RequestDispatcher},
     from_proto,
     global_state::{file_id_to_url, GlobalState, Status},
     handlers, lsp_ext,
-    lsp_utils::{
-        apply_document_changes, is_canceled, notification_is, notification_new, show_message,
-    },
+    lsp_utils::{apply_document_changes, is_canceled, notification_is, notification_new},
     Result,
 };
 
@@ -47,81 +44,8 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
-    let global_state = {
-        let workspaces = {
-            if config.linked_projects.is_empty() && config.notifications.cargo_toml_not_found {
-                show_message(
-                    lsp_types::MessageType::Error,
-                    "rust-analyzer failed to discover workspace".to_string(),
-                    &connection.sender,
-                );
-            };
-
-            config
-                .linked_projects
-                .iter()
-                .filter_map(|project| match project {
-                    LinkedProject::ProjectManifest(manifest) => {
-                        ra_project_model::ProjectWorkspace::load(
-                            manifest.clone(),
-                            &config.cargo,
-                            config.with_sysroot,
-                        )
-                        .map_err(|err| {
-                            log::error!("failed to load workspace: {:#}", err);
-                            show_message(
-                                lsp_types::MessageType::Error,
-                                format!("rust-analyzer failed to load workspace: {:#}", err),
-                                &connection.sender,
-                            );
-                        })
-                        .ok()
-                    }
-                    LinkedProject::InlineJsonProject(it) => {
-                        Some(ra_project_model::ProjectWorkspace::Json { project: it.clone() })
-                    }
-                })
-                .collect::<Vec<_>>()
-        };
-
-        let mut req_queue = ReqQueue::default();
-
-        if let FilesWatcher::Client = config.files.watcher {
-            let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
-                watchers: workspaces
-                    .iter()
-                    .flat_map(ProjectWorkspace::to_roots)
-                    .filter(PackageRoot::is_member)
-                    .map(|root| format!("{}/**/*.rs", root.path().display()))
-                    .map(|glob_pattern| lsp_types::FileSystemWatcher { glob_pattern, kind: None })
-                    .collect(),
-            };
-            let registration = lsp_types::Registration {
-                id: "file-watcher".to_string(),
-                method: "workspace/didChangeWatchedFiles".to_string(),
-                register_options: Some(serde_json::to_value(registration_options).unwrap()),
-            };
-            let params = lsp_types::RegistrationParams { registrations: vec![registration] };
-            let request = req_queue.outgoing.register(
-                lsp_types::request::RegisterCapability::METHOD.to_string(),
-                params,
-                DO_NOTHING,
-            );
-            connection.sender.send(request.into()).unwrap();
-        }
-
-        GlobalState::new(
-            connection.sender.clone(),
-            workspaces,
-            config.lru_capacity,
-            config,
-            req_queue,
-        )
-    };
-
-    log::info!("server initialized, serving requests");
-    global_state.run(connection.receiver)?;
-    Ok(())
+    GlobalState::new(connection.sender.clone(), config.lru_capacity, config)
+        .run(connection.receiver)
 }
 
 enum Event {
@@ -176,36 +100,39 @@ impl GlobalState {
             recv(inbox) -> msg =>
                 msg.ok().map(Event::Lsp),
 
-            recv(self.task_pool.1) -> task =>
+            recv(self.task_pool.receiver) -> task =>
                 Some(Event::Task(task.unwrap())),
 
-            recv(self.task_receiver) -> task =>
+            recv(self.loader.receiver) -> task =>
                 Some(Event::Vfs(task.unwrap())),
 
-            recv(self.flycheck.as_ref().map_or(&never(), |it| &it.1)) -> task =>
+            recv(self.flycheck.as_ref().map_or(&never(), |it| &it.receiver)) -> task =>
                 Some(Event::Flycheck(task.unwrap())),
         }
     }
 
     fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
+        self.reload();
+
         while let Some(event) = self.next_event(&inbox) {
             if let Event::Lsp(lsp_server::Message::Notification(not)) = &event {
                 if not.method == lsp_types::notification::Exit::METHOD {
                     return Ok(());
                 }
             }
-            self.loop_turn(event)?
+            self.handle_event(event)?
         }
+
         Err("client exited without proper shutdown sequence")?
     }
 
-    fn loop_turn(&mut self, event: Event) -> Result<()> {
+    fn handle_event(&mut self, event: Event) -> Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
-        let _p = profile("main_loop_inner/loop-turn");
+        let _p = profile("GlobalState::handle_event");
 
-        log::info!("loop turn = {:?}", event);
-        let queue_count = self.task_pool.0.len();
+        log::info!("handle_event({:?})", event);
+        let queue_count = self.task_pool.handle.len();
         if queue_count > 0 {
             log::info!("queued count = {}", queue_count);
         }
@@ -306,7 +233,7 @@ impl GlobalState {
         let state_changed = self.process_changes();
         if became_ready {
             if let Some(flycheck) = &self.flycheck {
-                flycheck.0.update();
+                flycheck.handle.update();
             }
         }
 
@@ -443,7 +370,7 @@ impl GlobalState {
                         log::error!("orphan DidCloseTextDocument: {}", path)
                     }
                     if let Some(path) = path.as_path() {
-                        this.loader.invalidate(path.to_path_buf());
+                        this.loader.handle.invalidate(path.to_path_buf());
                     }
                 }
                 let params = lsp_types::PublishDiagnosticsParams {
@@ -457,7 +384,7 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidSaveTextDocument>(|this, _params| {
                 if let Some(flycheck) = &this.flycheck {
-                    flycheck.0.update();
+                    flycheck.handle.update();
                 }
                 Ok(())
             })?
@@ -500,7 +427,7 @@ impl GlobalState {
             .on::<lsp_types::notification::DidChangeWatchedFiles>(|this, params| {
                 for change in params.changes {
                     if let Ok(path) = from_proto::abs_path(&change.uri) {
-                        this.loader.invalidate(path);
+                        this.loader.handle.invalidate(path);
                     }
                 }
                 Ok(())
@@ -513,7 +440,7 @@ impl GlobalState {
         if self.config.publish_diagnostics {
             let snapshot = self.snapshot();
             let subscriptions = subscriptions.clone();
-            self.task_pool.0.spawn(move || {
+            self.task_pool.handle.spawn(move || {
                 let diagnostics = subscriptions
                     .into_iter()
                     .filter_map(|file_id| {
@@ -531,7 +458,7 @@ impl GlobalState {
                 Task::Diagnostics(diagnostics)
             })
         }
-        self.task_pool.0.spawn({
+        self.task_pool.handle.spawn({
             let subs = subscriptions;
             let snap = self.snapshot();
             move || {

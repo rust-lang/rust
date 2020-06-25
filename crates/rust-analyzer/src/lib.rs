@@ -18,6 +18,7 @@ macro_rules! eprintln {
 }
 
 mod global_state;
+mod reload;
 mod main_loop;
 mod dispatch;
 mod handlers;

@@ -59,7 +59,7 @@ impl<'a> RequestDispatcher<'a> {
             }
         };
 
-        self.global_state.task_pool.0.spawn({
+        self.global_state.task_pool.handle.spawn({
             let world = self.global_state.snapshot();
             move || {
                 let result = f(world, params);

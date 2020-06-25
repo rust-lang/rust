@@ -30,7 +30,7 @@ pub struct Config {
 
     pub cargo: CargoConfig,
     pub rustfmt: RustfmtConfig,
-    pub check: Option<FlycheckConfig>,
+    pub flycheck: Option<FlycheckConfig>,
 
     pub inlay_hints: InlayHintsConfig,
     pub completion: CompletionConfig,
@@ -147,7 +147,7 @@ impl Config {
 
             cargo: CargoConfig::default(),
             rustfmt: RustfmtConfig::Rustfmt { extra_args: Vec::new() },
-            check: Some(FlycheckConfig::CargoCommand {
+            flycheck: Some(FlycheckConfig::CargoCommand {
                 command: "check".to_string(),
                 all_targets: true,
                 all_features: false,
@@ -227,14 +227,14 @@ impl Config {
 
         if let Some(false) = get(value, "/checkOnSave/enable") {
             // check is disabled
-            self.check = None;
+            self.flycheck = None;
         } else {
             // check is enabled
             match get::<Vec<String>>(value, "/checkOnSave/overrideCommand") {
                 // first see if the user has completely overridden the command
                 Some(mut args) if !args.is_empty() => {
                     let command = args.remove(0);
-                    self.check = Some(FlycheckConfig::CustomCommand {
+                    self.flycheck = Some(FlycheckConfig::CustomCommand {
                         command,
                         args,
                     });
@@ -242,7 +242,7 @@ impl Config {
                 // otherwise configure command customizations
                 _ => {
                     if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets, all_features, features })
-                        = &mut self.check
+                        = &mut self.flycheck
                     {
                         set(value, "/checkOnSave/extraArgs", extra_args);
                         set(value, "/checkOnSave/command", command);
