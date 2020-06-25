@@ -41,6 +41,20 @@ pub struct Struct3<A = isize, #[unstable(feature = "unstable_default", issue = "
     pub field2: B,
 }
 
+#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub struct Struct4<A = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    pub field: A,
+}
+
+#[rustc_deprecated(since = "1.1.0", reason = "test")]
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub struct Struct5<#[unstable(feature = "unstable_default", issue = "none")] A = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    pub field: A,
+}
+
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub const STRUCT1: Struct1 = Struct1 { field: 1 };
 
@@ -49,3 +63,9 @@ pub const STRUCT2: Struct2 = Struct2 { field: 1 };
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub const STRUCT3: Struct3 = Struct3 { field1: 1, field2: 2 };
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const STRUCT4: Struct4 = Struct4 { field: 1 };
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub const STRUCT5: Struct5 = Struct5 { field: 1 };
