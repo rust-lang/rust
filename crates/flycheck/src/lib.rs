@@ -10,7 +10,7 @@ use std::{
     time::Instant,
 };
 
-use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
+use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 
 pub use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion,
@@ -61,7 +61,7 @@ impl FlycheckHandle {
     ) -> FlycheckHandle {
         let (cmd_send, cmd_recv) = unbounded::<Restart>();
         let handle = jod_thread::spawn(move || {
-            FlycheckActor::new(sender, config, workspace_root).run(&cmd_recv);
+            FlycheckActor::new(sender, config, workspace_root).run(cmd_recv);
         });
         FlycheckHandle { cmd_send, handle }
     }
@@ -98,14 +98,18 @@ struct FlycheckActor {
     config: FlycheckConfig,
     workspace_root: PathBuf,
     last_update_req: Option<Instant>,
-    // XXX: drop order is significant
-    message_recv: Receiver<CheckEvent>,
     /// WatchThread exists to wrap around the communication needed to be able to
     /// run `cargo check` without blocking. Currently the Rust standard library
     /// doesn't provide a way to read sub-process output without blocking, so we
     /// have to wrap sub-processes output handling in a thread and pass messages
     /// back over a channel.
-    check_process: Option<jod_thread::JoinHandle>,
+    // XXX: drop order is significant
+    check_process: Option<(Receiver<CheckEvent>, jod_thread::JoinHandle)>,
+}
+
+enum Event {
+    Restart(Restart),
+    CheckEvent(Option<CheckEvent>),
 }
 
 impl FlycheckActor {
@@ -114,40 +118,48 @@ impl FlycheckActor {
         config: FlycheckConfig,
         workspace_root: PathBuf,
     ) -> FlycheckActor {
-        FlycheckActor {
-            sender,
-            config,
-            workspace_root,
-            last_update_req: None,
-            message_recv: never(),
-            check_process: None,
-        }
+        FlycheckActor { sender, config, workspace_root, last_update_req: None, check_process: None }
     }
 
-    fn run(&mut self, cmd_recv: &Receiver<Restart>) {
+    fn run(&mut self, inbox: Receiver<Restart>) {
         // If we rerun the thread, we need to discard the previous check results first
-        self.clean_previous_results();
+        self.send(Message::ClearDiagnostics);
+        self.send(Message::Progress(Progress::End));
 
-        loop {
-            select! {
-                recv(&cmd_recv) -> cmd => match cmd {
-                    Ok(Restart) => self.last_update_req = Some(Instant::now()),
-                    Err(RecvError) => {
-                        // Command channel has closed, so shut down
-                        break;
-                    },
-                },
-                recv(self.message_recv) -> msg => match msg {
-                    Ok(msg) => self.handle_message(msg),
-                    Err(RecvError) => {
-                        // Watcher finished, replace it with a never channel to
-                        // avoid busy-waiting.
-                        self.message_recv = never();
-                        self.check_process = None;
-                    },
+        while let Some(event) = self.next_event(&inbox) {
+            match event {
+                Event::Restart(Restart) => self.last_update_req = Some(Instant::now()),
+                Event::CheckEvent(None) => {
+                    // Watcher finished, replace it with a never channel to
+                    // avoid busy-waiting.
+                    self.check_process = None;
                 }
-            };
+                Event::CheckEvent(Some(event)) => match event {
+                    CheckEvent::Begin => {
+                        self.send(Message::Progress(Progress::Being));
+                    }
 
+                    CheckEvent::End => {
+                        self.send(Message::Progress(Progress::End));
+                    }
+
+                    CheckEvent::Msg(cargo_metadata::Message::CompilerArtifact(msg)) => {
+                        self.send(Message::Progress(Progress::DidCheckCrate(msg.target.name)));
+                    }
+
+                    CheckEvent::Msg(cargo_metadata::Message::CompilerMessage(msg)) => {
+                        self.send(Message::AddDiagnostic {
+                            workspace_root: self.workspace_root.clone(),
+                            diagnostic: msg.message,
+                        });
+                    }
+
+                    CheckEvent::Msg(cargo_metadata::Message::BuildScriptExecuted(_))
+                    | CheckEvent::Msg(cargo_metadata::Message::BuildFinished(_))
+                    | CheckEvent::Msg(cargo_metadata::Message::TextLine(_))
+                    | CheckEvent::Msg(cargo_metadata::Message::Unknown) => {}
+                },
+            }
             if self.should_recheck() {
                 self.last_update_req = None;
                 self.send(Message::ClearDiagnostics);
@@ -156,9 +168,12 @@ impl FlycheckActor {
         }
     }
 
-    fn clean_previous_results(&self) {
-        self.send(Message::ClearDiagnostics);
-        self.send(Message::Progress(Progress::End));
+    fn next_event(&self, inbox: &Receiver<Restart>) -> Option<Event> {
+        let check_chan = self.check_process.as_ref().map(|(chan, _thread)| chan);
+        select! {
+            recv(inbox) -> msg => msg.ok().map(Event::Restart),
+            recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
+        }
     }
 
     fn should_recheck(&mut self) -> bool {
@@ -171,37 +186,8 @@ impl FlycheckActor {
         false
     }
 
-    fn handle_message(&self, msg: CheckEvent) {
-        match msg {
-            CheckEvent::Begin => {
-                self.send(Message::Progress(Progress::Being));
-            }
-
-            CheckEvent::End => {
-                self.send(Message::Progress(Progress::End));
-            }
-
-            CheckEvent::Msg(cargo_metadata::Message::CompilerArtifact(msg)) => {
-                self.send(Message::Progress(Progress::DidCheckCrate(msg.target.name)));
-            }
-
-            CheckEvent::Msg(cargo_metadata::Message::CompilerMessage(msg)) => {
-                self.send(Message::AddDiagnostic {
-                    workspace_root: self.workspace_root.clone(),
-                    diagnostic: msg.message,
-                });
-            }
-
-            CheckEvent::Msg(cargo_metadata::Message::BuildScriptExecuted(_))
-            | CheckEvent::Msg(cargo_metadata::Message::BuildFinished(_))
-            | CheckEvent::Msg(cargo_metadata::Message::TextLine(_))
-            | CheckEvent::Msg(cargo_metadata::Message::Unknown) => {}
-        }
-    }
-
     fn restart_check_process(&mut self) {
         // First, clear and cancel the old thread
-        self.message_recv = never();
         self.check_process = None;
 
         let mut cmd = match &self.config {
@@ -237,8 +223,7 @@ impl FlycheckActor {
         cmd.current_dir(&self.workspace_root);
 
         let (message_send, message_recv) = unbounded();
-        self.message_recv = message_recv;
-        self.check_process = Some(jod_thread::spawn(move || {
+        let thread = jod_thread::spawn(move || {
             // If we trigger an error here, we will do so in the loop instead,
             // which will break out of the loop, and continue the shutdown
             let _ = message_send.send(CheckEvent::Begin);
@@ -267,7 +252,8 @@ impl FlycheckActor {
             // We can ignore any error here, as we are already in the progress
             // of shutting down.
             let _ = message_send.send(CheckEvent::End);
-        }))
+        });
+        self.check_process = Some((message_recv, thread))
     }
 
     fn send(&self, check_task: Message) {
