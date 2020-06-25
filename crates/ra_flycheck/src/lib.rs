@@ -3,6 +3,7 @@
 //! LSP diagnostics based on the output of the command.
 
 use std::{
+    fmt,
     io::{self, BufReader},
     path::PathBuf,
     process::{Command, Stdio},
@@ -29,6 +30,17 @@ pub enum FlycheckConfig {
         command: String,
         args: Vec<String>,
     },
+}
+
+impl fmt::Display for FlycheckConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {}", command),
+            FlycheckConfig::CustomCommand { command, args } => {
+                write!(f, "{} {}", command, args.join(" "))
+            }
+        }
+    }
 }
 
 /// Flycheck wraps the shared state and communication machinery used for

@@ -29,16 +29,14 @@ mod markdown;
 mod diagnostics;
 mod line_endings;
 mod request_metrics;
+mod lsp_utils;
 pub mod lsp_ext;
 pub mod config;
 
 use serde::de::DeserializeOwned;
 
 pub type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
-pub use crate::{
-    caps::server_capabilities,
-    main_loop::{main_loop, show_message},
-};
+pub use crate::{caps::server_capabilities, lsp_utils::show_message, main_loop::main_loop};
 use std::fmt;
 
 pub fn from_json<T: DeserializeOwned>(what: &'static str, json: serde_json::Value) -> Result<T> {

@@ -29,7 +29,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> Option<Flycheck> {
     // FIXME: Figure out the multi-workspace situation
-    workspaces.iter().find_map(|w| match w {
+    workspaces.iter().find_map(move |w| match w {
         ProjectWorkspace::Cargo { cargo, .. } => {
             let cargo_project_root = cargo.workspace_root().to_path_buf();
             Some(Flycheck::new(config.clone(), cargo_project_root.into()))
