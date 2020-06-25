@@ -19,6 +19,7 @@ macro_rules! eprintln {
 
 mod global_state;
 mod main_loop;
+mod dispatch;
 mod handlers;
 mod caps;
 mod cargo_target_spec;
