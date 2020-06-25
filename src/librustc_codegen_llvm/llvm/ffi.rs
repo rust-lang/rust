@@ -1699,6 +1699,16 @@ extern "C" {
         Encoding: c_uint,
     ) -> &'a DIBasicType;
 
+    pub fn LLVMRustDIBuilderCreateTypedef(
+        Builder: &DIBuilder<'a>,
+        Type: &'a DIBasicType,
+        Name: *const c_char,
+        NameLen: size_t,
+        File: &'a DIFile,
+        LineNo: c_uint,
+        Scope: Option<&'a DIScope>,
+    ) -> &'a DIDerivedType;
+
     pub fn LLVMRustDIBuilderCreatePointerType(
         Builder: &DIBuilder<'a>,
         PointeeTy: &'a DIType,
