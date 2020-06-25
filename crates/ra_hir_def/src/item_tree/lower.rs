@@ -196,7 +196,7 @@ impl Ctx {
         }
     }
 
-    fn lower_record_fields(&mut self, fields: &ast::RecordFieldDefList) -> FieldIds {
+    fn lower_record_fields(&mut self, fields: &ast::RecordFieldDefList) -> IdRange<Field> {
         let start = self.next_field_idx();
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
@@ -205,7 +205,7 @@ impl Ctx {
             }
         }
         let end = self.next_field_idx();
-        FieldIds::new(start..end)
+        IdRange::new(start..end)
     }
 
     fn lower_record_field(&mut self, field: &ast::RecordFieldDef) -> Option<Field> {
@@ -216,7 +216,7 @@ impl Ctx {
         Some(res)
     }
 
-    fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldDefList) -> FieldIds {
+    fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldDefList) -> IdRange<Field> {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
             if let Some(data) = self.lower_tuple_field(i, &field) {
@@ -225,7 +225,7 @@ impl Ctx {
             }
         }
         let end = self.next_field_idx();
-        FieldIds::new(start..end)
+        IdRange::new(start..end)
     }
 
     fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleFieldDef) -> Option<Field> {
@@ -244,7 +244,7 @@ impl Ctx {
             Some(record_field_def_list) => {
                 self.lower_fields(&StructKind::Record(record_field_def_list))
             }
-            None => Fields::Record(FieldIds::new(self.next_field_idx()..self.next_field_idx())),
+            None => Fields::Record(IdRange::new(self.next_field_idx()..self.next_field_idx())),
         };
         let ast_id = self.source_ast_id_map.ast_id(union);
         let res = Union { name, visibility, generic_params, fields, ast_id };

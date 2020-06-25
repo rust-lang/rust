@@ -699,18 +699,19 @@ pub struct Variant {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FieldIds {
+pub struct IdRange<T> {
     range: Range<u32>,
+    _p: PhantomData<T>,
 }
 
-impl FieldIds {
-    fn new(range: Range<Idx<Field>>) -> Self {
-        Self { range: range.start.into_raw().into()..range.end.into_raw().into() }
+impl<T> IdRange<T> {
+    fn new(range: Range<Idx<T>>) -> Self {
+        Self { range: range.start.into_raw().into()..range.end.into_raw().into(), _p: PhantomData }
     }
 }
 
-impl Iterator for FieldIds {
-    type Item = Idx<Field>;
+impl<T> Iterator for IdRange<T> {
+    type Item = Idx<T>;
     fn next(&mut self) -> Option<Self::Item> {
         self.range.next().map(|raw| Idx::from_raw(raw.into()))
     }
@@ -718,8 +719,8 @@ impl Iterator for FieldIds {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Fields {
-    Record(FieldIds),
-    Tuple(FieldIds),
+    Record(IdRange<Field>),
+    Tuple(IdRange<Field>),
     Unit,
 }
 
