@@ -10,7 +10,6 @@ use std::{
     time::Instant,
 };
 
-use cargo_metadata::Message;
 use crossbeam_channel::{never, select, unbounded, Receiver, RecvError, Sender};
 
 pub use cargo_metadata::diagnostic::{
@@ -50,17 +49,17 @@ impl fmt::Display for FlycheckConfig {
 #[derive(Debug)]
 pub struct FlycheckHandle {
     // XXX: drop order is significant
-    cmd_send: Sender<CheckCommand>,
-    handle: jod_thread::JoinHandle<()>,
+    cmd_send: Sender<Restart>,
+    handle: jod_thread::JoinHandle,
 }
 
 impl FlycheckHandle {
     pub fn spawn(
-        sender: Box<dyn Fn(CheckTask) + Send>,
+        sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
         workspace_root: PathBuf,
     ) -> FlycheckHandle {
-        let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
+        let (cmd_send, cmd_recv) = unbounded::<Restart>();
         let handle = jod_thread::spawn(move || {
             FlycheckActor::new(sender, config, workspace_root).run(&cmd_recv);
         });
@@ -69,12 +68,12 @@ impl FlycheckHandle {
 
     /// Schedule a re-start of the cargo check worker.
     pub fn update(&self) {
-        self.cmd_send.send(CheckCommand::Update).unwrap();
+        self.cmd_send.send(Restart).unwrap();
     }
 }
 
 #[derive(Debug)]
-pub enum CheckTask {
+pub enum Message {
     /// Request a clearing of all cached diagnostics from the check watcher
     ClearDiagnostics,
 
@@ -82,23 +81,20 @@ pub enum CheckTask {
     AddDiagnostic { workspace_root: PathBuf, diagnostic: Diagnostic },
 
     /// Request check progress notification to client
-    Status(Status),
+    Progress(Progress),
 }
 
 #[derive(Debug)]
-pub enum Status {
+pub enum Progress {
     Being,
-    Progress(String),
+    DidCheckCrate(String),
     End,
 }
 
-pub enum CheckCommand {
-    /// Request re-start of check thread
-    Update,
-}
+struct Restart;
 
 struct FlycheckActor {
-    sender: Box<dyn Fn(CheckTask) + Send>,
+    sender: Box<dyn Fn(Message) + Send>,
     config: FlycheckConfig,
     workspace_root: PathBuf,
     last_update_req: Option<Instant>,
@@ -109,12 +105,12 @@ struct FlycheckActor {
     /// doesn't provide a way to read sub-process output without blocking, so we
     /// have to wrap sub-processes output handling in a thread and pass messages
     /// back over a channel.
-    check_process: Option<jod_thread::JoinHandle<()>>,
+    check_process: Option<jod_thread::JoinHandle>,
 }
 
 impl FlycheckActor {
     fn new(
-        sender: Box<dyn Fn(CheckTask) + Send>,
+        sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
         workspace_root: PathBuf,
     ) -> FlycheckActor {
@@ -128,14 +124,14 @@ impl FlycheckActor {
         }
     }
 
-    fn run(&mut self, cmd_recv: &Receiver<CheckCommand>) {
+    fn run(&mut self, cmd_recv: &Receiver<Restart>) {
         // If we rerun the thread, we need to discard the previous check results first
         self.clean_previous_results();
 
         loop {
             select! {
                 recv(&cmd_recv) -> cmd => match cmd {
-                    Ok(cmd) => self.handle_command(cmd),
+                    Ok(Restart) => self.last_update_req = Some(Instant::now()),
                     Err(RecvError) => {
                         // Command channel has closed, so shut down
                         break;
@@ -154,15 +150,15 @@ impl FlycheckActor {
 
             if self.should_recheck() {
                 self.last_update_req = None;
-                self.send(CheckTask::ClearDiagnostics);
+                self.send(Message::ClearDiagnostics);
                 self.restart_check_process();
             }
         }
     }
 
     fn clean_previous_results(&self) {
-        self.send(CheckTask::ClearDiagnostics);
-        self.send(CheckTask::Status(Status::End));
+        self.send(Message::ClearDiagnostics);
+        self.send(Message::Progress(Progress::End));
     }
 
     fn should_recheck(&mut self) -> bool {
@@ -175,37 +171,31 @@ impl FlycheckActor {
         false
     }
 
-    fn handle_command(&mut self, cmd: CheckCommand) {
-        match cmd {
-            CheckCommand::Update => self.last_update_req = Some(Instant::now()),
-        }
-    }
-
     fn handle_message(&self, msg: CheckEvent) {
         match msg {
             CheckEvent::Begin => {
-                self.send(CheckTask::Status(Status::Being));
+                self.send(Message::Progress(Progress::Being));
             }
 
             CheckEvent::End => {
-                self.send(CheckTask::Status(Status::End));
+                self.send(Message::Progress(Progress::End));
             }
 
-            CheckEvent::Msg(Message::CompilerArtifact(msg)) => {
-                self.send(CheckTask::Status(Status::Progress(msg.target.name)));
+            CheckEvent::Msg(cargo_metadata::Message::CompilerArtifact(msg)) => {
+                self.send(Message::Progress(Progress::DidCheckCrate(msg.target.name)));
             }
 
-            CheckEvent::Msg(Message::CompilerMessage(msg)) => {
-                self.send(CheckTask::AddDiagnostic {
+            CheckEvent::Msg(cargo_metadata::Message::CompilerMessage(msg)) => {
+                self.send(Message::AddDiagnostic {
                     workspace_root: self.workspace_root.clone(),
                     diagnostic: msg.message,
                 });
             }
 
-            CheckEvent::Msg(Message::BuildScriptExecuted(_msg)) => {}
-            CheckEvent::Msg(Message::BuildFinished(_)) => {}
-            CheckEvent::Msg(Message::TextLine(_)) => {}
-            CheckEvent::Msg(Message::Unknown) => {}
+            CheckEvent::Msg(cargo_metadata::Message::BuildScriptExecuted(_))
+            | CheckEvent::Msg(cargo_metadata::Message::BuildFinished(_))
+            | CheckEvent::Msg(cargo_metadata::Message::TextLine(_))
+            | CheckEvent::Msg(cargo_metadata::Message::Unknown) => {}
         }
     }
 
@@ -256,9 +246,11 @@ impl FlycheckActor {
             let res = run_cargo(cmd, &mut |message| {
                 // Skip certain kinds of messages to only spend time on what's useful
                 match &message {
-                    Message::CompilerArtifact(artifact) if artifact.fresh => return true,
-                    Message::BuildScriptExecuted(_) => return true,
-                    Message::Unknown => return true,
+                    cargo_metadata::Message::CompilerArtifact(artifact) if artifact.fresh => {
+                        return true
+                    }
+                    cargo_metadata::Message::BuildScriptExecuted(_)
+                    | cargo_metadata::Message::Unknown => return true,
                     _ => {}
                 }
 
@@ -278,7 +270,7 @@ impl FlycheckActor {
         }))
     }
 
-    fn send(&self, check_task: CheckTask) {
+    fn send(&self, check_task: Message) {
         (self.sender)(check_task)
     }
 }
