@@ -7,16 +7,16 @@ use std::{convert::TryFrom, sync::Arc};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::{FlycheckConfig, FlycheckHandle};
-use lsp_types::Url;
+use lsp_types::{request::Request, Url};
 use parking_lot::RwLock;
 use ra_db::{CrateId, SourceRoot, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId};
-use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
+use ra_project_model::{CargoWorkspace, PackageRoot, ProcMacroClient, ProjectWorkspace, Target};
 use stdx::format_to;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf};
 
 use crate::{
-    config::{Config, FilesWatcher},
+    config::{Config, FilesWatcher, LinkedProject},
     diagnostics::{CheckFixes, DiagnosticCollection},
     from_proto,
     line_endings::LineEndings,
@@ -98,10 +98,8 @@ pub(crate) struct GlobalStateSnapshot {
 impl GlobalState {
     pub(crate) fn new(
         sender: Sender<lsp_server::Message>,
-        workspaces: Vec<ProjectWorkspace>,
         lru_capacity: Option<usize>,
         config: Config,
-        req_queue: ReqQueue,
     ) -> GlobalState {
         let (task_sender, task_receiver) = unbounded::<vfs::loader::Message>();
 
@@ -117,7 +115,7 @@ impl GlobalState {
             (TaskPool::new(sender), receiver)
         };
 
-        let mut res = GlobalState {
+        GlobalState {
             sender,
             config,
             task_pool,
@@ -129,17 +127,75 @@ impl GlobalState {
             mem_docs: FxHashSet::default(),
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
             status: Status::default(),
-            req_queue,
+            req_queue: ReqQueue::default(),
             latest_requests: Default::default(),
             source_root_config: SourceRootConfig::default(),
             proc_macro_client: ProcMacroClient::dummy(),
             workspaces: Arc::new(Vec::new()),
-        };
-        res.reload(workspaces);
-        res
+        }
     }
 
-    pub(crate) fn reload(&mut self, workspaces: Vec<ProjectWorkspace>) {
+    pub(crate) fn reload(&mut self) {
+        let workspaces = {
+            if self.config.linked_projects.is_empty()
+                && self.config.notifications.cargo_toml_not_found
+            {
+                self.show_message(
+                    lsp_types::MessageType::Error,
+                    "rust-analyzer failed to discover workspace".to_string(),
+                );
+            };
+
+            self.config
+                .linked_projects
+                .iter()
+                .filter_map(|project| match project {
+                    LinkedProject::ProjectManifest(manifest) => {
+                        ra_project_model::ProjectWorkspace::load(
+                            manifest.clone(),
+                            &self.config.cargo,
+                            self.config.with_sysroot,
+                        )
+                        .map_err(|err| {
+                            log::error!("failed to load workspace: {:#}", err);
+                            self.show_message(
+                                lsp_types::MessageType::Error,
+                                format!("rust-analyzer failed to load workspace: {:#}", err),
+                            );
+                        })
+                        .ok()
+                    }
+                    LinkedProject::InlineJsonProject(it) => {
+                        Some(ra_project_model::ProjectWorkspace::Json { project: it.clone() })
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+
+        if let FilesWatcher::Client = self.config.files.watcher {
+            let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
+                watchers: workspaces
+                    .iter()
+                    .flat_map(ProjectWorkspace::to_roots)
+                    .filter(PackageRoot::is_member)
+                    .map(|root| format!("{}/**/*.rs", root.path().display()))
+                    .map(|glob_pattern| lsp_types::FileSystemWatcher { glob_pattern, kind: None })
+                    .collect(),
+            };
+            let registration = lsp_types::Registration {
+                id: "file-watcher".to_string(),
+                method: "workspace/didChangeWatchedFiles".to_string(),
+                register_options: Some(serde_json::to_value(registration_options).unwrap()),
+            };
+            let params = lsp_types::RegistrationParams { registrations: vec![registration] };
+            let request = self.req_queue.outgoing.register(
+                lsp_types::request::RegisterCapability::METHOD.to_string(),
+                params,
+                |_, _| (),
+            );
+            self.send(request.into());
+        }
+
         let mut change = AnalysisChange::new();
 
         let project_folders = ProjectFolders::new(&workspaces);
@@ -275,7 +331,7 @@ impl GlobalState {
             self.send(response.into());
         }
     }
-    pub(crate) fn show_message(&mut self, typ: lsp_types::MessageType, message: String) {
+    pub(crate) fn show_message(&self, typ: lsp_types::MessageType, message: String) {
         show_message(typ, message, &self.sender)
     }
 }
