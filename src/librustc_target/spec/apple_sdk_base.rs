@@ -141,7 +141,6 @@ pub fn opts(arch: Arch, os: AppleOS) -> Result<TargetOptions, String> {
     let pre_link_args = build_pre_link_args(arch, os)?;
     Ok(TargetOptions {
         cpu: target_cpu(arch),
-        dynamic_linking: false,
         executables: true,
         pre_link_args,
         link_env_remove: link_env_remove(arch),
