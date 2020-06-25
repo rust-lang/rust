@@ -40,8 +40,8 @@ pub struct NeedlessBorrow {
 
 impl_lint_pass!(NeedlessBorrow => [NEEDLESS_BORROW]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() || self.derived_item.is_some() {
             return;
         }
@@ -79,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
             }
         }
     }
-    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
+    fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
         if pat.span.from_expansion() || self.derived_item.is_some() {
             return;
         }
@@ -111,14 +111,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         }
     }
 
-    fn check_item(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+    fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if item.attrs.iter().any(|a| a.check_name(sym!(automatically_derived))) {
             debug_assert!(self.derived_item.is_none());
             self.derived_item = Some(item.hir_id);
         }
     }
 
-    fn check_item_post(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+    fn check_item_post(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let Some(id) = self.derived_item {
             if item.hir_id == id {
                 self.derived_item = None;

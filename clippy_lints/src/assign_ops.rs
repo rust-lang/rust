@@ -60,9 +60,9 @@ declare_clippy_lint! {
 
 declare_lint_pass!(AssignOps => [ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
+impl<'tcx> LateLintPass<'tcx> for AssignOps {
     #[allow(clippy::too_many_lines)]
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         match &expr.kind {
             hir::ExprKind::AssignOp(op, lhs, rhs) => {
                 if let hir::ExprKind::Binary(binop, l, r) = &rhs.kind {
@@ -191,7 +191,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
 }
 
 fn lint_misrefactored_assign_op(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
     op: hir::BinOp,
     rhs: &hir::Expr<'_>,
@@ -246,7 +246,7 @@ fn is_commutative(op: hir::BinOpKind) -> bool {
 struct ExprVisitor<'a, 'tcx> {
     assignee: &'a hir::Expr<'a>,
     counter: u8,
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {

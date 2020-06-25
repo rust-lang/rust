@@ -65,8 +65,8 @@ enum InitializationType<'tcx> {
     Resize(&'tcx Expr<'tcx>),
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SlowVectorInit {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Matches initialization on reassignements. For example: `vec = Vec::with_capacity(100)`
         if_chain! {
             if let ExprKind::Assign(ref left, ref right, _) = expr.kind;
@@ -90,7 +90,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SlowVectorInit {
         }
     }
 
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         // Matches statements which initializes vectors. For example: `let mut vec = Vec::with_capacity(10)`
         if_chain! {
             if let StmtKind::Local(ref local) = stmt.kind;
@@ -130,7 +130,7 @@ impl SlowVectorInit {
     }
 
     /// Search initialization for the given vector
-    fn search_initialization<'tcx>(cx: &LateContext<'_, 'tcx>, vec_alloc: VecAllocation<'tcx>, parent_node: HirId) {
+    fn search_initialization<'tcx>(cx: &LateContext<'tcx>, vec_alloc: VecAllocation<'tcx>, parent_node: HirId) {
         let enclosing_body = get_enclosing_block(cx, parent_node);
 
         if enclosing_body.is_none() {
@@ -152,7 +152,7 @@ impl SlowVectorInit {
     }
 
     fn lint_initialization<'tcx>(
-        cx: &LateContext<'_, 'tcx>,
+        cx: &LateContext<'tcx>,
         initialization: &InitializationType<'tcx>,
         vec_alloc: &VecAllocation<'_>,
     ) {
@@ -168,7 +168,7 @@ impl SlowVectorInit {
     }
 
     fn emit_lint<'tcx>(
-        cx: &LateContext<'_, 'tcx>,
+        cx: &LateContext<'tcx>,
         slow_fill: &Expr<'_>,
         vec_alloc: &VecAllocation<'_>,
         msg: &str,
@@ -190,7 +190,7 @@ impl SlowVectorInit {
 /// `VectorInitializationVisitor` searches for unsafe or slow vector initializations for the given
 /// vector.
 struct VectorInitializationVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 
     /// Contains the information.
     vec_alloc: VecAllocation<'tcx>,

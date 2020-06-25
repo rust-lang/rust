@@ -105,8 +105,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Derive => [EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ, UNSAFE_DERIVE_DESERIALIZE]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for Derive {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl {
             of_trait: Some(ref trait_ref),
             ..
@@ -127,8 +127,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
 }
 
 /// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
-fn check_hash_peq<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn check_hash_peq<'tcx>(
+    cx: &LateContext<'tcx>,
     span: Span,
     trait_ref: &TraitRef<'_>,
     ty: Ty<'tcx>,
@@ -181,7 +181,7 @@ fn check_hash_peq<'a, 'tcx>(
 }
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
-fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item<'_>, trait_ref: &TraitRef<'_>, ty: Ty<'tcx>) {
+fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &TraitRef<'_>, ty: Ty<'tcx>) {
     if match_path(&trait_ref.path, &paths::CLONE_TRAIT) {
         if !is_copy(cx, ty) {
             return;
@@ -222,18 +222,18 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item<'_>, trait
 }
 
 /// Implementation of the `UNSAFE_DERIVE_DESERIALIZE` lint.
-fn check_unsafe_derive_deserialize<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn check_unsafe_derive_deserialize<'tcx>(
+    cx: &LateContext<'tcx>,
     item: &Item<'_>,
     trait_ref: &TraitRef<'_>,
     ty: Ty<'tcx>,
 ) {
-    fn item_from_def_id<'tcx>(cx: &LateContext<'_, 'tcx>, def_id: DefId) -> &'tcx Item<'tcx> {
+    fn item_from_def_id<'tcx>(cx: &LateContext<'tcx>, def_id: DefId) -> &'tcx Item<'tcx> {
         let hir_id = cx.tcx.hir().as_local_hir_id(def_id.expect_local());
         cx.tcx.hir().expect_item(hir_id)
     }
 
-    fn has_unsafe<'tcx>(cx: &LateContext<'_, 'tcx>, item: &'tcx Item<'_>) -> bool {
+    fn has_unsafe<'tcx>(cx: &LateContext<'tcx>, item: &'tcx Item<'_>) -> bool {
         let mut visitor = UnsafeVisitor { cx, has_unsafe: false };
         walk_item(&mut visitor, item);
         visitor.has_unsafe
@@ -261,7 +261,7 @@ fn check_unsafe_derive_deserialize<'a, 'tcx>(
 }
 
 struct UnsafeVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     has_unsafe: bool,
 }
 

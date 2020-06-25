@@ -28,8 +28,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ExplicitWrite => [EXPLICIT_WRITE]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitWrite {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // match call to unwrap
             if let ExprKind::MethodCall(ref unwrap_fun, _, ref unwrap_args, _) = expr.kind;

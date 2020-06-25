@@ -1,7 +1,7 @@
 use crate::utils::{match_def_path, paths, span_lint};
 use if_chain::if_chain;
 use rustc_hir::{GenericBound, GenericParam, WhereBoundPredicate, WherePredicate};
-use rustc_lint::LateLintPass;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -41,13 +41,13 @@ const DROP_BOUNDS_SUMMARY: &str = "Bounds of the form `T: Drop` are useless. \
 
 declare_lint_pass!(DropBounds => [DROP_BOUNDS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DropBounds {
-    fn check_generic_param(&mut self, cx: &rustc_lint::LateContext<'a, 'tcx>, p: &'tcx GenericParam<'_>) {
+impl<'tcx> LateLintPass<'tcx> for DropBounds {
+    fn check_generic_param(&mut self, cx: &LateContext<'tcx>, p: &'tcx GenericParam<'_>) {
         for bound in p.bounds.iter() {
             lint_bound(cx, bound);
         }
     }
-    fn check_where_predicate(&mut self, cx: &rustc_lint::LateContext<'a, 'tcx>, p: &'tcx WherePredicate<'_>) {
+    fn check_where_predicate(&mut self, cx: &LateContext<'tcx>, p: &'tcx WherePredicate<'_>) {
         if let WherePredicate::BoundPredicate(WhereBoundPredicate { bounds, .. }) = p {
             for bound in *bounds {
                 lint_bound(cx, bound);
@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DropBounds {
     }
 }
 
-fn lint_bound<'a, 'tcx>(cx: &rustc_lint::LateContext<'a, 'tcx>, bound: &'tcx GenericBound<'_>) {
+fn lint_bound<'tcx>(cx: &LateContext<'tcx>, bound: &'tcx GenericBound<'_>) {
     if_chain! {
         if let GenericBound::Trait(t, _) = bound;
         if let Some(def_id) = t.trait_ref.path.res.opt_def_id();

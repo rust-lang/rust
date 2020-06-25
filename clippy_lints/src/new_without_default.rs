@@ -56,9 +56,9 @@ pub struct NewWithoutDefault {
 
 impl_lint_pass!(NewWithoutDefault => [NEW_WITHOUT_DEFAULT]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
+impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
     #[allow(clippy::too_many_lines)]
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         if let hir::ItemKind::Impl {
             of_trait: None, items, ..
         } = item.kind

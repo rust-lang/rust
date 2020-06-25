@@ -31,8 +31,8 @@ declare_clippy_lint! {
 
 impl_lint_pass!(TraitBounds => [TYPE_REPETITION_IN_BOUNDS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
-    fn check_generics(&mut self, cx: &LateContext<'a, 'tcx>, gen: &'tcx Generics<'_>) {
+impl<'tcx> LateLintPass<'tcx> for TraitBounds {
+    fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
         if in_macro(gen.span) {
             return;
         }

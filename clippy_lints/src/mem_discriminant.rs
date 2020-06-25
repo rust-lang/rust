@@ -29,8 +29,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MemDiscriminant => [MEM_DISCRIMINANT_NON_ENUM]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MemDiscriminant {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Call(ref func, ref func_args) = expr.kind;
             // is `mem::discriminant`

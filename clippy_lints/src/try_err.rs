@@ -43,8 +43,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(TryErr => [TRY_ERR]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for TryErr {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Looks for a structure like this:
         // match ::std::ops::Try::into_result(Err(5)) {
         //     ::std::result::Result::Err(err) =>
@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
 // In order to determine whether to suggest `.into()` or not, we need to find the error type the
 // function returns. To do that, we look for the From::from call (see tree above), and capture
 // its output type.
-fn find_err_return_type<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx ExprKind<'_>) -> Option<Ty<'tcx>> {
+fn find_err_return_type<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx ExprKind<'_>) -> Option<Ty<'tcx>> {
     if let ExprKind::Match(_, ref arms, MatchSource::TryDesugar) = expr {
         arms.iter().find_map(|ty| find_err_return_type_arm(cx, ty))
     } else {
@@ -106,7 +106,7 @@ fn find_err_return_type<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx ExprKi
 }
 
 // Check for From::from in one of the match arms.
-fn find_err_return_type_arm<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arm: &'tcx Arm<'_>) -> Option<Ty<'tcx>> {
+fn find_err_return_type_arm<'tcx>(cx: &LateContext<'tcx>, arm: &'tcx Arm<'_>) -> Option<Ty<'tcx>> {
     if_chain! {
         if let ExprKind::Ret(Some(ref err_ret)) = arm.body.kind;
         if let ExprKind::Call(ref from_error_path, ref from_error_args) = err_ret.kind;

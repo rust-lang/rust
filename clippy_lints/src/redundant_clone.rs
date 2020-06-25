@@ -66,11 +66,11 @@ declare_clippy_lint! {
 
 declare_lint_pass!(RedundantClone => [REDUNDANT_CLONE]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
+impl<'tcx> LateLintPass<'tcx> for RedundantClone {
     #[allow(clippy::too_many_lines)]
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
@@ -273,7 +273,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
 
 /// If `kind` is `y = func(x: &T)` where `T: !Copy`, returns `(DefId of func, x, T, y)`.
 fn is_call_with_ref_arg<'tcx>(
-    cx: &LateContext<'_, 'tcx>,
+    cx: &LateContext<'tcx>,
     mir: &'tcx mir::Body<'tcx>,
     kind: &'tcx mir::TerminatorKind<'tcx>,
 ) -> Option<(def_id::DefId, mir::Local, Ty<'tcx>, mir::Local)> {
@@ -297,7 +297,7 @@ type CannotMoveOut = bool;
 /// Finds the first `to = (&)from`, and returns
 /// ``Some((from, whether `from` cannot be moved out))``.
 fn find_stmt_assigns_to<'tcx>(
-    cx: &LateContext<'_, 'tcx>,
+    cx: &LateContext<'tcx>,
     mir: &mir::Body<'tcx>,
     to_local: mir::Local,
     by_ref: bool,
@@ -331,7 +331,7 @@ fn find_stmt_assigns_to<'tcx>(
 ///
 /// Also reports whether given `place` cannot be moved out.
 fn base_local_and_movability<'tcx>(
-    cx: &LateContext<'_, 'tcx>,
+    cx: &LateContext<'tcx>,
     mir: &mir::Body<'tcx>,
     place: mir::Place<'tcx>,
 ) -> Option<(mir::Local, CannotMoveOut)> {
@@ -459,11 +459,11 @@ impl BottomValue for MaybeStorageLive {
 struct PossibleBorrowerVisitor<'a, 'tcx> {
     possible_borrower: TransitiveRelation<mir::Local>,
     body: &'a mir::Body<'tcx>,
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 
 impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'a, 'tcx>, body: &'a mir::Body<'tcx>) -> Self {
+    fn new(cx: &'a LateContext<'tcx>, body: &'a mir::Body<'tcx>) -> Self {
         Self {
             possible_borrower: TransitiveRelation::default(),
             cx,
@@ -473,7 +473,7 @@ impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
 
     fn into_map(
         self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         maybe_live: ResultsCursor<'tcx, 'tcx, MaybeStorageLive>,
     ) -> PossibleBorrowerMap<'a, 'tcx> {
         let mut map = FxHashMap::default();

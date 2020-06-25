@@ -293,9 +293,9 @@ static COLLECTIONS: &[&[&str]] = &[
     &paths::HASHSET,
     &paths::HASHMAP,
 ];
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
+impl<'tcx> LateLintPass<'tcx> for Transmute {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Call(ref path_expr, ref args) = e.kind;
             if let ExprKind::Path(ref qpath) = path_expr.kind;
@@ -613,7 +613,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
 /// the type's `ToString` implementation. In weird cases it could lead to types
 /// with invalid `'_`
 /// lifetime, but it should be rare.
-fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath<'_>, to_ref_ty: Ty<'_>) -> String {
+fn get_type_snippet(cx: &LateContext<'_>, path: &QPath<'_>, to_ref_ty: Ty<'_>) -> String {
     let seg = last_path_segment(path);
     if_chain! {
         if let Some(ref params) = seg.args;
@@ -633,7 +633,7 @@ fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath<'_>, to_ref_ty: Ty<'_
 
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment
-fn is_layout_incompatible<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
+fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
     let empty_param_env = ty::ParamEnv::empty();
     // check if `from` and `to` are normalizable to avoid ICE (#4968)
     if !(is_normalizable(cx, empty_param_env, from) && is_normalizable(cx, empty_param_env, to)) {

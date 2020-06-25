@@ -40,8 +40,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UselessFormat => [USELESS_FORMAT]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessFormat {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UselessFormat {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let span = match is_expn_of(expr.span, "format") {
             Some(s) if !s.from_expansion() => s,
             _ => return,
@@ -75,11 +75,7 @@ fn span_useless_format<T: LintContext>(cx: &T, span: Span, help: &str, mut sugg:
     });
 }
 
-fn on_argumentv1_new<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &'tcx Expr<'_>,
-    arms: &'tcx [Arm<'_>],
-) -> Option<String> {
+fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) -> Option<String> {
     if_chain! {
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref format_args) = expr.kind;
         if let ExprKind::Array(ref elems) = arms[0].body.kind;
@@ -118,7 +114,7 @@ fn on_argumentv1_new<'a, 'tcx>(
     None
 }
 
-fn on_new_v1<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> Option<String> {
+fn on_new_v1<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<String> {
     if_chain! {
         if let Some(args) = match_function_call(cx, expr, &paths::FMT_ARGUMENTS_NEW_V1);
         if args.len() == 2;
@@ -145,7 +141,7 @@ fn on_new_v1<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> Opti
     None
 }
 
-fn on_new_v1_fmt<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> Option<String> {
+fn on_new_v1_fmt<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<String> {
     if_chain! {
         if let Some(args) = match_function_call(cx, expr, &paths::FMT_ARGUMENTS_NEW_V1_FORMATTED);
         if args.len() == 3;

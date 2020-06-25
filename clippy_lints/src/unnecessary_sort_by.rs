@@ -67,7 +67,7 @@ struct SortByKeyDetection {
 /// Detect if the two expressions are mirrored (identical, except one
 /// contains a and the other replaces it with b)
 fn mirrored_exprs(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     a_expr: &Expr<'_>,
     a_ident: &Ident,
     b_expr: &Expr<'_>,
@@ -171,7 +171,7 @@ fn mirrored_exprs(
     }
 }
 
-fn detect_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<LintTrigger> {
+fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
     if_chain! {
         if let ExprKind::MethodCall(name_ident, _, args, _) = &expr.kind;
         if let name = name_ident.ident.name.to_ident_string();
@@ -225,8 +225,8 @@ fn detect_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<LintTrigger>
     }
 }
 
-impl LateLintPass<'_, '_> for UnnecessarySortBy {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+impl LateLintPass<'_> for UnnecessarySortBy {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         match detect_lint(cx, expr) {
             Some(LintTrigger::SortByKey(trigger)) => utils::span_lint_and_sugg(
                 cx,

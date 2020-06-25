@@ -12,8 +12,8 @@ use rustc_span::symbol::Symbol;
 use super::MAP_UNWRAP_OR;
 
 /// lint use of `map().unwrap_or()` for `Option`s
-pub(super) fn lint<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+pub(super) fn lint<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &rustc_hir::Expr<'_>,
     map_args: &'tcx [rustc_hir::Expr<'_>],
     unwrap_args: &'tcx [rustc_hir::Expr<'_>],
@@ -87,7 +87,7 @@ pub(super) fn lint<'a, 'tcx>(
 }
 
 struct UnwrapVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     identifiers: FxHashSet<Symbol>,
 }
 
@@ -105,7 +105,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
 }
 
 struct MapExprVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     identifiers: FxHashSet<Symbol>,
     found_identifier: bool,
 }

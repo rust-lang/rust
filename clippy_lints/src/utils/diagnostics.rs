@@ -138,7 +138,7 @@ where
     });
 }
 
-pub fn span_lint_hir(cx: &LateContext<'_, '_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
+pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
     cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |diag| {
         let mut diag = diag.build(msg);
         docs_link(&mut diag, lint);
@@ -147,7 +147,7 @@ pub fn span_lint_hir(cx: &LateContext<'_, '_>, lint: &'static Lint, hir_id: HirI
 }
 
 pub fn span_lint_hir_and_then(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     lint: &'static Lint,
     hir_id: HirId,
     sp: Span,

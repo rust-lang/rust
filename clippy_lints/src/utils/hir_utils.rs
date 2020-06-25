@@ -21,7 +21,7 @@ use std::hash::Hash;
 /// Note that some expressions kinds are not considered but could be added.
 pub struct SpanlessEq<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     maybe_typeck_tables: Option<&'tcx TypeckTables<'tcx>>,
     /// If is true, never consider as equal expressions containing function
     /// calls.
@@ -29,7 +29,7 @@ pub struct SpanlessEq<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
-    pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
+    pub fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
             maybe_typeck_tables: cx.maybe_typeck_tables(),
@@ -347,13 +347,13 @@ pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -
 /// All expressions kind are hashed, but some might have a weaker hash.
 pub struct SpanlessHash<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     maybe_typeck_tables: Option<&'tcx TypeckTables<'tcx>>,
     s: StableHasher,
 }
 
 impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
-    pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
+    pub fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
             maybe_typeck_tables: cx.maybe_typeck_tables(),

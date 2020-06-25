@@ -30,8 +30,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(PartialEqNeImpl => [PARTIALEQ_NE_IMPL]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PartialEqNeImpl {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if_chain! {
             if let ItemKind::Impl{ of_trait: Some(ref trait_ref), items: impl_items, .. } = item.kind;
             if !is_automatically_derived(&*item.attrs);

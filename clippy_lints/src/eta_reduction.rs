@@ -64,8 +64,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE, REDUNDANT_CLOSURE_FOR_METHOD_CALLS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaReduction {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for EtaReduction {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
@@ -81,7 +81,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaReduction {
     }
 }
 
-fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Closure(_, ref decl, eid, _, _) = expr.kind {
         let body = cx.tcx.hir().body(eid);
         let ex = &body.value;
@@ -151,7 +151,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 }
 
 /// Tries to determine the type for universal function call to be used instead of the closure
-fn get_ufcs_type_name(cx: &LateContext<'_, '_>, method_def_id: def_id::DefId, self_arg: &Expr<'_>) -> Option<String> {
+fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: def_id::DefId, self_arg: &Expr<'_>) -> Option<String> {
     let expected_type_of_self = &cx.tcx.fn_sig(method_def_id).inputs_and_output().skip_binder()[0];
     let actual_type_of_self = &cx.tables().node_type(self_arg.hir_id);
 
@@ -196,7 +196,7 @@ fn match_types(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
     }
 }
 
-fn get_type_name(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> String {
+fn get_type_name(cx: &LateContext<'_>, ty: Ty<'_>) -> String {
     match ty.kind {
         ty::Adt(t, _) => cx.tcx.def_path_str(t.did),
         ty::Ref(_, r, _) => get_type_name(cx, &r),

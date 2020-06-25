@@ -33,8 +33,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UselessVec => [USELESS_VEC]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessVec {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UselessVec {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_chain! {
             if let ty::Ref(_, ty, _) = cx.tables().expr_ty_adjusted(expr).kind;
@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessVec {
     }
 }
 
-fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecArgs<'tcx>, span: Span) {
+fn check_vec_macro<'tcx>(cx: &LateContext<'tcx>, vec_args: &higher::VecArgs<'tcx>, span: Span) {
     let mut applicability = Applicability::MachineApplicable;
     let snippet = match *vec_args {
         higher::VecArgs::Repeat(elem, len) => {

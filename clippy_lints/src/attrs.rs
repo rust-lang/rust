@@ -251,8 +251,8 @@ declare_lint_pass!(Attributes => [
     UNKNOWN_CLIPPY_LINTS,
 ]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
-    fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
+impl<'tcx> LateLintPass<'tcx> for Attributes {
+    fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
         if let Some(items) = &attr.meta_item_list() {
             if let Some(ident) = attr.ident() {
                 match &*ident.as_str() {
@@ -278,7 +278,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
         }
     }
 
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if is_relevant_item(cx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
@@ -350,13 +350,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem<'_>) {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if is_relevant_impl(cx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if is_relevant_trait(cx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
@@ -364,7 +364,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
 }
 
 #[allow(clippy::single_match_else)]
-fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
+fn check_clippy_lint_names(cx: &LateContext<'_>, items: &[NestedMetaItem]) {
     let lint_store = cx.lints();
     for lint in items {
         if_chain! {
@@ -416,7 +416,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
     }
 }
 
-fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item<'_>) -> bool {
+fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if let ItemKind::Fn(_, _, eid) = item.kind {
         is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
     } else {
@@ -424,14 +424,14 @@ fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item<'_>) -> bool {
     }
 }
 
-fn is_relevant_impl(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) -> bool {
+fn is_relevant_impl(cx: &LateContext<'_>, item: &ImplItem<'_>) -> bool {
     match item.kind {
         ImplItemKind::Fn(_, eid) => is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value),
         _ => false,
     }
 }
 
-fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem<'_>) -> bool {
+fn is_relevant_trait(cx: &LateContext<'_>, item: &TraitItem<'_>) -> bool {
     match item.kind {
         TraitItemKind::Fn(_, TraitFn::Required(_)) => true,
         TraitItemKind::Fn(_, TraitFn::Provided(eid)) => {
@@ -441,7 +441,7 @@ fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem<'_>) -> bool {
     }
 }
 
-fn is_relevant_block(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, block: &Block<'_>) -> bool {
+fn is_relevant_block(cx: &LateContext<'_>, tables: &ty::TypeckTables<'_>, block: &Block<'_>) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match &stmt.kind {
             StmtKind::Local(_) => true,
@@ -453,7 +453,7 @@ fn is_relevant_block(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, bl
     }
 }
 
-fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr<'_>) -> bool {
+fn is_relevant_expr(cx: &LateContext<'_>, tables: &ty::TypeckTables<'_>, expr: &Expr<'_>) -> bool {
     match &expr.kind {
         ExprKind::Block(block, _) => is_relevant_block(cx, tables, block),
         ExprKind::Ret(Some(e)) => is_relevant_expr(cx, tables, e),
@@ -473,7 +473,7 @@ fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, exp
     }
 }
 
-fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext<'_>, span: Span, name: Name, attrs: &[Attribute]) {
     if span.from_expansion() {
         return;
     }
@@ -498,7 +498,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
     }
 }
 
-fn check_semver(cx: &LateContext<'_, '_>, span: Span, lit: &Lit) {
+fn check_semver(cx: &LateContext<'_>, span: Span, lit: &Lit) {
     if let LitKind::Str(is, _) = lit.kind {
         if Version::parse(&is.as_str()).is_ok() {
             return;

@@ -69,13 +69,7 @@ impl MissingDoc {
         }
     }
 
-    fn check_missing_docs_attrs(
-        &self,
-        cx: &LateContext<'_, '_>,
-        attrs: &[ast::Attribute],
-        sp: Span,
-        desc: &'static str,
-    ) {
+    fn check_missing_docs_attrs(&self, cx: &LateContext<'_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
         if cx.sess().opts.test {
@@ -107,8 +101,8 @@ impl MissingDoc {
 
 impl_lint_pass!(MissingDoc => [MISSING_DOCS_IN_PRIVATE_ITEMS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
-    fn enter_lint_attrs(&mut self, _: &LateContext<'a, 'tcx>, attrs: &'tcx [ast::Attribute]) {
+impl<'tcx> LateLintPass<'tcx> for MissingDoc {
+    fn enter_lint_attrs(&mut self, _: &LateContext<'tcx>, attrs: &'tcx [ast::Attribute]) {
         let doc_hidden = self.doc_hidden()
             || attrs.iter().any(|attr| {
                 attr.check_name(sym!(doc))
@@ -120,15 +114,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         self.doc_hidden_stack.push(doc_hidden);
     }
 
-    fn exit_lint_attrs(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx [ast::Attribute]) {
+    fn exit_lint_attrs(&mut self, _: &LateContext<'tcx>, _: &'tcx [ast::Attribute]) {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
-    fn check_crate(&mut self, cx: &LateContext<'a, 'tcx>, krate: &'tcx hir::Crate<'_>) {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>, krate: &'tcx hir::Crate<'_>) {
         self.check_missing_docs_attrs(cx, &krate.item.attrs, krate.item.span, "crate");
     }
 
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
         let desc = match it.kind {
             hir::ItemKind::Const(..) => "a constant",
             hir::ItemKind::Enum(..) => "an enum",
@@ -161,7 +155,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         self.check_missing_docs_attrs(cx, &it.attrs, it.span, desc);
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
         let desc = match trait_item.kind {
             hir::TraitItemKind::Const(..) => "an associated constant",
             hir::TraitItemKind::Fn(..) => "a trait method",
@@ -171,7 +165,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         self.check_missing_docs_attrs(cx, &trait_item.attrs, trait_item.span, desc);
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
         let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
         match cx.tcx.associated_item(def_id).container {
@@ -191,13 +185,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         self.check_missing_docs_attrs(cx, &impl_item.attrs, impl_item.span, desc);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, sf: &'tcx hir::StructField<'_>) {
+    fn check_struct_field(&mut self, cx: &LateContext<'tcx>, sf: &'tcx hir::StructField<'_>) {
         if !sf.is_positional() {
             self.check_missing_docs_attrs(cx, &sf.attrs, sf.span, "a struct field");
         }
     }
 
-    fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, v: &'tcx hir::Variant<'_>) {
+    fn check_variant(&mut self, cx: &LateContext<'tcx>, v: &'tcx hir::Variant<'_>) {
         self.check_missing_docs_attrs(cx, &v.attrs, v.span, "a variant");
     }
 }

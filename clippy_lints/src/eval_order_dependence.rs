@@ -67,8 +67,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EvalOrderDependence => [EVAL_ORDER_DEPENDENCE, DIVERGING_SUB_EXPRESSION]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Find a write to a local variable.
         match expr.kind {
             ExprKind::Assign(ref lhs, ..) | ExprKind::AssignOp(_, ref lhs, _) => {
@@ -91,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
             _ => {},
         }
     }
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
             StmtKind::Local(ref local) => {
                 if let Local { init: Some(ref e), .. } = **local {
@@ -105,7 +105,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
 }
 
 struct DivergenceVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 
 impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
@@ -285,7 +285,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt<'_>) -
 
 /// A visitor that looks for reads from a variable.
 struct ReadVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     /// The ID of the variable we're looking for.
     var: HirId,
     /// The expressions where the write to the variable occurred (for reporting
@@ -354,7 +354,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 }
 
 /// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
-fn is_in_assignment_position(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn is_in_assignment_position(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
         if let ExprKind::Assign(ref lhs, ..) = parent.kind {
             return lhs.hir_id == expr.hir_id;
