@@ -44,12 +44,26 @@ pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Opti
     }
     let target = expr.syntax().text_range();
     acc.add(AssistId("introduce_variable"), "Extract into variable", target, move |edit| {
+        let field_shorthand = match expr.syntax().parent().and_then(ast::RecordField::cast) {
+            Some(field) => field.name_ref(),
+            None => None,
+        };
+
         let mut buf = String::new();
 
+        let var_name = match &field_shorthand {
+            Some(it) => it.to_string(),
+            None => "var_name".to_string(),
+        };
+        let expr_range = match &field_shorthand {
+            Some(it) => it.syntax().text_range().cover(expr.syntax().text_range()),
+            None => expr.syntax().text_range(),
+        };
+
         if wrap_in_block {
-            buf.push_str("{ let var_name = ");
+            format_to!(buf, "{{ let {} = ", var_name);
         } else {
-            buf.push_str("let var_name = ");
+            format_to!(buf, "let {} = ", var_name);
         };
         format_to!(buf, "{}", expr.syntax());
 
@@ -64,13 +78,13 @@ pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Opti
             if full_stmt.unwrap().semicolon_token().is_none() {
                 buf.push_str(";");
             }
-            let offset = expr.syntax().text_range();
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    let snip = buf.replace("let var_name", "let $0var_name");
-                    edit.replace_snippet(cap, offset, snip)
+                    let snip =
+                        buf.replace(&format!("let {}", var_name), &format!("let $0{}", var_name));
+                    edit.replace_snippet(cap, expr_range, snip)
                 }
-                None => edit.replace(offset, buf),
+                None => edit.replace(expr_range, buf),
             }
             return;
         }
@@ -88,11 +102,12 @@ pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Opti
             buf.push_str(text);
         }
 
-        edit.replace(expr.syntax().text_range(), "var_name".to_string());
+        edit.replace(expr_range, var_name.clone());
         let offset = anchor_stmt.text_range().start();
         match ctx.config.snippet_cap {
             Some(cap) => {
-                let snip = buf.replace("let var_name", "let $0var_name");
+                let snip =
+                    buf.replace(&format!("let {}", var_name), &format!("let $0{}", var_name));
                 edit.insert_snippet(cap, offset, snip)
             }
             None => edit.insert(offset, buf),
@@ -501,6 +516,32 @@ fn main() {
 }
 ",
         );
+    }
+
+    #[test]
+    fn introduce_var_field_shorthand() {
+        check_assist(
+            introduce_variable,
+            r#"
+struct S {
+    foo: i32
+}
+
+fn main() {
+    S { foo: <|>1 + 1<|> }
+}
+"#,
+            r#"
+struct S {
+    foo: i32
+}
+
+fn main() {
+    let $0foo = 1 + 1;
+    S { foo }
+}
+"#,
+        )
     }
 
     #[test]
