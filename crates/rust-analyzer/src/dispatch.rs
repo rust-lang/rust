@@ -1,5 +1,5 @@
 //! A visitor for downcasting arbitrary request (JSON) into a specific type.
-use std::{panic, time::Instant};
+use std::panic;
 
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -13,7 +13,6 @@ use crate::{
 pub(crate) struct RequestDispatcher<'a> {
     pub(crate) req: Option<lsp_server::Request>,
     pub(crate) global_state: &'a mut GlobalState,
-    pub(crate) request_received: Instant,
 }
 
 impl<'a> RequestDispatcher<'a> {
@@ -34,12 +33,12 @@ impl<'a> RequestDispatcher<'a> {
             }
         };
         let world = panic::AssertUnwindSafe(&mut *self.global_state);
-        let task = panic::catch_unwind(move || {
+        let response = panic::catch_unwind(move || {
             let result = f(world.0, params);
-            result_to_task::<R>(id, result)
+            result_to_response::<R>(id, result)
         })
         .map_err(|_| format!("sync task {:?} panicked", R::METHOD))?;
-        self.global_state.on_task(task);
+        self.global_state.respond(response);
         Ok(self)
     }
 
@@ -64,7 +63,7 @@ impl<'a> RequestDispatcher<'a> {
             let world = self.global_state.snapshot();
             move || {
                 let result = f(world, params);
-                result_to_task::<R>(id, result)
+                Task::Response(result_to_response::<R>(id, result))
             }
         });
 
@@ -72,17 +71,14 @@ impl<'a> RequestDispatcher<'a> {
     }
 
     pub(crate) fn finish(&mut self) {
-        match self.req.take() {
-            None => (),
-            Some(req) => {
-                log::error!("unknown request: {:?}", req);
-                let resp = lsp_server::Response::new_err(
-                    req.id,
-                    lsp_server::ErrorCode::MethodNotFound as i32,
-                    "unknown request".to_string(),
-                );
-                self.global_state.send(resp.into());
-            }
+        if let Some(req) = self.req.take() {
+            log::error!("unknown request: {:?}", req);
+            let response = lsp_server::Response::new_err(
+                req.id,
+                lsp_server::ErrorCode::MethodNotFound as i32,
+                "unknown request".to_string(),
+            );
+            self.global_state.respond(response)
         }
     }
 
@@ -99,21 +95,20 @@ impl<'a> RequestDispatcher<'a> {
                 return None;
             }
         };
-        self.global_state
-            .req_queue
-            .incoming
-            .register(id.clone(), (R::METHOD, self.request_received));
         Some((id, params))
     }
 }
 
-fn result_to_task<R>(id: lsp_server::RequestId, result: Result<R::Result>) -> Task
+fn result_to_response<R>(
+    id: lsp_server::RequestId,
+    result: Result<R::Result>,
+) -> lsp_server::Response
 where
     R: lsp_types::request::Request + 'static,
     R::Params: DeserializeOwned + 'static,
     R::Result: Serialize + 'static,
 {
-    let response = match result {
+    match result {
         Ok(resp) => lsp_server::Response::new_ok(id, &resp),
         Err(e) => match e.downcast::<LspError>() {
             Ok(lsp_error) => lsp_server::Response::new_err(id, lsp_error.code, lsp_error.message),
@@ -133,8 +128,7 @@ where
                 }
             }
         },
-    };
-    Task::Respond(response)
+    }
 }
 
 pub(crate) struct NotificationDispatcher<'a> {

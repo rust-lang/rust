@@ -15,7 +15,6 @@ use ra_project_model::{PackageRoot, ProjectWorkspace};
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
-    diagnostics::DiagnosticTask,
     dispatch::{NotificationDispatcher, RequestDispatcher},
     from_proto,
     global_state::{file_id_to_url, GlobalState, Status},
@@ -23,7 +22,6 @@ use crate::{
     lsp_utils::{
         apply_document_changes, is_canceled, notification_is, notification_new, show_message,
     },
-    request_metrics::RequestMetrics,
     Result,
 };
 
@@ -126,6 +124,52 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     Ok(())
 }
 
+enum Event {
+    Lsp(lsp_server::Message),
+    Task(Task),
+    Vfs(vfs::loader::Message),
+    Flycheck(flycheck::Message),
+}
+
+#[derive(Debug)]
+pub(crate) enum Task {
+    Response(Response),
+    Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    Unit,
+}
+
+impl fmt::Debug for Event {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let debug_verbose_not = |not: &Notification, f: &mut fmt::Formatter| {
+            f.debug_struct("Notification").field("method", &not.method).finish()
+        };
+
+        match self {
+            Event::Lsp(lsp_server::Message::Notification(not)) => {
+                if notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
+                    || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)
+                {
+                    return debug_verbose_not(not, f);
+                }
+            }
+            Event::Task(Task::Response(resp)) => {
+                return f
+                    .debug_struct("Response")
+                    .field("id", &resp.id)
+                    .field("error", &resp.error)
+                    .finish();
+            }
+            _ => (),
+        }
+        match self {
+            Event::Lsp(it) => fmt::Debug::fmt(it, f),
+            Event::Task(it) => fmt::Debug::fmt(it, f),
+            Event::Vfs(it) => fmt::Debug::fmt(it, f),
+            Event::Flycheck(it) => fmt::Debug::fmt(it, f),
+        }
+    }
+}
+
 impl GlobalState {
     fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
         select! {
@@ -145,101 +189,165 @@ impl GlobalState {
 
     fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
         while let Some(event) = self.next_event(&inbox) {
-            let loop_start = Instant::now();
-            // NOTE: don't count blocking select! call as a loop-turn time
-            let _p = profile("main_loop_inner/loop-turn");
-
-            log::info!("loop turn = {:?}", event);
-            let queue_count = self.task_pool.0.len();
-            if queue_count > 0 {
-                log::info!("queued count = {}", queue_count);
-            }
-
-            let mut became_ready = false;
-            match event {
-                Event::Lsp(msg) => match msg {
-                    lsp_server::Message::Request(req) => self.on_request(loop_start, req)?,
-                    lsp_server::Message::Notification(not) => {
-                        if not.method == lsp_types::notification::Exit::METHOD {
-                            return Ok(());
-                        }
-                        self.on_notification(not)?;
-                    }
-                    lsp_server::Message::Response(resp) => {
-                        let handler = self.req_queue.outgoing.complete(resp.id.clone());
-                        handler(&mut self, resp)
-                    }
-                },
-                Event::Task(task) => {
-                    self.on_task(task);
-                    self.maybe_collect_garbage();
-                }
-                Event::Vfs(task) => match task {
-                    vfs::loader::Message::Loaded { files } => {
-                        let vfs = &mut self.vfs.write().0;
-                        for (path, contents) in files {
-                            let path = VfsPath::from(path);
-                            if !self.mem_docs.contains(&path) {
-                                vfs.set_file_contents(path, contents)
-                            }
-                        }
-                    }
-                    vfs::loader::Message::Progress { n_total, n_done } => {
-                        let state = if n_done == 0 {
-                            Progress::Begin
-                        } else if n_done < n_total {
-                            Progress::Report
-                        } else {
-                            assert_eq!(n_done, n_total);
-                            self.status = Status::Ready;
-                            became_ready = true;
-                            Progress::End
-                        };
-                        report_progress(
-                            &mut self,
-                            "roots scanned",
-                            state,
-                            Some(format!("{}/{}", n_done, n_total)),
-                            Some(percentage(n_done, n_total)),
-                        )
-                    }
-                },
-                Event::Flycheck(task) => on_check_task(task, &mut self)?,
-            }
-
-            let state_changed = self.process_changes();
-            if became_ready {
-                if let Some(flycheck) = &self.flycheck {
-                    flycheck.0.update();
+            if let Event::Lsp(lsp_server::Message::Notification(not)) = &event {
+                if not.method == lsp_types::notification::Exit::METHOD {
+                    return Ok(());
                 }
             }
-
-            if self.status == Status::Ready && (state_changed || became_ready) {
-                let subscriptions = self
-                    .mem_docs
-                    .iter()
-                    .map(|path| self.vfs.read().0.file_id(&path).unwrap())
-                    .collect::<Vec<_>>();
-
-                self.update_file_notifications_on_threadpool(subscriptions);
-            }
-
-            let loop_duration = loop_start.elapsed();
-            if loop_duration > Duration::from_millis(100) {
-                log::error!("overly long loop turn: {:?}", loop_duration);
-                if env::var("RA_PROFILE").is_ok() {
-                    self.show_message(
-                        lsp_types::MessageType::Error,
-                        format!("overly long loop turn: {:?}", loop_duration),
-                    )
-                }
-            }
+            self.loop_turn(event)?
         }
         Err("client exited without proper shutdown sequence")?
     }
 
+    fn loop_turn(&mut self, event: Event) -> Result<()> {
+        let loop_start = Instant::now();
+        // NOTE: don't count blocking select! call as a loop-turn time
+        let _p = profile("main_loop_inner/loop-turn");
+
+        log::info!("loop turn = {:?}", event);
+        let queue_count = self.task_pool.0.len();
+        if queue_count > 0 {
+            log::info!("queued count = {}", queue_count);
+        }
+
+        let mut became_ready = false;
+        match event {
+            Event::Lsp(msg) => match msg {
+                lsp_server::Message::Request(req) => self.on_request(loop_start, req)?,
+                lsp_server::Message::Notification(not) => {
+                    self.on_notification(not)?;
+                }
+                lsp_server::Message::Response(resp) => {
+                    let handler = self.req_queue.outgoing.complete(resp.id.clone());
+                    handler(self, resp)
+                }
+            },
+            Event::Task(task) => {
+                match task {
+                    Task::Response(response) => self.respond(response),
+                    Task::Diagnostics(diagnostics_per_file) => {
+                        for (file_id, diagnostics) in diagnostics_per_file {
+                            self.diagnostics.set_native_diagnostics(file_id, diagnostics)
+                        }
+                    }
+                    Task::Unit => (),
+                }
+                self.maybe_collect_garbage();
+            }
+            Event::Vfs(task) => match task {
+                vfs::loader::Message::Loaded { files } => {
+                    let vfs = &mut self.vfs.write().0;
+                    for (path, contents) in files {
+                        let path = VfsPath::from(path);
+                        if !self.mem_docs.contains(&path) {
+                            vfs.set_file_contents(path, contents)
+                        }
+                    }
+                }
+                vfs::loader::Message::Progress { n_total, n_done } => {
+                    let state = if n_done == 0 {
+                        Progress::Begin
+                    } else if n_done < n_total {
+                        Progress::Report
+                    } else {
+                        assert_eq!(n_done, n_total);
+                        self.status = Status::Ready;
+                        became_ready = true;
+                        Progress::End
+                    };
+                    report_progress(
+                        self,
+                        "roots scanned",
+                        state,
+                        Some(format!("{}/{}", n_done, n_total)),
+                        Some(percentage(n_done, n_total)),
+                    )
+                }
+            },
+            Event::Flycheck(task) => match task {
+                flycheck::Message::ClearDiagnostics => self.diagnostics.clear_check(),
+
+                flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
+                    let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
+                        &self.config.diagnostics,
+                        &diagnostic,
+                        &workspace_root,
+                    );
+                    for diag in diagnostics {
+                        let path = from_proto::vfs_path(&diag.location.uri)?;
+                        let file_id = match self.vfs.read().0.file_id(&path) {
+                            Some(file) => FileId(file.0),
+                            None => {
+                                log::error!(
+                                    "File with cargo diagnostic not found in VFS: {}",
+                                    path
+                                );
+                                return Ok(());
+                            }
+                        };
+                        self.diagnostics.add_check_diagnostic(file_id, diag.diagnostic, diag.fixes)
+                    }
+                }
+
+                flycheck::Message::Progress(status) => {
+                    let (state, message) = match status {
+                        flycheck::Progress::Being => (Progress::Begin, None),
+                        flycheck::Progress::DidCheckCrate(target) => {
+                            (Progress::Report, Some(target))
+                        }
+                        flycheck::Progress::End => (Progress::End, None),
+                    };
+
+                    report_progress(self, "cargo check", state, message, None);
+                }
+            },
+        }
+
+        let state_changed = self.process_changes();
+        if became_ready {
+            if let Some(flycheck) = &self.flycheck {
+                flycheck.0.update();
+            }
+        }
+
+        if self.status == Status::Ready && (state_changed || became_ready) {
+            let subscriptions = self
+                .mem_docs
+                .iter()
+                .map(|path| self.vfs.read().0.file_id(&path).unwrap())
+                .collect::<Vec<_>>();
+
+            self.update_file_notifications_on_threadpool(subscriptions);
+        }
+
+        if let Some(diagnostic_changes) = self.diagnostics.take_changes() {
+            for file_id in diagnostic_changes {
+                let url = file_id_to_url(&self.vfs.read().0, file_id);
+                let diagnostics = self.diagnostics.diagnostics_for(file_id).cloned().collect();
+                let params =
+                    lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None };
+                let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
+                self.send(not.into());
+            }
+        }
+
+        let loop_duration = loop_start.elapsed();
+        if loop_duration > Duration::from_millis(100) {
+            log::warn!("overly long loop turn: {:?}", loop_duration);
+            if env::var("RA_PROFILE").is_ok() {
+                self.show_message(
+                    lsp_types::MessageType::Error,
+                    format!("overly long loop turn: {:?}", loop_duration),
+                )
+            }
+        }
+        Ok(())
+    }
+
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
-        RequestDispatcher { req: Some(req), global_state: self, request_received }
+        self.req_queue.incoming.register(req.id.clone(), (req.method.clone(), request_received));
+
+        RequestDispatcher { req: Some(req), global_state: self }
             .on_sync::<lsp_ext::CollectGarbage>(|s, ()| Ok(s.collect_garbage()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
@@ -400,27 +508,6 @@ impl GlobalState {
             .finish();
         Ok(())
     }
-    pub(crate) fn on_task(&mut self, task: Task) {
-        match task {
-            Task::Respond(response) => {
-                if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone())
-                {
-                    let duration = start.elapsed();
-                    log::info!("handled req#{} in {:?}", response.id, duration);
-                    self.complete_request(RequestMetrics {
-                        id: response.id.clone(),
-                        method: method.to_string(),
-                        duration,
-                    });
-                    self.send(response.into());
-                }
-            }
-            Task::Diagnostics(tasks) => {
-                tasks.into_iter().for_each(|task| on_diagnostic_task(task, self))
-            }
-            Task::Unit => (),
-        }
-    }
     fn update_file_notifications_on_threadpool(&mut self, subscriptions: Vec<FileId>) {
         log::trace!("updating notifications for {:?}", subscriptions);
         if self.config.publish_diagnostics {
@@ -438,6 +525,7 @@ impl GlobalState {
                                 ()
                             })
                             .ok()
+                            .map(|diags| (file_id, diags))
                     })
                     .collect::<Vec<_>>();
                 Task::Diagnostics(diagnostics)
@@ -454,114 +542,9 @@ impl GlobalState {
     }
 }
 
-#[derive(Debug)]
-pub(crate) enum Task {
-    Respond(Response),
-    Diagnostics(Vec<DiagnosticTask>),
-    Unit,
-}
-
-enum Event {
-    Lsp(lsp_server::Message),
-    Task(Task),
-    Vfs(vfs::loader::Message),
-    Flycheck(flycheck::Message),
-}
-
-impl fmt::Debug for Event {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let debug_verbose_not = |not: &Notification, f: &mut fmt::Formatter| {
-            f.debug_struct("Notification").field("method", &not.method).finish()
-        };
-
-        match self {
-            Event::Lsp(lsp_server::Message::Notification(not)) => {
-                if notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
-                    || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)
-                {
-                    return debug_verbose_not(not, f);
-                }
-            }
-            Event::Task(Task::Respond(resp)) => {
-                return f
-                    .debug_struct("Response")
-                    .field("id", &resp.id)
-                    .field("error", &resp.error)
-                    .finish();
-            }
-            _ => (),
-        }
-        match self {
-            Event::Lsp(it) => fmt::Debug::fmt(it, f),
-            Event::Task(it) => fmt::Debug::fmt(it, f),
-            Event::Vfs(it) => fmt::Debug::fmt(it, f),
-            Event::Flycheck(it) => fmt::Debug::fmt(it, f),
-        }
-    }
-}
-
 pub(crate) type ReqHandler = fn(&mut GlobalState, Response);
-pub(crate) type ReqQueue = lsp_server::ReqQueue<(&'static str, Instant), ReqHandler>;
+pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 const DO_NOTHING: ReqHandler = |_, _| ();
-
-fn on_check_task(task: flycheck::Message, global_state: &mut GlobalState) -> Result<()> {
-    match task {
-        flycheck::Message::ClearDiagnostics => {
-            on_diagnostic_task(DiagnosticTask::ClearCheck, global_state)
-        }
-
-        flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
-            let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
-                &global_state.config.diagnostics,
-                &diagnostic,
-                &workspace_root,
-            );
-            for diag in diagnostics {
-                let path = from_proto::vfs_path(&diag.location.uri)?;
-                let file_id = match global_state.vfs.read().0.file_id(&path) {
-                    Some(file) => FileId(file.0),
-                    None => {
-                        log::error!("File with cargo diagnostic not found in VFS: {}", path);
-                        return Ok(());
-                    }
-                };
-
-                on_diagnostic_task(
-                    DiagnosticTask::AddCheck(
-                        file_id,
-                        diag.diagnostic,
-                        diag.fixes.into_iter().map(|it| it.into()).collect(),
-                    ),
-                    global_state,
-                )
-            }
-        }
-
-        flycheck::Message::Progress(status) => {
-            let (state, message) = match status {
-                flycheck::Progress::Being => (Progress::Begin, None),
-                flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
-                flycheck::Progress::End => (Progress::End, None),
-            };
-
-            report_progress(global_state, "cargo check", state, message, None);
-        }
-    };
-
-    Ok(())
-}
-
-fn on_diagnostic_task(task: DiagnosticTask, global_state: &mut GlobalState) {
-    let subscriptions = global_state.diagnostics.handle_task(task);
-
-    for file_id in subscriptions {
-        let url = file_id_to_url(&global_state.vfs.read().0, file_id);
-        let diagnostics = global_state.diagnostics.diagnostics_for(file_id).cloned().collect();
-        let params = lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None };
-        let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
-        global_state.send(not.into());
-    }
-}
 
 #[derive(Eq, PartialEq)]
 enum Progress {

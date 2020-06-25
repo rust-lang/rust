@@ -253,12 +253,18 @@ impl GlobalState {
         self.analysis_host.collect_garbage()
     }
 
-    pub(crate) fn complete_request(&mut self, request: RequestMetrics) {
-        self.latest_requests.write().record(request)
-    }
-
     pub(crate) fn send(&mut self, message: lsp_server::Message) {
         self.sender.send(message).unwrap()
+    }
+    pub(crate) fn respond(&mut self, response: lsp_server::Response) {
+        if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone()) {
+            let duration = start.elapsed();
+            log::info!("handled req#{} in {:?}", response.id, duration);
+            let metrics =
+                RequestMetrics { id: response.id.clone(), method: method.to_string(), duration };
+            self.latest_requests.write().record(metrics);
+            self.send(response.into());
+        }
     }
     pub(crate) fn show_message(&mut self, typ: lsp_types::MessageType, message: String) {
         show_message(typ, message, &self.sender)
