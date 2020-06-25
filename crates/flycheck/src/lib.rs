@@ -49,7 +49,7 @@ impl fmt::Display for FlycheckConfig {
 #[derive(Debug)]
 pub struct FlycheckHandle {
     // XXX: drop order is significant
-    cmd_send: Sender<CheckCommand>,
+    cmd_send: Sender<Restart>,
     handle: jod_thread::JoinHandle,
 }
 
@@ -59,7 +59,7 @@ impl FlycheckHandle {
         config: FlycheckConfig,
         workspace_root: PathBuf,
     ) -> FlycheckHandle {
-        let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
+        let (cmd_send, cmd_recv) = unbounded::<Restart>();
         let handle = jod_thread::spawn(move || {
             FlycheckActor::new(sender, config, workspace_root).run(&cmd_recv);
         });
@@ -68,7 +68,7 @@ impl FlycheckHandle {
 
     /// Schedule a re-start of the cargo check worker.
     pub fn update(&self) {
-        self.cmd_send.send(CheckCommand::Update).unwrap();
+        self.cmd_send.send(Restart).unwrap();
     }
 }
 
@@ -91,10 +91,7 @@ pub enum Progress {
     End,
 }
 
-enum CheckCommand {
-    /// Request re-start of check thread
-    Update,
-}
+struct Restart;
 
 struct FlycheckActor {
     sender: Box<dyn Fn(Message) + Send>,
@@ -127,14 +124,14 @@ impl FlycheckActor {
         }
     }
 
-    fn run(&mut self, cmd_recv: &Receiver<CheckCommand>) {
+    fn run(&mut self, cmd_recv: &Receiver<Restart>) {
         // If we rerun the thread, we need to discard the previous check results first
         self.clean_previous_results();
 
         loop {
             select! {
                 recv(&cmd_recv) -> cmd => match cmd {
-                    Ok(cmd) => self.handle_command(cmd),
+                    Ok(Restart) => self.last_update_req = Some(Instant::now()),
                     Err(RecvError) => {
                         // Command channel has closed, so shut down
                         break;
@@ -172,12 +169,6 @@ impl FlycheckActor {
             return true;
         }
         false
-    }
-
-    fn handle_command(&mut self, cmd: CheckCommand) {
-        match cmd {
-            CheckCommand::Update => self.last_update_req = Some(Instant::now()),
-        }
     }
 
     fn handle_message(&self, msg: CheckEvent) {
