@@ -2897,6 +2897,7 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// performing any bounds checking.
     /// Calling this method with an out-of-bounds index is *[undefined behavior]*
     /// even if the resulting reference is not used.
+    ///
     /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
     unsafe fn get_unchecked(self, slice: &T) -> &Self::Output;
@@ -2905,6 +2906,7 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// performing any bounds checking.
     /// Calling this method with an out-of-bounds index is *[undefined behavior]*
     /// even if the resulting reference is not used.
+    ///
     /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
     unsafe fn get_unchecked_mut(self, slice: &mut T) -> &mut Self::Output;
