@@ -1,3 +1,4 @@
+use core::convert::TryFrom;
 use core::num::{IntErrorKind, NonZeroI32, NonZeroI8, NonZeroU32, NonZeroU8};
 use core::option::Option::{self, None, Some};
 use std::mem::size_of;
@@ -175,4 +176,22 @@ fn test_nonzero_bitor_assign() {
 
     target |= 0;
     assert_eq!(target.get(), 0b1011_1111);
+}
+
+#[test]
+fn test_nonzero_from_int_on_success() {
+    assert_eq!(NonZeroU8::try_from(5), Ok(NonZeroU8::new(5).unwrap()));
+    assert_eq!(NonZeroU32::try_from(5), Ok(NonZeroU32::new(5).unwrap()));
+
+    assert_eq!(NonZeroI8::try_from(-5), Ok(NonZeroI8::new(-5).unwrap()));
+    assert_eq!(NonZeroI32::try_from(-5), Ok(NonZeroI32::new(-5).unwrap()));
+}
+
+#[test]
+fn test_nonzero_from_int_on_err() {
+    assert!(NonZeroU8::try_from(0).is_err());
+    assert!(NonZeroU32::try_from(0).is_err());
+
+    assert!(NonZeroI8::try_from(0).is_err());
+    assert!(NonZeroI32::try_from(0).is_err());
 }

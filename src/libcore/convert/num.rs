@@ -445,3 +445,42 @@ nzint_impl_from! { NonZeroU16, NonZeroI128, #[stable(feature = "nz_int_conv", si
 nzint_impl_from! { NonZeroU32, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
 nzint_impl_from! { NonZeroU32, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
 nzint_impl_from! { NonZeroU64, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+
+macro_rules! nzint_impl_try_from_int {
+    ($Int: ty, $NonZeroInt: ty, #[$attr:meta], $doc: expr) => {
+        #[$attr]
+        #[doc = $doc]
+        impl TryFrom<$Int> for $NonZeroInt {
+            type Error = TryFromIntError;
+
+            #[inline]
+            fn try_from(value: $Int) -> Result<Self, Self::Error> {
+                Self::new(value).ok_or(TryFromIntError(()))
+            }
+        }
+    };
+    ($Int: ty, $NonZeroInt: ty, #[$attr:meta]) => {
+        nzint_impl_try_from_int!($Int,
+                                 $NonZeroInt,
+                                 #[$attr],
+                                 concat!("Attempts to convert `",
+                                         stringify!($Int),
+                                         "` to `",
+                                         stringify!($NonZeroInt),
+                                         "`."));
+    }
+}
+
+// Int -> Non-zero Int
+nzint_impl_try_from_int! { u8, NonZeroU8, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { u16, NonZeroU16, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { u32, NonZeroU32, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { u64, NonZeroU64, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { u128, NonZeroU128, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { usize, NonZeroUsize, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { i8, NonZeroI8, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { i16, NonZeroI16, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { i32, NonZeroI32, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { i64, NonZeroI64, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { i128, NonZeroI128, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+nzint_impl_try_from_int! { isize, NonZeroIsize, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
