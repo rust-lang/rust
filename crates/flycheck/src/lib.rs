@@ -120,7 +120,13 @@ impl FlycheckActor {
     ) -> FlycheckActor {
         FlycheckActor { sender, config, workspace_root, last_update_req: None, check_process: None }
     }
-
+    fn next_event(&self, inbox: &Receiver<Restart>) -> Option<Event> {
+        let check_chan = self.check_process.as_ref().map(|(chan, _thread)| chan);
+        select! {
+            recv(inbox) -> msg => msg.ok().map(Event::Restart),
+            recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
+        }
+    }
     fn run(&mut self, inbox: Receiver<Restart>) {
         // If we rerun the thread, we need to discard the previous check results first
         self.send(Message::ClearDiagnostics);
@@ -167,15 +173,6 @@ impl FlycheckActor {
             }
         }
     }
-
-    fn next_event(&self, inbox: &Receiver<Restart>) -> Option<Event> {
-        let check_chan = self.check_process.as_ref().map(|(chan, _thread)| chan);
-        select! {
-            recv(inbox) -> msg => msg.ok().map(Event::Restart),
-            recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
-        }
-    }
-
     fn should_recheck(&mut self) -> bool {
         if let Some(_last_update_req) = &self.last_update_req {
             // We currently only request an update on save, as we need up to

@@ -82,7 +82,12 @@ impl NotifyActor {
             watcher_receiver,
         }
     }
-
+    fn next_event(&self, receiver: &Receiver<Message>) -> Option<Event> {
+        select! {
+            recv(receiver) -> it => it.ok().map(Event::Message),
+            recv(&self.watcher_receiver) -> it => Some(Event::NotifyEvent(it.unwrap())),
+        }
+    }
     fn run(mut self, inbox: Receiver<Message>) {
         while let Some(event) = self.next_event(&inbox) {
             log::debug!("vfs-notify event: {:?}", event);
@@ -152,12 +157,6 @@ impl NotifyActor {
                     }
                 }
             }
-        }
-    }
-    fn next_event(&self, receiver: &Receiver<Message>) -> Option<Event> {
-        select! {
-            recv(receiver) -> it => it.ok().map(Event::Message),
-            recv(&self.watcher_receiver) -> it => Some(Event::NotifyEvent(it.unwrap())),
         }
     }
     fn load_entry(
