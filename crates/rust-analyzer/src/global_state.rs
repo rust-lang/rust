@@ -84,11 +84,7 @@ pub(crate) struct GlobalStateSnapshot {
 }
 
 impl GlobalState {
-    pub(crate) fn new(
-        sender: Sender<lsp_server::Message>,
-        lru_capacity: Option<usize>,
-        config: Config,
-    ) -> GlobalState {
+    pub(crate) fn new(sender: Sender<lsp_server::Message>, config: Config) -> GlobalState {
         let loader = {
             let (sender, receiver) = unbounded::<vfs::loader::Message>();
             let handle =
@@ -103,12 +99,13 @@ impl GlobalState {
             Handle { handle, receiver }
         };
 
+        let analysis_host = AnalysisHost::new(config.lru_capacity);
         GlobalState {
             sender,
             task_pool,
             loader,
             config,
-            analysis_host: AnalysisHost::new(lru_capacity),
+            analysis_host,
             flycheck: None,
             diagnostics: Default::default(),
             mem_docs: FxHashSet::default(),
