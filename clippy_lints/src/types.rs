@@ -1205,14 +1205,19 @@ fn span_lossless_lint(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast
     // has parens on the outside, they are no longer needed.
     let mut applicability = Applicability::MachineApplicable;
     let opt = snippet_opt(cx, op.span);
-    let sugg = opt.as_ref().map_or_else(|| {
-        applicability = Applicability::HasPlaceholders;
-        ".."
-    }, |snip| if should_strip_parens(op, snip) {
-            &snip[1..snip.len() - 1]
-        } else {
-            snip.as_str()
-        });
+    let sugg = opt.as_ref().map_or_else(
+        || {
+            applicability = Applicability::HasPlaceholders;
+            ".."
+        },
+        |snip| {
+            if should_strip_parens(op, snip) {
+                &snip[1..snip.len() - 1]
+            } else {
+                snip.as_str()
+            }
+        },
+    );
 
     span_lint_and_sugg(
         cx,

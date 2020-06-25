@@ -166,9 +166,9 @@ fn check_local<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>, bindings: &
 fn is_binding(cx: &LateContext<'_>, pat_id: HirId) -> bool {
     let var_ty = cx.tables.node_type_opt(pat_id);
     var_ty.map_or(false, |var_ty| match var_ty.kind {
-            ty::Adt(..) => false,
-            _ => true,
-        })
+        ty::Adt(..) => false,
+        _ => true,
+    })
 }
 
 fn check_pat<'tcx>(

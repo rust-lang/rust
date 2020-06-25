@@ -601,8 +601,10 @@ pub fn first_line_of_span<T: LintContext>(cx: &T, span: Span) -> Span {
 
 fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePos> {
     let line_span = line_span(cx, span);
-    snippet_opt(cx, line_span).and_then(|snip| snip.find(|c: char| !c.is_whitespace())
-            .map(|pos| line_span.lo() + BytePos::from_usize(pos)))
+    snippet_opt(cx, line_span).and_then(|snip| {
+        snip.find(|c: char| !c.is_whitespace())
+            .map(|pos| line_span.lo() + BytePos::from_usize(pos))
+    })
 }
 
 /// Returns the indentation of the line of a span
@@ -723,20 +725,20 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
         .get_enclosing_scope(hir_id)
         .and_then(|enclosing_id| map.find(enclosing_id));
     enclosing_node.and_then(|node| match node {
-            Node::Block(block) => Some(block),
-            Node::Item(&Item {
-                kind: ItemKind::Fn(_, _, eid),
-                ..
-            })
-            | Node::ImplItem(&ImplItem {
-                kind: ImplItemKind::Fn(_, eid),
-                ..
-            }) => match cx.tcx.hir().body(eid).value.kind {
-                ExprKind::Block(ref block, _) => Some(block),
-                _ => None,
-            },
-            _ => None,
+        Node::Block(block) => Some(block),
+        Node::Item(&Item {
+            kind: ItemKind::Fn(_, _, eid),
+            ..
         })
+        | Node::ImplItem(&ImplItem {
+            kind: ImplItemKind::Fn(_, eid),
+            ..
+        }) => match cx.tcx.hir().body(eid).value.kind {
+            ExprKind::Block(ref block, _) => Some(block),
+            _ => None,
+        },
+        _ => None,
+    })
 }
 
 /// Returns the base type for HIR references and pointers.

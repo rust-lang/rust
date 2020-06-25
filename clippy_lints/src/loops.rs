@@ -686,9 +686,9 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
                 NeverLoopResult::AlwaysBreak
             }
         },
-        ExprKind::Break(_, ref e) | ExprKind::Ret(ref e) => {
-            e.as_ref().map_or(NeverLoopResult::AlwaysBreak, |e| combine_seq(never_loop_expr(e, main_loop_id), NeverLoopResult::AlwaysBreak))
-        },
+        ExprKind::Break(_, ref e) | ExprKind::Ret(ref e) => e.as_ref().map_or(NeverLoopResult::AlwaysBreak, |e| {
+            combine_seq(never_loop_expr(e, main_loop_id), NeverLoopResult::AlwaysBreak)
+        }),
         ExprKind::InlineAsm(ref asm) => asm
             .operands
             .iter()
@@ -1877,9 +1877,9 @@ fn is_ref_iterable_type(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.kind {
-        ty::Array(_, n) => {
-            n.try_eval_usize(cx.tcx, cx.param_env).map_or(false, |val| (0..=32).contains(&val))
-        },
+        ty::Array(_, n) => n
+            .try_eval_usize(cx.tcx, cx.param_env)
+            .map_or(false, |val| (0..=32).contains(&val)),
         _ => false,
     }
 }
@@ -1891,7 +1891,7 @@ fn extract_expr_from_first_stmt<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<
         return None;
     }
     if let StmtKind::Local(ref local) = block.stmts[0].kind {
-        local.init.map(|expr| expr)
+        local.init //.map(|expr| expr)
     } else {
         None
     }
@@ -2011,11 +2011,13 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                 if let PatKind::Binding(.., ident, _) = local.pat.kind {
                     self.name = Some(ident.name);
 
-                    self.state = local.init.as_ref().map_or(VarState::Declared, |init| if is_integer_const(&self.cx, init, 0) {
+                    self.state = local.init.as_ref().map_or(VarState::Declared, |init| {
+                        if is_integer_const(&self.cx, init, 0) {
                             VarState::Warn
                         } else {
                             VarState::Declared
-                        })
+                        }
+                    })
                 }
             }
         }

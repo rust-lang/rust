@@ -260,7 +260,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OptionIfLetElse {
                     detection.some_expr,
                     if detection.wrap_braces { " }" } else { "" },
                 ),
-                Applicability::MachineApplicable,
+                Applicability::MaybeIncorrect,
             );
         }
     }
