@@ -14,6 +14,7 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 use crate::{
     body::{CfgExpander, LowerCtx},
     db::DefDatabase,
+    item_tree::{Field, Fields, ItemTree},
     src::HasChildSource,
     src::HasSource,
     trace::Trace,
@@ -22,6 +23,7 @@ use crate::{
     EnumId, HasModule, LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StructId, UnionId,
     VariantId,
 };
+use ra_cfg::CfgOptions;
 
 /// Note that we use `StructData` for unions as well!
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,28 +61,24 @@ pub struct FieldData {
 
 impl StructData {
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
-        let src = id.lookup(db).source(db);
+        let loc = id.lookup(db);
+        let item_tree = db.item_tree(loc.id.file_id);
+        let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
 
-        let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
-        let variant_data =
-            VariantData::new(db, src.map(|s| s.kind()), id.lookup(db).container.module(db));
-        let variant_data = Arc::new(variant_data);
-        Arc::new(StructData { name, variant_data })
+        let strukt = &item_tree[loc.id.value];
+        let variant_data = lower_fields(&item_tree, &cfg_options, &strukt.fields);
+
+        Arc::new(StructData { name: strukt.name.clone(), variant_data: Arc::new(variant_data) })
     }
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
-        let src = id.lookup(db).source(db);
-        let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
-        let variant_data = VariantData::new(
-            db,
-            src.map(|s| {
-                s.record_field_def_list()
-                    .map(ast::StructKind::Record)
-                    .unwrap_or(ast::StructKind::Unit)
-            }),
-            id.lookup(db).container.module(db),
-        );
-        let variant_data = Arc::new(variant_data);
-        Arc::new(StructData { name, variant_data })
+        let loc = id.lookup(db);
+        let item_tree = db.item_tree(loc.id.file_id);
+        let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
+
+        let union = &item_tree[loc.id.value];
+        let variant_data = lower_fields(&item_tree, &cfg_options, &union.fields);
+
+        Arc::new(StructData { name: union.name.clone(), variant_data: Arc::new(variant_data) })
     }
 }
 
@@ -249,5 +247,37 @@ fn lower_struct(
             StructKind::Record
         }
         ast::StructKind::Unit => StructKind::Unit,
+    }
+}
+
+fn lower_fields(item_tree: &ItemTree, cfg_options: &CfgOptions, fields: &Fields) -> VariantData {
+    match fields {
+        Fields::Record(flds) => {
+            let mut arena = Arena::new();
+            for field_id in flds.clone() {
+                if item_tree.attrs(field_id.into()).is_cfg_enabled(cfg_options) {
+                    arena.alloc(lower_field(item_tree, &item_tree[field_id]));
+                }
+            }
+            VariantData::Record(arena)
+        }
+        Fields::Tuple(flds) => {
+            let mut arena = Arena::new();
+            for field_id in flds.clone() {
+                if item_tree.attrs(field_id.into()).is_cfg_enabled(cfg_options) {
+                    arena.alloc(lower_field(item_tree, &item_tree[field_id]));
+                }
+            }
+            VariantData::Tuple(arena)
+        }
+        Fields::Unit => VariantData::Unit,
+    }
+}
+
+fn lower_field(item_tree: &ItemTree, field: &Field) -> FieldData {
+    FieldData {
+        name: field.name.clone(),
+        type_ref: field.type_ref.clone(),
+        visibility: item_tree[field.visibility].clone(),
     }
 }
