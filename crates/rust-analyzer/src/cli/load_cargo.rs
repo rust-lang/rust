@@ -9,7 +9,7 @@ use ra_ide::{AnalysisChange, AnalysisHost};
 use ra_project_model::{CargoConfig, ProcMacroClient, ProjectManifest, ProjectWorkspace};
 use vfs::{loader::Handle, AbsPath};
 
-use crate::global_state::{ProjectFolders, SourceRootConfig};
+use crate::reload::{ProjectFolders, SourceRootConfig};
 
 pub fn load_cargo(
     root: &Path,
