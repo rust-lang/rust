@@ -136,7 +136,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                     Ok(task) => Event::Vfs(task),
                     Err(RecvError) => return Err("vfs died".into()),
                 },
-                recv(global_state.flycheck.as_ref().map_or(&never(), |it| &it.task_recv)) -> task => match task {
+                recv(global_state.flycheck.as_ref().map_or(&never(), |it| &it.1)) -> task => match task {
                     Ok(task) => Event::CheckWatcher(task),
                     Err(RecvError) => return Err("check watcher died".into()),
                 },
@@ -290,7 +290,7 @@ fn loop_turn(
 
     if became_ready {
         if let Some(flycheck) = &global_state.flycheck {
-            flycheck.update();
+            flycheck.0.update();
         }
     }
 
@@ -486,7 +486,7 @@ fn on_notification(
     let not = match notification_cast::<lsp_types::notification::DidSaveTextDocument>(not) {
         Ok(_params) => {
             if let Some(flycheck) = &global_state.flycheck {
-                flycheck.update();
+                flycheck.0.update();
             }
             return Ok(());
         }

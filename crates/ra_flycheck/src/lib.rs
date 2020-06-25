@@ -48,21 +48,23 @@ impl fmt::Display for FlycheckConfig {
 /// diagnostics based on the output.
 /// The spawned thread is shut down when this struct is dropped.
 #[derive(Debug)]
-pub struct Flycheck {
+pub struct FlycheckHandle {
     // XXX: drop order is significant
     cmd_send: Sender<CheckCommand>,
     handle: jod_thread::JoinHandle<()>,
-    pub task_recv: Receiver<CheckTask>,
 }
 
-impl Flycheck {
-    pub fn new(config: FlycheckConfig, workspace_root: PathBuf) -> Flycheck {
-        let (task_send, task_recv) = unbounded::<CheckTask>();
+impl FlycheckHandle {
+    pub fn spawn(
+        sender: Box<dyn Fn(CheckTask) + Send>,
+        config: FlycheckConfig,
+        workspace_root: PathBuf,
+    ) -> FlycheckHandle {
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
         let handle = jod_thread::spawn(move || {
-            FlycheckThread::new(config, workspace_root).run(&task_send, &cmd_recv);
+            FlycheckActor::new(sender, config, workspace_root).run(&cmd_recv);
         });
-        Flycheck { task_recv, cmd_send, handle }
+        FlycheckHandle { cmd_send, handle }
     }
 
     /// Schedule a re-start of the cargo check worker.
@@ -95,7 +97,8 @@ pub enum CheckCommand {
     Update,
 }
 
-struct FlycheckThread {
+struct FlycheckActor {
+    sender: Box<dyn Fn(CheckTask) + Send>,
     config: FlycheckConfig,
     workspace_root: PathBuf,
     last_update_req: Option<Instant>,
@@ -109,9 +112,14 @@ struct FlycheckThread {
     check_process: Option<jod_thread::JoinHandle<()>>,
 }
 
-impl FlycheckThread {
-    fn new(config: FlycheckConfig, workspace_root: PathBuf) -> FlycheckThread {
-        FlycheckThread {
+impl FlycheckActor {
+    fn new(
+        sender: Box<dyn Fn(CheckTask) + Send>,
+        config: FlycheckConfig,
+        workspace_root: PathBuf,
+    ) -> FlycheckActor {
+        FlycheckActor {
+            sender,
             config,
             workspace_root,
             last_update_req: None,
@@ -120,9 +128,9 @@ impl FlycheckThread {
         }
     }
 
-    fn run(&mut self, task_send: &Sender<CheckTask>, cmd_recv: &Receiver<CheckCommand>) {
+    fn run(&mut self, cmd_recv: &Receiver<CheckCommand>) {
         // If we rerun the thread, we need to discard the previous check results first
-        self.clean_previous_results(task_send);
+        self.clean_previous_results();
 
         loop {
             select! {
@@ -134,7 +142,7 @@ impl FlycheckThread {
                     },
                 },
                 recv(self.message_recv) -> msg => match msg {
-                    Ok(msg) => self.handle_message(msg, task_send),
+                    Ok(msg) => self.handle_message(msg),
                     Err(RecvError) => {
                         // Watcher finished, replace it with a never channel to
                         // avoid busy-waiting.
@@ -146,15 +154,15 @@ impl FlycheckThread {
 
             if self.should_recheck() {
                 self.last_update_req = None;
-                task_send.send(CheckTask::ClearDiagnostics).unwrap();
+                self.send(CheckTask::ClearDiagnostics);
                 self.restart_check_process();
             }
         }
     }
 
-    fn clean_previous_results(&self, task_send: &Sender<CheckTask>) {
-        task_send.send(CheckTask::ClearDiagnostics).unwrap();
-        task_send.send(CheckTask::Status(Status::End)).unwrap();
+    fn clean_previous_results(&self) {
+        self.send(CheckTask::ClearDiagnostics);
+        self.send(CheckTask::Status(Status::End));
     }
 
     fn should_recheck(&mut self) -> bool {
@@ -173,27 +181,25 @@ impl FlycheckThread {
         }
     }
 
-    fn handle_message(&self, msg: CheckEvent, task_send: &Sender<CheckTask>) {
+    fn handle_message(&self, msg: CheckEvent) {
         match msg {
             CheckEvent::Begin => {
-                task_send.send(CheckTask::Status(Status::Being)).unwrap();
+                self.send(CheckTask::Status(Status::Being));
             }
 
             CheckEvent::End => {
-                task_send.send(CheckTask::Status(Status::End)).unwrap();
+                self.send(CheckTask::Status(Status::End));
             }
 
             CheckEvent::Msg(Message::CompilerArtifact(msg)) => {
-                task_send.send(CheckTask::Status(Status::Progress(msg.target.name))).unwrap();
+                self.send(CheckTask::Status(Status::Progress(msg.target.name)));
             }
 
             CheckEvent::Msg(Message::CompilerMessage(msg)) => {
-                task_send
-                    .send(CheckTask::AddDiagnostic {
-                        workspace_root: self.workspace_root.clone(),
-                        diagnostic: msg.message,
-                    })
-                    .unwrap();
+                self.send(CheckTask::AddDiagnostic {
+                    workspace_root: self.workspace_root.clone(),
+                    diagnostic: msg.message,
+                });
             }
 
             CheckEvent::Msg(Message::BuildScriptExecuted(_msg)) => {}
@@ -270,6 +276,10 @@ impl FlycheckThread {
             // of shutting down.
             let _ = message_send.send(CheckEvent::End);
         }))
+    }
+
+    fn send(&self, check_task: CheckTask) {
+        (self.sender)(check_task)
     }
 }
 
