@@ -32,7 +32,7 @@ threadpool = "1.7.1"
 stdx = { path = "../stdx" }
 
 lsp-server = "0.3.3"
-ra_flycheck = { path = "../ra_flycheck" }
+flycheck = { path = "../flycheck" }
 ra_ide = { path = "../ra_ide" }
 ra_prof = { path = "../ra_prof" }
 ra_project_model = { path = "../ra_project_model" }

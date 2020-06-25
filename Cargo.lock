@@ -341,6 +341,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
+name = "flycheck"
+version = "0.1.0"
+dependencies = [
+ "cargo_metadata",
+ "crossbeam-channel",
+ "jod-thread",
+ "log",
+ "ra_toolchain",
+ "serde_json",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -960,18 +972,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_flycheck"
-version = "0.1.0"
-dependencies = [
- "cargo_metadata",
- "crossbeam-channel",
- "jod-thread",
- "log",
- "ra_toolchain",
- "serde_json",
-]
-
-[[package]]
 name = "ra_fmt"
 version = "0.1.0"
 dependencies = [
@@ -1373,6 +1373,7 @@ dependencies = [
  "anyhow",
  "crossbeam-channel",
  "env_logger",
+ "flycheck",
  "globset",
  "insta",
  "itertools",
@@ -1384,7 +1385,6 @@ dependencies = [
  "pico-args",
  "ra_cfg",
  "ra_db",
- "ra_flycheck",
  "ra_hir",
  "ra_hir_def",
  "ra_hir_ty",
