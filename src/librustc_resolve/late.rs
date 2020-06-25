@@ -13,7 +13,6 @@ use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{unwrap_or, walk_list};
 use rustc_ast_lowering::ResolverAstLowering;
@@ -101,6 +100,9 @@ crate enum RibKind<'a> {
     /// upvars).
     AssocItemRibKind,
 
+    /// We passed through a closure. Disallow labels.
+    ClosureOrAsyncRibKind,
+
     /// We passed through a function definition. Disallow upvars.
     /// Permit only those const parameters that are specified in the function's generics.
     FnItemRibKind,
@@ -124,11 +126,15 @@ crate enum RibKind<'a> {
 }
 
 impl RibKind<'_> {
-    // Whether this rib kind contains generic parameters, as opposed to local
-    // variables.
+    /// Whether this rib kind contains generic parameters, as opposed to local
+    /// variables.
     crate fn contains_params(&self) -> bool {
         match self {
-            NormalRibKind | FnItemRibKind | ConstantItemRibKind | ModuleRibKind(_)
+            NormalRibKind
+            | ClosureOrAsyncRibKind
+            | FnItemRibKind
+            | ConstantItemRibKind
+            | ModuleRibKind(_)
             | MacroDefinition(_) => false,
             AssocItemRibKind | ItemRibKind(_) | ForwardTyParamBanRibKind => true,
         }
@@ -474,7 +480,8 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             // Bail if there's no body.
             FnKind::Fn(.., None) => return visit::walk_fn(self, fn_kind, sp),
             FnKind::Fn(FnCtxt::Free | FnCtxt::Foreign, ..) => FnItemRibKind,
-            FnKind::Fn(FnCtxt::Assoc(_), ..) | FnKind::Closure(..) => NormalRibKind,
+            FnKind::Fn(FnCtxt::Assoc(_), ..) => NormalRibKind,
+            FnKind::Closure(..) => ClosureOrAsyncRibKind,
         };
         let previous_value =
             replace(&mut self.diagnostic_metadata.current_function, Some((fn_kind, sp)));
@@ -725,35 +732,79 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
-    /// Searches the current set of local scopes for labels. Returns the first non-`None` label that
-    /// is returned by the given predicate function
-    ///
-    /// Stops after meeting a closure.
-    fn search_label<P, R>(&self, mut ident: Ident, pred: P) -> Option<R>
-    where
-        P: Fn(&Rib<'_, NodeId>, Ident) -> Option<R>,
-    {
-        for rib in self.label_ribs.iter().rev() {
-            match rib.kind {
-                NormalRibKind => {}
+    /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
+    /// label and reports an error if the label is not found or is unreachable.
+    fn resolve_label(&self, mut label: Ident) -> Option<NodeId> {
+        let mut suggestion = None;
+
+        // Preserve the original span so that errors contain "in this macro invocation"
+        // information.
+        let original_span = label.span;
+
+        for i in (0..self.label_ribs.len()).rev() {
+            let rib = &self.label_ribs[i];
+
+            if let MacroDefinition(def) = rib.kind {
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
-                MacroDefinition(def) => {
-                    if def == self.r.macro_def(ident.span.ctxt()) {
-                        ident.span.remove_mark();
-                    }
-                }
-                _ => {
-                    // Do not resolve labels across function boundary
-                    return None;
+                if def == self.r.macro_def(label.span.ctxt()) {
+                    label.span.remove_mark();
                 }
             }
-            let r = pred(rib, ident);
-            if r.is_some() {
-                return r;
+
+            let ident = label.normalize_to_macro_rules();
+            if let Some((ident, id)) = rib.bindings.get_key_value(&ident) {
+                return if self.is_label_valid_from_rib(i) {
+                    Some(*id)
+                } else {
+                    self.r.report_error(
+                        original_span,
+                        ResolutionError::UnreachableLabel {
+                            name: &label.name.as_str(),
+                            definition_span: ident.span,
+                            suggestion,
+                        },
+                    );
+
+                    None
+                };
+            }
+
+            // Diagnostics: Check if this rib contains a label with a similar name, keep track of
+            // the first such label that is encountered.
+            suggestion = suggestion.or_else(|| self.suggestion_for_label_in_rib(i, label));
+        }
+
+        self.r.report_error(
+            original_span,
+            ResolutionError::UndeclaredLabel { name: &label.name.as_str(), suggestion },
+        );
+        None
+    }
+
+    /// Determine whether or not a label from the `rib_index`th label rib is reachable.
+    fn is_label_valid_from_rib(&self, rib_index: usize) -> bool {
+        let ribs = &self.label_ribs[rib_index + 1..];
+
+        for rib in ribs {
+            match rib.kind {
+                NormalRibKind | MacroDefinition(..) => {
+                    // Nothing to do. Continue.
+                }
+
+                AssocItemRibKind
+                | ClosureOrAsyncRibKind
+                | FnItemRibKind
+                | ItemRibKind(..)
+                | ConstantItemRibKind
+                | ModuleRibKind(..)
+                | ForwardTyParamBanRibKind => {
+                    return false;
+                }
             }
         }
-        None
+
+        true
     }
 
     fn resolve_adt(&mut self, item: &'ast Item, generics: &'ast Generics) {
@@ -2044,35 +2095,10 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
-                let node_id = self.search_label(label.ident, |rib, ident| {
-                    rib.bindings.get(&ident.normalize_to_macro_rules()).cloned()
-                });
-                match node_id {
-                    None => {
-                        // Search again for close matches...
-                        // Picks the first label that is "close enough", which is not necessarily
-                        // the closest match
-                        let close_match = self.search_label(label.ident, |rib, ident| {
-                            let names = rib.bindings.iter().filter_map(|(id, _)| {
-                                if id.span.ctxt() == label.ident.span.ctxt() {
-                                    Some(&id.name)
-                                } else {
-                                    None
-                                }
-                            });
-                            find_best_match_for_name(names, &ident.as_str(), None)
-                        });
-                        self.r.record_partial_res(expr.id, PartialRes::new(Res::Err));
-                        self.r.report_error(
-                            label.ident.span,
-                            ResolutionError::UndeclaredLabel(&label.ident.as_str(), close_match),
-                        );
-                    }
-                    Some(node_id) => {
-                        // Since this res is a label, it is never read.
-                        self.r.label_res_map.insert(expr.id, node_id);
-                        self.diagnostic_metadata.unused_labels.remove(&node_id);
-                    }
+                if let Some(node_id) = self.resolve_label(label.ident) {
+                    // Since this res is a label, it is never read.
+                    self.r.label_res_map.insert(expr.id, node_id);
+                    self.diagnostic_metadata.unused_labels.remove(&node_id);
                 }
 
                 // visit `break` argument if any
@@ -2144,20 +2170,25 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // closure are detected as upvars rather than normal closure arg usages.
             ExprKind::Closure(_, Async::Yes { .. }, _, ref fn_decl, ref body, _span) => {
                 self.with_rib(ValueNS, NormalRibKind, |this| {
-                    // Resolve arguments:
-                    this.resolve_params(&fn_decl.inputs);
-                    // No need to resolve return type --
-                    // the outer closure return type is `FnRetTy::Default`.
+                    this.with_label_rib(ClosureOrAsyncRibKind, |this| {
+                        // Resolve arguments:
+                        this.resolve_params(&fn_decl.inputs);
+                        // No need to resolve return type --
+                        // the outer closure return type is `FnRetTy::Default`.
 
-                    // Now resolve the inner closure
-                    {
-                        // No need to resolve arguments: the inner closure has none.
-                        // Resolve the return type:
-                        visit::walk_fn_ret_ty(this, &fn_decl.output);
-                        // Resolve the body
-                        this.visit_expr(body);
-                    }
+                        // Now resolve the inner closure
+                        {
+                            // No need to resolve arguments: the inner closure has none.
+                            // Resolve the return type:
+                            visit::walk_fn_ret_ty(this, &fn_decl.output);
+                            // Resolve the body
+                            this.visit_expr(body);
+                        }
+                    })
                 });
+            }
+            ExprKind::Async(..) | ExprKind::Closure(..) => {
+                self.with_label_rib(ClosureOrAsyncRibKind, |this| visit::walk_expr(this, expr));
             }
             _ => {
                 visit::walk_expr(self, expr);
