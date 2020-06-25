@@ -652,6 +652,56 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildSExt(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
+    fn fptoui_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
+        if self.sess().target.target.arch == "wasm32"
+            && self
+                .sess()
+                .target_features
+                .contains(&rustc_span::symbol::Symbol::intern("nontrapping-fptoint"))
+        {
+            let src_ty = self.cx.val_ty(val);
+            let float_width = self.cx.float_width(src_ty);
+            let int_width = self.cx.int_width(dest_ty);
+            let name = match (int_width, float_width) {
+                (32, 32) => Some("llvm.wasm.trunc.saturate.unsigned.i32.f32"),
+                (32, 64) => Some("llvm.wasm.trunc.saturate.unsigned.i32.f64"),
+                (64, 32) => Some("llvm.wasm.trunc.saturate.unsigned.i64.f32"),
+                (64, 64) => Some("llvm.wasm.trunc.saturate.unsigned.i64.f64"),
+                _ => None,
+            };
+            if let Some(name) = name {
+                let intrinsic = self.get_intrinsic(name);
+                return Some(self.call(intrinsic, &[val], None));
+            }
+        }
+        None
+    }
+
+    fn fptosi_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
+        if self.sess().target.target.arch == "wasm32"
+            && self
+                .sess()
+                .target_features
+                .contains(&rustc_span::symbol::Symbol::intern("nontrapping-fptoint"))
+        {
+            let src_ty = self.cx.val_ty(val);
+            let float_width = self.cx.float_width(src_ty);
+            let int_width = self.cx.int_width(dest_ty);
+            let name = match (int_width, float_width) {
+                (32, 32) => Some("llvm.wasm.trunc.saturate.signed.i32.f32"),
+                (32, 64) => Some("llvm.wasm.trunc.saturate.signed.i32.f64"),
+                (64, 32) => Some("llvm.wasm.trunc.saturate.signed.i64.f32"),
+                (64, 64) => Some("llvm.wasm.trunc.saturate.signed.i64.f64"),
+                _ => None,
+            };
+            if let Some(name) = name {
+                let intrinsic = self.get_intrinsic(name);
+                return Some(self.call(intrinsic, &[val], None));
+            }
+        }
+        None
+    }
+
     fn fptoui(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildFPToUI(self.llbuilder, val, dest_ty, UNNAMED) }
     }
