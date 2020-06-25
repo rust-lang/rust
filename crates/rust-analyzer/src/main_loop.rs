@@ -23,7 +23,6 @@ use crate::{
     lsp_utils::{
         apply_document_changes, is_canceled, notification_is, notification_new, show_message,
     },
-    request_metrics::RequestMetrics,
     Result,
 };
 
@@ -147,7 +146,7 @@ impl fmt::Debug for Event {
                     return debug_verbose_not(not, f);
                 }
             }
-            Event::Task(Task::Respond(resp)) => {
+            Event::Task(Task::Response(resp)) => {
                 return f
                     .debug_struct("Response")
                     .field("id", &resp.id)
@@ -218,7 +217,13 @@ impl GlobalState {
                 }
             },
             Event::Task(task) => {
-                self.on_task(task);
+                match task {
+                    Task::Response(response) => self.respond(response),
+                    Task::Diagnostics(tasks) => {
+                        tasks.into_iter().for_each(|task| on_diagnostic_task(task, self))
+                    }
+                    Task::Unit => (),
+                }
                 self.maybe_collect_garbage();
             }
             Event::Vfs(task) => match task {
@@ -331,7 +336,9 @@ impl GlobalState {
     }
 
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
-        RequestDispatcher { req: Some(req), global_state: self, request_received }
+        self.req_queue.incoming.register(req.id.clone(), (req.method.clone(), request_received));
+
+        RequestDispatcher { req: Some(req), global_state: self }
             .on_sync::<lsp_ext::CollectGarbage>(|s, ()| Ok(s.collect_garbage()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
@@ -492,27 +499,6 @@ impl GlobalState {
             .finish();
         Ok(())
     }
-    pub(crate) fn on_task(&mut self, task: Task) {
-        match task {
-            Task::Respond(response) => {
-                if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone())
-                {
-                    let duration = start.elapsed();
-                    log::info!("handled req#{} in {:?}", response.id, duration);
-                    self.complete_request(RequestMetrics {
-                        id: response.id.clone(),
-                        method: method.to_string(),
-                        duration,
-                    });
-                    self.send(response.into());
-                }
-            }
-            Task::Diagnostics(tasks) => {
-                tasks.into_iter().for_each(|task| on_diagnostic_task(task, self))
-            }
-            Task::Unit => (),
-        }
-    }
     fn update_file_notifications_on_threadpool(&mut self, subscriptions: Vec<FileId>) {
         log::trace!("updating notifications for {:?}", subscriptions);
         if self.config.publish_diagnostics {
@@ -548,13 +534,13 @@ impl GlobalState {
 
 #[derive(Debug)]
 pub(crate) enum Task {
-    Respond(Response),
-    Diagnostics(Vec<DiagnosticTask>),
+    Response(Response),
+    Diagnostics(()),
     Unit,
 }
 
 pub(crate) type ReqHandler = fn(&mut GlobalState, Response);
-pub(crate) type ReqQueue = lsp_server::ReqQueue<(&'static str, Instant), ReqHandler>;
+pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 const DO_NOTHING: ReqHandler = |_, _| ();
 
 fn on_diagnostic_task(task: DiagnosticTask, global_state: &mut GlobalState) {
