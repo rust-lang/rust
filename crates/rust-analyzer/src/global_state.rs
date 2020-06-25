@@ -13,7 +13,7 @@ use ra_db::{CrateId, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
 use stdx::format_to;
-use vfs::loader::Handle;
+use vfs::loader::Handle as _;
 
 use crate::{
     config::Config,
@@ -42,19 +42,26 @@ impl Default for Status {
     }
 }
 
+// Enforces drop order
+pub(crate) struct Handle<H, C> {
+    pub(crate) handle: H,
+    pub(crate) receiver: C,
+}
+
 /// `GlobalState` is the primary mutable state of the language server
 ///
 /// The most interesting components are `vfs`, which stores a consistent
 /// snapshot of the file systems, and `analysis_host`, which stores our
 /// incremental salsa database.
+///
+/// Note that this struct has more than on impl in various modules!
 pub(crate) struct GlobalState {
     sender: Sender<lsp_server::Message>,
+    pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
+    pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
+    pub(crate) flycheck: Option<Handle<FlycheckHandle, Receiver<flycheck::Message>>>,
     pub(crate) config: Config,
-    pub(crate) task_pool: (TaskPool<Task>, Receiver<Task>),
     pub(crate) analysis_host: AnalysisHost,
-    pub(crate) loader: Box<dyn vfs::loader::Handle>,
-    pub(crate) task_receiver: Receiver<vfs::loader::Message>,
-    pub(crate) flycheck: Option<(FlycheckHandle, Receiver<flycheck::Message>)>,
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: FxHashSet<VfsPath>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
@@ -82,37 +89,36 @@ impl GlobalState {
         lru_capacity: Option<usize>,
         config: Config,
     ) -> GlobalState {
-        let (task_sender, task_receiver) = unbounded::<vfs::loader::Message>();
-
         let loader = {
-            let loader = vfs_notify::NotifyHandle::spawn(Box::new(move |msg| {
-                task_sender.send(msg).unwrap()
-            }));
-            Box::new(loader)
+            let (sender, receiver) = unbounded::<vfs::loader::Message>();
+            let handle =
+                vfs_notify::NotifyHandle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+            let handle = Box::new(handle) as Box<dyn vfs::loader::Handle>;
+            Handle { handle, receiver }
         };
 
         let task_pool = {
             let (sender, receiver) = unbounded();
-            (TaskPool::new(sender), receiver)
+            let handle = TaskPool::new(sender);
+            Handle { handle, receiver }
         };
 
         GlobalState {
             sender,
-            config,
             task_pool,
-            analysis_host: AnalysisHost::new(lru_capacity),
             loader,
-            task_receiver,
+            config,
+            analysis_host: AnalysisHost::new(lru_capacity),
             flycheck: None,
             diagnostics: Default::default(),
             mem_docs: FxHashSet::default(),
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
             status: Status::default(),
             req_queue: ReqQueue::default(),
-            latest_requests: Default::default(),
             source_root_config: SourceRootConfig::default(),
             proc_macro_client: ProcMacroClient::dummy(),
             workspaces: Arc::new(Vec::new()),
+            latest_requests: Default::default(),
         }
     }
 

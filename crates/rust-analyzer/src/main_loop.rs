@@ -100,13 +100,13 @@ impl GlobalState {
             recv(inbox) -> msg =>
                 msg.ok().map(Event::Lsp),
 
-            recv(self.task_pool.1) -> task =>
+            recv(self.task_pool.receiver) -> task =>
                 Some(Event::Task(task.unwrap())),
 
-            recv(self.task_receiver) -> task =>
+            recv(self.loader.receiver) -> task =>
                 Some(Event::Vfs(task.unwrap())),
 
-            recv(self.flycheck.as_ref().map_or(&never(), |it| &it.1)) -> task =>
+            recv(self.flycheck.as_ref().map_or(&never(), |it| &it.receiver)) -> task =>
                 Some(Event::Flycheck(task.unwrap())),
         }
     }
@@ -132,7 +132,7 @@ impl GlobalState {
         let _p = profile("GlobalState::handle_event");
 
         log::info!("handle_event({:?})", event);
-        let queue_count = self.task_pool.0.len();
+        let queue_count = self.task_pool.handle.len();
         if queue_count > 0 {
             log::info!("queued count = {}", queue_count);
         }
@@ -233,7 +233,7 @@ impl GlobalState {
         let state_changed = self.process_changes();
         if became_ready {
             if let Some(flycheck) = &self.flycheck {
-                flycheck.0.update();
+                flycheck.handle.update();
             }
         }
 
@@ -370,7 +370,7 @@ impl GlobalState {
                         log::error!("orphan DidCloseTextDocument: {}", path)
                     }
                     if let Some(path) = path.as_path() {
-                        this.loader.invalidate(path.to_path_buf());
+                        this.loader.handle.invalidate(path.to_path_buf());
                     }
                 }
                 let params = lsp_types::PublishDiagnosticsParams {
@@ -384,7 +384,7 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidSaveTextDocument>(|this, _params| {
                 if let Some(flycheck) = &this.flycheck {
-                    flycheck.0.update();
+                    flycheck.handle.update();
                 }
                 Ok(())
             })?
@@ -427,7 +427,7 @@ impl GlobalState {
             .on::<lsp_types::notification::DidChangeWatchedFiles>(|this, params| {
                 for change in params.changes {
                     if let Ok(path) = from_proto::abs_path(&change.uri) {
-                        this.loader.invalidate(path);
+                        this.loader.handle.invalidate(path);
                     }
                 }
                 Ok(())
@@ -440,7 +440,7 @@ impl GlobalState {
         if self.config.publish_diagnostics {
             let snapshot = self.snapshot();
             let subscriptions = subscriptions.clone();
-            self.task_pool.0.spawn(move || {
+            self.task_pool.handle.spawn(move || {
                 let diagnostics = subscriptions
                     .into_iter()
                     .filter_map(|file_id| {
@@ -458,7 +458,7 @@ impl GlobalState {
                 Task::Diagnostics(diagnostics)
             })
         }
-        self.task_pool.0.spawn({
+        self.task_pool.handle.spawn({
             let subs = subscriptions;
             let snap = self.snapshot();
             move || {

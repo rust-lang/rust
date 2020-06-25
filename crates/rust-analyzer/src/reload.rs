@@ -11,7 +11,7 @@ use vfs::{file_set::FileSetConfig, AbsPath};
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
-    global_state::GlobalState,
+    global_state::{GlobalState, Handle},
 };
 
 impl GlobalState {
@@ -105,7 +105,7 @@ impl GlobalState {
             FilesWatcher::Client => vec![],
             FilesWatcher::Notify => project_folders.watch,
         };
-        self.loader.set_config(vfs::loader::Config { load: project_folders.load, watch });
+        self.loader.handle.set_config(vfs::loader::Config { load: project_folders.load, watch });
 
         // Create crate graph from all the workspaces
         let crate_graph = {
@@ -113,7 +113,7 @@ impl GlobalState {
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
             let mut load = |path: &AbsPath| {
-                let contents = loader.load_sync(path);
+                let contents = loader.handle.load_sync(path);
                 let path = vfs::VfsPath::from(path.to_path_buf());
                 vfs.set_file_contents(path.clone(), contents);
                 vfs.file_id(&path)
@@ -153,9 +153,9 @@ impl GlobalState {
                 let (sender, receiver) = unbounded();
                 let sender = Box::new(move |msg| sender.send(msg).unwrap());
                 let cargo_project_root = cargo.workspace_root().to_path_buf();
-                let flycheck =
+                let handle =
                     FlycheckHandle::spawn(sender, config.clone(), cargo_project_root.into());
-                Some((flycheck, receiver))
+                Some(Handle { handle, receiver })
             }
             ProjectWorkspace::Json { .. } => {
                 log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
