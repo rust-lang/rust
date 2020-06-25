@@ -8,7 +8,6 @@ use hir_expand::{
     InFile,
 };
 use ra_arena::{map::ArenaMap, Arena};
-use ra_prof::profile;
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 
 use crate::{
@@ -84,12 +83,25 @@ impl StructData {
 
 impl EnumData {
     pub(crate) fn enum_data_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumData> {
-        let _p = profile("enum_data_query");
-        let src = e.lookup(db).source(db);
-        let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
-        let mut trace = Trace::new_for_arena();
-        lower_enum(db, &mut trace, &src, e.lookup(db).container.module(db));
-        Arc::new(EnumData { name, variants: trace.into_arena() })
+        let loc = e.lookup(db);
+        let item_tree = db.item_tree(loc.id.file_id);
+        let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
+
+        let enum_ = &item_tree[loc.id.value];
+        let mut variants = Arena::new();
+        for var_id in enum_.variants.clone() {
+            if item_tree.attrs(var_id.into()).is_cfg_enabled(&cfg_options) {
+                let var = &item_tree[var_id];
+                let var_data = lower_fields(&item_tree, &cfg_options, &var.fields);
+
+                variants.alloc(EnumVariantData {
+                    name: var.name.clone(),
+                    variant_data: Arc::new(var_data),
+                });
+            }
+        }
+
+        Arc::new(EnumData { name: enum_.name.clone(), variants })
     }
 
     pub fn variant(&self, name: &Name) -> Option<LocalEnumVariantId> {
