@@ -37,8 +37,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(OkIfLet => [IF_LET_SOME_RESULT]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OkIfLet {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for OkIfLet {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! { //begin checking variables
             if let ExprKind::Match(ref op, ref body, source) = expr.kind; //test if expr is a match
             if let MatchSource::IfLetDesugar { .. } = source; //test if it is an If Let

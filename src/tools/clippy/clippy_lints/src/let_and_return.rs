@@ -40,8 +40,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(LetReturn => [LET_AND_RETURN]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetReturn {
-    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block<'_>) {
+impl<'tcx> LateLintPass<'tcx> for LetReturn {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         // we need both a let-binding stmt and an expr
         if_chain! {
             if let Some(retexpr) = block.expr;
@@ -86,14 +86,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetReturn {
     }
 }
 
-fn last_statement_borrows<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
     let mut visitor = BorrowVisitor { cx, borrows: false };
     walk_expr(&mut visitor, expr);
     visitor.borrows
 }
 
 struct BorrowVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     borrows: bool,
 }
 

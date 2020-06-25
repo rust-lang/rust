@@ -20,7 +20,7 @@ declare_lint!(PLEASE_LINT, Warn, "Warn about items named 'pleaselintme'");
 
 declare_lint_pass!(Pass => [TEST_LINT, PLEASE_LINT]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'tcx> LateLintPass<'tcx> for Pass {
     fn check_item(&mut self, cx: &LateContext, it: &rustc_hir::Item) {
         match &*it.ident.as_str() {
             "lintme" => cx.lint(TEST_LINT, |lint| {

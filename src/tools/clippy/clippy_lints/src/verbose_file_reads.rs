@@ -33,8 +33,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(VerboseFileReads => [VERBOSE_FILE_READS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VerboseFileReads {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) {
+impl<'tcx> LateLintPass<'tcx> for VerboseFileReads {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if is_file_read_to_end(cx, expr) {
             span_lint_and_help(
                 cx,
@@ -57,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VerboseFileReads {
     }
 }
 
-fn is_file_read_to_end<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+fn is_file_read_to_end<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
     if_chain! {
         if let ExprKind::MethodCall(method_name, _, exprs, _) = expr.kind;
         if method_name.ident.as_str() == "read_to_end";
@@ -71,7 +71,7 @@ fn is_file_read_to_end<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'t
     false
 }
 
-fn is_file_read_to_string<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+fn is_file_read_to_string<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
     if_chain! {
         if let ExprKind::MethodCall(method_name, _, exprs, _) = expr.kind;
         if method_name.ident.as_str() == "read_to_string";

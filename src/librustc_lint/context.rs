@@ -421,7 +421,7 @@ impl LintStore {
 }
 
 /// Context for lint checking after type checking.
-pub struct LateContext<'a, 'tcx> {
+pub struct LateContext<'tcx> {
     /// Type context we're checking in.
     pub tcx: TyCtxt<'tcx>,
 
@@ -438,7 +438,7 @@ pub struct LateContext<'a, 'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
 
     /// Items accessible from the crate being checked.
-    pub access_levels: &'a AccessLevels,
+    pub access_levels: &'tcx AccessLevels,
 
     /// The store of registered lints and the lint levels.
     pub lint_store: &'tcx LintStore,
@@ -624,7 +624,7 @@ impl<'a> EarlyContext<'a> {
     }
 }
 
-impl LintContext for LateContext<'_, '_> {
+impl LintContext for LateContext<'_> {
     type PassObject = LateLintPassObject;
 
     /// Gets the overall compiler `Session` object.
@@ -673,7 +673,7 @@ impl LintContext for EarlyContext<'_> {
     }
 }
 
-impl<'a, 'tcx> LateContext<'a, 'tcx> {
+impl<'tcx> LateContext<'tcx> {
     /// Gets the type-checking side-tables for the current body,
     /// or `None` if outside a body.
     pub fn maybe_typeck_tables(&self) -> Option<&'tcx ty::TypeckTables<'tcx>> {
@@ -849,7 +849,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LayoutOf for LateContext<'a, 'tcx> {
+impl<'tcx> LayoutOf for LateContext<'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 

@@ -64,11 +64,11 @@ macro_rules! need {
     };
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
+impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
     #[allow(clippy::too_many_lines)]
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,

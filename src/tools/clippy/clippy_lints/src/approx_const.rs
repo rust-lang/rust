@@ -60,15 +60,15 @@ const KNOWN_CONSTS: [(f64, &str, usize); 18] = [
 
 declare_lint_pass!(ApproxConstant => [APPROX_CONSTANT]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ApproxConstant {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for ApproxConstant {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Lit(lit) = &e.kind {
             check_lit(cx, &lit.node, e);
         }
     }
 }
 
-fn check_lit(cx: &LateContext<'_, '_>, lit: &LitKind, e: &Expr<'_>) {
+fn check_lit(cx: &LateContext<'_>, lit: &LitKind, e: &Expr<'_>) {
     match *lit {
         LitKind::Float(s, LitFloatType::Suffixed(fty)) => match fty {
             FloatTy::F32 => check_known_consts(cx, e, s, "f32"),
@@ -79,7 +79,7 @@ fn check_lit(cx: &LateContext<'_, '_>, lit: &LitKind, e: &Expr<'_>) {
     }
 }
 
-fn check_known_consts(cx: &LateContext<'_, '_>, e: &Expr<'_>, s: symbol::Symbol, module: &str) {
+fn check_known_consts(cx: &LateContext<'_>, e: &Expr<'_>, s: symbol::Symbol, module: &str) {
     let s = s.as_str();
     if s.parse::<f64>().is_ok() {
         for &(constant, name, min_digits) in &KNOWN_CONSTS {

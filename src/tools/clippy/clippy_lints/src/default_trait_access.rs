@@ -30,8 +30,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DefaultTraitAccess => [DEFAULT_TRAIT_ACCESS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for DefaultTraitAccess {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Call(ref path, ..) = expr.kind;
             if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);

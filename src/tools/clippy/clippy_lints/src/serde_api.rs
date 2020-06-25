@@ -20,8 +20,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SerdeAPI => [SERDE_API_MISUSE]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SerdeAPI {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for SerdeAPI {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl {
             of_trait: Some(ref trait_ref),
             items,

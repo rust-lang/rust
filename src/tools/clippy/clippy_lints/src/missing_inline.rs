@@ -56,7 +56,7 @@ declare_clippy_lint! {
     "detects missing `#[inline]` attribute for public callables (functions, trait methods, methods...)"
 }
 
-fn check_missing_inline_attrs(cx: &LateContext<'_, '_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
+fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
     let has_inline = attrs.iter().any(|a| a.check_name(sym!(inline)));
     if !has_inline {
         span_lint(
@@ -68,7 +68,7 @@ fn check_missing_inline_attrs(cx: &LateContext<'_, '_>, attrs: &[ast::Attribute]
     }
 }
 
-fn is_executable(cx: &LateContext<'_, '_>) -> bool {
+fn is_executable(cx: &LateContext<'_>) -> bool {
     use rustc_session::config::CrateType;
 
     cx.tcx.sess.crate_types().iter().any(|t: &CrateType| match t {
@@ -79,8 +79,8 @@ fn is_executable(cx: &LateContext<'_, '_>) -> bool {
 
 declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MissingInline {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
         if rustc_middle::lint::in_external_macro(cx.sess(), it.span) || is_executable(cx) {
             return;
         }
@@ -129,7 +129,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         };
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         use rustc_middle::ty::{ImplContainer, TraitContainer};
         if rustc_middle::lint::in_external_macro(cx.sess(), impl_item.span) || is_executable(cx) {
             return;

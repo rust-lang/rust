@@ -44,8 +44,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessUpdate => [NEEDLESS_UPDATE]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessUpdate {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for NeedlessUpdate {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Struct(_, ref fields, Some(ref base)) = expr.kind {
             let ty = cx.tables().expr_ty(expr);
             if let ty::Adt(def, _) = ty.kind {

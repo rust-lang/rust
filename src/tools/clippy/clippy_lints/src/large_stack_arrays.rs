@@ -38,8 +38,8 @@ impl LargeStackArrays {
 
 impl_lint_pass!(LargeStackArrays => [LARGE_STACK_ARRAYS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeStackArrays {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::Repeat(_, _) = expr.kind;
             if let ty::Array(element_type, cst) = cx.tables().expr_ty(expr).kind;

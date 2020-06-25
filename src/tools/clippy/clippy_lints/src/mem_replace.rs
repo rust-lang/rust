@@ -97,7 +97,7 @@ declare_clippy_lint! {
 declare_lint_pass!(MemReplace =>
     [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
 
-fn check_replace_option_with_none(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
+fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if let ExprKind::Path(ref replacement_qpath) = src.kind {
         // Check that second argument is `Option::None`
         if match_qpath(replacement_qpath, &paths::OPTION_NONE) {
@@ -135,7 +135,7 @@ fn check_replace_option_with_none(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest
     }
 }
 
-fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
+fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if_chain! {
         // check if replacement is mem::MaybeUninit::uninit().assume_init()
         if let Some(method_def_id) = cx.tables().type_dependent_def_id(src.hir_id);
@@ -193,7 +193,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Ex
     }
 }
 
-fn check_replace_with_default(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
+fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if let ExprKind::Call(ref repl_func, _) = src.kind {
         if_chain! {
             if !in_external_macro(cx.tcx.sess, expr_span);
@@ -224,8 +224,8 @@ fn check_replace_with_default(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &E
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MemReplace {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // Check that `expr` is a call to `mem::replace()`
             if let ExprKind::Call(ref func, ref func_args) = expr.kind;

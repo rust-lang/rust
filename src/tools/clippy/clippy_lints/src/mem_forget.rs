@@ -25,8 +25,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MemForget => [MEM_FORGET]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemForget {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MemForget {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Call(ref path_expr, ref args) = e.kind {
             if let ExprKind::Path(ref qpath) = path_expr.kind {
                 if let Some(def_id) = qpath_res(cx, qpath, path_expr.hir_id).opt_def_id() {

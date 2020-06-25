@@ -44,7 +44,7 @@ pub struct MacroRefData {
 }
 
 impl MacroRefData {
-    pub fn new(name: String, callee: Span, cx: &LateContext<'_, '_>) -> Self {
+    pub fn new(name: String, callee: Span, cx: &LateContext<'_>) -> Self {
         let mut path = cx.sess().source_map().span_to_filename(callee).to_string();
 
         // std lib paths are <::std::module::file type>
@@ -72,7 +72,7 @@ pub struct MacroUseImports {
 impl_lint_pass!(MacroUseImports => [MACRO_USE_IMPORTS]);
 
 impl MacroUseImports {
-    fn push_unique_macro(&mut self, cx: &LateContext<'_, '_>, span: Span) {
+    fn push_unique_macro(&mut self, cx: &LateContext<'_>, span: Span) {
         let call_site = span.source_callsite();
         let name = snippet(cx, cx.sess().source_map().span_until_char(call_site, '!'), "_");
         if let Some(callee) = span.source_callee() {
@@ -89,7 +89,7 @@ impl MacroUseImports {
         }
     }
 
-    fn push_unique_macro_pat_ty(&mut self, cx: &LateContext<'_, '_>, span: Span) {
+    fn push_unique_macro_pat_ty(&mut self, cx: &LateContext<'_>, span: Span) {
         let call_site = span.source_callsite();
         let name = snippet(cx, cx.sess().source_map().span_until_char(call_site, '!'), "_");
         if let Some(callee) = span.source_callee() {
@@ -102,8 +102,8 @@ impl MacroUseImports {
     }
 }
 
-impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if_chain! {
             if cx.sess().opts.edition == Edition::Edition2018;
             if let hir::ItemKind::Use(path, _kind) = &item.kind;
@@ -127,33 +127,33 @@ impl<'l, 'txc> LateLintPass<'l, 'txc> for MacroUseImports {
             }
         }
     }
-    fn check_attribute(&mut self, cx: &LateContext<'_, '_>, attr: &ast::Attribute) {
+    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
         if in_macro(attr.span) {
             self.push_unique_macro(cx, attr.span);
         }
     }
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
         if in_macro(expr.span) {
             self.push_unique_macro(cx, expr.span);
         }
     }
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>) {
+    fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
         if in_macro(stmt.span) {
             self.push_unique_macro(cx, stmt.span);
         }
     }
-    fn check_pat(&mut self, cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>) {
+    fn check_pat(&mut self, cx: &LateContext<'_>, pat: &hir::Pat<'_>) {
         if in_macro(pat.span) {
             self.push_unique_macro_pat_ty(cx, pat.span);
         }
     }
-    fn check_ty(&mut self, cx: &LateContext<'_, '_>, ty: &hir::Ty<'_>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_>) {
         if in_macro(ty.span) {
             self.push_unique_macro_pat_ty(cx, ty.span);
         }
     }
     #[allow(clippy::too_many_lines)]
-    fn check_crate_post(&mut self, cx: &LateContext<'_, '_>, _krate: &hir::Crate<'_>) {
+    fn check_crate_post(&mut self, cx: &LateContext<'_>, _krate: &hir::Crate<'_>) {
         let mut used = FxHashMap::default();
         let mut check_dup = vec![];
         for (import, span) in &self.imports {

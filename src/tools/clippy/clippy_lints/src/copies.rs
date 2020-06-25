@@ -151,8 +151,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(CopyAndPaste => [IFS_SAME_COND, SAME_FUNCTIONS_IN_IF_CONDITION, IF_SAME_THEN_ELSE, MATCH_SAME_ARMS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion() {
             // skip ifs directly in else, it will be checked in the parent if
             if let Some(expr) = get_parent_expr(cx, expr) {
@@ -173,7 +173,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
 }
 
 /// Implementation of `IF_SAME_THEN_ELSE`.
-fn lint_same_then_else(cx: &LateContext<'_, '_>, blocks: &[&Block<'_>]) {
+fn lint_same_then_else(cx: &LateContext<'_>, blocks: &[&Block<'_>]) {
     let eq: &dyn Fn(&&Block<'_>, &&Block<'_>) -> bool =
         &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).eq_block(lhs, rhs) };
 
@@ -190,7 +190,7 @@ fn lint_same_then_else(cx: &LateContext<'_, '_>, blocks: &[&Block<'_>]) {
 }
 
 /// Implementation of `IFS_SAME_COND`.
-fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
+fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
     let hash: &dyn Fn(&&Expr<'_>) -> u64 = &|expr| -> u64 {
         let mut h = SpanlessHash::new(cx);
         h.hash_expr(expr);
@@ -213,7 +213,7 @@ fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
 }
 
 /// Implementation of `SAME_FUNCTIONS_IN_IF_CONDITION`.
-fn lint_same_fns_in_if_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
+fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
     let hash: &dyn Fn(&&Expr<'_>) -> u64 = &|expr| -> u64 {
         let mut h = SpanlessHash::new(cx);
         h.hash_expr(expr);
@@ -241,7 +241,7 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
 }
 
 /// Implementation of `MATCH_SAME_ARMS`.
-fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr<'_>) {
+fn lint_match_arms<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) {
     fn same_bindings<'tcx>(lhs: &FxHashMap<Symbol, Ty<'tcx>>, rhs: &FxHashMap<Symbol, Ty<'tcx>>) -> bool {
         lhs.len() == rhs.len()
             && lhs
@@ -309,8 +309,8 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr<'_>) {
 }
 
 /// Returns the list of bindings in a pattern.
-fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat<'_>) -> FxHashMap<Symbol, Ty<'tcx>> {
-    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat<'_>, map: &mut FxHashMap<Symbol, Ty<'tcx>>) {
+fn bindings<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>) -> FxHashMap<Symbol, Ty<'tcx>> {
+    fn bindings_impl<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, map: &mut FxHashMap<Symbol, Ty<'tcx>>) {
         match pat.kind {
             PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
             PatKind::TupleStruct(_, pats, _) => {

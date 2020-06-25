@@ -25,7 +25,7 @@ declare_lint! {
 
 declare_lint_pass!(Pass => [CRATE_NOT_OKAY]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'tcx> LateLintPass<'tcx> for Pass {
     fn check_crate(&mut self, cx: &LateContext, krate: &rustc_hir::Crate) {
         if !attr::contains_name(&krate.item.attrs, Symbol::intern("crate_okay")) {
             cx.lint(CRATE_NOT_OKAY, |lint| {

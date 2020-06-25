@@ -29,8 +29,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ErasingOp => [ERASING_OP]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ErasingOp {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for ErasingOp {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
             return;
         }
@@ -47,7 +47,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ErasingOp {
     }
 }
 
-fn check(cx: &LateContext<'_, '_>, e: &Expr<'_>, span: Span) {
+fn check(cx: &LateContext<'_>, e: &Expr<'_>, span: Span) {
     if let Some(Constant::Int(0)) = constant_simple(cx, cx.tables(), e) {
         span_lint(
             cx,

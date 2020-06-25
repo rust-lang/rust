@@ -33,10 +33,10 @@ declare_lint! {
 
 declare_lint_pass!(MissingWhitelistedAttrPass => [MISSING_WHITELISTED_ATTR]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
+impl<'tcx> LateLintPass<'tcx> for MissingWhitelistedAttrPass {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         _: intravisit::FnKind<'tcx>,
         _: &'tcx hir::FnDecl,
         _: &'tcx hir::Body,

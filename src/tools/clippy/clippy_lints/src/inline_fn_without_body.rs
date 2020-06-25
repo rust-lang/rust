@@ -31,15 +31,15 @@ declare_clippy_lint! {
 
 declare_lint_pass!(InlineFnWithoutBody => [INLINE_FN_WITHOUT_BODY]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InlineFnWithoutBody {
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem<'_>) {
+impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(_, TraitFn::Required(_)) = item.kind {
             check_attrs(cx, item.ident.name, &item.attrs);
         }
     }
 }
 
-fn check_attrs(cx: &LateContext<'_, '_>, name: Symbol, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext<'_>, name: Symbol, attrs: &[Attribute]) {
     for attr in attrs {
         if !attr.check_name(sym!(inline)) {
             continue;

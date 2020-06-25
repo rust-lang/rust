@@ -31,8 +31,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ToDigitIsSome => [TO_DIGIT_IS_SOME]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ToDigitIsSome {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             if let hir::ExprKind::MethodCall(is_some_path, _, is_some_args, _) = &expr.kind;
             if is_some_path.ident.name.as_str() == "is_some";

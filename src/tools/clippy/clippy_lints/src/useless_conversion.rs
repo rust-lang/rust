@@ -40,8 +40,8 @@ pub struct UselessConversion {
 impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
 
 #[allow(clippy::too_many_lines)]
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UselessConversion {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
             return;
         }
@@ -173,7 +173,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
         }
     }
 
-    fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+    fn check_expr_post(&mut self, _: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if Some(&e.hir_id) == self.try_desugar_arm.last() {
             self.try_desugar_arm.pop();
         }

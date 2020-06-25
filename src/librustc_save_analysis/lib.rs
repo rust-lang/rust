@@ -48,10 +48,10 @@ use rls_data::{
 
 use log::{debug, error, info};
 
-pub struct SaveContext<'l, 'tcx: 'l> {
+pub struct SaveContext<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_tables: Option<&'tcx ty::TypeckTables<'tcx>>,
-    access_levels: &'l AccessLevels,
+    access_levels: &'tcx AccessLevels,
     span_utils: SpanUtils<'tcx>,
     config: Config,
     impl_counter: Cell<u32>,
@@ -64,7 +64,7 @@ pub enum Data {
     RelationData(Relation, Impl),
 }
 
-impl<'l, 'tcx> SaveContext<'l, 'tcx> {
+impl<'tcx> SaveContext<'tcx> {
     /// Gets the type-checking side-tables for the current body.
     /// As this will ICE if called outside bodies, only call when working with
     /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
@@ -917,7 +917,7 @@ impl<'l> Visitor<'l> for PathCollector<'l> {
 
 /// Defines what to do with the results of saving the analysis.
 pub trait SaveHandler {
-    fn save(&mut self, save_ctxt: &SaveContext<'_, '_>, analysis: &Analysis);
+    fn save(&mut self, save_ctxt: &SaveContext<'_>, analysis: &Analysis);
 }
 
 /// Dump the save-analysis results to a file.
@@ -931,7 +931,7 @@ impl<'a> DumpHandler<'a> {
         DumpHandler { odir, cratename: cratename.to_owned() }
     }
 
-    fn output_file(&self, ctx: &SaveContext<'_, '_>) -> (BufWriter<File>, PathBuf) {
+    fn output_file(&self, ctx: &SaveContext<'_>) -> (BufWriter<File>, PathBuf) {
         let sess = &ctx.tcx.sess;
         let file_name = match ctx.config.output_file {
             Some(ref s) => PathBuf::from(s),
@@ -967,7 +967,7 @@ impl<'a> DumpHandler<'a> {
 }
 
 impl SaveHandler for DumpHandler<'_> {
-    fn save(&mut self, save_ctxt: &SaveContext<'_, '_>, analysis: &Analysis) {
+    fn save(&mut self, save_ctxt: &SaveContext<'_>, analysis: &Analysis) {
         let sess = &save_ctxt.tcx.sess;
         let (output, file_name) = self.output_file(&save_ctxt);
         if let Err(e) = serde_json::to_writer(output, &analysis) {
@@ -986,7 +986,7 @@ pub struct CallbackHandler<'b> {
 }
 
 impl SaveHandler for CallbackHandler<'_> {
-    fn save(&mut self, _: &SaveContext<'_, '_>, analysis: &Analysis) {
+    fn save(&mut self, _: &SaveContext<'_>, analysis: &Analysis) {
         (self.callback)(analysis)
     }
 }
@@ -1065,7 +1065,7 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
     rls_data::Id { krate: id.krate.as_u32(), index: id.index.as_u32() }
 }
 
-fn id_from_hir_id(id: hir::HirId, scx: &SaveContext<'_, '_>) -> rls_data::Id {
+fn id_from_hir_id(id: hir::HirId, scx: &SaveContext<'_>) -> rls_data::Id {
     let def_id = scx.tcx.hir().opt_local_def_id(id);
     def_id.map(|id| id_from_def_id(id.to_def_id())).unwrap_or_else(|| {
         // Create a *fake* `DefId` out of a `HirId` by combining the owner
@@ -1083,10 +1083,7 @@ fn null_id() -> rls_data::Id {
     rls_data::Id { krate: u32::MAX, index: u32::MAX }
 }
 
-fn lower_attributes(
-    attrs: Vec<ast::Attribute>,
-    scx: &SaveContext<'_, '_>,
-) -> Vec<rls_data::Attribute> {
+fn lower_attributes(attrs: Vec<ast::Attribute>, scx: &SaveContext<'_>) -> Vec<rls_data::Attribute> {
     attrs
         .into_iter()
         // Only retain real attributes. Doc comments are lowered separately.

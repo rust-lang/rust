@@ -35,8 +35,8 @@ declare_lint! {
 
 declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UnusedResults {
+    fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
         let expr = match s.kind {
             hir::StmtKind::Semi(ref expr) => &**expr,
             _ => return,
@@ -116,7 +116,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         // Returns whether an error has been emitted (and thus another does not need to be later).
         fn check_must_use_ty<'tcx>(
-            cx: &LateContext<'_, 'tcx>,
+            cx: &LateContext<'tcx>,
             ty: Ty<'tcx>,
             expr: &hir::Expr<'_>,
             span: Span,
@@ -213,7 +213,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         // this would still require a copy into the format string, which would only be executed
         // when needed.
         fn check_must_use_def(
-            cx: &LateContext<'_, '_>,
+            cx: &LateContext<'_>,
             def_id: DefId,
             span: Span,
             descr_pre_path: &str,
@@ -251,8 +251,8 @@ declare_lint! {
 
 declare_lint_pass!(PathStatements => [PATH_STATEMENTS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for PathStatements {
+    fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(ref expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
                 cx.struct_span_lint(PATH_STATEMENTS, s.span, |lint| {
@@ -276,8 +276,8 @@ impl UnusedAttributes {
 
 impl_lint_pass!(UnusedAttributes => [UNUSED_ATTRIBUTES]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
-    fn check_attribute(&mut self, cx: &LateContext<'_, '_>, attr: &ast::Attribute) {
+impl<'tcx> LateLintPass<'tcx> for UnusedAttributes {
+    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
         debug!("checking attribute: {:?}", attr);
 
         if attr.is_doc_comment() {
@@ -943,8 +943,8 @@ declare_lint! {
 
 declare_lint_pass!(UnusedAllocation => [UNUSED_ALLOCATION]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
+    fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
         match e.kind {
             hir::ExprKind::Box(_) => {}
             _ => return,
