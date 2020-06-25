@@ -31,7 +31,6 @@ use stdx::{format_to, split_delim};
 use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::RustfmtConfig,
-    diagnostics::DiagnosticTask,
     from_json, from_proto,
     global_state::GlobalStateSnapshot,
     lsp_ext::{self, InlayHint, InlayHintsParams},
@@ -950,7 +949,7 @@ pub(crate) fn handle_ssr(
 pub(crate) fn publish_diagnostics(
     snap: &GlobalStateSnapshot,
     file_id: FileId,
-) -> Result<DiagnosticTask> {
+) -> Result<Vec<Diagnostic>> {
     let _p = profile("publish_diagnostics");
     let line_index = snap.analysis.file_line_index(file_id)?;
     let diagnostics: Vec<Diagnostic> = snap
@@ -967,7 +966,7 @@ pub(crate) fn publish_diagnostics(
             tags: None,
         })
         .collect();
-    Ok(DiagnosticTask::SetNative(file_id, diagnostics))
+    Ok(diagnostics)
 }
 
 pub(crate) fn handle_inlay_hints(

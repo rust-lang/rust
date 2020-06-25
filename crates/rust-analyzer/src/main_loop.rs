@@ -15,7 +15,6 @@ use ra_project_model::{PackageRoot, ProjectWorkspace};
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
-    diagnostics::DiagnosticTask,
     dispatch::{NotificationDispatcher, RequestDispatcher},
     from_proto,
     global_state::{file_id_to_url, GlobalState, Status},
@@ -132,6 +131,13 @@ enum Event {
     Flycheck(flycheck::Message),
 }
 
+#[derive(Debug)]
+pub(crate) enum Task {
+    Response(Response),
+    Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    Unit,
+}
+
 impl fmt::Debug for Event {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let debug_verbose_not = |not: &Notification, f: &mut fmt::Formatter| {
@@ -219,8 +225,10 @@ impl GlobalState {
             Event::Task(task) => {
                 match task {
                     Task::Response(response) => self.respond(response),
-                    Task::Diagnostics(tasks) => {
-                        tasks.into_iter().for_each(|task| on_diagnostic_task(task, self))
+                    Task::Diagnostics(diagnostics_per_file) => {
+                        for (file_id, diagnostics) in diagnostics_per_file {
+                            self.diagnostics.set_native_diagnostics(file_id, diagnostics)
+                        }
                     }
                     Task::Unit => (),
                 }
@@ -257,9 +265,7 @@ impl GlobalState {
                 }
             },
             Event::Flycheck(task) => match task {
-                flycheck::Message::ClearDiagnostics => {
-                    on_diagnostic_task(DiagnosticTask::ClearCheck, self)
-                }
+                flycheck::Message::ClearDiagnostics => self.diagnostics.clear_check(),
 
                 flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
                     let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
@@ -279,15 +285,7 @@ impl GlobalState {
                                 return Ok(());
                             }
                         };
-
-                        on_diagnostic_task(
-                            DiagnosticTask::AddCheck(
-                                file_id,
-                                diag.diagnostic,
-                                diag.fixes.into_iter().map(|it| it.into()).collect(),
-                            ),
-                            self,
-                        )
+                        self.diagnostics.add_check_diagnostic(file_id, diag.diagnostic, diag.fixes)
                     }
                 }
 
@@ -322,9 +320,20 @@ impl GlobalState {
             self.update_file_notifications_on_threadpool(subscriptions);
         }
 
+        if let Some(diagnostic_changes) = self.diagnostics.take_changes() {
+            for file_id in diagnostic_changes {
+                let url = file_id_to_url(&self.vfs.read().0, file_id);
+                let diagnostics = self.diagnostics.diagnostics_for(file_id).cloned().collect();
+                let params =
+                    lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None };
+                let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
+                self.send(not.into());
+            }
+        }
+
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) {
-            log::error!("overly long loop turn: {:?}", loop_duration);
+            log::warn!("overly long loop turn: {:?}", loop_duration);
             if env::var("RA_PROFILE").is_ok() {
                 self.show_message(
                     lsp_types::MessageType::Error,
@@ -516,6 +525,7 @@ impl GlobalState {
                                 ()
                             })
                             .ok()
+                            .map(|diags| (file_id, diags))
                     })
                     .collect::<Vec<_>>();
                 Task::Diagnostics(diagnostics)
@@ -532,28 +542,9 @@ impl GlobalState {
     }
 }
 
-#[derive(Debug)]
-pub(crate) enum Task {
-    Response(Response),
-    Diagnostics(()),
-    Unit,
-}
-
 pub(crate) type ReqHandler = fn(&mut GlobalState, Response);
 pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 const DO_NOTHING: ReqHandler = |_, _| ();
-
-fn on_diagnostic_task(task: DiagnosticTask, global_state: &mut GlobalState) {
-    let subscriptions = global_state.diagnostics.handle_task(task);
-
-    for file_id in subscriptions {
-        let url = file_id_to_url(&global_state.vfs.read().0, file_id);
-        let diagnostics = global_state.diagnostics.diagnostics_for(file_id).cloned().collect();
-        let params = lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None };
-        let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
-        global_state.send(not.into());
-    }
-}
 
 #[derive(Eq, PartialEq)]
 enum Progress {
