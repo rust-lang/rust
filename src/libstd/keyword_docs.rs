@@ -1030,9 +1030,85 @@ mod self_upper_keyword {}
 //
 /// A place that is valid for the duration of a program.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// A `static` item is similar to a [`const`] item in that it lives for the
+/// entire duration of the program and need to have its type explicited, with a
+/// `static` lifetime, outliving any other lifetime. Added to that, `static`
+/// items represent a precise memory location.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// Static items do not call [`drop`] at the end of the program.
+///
+/// There are two types of `static` items: those declared in association with
+/// the [`mut`] keyword and those without.
+///
+/// # Simple `static`s
+///
+/// Non-[`mut`] `static` items that contain a type that is not interior mutable
+/// may be placed in read-only memory. All access to a `static` item are
+/// considered safe but some restrictions apply. See the [Reference] for more
+/// information.
+///
+/// ```rust
+/// static FOO: [i32; 5] = [1, 2, 3, 4, 5];
+///
+/// let r1 = &FOO as *const _;
+/// let r2 = &FOO as *const _;
+/// // With a strictly read-only static, references will have the same adress
+/// assert_eq!(r1, r2);
+/// ```
+///
+/// # Mutable `static`s
+///
+/// If a `static` item is declared with the [`mut`] keyword, then it is allowed
+/// to be modified by the program. To make concurrency bugs hard to run into,
+/// all access to a `static mut` require an [`unsafe`] block. Care should be
+/// taken to ensure access (both read and write) are thread-safe.
+///
+/// Despite their unsafety, mutable `static`s are very useful: they can be used
+/// to represent global state shared by the whole program or be used in
+/// [`extern`] blocks to bind to variables from C libraries.
+///
+/// As global state:
+///
+/// ```rust
+/// # #![allow(unused_variables)]
+/// # fn main() {}
+/// # fn atomic_add(_: &mut u32, _: u32) -> u32 { 2 }
+/// static mut LEVELS: u32 = 0;
+///
+/// // This violates the idea of no shared state, and this doesn't internally
+/// // protect against races, so this function is `unsafe`
+/// unsafe fn bump_levels_unsafe1() -> u32 {
+///     let ret = LEVELS;
+///     LEVELS += 1;
+///     return ret;
+/// }
+///
+/// // Assuming that we have an atomic_add function which returns the old value,
+/// // this function is "safe" but the meaning of the return value may not be
+/// // what callers expect, so it's still marked as `unsafe`
+/// unsafe fn bump_levels_unsafe2() -> u32 {
+///     return atomic_add(&mut LEVELS, 1);
+/// }
+/// ```
+///
+/// In an [`extern`] block:
+///
+/// ```rust,no_run
+/// # #![allow(dead_code)]
+/// extern "C" {
+///     static mut ERROR_MESSAGE: *mut std::os::raw::c_char;
+/// }
+/// ```
+///
+/// Mutable `static`s, just like simple `static`s, have some restrictions that
+/// apply to them. See the [Reference] for more information.
+///
+/// [`const`]: keyword.const.html
+/// [`extern`]: keyword.extern.html
+/// [`mut`]: keyword.mut.html
+/// [`unsafe`]: keyword.unsafe.html
+/// [`drop`]: mem/fn.drop.html
+/// [Reference]: ../reference/items/static-items.html#static-items
 mod static_keyword {}
 
 #[doc(keyword = "struct")]
