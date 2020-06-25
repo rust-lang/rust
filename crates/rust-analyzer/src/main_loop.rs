@@ -6,8 +6,8 @@ use std::{
 };
 
 use crossbeam_channel::{never, select, Receiver};
-use lsp_server::{Connection, Notification, Request, RequestId, Response};
-use lsp_types::{notification::Notification as _, request::Request as _, NumberOrString};
+use lsp_server::{Connection, Notification, Request, Response};
+use lsp_types::{notification::Notification as _, request::Request as _};
 use ra_db::VfsPath;
 use ra_ide::{Canceled, FileId};
 use ra_prof::profile;
@@ -16,13 +16,12 @@ use ra_project_model::{PackageRoot, ProjectWorkspace};
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
     diagnostics::DiagnosticTask,
-    dispatch::RequestDispatcher,
+    dispatch::{NotificationDispatcher, RequestDispatcher},
     from_proto,
     global_state::{file_id_to_url, GlobalState, Status},
     handlers, lsp_ext,
     lsp_utils::{
-        apply_document_changes, is_canceled, notification_cast, notification_is, notification_new,
-        show_message,
+        apply_document_changes, is_canceled, notification_is, notification_new, show_message,
     },
     request_metrics::RequestMetrics,
     Result,
@@ -240,9 +239,7 @@ impl GlobalState {
     }
 
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
-        let mut pool_dispatcher =
-            RequestDispatcher { req: Some(req), global_state: self, request_received };
-        pool_dispatcher
+        RequestDispatcher { req: Some(req), global_state: self, request_received }
             .on_sync::<lsp_ext::CollectGarbage>(|s, ()| Ok(s.collect_garbage()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
@@ -298,56 +295,47 @@ impl GlobalState {
         Ok(())
     }
     fn on_notification(&mut self, not: Notification) -> Result<()> {
-        let not = match notification_cast::<lsp_types::notification::Cancel>(not) {
-            Ok(params) => {
-                let id: RequestId = match params.id {
-                    NumberOrString::Number(id) => id.into(),
-                    NumberOrString::String(id) => id.into(),
+        NotificationDispatcher { not: Some(not), global_state: self }
+            .on::<lsp_types::notification::Cancel>(|this, params| {
+                let id: lsp_server::RequestId = match params.id {
+                    lsp_types::NumberOrString::Number(id) => id.into(),
+                    lsp_types::NumberOrString::String(id) => id.into(),
                 };
-                if let Some(response) = self.req_queue.incoming.cancel(id) {
-                    self.send(response.into())
+                if let Some(response) = this.req_queue.incoming.cancel(id) {
+                    this.send(response.into());
                 }
-                return Ok(());
-            }
-            Err(not) => not,
-        };
-        let not = match notification_cast::<lsp_types::notification::DidOpenTextDocument>(not) {
-            Ok(params) => {
+                Ok(())
+            })?
+            .on::<lsp_types::notification::DidOpenTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    if !self.mem_docs.insert(path.clone()) {
+                    if !this.mem_docs.insert(path.clone()) {
                         log::error!("duplicate DidOpenTextDocument: {}", path)
                     }
-                    self.vfs
+                    this.vfs
                         .write()
                         .0
                         .set_file_contents(path, Some(params.text_document.text.into_bytes()));
                 }
-                return Ok(());
-            }
-            Err(not) => not,
-        };
-        let not = match notification_cast::<lsp_types::notification::DidChangeTextDocument>(not) {
-            Ok(params) => {
+                Ok(())
+            })?
+            .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    assert!(self.mem_docs.contains(&path));
-                    let vfs = &mut self.vfs.write().0;
+                    assert!(this.mem_docs.contains(&path));
+                    let vfs = &mut this.vfs.write().0;
                     let file_id = vfs.file_id(&path).unwrap();
                     let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
                     apply_document_changes(&mut text, params.content_changes);
                     vfs.set_file_contents(path, Some(text.into_bytes()))
                 }
-                return Ok(());
-            }
-            Err(not) => not,
-        };
-        let not = match notification_cast::<lsp_types::notification::DidCloseTextDocument>(not) {
-            Ok(params) => {
+                Ok(())
+            })?
+            .on::<lsp_types::notification::DidCloseTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    if !self.mem_docs.remove(&path) {
+                    if !this.mem_docs.remove(&path) {
                         log::error!("orphan DidCloseTextDocument: {}", path)
                     }
                     if let Some(path) = path.as_path() {
-                        self.loader.invalidate(path.to_path_buf());
+                        this.loader.invalidate(path.to_path_buf());
                     }
                 }
                 let params = lsp_types::PublishDiagnosticsParams {
@@ -356,25 +344,19 @@ impl GlobalState {
                     version: None,
                 };
                 let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
-                self.send(not.into());
-                return Ok(());
-            }
-            Err(not) => not,
-        };
-        let not = match notification_cast::<lsp_types::notification::DidSaveTextDocument>(not) {
-            Ok(_params) => {
-                if let Some(flycheck) = &self.flycheck {
+                this.send(not.into());
+                Ok(())
+            })?
+            .on::<lsp_types::notification::DidSaveTextDocument>(|this, _params| {
+                if let Some(flycheck) = &this.flycheck {
                     flycheck.0.update();
                 }
-                return Ok(());
-            }
-            Err(not) => not,
-        };
-        let not = match notification_cast::<lsp_types::notification::DidChangeConfiguration>(not) {
-            Ok(_) => {
+                Ok(())
+            })?
+            .on::<lsp_types::notification::DidChangeConfiguration>(|this, _params| {
                 // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
                 // this notification's parameters should be ignored and the actual config queried separately.
-                let request = self.req_queue.outgoing.register(
+                let request = this.req_queue.outgoing.register(
                     lsp_types::request::WorkspaceConfiguration::METHOD.to_string(),
                     lsp_types::ConfigurationParams {
                         items: vec![lsp_types::ConfigurationItem {
@@ -403,30 +385,21 @@ impl GlobalState {
                         }
                     },
                 );
-                self.send(request.into());
+                this.send(request.into());
 
                 return Ok(());
-            }
-            Err(not) => not,
-        };
-        let not = match notification_cast::<lsp_types::notification::DidChangeWatchedFiles>(not) {
-            Ok(params) => {
+            })?
+            .on::<lsp_types::notification::DidChangeWatchedFiles>(|this, params| {
                 for change in params.changes {
                     if let Ok(path) = from_proto::abs_path(&change.uri) {
-                        self.loader.invalidate(path)
+                        this.loader.invalidate(path);
                     }
                 }
-                return Ok(());
-            }
-            Err(not) => not,
-        };
-        if not.method.starts_with("$/") {
-            return Ok(());
-        }
-        log::error!("unhandled notification: {:?}", not);
+                Ok(())
+            })?
+            .finish();
         Ok(())
     }
-    // TODO
     pub(crate) fn on_task(&mut self, task: Task) {
         match task {
             Task::Respond(response) => {
@@ -481,7 +454,6 @@ impl GlobalState {
     }
 }
 
-// TODO
 #[derive(Debug)]
 pub(crate) enum Task {
     Respond(Response),

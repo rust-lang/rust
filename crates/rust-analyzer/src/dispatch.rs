@@ -1,3 +1,4 @@
+//! A visitor for downcasting arbitrary request (JSON) into a specific type.
 use std::{panic, time::Instant};
 
 use serde::{de::DeserializeOwned, Serialize};
@@ -134,4 +135,42 @@ where
         },
     };
     Task::Respond(response)
+}
+
+pub(crate) struct NotificationDispatcher<'a> {
+    pub(crate) not: Option<lsp_server::Notification>,
+    pub(crate) global_state: &'a mut GlobalState,
+}
+
+impl<'a> NotificationDispatcher<'a> {
+    pub(crate) fn on<N>(
+        &mut self,
+        f: fn(&mut GlobalState, N::Params) -> Result<()>,
+    ) -> Result<&mut Self>
+    where
+        N: lsp_types::notification::Notification + 'static,
+        N::Params: DeserializeOwned + Send + 'static,
+    {
+        let not = match self.not.take() {
+            Some(it) => it,
+            None => return Ok(self),
+        };
+        let params = match not.extract::<N::Params>(N::METHOD) {
+            Ok(it) => it,
+            Err(not) => {
+                self.not = Some(not);
+                return Ok(self);
+            }
+        };
+        f(self.global_state, params)?;
+        Ok(self)
+    }
+
+    pub(crate) fn finish(&mut self) {
+        if let Some(not) = &self.not {
+            if !not.method.starts_with("$/") {
+                log::error!("unhandled notification: {:?}", not);
+            }
+        }
+    }
 }
