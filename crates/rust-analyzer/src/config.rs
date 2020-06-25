@@ -10,9 +10,9 @@
 use std::{ffi::OsString, path::PathBuf};
 
 use crate::diagnostics::DiagnosticsConfig;
+use flycheck::FlycheckConfig;
 use lsp_types::ClientCapabilities;
 use ra_db::AbsPathBuf;
-use ra_flycheck::FlycheckConfig;
 use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
 use ra_project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
 use serde::Deserialize;

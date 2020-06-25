@@ -2,20 +2,21 @@
 //! `cargo check` json format to the LSP diagnostic format.
 use std::{collections::HashMap, path::Path};
 
+use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion};
 use lsp_types::{
     Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag, Location,
     NumberOrString, Position, Range, TextEdit, Url,
 };
-use ra_flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion};
 use stdx::format_to;
 
-use super::DiagnosticsConfig;
 use crate::{lsp_ext, to_proto::url_from_abs_path};
+
+use super::DiagnosticsConfig;
 
 /// Determines the LSP severity from a diagnostic
 fn map_diagnostic_to_severity(
     config: &DiagnosticsConfig,
-    val: &ra_flycheck::Diagnostic,
+    val: &flycheck::Diagnostic,
 ) -> Option<DiagnosticSeverity> {
     let res = match val.level {
         DiagnosticLevel::Ice => DiagnosticSeverity::Error,
@@ -95,7 +96,7 @@ fn map_secondary_span_to_related(
 }
 
 /// Determines if diagnostic is related to unused code
-fn is_unused_or_unnecessary(rd: &ra_flycheck::Diagnostic) -> bool {
+fn is_unused_or_unnecessary(rd: &flycheck::Diagnostic) -> bool {
     match &rd.code {
         Some(code) => match code.code.as_str() {
             "dead_code" | "unknown_lints" | "unreachable_code" | "unused_attributes"
@@ -107,7 +108,7 @@ fn is_unused_or_unnecessary(rd: &ra_flycheck::Diagnostic) -> bool {
 }
 
 /// Determines if diagnostic is related to deprecated code
-fn is_deprecated(rd: &ra_flycheck::Diagnostic) -> bool {
+fn is_deprecated(rd: &flycheck::Diagnostic) -> bool {
     match &rd.code {
         Some(code) => code.code.as_str() == "deprecated",
         None => false,
@@ -121,7 +122,7 @@ enum MappedRustChildDiagnostic {
 }
 
 fn map_rust_child_diagnostic(
-    rd: &ra_flycheck::Diagnostic,
+    rd: &flycheck::Diagnostic,
     workspace_root: &Path,
 ) -> MappedRustChildDiagnostic {
     let spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
@@ -183,7 +184,7 @@ pub(crate) struct MappedRustDiagnostic {
 /// If the diagnostic has no primary span this will return `None`
 pub(crate) fn map_rust_diagnostic_to_lsp(
     config: &DiagnosticsConfig,
-    rd: &ra_flycheck::Diagnostic,
+    rd: &flycheck::Diagnostic,
     workspace_root: &Path,
 ) -> Vec<MappedRustDiagnostic> {
     let primary_spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
@@ -286,8 +287,8 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 mod tests {
     use super::*;
 
-    fn parse_diagnostic(val: &str) -> ra_flycheck::Diagnostic {
-        serde_json::from_str::<ra_flycheck::Diagnostic>(val).unwrap()
+    fn parse_diagnostic(val: &str) -> flycheck::Diagnostic {
+        serde_json::from_str::<flycheck::Diagnostic>(val).unwrap()
     }
 
     #[test]

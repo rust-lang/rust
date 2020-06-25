@@ -6,10 +6,10 @@
 use std::{convert::TryFrom, sync::Arc};
 
 use crossbeam_channel::{unbounded, Receiver};
+use flycheck::{CheckTask, FlycheckConfig, FlycheckHandle};
 use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_db::{CrateId, SourceRoot, VfsPath};
-use ra_flycheck::{CheckTask, FlycheckConfig, FlycheckHandle};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
 use stdx::format_to;

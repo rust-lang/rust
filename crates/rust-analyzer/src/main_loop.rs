@@ -9,10 +9,10 @@ use std::{
 };
 
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
+use flycheck::CheckTask;
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{request::Request as _, NumberOrString, TextDocumentContentChangeEvent};
 use ra_db::VfsPath;
-use ra_flycheck::CheckTask;
 use ra_ide::{Canceled, FileId, LineIndex};
 use ra_prof::profile;
 use ra_project_model::{PackageRoot, ProjectWorkspace};
@@ -629,9 +629,9 @@ fn on_check_task(
 
         CheckTask::Status(status) => {
             let (state, message) = match status {
-                ra_flycheck::Status::Being => (ProgressState::Start, None),
-                ra_flycheck::Status::Progress(target) => (ProgressState::Report, Some(target)),
-                ra_flycheck::Status::End => (ProgressState::End, None),
+                flycheck::Status::Being => (ProgressState::Start, None),
+                flycheck::Status::Progress(target) => (ProgressState::Report, Some(target)),
+                flycheck::Status::End => (ProgressState::End, None),
             };
 
             report_progress(global_state, msg_sender, "cargo check", state, message, None);
