@@ -5,6 +5,7 @@ mod lower;
 mod tests;
 
 use std::{
+    any::type_name,
     fmt::{self, Debug},
     hash::{Hash, Hasher},
     marker::PhantomData,
@@ -540,7 +541,7 @@ pub struct Enum {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
-    pub variants: Range<Idx<Variant>>,
+    pub variants: IdRange<Variant>,
     pub ast_id: FileAstId<ast::EnumDef>,
 }
 
@@ -698,7 +699,6 @@ pub struct Variant {
     pub fields: Fields,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IdRange<T> {
     range: Range<u32>,
     _p: PhantomData<T>,
@@ -716,6 +716,26 @@ impl<T> Iterator for IdRange<T> {
         self.range.next().map(|raw| Idx::from_raw(raw.into()))
     }
 }
+
+impl<T> fmt::Debug for IdRange<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple(&format!("IdRange::<{}>", type_name::<T>())).field(&self.range).finish()
+    }
+}
+
+impl<T> Clone for IdRange<T> {
+    fn clone(&self) -> Self {
+        Self { range: self.range.clone(), _p: PhantomData }
+    }
+}
+
+impl<T> PartialEq for IdRange<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.range == other.range
+    }
+}
+
+impl<T> Eq for IdRange<T> {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Fields {

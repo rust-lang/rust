@@ -257,14 +257,14 @@ impl Ctx {
         let generic_params = self.lower_generic_params(GenericsOwner::Enum, enum_);
         let variants = match &enum_.variant_list() {
             Some(variant_list) => self.lower_variants(variant_list),
-            None => self.next_variant_idx()..self.next_variant_idx(),
+            None => IdRange::new(self.next_variant_idx()..self.next_variant_idx()),
         };
         let ast_id = self.source_ast_id_map.ast_id(enum_);
         let res = Enum { name, visibility, generic_params, variants, ast_id };
         Some(id(self.data().enums.alloc(res)))
     }
 
-    fn lower_variants(&mut self, variants: &ast::EnumVariantList) -> Range<Idx<Variant>> {
+    fn lower_variants(&mut self, variants: &ast::EnumVariantList) -> IdRange<Variant> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
@@ -273,7 +273,7 @@ impl Ctx {
             }
         }
         let end = self.next_variant_idx();
-        start..end
+        IdRange::new(start..end)
     }
 
     fn lower_variant(&mut self, variant: &ast::EnumVariant) -> Option<Variant> {
