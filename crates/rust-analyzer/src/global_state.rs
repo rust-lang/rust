@@ -9,7 +9,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_db::{CrateId, SourceRoot, VfsPath};
-use ra_flycheck::{Flycheck, FlycheckConfig};
+use ra_flycheck::{FlycheckConfig, FlycheckHandle};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
 use stdx::format_to;
@@ -27,12 +27,15 @@ use crate::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-fn create_flycheck(workspaces: &[ProjectWorkspace], config: &FlycheckConfig) -> Option<Flycheck> {
+fn create_flycheck(
+    workspaces: &[ProjectWorkspace],
+    config: &FlycheckConfig,
+) -> Option<FlycheckHandle> {
     // FIXME: Figure out the multi-workspace situation
     workspaces.iter().find_map(move |w| match w {
         ProjectWorkspace::Cargo { cargo, .. } => {
             let cargo_project_root = cargo.workspace_root().to_path_buf();
-            Some(Flycheck::new(config.clone(), cargo_project_root.into()))
+            Some(FlycheckHandle::spawn(config.clone(), cargo_project_root.into()))
         }
         ProjectWorkspace::Json { .. } => {
             log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
@@ -63,7 +66,7 @@ pub(crate) struct GlobalState {
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) loader: Box<dyn vfs::loader::Handle>,
     pub(crate) task_receiver: Receiver<vfs::loader::Message>,
-    pub(crate) flycheck: Option<Flycheck>,
+    pub(crate) flycheck: Option<FlycheckHandle>,
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: FxHashSet<VfsPath>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,

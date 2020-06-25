@@ -48,21 +48,21 @@ impl fmt::Display for FlycheckConfig {
 /// diagnostics based on the output.
 /// The spawned thread is shut down when this struct is dropped.
 #[derive(Debug)]
-pub struct Flycheck {
+pub struct FlycheckHandle {
     // XXX: drop order is significant
     cmd_send: Sender<CheckCommand>,
     handle: jod_thread::JoinHandle<()>,
     pub task_recv: Receiver<CheckTask>,
 }
 
-impl Flycheck {
-    pub fn new(config: FlycheckConfig, workspace_root: PathBuf) -> Flycheck {
+impl FlycheckHandle {
+    pub fn spawn(config: FlycheckConfig, workspace_root: PathBuf) -> FlycheckHandle {
         let (task_send, task_recv) = unbounded::<CheckTask>();
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
         let handle = jod_thread::spawn(move || {
-            FlycheckThread::new(config, workspace_root).run(&task_send, &cmd_recv);
+            FlycheckActor::new(config, workspace_root).run(&task_send, &cmd_recv);
         });
-        Flycheck { task_recv, cmd_send, handle }
+        FlycheckHandle { task_recv, cmd_send, handle }
     }
 
     /// Schedule a re-start of the cargo check worker.
@@ -95,7 +95,7 @@ pub enum CheckCommand {
     Update,
 }
 
-struct FlycheckThread {
+struct FlycheckActor {
     config: FlycheckConfig,
     workspace_root: PathBuf,
     last_update_req: Option<Instant>,
@@ -109,9 +109,9 @@ struct FlycheckThread {
     check_process: Option<jod_thread::JoinHandle<()>>,
 }
 
-impl FlycheckThread {
-    fn new(config: FlycheckConfig, workspace_root: PathBuf) -> FlycheckThread {
-        FlycheckThread {
+impl FlycheckActor {
+    fn new(config: FlycheckConfig, workspace_root: PathBuf) -> FlycheckActor {
+        FlycheckActor {
             config,
             workspace_root,
             last_update_req: None,
