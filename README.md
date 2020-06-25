@@ -17,7 +17,7 @@ Read ["Installation"] from [The Book].
 _Note: If you wish to contribute to the compiler, you should read [this
 chapter][rustcguidebuild] of the rustc-dev-guide instead of this section._
 
-The Rust build system uses a Python script called x.py to build the compiler,
+The Rust build system uses a Python script called `x.py` to build the compiler,
 which manages the bootstrapping process. More information about it can be found 
 by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
 
