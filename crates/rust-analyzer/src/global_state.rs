@@ -5,7 +5,7 @@
 
 use std::{convert::TryFrom, sync::Arc};
 
-use crossbeam_channel::{unbounded, Receiver};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::{FlycheckConfig, FlycheckHandle};
 use lsp_types::Url;
 use parking_lot::RwLock;
@@ -22,6 +22,7 @@ use crate::{
     line_endings::LineEndings,
     main_loop::{ReqQueue, Task},
     request_metrics::{LatestRequests, RequestMetrics},
+    show_message,
     thread_pool::TaskPool,
     to_proto::url_from_abs_path,
     Result,
@@ -66,6 +67,7 @@ impl Default for Status {
 /// snapshot of the file systems, and `analysis_host`, which stores our
 /// incremental salsa database.
 pub(crate) struct GlobalState {
+    sender: Sender<lsp_server::Message>,
     pub(crate) config: Config,
     pub(crate) task_pool: (TaskPool<Task>, Receiver<Task>),
     pub(crate) analysis_host: AnalysisHost,
@@ -95,6 +97,7 @@ pub(crate) struct GlobalStateSnapshot {
 
 impl GlobalState {
     pub(crate) fn new(
+        sender: Sender<lsp_server::Message>,
         workspaces: Vec<ProjectWorkspace>,
         lru_capacity: Option<usize>,
         config: Config,
@@ -162,6 +165,7 @@ impl GlobalState {
         };
 
         let mut res = GlobalState {
+            sender,
             config,
             task_pool,
             analysis_host,
@@ -251,6 +255,19 @@ impl GlobalState {
 
     pub(crate) fn complete_request(&mut self, request: RequestMetrics) {
         self.latest_requests.write().record(request)
+    }
+
+    pub(crate) fn send(&mut self, message: lsp_server::Message) {
+        self.sender.send(message).unwrap()
+    }
+    pub(crate) fn show_message(&mut self, typ: lsp_types::MessageType, message: String) {
+        show_message(typ, message, &self.sender)
+    }
+}
+
+impl Drop for GlobalState {
+    fn drop(&mut self) {
+        self.analysis_host.request_cancellation()
     }
 }
 

@@ -1,12 +1,13 @@
 //! Utilities for LSP-related boilerplate code.
 use std::{error::Error, ops::Range};
 
-use crate::from_proto;
 use crossbeam_channel::Sender;
 use lsp_server::{Message, Notification};
 use ra_db::Canceled;
 use ra_ide::LineIndex;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::Serialize;
+
+use crate::from_proto;
 
 pub fn show_message(
     typ: lsp_types::MessageType,
@@ -27,14 +28,6 @@ pub(crate) fn notification_is<N: lsp_types::notification::Notification>(
     notification: &Notification,
 ) -> bool {
     notification.method == N::METHOD
-}
-
-pub(crate) fn notification_cast<N>(notification: Notification) -> Result<N::Params, Notification>
-where
-    N: lsp_types::notification::Notification,
-    N::Params: DeserializeOwned,
-{
-    notification.extract(N::METHOD)
 }
 
 pub(crate) fn notification_new<N>(params: N::Params) -> Notification
