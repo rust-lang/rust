@@ -81,19 +81,32 @@ impl<T> Visitor<'tcx> for TransferFunction<'a, T>
 where
     T: GenKill<Local>,
 {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(
+        &mut self,
+        &local: &Local,
+        context: PlaceContext,
+        has_projections: bool,
+        _: Location,
+    ) {
         use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, NonUseContext};
         match context {
             // These are handled specially in `call_return_effect` and `yield_resume_effect`.
             PlaceContext::MutatingUse(MutatingUseContext::Call | MutatingUseContext::Yield) => {}
 
+            // `*x = 4` does not mutate `x`. Treat it the same as a use.
+            PlaceContext::MutatingUse(MutatingUseContext::Deref) => {}
+
             // Otherwise, when a place is mutated, we must consider it possibly initialized.
             PlaceContext::MutatingUse(_) => self.trans.gen(local),
 
-            // If the local is moved out of, or if it gets marked `StorageDead`, consider it no
-            // longer initialized.
+            // If the local is moved out of entirely, or if it gets marked `StorageDead`, consider
+            // it no longer initialized.
             PlaceContext::NonUse(NonUseContext::StorageDead)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => self.trans.kill(local),
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
+                if !has_projections {
+                    self.trans.kill(local);
+                }
+            }
 
             // All other uses do not affect this analysis.
             PlaceContext::NonUse(
@@ -108,7 +121,7 @@ where
                 | NonMutatingUseContext::ShallowBorrow
                 | NonMutatingUseContext::UniqueBorrow
                 | NonMutatingUseContext::AddressOf
-                | NonMutatingUseContext::Projection,
+                | NonMutatingUseContext::Deref,
             ) => {}
         }
     }

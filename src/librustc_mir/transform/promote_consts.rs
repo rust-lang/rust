@@ -150,7 +150,13 @@ struct Collector<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
-    fn visit_local(&mut self, &index: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(
+        &mut self,
+        &index: &Local,
+        context: PlaceContext,
+        has_projections: bool,
+        location: Location,
+    ) {
         debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries and the return place
         match self.ccx.body.local_kind(index) {
@@ -161,7 +167,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         // Ignore drops, if the temp gets promoted,
         // then it's constant and thus drop is noop.
         // Non-uses are also irrelevant.
-        if context.is_drop() || !context.is_use() {
+        if context.is_drop() && !has_projections || !context.is_use() {
             debug!(
                 "visit_local: context.is_drop={:?} context.is_use={:?}",
                 context.is_drop(),
@@ -175,18 +181,20 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         if *temp == TempState::Undefined {
             match context {
                 PlaceContext::MutatingUse(MutatingUseContext::Store)
-                | PlaceContext::MutatingUse(MutatingUseContext::Call) => {
+                | PlaceContext::MutatingUse(MutatingUseContext::Call)
+                    if !has_projections =>
+                {
                     *temp = TempState::Defined { location, uses: 0 };
                     return;
                 }
                 _ => { /* mark as unpromotable below */ }
             }
         } else if let TempState::Defined { ref mut uses, .. } = *temp {
-            // We always allow borrows, even mutable ones, as we need
-            // to promote mutable borrows of some ZSTs e.g., `&mut []`.
             let allowed_use = match context {
-                PlaceContext::MutatingUse(MutatingUseContext::Borrow)
-                | PlaceContext::NonMutatingUse(_) => true,
+                // We allow borrows of unprojected locals, even mutable ones, as we need
+                // to promote mutable borrows of some ZSTs e.g., `&mut []`.
+                PlaceContext::MutatingUse(MutatingUseContext::Borrow) if !has_projections => true,
+                PlaceContext::NonMutatingUse(_) => true,
                 PlaceContext::MutatingUse(_) | PlaceContext::NonUse(_) => false,
             };
             debug!("visit_local: allowed_use={:?}", allowed_use);
@@ -1091,7 +1099,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: bool, _: Location) {
         if self.is_temp_kind(*local) {
             *local = self.promote_temp(*local);
         }

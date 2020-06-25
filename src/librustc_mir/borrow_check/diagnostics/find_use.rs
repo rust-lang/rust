@@ -106,7 +106,13 @@ enum DefUseResult {
 }
 
 impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(
+        &mut self,
+        &local: &Local,
+        context: PlaceContext,
+        has_projections: bool,
+        _: Location,
+    ) {
         let local_ty = self.body.local_decls[local].ty;
 
         let mut found_it = false;
@@ -118,6 +124,10 @@ impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
 
         if found_it {
             self.def_use_result = match def_use::categorize(context) {
+                // FIXME: This is to preserve the old behavior when `PlaceContext::Projection` was
+                // a thing.
+                _ if has_projections => Some(DefUseResult::UseLive { local }),
+
                 Some(DefUse::Def) => Some(DefUseResult::Def),
                 Some(DefUse::Use) => Some(DefUseResult::UseLive { local }),
                 Some(DefUse::Drop) => Some(DefUseResult::UseDrop { local }),

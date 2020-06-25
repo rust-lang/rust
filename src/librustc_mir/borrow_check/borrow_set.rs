@@ -96,7 +96,7 @@ impl LocalsStateAtExit {
         struct HasStorageDead(BitSet<Local>);
 
         impl<'tcx> Visitor<'tcx> for HasStorageDead {
-            fn visit_local(&mut self, local: &Local, ctx: PlaceContext, _: Location) {
+            fn visit_local(&mut self, local: &Local, ctx: PlaceContext, _: bool, _: Location) {
                 if ctx == PlaceContext::NonUse(NonUseContext::StorageDead) {
                     self.0.insert(*local);
                 }
@@ -214,7 +214,13 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         self.super_assign(assigned_place, rvalue, location)
     }
 
-    fn visit_local(&mut self, temp: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(
+        &mut self,
+        temp: &Local,
+        context: PlaceContext,
+        has_projections: bool,
+        location: Location,
+    ) {
         if !context.is_use() {
             return;
         }
@@ -230,6 +236,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             // doesn't count as an activation. =)
             if borrow_data.reserve_location == location
                 && context == PlaceContext::MutatingUse(MutatingUseContext::Store)
+                && !has_projections
             {
                 return;
             }

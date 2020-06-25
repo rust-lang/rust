@@ -87,7 +87,13 @@ struct DefUseFinder {
 }
 
 impl Visitor<'_> for DefUseFinder {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(
+        &mut self,
+        &local: &Local,
+        context: PlaceContext,
+        _has_projections: bool,
+        location: Location,
+    ) {
         let info = &mut self.info[local];
         if self.in_var_debug_info {
             info.var_debug_info_indices.push(self.var_debug_info_index);
@@ -150,7 +156,13 @@ impl MutVisitor<'tcx> for MutateUseVisitor<'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, local: &mut Local, _context: PlaceContext, _location: Location) {
+    fn visit_local(
+        &mut self,
+        local: &mut Local,
+        _context: PlaceContext,
+        _: bool,
+        _location: Location,
+    ) {
         if *local == self.query {
             *local = self.new_local;
         }

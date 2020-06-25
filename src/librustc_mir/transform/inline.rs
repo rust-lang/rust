@@ -679,7 +679,13 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, local: &mut Local, _ctxt: PlaceContext, _location: Location) {
+    fn visit_local(
+        &mut self,
+        local: &mut Local,
+        _ctxt: PlaceContext,
+        _: bool,
+        _location: Location,
+    ) {
         *local = self.make_integrate_local(*local);
     }
 

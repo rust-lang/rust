@@ -678,6 +678,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         &mut self,
         _place_local: &Local,
         _context: mir::visit::PlaceContext,
+        _has_projections: bool,
         _location: Location,
     ) {
     }

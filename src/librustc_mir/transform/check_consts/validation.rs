@@ -4,7 +4,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir::{self as hir, lang_items};
 use rustc_hir::{def_id::DefId, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{self, Instance, InstanceDef, TyCtxt};
@@ -272,38 +272,32 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         trace!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
         // Special-case reborrows to be more like a copy of a reference.
+        //
+        // In other words, `&*(x.f)` is treated like a copy of `x.f`.
         match *rvalue {
             Rvalue::Ref(_, kind, place) => {
                 if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, self.body, place) {
-                    let ctx = match kind {
-                        BorrowKind::Shared => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
-                        }
-                        BorrowKind::Shallow => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
-                        }
-                        BorrowKind::Unique => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
+                    let mut ctx = match kind {
+                        BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => {
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
                         }
                         BorrowKind::Mut { .. } => {
-                            PlaceContext::MutatingUse(MutatingUseContext::Borrow)
+                            // `&mut` does not implement `Copy`. While `Copy` vs. `Move` shouldn't
+                            // matter in this context, use the correct `PlaceContext` regardless.
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
                         }
                     };
-                    self.visit_local(&place.local, ctx, location);
-                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
+
+                    self.visit_local(&place.local, ctx, !reborrowed_proj.is_empty(), location);
+                    self.super_projection(place.local, reborrowed_proj, &mut ctx, location);
                     return;
                 }
             }
-            Rvalue::AddressOf(mutbl, place) => {
+            Rvalue::AddressOf(_, place) => {
                 if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, self.body, place) {
-                    let ctx = match mutbl {
-                        Mutability::Not => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
-                        }
-                        Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
-                    };
-                    self.visit_local(&place.local, ctx, location);
-                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
+                    let mut ctx = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
+                    self.visit_local(&place.local, ctx, !reborrowed_proj.is_empty(), location);
+                    self.super_projection(place.local, reborrowed_proj, &mut ctx, location);
                     return;
                 }
             }

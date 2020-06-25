@@ -92,9 +92,15 @@ impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
 where
     T: GenKill<Local>,
 {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(
+        &mut self,
+        &local: &Local,
+        context: PlaceContext,
+        has_projections: bool,
+        _: Location,
+    ) {
         match DefUse::for_place(context) {
-            Some(DefUse::Def) => self.0.kill(local),
+            Some(DefUse::Def) if !has_projections => self.0.kill(local),
             Some(DefUse::Use) => self.0.gen(local),
             _ => {}
         }
@@ -126,7 +132,7 @@ impl DefUse {
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Borrow
                 | MutatingUseContext::Drop
-                | MutatingUseContext::Projection
+                | MutatingUseContext::Deref
                 | MutatingUseContext::Retag,
             )
             | PlaceContext::NonMutatingUse(
@@ -134,7 +140,7 @@ impl DefUse {
                 | NonMutatingUseContext::Copy
                 | NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::Move
-                | NonMutatingUseContext::Projection
+                | NonMutatingUseContext::Deref
                 | NonMutatingUseContext::ShallowBorrow
                 | NonMutatingUseContext::SharedBorrow
                 | NonMutatingUseContext::UniqueBorrow,

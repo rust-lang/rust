@@ -87,7 +87,7 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor<'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: bool, _: Location) {
         if *local == self.from {
             *local = self.to;
         }
@@ -113,7 +113,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: bool, _: Location) {
         assert_ne!(*local, SELF_ARG);
     }
 
@@ -128,7 +128,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
                 self.tcx,
             );
         } else {
-            self.visit_local(&mut place.local, context, location);
+            self.visit_local(&mut place.local, context, !place.projection.is_empty(), location);
 
             for elem in place.projection.iter() {
                 if let PlaceElem::Index(local) = elem {
@@ -149,7 +149,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: bool, _: Location) {
         assert_ne!(*local, SELF_ARG);
     }
 
@@ -167,7 +167,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                 self.tcx,
             );
         } else {
-            self.visit_local(&mut place.local, context, location);
+            self.visit_local(&mut place.local, context, !place.projection.is_empty(), location);
 
             for elem in place.projection.iter() {
                 if let PlaceElem::Index(local) = elem {
@@ -284,7 +284,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: bool, _: Location) {
         assert_eq!(self.remap.get(local), None);
     }
 

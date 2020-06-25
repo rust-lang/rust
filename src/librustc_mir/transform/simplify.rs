@@ -382,7 +382,13 @@ impl<'a, 'tcx> DeclMarker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
-    fn visit_local(&mut self, local: &Local, ctx: PlaceContext, location: Location) {
+    fn visit_local(
+        &mut self,
+        local: &Local,
+        ctx: PlaceContext,
+        has_projections: bool,
+        location: Location,
+    ) {
         // Ignore storage markers altogether, they get removed along with their otherwise unused
         // decls.
         // FIXME: Extend this to all non-uses.
@@ -393,9 +399,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
         // Ignore stores of constants because `ConstProp` and `CopyProp` can remove uses of many
         // of these locals. However, if the local is still needed, then it will be referenced in
         // another place and we'll mark it as being used there.
-        if ctx == PlaceContext::MutatingUse(MutatingUseContext::Store)
-            || ctx == PlaceContext::MutatingUse(MutatingUseContext::Projection)
-        {
+        if ctx == PlaceContext::MutatingUse(MutatingUseContext::Store) || has_projections {
             let block = &self.body.basic_blocks()[location.block];
             if location.statement_index != block.statements.len() {
                 let stmt = &block.statements[location.statement_index];
@@ -444,10 +448,16 @@ impl<'a, 'tcx> StatementDeclMarker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for StatementDeclMarker<'a, 'tcx> {
-    fn visit_local(&mut self, local: &Local, context: PlaceContext, _location: Location) {
+    fn visit_local(
+        &mut self,
+        local: &Local,
+        context: PlaceContext,
+        has_projections: bool,
+        _location: Location,
+    ) {
         // Skip the lvalue for assignments
         if let StatementKind::Assign(box (p, _)) = self.statement.kind {
-            if p.local == *local && context.is_place_assignment() {
+            if p.local == *local && context.is_place_assignment() && !has_projections {
                 return;
             }
         }
@@ -526,7 +536,7 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
+    fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: bool, _: Location) {
         *l = self.map[*l].unwrap();
     }
 }

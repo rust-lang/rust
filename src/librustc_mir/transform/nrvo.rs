@@ -196,7 +196,7 @@ impl MutVisitor<'tcx> for RenameToReturnPlace<'tcx> {
         self.super_terminator(terminator, loc);
     }
 
-    fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
+    fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: bool, _: Location) {
         assert_ne!(*l, mir::RETURN_PLACE);
         if *l == self.to_rename {
             *l = mir::RETURN_PLACE;
@@ -215,7 +215,7 @@ impl IsReturnPlaceRead {
 }
 
 impl Visitor<'tcx> for IsReturnPlaceRead {
-    fn visit_local(&mut self, &l: &Local, ctxt: PlaceContext, _: Location) {
+    fn visit_local(&mut self, &l: &Local, ctxt: PlaceContext, _: bool, _: Location) {
         if l == mir::RETURN_PLACE && ctxt.is_use() && !ctxt.is_place_assignment() {
             self.0 = true;
         }

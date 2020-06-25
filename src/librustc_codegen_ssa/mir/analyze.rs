@@ -160,7 +160,13 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         self.seen_disqualifying_projection = false;
     }
 
-    fn visit_local(&mut self, &local: &mir::Local, context: PlaceContext, _: bool, location: Location) {
+    fn visit_local(
+        &mut self,
+        &local: &mir::Local,
+        context: PlaceContext,
+        _: bool,
+        location: Location,
+    ) {
         if self.seen_disqualifying_projection {
             self.not_ssa(local);
         }
@@ -173,9 +179,11 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             PlaceContext::NonUse(_) | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
 
-            PlaceContext::MutatingUse(MutatingUseContext::Deref) |
-            PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::Copy | NonMutatingUseContext::Move | NonMutatingUseContext::Deref,
+            PlaceContext::MutatingUse(MutatingUseContext::Deref)
+            | PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::Copy
+                | NonMutatingUseContext::Move
+                | NonMutatingUseContext::Deref,
             ) => {
                 // Reads from uninitialized variables (e.g., in dead code, after
                 // optimizations) require locals to be in (uninitialized) memory.

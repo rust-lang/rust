@@ -763,15 +763,12 @@ impl CanConstProp {
 }
 
 impl<'tcx> Visitor<'tcx> for CanConstProp {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: bool, _: Location) {
         use rustc_middle::mir::visit::PlaceContext::*;
         match context {
-            // Projections are fine, because `&mut foo.x` will be caught by
-            // `MutatingUseContext::Borrow` elsewhere.
-            MutatingUse(MutatingUseContext::Projection)
             // These are just stores, where the storing is not propagatable, but there may be later
             // mutations of the same local via `Store`
-            | MutatingUse(MutatingUseContext::Call)
+            MutatingUse(MutatingUseContext::Call)
             // Actual store that can possibly even propagate a value
             | MutatingUse(MutatingUseContext::Store) => {
                 if !self.found_assignment.insert(local) {
@@ -795,7 +792,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             NonMutatingUse(NonMutatingUseContext::Copy)
             | NonMutatingUse(NonMutatingUseContext::Move)
             | NonMutatingUse(NonMutatingUseContext::Inspect)
-            | NonMutatingUse(NonMutatingUseContext::Projection)
+            | NonMutatingUse(NonMutatingUseContext::Deref)
             | NonUse(_) => {}
 
             // These could be propagated with a smarter analysis or just some careful thinking about
@@ -803,6 +800,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             MutatingUse(MutatingUseContext::AsmOutput)
             | MutatingUse(MutatingUseContext::Yield)
             | MutatingUse(MutatingUseContext::Drop)
+            | MutatingUse(MutatingUseContext::Deref)
             | MutatingUse(MutatingUseContext::Retag)
             // These can't ever be propagated under any scheme, as we can't reason about indirect
             // mutation.

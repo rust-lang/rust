@@ -55,8 +55,18 @@ impl UseFactsExtractor<'_> {
 }
 
 impl Visitor<'tcx> for UseFactsExtractor<'_> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(
+        &mut self,
+        &local: &Local,
+        context: PlaceContext,
+        has_projections: bool,
+        location: Location,
+    ) {
         match def_use::categorize(context) {
+            // FIXME: This is to preserve the old behavior when `PlaceContext::Projection` was
+            // a thing.
+            _ if has_projections => self.insert_use(local, location),
+
             Some(DefUse::Def) => self.insert_def(local, location),
             Some(DefUse::Use) => self.insert_use(local, location),
             Some(DefUse::Drop) => self.insert_drop_use(local, location),

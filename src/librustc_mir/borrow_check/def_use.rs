@@ -40,8 +40,8 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         // purposes of NLL, these are special in that **all** the
         // lifetimes appearing in the variable must be live for each regular use.
 
-        PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) |
-        PlaceContext::MutatingUse(MutatingUseContext::Projection) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::Deref) |
+        PlaceContext::MutatingUse(MutatingUseContext::Deref) |
 
         // Borrows only consider their local used at the point of the borrow.
         // This won't affect the results since we use this analysis for generators
