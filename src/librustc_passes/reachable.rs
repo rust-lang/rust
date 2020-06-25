@@ -60,10 +60,10 @@ fn method_might_be_inlined(
 }
 
 // Information needed while computing reachability.
-struct ReachableContext<'a, 'tcx> {
+struct ReachableContext<'tcx> {
     // The type context.
     tcx: TyCtxt<'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
+    maybe_typeck_tables: Option<&'tcx ty::TypeckTables<'tcx>>,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: HirIdSet,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
@@ -73,7 +73,7 @@ struct ReachableContext<'a, 'tcx> {
     any_library: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
     type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -81,18 +81,17 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let old_tables = self.tables;
-        self.tables = self.tcx.body_tables(body);
+        let old_maybe_typeck_tables = self.maybe_typeck_tables.replace(self.tcx.body_tables(body));
         let body = self.tcx.hir().body(body);
         self.visit_body(body);
-        self.tables = old_tables;
+        self.maybe_typeck_tables = old_maybe_typeck_tables;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let res = match expr.kind {
-            hir::ExprKind::Path(ref qpath) => Some(self.tables.qpath_res(qpath, expr.hir_id)),
+            hir::ExprKind::Path(ref qpath) => Some(self.tables().qpath_res(qpath, expr.hir_id)),
             hir::ExprKind::MethodCall(..) => self
-                .tables
+                .tables()
                 .type_dependent_def(expr.hir_id)
                 .map(|(kind, def_id)| Res::Def(kind, def_id)),
             _ => None,
@@ -133,7 +132,15 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
+impl<'tcx> ReachableContext<'tcx> {
+    /// Gets the type-checking side-tables for the current body.
+    /// As this will ICE if called outside bodies, only call when working with
+    /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
+    #[track_caller]
+    fn tables(&self) -> &'tcx ty::TypeckTables<'tcx> {
+        self.maybe_typeck_tables.expect("`ReachableContext::tables` called outside of body")
+    }
+
     // Returns true if the given def ID represents a local item that is
     // eligible for inlining and false otherwise.
     fn def_id_represents_local_inlined_item(&self, def_id: DefId) -> bool {
@@ -381,7 +388,7 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet
         });
     let mut reachable_context = ReachableContext {
         tcx,
-        tables: &ty::TypeckTables::empty(None),
+        maybe_typeck_tables: None,
         reachable_symbols: Default::default(),
         worklist: Vec::new(),
         any_library,
