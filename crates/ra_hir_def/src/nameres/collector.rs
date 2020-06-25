@@ -305,6 +305,7 @@ impl DefCollector<'_> {
                 self.def_map.root,
                 &[(name, PerNs::macros(macro_, Visibility::Public))],
                 Visibility::Public,
+                false,
             );
         }
     }
@@ -330,6 +331,7 @@ impl DefCollector<'_> {
             self.def_map.root,
             &[(name, PerNs::macros(macro_, Visibility::Public))],
             Visibility::Public,
+            false,
         );
     }
 
@@ -380,35 +382,25 @@ impl DefCollector<'_> {
 
         while self.unresolved_imports.len() < n_previous_unresolved {
             n_previous_unresolved = self.unresolved_imports.len();
-            let mut imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
-            for mut directive in &mut imports {
+            let imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
+            for mut directive in imports {
                 directive.status = self.resolve_import(directive.module_id, &directive.import);
-            }
-
-            let (glob_imports, non_glob_imports): (Vec<_>, Vec<_>) =
-                imports.into_iter().partition(|directive| directive.import.is_glob);
-            let mut record = |imports: Vec<ImportDirective>| {
-                for directive in imports {
-                    match directive.status {
-                        PartialResolvedImport::Indeterminate(_) => {
-                            self.record_resolved_import(&directive);
-                            // FIXME: For avoid performance regression,
-                            // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
-                            self.resolved_imports.push(directive)
-                        }
-                        PartialResolvedImport::Resolved(_) => {
-                            self.record_resolved_import(&directive);
-                            self.resolved_imports.push(directive)
-                        }
-                        PartialResolvedImport::Unresolved => {
-                            self.unresolved_imports.push(directive);
-                        }
+                match directive.status {
+                    PartialResolvedImport::Indeterminate(_) => {
+                        self.record_resolved_import(&directive);
+                        // FIXME: For avoid performance regression,
+                        // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
+                        self.resolved_imports.push(directive)
+                    }
+                    PartialResolvedImport::Resolved(_) => {
+                        self.record_resolved_import(&directive);
+                        self.resolved_imports.push(directive)
+                    }
+                    PartialResolvedImport::Unresolved => {
+                        self.unresolved_imports.push(directive);
                     }
                 }
-            };
-
-            record(glob_imports);
-            record(non_glob_imports);
+            }
         }
     }
 
@@ -486,7 +478,7 @@ impl DefCollector<'_> {
                             .filter(|(_, res)| !res.is_none())
                             .collect::<Vec<_>>();
 
-                        self.update(module_id, &items, vis);
+                        self.update(module_id, &items, vis, true);
                     } else {
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
@@ -508,7 +500,7 @@ impl DefCollector<'_> {
                             .filter(|(_, res)| !res.is_none())
                             .collect::<Vec<_>>();
 
-                        self.update(module_id, &items, vis);
+                        self.update(module_id, &items, vis, true);
                         // record the glob import in case we add further items
                         let glob = self.glob_imports.entry(m.local_id).or_default();
                         if !glob.iter().any(|(mid, _)| *mid == module_id) {
@@ -538,7 +530,7 @@ impl DefCollector<'_> {
                             (name, res)
                         })
                         .collect::<Vec<_>>();
-                    self.update(module_id, &resolutions, vis);
+                    self.update(module_id, &resolutions, vis, true);
                 }
                 Some(d) => {
                     log::debug!("glob import {:?} from non-module/enum {:?}", import, d);
@@ -564,15 +556,21 @@ impl DefCollector<'_> {
                         }
                     }
 
-                    self.update(module_id, &[(name, def)], vis);
+                    self.update(module_id, &[(name, def)], vis, false);
                 }
                 None => mark::hit!(bogus_paths),
             }
         }
     }
 
-    fn update(&mut self, module_id: LocalModuleId, resolutions: &[(Name, PerNs)], vis: Visibility) {
-        self.update_recursive(module_id, resolutions, vis, 0)
+    fn update(
+        &mut self,
+        module_id: LocalModuleId,
+        resolutions: &[(Name, PerNs)],
+        vis: Visibility,
+        is_from_glob: bool,
+    ) {
+        self.update_recursive(module_id, resolutions, vis, is_from_glob, 0)
     }
 
     fn update_recursive(
@@ -582,6 +580,9 @@ impl DefCollector<'_> {
         // All resolutions are imported with this visibility; the visibilies in
         // the `PerNs` values are ignored and overwritten
         vis: Visibility,
+        // All resolutions are imported with this glob status; the glob status
+        // in the `PerNs` values are ignored and overwritten
+        is_from_glob: bool,
         depth: usize,
     ) {
         if depth > 100 {
@@ -591,7 +592,8 @@ impl DefCollector<'_> {
         let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            changed |= scope.push_res(name.clone(), res.with_visibility(vis));
+            changed |=
+                scope.push_res(name.clone(), res.with_visibility(vis).from_glob(is_from_glob));
         }
 
         if !changed {
@@ -610,7 +612,13 @@ impl DefCollector<'_> {
             if !vis.is_visible_from_def_map(&self.def_map, glob_importing_module) {
                 continue;
             }
-            self.update_recursive(glob_importing_module, resolutions, glob_import_vis, depth + 1);
+            self.update_recursive(
+                glob_importing_module,
+                resolutions,
+                glob_import_vis,
+                true,
+                depth + 1,
+            );
         }
     }
 
@@ -932,6 +940,7 @@ impl ModCollector<'_, '_> {
                         self.module_id,
                         &[(name.clone(), PerNs::from_def(id, vis, has_constructor))],
                         vis,
+                        false,
                     )
                 }
             }
@@ -1034,7 +1043,12 @@ impl ModCollector<'_, '_> {
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
         let def: ModuleDefId = module.into();
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis, false))], vis);
+        self.def_collector.update(
+            self.module_id,
+            &[(name, PerNs::from_def(def, vis, false))],
+            vis,
+            false,
+        );
         res
     }
 

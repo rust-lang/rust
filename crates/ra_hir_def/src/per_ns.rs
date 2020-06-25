@@ -9,6 +9,7 @@ use crate::{item_scope::ItemInNs, visibility::Visibility, ModuleDefId};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PerNs {
+    pub from_glob: bool,
     pub types: Option<(ModuleDefId, Visibility)>,
     pub values: Option<(ModuleDefId, Visibility)>,
     pub macros: Option<(MacroDefId, Visibility)>,
@@ -16,29 +17,29 @@ pub struct PerNs {
 
 impl Default for PerNs {
     fn default() -> Self {
-        PerNs { types: None, values: None, macros: None }
+        PerNs { from_glob: false, types: None, values: None, macros: None }
     }
 }
 
 impl PerNs {
     pub fn none() -> PerNs {
-        PerNs { types: None, values: None, macros: None }
+        PerNs { from_glob: false, types: None, values: None, macros: None }
     }
 
     pub fn values(t: ModuleDefId, v: Visibility) -> PerNs {
-        PerNs { types: None, values: Some((t, v)), macros: None }
+        PerNs { from_glob: false, types: None, values: Some((t, v)), macros: None }
     }
 
     pub fn types(t: ModuleDefId, v: Visibility) -> PerNs {
-        PerNs { types: Some((t, v)), values: None, macros: None }
+        PerNs { from_glob: false, types: Some((t, v)), values: None, macros: None }
     }
 
     pub fn both(types: ModuleDefId, values: ModuleDefId, v: Visibility) -> PerNs {
-        PerNs { types: Some((types, v)), values: Some((values, v)), macros: None }
+        PerNs { from_glob: false, types: Some((types, v)), values: Some((values, v)), macros: None }
     }
 
     pub fn macros(macro_: MacroDefId, v: Visibility) -> PerNs {
-        PerNs { types: None, values: None, macros: Some((macro_, v)) }
+        PerNs { from_glob: false, types: None, values: None, macros: Some((macro_, v)) }
     }
 
     pub fn is_none(&self) -> bool {
@@ -63,6 +64,7 @@ impl PerNs {
 
     pub fn filter_visibility(self, mut f: impl FnMut(Visibility) -> bool) -> PerNs {
         PerNs {
+            from_glob: self.from_glob,
             types: self.types.filter(|(_, v)| f(*v)),
             values: self.values.filter(|(_, v)| f(*v)),
             macros: self.macros.filter(|(_, v)| f(*v)),
@@ -71,6 +73,7 @@ impl PerNs {
 
     pub fn with_visibility(self, vis: Visibility) -> PerNs {
         PerNs {
+            from_glob: self.from_glob,
             types: self.types.map(|(it, _)| (it, vis)),
             values: self.values.map(|(it, _)| (it, vis)),
             macros: self.macros.map(|(it, _)| (it, vis)),
@@ -79,6 +82,7 @@ impl PerNs {
 
     pub fn or(self, other: PerNs) -> PerNs {
         PerNs {
+            from_glob: self.from_glob,
             types: self.types.or(other.types),
             values: self.values.or(other.values),
             macros: self.macros.or(other.macros),
@@ -91,5 +95,9 @@ impl PerNs {
             .into_iter()
             .chain(self.values.map(|it| ItemInNs::Values(it.0)).into_iter())
             .chain(self.macros.map(|it| ItemInNs::Macros(it.0)).into_iter())
+    }
+
+    pub fn from_glob(self, from_glob: bool) -> PerNs {
+        PerNs { from_glob, ..self }
     }
 }

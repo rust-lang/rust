@@ -322,3 +322,47 @@ fn glob_shadowed_def_reversed() {
     "###
     );
 }
+
+#[test]
+fn glob_shadowed_def_dependencies() {
+    let map = def_map(
+        r###"
+        //- /lib.rs
+        mod a { pub mod foo { pub struct X; } }
+        mod b { pub use super::a::foo; }
+        mod c { pub mod foo { pub struct Y; } }
+        mod d {
+            use super::c::foo;
+            use super::b::*;
+            use foo::Y;
+        }
+        "###,
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮a: t
+        ⋮b: t
+        ⋮c: t
+        ⋮d: t
+        ⋮
+        ⋮crate::d
+        ⋮Y: t v
+        ⋮foo: t
+        ⋮
+        ⋮crate::c
+        ⋮foo: t
+        ⋮
+        ⋮crate::c::foo
+        ⋮Y: t v
+        ⋮
+        ⋮crate::b
+        ⋮foo: t
+        ⋮
+        ⋮crate::a
+        ⋮foo: t
+        ⋮
+        ⋮crate::a::foo
+        ⋮X: t v
+    "###
+    );
+}

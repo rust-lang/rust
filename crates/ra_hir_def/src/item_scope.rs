@@ -128,15 +128,19 @@ impl ItemScope {
         let existing = self.visible.entry(name).or_default();
 
         macro_rules! check_changed {
-            ($changed:ident, $existing:expr, $def:expr) => {
-                match ($existing, $def) {
+            ($changed:ident, ($existing:ident/$def:ident).$field:ident) => {
+                match ($existing.$field, $def.$field) {
                     (None, Some(_)) => {
-                        $existing = $def;
+                        $existing.from_glob = $def.from_glob;
+                        $existing.$field = $def.$field;
                         $changed = true;
                     }
-                    (Some(e), Some(d)) if e.0 != d.0 => {
+                    // Only update if the new def came from a specific import and the existing
+                    // import came from a glob import.
+                    (Some(_), Some(_)) if $existing.from_glob && !$def.from_glob => {
                         mark::hit!(import_shadowed);
-                        $existing = $def;
+                        $existing.from_glob = $def.from_glob;
+                        $existing.$field = $def.$field;
                         $changed = true;
                     }
                     _ => {}
@@ -144,9 +148,9 @@ impl ItemScope {
             };
         }
 
-        check_changed!(changed, existing.types, def.types);
-        check_changed!(changed, existing.values, def.values);
-        check_changed!(changed, existing.macros, def.macros);
+        check_changed!(changed, (existing / def).types);
+        check_changed!(changed, (existing / def).values);
+        check_changed!(changed, (existing / def).macros);
 
         changed
     }
