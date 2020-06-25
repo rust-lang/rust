@@ -56,13 +56,13 @@ pub struct FlycheckHandle {
 
 impl FlycheckHandle {
     pub fn spawn(
+        sender: Box<dyn Fn(CheckTask) + Send>,
         config: FlycheckConfig,
         workspace_root: PathBuf,
-        sender: Box<dyn Fn(CheckTask) + Send>,
     ) -> FlycheckHandle {
         let (cmd_send, cmd_recv) = unbounded::<CheckCommand>();
         let handle = jod_thread::spawn(move || {
-            FlycheckActor::new(config, workspace_root, sender).run(&cmd_recv);
+            FlycheckActor::new(sender, config, workspace_root).run(&cmd_recv);
         });
         FlycheckHandle { cmd_send, handle }
     }
@@ -114,9 +114,9 @@ struct FlycheckActor {
 
 impl FlycheckActor {
     fn new(
+        sender: Box<dyn Fn(CheckTask) + Send>,
         config: FlycheckConfig,
         workspace_root: PathBuf,
-        sender: Box<dyn Fn(CheckTask) + Send>,
     ) -> FlycheckActor {
         FlycheckActor {
             sender,

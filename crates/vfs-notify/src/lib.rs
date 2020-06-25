@@ -20,7 +20,7 @@ use walkdir::WalkDir;
 use crate::include::Include;
 
 #[derive(Debug)]
-pub struct LoaderHandle {
+pub struct NotifyHandle {
     // Relative order of fields below is significant.
     sender: crossbeam_channel::Sender<Message>,
     _thread: jod_thread::JoinHandle,
@@ -32,12 +32,12 @@ enum Message {
     Invalidate(AbsPathBuf),
 }
 
-impl loader::Handle for LoaderHandle {
-    fn spawn(sender: loader::Sender) -> LoaderHandle {
-        let actor = LoaderActor::new(sender);
+impl loader::Handle for NotifyHandle {
+    fn spawn(sender: loader::Sender) -> NotifyHandle {
+        let actor = NotifyActor::new(sender);
         let (sender, receiver) = unbounded::<Message>();
         let thread = jod_thread::spawn(move || actor.run(receiver));
-        LoaderHandle { sender, _thread: thread }
+        NotifyHandle { sender, _thread: thread }
     }
     fn set_config(&mut self, config: loader::Config) {
         self.sender.send(Message::Config(config)).unwrap()
@@ -52,10 +52,10 @@ impl loader::Handle for LoaderHandle {
 
 type NotifyEvent = notify::Result<notify::Event>;
 
-struct LoaderActor {
+struct NotifyActor {
+    sender: loader::Sender,
     config: Vec<(AbsPathBuf, Include, bool)>,
     watched_paths: FxHashSet<AbsPathBuf>,
-    sender: loader::Sender,
     // Drop order of fields bellow is significant,
     watcher: Option<RecommendedWatcher>,
     watcher_receiver: Receiver<NotifyEvent>,
@@ -67,19 +67,19 @@ enum Event {
     NotifyEvent(NotifyEvent),
 }
 
-impl LoaderActor {
-    fn new(sender: loader::Sender) -> LoaderActor {
+impl NotifyActor {
+    fn new(sender: loader::Sender) -> NotifyActor {
         let (watcher_sender, watcher_receiver) = unbounded();
         let watcher = log_notify_error(Watcher::new_immediate(move |event| {
             watcher_sender.send(event).unwrap()
         }));
 
-        LoaderActor {
-            watcher,
-            watcher_receiver,
-            watched_paths: FxHashSet::default(),
+        NotifyActor {
             sender,
             config: Vec::new(),
+            watched_paths: FxHashSet::default(),
+            watcher,
+            watcher_receiver,
         }
     }
 

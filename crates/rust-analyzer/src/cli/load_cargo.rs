@@ -28,7 +28,7 @@ pub fn load_cargo(
     let mut vfs = vfs::Vfs::default();
     let mut loader = {
         let loader =
-            vfs_notify::LoaderHandle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+            vfs_notify::NotifyHandle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
         Box::new(loader)
     };
 

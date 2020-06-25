@@ -37,7 +37,7 @@ fn create_flycheck(
             let (sender, receiver) = unbounded();
             let sender = Box::new(move |msg| sender.send(msg).unwrap());
             let cargo_project_root = cargo.workspace_root().to_path_buf();
-            let flycheck = FlycheckHandle::spawn(config.clone(), cargo_project_root.into(), sender);
+            let flycheck = FlycheckHandle::spawn(sender, config.clone(), cargo_project_root.into());
             Some((flycheck, receiver))
         }
         ProjectWorkspace::Json { .. } => {
@@ -121,7 +121,7 @@ impl GlobalState {
         };
 
         let mut loader = {
-            let loader = vfs_notify::LoaderHandle::spawn(Box::new(move |msg| {
+            let loader = vfs_notify::NotifyHandle::spawn(Box::new(move |msg| {
                 task_sender.send(msg).unwrap()
             }));
             Box::new(loader)
