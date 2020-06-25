@@ -5,6 +5,7 @@ mod lower;
 mod tests;
 
 use std::{
+    any::type_name,
     fmt::{self, Debug},
     hash::{Hash, Hasher},
     marker::PhantomData,
@@ -178,8 +179,8 @@ impl ItemTree {
         self.attrs.get(&AttrOwner::TopLevel).unwrap_or(&Attrs::EMPTY)
     }
 
-    pub fn attrs(&self, of: ModItem) -> &Attrs {
-        self.attrs.get(&AttrOwner::ModItem(of)).unwrap_or(&Attrs::EMPTY)
+    pub fn attrs(&self, of: AttrOwner) -> &Attrs {
+        self.attrs.get(&of).unwrap_or(&Attrs::EMPTY)
     }
 
     /// Returns the lowered inner items that `ast` corresponds to.
@@ -282,15 +283,32 @@ struct ItemTreeData {
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-enum AttrOwner {
+pub enum AttrOwner {
     /// Attributes on an item.
     ModItem(ModItem),
     /// Inner attributes of the source file.
     TopLevel,
+
+    Variant(Idx<Variant>),
+    Field(Idx<Field>),
     // FIXME: Store variant and field attrs, and stop reparsing them in `attrs_query`.
 }
 
-/// Trait implemented by all nodes in the item tree.
+macro_rules! from_attrs {
+    ( $( $var:ident($t:ty) ),+ ) => {
+        $(
+            impl From<$t> for AttrOwner {
+                fn from(t: $t) -> AttrOwner {
+                    AttrOwner::$var(t)
+                }
+            }
+        )+
+    };
+}
+
+from_attrs!(ModItem(ModItem), Variant(Idx<Variant>), Field(Idx<Field>));
+
+/// Trait implemented by all item nodes in the item tree.
 pub trait ItemTreeNode: Clone {
     type Source: AstNode + Into<ast::ModuleItem>;
 
@@ -523,7 +541,7 @@ pub struct Enum {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
-    pub variants: Range<Idx<Variant>>,
+    pub variants: IdRange<Variant>,
     pub ast_id: FileAstId<ast::EnumDef>,
 }
 
@@ -681,10 +699,48 @@ pub struct Variant {
     pub fields: Fields,
 }
 
+pub struct IdRange<T> {
+    range: Range<u32>,
+    _p: PhantomData<T>,
+}
+
+impl<T> IdRange<T> {
+    fn new(range: Range<Idx<T>>) -> Self {
+        Self { range: range.start.into_raw().into()..range.end.into_raw().into(), _p: PhantomData }
+    }
+}
+
+impl<T> Iterator for IdRange<T> {
+    type Item = Idx<T>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.range.next().map(|raw| Idx::from_raw(raw.into()))
+    }
+}
+
+impl<T> fmt::Debug for IdRange<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple(&format!("IdRange::<{}>", type_name::<T>())).field(&self.range).finish()
+    }
+}
+
+impl<T> Clone for IdRange<T> {
+    fn clone(&self) -> Self {
+        Self { range: self.range.clone(), _p: PhantomData }
+    }
+}
+
+impl<T> PartialEq for IdRange<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.range == other.range
+    }
+}
+
+impl<T> Eq for IdRange<T> {}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Fields {
-    Record(Range<Idx<Field>>),
-    Tuple(Range<Idx<Field>>),
+    Record(IdRange<Field>),
+    Tuple(IdRange<Field>),
     Unit,
 }
 

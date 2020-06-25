@@ -742,7 +742,7 @@ impl ModCollector<'_, '_> {
         // `#[macro_use] extern crate` is hoisted to imports macros before collecting
         // any other items.
         for item in items {
-            if self.is_cfg_enabled(self.item_tree.attrs(*item)) {
+            if self.is_cfg_enabled(self.item_tree.attrs((*item).into())) {
                 if let ModItem::ExternCrate(id) = item {
                     let import = self.item_tree[*id].clone();
                     if import.is_macro_use {
@@ -753,7 +753,7 @@ impl ModCollector<'_, '_> {
         }
 
         for &item in items {
-            let attrs = self.item_tree.attrs(item);
+            let attrs = self.item_tree.attrs(item.into());
             if self.is_cfg_enabled(attrs) {
                 let module =
                     ModuleId { krate: self.def_collector.def_map.krate, local_id: self.module_id };

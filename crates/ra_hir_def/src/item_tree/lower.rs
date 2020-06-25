@@ -126,15 +126,15 @@ impl Ctx {
 
         if !attrs.is_empty() {
             for item in items.iter().flat_map(|items| &items.0) {
-                self.add_attrs(*item, attrs.clone());
+                self.add_attrs((*item).into(), attrs.clone());
             }
         }
 
         items
     }
 
-    fn add_attrs(&mut self, item: ModItem, attrs: Attrs) {
-        match self.tree.attrs.entry(AttrOwner::ModItem(item)) {
+    fn add_attrs(&mut self, item: AttrOwner, attrs: Attrs) {
+        match self.tree.attrs.entry(item) {
             Entry::Occupied(mut entry) => {
                 *entry.get_mut() = entry.get().merge(attrs);
             }
@@ -196,15 +196,16 @@ impl Ctx {
         }
     }
 
-    fn lower_record_fields(&mut self, fields: &ast::RecordFieldDefList) -> Range<Idx<Field>> {
+    fn lower_record_fields(&mut self, fields: &ast::RecordFieldDefList) -> IdRange<Field> {
         let start = self.next_field_idx();
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
-                self.data().fields.alloc(data);
+                let idx = self.data().fields.alloc(data);
+                self.add_attrs(idx.into(), Attrs::new(&field, &self.hygiene));
             }
         }
         let end = self.next_field_idx();
-        start..end
+        IdRange::new(start..end)
     }
 
     fn lower_record_field(&mut self, field: &ast::RecordFieldDef) -> Option<Field> {
@@ -215,15 +216,16 @@ impl Ctx {
         Some(res)
     }
 
-    fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldDefList) -> Range<Idx<Field>> {
+    fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldDefList) -> IdRange<Field> {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
             if let Some(data) = self.lower_tuple_field(i, &field) {
-                self.data().fields.alloc(data);
+                let idx = self.data().fields.alloc(data);
+                self.add_attrs(idx.into(), Attrs::new(&field, &self.hygiene));
             }
         }
         let end = self.next_field_idx();
-        start..end
+        IdRange::new(start..end)
     }
 
     fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleFieldDef) -> Option<Field> {
@@ -242,7 +244,7 @@ impl Ctx {
             Some(record_field_def_list) => {
                 self.lower_fields(&StructKind::Record(record_field_def_list))
             }
-            None => Fields::Record(self.next_field_idx()..self.next_field_idx()),
+            None => Fields::Record(IdRange::new(self.next_field_idx()..self.next_field_idx())),
         };
         let ast_id = self.source_ast_id_map.ast_id(union);
         let res = Union { name, visibility, generic_params, fields, ast_id };
@@ -255,22 +257,23 @@ impl Ctx {
         let generic_params = self.lower_generic_params(GenericsOwner::Enum, enum_);
         let variants = match &enum_.variant_list() {
             Some(variant_list) => self.lower_variants(variant_list),
-            None => self.next_variant_idx()..self.next_variant_idx(),
+            None => IdRange::new(self.next_variant_idx()..self.next_variant_idx()),
         };
         let ast_id = self.source_ast_id_map.ast_id(enum_);
         let res = Enum { name, visibility, generic_params, variants, ast_id };
         Some(id(self.data().enums.alloc(res)))
     }
 
-    fn lower_variants(&mut self, variants: &ast::EnumVariantList) -> Range<Idx<Variant>> {
+    fn lower_variants(&mut self, variants: &ast::EnumVariantList) -> IdRange<Variant> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
-                self.data().variants.alloc(data);
+                let idx = self.data().variants.alloc(data);
+                self.add_attrs(idx.into(), Attrs::new(&variant, &self.hygiene));
             }
         }
         let end = self.next_variant_idx();
-        start..end
+        IdRange::new(start..end)
     }
 
     fn lower_variant(&mut self, variant: &ast::EnumVariant) -> Option<Variant> {
@@ -419,7 +422,7 @@ impl Ctx {
                         let attrs = Attrs::new(&item, &this.hygiene);
                         this.collect_inner_items(item.syntax());
                         this.lower_assoc_item(&item).map(|item| {
-                            this.add_attrs(item.into(), attrs);
+                            this.add_attrs(ModItem::from(item).into(), attrs);
                             item
                         })
                     })
@@ -453,7 +456,7 @@ impl Ctx {
                 self.collect_inner_items(item.syntax());
                 let assoc = self.lower_assoc_item(&item)?;
                 let attrs = Attrs::new(&item, &self.hygiene);
-                self.add_attrs(assoc.into(), attrs);
+                self.add_attrs(ModItem::from(assoc).into(), attrs);
                 Some(assoc)
             })
             .collect();
@@ -539,7 +542,7 @@ impl Ctx {
                 .filter_map(|item| {
                     self.collect_inner_items(item.syntax());
                     let attrs = Attrs::new(&item, &self.hygiene);
-                    let id = match item {
+                    let id: ModItem = match item {
                         ast::ExternItem::FnDef(ast) => {
                             let func = self.lower_function(&ast)?;
                             func.into()
@@ -549,7 +552,7 @@ impl Ctx {
                             statik.into()
                         }
                     };
-                    self.add_attrs(id, attrs);
+                    self.add_attrs(id.into(), attrs);
                     Some(id)
                 })
                 .collect()

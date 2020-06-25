@@ -40,7 +40,7 @@ impl FunctionData {
             name: func.name.clone(),
             params: func.params.to_vec(),
             ret_type: func.ret_type.clone(),
-            attrs: item_tree.attrs(loc.id.value.into()).clone(),
+            attrs: item_tree.attrs(ModItem::from(loc.id.value).into()).clone(),
             has_self_param: func.has_self_param,
             is_unsafe: func.is_unsafe,
             visibility: item_tree[func.visibility].clone(),
@@ -224,7 +224,7 @@ fn collect_items(
         match item {
             AssocItem::Function(id) => {
                 let item = &item_tree[id];
-                let attrs = item_tree.attrs(id.into());
+                let attrs = item_tree.attrs(ModItem::from(id).into());
                 if !attrs.is_cfg_enabled(&cfg_options) {
                     continue;
                 }

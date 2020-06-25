@@ -92,7 +92,7 @@ fn print_item_tree(ra_fixture: &str) -> String {
 }
 
 fn fmt_mod_item(out: &mut String, tree: &ItemTree, item: ModItem) {
-    let attrs = tree.attrs(item);
+    let attrs = tree.attrs(item.into());
     if !attrs.is_empty() {
         format_to!(out, "#[{:?}]\n", attrs);
     }
@@ -237,13 +237,13 @@ Trait { name: Name(Text("Tr")), visibility: RawVisibilityId("pub(self)"), generi
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("struct0"))] }, input: None }]) }]
 Struct { name: Name(Text("Struct0")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(1), fields: Unit, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(3), kind: Unit }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("struct1"))] }, input: None }]) }]
-Struct { name: Name(Text("Struct1")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(2), fields: Tuple(Idx::<Field>(0)..Idx::<Field>(1)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(4), kind: Tuple }
+Struct { name: Name(Text("Struct1")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(2), fields: Tuple(IdRange::<ra_hir_def::item_tree::Field>(0..1)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(4), kind: Tuple }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("struct2"))] }, input: None }]) }]
-Struct { name: Name(Text("Struct2")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(3), fields: Record(Idx::<Field>(1)..Idx::<Field>(2)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(5), kind: Record }
+Struct { name: Name(Text("Struct2")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(3), fields: Record(IdRange::<ra_hir_def::item_tree::Field>(1..2)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::StructDef>(5), kind: Record }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("en"))] }, input: None }]) }]
-Enum { name: Name(Text("En")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(4294967295), variants: Idx::<Variant>(0)..Idx::<Variant>(1), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::EnumDef>(6) }
+Enum { name: Name(Text("En")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(4294967295), variants: IdRange::<ra_hir_def::item_tree::Variant>(0..1), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::EnumDef>(6) }
 #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("un"))] }, input: None }]) }]
-Union { name: Name(Text("Un")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(4294967295), fields: Record(Idx::<Field>(3)..Idx::<Field>(4)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::UnionDef>(7) }
+Union { name: Name(Text("Un")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(4294967295), fields: Record(IdRange::<ra_hir_def::item_tree::Field>(3..4)), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::UnionDef>(7) }
     "###);
 }
 
