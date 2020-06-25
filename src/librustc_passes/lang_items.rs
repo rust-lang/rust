@@ -7,17 +7,19 @@
 //! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
+use crate::check_attr::target_from_impl_item;
 use crate::weak_lang_items;
 
 use rustc_middle::middle::cstore::ExternCrate;
 use rustc_middle::ty::TyCtxt;
 
+use rustc_ast::ast::Attribute;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::{extract, ITEM_REFS};
-use rustc_hir::{LangItem, LanguageItems, Target};
+use rustc_hir::{HirId, LangItem, LanguageItems, Target};
 
 use rustc_middle::ty::query::Providers;
 
@@ -28,12 +30,37 @@ struct LanguageItemCollector<'tcx> {
 
 impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        if let Some((value, span)) = extract(&item.attrs) {
-            let actual_target = Target::from_item(item);
+        self.check_for_lang(Target::from_item(item), item.hir_id, item.attrs)
+    }
+
+    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
+        self.check_for_lang(
+            Target::from_trait_item(trait_item),
+            trait_item.hir_id,
+            trait_item.attrs,
+        )
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
+        self.check_for_lang(
+            target_from_impl_item(self.tcx, impl_item),
+            impl_item.hir_id,
+            impl_item.attrs,
+        )
+    }
+}
+
+impl LanguageItemCollector<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> LanguageItemCollector<'tcx> {
+        LanguageItemCollector { tcx, items: LanguageItems::new() }
+    }
+
+    fn check_for_lang(&mut self, actual_target: Target, hir_id: HirId, attrs: &[Attribute]) {
+        if let Some((value, span)) = extract(&attrs) {
             match ITEM_REFS.get(&*value.as_str()).cloned() {
                 // Known lang item with attribute on correct target.
                 Some((item_index, expected_target)) if actual_target == expected_target => {
-                    let def_id = self.tcx.hir().local_def_id(item.hir_id);
+                    let def_id = self.tcx.hir().local_def_id(hir_id);
                     self.collect_item(item_index, def_id.to_def_id());
                 }
                 // Known lang item with attribute on incorrect target.
@@ -69,20 +96,6 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
                 }
             }
         }
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
-        // At present, lang items are always items, not trait items.
-    }
-
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
-        // At present, lang items are always items, not impl items.
-    }
-}
-
-impl LanguageItemCollector<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> LanguageItemCollector<'tcx> {
-        LanguageItemCollector { tcx, items: LanguageItems::new() }
     }
 
     fn collect_item(&mut self, item_index: usize, item_def_id: DefId) {
