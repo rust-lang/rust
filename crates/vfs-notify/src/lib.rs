@@ -83,8 +83,8 @@ impl NotifyActor {
         }
     }
 
-    fn run(mut self, receiver: Receiver<Message>) {
-        while let Some(event) = self.next_event(&receiver) {
+    fn run(mut self, inbox: Receiver<Message>) {
+        while let Some(event) = self.next_event(&inbox) {
             log::debug!("vfs-notify event: {:?}", event);
             match event {
                 Event::Message(msg) => match msg {
