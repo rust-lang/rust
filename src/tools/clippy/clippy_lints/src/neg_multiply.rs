@@ -44,8 +44,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
 fn check_mul(cx: &LateContext<'_, '_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Lit(ref l) = lit.kind;
-        if let Constant::Int(1) = consts::lit_to_constant(&l.node, cx.tables.expr_ty_opt(lit));
-        if cx.tables.expr_ty(exp).is_integral();
+        if let Constant::Int(1) = consts::lit_to_constant(&l.node, cx.tables().expr_ty_opt(lit));
+        if cx.tables().expr_ty(exp).is_integral();
         then {
             span_lint(cx, NEG_MULTIPLY, span, "Negation by multiplying with `-1`");
         }

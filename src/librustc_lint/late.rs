@@ -30,6 +30,7 @@ use rustc_span::Span;
 
 use log::debug;
 use std::any::Any;
+use std::cell::Cell;
 use std::slice;
 
 /// Extract the `LintStore` from the query context.
@@ -104,12 +105,25 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         hir_visit::NestedVisitorMap::All(self.context.tcx.hir())
     }
 
-    fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let old_tables = self.context.tables;
-        self.context.tables = self.context.tcx.body_tables(body);
-        let body = self.context.tcx.hir().body(body);
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
+        let old_enclosing_body = self.context.enclosing_body.replace(body_id);
+        let old_cached_typeck_tables = self.context.cached_typeck_tables.get();
+
+        // HACK(eddyb) avoid trashing `cached_typeck_tables` when we're
+        // nested in `visit_fn`, which may have already resulted in them
+        // being queried.
+        if old_enclosing_body != Some(body_id) {
+            self.context.cached_typeck_tables.set(None);
+        }
+
+        let body = self.context.tcx.hir().body(body_id);
         self.visit_body(body);
-        self.context.tables = old_tables;
+        self.context.enclosing_body = old_enclosing_body;
+
+        // See HACK comment above.
+        if old_enclosing_body != Some(body_id) {
+            self.context.cached_typeck_tables.set(old_cached_typeck_tables);
+        }
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -181,13 +195,14 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
     ) {
         // Wrap in tables here, not just in visit_nested_body,
         // in order for `check_fn` to be able to use them.
-        let old_tables = self.context.tables;
-        self.context.tables = self.context.tcx.body_tables(body_id);
+        let old_enclosing_body = self.context.enclosing_body.replace(body_id);
+        let old_cached_typeck_tables = self.context.cached_typeck_tables.take();
         let body = self.context.tcx.hir().body(body_id);
         lint_callback!(self, check_fn, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body_id, span, id);
         lint_callback!(self, check_fn_post, fk, decl, body, span, id);
-        self.context.tables = old_tables;
+        self.context.enclosing_body = old_enclosing_body;
+        self.context.cached_typeck_tables.set(old_cached_typeck_tables);
     }
 
     fn visit_variant_data(
@@ -361,7 +376,9 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 
     let context = LateContext {
         tcx,
-        tables: &ty::TypeckTables::empty(None),
+        enclosing_body: None,
+        cached_typeck_tables: Cell::new(None),
+        empty_typeck_tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
         lint_store: unerased_lint_store(tcx),
@@ -408,7 +425,9 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
 
     let context = LateContext {
         tcx,
-        tables: &ty::TypeckTables::empty(None),
+        enclosing_body: None,
+        cached_typeck_tables: Cell::new(None),
+        empty_typeck_tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
         lint_store: unerased_lint_store(tcx),

@@ -192,7 +192,7 @@ fn lint_same_then_else(cx: &LateContext<'_, '_>, blocks: &[&Block<'_>]) {
 /// Implementation of `IFS_SAME_COND`.
 fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
     let hash: &dyn Fn(&&Expr<'_>) -> u64 = &|expr| -> u64 {
-        let mut h = SpanlessHash::new(cx, cx.tables);
+        let mut h = SpanlessHash::new(cx, cx.tables());
         h.hash_expr(expr);
         h.finish()
     };
@@ -215,7 +215,7 @@ fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
 /// Implementation of `SAME_FUNCTIONS_IN_IF_CONDITION`.
 fn lint_same_fns_in_if_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
     let hash: &dyn Fn(&&Expr<'_>) -> u64 = &|expr| -> u64 {
-        let mut h = SpanlessHash::new(cx, cx.tables);
+        let mut h = SpanlessHash::new(cx, cx.tables());
         h.hash_expr(expr);
         h.finish()
     };
@@ -251,7 +251,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr<'_>) {
 
     if let ExprKind::Match(_, ref arms, MatchSource::Normal) = expr.kind {
         let hash = |&(_, arm): &(usize, &Arm<'_>)| -> u64 {
-            let mut h = SpanlessHash::new(cx, cx.tables);
+            let mut h = SpanlessHash::new(cx, cx.tables());
             h.hash_expr(&arm.body);
             h.finish()
         };
@@ -320,7 +320,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat<'_>) -> FxHashMap<Sy
             },
             PatKind::Binding(.., ident, ref as_pat) => {
                 if let Entry::Vacant(v) = map.entry(ident.name) {
-                    v.insert(cx.tables.pat_ty(pat));
+                    v.insert(cx.tables().pat_ty(pat));
                 }
                 if let Some(ref as_pat) = *as_pat {
                     bindings_impl(cx, as_pat, map);

@@ -37,7 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
             return;
         }
         let hash = |ty| -> u64 {
-            let mut hasher = SpanlessHash::new(cx, cx.tables);
+            let mut hasher = SpanlessHash::new(cx, cx.tables());
             hasher.hash_ty(ty);
             hasher.finish()
         };

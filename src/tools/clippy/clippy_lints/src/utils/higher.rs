@@ -56,7 +56,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr<'_>) 
         Some(expr)
     }
 
-    let def_path = match cx.tables.expr_ty(expr).kind {
+    let def_path = match cx.tables().expr_ty(expr).kind {
         ty::Adt(def, _) => cx.tcx.def_path(def.did),
         _ => return None,
     };
@@ -262,7 +262,7 @@ pub fn vec_macro<'e>(cx: &LateContext<'_, '_>, expr: &'e hir::Expr<'_>) -> Optio
         if let hir::ExprKind::Call(ref fun, ref args) = expr.kind;
         if let hir::ExprKind::Path(ref qpath) = fun.kind;
         if is_expn_of(fun.span, "vec").is_some();
-        if let Some(fun_def_id) = cx.tables.qpath_res(qpath, fun.hir_id).opt_def_id();
+        if let Some(fun_def_id) = cx.tables().qpath_res(qpath, fun.hir_id).opt_def_id();
         then {
             return if match_def_path(cx, fun_def_id, &paths::VEC_FROM_ELEM) && args.len() == 2 {
                 // `vec![elem; size]` case

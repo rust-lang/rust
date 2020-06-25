@@ -135,13 +135,13 @@ impl QuestionMark {
     }
 
     fn moves_by_default(cx: &LateContext<'_, '_>, expression: &Expr<'_>) -> bool {
-        let expr_ty = cx.tables.expr_ty(expression);
+        let expr_ty = cx.tables().expr_ty(expression);
 
         !expr_ty.is_copy_modulo_regions(cx.tcx.at(expression.span), cx.param_env)
     }
 
     fn is_option(cx: &LateContext<'_, '_>, expression: &Expr<'_>) -> bool {
-        let expr_ty = cx.tables.expr_ty(expression);
+        let expr_ty = cx.tables().expr_ty(expression);
 
         is_type_diagnostic_item(cx, expr_ty, sym!(option_type))
     }
@@ -158,7 +158,7 @@ impl QuestionMark {
             ExprKind::Ret(Some(ref expr)) => Self::expression_returns_none(cx, expr),
             ExprKind::Path(ref qp) => {
                 if let Res::Def(DefKind::Ctor(def::CtorOf::Variant, def::CtorKind::Const), def_id) =
-                    cx.tables.qpath_res(qp, expression.hir_id)
+                    cx.tables().qpath_res(qp, expression.hir_id)
                 {
                     return match_def_path(cx, def_id, &paths::OPTION_NONE);
                 }

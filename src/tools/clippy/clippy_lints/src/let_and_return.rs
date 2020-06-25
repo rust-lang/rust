@@ -100,14 +100,14 @@ struct BorrowVisitor<'a, 'tcx> {
 impl BorrowVisitor<'_, '_> {
     fn fn_def_id(&self, expr: &Expr<'_>) -> Option<DefId> {
         match &expr.kind {
-            ExprKind::MethodCall(..) => self.cx.tables.type_dependent_def_id(expr.hir_id),
+            ExprKind::MethodCall(..) => self.cx.tables().type_dependent_def_id(expr.hir_id),
             ExprKind::Call(
                 Expr {
                     kind: ExprKind::Path(qpath),
                     ..
                 },
                 ..,
-            ) => self.cx.tables.qpath_res(qpath, expr.hir_id).opt_def_id(),
+            ) => self.cx.tables().qpath_res(qpath, expr.hir_id).opt_def_id(),
             _ => None,
         }
     }

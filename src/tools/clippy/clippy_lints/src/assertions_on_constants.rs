@@ -72,7 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
             }
             if_chain! {
                 if let ExprKind::Unary(_, ref lit) = e.kind;
-                if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables, lit);
+                if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables(), lit);
                 if is_true;
                 then {
                     lint_true(true);
@@ -121,7 +121,7 @@ fn match_assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx E
         if let ExprKind::DropTemps(ref expr) = expr.kind;
         if let ExprKind::Unary(UnOp::UnNot, ref expr) = expr.kind;
         // bind the first argument of the `assert!` macro
-        if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables, expr);
+        if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables(), expr);
         // arm 1 pattern
         if let PatKind::Lit(ref lit_expr) = arms[0].pat.kind;
         if let ExprKind::Lit(ref lit) = lit_expr.kind;
