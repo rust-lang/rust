@@ -7,7 +7,7 @@ use std::{
 };
 
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
-use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
+use lsp_server::{Connection, ErrorCode, Notification, Request, RequestId, Response};
 use lsp_types::{request::Request as _, NumberOrString};
 use ra_db::VfsPath;
 use ra_ide::{Canceled, FileId};
@@ -128,7 +128,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
             log::trace!("selecting");
             let event = select! {
                 recv(&connection.receiver) -> msg => match msg {
-                    Ok(msg) => Event::Msg(msg),
+                    Ok(msg) => Event::Lsp(msg),
                     Err(RecvError) => return Err("client exited without shutdown".into()),
                 },
                 recv(task_receiver) -> task => Event::Task(task.unwrap()),
@@ -137,11 +137,11 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                     Err(RecvError) => return Err("vfs died".into()),
                 },
                 recv(global_state.flycheck.as_ref().map_or(&never(), |it| &it.1)) -> task => match task {
-                    Ok(task) => Event::CheckWatcher(task),
+                    Ok(task) => Event::Flycheck(task),
                     Err(RecvError) => return Err("check watcher died".into()),
                 },
             };
-            if let Event::Msg(Message::Request(req)) = &event {
+            if let Event::Lsp(lsp_server::Message::Request(req)) = &event {
                 if connection.handle_shutdown(&req)? {
                     break;
                 };
@@ -173,10 +173,10 @@ enum Task {
 }
 
 enum Event {
-    Msg(Message),
+    Lsp(lsp_server::Message),
     Task(Task),
     Vfs(vfs::loader::Message),
-    CheckWatcher(flycheck::Message),
+    Flycheck(flycheck::Message),
 }
 
 impl fmt::Debug for Event {
@@ -186,7 +186,7 @@ impl fmt::Debug for Event {
         };
 
         match self {
-            Event::Msg(Message::Notification(not)) => {
+            Event::Lsp(lsp_server::Message::Notification(not)) => {
                 if notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
                     || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)
                 {
@@ -203,10 +203,10 @@ impl fmt::Debug for Event {
             _ => (),
         }
         match self {
-            Event::Msg(it) => fmt::Debug::fmt(it, f),
+            Event::Lsp(it) => fmt::Debug::fmt(it, f),
             Event::Task(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
-            Event::CheckWatcher(it) => fmt::Debug::fmt(it, f),
+            Event::Flycheck(it) => fmt::Debug::fmt(it, f),
         }
     }
 }
@@ -269,17 +269,17 @@ fn loop_turn(
                 )
             }
         },
-        Event::CheckWatcher(task) => {
+        Event::Flycheck(task) => {
             on_check_task(task, global_state, task_sender, &connection.sender)?
         }
-        Event::Msg(msg) => match msg {
-            Message::Request(req) => {
+        Event::Lsp(msg) => match msg {
+            lsp_server::Message::Request(req) => {
                 on_request(global_state, pool, task_sender, &connection.sender, loop_start, req)?
             }
-            Message::Notification(not) => {
+            lsp_server::Message::Notification(not) => {
                 on_notification(&connection.sender, global_state, not)?;
             }
-            Message::Response(resp) => {
+            lsp_server::Message::Response(resp) => {
                 let handler = global_state.req_queue.outgoing.complete(resp.id.clone());
                 handler(global_state, resp)
             }
@@ -329,7 +329,7 @@ fn loop_turn(
     Ok(())
 }
 
-fn on_task(task: Task, msg_sender: &Sender<Message>, global_state: &mut GlobalState) {
+fn on_task(task: Task, msg_sender: &Sender<lsp_server::Message>, global_state: &mut GlobalState) {
     match task {
         Task::Respond(response) => {
             if let Some((method, start)) =
@@ -353,7 +353,7 @@ fn on_request(
     global_state: &mut GlobalState,
     pool: &ThreadPool,
     task_sender: &Sender<Task>,
-    msg_sender: &Sender<Message>,
+    msg_sender: &Sender<lsp_server::Message>,
     request_received: Instant,
     req: Request,
 ) -> Result<()> {
@@ -415,7 +415,7 @@ fn on_request(
 }
 
 fn on_notification(
-    msg_sender: &Sender<Message>,
+    msg_sender: &Sender<lsp_server::Message>,
     global_state: &mut GlobalState,
     not: Notification,
 ) -> Result<()> {
@@ -553,7 +553,7 @@ fn on_check_task(
     task: flycheck::Message,
     global_state: &mut GlobalState,
     task_sender: &Sender<Task>,
-    msg_sender: &Sender<Message>,
+    msg_sender: &Sender<lsp_server::Message>,
 ) -> Result<()> {
     match task {
         flycheck::Message::ClearDiagnostics => {
@@ -598,7 +598,11 @@ fn on_check_task(
     Ok(())
 }
 
-fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state: &mut GlobalState) {
+fn on_diagnostic_task(
+    task: DiagnosticTask,
+    msg_sender: &Sender<lsp_server::Message>,
+    state: &mut GlobalState,
+) {
     let subscriptions = state.diagnostics.handle_task(task);
 
     for file_id in subscriptions {
@@ -623,7 +627,7 @@ fn percentage(done: usize, total: usize) -> f64 {
 
 fn report_progress(
     global_state: &mut GlobalState,
-    sender: &Sender<Message>,
+    sender: &Sender<lsp_server::Message>,
     title: &str,
     state: Progress,
     message: Option<String>,
@@ -672,7 +676,7 @@ struct PoolDispatcher<'a> {
     req: Option<Request>,
     pool: &'a ThreadPool,
     global_state: &'a mut GlobalState,
-    msg_sender: &'a Sender<Message>,
+    msg_sender: &'a Sender<lsp_server::Message>,
     task_sender: &'a Sender<Task>,
     request_received: Instant,
 }
