@@ -1,8 +1,12 @@
-use ra_syntax::{ast::AstNode, SourceFile, SyntaxKind, TextSize, T};
+use ra_syntax::{
+    ast::{self, AstNode},
+    SourceFile, SyntaxKind, TextSize, T,
+};
+use test_utils::mark;
 
 // Feature: Matching Brace
 //
-// If the cursor is on any brace (`<>(){}[]`) which is a part of a brace-pair,
+// If the cursor is on any brace (`<>(){}[]||`) which is a part of a brace-pair,
 // moves cursor to the matching brace. It uses the actual parser to determine
 // braces, so it won't confuse generics with comparisons.
 //
@@ -13,8 +17,8 @@ use ra_syntax::{ast::AstNode, SourceFile, SyntaxKind, TextSize, T};
 // |===
 pub fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<TextSize> {
     const BRACES: &[SyntaxKind] =
-        &[T!['{'], T!['}'], T!['['], T![']'], T!['('], T![')'], T![<], T![>]];
-    let (brace_node, brace_idx) = file
+        &[T!['{'], T!['}'], T!['['], T![']'], T!['('], T![')'], T![<], T![>], T![|], T![|]];
+    let (brace_token, brace_idx) = file
         .syntax()
         .token_at_offset(offset)
         .filter_map(|node| {
@@ -22,7 +26,11 @@ pub fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<TextSize> {
             Some((node, idx))
         })
         .next()?;
-    let parent = brace_node.parent();
+    let parent = brace_token.parent();
+    if brace_token.kind() == T![|] && !ast::ParamList::can_cast(parent.kind()) {
+        mark::hit!(pipes_not_braces);
+        return None;
+    }
     let matching_kind = BRACES[brace_idx ^ 1];
     let matching_node = parent.children_with_tokens().find(|node| node.kind() == matching_kind)?;
     Some(matching_node.text_range().start())
@@ -48,5 +56,14 @@ mod tests {
         }
 
         do_check("struct Foo { a: i32, }<|>", "struct Foo <|>{ a: i32, }");
+        do_check("fn main() { |x: i32|<|> x * 2;}", "fn main() { <|>|x: i32| x * 2;}");
+
+        {
+            mark::check!(pipes_not_braces);
+            do_check(
+                "fn main() { match 92 { 1 | 2 |<|> 3 => 92 } }",
+                "fn main() { match 92 { 1 | 2 |<|> 3 => 92 } }",
+            );
+        }
     }
 }
