@@ -549,6 +549,22 @@ fn escape_dep_filename(filename: &FileName) -> String {
     filename.to_string().replace(" ", "\\ ")
 }
 
+// Makefile comments only need escaping newlines and `\`.
+// The result can be unescaped by anything that can unescape `escape_default` and friends.
+fn escape_dep_env(symbol: Symbol) -> String {
+    let s = symbol.as_str();
+    let mut escaped = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '\n' => escaped.push_str(r"\n"),
+            '\r' => escaped.push_str(r"\r"),
+            '\\' => escaped.push_str(r"\\"),
+            _ => escaped.push(c),
+        }
+    }
+    escaped
+}
+
 fn write_out_deps(
     sess: &Session,
     boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
@@ -604,6 +620,25 @@ fn write_out_deps(
         for path in files {
             writeln!(file, "{}:", path)?;
         }
+
+        // Emit special comments with information about accessed environment variables.
+        let env_depinfo = sess.parse_sess.env_depinfo.borrow();
+        if !env_depinfo.is_empty() {
+            let mut envs: Vec<_> = env_depinfo
+                .iter()
+                .map(|(k, v)| (escape_dep_env(*k), v.map(escape_dep_env)))
+                .collect();
+            envs.sort_unstable();
+            writeln!(file)?;
+            for (k, v) in envs {
+                write!(file, "# env-dep:{}", k)?;
+                if let Some(v) = v {
+                    write!(file, "={}", v)?;
+                }
+                writeln!(file)?;
+            }
+        }
+
         Ok(())
     })();
 
