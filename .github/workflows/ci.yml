@@ -152,6 +152,15 @@ jobs:
           - name: dist-x86_64-linux
             os: ubuntu-latest-xl
             env: {}
+          - name: dist-various-1
+            os: ubuntu-latest-xl
+            env: {}
+          - name: dist-i586-gnu-i586-i686-musl
+            os: ubuntu-latest-xl
+            env: {}
+          - name: dist-x86_64-musl
+            os: ubuntu-latest-xl
+            env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:

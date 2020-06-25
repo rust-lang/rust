@@ -4,7 +4,10 @@ use std::fs;
 use std::path::Path;
 
 /// List of whitelisted sources for packages.
-const WHITELISTED_SOURCES: &[&str] = &["\"registry+https://github.com/rust-lang/crates.io-index\""];
+const WHITELISTED_SOURCES: &[&str] = &[
+    "\"registry+https://github.com/rust-lang/crates.io-index\"",
+    "\"git+https://github.com/Amanieu/libc?branch=musl_libgcc2#09bdb4650962ad574403488776e1e200e949451d\"",
+];
 
 /// Checks for external package sources.
 pub fn check(path: &Path, bad: &mut bool) {
