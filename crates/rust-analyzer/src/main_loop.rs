@@ -9,7 +9,6 @@ use std::{
 };
 
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
-use flycheck::CheckTask;
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{request::Request as _, NumberOrString, TextDocumentContentChangeEvent};
 use ra_db::VfsPath;
@@ -176,7 +175,7 @@ enum Event {
     Msg(Message),
     Task(Task),
     Vfs(vfs::loader::Message),
-    CheckWatcher(CheckTask),
+    CheckWatcher(flycheck::Message),
 }
 
 impl fmt::Debug for Event {
@@ -250,14 +249,14 @@ fn loop_turn(
             }
             vfs::loader::Message::Progress { n_total, n_done } => {
                 let state = if n_done == 0 {
-                    ProgressState::Start
+                    Progress::Begin
                 } else if n_done < n_total {
-                    ProgressState::Report
+                    Progress::Report
                 } else {
                     assert_eq!(n_done, n_total);
                     global_state.status = Status::Ready;
                     became_ready = true;
-                    ProgressState::End
+                    Progress::End
                 };
                 report_progress(
                     global_state,
@@ -593,17 +592,17 @@ fn apply_document_changes(
 }
 
 fn on_check_task(
-    task: CheckTask,
+    task: flycheck::Message,
     global_state: &mut GlobalState,
     task_sender: &Sender<Task>,
     msg_sender: &Sender<Message>,
 ) -> Result<()> {
     match task {
-        CheckTask::ClearDiagnostics => {
+        flycheck::Message::ClearDiagnostics => {
             task_sender.send(Task::Diagnostic(DiagnosticTask::ClearCheck))?;
         }
 
-        CheckTask::AddDiagnostic { workspace_root, diagnostic } => {
+        flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
             let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                 &global_state.config.diagnostics,
                 &diagnostic,
@@ -627,11 +626,11 @@ fn on_check_task(
             }
         }
 
-        CheckTask::Status(status) => {
+        flycheck::Message::Progress(status) => {
             let (state, message) = match status {
-                flycheck::Status::Being => (ProgressState::Start, None),
-                flycheck::Status::Progress(target) => (ProgressState::Report, Some(target)),
-                flycheck::Status::End => (ProgressState::End, None),
+                flycheck::Progress::Being => (Progress::Begin, None),
+                flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
+                flycheck::Progress::End => (Progress::End, None),
             };
 
             report_progress(global_state, msg_sender, "cargo check", state, message, None);
@@ -654,8 +653,8 @@ fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state:
 }
 
 #[derive(Eq, PartialEq)]
-enum ProgressState {
-    Start,
+enum Progress {
+    Begin,
     Report,
     End,
 }
@@ -668,7 +667,7 @@ fn report_progress(
     global_state: &mut GlobalState,
     sender: &Sender<Message>,
     title: &str,
-    state: ProgressState,
+    state: Progress,
     message: Option<String>,
     percentage: Option<f64>,
 ) {
@@ -677,7 +676,7 @@ fn report_progress(
     }
     let token = lsp_types::ProgressToken::String(format!("rustAnalyzer/{}", title));
     let work_done_progress = match state {
-        ProgressState::Start => {
+        Progress::Begin => {
             let work_done_progress_create = global_state.req_queue.outgoing.register(
                 lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
                 lsp_types::WorkDoneProgressCreateParams { token: token.clone() },
@@ -692,14 +691,14 @@ fn report_progress(
                 percentage,
             })
         }
-        ProgressState::Report => {
+        Progress::Report => {
             lsp_types::WorkDoneProgress::Report(lsp_types::WorkDoneProgressReport {
                 cancellable: None,
                 message,
                 percentage,
             })
         }
-        ProgressState::End => {
+        Progress::End => {
             lsp_types::WorkDoneProgress::End(lsp_types::WorkDoneProgressEnd { message })
         }
     };

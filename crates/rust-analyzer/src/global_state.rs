@@ -6,7 +6,7 @@
 use std::{convert::TryFrom, sync::Arc};
 
 use crossbeam_channel::{unbounded, Receiver};
-use flycheck::{CheckTask, FlycheckConfig, FlycheckHandle};
+use flycheck::{FlycheckConfig, FlycheckHandle};
 use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_db::{CrateId, SourceRoot, VfsPath};
@@ -30,7 +30,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 fn create_flycheck(
     workspaces: &[ProjectWorkspace],
     config: &FlycheckConfig,
-) -> Option<(FlycheckHandle, Receiver<CheckTask>)> {
+) -> Option<(FlycheckHandle, Receiver<flycheck::Message>)> {
     // FIXME: Figure out the multi-workspace situation
     workspaces.iter().find_map(move |w| match w {
         ProjectWorkspace::Cargo { cargo, .. } => {
@@ -69,7 +69,7 @@ pub(crate) struct GlobalState {
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) loader: Box<dyn vfs::loader::Handle>,
     pub(crate) task_receiver: Receiver<vfs::loader::Message>,
-    pub(crate) flycheck: Option<(FlycheckHandle, Receiver<CheckTask>)>,
+    pub(crate) flycheck: Option<(FlycheckHandle, Receiver<flycheck::Message>)>,
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: FxHashSet<VfsPath>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
