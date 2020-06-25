@@ -76,44 +76,106 @@ exclude_labels = [
 ]
 
 [notify-zulip."I-prioritize"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "I-prioritize #{number} {title}"
-message_on_add = "@*WG-prioritization* issue #{number} has been requested for prioritization."
+message_on_add = """\
+@*WG-prioritization/alerts* issue #{number} has been requested for prioritization.
+
+# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#Unprioritized-I-prioritize)
+- Priority?
+- Regression?
+- Notify people/groups?
+- Needs `I-nominated`?
+"""
 message_on_remove = "Issue #{number}'s prioritization request has been removed."
 
 [notify-zulip."I-nominated"]
 required_labels = ["T-compiler"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "I-prioritize #{number} {title}"
-message_on_add = "@*WG-prioritization* #{number} has been nominated for discussion in `T-compiler` meeting."
+message_on_add = """\
+@*WG-prioritization/alerts* #{number} has been nominated for discussion in `T-compiler` meeting.
+
+# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#I-nominated)
+- Already discussed?
+- Worth the meeting time?
+- Add agenda entry:
+  - Why nominated?
+  - Assignee?
+  - Issue? PR? What's the status?
+  - Summary and important details?
+"""
 message_on_remove = "#{number}'s nomination has been removed."
 
 [notify-zulip."beta-nominated"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "Backport #{number} {title}"
-message_on_add = "@*WG-prioritization* PR #{number} has been requested for beta backport."
+message_on_add = """\
+@*WG-prioritization/alerts* PR #{number} has been requested for beta backport.
+
+# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#StableBeta-nominations)
+Prepare agenda entry:
+- Why nominated?
+- Author, assignee?
+- Important details?
+"""
 message_on_remove = "PR #{number}'s beta backport request has been removed."
 
 [notify-zulip."stable-nominated"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "Backport #{number} {title}"
-message_on_add = "@*WG-prioritization* PR #{number} has been requested for stable backport."
+message_on_add = """\
+@*WG-prioritization/alerts* PR #{number} has been requested for stable backport.
+
+# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#StableBeta-nominations)
+Prepare agenda entry:
+- Why nominated?
+- Author, assignee?
+- Important details?
+"""
 message_on_remove = "PR #{number}'s stable backport request has been removed."
 
 [notify-zulip."S-waiting-on-team"]
 required_labels = ["T-compiler"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "S-waiting-on-team #{number} {title}"
-message_on_add = "@*WG-prioritization* PR #{number} is waiting on `T-compiler`."
+message_on_add = """\
+@*WG-prioritization/alerts* PR #{number} is waiting on `T-compiler`.
+
+# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#PR%E2%80%99s-waiting-on-team)
+- Prepare agenda entry:
+  - What is it waiting for?
+  - Important details?
+- Could be resolved quickly? Tag `I-nominated`.
+"""
 message_on_remove = "PR #{number}'s is no longer waiting on `T-compiler`."
 
 [notify-zulip."P-critical"]
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "P-critical #{number} {title}"
-message_on_add = "@*WG-prioritization* issue #{number} has been assigned `P-critical`."
+message_on_add = """\
+@*WG-prioritization/alerts* issue #{number} has been assigned `P-critical`.
+
+# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#P-critical-and-Unassigned-P-high-regressions)
+- Notify people/groups?
+- Assign if possible?
+- Add to agenda:
+  - Assignee?
+  - Summary and important details?
+- Other actions to move forward?
+"""
 
 [notify-zulip."P-high"]
 required_labels = ["regression-from-stable-to-[bn]*"] # only nightly and beta regressions
-zulip_stream = 227806 # #t-compiler/wg-prioritization
+zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "P-high regression #{number} {title}"
-message_on_add = "@*WG-prioritization* issue #{number} has been assigned `P-high` and is a regression."
+message_on_add = """\
+@*WG-prioritization/alerts* issue #{number} has been assigned `P-high` and is a regression.
+
+# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#P-critical-and-Unassigned-P-high-regressions)
+Is issue assigned? If not:
+- Try to find an assignee?
+- Otherwise add to agenda:
+  - Mark as unassigned.
+  - Summary and important details?
+"""
