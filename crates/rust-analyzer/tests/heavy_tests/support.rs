@@ -202,7 +202,11 @@ impl Server {
                     ProgressParams {
                         token: lsp_types::ProgressToken::String(ref token),
                         value: ProgressParamsValue::WorkDone(WorkDoneProgress::End(_)),
+<<<<<<< HEAD
                     } if token == "rustAnalyzer/roots scanned" => true,
+=======
+                    } if token == "rustAnalyzer/rootsScanned" => true,
+>>>>>>> Veetaha-feat/sync-branch
                     _ => false,
                 }
             }

@@ -1,0 +1,8 @@
+[package]
+name = "ra_progress"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[dependencies]
+crossbeam-channel = { version = "0.4" }

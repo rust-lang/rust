@@ -28,6 +28,14 @@ use crate::{
     request_metrics::RequestMetrics,
     LspError, Result,
 };
+pub use lsp_utils::show_message;
+use lsp_utils::{is_canceled, notification_cast, notification_is, notification_new, request_new};
+use ra_progress::{
+    IsDone, ProgressStatus, U32Progress, U32ProgressReport, U32ProgressSource, U32ProgressStatus,
+};
+
+const FLYCHECK_PROGRESS_TOKEN: &str = "rustAnalyzer/flycheck";
+const ROOTS_SCANNED_PROGRESS_TOKEN: &str = "rustAnalyzer/rootsScanned";
 
 pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     log::info!("initial config: {:#?}", config);
@@ -138,6 +146,18 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
                 recv(global_state.flycheck.as_ref().map_or(&never(), |it| &it.task_recv)) -> task => match task {
                     Ok(task) => Event::CheckWatcher(task),
                     Err(RecvError) => return Err("check watcher died".into()),
+                },
+                recv(global_state.flycheck_progress_receiver) -> status => match status {
+                    Ok(status) => Event::ProgressReport(ProgressReport::Flycheck(status)),
+                    Err(RecvError) => return Err("check watcher died".into()),
+                },
+                recv(roots_scanned_progress_receiver) -> status => match status {
+                    Ok(status) => Event::ProgressReport(ProgressReport::RootsScanned(status)),
+                    Err(RecvError) => {
+                        // Roots analysis has finished, we no longer need this receiver
+                        roots_scanned_progress_receiver = never();
+                        continue;
+                    }
                 }
             };
             if let Event::Msg(Message::Request(req)) = &event {
@@ -169,6 +189,7 @@ pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
 enum Task {
     Respond(Response),
     Notify(Notification),
+    SendRequest(Request),
     Diagnostic(DiagnosticTask),
 }
 
@@ -177,6 +198,13 @@ enum Event {
     Task(Task),
     Vfs(vfs::loader::Message),
     CheckWatcher(CheckTask),
+    ProgressReport(ProgressReport),
+}
+
+#[derive(Debug)]
+enum ProgressReport {
+    Flycheck(ProgressStatus<(), String>),
+    RootsScanned(U32ProgressStatus),
 }
 
 impl fmt::Debug for Event {
@@ -212,6 +240,7 @@ impl fmt::Debug for Event {
             Event::Task(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
             Event::CheckWatcher(it) => fmt::Debug::fmt(it, f),
+            Event::ProgressReport(it) => fmt::Debug::fmt(it, f),
         }
     }
 }
@@ -262,6 +291,9 @@ fn loop_turn(
             }
         },
         Event::CheckWatcher(task) => on_check_task(task, global_state, task_sender)?,
+        Event::ProgressReport(report) => {
+            on_progress_report(report, task_sender, loop_state, global_state)
+        }
         Event::Msg(msg) => match msg {
             Message::Request(req) => {
                 on_request(global_state, pool, task_sender, &connection.sender, loop_start, req)?
@@ -826,7 +858,7 @@ where
         Err(e) => match e.downcast::<LspError>() {
             Ok(lsp_error) => Response::new_err(id, lsp_error.code, lsp_error.message),
             Err(e) => {
-                if is_canceled(&e) {
+                if is_canceled(&*e) {
                     Response::new_err(
                         id,
                         ErrorCode::ContentModified as i32,
@@ -853,7 +885,7 @@ fn update_file_notifications_on_threadpool(
             for file_id in subscriptions {
                 match handlers::publish_diagnostics(&world, file_id) {
                     Err(e) => {
-                        if !is_canceled(&e) {
+                        if !is_canceled(&*e) {
                             log::error!("failed to compute diagnostics: {:?}", e);
                         }
                     }

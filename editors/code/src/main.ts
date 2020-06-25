@@ -5,7 +5,6 @@ import { promises as fs, PathLike } from "fs";
 
 import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
-import { activateStatusDisplay } from './status_display';
 import { Ctx } from './ctx';
 import { Config, NIGHTLY_TAG } from './config';
 import { log, assert, isValidExecutable } from './util';
@@ -116,8 +115,6 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('gotoLocation', commands.gotoLocation);
 
     ctx.pushCleanup(activateTaskProvider(workspaceFolder));
-
-    activateStatusDisplay(ctx);
 
     activateInlayHints(ctx);
 
