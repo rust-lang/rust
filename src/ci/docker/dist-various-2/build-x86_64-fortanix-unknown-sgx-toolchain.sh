@@ -3,14 +3,7 @@
 set -eu
 source shared.sh
 
-if [ -z "$1" ]; then
-    echo "Usage: ${0} <commit_id>"
-    exit -1
-fi
-
 target="x86_64-fortanix-unknown-sgx"
-url="https://github.com/fortanix/llvm-project/archive/${1}.tar.gz"
-repo_name="llvm-project"
 
 install_prereq() {
     curl https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add -
