@@ -1,6 +1,4 @@
-use crate::cmp;
 use crate::ffi::c_void;
-use crate::mem;
 use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sys::hermit::abi;
@@ -55,7 +53,7 @@ impl Condvar {
         mutex.lock();
     }
 
-    pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
+    pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
         panic!("wait_timeout not supported on hermit");
     }
 
