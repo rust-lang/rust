@@ -70,10 +70,10 @@ fn uncached_llvm_type<'a, 'tcx>(
                     write!(&mut name, "::{}", def.variants[index].ident).unwrap();
                 }
             }
-            if let (&ty::Generator(_, substs, _), &Variants::Single { index })
+            if let (&ty::Generator(_, _, _), &Variants::Single { index })
                  = (&layout.ty.kind, &layout.variants)
             {
-                write!(&mut name, "::{}", substs.as_generator().variant_name(index)).unwrap();
+                write!(&mut name, "::{}", ty::GeneratorSubsts::variant_name(index)).unwrap();
             }
             Some(name)
         }
