@@ -1,0 +1,34 @@
+error: The usage of Script Group `Greek` in this crate consists solely of mixed script confusables
+  --> $DIR/lint-mixed-script-confusables.rs:4:8
+   |
+LL | struct ΑctuallyNotLatin;
+   |        ^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-mixed-script-confusables.rs:2:9
+   |
+LL | #![deny(mixed_script_confusables)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: The usage includes 'Α' (U+0391).
+   = note: Please recheck to make sure their usages are indeed what you want.
+
+error: The usage of Script Group `Cyrillic` in this crate consists solely of mixed script confusables
+  --> $DIR/lint-mixed-script-confusables.rs:11:5
+   |
+LL | mod роре {
+   |     ^^^^
+   |
+   = note: The usage includes 'е' (U+0435), 'о' (U+043E), 'р' (U+0440).
+   = note: Please recheck to make sure their usages are indeed what you want.
+
+error: The usage of Script Group `Japanese, Katakana` in this crate consists solely of mixed script confusables
+  --> $DIR/lint-mixed-script-confusables.rs:13:11
+   |
+LL |     const エ: &'static str = "アイウ";
+   |           ^^
+   |
+   = note: The usage includes 'エ' (U+30A8).
+   = note: Please recheck to make sure their usages are indeed what you want.
+
+error: aborting due to 3 previous errors
+
