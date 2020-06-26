@@ -21,6 +21,21 @@ macro_rules! try_opt {
     };
 }
 
+#[cfg(bootstrap)]
+macro_rules! unlikely {
+    ($e: expr) => {
+        $e
+    };
+}
+
+#[cfg(not(bootstrap))]
+#[allow_internal_unstable(const_likely)]
+macro_rules! unlikely {
+    ($e: expr) => {
+        intrinsics::unlikely($e)
+    };
+}
+
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
         $(
@@ -745,7 +760,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -787,7 +802,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -829,7 +844,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -871,7 +886,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_div(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::MIN && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     // SAFETY: div by zero and by INT_MIN have been checked above
@@ -900,7 +915,7 @@ assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::MIN && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     Some(self.div_euclid(rhs))
@@ -929,7 +944,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::MIN && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     // SAFETY: div by zero and by INT_MIN have been checked above
@@ -957,7 +972,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::MIN && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     Some(self.rem_euclid(rhs))
@@ -983,7 +998,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -1007,7 +1022,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -1031,7 +1046,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -1738,7 +1753,7 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
-                if self == Self::MIN && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (self, true)
                 } else {
                     (self / rhs, false)
@@ -1771,7 +1786,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
-                if self == Self::MIN && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (self, true)
                 } else {
                     (self.div_euclid(rhs), false)
@@ -1805,7 +1820,7 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
-                if self == Self::MIN && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (0, true)
                 } else {
                     (self % rhs, false)
@@ -1838,7 +1853,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
-                if self == Self::MIN && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (0, true)
                 } else {
                     (self.rem_euclid(rhs), false)
@@ -1869,7 +1884,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($Self
             #[allow(unused_attributes)]
             #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             pub const fn overflowing_neg(self) -> (Self, bool) {
-                if self == Self::MIN {
+                if unlikely!(self == Self::MIN) {
                     (Self::MIN, true)
                 } else {
                     (-self, false)
@@ -2981,7 +2996,7 @@ assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);", $EndFeat
             #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3021,7 +3036,7 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
             #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3061,7 +3076,7 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);", $EndFeature, "
             #[inline]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3100,11 +3115,12 @@ assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_div(self, rhs: Self) -> Option<Self> {
-                match rhs {
-                    0 => None,
+                if unlikely!(rhs == 0) {
+                    None
+                } else {
                     // SAFETY: div by zero has been checked above and unsigned types have no other
                     // failure modes for division
-                    rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
+                    Some(unsafe { intrinsics::unchecked_div(self, rhs) })
                 }
             }
         }
@@ -3127,7 +3143,7 @@ assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     Some(self.div_euclid(rhs))
@@ -3154,7 +3170,7 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     // SAFETY: div by zero has been checked above and unsigned types have no other
@@ -3182,7 +3198,7 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     Some(self.rem_euclid(rhs))
@@ -3209,7 +3225,7 @@ assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3232,7 +3248,7 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, 
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3255,7 +3271,7 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, 
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
