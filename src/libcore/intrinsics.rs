@@ -952,6 +952,7 @@ extern "rust-intrinsic" {
     /// Any use other than with `if` statements will probably not have an effect.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_const_unstable(feature = "const_likely", issue = "none")]
     pub fn likely(b: bool) -> bool;
 
     /// Hints to the compiler that branch condition is likely to be false.
@@ -960,6 +961,7 @@ extern "rust-intrinsic" {
     /// Any use other than with `if` statements will probably not have an effect.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_const_unstable(feature = "const_likely", issue = "none")]
     pub fn unlikely(b: bool) -> bool;
 
     /// Executes a breakpoint trap, for inspection by a debugger.
