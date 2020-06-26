@@ -350,14 +350,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
-        let op = self.ecx.eval_place_to_op(place, None).ok();
+        let op = match self.ecx.eval_place_to_op(place, None) {
+            Ok(op) => op,
+            Err(e) => {
+                trace!("get_const failed: {}", e);
+                return None;
+            }
+        };
 
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
-        match op.map(|ret| self.ecx.try_read_immediate(ret)) {
-            Some(Ok(Ok(imm))) => Some(imm.into()),
+        Some(match self.ecx.try_read_immediate(op) {
+            Ok(Ok(imm)) => imm.into(),
             _ => op,
-        }
+        })
     }
 
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
@@ -872,8 +878,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
                 let can_const_prop = self.can_const_prop[place.local];
                 if let Some(()) = self.const_prop(rval, place_layout, source_info, place) {
-                    // This will return None for variables that are from other blocks,
-                    // so it should be okay to propagate from here on down.
+                    // This will return None if the above `const_prop` invocation only "wrote" a
+                    // type whose creation requires no write. E.g. a generator whose initial state
+                    // consists solely of uninitialized memory (so it doesn't capture any locals).
                     if let Some(value) = self.get_const(place) {
                         if self.should_const_prop(value) {
                             trace!("replacing {:?} with {:?}", rval, value);
