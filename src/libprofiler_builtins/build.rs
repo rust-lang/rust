@@ -24,6 +24,12 @@ fn main() {
         "InstrProfilingUtil.c",
         "InstrProfilingValue.c",
         "InstrProfilingWriter.c",
+        // This file was renamed in LLVM 10.
+        "InstrProfilingRuntime.cc",
+        "InstrProfilingRuntime.cpp",
+        // These files were added in LLVM 11.
+        "InstrProfilingInternal.c",
+        "InstrProfilingBiasVar.c",
     ];
 
     if target.contains("msvc") {
@@ -69,13 +75,11 @@ fn main() {
 
     let src_root = root.join("lib").join("profile");
     for src in profile_sources {
-        cfg.file(src_root.join(src));
+        let path = src_root.join(src);
+        if path.exists() {
+            cfg.file(path);
+        }
     }
-
-    // The file was renamed in LLVM 10.
-    let old_runtime_path = src_root.join("InstrProfilingRuntime.cc");
-    let new_runtime_path = src_root.join("InstrProfilingRuntime.cpp");
-    cfg.file(if old_runtime_path.exists() { old_runtime_path } else { new_runtime_path });
 
     cfg.include(root.join("include"));
     cfg.warnings(false);
