@@ -15,6 +15,10 @@ pub fn rustup() -> PathBuf {
     get_path_for_executable("rustup")
 }
 
+pub fn rustfmt() -> PathBuf {
+    get_path_for_executable("rustfmt")
+}
+
 /// Return a `PathBuf` to use for the given executable.
 ///
 /// E.g., `get_path_for_executable("cargo")` may return just `cargo` if that
