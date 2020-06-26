@@ -60,7 +60,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
             return;
         }
 
-        let def = src.with_opt_param(tcx);
+        let def = src.with_opt_param();
 
         let mut rpo = traversal::reverse_postorder(body);
         let ccx = ConstCx::new(tcx, def.did.expect_local(), body);

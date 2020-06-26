@@ -53,7 +53,7 @@ fn resolve_instance<'tcx>(
             }
             _ => {
                 debug!(" => free item");
-                ty::InstanceDef::Item(def.did, def.param_did)
+                ty::InstanceDef::Item(def)
             }
         };
         Ok(Some(Instance { def, substs }))
@@ -182,7 +182,7 @@ fn resolve_associated_item<'tcx>(
             Some(ty::Instance::new(leaf_def.item.def_id, substs))
         }
         traits::ImplSourceGenerator(generator_data) => Some(Instance {
-            def: ty::InstanceDef::Item(generator_data.generator_def_id, None),
+            def: ty::InstanceDef::Item(ty::WithOptParam::dummy(generator_data.generator_def_id)),
             substs: generator_data.substs,
         }),
         traits::ImplSourceClosure(closure_data) => {

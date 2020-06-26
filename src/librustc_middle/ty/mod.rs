@@ -1583,17 +1583,25 @@ pub struct WithOptParam<T> {
     pub did: T,
     /// The `DefId` of the corresponding generic paramter in case `did` is
     /// a const argument.
+    ///
+    /// If `param_did` is `Some` it must be equal to `tcx.const_param_of`,
+    /// and may otherwise cause panics or problems.
     pub param_did: Option<DefId>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn with_opt_param<T: IntoQueryParam<DefId> + Copy>(self, did: T) -> WithOptParam<T> {
-        WithOptParam { did, param_did: self.const_param_of(did) }
+        WithOptParam { did, param_did: None }
     }
 }
 
 impl<T: IntoQueryParam<DefId>> WithOptParam<T> {
+    /// Wraps the given `DefId` and sets `param_did` to none.
+    pub fn dummy(did: T) -> WithOptParam<T> {
+        WithOptParam { did, param_did: None }
+    }
+
     pub fn ty_def_id(self) -> DefId {
         self.param_did.unwrap_or(self.did.into_query_param())
     }
@@ -2790,7 +2798,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
     pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
         match instance {
-            ty::InstanceDef::Item(_, _) => self.optimized_mir(instance.with_opt_param(self)),
+            ty::InstanceDef::Item(def) => self.optimized_mir(def),
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::Intrinsic(..)

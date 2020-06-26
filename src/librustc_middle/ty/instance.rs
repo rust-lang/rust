@@ -160,8 +160,8 @@ impl<'tcx> Instance<'tcx> {
         self.substs.non_erasable_generics().next()?;
 
         match self.def {
-            InstanceDef::Item(def_id, _) => tcx
-                .upstream_monomorphizations_for(def_id)
+            InstanceDef::Item(def) => tcx
+                .upstream_monomorphizations_for(def.did)
                 .and_then(|monos| monos.get(&self.substs).cloned()),
             InstanceDef::DropGlue(_, Some(_)) => tcx.upstream_drop_glue_for(self.substs),
             _ => None,
@@ -173,8 +173,8 @@ impl<'tcx> InstanceDef<'tcx> {
     #[inline]
     pub fn def_id(&self) -> DefId {
         match *self {
-            InstanceDef::Item(def_id, _)
-            | InstanceDef::VtableShim(def_id)
+            InstanceDef::Item(def) => def.did,
+            InstanceDef::VtableShim(def_id)
             | InstanceDef::ReifyShim(def_id)
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
@@ -186,12 +186,8 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn with_opt_param(&self, tcx: TyCtxt<'tcx>) -> ty::WithOptParam<DefId> {
-        ty::WithOptParam {
-            did: self.def_id(),
-            param_did: if let InstanceDef::Item(_, param_did) = *self { param_did } else { None }
-                .or_else(|| tcx.const_param_of(self.def_id())),
-        }
+    pub fn with_opt_param(self) -> ty::WithOptParam<DefId> {
+        if let InstanceDef::Item(def) = self { def } else { ty::WithOptParam::dummy(self.def_id()) }
     }
 
     #[inline]
@@ -207,7 +203,7 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn requires_inline(&self, tcx: TyCtxt<'tcx>) -> bool {
         use rustc_hir::definitions::DefPathData;
         let def_id = match *self {
-            ty::InstanceDef::Item(def_id, _) => def_id,
+            ty::InstanceDef::Item(def) => def.did,
             ty::InstanceDef::DropGlue(_, Some(_)) => return false,
             _ => return true,
         };
@@ -253,8 +249,8 @@ impl<'tcx> InstanceDef<'tcx> {
 
     pub fn requires_caller_location(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
-            InstanceDef::Item(def_id, _) => {
-                tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+            InstanceDef::Item(def) => {
+                tcx.codegen_fn_attrs(def.did).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
             }
             _ => false,
         }
@@ -271,7 +267,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
         })?;
 
         match self.def {
-            InstanceDef::Item(_, _) => Ok(()),
+            InstanceDef::Item(_) => Ok(()),
             InstanceDef::VtableShim(_) => write!(f, " - shim(vtable)"),
             InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
             InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
@@ -292,7 +288,7 @@ impl<'tcx> Instance<'tcx> {
             did,
             substs
         );
-        Instance { def: InstanceDef::Item(did, None), substs }
+        Instance { def: InstanceDef::Item(ty::WithOptParam::dummy(did)), substs }
     }
 
     pub fn mono(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
@@ -302,11 +298,6 @@ impl<'tcx> Instance<'tcx> {
     #[inline]
     pub fn def_id(&self) -> DefId {
         self.def.def_id()
-    }
-
-    #[inline]
-    pub fn with_opt_param(&self, tcx: TyCtxt<'tcx>) -> ty::WithOptParam<DefId> {
-        self.def.with_opt_param(tcx)
     }
 
     /// Identical to `resolve`, but may also take an optional `param_def_id` for
@@ -378,9 +369,9 @@ impl<'tcx> Instance<'tcx> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         Instance::resolve(tcx, param_env, def_id, substs).ok().flatten().map(|mut resolved| {
             match resolved.def {
-                InstanceDef::Item(def_id, _) if resolved.def.requires_caller_location(tcx) => {
+                InstanceDef::Item(def) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
-                    resolved.def = InstanceDef::ReifyShim(def_id);
+                    resolved.def = InstanceDef::ReifyShim(def.did);
                 }
                 InstanceDef::Virtual(def_id, _) => {
                     debug!(" => fn pointer created for virtual call");
@@ -476,7 +467,7 @@ impl<'tcx> Instance<'tcx> {
             | InstanceDef::DropGlue(..)
             // FIXME(#69925): `FnPtrShim` should be in the other branch.
             | InstanceDef::FnPtrShim(..)
-            | InstanceDef::Item(_, _)
+            | InstanceDef::Item(_)
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ReifyShim(..)
             | InstanceDef::Virtual(..)

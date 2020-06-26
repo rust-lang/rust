@@ -288,7 +288,7 @@ pub fn const_eval_raw_provider<'tcx>(
     }
 
     let cid = key.value;
-    let def = cid.instance.with_opt_param(tcx);
+    let def = cid.instance.def.with_opt_param();
 
     if let Some(def) = def.as_local() {
         if tcx.has_typeck_tables(def.did) {

@@ -116,17 +116,17 @@ pub struct MirSource<'tcx> {
 
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
-        MirSource { instance: InstanceDef::Item(def_id, None), promoted: None }
+        MirSource { instance: InstanceDef::Item(ty::WithOptParam::dummy(def_id)), promoted: None }
     }
 
     #[inline]
-    pub fn def_id(&self) -> DefId {
+    pub fn def_id(self) -> DefId {
         self.instance.def_id()
     }
 
     #[inline]
-    pub fn with_opt_param(&self, tcx: TyCtxt<'tcx>) -> ty::WithOptParam<DefId> {
-        self.instance.with_opt_param(tcx)
+    pub fn with_opt_param(self) -> ty::WithOptParam<DefId> {
+        self.instance.with_opt_param()
     }
 }
 
@@ -264,7 +264,7 @@ fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptParam<DefId>) -> Steal<Body<'_>> {
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(def.did.to_def_id(), def.param_did),
+        InstanceDef::Item(def.to_global()),
         None,
         MirPhase::Const,
         &[&[
@@ -299,7 +299,7 @@ fn mir_validated(
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(def.did.to_def_id(), def.param_did),
+        InstanceDef::Item(def.to_global()),
         None,
         MirPhase::Validated,
         &[&[
@@ -365,7 +365,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(
     run_passes(
         tcx,
         body,
-        InstanceDef::Item(def_id.to_def_id(), None),
+        InstanceDef::Item(ty::WithOptParam::dummy(def_id.to_def_id())),
         promoted,
         MirPhase::DropElab,
         &[post_borrowck_cleanup],
@@ -429,7 +429,7 @@ fn run_optimization_passes<'tcx>(
     run_passes(
         tcx,
         body,
-        InstanceDef::Item(def_id.to_def_id(), None),
+        InstanceDef::Item(ty::WithOptParam::dummy(def_id.to_def_id())),
         promoted,
         MirPhase::Optimized,
         &[

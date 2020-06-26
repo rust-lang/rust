@@ -400,7 +400,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
-        let def = instance.with_opt_param(*self.tcx);
+        let def = instance.with_opt_param();
         if let Some(def) = def.as_local() {
             if self.tcx.has_typeck_tables(def.did) {
                 if let Some(error_reported) = self.tcx.typeck_tables_of(def).tainted_by_errors {
@@ -413,7 +413,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(&self.tcx.promoted_mir(def)[promoted]);
         }
         match instance {
-            ty::InstanceDef::Item(_, _) => {
+            ty::InstanceDef::Item(_) => {
                 if self.tcx.is_mir_available(def.did) {
                     Ok(self.tcx.optimized_mir(def))
                 } else {
