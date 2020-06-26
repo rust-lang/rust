@@ -500,6 +500,8 @@ fn foo(params: &[usize]) {
     31..78 'match ...     }': ()
     37..43 'params': &[usize]
     54..66 '[ps @ .., _]': [usize]
+    55..62 'ps @ ..': &[usize]
+    60..62 '..': [usize]
     64..65 '_': usize
     70..72 '{}': ()
     "###

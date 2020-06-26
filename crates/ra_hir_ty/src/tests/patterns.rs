@@ -627,3 +627,28 @@ fn test() {
     "###
     );
 }
+
+#[test]
+fn slice_tail_pattern() {
+    assert_snapshot!(
+        infer(r#"
+fn foo(params: &[i32]) {
+    match params {
+        [head, tail @ ..] => {
+        }
+    }
+}
+"#),
+        @r###"
+    7..13 'params': &[i32]
+    23..92 '{     ...   } }': ()
+    29..90 'match ...     }': ()
+    35..41 'params': &[i32]
+    52..69 '[head,... @ ..]': [i32]
+    53..57 'head': &i32
+    59..68 'tail @ ..': &[i32]
+    66..68 '..': [i32]
+    73..84 '{         }': ()
+    "###
+    );
+}
