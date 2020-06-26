@@ -266,7 +266,7 @@ fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>)
         token::Shebang(s) => format!("/* shebang: {}*/", s),
         token::Unknown(s) => s.to_string(),
 
-        token::Interpolated(ref nt) => nonterminal_to_string(nt),
+        token::Interpolated(ref nt, _) => nonterminal_to_string(nt),
     }
 }
 
@@ -2578,7 +2578,7 @@ impl<'a> State<'a> {
                         s.print_type(default)
                     }
                 }
-                ast::GenericParamKind::Const { ref ty } => {
+                ast::GenericParamKind::Const { ref ty, kw_span: _ } => {
                     s.word_space("const");
                     s.print_ident(param.ident);
                     s.s.space();

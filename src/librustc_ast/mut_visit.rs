@@ -656,7 +656,7 @@ pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
             *span = ident.span;
             return; // Avoid visiting the span for the second time.
         }
-        token::Interpolated(nt) => {
+        token::Interpolated(nt, _) => {
             let mut nt = Lrc::make_mut(nt);
             vis.visit_interpolated(&mut nt);
         }
@@ -762,7 +762,7 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
         GenericParamKind::Type { default } => {
             visit_opt(default, |default| vis.visit_ty(default));
         }
-        GenericParamKind::Const { ty } => {
+        GenericParamKind::Const { ty, kw_span: _ } => {
             vis.visit_ty(ty);
         }
     }

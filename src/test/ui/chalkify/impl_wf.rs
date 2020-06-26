@@ -23,15 +23,10 @@ impl<T> Bar for Option<T> {
     type Item = Option<T>;
 }
 
-// FIXME(chalk): the ordering of these two errors differs between CI and local
-// We need to figure out why its non-deterministic
-/*
 impl Bar for f32 {
-//^ ERROR the trait bound `f32: Foo` is not satisfied
     type Item = f32;
-    //^ ERROR the trait bound `f32: Foo` is not satisfied
+    //~^ ERROR the trait bound `f32: Foo` is not satisfied
 }
-*/
 
 trait Baz<U: ?Sized> where U: Foo { }
 

@@ -20,13 +20,13 @@ use filetime::FileTime;
 use serde::Deserialize;
 
 use crate::builder::Cargo;
-use crate::dist;
-use crate::native;
-use crate::util::{exe, is_dylib, symlink_dir};
-use crate::{Compiler, DependencyType, GitRepo, Mode};
-
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
+use crate::dist;
+use crate::native;
+use crate::tool::SourceType;
+use crate::util::{exe, is_dylib, symlink_dir};
+use crate::{Compiler, DependencyType, GitRepo, Mode};
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -87,7 +87,7 @@ impl Step for Std {
         target_deps.extend(copy_third_party_objects(builder, &compiler, target));
         target_deps.extend(copy_self_contained_objects(builder, &compiler, target));
 
-        let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!(
@@ -513,7 +513,7 @@ impl Step for Rustc {
             target: builder.config.build,
         });
 
-        let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "build");
         rustc_cargo(builder, &mut cargo, target);
 
         builder.info(&format!(

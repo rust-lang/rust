@@ -7,17 +7,17 @@ use crate::traits::{
     ChalkEnvironmentAndGoal, ChalkEnvironmentClause, FulfillmentError, FulfillmentErrorCode,
     ObligationCause, PredicateObligation, SelectionError, TraitEngine,
 };
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 pub struct FulfillmentContext<'tcx> {
-    obligations: FxHashSet<PredicateObligation<'tcx>>,
+    obligations: FxIndexSet<PredicateObligation<'tcx>>,
 }
 
 impl FulfillmentContext<'tcx> {
     crate fn new() -> Self {
-        FulfillmentContext { obligations: FxHashSet::default() }
+        FulfillmentContext { obligations: FxIndexSet::default() }
     }
 }
 
@@ -79,7 +79,7 @@ fn environment<'tcx>(
     };
 
     // FIXME(eddyb) isn't the unordered nature of this a hazard?
-    let mut inputs = FxHashSet::default();
+    let mut inputs = FxIndexSet::default();
 
     match node_kind {
         // In a trait impl, we assume that the header trait ref and all its
@@ -140,7 +140,8 @@ fn in_environment(
         None if obligation.param_env.caller_bounds.is_empty() => ty::List::empty(),
         // FIXME(chalk): this is hit in ui/where-clauses/where-clause-constraints-are-local-for-trait-impl
         // and ui/generics/generic-static-methods
-        _ => bug!("non-empty `ParamEnv` with no def-id"),
+        //_ => bug!("non-empty `ParamEnv` with no def-id"),
+        _ => ty::List::empty(),
     };
 
     ChalkEnvironmentAndGoal { environment, goal: obligation.predicate }
@@ -195,7 +196,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         let mut errors = Vec::new();
-        let mut next_round = FxHashSet::default();
+        let mut next_round = FxIndexSet::default();
         let mut making_progress;
 
         loop {
@@ -203,7 +204,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
             // We iterate over all obligations, and record if we are able
             // to unambiguously prove at least one obligation.
-            for obligation in self.obligations.drain() {
+            for obligation in self.obligations.drain(..) {
                 let goal_in_environment = in_environment(infcx, &obligation);
                 let mut orig_values = OriginalQueryValues::default();
                 let canonical_goal =

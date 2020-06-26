@@ -1,4 +1,5 @@
 use super::{InlineAsmArch, InlineAsmType};
+use crate::spec::Target;
 use rustc_macros::HashStable_Generic;
 use std::fmt;
 
@@ -58,6 +59,37 @@ impl ArmInlineAsmRegClass {
     }
 }
 
+// This uses the same logic as useR7AsFramePointer in LLVM
+fn frame_pointer_is_r7(mut has_feature: impl FnMut(&str) -> bool, target: &Target) -> bool {
+    target.options.is_like_osx || (!target.options.is_like_windows && has_feature("thumb-mode"))
+}
+
+fn frame_pointer_r11(
+    _arch: InlineAsmArch,
+    has_feature: impl FnMut(&str) -> bool,
+    target: &Target,
+    _allocating: bool,
+) -> Result<(), &'static str> {
+    if !frame_pointer_is_r7(has_feature, target) {
+        Err("the frame pointer (r11) cannot be used as an operand for inline asm")
+    } else {
+        Ok(())
+    }
+}
+
+fn frame_pointer_r7(
+    _arch: InlineAsmArch,
+    has_feature: impl FnMut(&str) -> bool,
+    target: &Target,
+    _allocating: bool,
+) -> Result<(), &'static str> {
+    if frame_pointer_is_r7(has_feature, target) {
+        Err("the frame pointer (r7) cannot be used as an operand for inline asm")
+    } else {
+        Ok(())
+    }
+}
+
 def_regs! {
     Arm ArmInlineAsmReg ArmInlineAsmRegClass {
         r0: reg, reg_thumb = ["r0", "a1"],
@@ -66,11 +98,11 @@ def_regs! {
         r3: reg, reg_thumb = ["r3", "a4"],
         r4: reg, reg_thumb = ["r4", "v1"],
         r5: reg, reg_thumb = ["r5", "v2"],
-        r6: reg, reg_thumb = ["r6", "v3"],
-        r7: reg, reg_thumb = ["r7", "v4"],
+        r7: reg, reg_thumb = ["r7", "v4"] % frame_pointer_r7,
         r8: reg = ["r8", "v5"],
         r9: reg = ["r9", "v6", "rfp"],
         r10: reg = ["r10", "sl"],
+        r11: reg = ["r11", "fp"] % frame_pointer_r11,
         r12: reg = ["r12", "ip"],
         r14: reg = ["r14", "lr"],
         s0: sreg, sreg_low16 = ["s0"],
@@ -153,8 +185,8 @@ def_regs! {
         q13: qreg = ["q13"],
         q14: qreg = ["q14"],
         q15: qreg = ["q15"],
-        #error = ["r11", "fp"] =>
-            "the frame pointer cannot be used as an operand for inline asm",
+        #error = ["r6", "v3"] =>
+            "r6 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["r13", "sp"] =>
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["r15", "pc"] =>

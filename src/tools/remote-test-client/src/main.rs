@@ -5,8 +5,6 @@
 //! Here is also where we bake in the support to spawn the QEMU emulator as
 //! well.
 
-#![deny(warnings)]
-
 use std::env;
 use std::fs::{self, File};
 use std::io::prelude::*;

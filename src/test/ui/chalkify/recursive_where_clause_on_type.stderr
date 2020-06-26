@@ -1,10 +1,14 @@
-warning: Trait bound S: Foo does not depend on any type or lifetime parameters
-  --> $DIR/recursive_where_clause_on_type.rs:12:19
+error: the type `S` is not well-formed (chalk)
+  --> $DIR/recursive_where_clause_on_type.rs:28:11
    |
-LL | struct S where S: Foo;
-   |                   ^^^
-   |
-   = note: `#[warn(trivial_bounds)]` on by default
+LL |     foo::<S>()
+   |           ^
 
-warning: 1 warning emitted
+error: the type `S` is not well-formed (chalk)
+  --> $DIR/recursive_where_clause_on_type.rs:28:5
+   |
+LL |     foo::<S>()
+   |     ^^^^^^^^
+
+error: aborting due to 2 previous errors
 

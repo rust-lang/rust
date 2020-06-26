@@ -29,7 +29,6 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ich::NodeIdHashingMode;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::truncate;
 use rustc_middle::mir::{self, Field, GeneratorLayout};
 use rustc_middle::ty::layout::{self, IntegerExt, PrimitiveExt, TyAndLayout};
@@ -2382,9 +2381,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     }
 
     let tcx = cx.tcx;
-    let attrs = tcx.codegen_fn_attrs(def_id);
 
-    let no_mangle = attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE);
     // We may want to remove the namespace scope if we're in an extern block (see
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952).
     let var_scope = get_namespace_for_item(cx, def_id);
@@ -2401,14 +2398,11 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     let variable_type = Instance::mono(cx.tcx, def_id).monomorphic_ty(cx.tcx);
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = tcx.item_name(def_id).as_str();
-    let linkage_name = if no_mangle {
-        None
-    } else {
-        Some(mangled_name_of_instance(cx, Instance::mono(tcx, def_id)).name.as_str())
-    };
+    let linkage_name: &str =
+        &mangled_name_of_instance(cx, Instance::mono(tcx, def_id)).name.as_str();
     // When empty, linkage_name field is omitted,
     // which is what we want for no_mangle statics
-    let linkage_name = linkage_name.as_deref().unwrap_or("");
+    let linkage_name = if var_name == linkage_name { "" } else { linkage_name };
 
     let global_align = cx.align_of(variable_type);
 

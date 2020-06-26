@@ -336,8 +336,10 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
     ///
     /// For example given:
     ///
+    /// ```no_run
     /// trait X<S> { fn f<T>(); }
     /// impl<U> X<U> for U { fn f<V>() {} }
+    /// ```
     ///
     /// * If `self` is `[Self, S, T]`: the identity substs of `f` in the trait.
     /// * If `source_ancestor` is the def_id of the trait.

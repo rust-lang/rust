@@ -1408,6 +1408,7 @@ function defocusSearchBar() {
 
                     addClass(actives[currentTab][0].previousElementSibling, "highlighted");
                     removeClass(actives[currentTab][0], "highlighted");
+                    e.preventDefault();
                 } else if (e.which === 40) { // down
                     if (!actives[currentTab].length) {
                         var results = document.getElementById("results").childNodes;
@@ -1421,6 +1422,7 @@ function defocusSearchBar() {
                         addClass(actives[currentTab][0].nextElementSibling, "highlighted");
                         removeClass(actives[currentTab][0], "highlighted");
                     }
+                    e.preventDefault();
                 } else if (e.which === 13) { // return
                     if (actives[currentTab].length) {
                         document.location.href =

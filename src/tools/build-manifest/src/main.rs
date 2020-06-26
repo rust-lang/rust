@@ -4,8 +4,6 @@
 //! via `x.py dist hash-and-sign`; the cmdline arguments are set up
 //! by rustbuild (in `src/bootstrap/dist.rs`).
 
-#![deny(warnings)]
-
 use serde::Serialize;
 
 use std::collections::BTreeMap;

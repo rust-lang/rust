@@ -165,7 +165,7 @@ struct StrError(String);
 impl Error for StrError {}
 
 impl std::fmt::Display for StrError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.0, f)
     }
 }
@@ -177,7 +177,7 @@ struct WithContext {
 }
 
 impl std::fmt::Display for WithContext {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.context)
     }
 }

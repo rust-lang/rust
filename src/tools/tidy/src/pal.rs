@@ -67,6 +67,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     // std testing crates, okay for now at least
     "src/libcore/tests",
     "src/liballoc/tests/lib.rs",
+    "src/liballoc/benches/lib.rs",
     // The `VaList` implementation must have platform specific code.
     // The Windows implementation of a `va_list` is always a character
     // pointer regardless of the target architecture. As a result,

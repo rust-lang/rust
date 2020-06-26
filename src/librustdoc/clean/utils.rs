@@ -328,7 +328,7 @@ pub fn strip_path(path: &Path) -> Path {
     Path { global: path.global, res: path.res, segments }
 }
 
-pub fn qpath_to_string(p: &hir::QPath) -> String {
+pub fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, ref path) => &path.segments,
         hir::QPath::TypeRelative(_, ref segment) => return segment.ident.to_string(),
@@ -417,7 +417,7 @@ impl ToSource for rustc_span::Span {
     }
 }
 
-pub fn name_from_pat(p: &hir::Pat) -> String {
+pub fn name_from_pat(p: &hir::Pat<'_>) -> String {
     use rustc_hir::*;
     debug!("trying to get a name from pattern: {:?}", p);
 

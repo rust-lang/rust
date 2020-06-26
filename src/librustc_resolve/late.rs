@@ -536,8 +536,8 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
         for param in &generics.params {
             match param.kind {
-                GenericParamKind::Lifetime { .. } => self.visit_generic_param(param),
-                GenericParamKind::Type { ref default, .. } => {
+                GenericParamKind::Lifetime => self.visit_generic_param(param),
+                GenericParamKind::Type { ref default } => {
                     for bound in &param.bounds {
                         self.visit_param_bound(bound);
                     }
@@ -551,7 +551,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     // Allow all following defaults to refer to this type parameter.
                     default_ban_rib.bindings.remove(&Ident::with_dummy_span(param.ident.name));
                 }
-                GenericParamKind::Const { ref ty } => {
+                GenericParamKind::Const { ref ty, kw_span: _ } => {
                     for bound in &param.bounds {
                         self.visit_param_bound(bound);
                     }

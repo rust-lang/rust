@@ -1027,7 +1027,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_token(&mut self, token: Token) -> TokenStream {
         match token.kind {
-            token::Interpolated(nt) => {
+            token::Interpolated(nt, _) => {
                 let tts = (self.nt_to_tokenstream)(&nt, &self.sess.parse_sess, token.span);
                 self.lower_token_stream(tts)
             }
@@ -2230,7 +2230,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (hir::ParamName::Plain(param.ident), kind)
             }
-            GenericParamKind::Const { ref ty } => {
+            GenericParamKind::Const { ref ty, kw_span: _ } => {
                 let ty = self
                     .with_anonymous_lifetime_mode(AnonymousLifetimeMode::ReportError, |this| {
                         this.lower_ty(&ty, ImplTraitContext::disallowed())
