@@ -1,4 +1,5 @@
 use super::{InlineAsmArch, InlineAsmType};
+use crate::spec::Target;
 use rustc_macros::HashStable_Generic;
 use std::fmt;
 
@@ -131,6 +132,7 @@ impl X86InlineAsmRegClass {
 fn x86_64_only(
     arch: InlineAsmArch,
     _has_feature: impl FnMut(&str) -> bool,
+    _target: &Target,
     _allocating: bool,
 ) -> Result<(), &'static str> {
     match arch {
@@ -143,6 +145,7 @@ fn x86_64_only(
 fn high_byte(
     arch: InlineAsmArch,
     _has_feature: impl FnMut(&str) -> bool,
+    _target: &Target,
     allocating: bool,
 ) -> Result<(), &'static str> {
     match arch {
