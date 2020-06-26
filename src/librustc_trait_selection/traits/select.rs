@@ -1173,6 +1173,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // who might care about this case, like coherence, should use
         // that function).
         if candidates.is_empty() {
+            // If there's an error type, 'downgrade' our result from
+            // `Err(Unimplemented)` to `Ok(None)`. This helps us avoid
+            // emitting additional spurious errors, since we're guaranteed
+            // to have emitted at least one.
+            if stack.obligation.references_error() {
+                debug!("no results for error type, treating as ambiguous");
+                return Ok(None);
+            }
             return Err(Unimplemented);
         }
 
@@ -1696,6 +1704,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         debug!("assemble_candidates_from_impls(obligation={:?})", obligation);
+
+        // Essentially any user-written impl will match with an error type,
+        // so creating `ImplCandidates` isn't useful. However, we might
+        // end up finding a candidate elsewhere (e.g. a `BuiltinCandidate` for `Sized)
+        // This helps us avoid overflow: see issue #72839
+        // Since compilation is already guaranteed to fail, this is just
+        // to try to show the 'nicest' possible errors to the user.
+        if obligation.references_error() {
+            return Ok(());
+        }
 
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),
