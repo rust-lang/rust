@@ -1,24 +1,13 @@
 //! Utilities for LSP-related boilerplate code.
 use std::{error::Error, ops::Range};
 
-use crossbeam_channel::Sender;
-use lsp_server::{Message, Notification};
+use lsp_server::Notification;
+use lsp_types::request::Request;
 use ra_db::Canceled;
 use ra_ide::LineIndex;
 use serde::Serialize;
 
-use crate::from_proto;
-
-pub fn show_message(
-    typ: lsp_types::MessageType,
-    message: impl Into<String>,
-    sender: &Sender<Message>,
-) {
-    let message = message.into();
-    let params = lsp_types::ShowMessageParams { typ, message };
-    let not = notification_new::<lsp_types::notification::ShowMessage>(params);
-    sender.send(not.into()).unwrap();
-}
+use crate::{from_proto, global_state::GlobalState};
 
 pub(crate) fn is_canceled(e: &(dyn Error + 'static)) -> bool {
     e.downcast_ref::<Canceled>().is_some()
@@ -36,6 +25,74 @@ where
     N::Params: Serialize,
 {
     Notification::new(N::METHOD.to_string(), params)
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum Progress {
+    Begin,
+    Report,
+    End,
+}
+
+impl Progress {
+    pub(crate) fn percentage(done: usize, total: usize) -> f64 {
+        (done as f64 / total.max(1) as f64) * 100.0
+    }
+}
+
+impl GlobalState {
+    pub(crate) fn show_message(&mut self, typ: lsp_types::MessageType, message: String) {
+        let message = message.into();
+        let params = lsp_types::ShowMessageParams { typ, message };
+        let not = notification_new::<lsp_types::notification::ShowMessage>(params);
+        self.send(not.into());
+    }
+
+    pub(crate) fn report_progress(
+        &mut self,
+        title: &str,
+        state: Progress,
+        message: Option<String>,
+        percentage: Option<f64>,
+    ) {
+        if !self.config.client_caps.work_done_progress {
+            return;
+        }
+        let token = lsp_types::ProgressToken::String(format!("rustAnalyzer/{}", title));
+        let work_done_progress = match state {
+            Progress::Begin => {
+                let work_done_progress_create = self.req_queue.outgoing.register(
+                    lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
+                    lsp_types::WorkDoneProgressCreateParams { token: token.clone() },
+                    |_, _| (),
+                );
+                self.send(work_done_progress_create.into());
+
+                lsp_types::WorkDoneProgress::Begin(lsp_types::WorkDoneProgressBegin {
+                    title: title.into(),
+                    cancellable: None,
+                    message,
+                    percentage,
+                })
+            }
+            Progress::Report => {
+                lsp_types::WorkDoneProgress::Report(lsp_types::WorkDoneProgressReport {
+                    cancellable: None,
+                    message,
+                    percentage,
+                })
+            }
+            Progress::End => {
+                lsp_types::WorkDoneProgress::End(lsp_types::WorkDoneProgressEnd { message })
+            }
+        };
+        let notification =
+            notification_new::<lsp_types::notification::Progress>(lsp_types::ProgressParams {
+                token,
+                value: lsp_types::ProgressParamsValue::WorkDone(work_done_progress),
+            });
+        self.send(notification.into());
+    }
 }
 
 pub(crate) fn apply_document_changes(

@@ -36,25 +36,29 @@ impl GlobalState {
             self.config
                 .linked_projects
                 .iter()
-                .filter_map(|project| match project {
+                .map(|project| match project {
                     LinkedProject::ProjectManifest(manifest) => {
                         ra_project_model::ProjectWorkspace::load(
                             manifest.clone(),
                             &self.config.cargo,
                             self.config.with_sysroot,
                         )
-                        .map_err(|err| {
-                            log::error!("failed to load workspace: {:#}", err);
-                            self.show_message(
-                                lsp_types::MessageType::Error,
-                                format!("rust-analyzer failed to load workspace: {:#}", err),
-                            );
-                        })
-                        .ok()
                     }
                     LinkedProject::InlineJsonProject(it) => {
-                        Some(ra_project_model::ProjectWorkspace::Json { project: it.clone() })
+                        Ok(ra_project_model::ProjectWorkspace::Json { project: it.clone() })
                     }
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+                .filter_map(|res| {
+                    res.map_err(|err| {
+                        log::error!("failed to load workspace: {:#}", err);
+                        self.show_message(
+                            lsp_types::MessageType::Error,
+                            format!("rust-analyzer failed to load workspace: {:#}", err),
+                        );
+                    })
+                    .ok()
                 })
                 .collect::<Vec<_>>()
         };
