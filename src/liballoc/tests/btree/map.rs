@@ -309,6 +309,41 @@ fn test_iter_mixed() {
     test(size, map.into_iter());
 }
 
+#[test]
+fn test_iter_min_max() {
+    let mut a = BTreeMap::new();
+    assert_eq!(a.iter().min(), None);
+    assert_eq!(a.iter().max(), None);
+    assert_eq!(a.iter_mut().min(), None);
+    assert_eq!(a.iter_mut().max(), None);
+    assert_eq!(a.range(..).min(), None);
+    assert_eq!(a.range(..).max(), None);
+    assert_eq!(a.range_mut(..).min(), None);
+    assert_eq!(a.range_mut(..).max(), None);
+    assert_eq!(a.keys().min(), None);
+    assert_eq!(a.keys().max(), None);
+    assert_eq!(a.values().min(), None);
+    assert_eq!(a.values().max(), None);
+    assert_eq!(a.values_mut().min(), None);
+    assert_eq!(a.values_mut().max(), None);
+    a.insert(1, 42);
+    a.insert(2, 24);
+    assert_eq!(a.iter().min(), Some((&1, &42)));
+    assert_eq!(a.iter().max(), Some((&2, &24)));
+    assert_eq!(a.iter_mut().min(), Some((&1, &mut 42)));
+    assert_eq!(a.iter_mut().max(), Some((&2, &mut 24)));
+    assert_eq!(a.range(..).min(), Some((&1, &42)));
+    assert_eq!(a.range(..).max(), Some((&2, &24)));
+    assert_eq!(a.range_mut(..).min(), Some((&1, &mut 42)));
+    assert_eq!(a.range_mut(..).max(), Some((&2, &mut 24)));
+    assert_eq!(a.keys().min(), Some(&1));
+    assert_eq!(a.keys().max(), Some(&2));
+    assert_eq!(a.values().min(), Some(&24));
+    assert_eq!(a.values().max(), Some(&42));
+    assert_eq!(a.values_mut().min(), Some(&mut 24));
+    assert_eq!(a.values_mut().max(), Some(&mut 42));
+}
+
 fn range_keys(map: &BTreeMap<i32, i32>, range: impl RangeBounds<i32>) -> Vec<i32> {
     map.range(range)
         .map(|(&k, &v)| {
