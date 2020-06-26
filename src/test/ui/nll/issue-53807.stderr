@@ -5,6 +5,10 @@ LL |         if let Some(thing) = maybe {
    |                     ^^^^^ value moved here, in previous iteration of loop
    |
    = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+help: borrow this field in the pattern to avoid moving `maybe.0`
+   |
+LL |         if let Some(ref thing) = maybe {
+   |                     ^^^
 
 error: aborting due to previous error
 
