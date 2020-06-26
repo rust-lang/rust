@@ -174,7 +174,7 @@ impl Cache {
         };
 
         // Cache where all our extern crates are located
-        // TODO: this part is specific to HTML so it'd be nice to remove it from the common code
+        // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
         for &(n, ref e) in &krate.externs {
             let src_root = match e.src {
                 FileName::Real(ref p) => match p.local_path().parent() {
