@@ -561,7 +561,7 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn find_inner_item<N: ItemTreeNode>(&self, ast: &N::Source) -> ItemTreeId<N> {
+    fn find_inner_item<N: ItemTreeNode>(&self, ast: &N::Source) -> Option<ItemTreeId<N>> {
         let id = self.expander.ast_id(ast);
         let tree = &self.item_trees[&id.file_id];
 
@@ -573,17 +573,18 @@ impl ExprCollector<'_> {
             .chain(tree.top_level_items().iter().copied())
             .filter_map(|mod_item| mod_item.downcast::<N>())
             .find(|tree_id| tree[*tree_id].ast_id().upcast() == id.value.upcast())
-            .unwrap_or_else(|| {
-                panic!(
+            .or_else(|| {
+                log::debug!(
                     "couldn't find inner {} item for {:?} (AST: `{}` - {:?})",
                     type_name::<N>(),
                     id,
                     ast.syntax(),
                     ast.syntax(),
-                )
-            });
+                );
+                None
+            })?;
 
-        ItemTreeId::new(id.file_id, item_tree_id)
+        Some(ItemTreeId::new(id.file_id, item_tree_id))
     }
 
     fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
@@ -623,44 +624,44 @@ impl ExprCollector<'_> {
             .filter_map(|item| {
                 let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
                     ast::ModuleItem::FnDef(def) => {
-                        let id = self.find_inner_item(&def);
+                        let id = self.find_inner_item(&def)?;
                         (
                             FunctionLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
                     ast::ModuleItem::TypeAliasDef(def) => {
-                        let id = self.find_inner_item(&def);
+                        let id = self.find_inner_item(&def)?;
                         (
                             TypeAliasLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
                     ast::ModuleItem::ConstDef(def) => {
-                        let id = self.find_inner_item(&def);
+                        let id = self.find_inner_item(&def)?;
                         (
                             ConstLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
                     ast::ModuleItem::StaticDef(def) => {
-                        let id = self.find_inner_item(&def);
+                        let id = self.find_inner_item(&def)?;
                         (StaticLoc { container, id }.intern(self.db).into(), def.name())
                     }
                     ast::ModuleItem::StructDef(def) => {
-                        let id = self.find_inner_item(&def);
+                        let id = self.find_inner_item(&def)?;
                         (StructLoc { container, id }.intern(self.db).into(), def.name())
                     }
                     ast::ModuleItem::EnumDef(def) => {
-                        let id = self.find_inner_item(&def);
+                        let id = self.find_inner_item(&def)?;
                         (EnumLoc { container, id }.intern(self.db).into(), def.name())
                     }
                     ast::ModuleItem::UnionDef(def) => {
-                        let id = self.find_inner_item(&def);
+                        let id = self.find_inner_item(&def)?;
                         (UnionLoc { container, id }.intern(self.db).into(), def.name())
                     }
                     ast::ModuleItem::TraitDef(def) => {
-                        let id = self.find_inner_item(&def);
+                        let id = self.find_inner_item(&def)?;
                         (TraitLoc { container, id }.intern(self.db).into(), def.name())
                     }
                     ast::ModuleItem::ExternBlock(_) => return None, // FIXME: collect from extern blocks

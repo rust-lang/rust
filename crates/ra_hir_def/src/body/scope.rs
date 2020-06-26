@@ -337,6 +337,19 @@ fn foo() {
         );
     }
 
+    #[test]
+    fn broken_inner_item() {
+        do_check(
+            r"
+            fn foo() {
+                trait {}
+                <|>
+            }
+        ",
+            &[],
+        );
+    }
+
     fn do_check_local_name(ra_fixture: &str, expected_offset: u32) {
         let (db, position) = TestDB::with_position(ra_fixture);
         let file_id = position.file_id;
