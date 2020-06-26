@@ -54,7 +54,7 @@ pub fn load_cargo(
     Ok((host, vfs))
 }
 
-pub(crate) fn load(
+fn load(
     crate_graph: CrateGraph,
     source_root_config: SourceRootConfig,
     vfs: &mut vfs::Vfs,

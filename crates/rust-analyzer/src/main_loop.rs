@@ -158,7 +158,7 @@ impl GlobalState {
                     }
                     Task::Unit => (),
                 }
-                self.maybe_collect_garbage();
+                self.analysis_host.maybe_collect_garbage();
             }
             Event::Vfs(task) => match task {
                 vfs::loader::Message::Loaded { files } => {
@@ -274,7 +274,7 @@ impl GlobalState {
         self.req_queue.incoming.register(req.id.clone(), (req.method.clone(), request_received));
 
         RequestDispatcher { req: Some(req), global_state: self }
-            .on_sync::<lsp_ext::CollectGarbage>(|s, ()| Ok(s.collect_garbage()))?
+            .on_sync::<lsp_ext::CollectGarbage>(|s, ()| Ok(s.analysis_host.collect_garbage()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
             .on_sync::<lsp_types::request::Shutdown>(|_, ()| Ok(()))?

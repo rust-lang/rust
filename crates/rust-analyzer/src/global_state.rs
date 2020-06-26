@@ -12,8 +12,6 @@ use parking_lot::RwLock;
 use ra_db::{CrateId, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
-use stdx::format_to;
-use vfs::loader::Handle as _;
 
 use crate::{
     config::Config,
@@ -83,15 +81,15 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) check_fixes: CheckFixes,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
-    workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
 }
 
 impl GlobalState {
     pub(crate) fn new(sender: Sender<lsp_server::Message>, config: Config) -> GlobalState {
         let loader = {
             let (sender, receiver) = unbounded::<vfs::loader::Message>();
-            let handle =
-                vfs_notify::NotifyHandle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+            let handle: vfs_notify::NotifyHandle =
+                vfs::loader::Handle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
             let handle = Box::new(handle) as Box<dyn vfs::loader::Handle>;
             Handle { handle, receiver }
         };
@@ -171,14 +169,6 @@ impl GlobalState {
         }
     }
 
-    pub(crate) fn maybe_collect_garbage(&mut self) {
-        self.analysis_host.maybe_collect_garbage()
-    }
-
-    pub(crate) fn collect_garbage(&mut self) {
-        self.analysis_host.collect_garbage()
-    }
-
     pub(crate) fn send(&mut self, message: lsp_server::Message) {
         self.sender.send(message).unwrap()
     }
@@ -241,26 +231,6 @@ impl GlobalStateSnapshot {
             }
             ProjectWorkspace::Json { .. } => None,
         })
-    }
-
-    pub(crate) fn status(&self) -> String {
-        let mut buf = String::new();
-        if self.workspaces.is_empty() {
-            buf.push_str("no workspaces\n")
-        } else {
-            buf.push_str("workspaces:\n");
-            for w in self.workspaces.iter() {
-                format_to!(buf, "{} packages loaded\n", w.n_packages());
-            }
-        }
-        buf.push_str("\nanalysis:\n");
-        buf.push_str(
-            &self
-                .analysis
-                .status()
-                .unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
-        );
-        buf
     }
 }
 
