@@ -60,7 +60,7 @@ impl CognitiveComplexity {
         let mut helper = CCHelper { cc: 1, returns: 0 };
         helper.visit_expr(expr);
         let CCHelper { cc, returns } = helper;
-        let ret_ty = cx.tables.node_type(expr.hir_id);
+        let ret_ty = cx.tables().node_type(expr.hir_id);
         let ret_adjust = if is_type_diagnostic_item(cx, ret_ty, sym!(result_type)) {
             returns
         } else {

@@ -37,6 +37,7 @@ use rustc_session::Session;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use rustc_target::abi::LayoutOf;
 
+use std::cell::Cell;
 use std::slice;
 
 /// Information about the registered lints.
@@ -423,9 +424,17 @@ pub struct LateContext<'a, 'tcx> {
     /// Type context we're checking in.
     pub tcx: TyCtxt<'tcx>,
 
-    /// Side-tables for the body we are in.
-    // FIXME: Make this lazy to avoid running the TypeckTables query?
-    pub tables: &'a ty::TypeckTables<'tcx>,
+    /// Current body, or `None` if outside a body.
+    pub enclosing_body: Option<hir::BodyId>,
+
+    /// Type-checking side-tables for the current body. Access using the
+    /// `tables` method, which handles querying the tables on demand.
+    // FIXME(eddyb) move all the code accessing internal fields like this,
+    // to this module, to avoid exposing it to lint logic.
+    pub(super) cached_typeck_tables: Cell<Option<&'tcx ty::TypeckTables<'tcx>>>,
+
+    // HACK(eddyb) replace this with having `Option` around `&TypeckTables`.
+    pub(super) empty_typeck_tables: &'a ty::TypeckTables<'tcx>,
 
     /// Parameter environment for the item we are in.
     pub param_env: ty::ParamEnv<'tcx>,
@@ -667,6 +676,22 @@ impl LintContext for EarlyContext<'_> {
 }
 
 impl<'a, 'tcx> LateContext<'a, 'tcx> {
+    /// Gets the type-checking side-tables for the current body,
+    /// or empty `TypeckTables` if outside a body.
+    // FIXME(eddyb) return `Option<&'tcx ty::TypeckTables<'tcx>>`,
+    // where `None` indicates we're outside a body.
+    pub fn tables(&self) -> &'a ty::TypeckTables<'tcx> {
+        if let Some(body) = self.enclosing_body {
+            self.cached_typeck_tables.get().unwrap_or_else(|| {
+                let tables = self.tcx.body_tables(body);
+                self.cached_typeck_tables.set(Some(tables));
+                tables
+            })
+        } else {
+            self.empty_typeck_tables
+        }
+    }
+
     pub fn current_lint_root(&self) -> hir::HirId {
         self.last_node_with_lint_attrs
     }

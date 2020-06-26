@@ -347,7 +347,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty<'_>) -> bool {
     ) = ty.kind
     {
         if let TyKind::Path(ref path) = inner.kind {
-            if let Res::Def(DefKind::Struct, def_id) = cx.tables.qpath_res(path, inner.hir_id) {
+            if let Res::Def(DefKind::Struct, def_id) = cx.tables().qpath_res(path, inner.hir_id) {
                 return match_def_path(cx, def_id, &paths::LINT);
             }
         }
@@ -405,7 +405,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
             if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(&*fn_name.as_str());
-            let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
+            let ty = walk_ptrs_ty(cx.tables().expr_ty(&args[0]));
             if match_type(cx, ty, &paths::EARLY_CONTEXT)
                 || match_type(cx, ty, &paths::LATE_CONTEXT);
             then {
@@ -438,7 +438,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
             let args = arg_lists[1];
             if args.len() == 1;
             let self_arg = &args[0];
-            let self_ty = walk_ptrs_ty(cx.tables.expr_ty(self_arg));
+            let self_ty = walk_ptrs_ty(cx.tables().expr_ty(self_arg));
             if match_type(cx, self_ty, &paths::SYNTAX_CONTEXT);
             then {
                 span_lint_and_sugg(

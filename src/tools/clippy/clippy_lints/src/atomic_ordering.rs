@@ -53,7 +53,7 @@ const ATOMIC_TYPES: [&str; 12] = [
 ];
 
 fn type_is_atomic(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
-    if let ty::Adt(&ty::AdtDef { did, .. }, _) = cx.tables.expr_ty(expr).kind {
+    if let ty::Adt(&ty::AdtDef { did, .. }, _) = cx.tables().expr_ty(expr).kind {
         ATOMIC_TYPES
             .iter()
             .any(|ty| match_def_path(cx, did, &["core", "sync", "atomic", ty]))
@@ -76,7 +76,7 @@ fn check_atomic_load_store(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         if method == "load" || method == "store";
         let ordering_arg = if method == "load" { &args[1] } else { &args[2] };
         if let ExprKind::Path(ref ordering_qpath) = ordering_arg.kind;
-        if let Some(ordering_def_id) = cx.tables.qpath_res(ordering_qpath, ordering_arg.hir_id).opt_def_id();
+        if let Some(ordering_def_id) = cx.tables().qpath_res(ordering_qpath, ordering_arg.hir_id).opt_def_id();
         then {
             if method == "load" &&
                 match_ordering_def_path(cx, ordering_def_id, &["Release", "AcqRel"]) {
@@ -107,12 +107,12 @@ fn check_memory_fence(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Call(ref func, ref args) = expr.kind;
         if let ExprKind::Path(ref func_qpath) = func.kind;
-        if let Some(def_id) = cx.tables.qpath_res(func_qpath, func.hir_id).opt_def_id();
+        if let Some(def_id) = cx.tables().qpath_res(func_qpath, func.hir_id).opt_def_id();
         if ["fence", "compiler_fence"]
             .iter()
             .any(|func| match_def_path(cx, def_id, &["core", "sync", "atomic", func]));
         if let ExprKind::Path(ref ordering_qpath) = &args[0].kind;
-        if let Some(ordering_def_id) = cx.tables.qpath_res(ordering_qpath, args[0].hir_id).opt_def_id();
+        if let Some(ordering_def_id) = cx.tables().qpath_res(ordering_qpath, args[0].hir_id).opt_def_id();
         if match_ordering_def_path(cx, ordering_def_id, &["Relaxed"]);
         then {
             span_lint_and_help(

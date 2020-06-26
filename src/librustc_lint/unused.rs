@@ -46,7 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             return;
         }
 
-        let ty = cx.tables.expr_ty(&expr);
+        let ty = cx.tables().expr_ty(&expr);
         let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1);
 
         let mut fn_warned = false;
@@ -55,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             hir::ExprKind::Call(ref callee, _) => {
                 match callee.kind {
                     hir::ExprKind::Path(ref qpath) => {
-                        match cx.tables.qpath_res(qpath, callee.hir_id) {
+                        match cx.tables().qpath_res(qpath, callee.hir_id) {
                             Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => Some(def_id),
                             // `Res::Local` if it was a closure, for which we
                             // do not currently support must-use linting
@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     _ => None,
                 }
             }
-            hir::ExprKind::MethodCall(..) => cx.tables.type_dependent_def_id(expr.hir_id),
+            hir::ExprKind::MethodCall(..) => cx.tables().type_dependent_def_id(expr.hir_id),
             _ => None,
         };
         if let Some(def_id) = maybe_def_id {
@@ -950,7 +950,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
             _ => return,
         }
 
-        for adj in cx.tables.expr_adjustments(e) {
+        for adj in cx.tables().expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
                 cx.struct_span_lint(UNUSED_ALLOCATION, e.span, |lint| {
                     let msg = match m {

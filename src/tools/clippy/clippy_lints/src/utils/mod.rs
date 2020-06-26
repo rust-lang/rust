@@ -151,7 +151,7 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_, '_>, ty: Ty<'_>, diag_item: 
 
 /// Checks if the method call given in `expr` belongs to the given trait.
 pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr<'_>, path: &[&str]) -> bool {
-    let def_id = cx.tables.type_dependent_def_id(expr.hir_id).unwrap();
+    let def_id = cx.tables().type_dependent_def_id(expr.hir_id).unwrap();
     let trt_id = cx.tcx.trait_of_item(def_id);
     if let Some(trt_id) = trt_id {
         match_def_path(cx, trt_id, path)
@@ -824,7 +824,7 @@ pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
 /// See `rustc_middle::ty::adjustment::Adjustment` and `rustc_typeck::check::coercion` for more
 /// information on adjustments and coercions.
 pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr<'_>) -> bool {
-    cx.tables.adjustments().get(e.hir_id).is_some()
+    cx.tables().adjustments().get(e.hir_id).is_some()
 }
 
 /// Returns the pre-expansion span if is this comes from an expansion of the
@@ -898,7 +898,7 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(ref fun, _) = expr.kind {
         if let ExprKind::Path(ref qp) = fun.kind {
-            let res = cx.tables.qpath_res(qp, fun.hir_id);
+            let res = cx.tables().qpath_res(qp, fun.hir_id);
             return match res {
                 def::Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
                 def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
@@ -914,7 +914,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Exp
 pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat<'_>) -> bool {
     fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, id: HirId) -> bool {
         matches!(
-            cx.tables.qpath_res(qpath, id),
+            cx.tables().qpath_res(qpath, id),
             def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), _)
         )
     }
@@ -941,7 +941,7 @@ pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat<'_>) -> bool {
             is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats.iter().map(|pat| &**pat))
         },
         PatKind::Slice(ref head, ref middle, ref tail) => {
-            match &cx.tables.node_type(pat.hir_id).kind {
+            match &cx.tables().node_type(pat.hir_id).kind {
                 ty::Slice(..) => {
                     // [..] is the only irrefutable slice pattern.
                     !head.is_empty() || middle.is_none() || !tail.is_empty()
@@ -1190,7 +1190,7 @@ pub fn match_function_call<'a, 'tcx>(
     if_chain! {
         if let ExprKind::Call(ref fun, ref args) = expr.kind;
         if let ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(fun_def_id) = cx.tables.qpath_res(qpath, fun.hir_id).opt_def_id();
+        if let Some(fun_def_id) = cx.tables().qpath_res(qpath, fun.hir_id).opt_def_id();
         if match_def_path(cx, fun_def_id, path);
         then {
             return Some(&args)
@@ -1317,14 +1317,14 @@ pub fn is_must_use_func_call(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool 
     let did = match expr.kind {
         ExprKind::Call(ref path, _) => if_chain! {
             if let ExprKind::Path(ref qpath) = path.kind;
-            if let def::Res::Def(_, did) = cx.tables.qpath_res(qpath, path.hir_id);
+            if let def::Res::Def(_, did) = cx.tables().qpath_res(qpath, path.hir_id);
             then {
                 Some(did)
             } else {
                 None
             }
         },
-        ExprKind::MethodCall(_, _, _, _) => cx.tables.type_dependent_def_id(expr.hir_id),
+        ExprKind::MethodCall(_, _, _, _) => cx.tables().type_dependent_def_id(expr.hir_id),
         _ => None,
     };
 

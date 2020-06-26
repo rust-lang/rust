@@ -75,7 +75,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
                 if let ExprKind::Path(ref qpath) = lhs.kind {
                     if let QPath::Resolved(_, ref path) = *qpath {
                         if path.segments.len() == 1 {
-                            if let def::Res::Local(var) = cx.tables.qpath_res(qpath, lhs.hir_id) {
+                            if let def::Res::Local(var) = cx.tables().qpath_res(qpath, lhs.hir_id) {
                                 let mut visitor = ReadVisitor {
                                     cx,
                                     var,
@@ -137,7 +137,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
         match e.kind {
             ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
             ExprKind::Call(ref func, _) => {
-                let typ = self.cx.tables.expr_ty(func);
+                let typ = self.cx.tables().expr_ty(func);
                 match typ.kind {
                     ty::FnDef(..) | ty::FnPtr(_) => {
                         let sig = typ.fn_sig(self.cx.tcx);
@@ -149,7 +149,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
                 }
             },
             ExprKind::MethodCall(..) => {
-                let borrowed_table = self.cx.tables;
+                let borrowed_table = self.cx.tables();
                 if borrowed_table.expr_ty(e).is_never() {
                     self.report_diverging_sub_expr(e);
                 }
@@ -309,7 +309,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
                 if_chain! {
                     if let QPath::Resolved(None, ref path) = *qpath;
                     if path.segments.len() == 1;
-                    if let def::Res::Local(local_id) = self.cx.tables.qpath_res(qpath, expr.hir_id);
+                    if let def::Res::Local(local_id) = self.cx.tables().qpath_res(qpath, expr.hir_id);
                     if local_id == self.var;
                     // Check that this is a read, not a write.
                     if !is_in_assignment_position(self.cx, expr);

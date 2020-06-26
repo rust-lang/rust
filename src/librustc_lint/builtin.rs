@@ -144,7 +144,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) {
-        let ty = cx.tables.node_type(e.hir_id);
+        let ty = cx.tables().node_type(e.hir_id);
         self.check_heap_type(cx, e.span, ty);
     }
 }
@@ -161,11 +161,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>) {
         if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind {
             let variant = cx
-                .tables
+                .tables()
                 .pat_ty(pat)
                 .ty_adt_def()
                 .expect("struct pattern type is not an ADT")
-                .variant_of_res(cx.tables.qpath_res(qpath, pat.hir_id));
+                .variant_of_res(cx.tables().qpath_res(qpath, pat.hir_id));
             for fieldpat in field_pats {
                 if fieldpat.is_shorthand {
                     continue;
@@ -178,7 +178,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                 }
                 if let PatKind::Binding(binding_annot, _, ident, None) = fieldpat.pat.kind {
                     if cx.tcx.find_field_index(ident, &variant)
-                        == Some(cx.tcx.field_index(fieldpat.hir_id, cx.tables))
+                        == Some(cx.tcx.field_index(fieldpat.hir_id, cx.tables()))
                     {
                         cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span, |lint| {
                             let mut err = lint
@@ -901,7 +901,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
             expr: &hir::Expr<'_>,
         ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
             let def = if let hir::ExprKind::Path(ref qpath) = expr.kind {
-                cx.tables.qpath_res(qpath, expr.hir_id)
+                cx.tables().qpath_res(qpath, expr.hir_id)
             } else {
                 return None;
             };
@@ -909,7 +909,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
-                let sig = cx.tables.node_type(expr.hir_id).fn_sig(cx.tcx);
+                let sig = cx.tables().node_type(expr.hir_id).fn_sig(cx.tcx);
                 let from = sig.inputs().skip_binder()[0];
                 let to = *sig.output().skip_binder();
                 return Some((from, to));
@@ -1891,7 +1891,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             if let hir::ExprKind::Call(ref path_expr, ref args) = expr.kind {
                 // Find calls to `mem::{uninitialized,zeroed}` methods.
                 if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
-                    let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+                    let def_id = cx.tables().qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
 
                     if cx.tcx.is_diagnostic_item(sym::mem_zeroed, def_id) {
                         return Some(InitKind::Zeroed);
@@ -1905,14 +1905,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                 }
             } else if let hir::ExprKind::MethodCall(_, _, ref args, _) = expr.kind {
                 // Find problematic calls to `MaybeUninit::assume_init`.
-                let def_id = cx.tables.type_dependent_def_id(expr.hir_id)?;
+                let def_id = cx.tables().type_dependent_def_id(expr.hir_id)?;
                 if cx.tcx.is_diagnostic_item(sym::assume_init, def_id) {
                     // This is a call to *some* method named `assume_init`.
                     // See if the `self` parameter is one of the dangerous constructors.
                     if let hir::ExprKind::Call(ref path_expr, _) = args[0].kind {
                         if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                             let def_id =
-                                cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+                                cx.tables().qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
 
                             if cx.tcx.is_diagnostic_item(sym::maybe_uninit_zeroed, def_id) {
                                 return Some(InitKind::Zeroed);
@@ -2025,7 +2025,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             // This conjures an instance of a type out of nothing,
             // using zeroed or uninitialized memory.
             // We are extremely conservative with what we warn about.
-            let conjured_ty = cx.tables.expr_ty(expr);
+            let conjured_ty = cx.tables().expr_ty(expr);
             if let Some((msg, span)) = ty_find_init_error(cx.tcx, conjured_ty, init) {
                 cx.struct_span_lint(INVALID_VALUE, expr.span, |lint| {
                     let mut err = lint.build(&format!(

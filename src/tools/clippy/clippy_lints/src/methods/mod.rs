@@ -1433,7 +1433,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 lint_or_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
                 lint_expect_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
 
-                let self_ty = cx.tables.expr_ty_adjusted(&args[0]);
+                let self_ty = cx.tables().expr_ty_adjusted(&args[0]);
                 if args.len() == 1 && method_call.ident.name == sym!(clone) {
                     lint_clone_on_copy(cx, expr, &args[0], self_ty);
                     lint_clone_on_ref_ptr(cx, expr, &args[0]);
@@ -1639,7 +1639,7 @@ fn lint_or_fun_call<'a, 'tcx>(
             if let hir::ExprKind::Path(ref qpath) = fun.kind;
             let path = &*last_path_segment(qpath).ident.as_str();
             if ["default", "new"].contains(&path);
-            let arg_ty = cx.tables.expr_ty(arg);
+            let arg_ty = cx.tables().expr_ty(arg);
             if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
             if implements_trait(cx, arg_ty, default_trait_id, &[]);
 
@@ -1679,7 +1679,7 @@ fn lint_or_fun_call<'a, 'tcx>(
     ) {
         if let hir::ExprKind::MethodCall(ref path, _, ref args, _) = &arg.kind {
             if path.ident.as_str() == "len" {
-                let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
+                let ty = walk_ptrs_ty(cx.tables().expr_ty(&args[0]));
 
                 match ty.kind {
                     ty::Slice(_) | ty::Array(_, _) => return,
@@ -1707,7 +1707,7 @@ fn lint_or_fun_call<'a, 'tcx>(
             if { finder.visit_expr(&arg); finder.found };
             if !contains_return(&arg);
 
-            let self_ty = cx.tables.expr_ty(self_expr);
+            let self_ty = cx.tables().expr_ty(self_expr);
 
             if let Some(&(_, fn_has_arguments, poss, suffix)) =
                 know_types.iter().find(|&&i| match_type(cx, self_ty, i.0));
@@ -1786,7 +1786,7 @@ fn lint_expect_fun_call(
                     if call_args.len() == 1
                         && (method_name.ident.name == sym!(as_str) || method_name.ident.name == sym!(as_ref))
                         && {
-                            let arg_type = cx.tables.expr_ty(&call_args[0]);
+                            let arg_type = cx.tables().expr_ty(&call_args[0]);
                             let base_type = walk_ptrs_ty(arg_type);
                             base_type.kind == ty::Str || is_type_diagnostic_item(cx, base_type, sym!(string_type))
                         }
@@ -1805,7 +1805,7 @@ fn lint_expect_fun_call(
     // Only `&'static str` or `String` can be used directly in the `panic!`. Other types should be
     // converted to string.
     fn requires_to_string(cx: &LateContext<'_, '_>, arg: &hir::Expr<'_>) -> bool {
-        let arg_ty = cx.tables.expr_ty(arg);
+        let arg_ty = cx.tables().expr_ty(arg);
         if is_type_diagnostic_item(cx, arg_ty, sym!(string_type)) {
             return false;
         }
@@ -1824,7 +1824,7 @@ fn lint_expect_fun_call(
             hir::ExprKind::Lit(_) => true,
             hir::ExprKind::Call(fun, _) => {
                 if let hir::ExprKind::Path(ref p) = fun.kind {
-                    match cx.tables.qpath_res(p, fun.hir_id) {
+                    match cx.tables().qpath_res(p, fun.hir_id) {
                         hir::def::Res::Def(hir::def::DefKind::Fn | hir::def::DefKind::AssocFn, def_id) => matches!(
                             cx.tcx.fn_sig(def_id).output().skip_binder().kind,
                             ty::Ref(ty::ReStatic, ..)
@@ -1835,13 +1835,16 @@ fn lint_expect_fun_call(
                     false
                 }
             },
-            hir::ExprKind::MethodCall(..) => cx.tables.type_dependent_def_id(arg.hir_id).map_or(false, |method_id| {
-                matches!(
-                    cx.tcx.fn_sig(method_id).output().skip_binder().kind,
-                    ty::Ref(ty::ReStatic, ..)
-                )
-            }),
-            hir::ExprKind::Path(ref p) => match cx.tables.qpath_res(p, arg.hir_id) {
+            hir::ExprKind::MethodCall(..) => cx
+                .tables()
+                .type_dependent_def_id(arg.hir_id)
+                .map_or(false, |method_id| {
+                    matches!(
+                        cx.tcx.fn_sig(method_id).output().skip_binder().kind,
+                        ty::Ref(ty::ReStatic, ..)
+                    )
+                }),
+            hir::ExprKind::Path(ref p) => match cx.tables().qpath_res(p, arg.hir_id) {
                 hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _) => true,
                 _ => false,
             },
@@ -1888,7 +1891,7 @@ fn lint_expect_fun_call(
         return;
     }
 
-    let receiver_type = cx.tables.expr_ty_adjusted(&args[0]);
+    let receiver_type = cx.tables().expr_ty_adjusted(&args[0]);
     let closure_args = if is_type_diagnostic_item(cx, receiver_type, sym!(option_type)) {
         "||"
     } else if is_type_diagnostic_item(cx, receiver_type, sym!(result_type)) {
@@ -1954,7 +1957,7 @@ fn lint_expect_fun_call(
 
 /// Checks for the `CLONE_ON_COPY` lint.
 fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'_>) {
-    let ty = cx.tables.expr_ty(expr);
+    let ty = cx.tables().expr_ty(expr);
     if let ty::Ref(_, inner, _) = arg_ty.kind {
         if let ty::Ref(_, innermost, _) = inner.kind {
             span_lint_and_then(
@@ -2018,11 +2021,11 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
             }
 
             // x.clone() might have dereferenced x, possibly through Deref impls
-            if cx.tables.expr_ty(arg) == ty {
+            if cx.tables().expr_ty(arg) == ty {
                 snip = Some(("try removing the `clone` call", format!("{}", snippet)));
             } else {
                 let deref_count = cx
-                    .tables
+                    .tables()
                     .expr_adjustments(arg)
                     .iter()
                     .filter(|adj| {
@@ -2048,7 +2051,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
 }
 
 fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
-    let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(arg));
+    let obj_ty = walk_ptrs_ty(cx.tables().expr_ty(arg));
 
     if let ty::Adt(_, subst) = obj_ty.kind {
         let caller_type = if is_type_diagnostic_item(cx, obj_ty, sym::Rc) {
@@ -2082,7 +2085,7 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hi
     let arg = &args[1];
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
-        let self_ty = walk_ptrs_ty(cx.tables.expr_ty(target));
+        let self_ty = walk_ptrs_ty(cx.tables().expr_ty(target));
         let ref_str = if self_ty.kind == ty::Str {
             ""
         } else if is_type_diagnostic_item(cx, self_ty, sym!(string_type)) {
@@ -2110,7 +2113,7 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hi
 }
 
 fn lint_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
+    let obj_ty = walk_ptrs_ty(cx.tables().expr_ty(&args[0]));
     if is_type_diagnostic_item(cx, obj_ty, sym!(string_type)) {
         lint_string_extend(cx, expr, args);
     }
@@ -2118,7 +2121,7 @@ fn lint_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr
 
 fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, source: &hir::Expr<'_>, unwrap: &hir::Expr<'_>) {
     if_chain! {
-        let source_type = cx.tables.expr_ty(source);
+        let source_type = cx.tables().expr_ty(source);
         if let ty::Adt(def, substs) = source_type.kind;
         if cx.tcx.is_diagnostic_item(sym!(result_type), def.did);
         if match_type(cx, substs.type_at(0), &paths::CSTRING);
@@ -2142,8 +2145,8 @@ fn lint_iter_cloned_collect<'a, 'tcx>(
     iter_args: &'tcx [hir::Expr<'_>],
 ) {
     if_chain! {
-        if is_type_diagnostic_item(cx, cx.tables.expr_ty(expr), sym!(vec_type));
-        if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0]));
+        if is_type_diagnostic_item(cx, cx.tables().expr_ty(expr), sym!(vec_type));
+        if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables().expr_ty(&iter_args[0]));
         if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite());
 
         then {
@@ -2250,7 +2253,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, fold_ar
 
 fn lint_step_by<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>, args: &'tcx [hir::Expr<'_>]) {
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        if let Some((Constant::Int(0), _)) = constant(cx, cx.tables, &args[1]) {
+        if let Some((Constant::Int(0), _)) = constant(cx, cx.tables(), &args[1]) {
             span_lint(
                 cx,
                 ITERATOR_STEP_BY_ZERO,
@@ -2274,7 +2277,7 @@ fn lint_iter_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_
         parent_expr_opt = get_parent_expr(cx, parent_expr);
     }
 
-    if derefs_to_slice(cx, caller_expr, cx.tables.expr_ty(caller_expr)).is_some() {
+    if derefs_to_slice(cx, caller_expr, cx.tables().expr_ty(caller_expr)).is_some() {
         // caller is a Slice
         if_chain! {
             if let hir::ExprKind::Index(ref caller_var, ref index_expr) = &caller_expr.kind;
@@ -2295,8 +2298,8 @@ fn lint_iter_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_
                 );
             }
         }
-    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(caller_expr), sym!(vec_type))
-        || matches!(&walk_ptrs_ty(cx.tables.expr_ty(caller_expr)).kind, ty::Array(_, _))
+    } else if is_type_diagnostic_item(cx, cx.tables().expr_ty(caller_expr), sym!(vec_type))
+        || matches!(&walk_ptrs_ty(cx.tables().expr_ty(caller_expr)).kind, ty::Array(_, _))
     {
         // caller is a Vec or an Array
         let mut applicability = Applicability::MachineApplicable;
@@ -2323,11 +2326,11 @@ fn lint_iter_nth<'a, 'tcx>(
 ) {
     let iter_args = nth_and_iter_args[1];
     let mut_str = if is_mut { "_mut" } else { "" };
-    let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
+    let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.tables().expr_ty(&iter_args[0])).is_some() {
         "slice"
-    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(&iter_args[0]), sym!(vec_type)) {
+    } else if is_type_diagnostic_item(cx, cx.tables().expr_ty(&iter_args[0]), sym!(vec_type)) {
         "Vec"
-    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(&iter_args[0]), sym!(vecdeque_type)) {
+    } else if is_type_diagnostic_item(cx, cx.tables().expr_ty(&iter_args[0]), sym!(vecdeque_type)) {
         "VecDeque"
     } else {
         let nth_args = nth_and_iter_args[0];
@@ -2348,7 +2351,7 @@ fn lint_iter_nth<'a, 'tcx>(
 fn lint_iter_nth_zero<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>, nth_args: &'tcx [hir::Expr<'_>]) {
     if_chain! {
         if match_trait_method(cx, expr, &paths::ITERATOR);
-        if let Some((Constant::Int(0), _)) = constant(cx, cx.tables, &nth_args[1]);
+        if let Some((Constant::Int(0), _)) = constant(cx, cx.tables(), &nth_args[1]);
         then {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
@@ -2373,7 +2376,7 @@ fn lint_get_unwrap<'a, 'tcx>(
     // Note: we don't want to lint `get_mut().unwrap` for `HashMap` or `BTreeMap`,
     // because they do not implement `IndexMut`
     let mut applicability = Applicability::MachineApplicable;
-    let expr_ty = cx.tables.expr_ty(&get_args[0]);
+    let expr_ty = cx.tables().expr_ty(&get_args[0]);
     let get_args_str = if get_args.len() > 1 {
         snippet_with_applicability(cx, get_args[1].span, "_", &mut applicability)
     } else {
@@ -2479,7 +2482,7 @@ fn derefs_to_slice<'a, 'tcx>(
     }
 
     if let hir::ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind {
-        if path.ident.name == sym!(iter) && may_slice(cx, cx.tables.expr_ty(&args[0])) {
+        if path.ident.name == sym!(iter) && may_slice(cx, cx.tables().expr_ty(&args[0])) {
             Some(&args[0])
         } else {
             None
@@ -2502,7 +2505,7 @@ fn derefs_to_slice<'a, 'tcx>(
 
 /// lint use of `unwrap()` for `Option`s and `Result`s
 fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hir::Expr<'_>]) {
-    let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&unwrap_args[0]));
+    let obj_ty = walk_ptrs_ty(cx.tables().expr_ty(&unwrap_args[0]));
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
         Some((UNWRAP_USED, "an Option", "None"))
@@ -2530,7 +2533,7 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
 
 /// lint use of `expect()` for `Option`s and `Result`s
 fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hir::Expr<'_>]) {
-    let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&expect_args[0]));
+    let obj_ty = walk_ptrs_ty(cx.tables().expr_ty(&expect_args[0]));
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
         Some((EXPECT_USED, "an Option", "None"))
@@ -2556,8 +2559,8 @@ fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hi
 fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, ok_args: &[hir::Expr<'_>]) {
     if_chain! {
         // lint if the caller of `ok()` is a `Result`
-        if is_type_diagnostic_item(cx, cx.tables.expr_ty(&ok_args[0]), sym!(result_type));
-        let result_type = cx.tables.expr_ty(&ok_args[0]);
+        if is_type_diagnostic_item(cx, cx.tables().expr_ty(&ok_args[0]), sym!(result_type));
+        let result_type = cx.tables().expr_ty(&ok_args[0]);
         if let Some(error_type) = get_error_type(cx, result_type);
         if has_debug_impl(error_type, cx);
 
@@ -2595,7 +2598,7 @@ fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<
     }
 
     // lint if caller of `.map().flatten()` is an Option
-    if is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_args[0]), sym!(option_type)) {
+    if is_type_diagnostic_item(cx, cx.tables().expr_ty(&map_args[0]), sym!(option_type)) {
         let msg = "called `map(..).flatten()` on an `Option`. \
                     This is more succinctly expressed by calling `.and_then(..)`";
         let self_snippet = snippet(cx, map_args[0].span, "..");
@@ -2621,8 +2624,8 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
     unwrap_args: &'tcx [hir::Expr<'_>],
 ) {
     // lint if the caller of `map()` is an `Option`
-    let is_option = is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_args[0]), sym!(option_type));
-    let is_result = is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_args[0]), sym!(result_type));
+    let is_option = is_type_diagnostic_item(cx, cx.tables().expr_ty(&map_args[0]), sym!(option_type));
+    let is_result = is_type_diagnostic_item(cx, cx.tables().expr_ty(&map_args[0]), sym!(result_type));
 
     if is_option || is_result {
         // Don't make a suggestion that may fail to compile due to mutably borrowing
@@ -2676,8 +2679,8 @@ fn lint_map_or_none<'a, 'tcx>(
     expr: &'tcx hir::Expr<'_>,
     map_or_args: &'tcx [hir::Expr<'_>],
 ) {
-    let is_option = is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_or_args[0]), sym!(option_type));
-    let is_result = is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_or_args[0]), sym!(result_type));
+    let is_option = is_type_diagnostic_item(cx, cx.tables().expr_ty(&map_or_args[0]), sym!(option_type));
+    let is_result = is_type_diagnostic_item(cx, cx.tables().expr_ty(&map_or_args[0]), sym!(result_type));
 
     // There are two variants of this `map_or` lint:
     // (1) using `map_or` as an adapter from `Result<T,E>` to `Option<T>`
@@ -3042,7 +3045,7 @@ fn lint_chars_cmp(
         if segment.ident.name == sym!(Some);
         then {
             let mut applicability = Applicability::MachineApplicable;
-            let self_ty = walk_ptrs_ty(cx.tables.expr_ty_adjusted(&args[0][0]));
+            let self_ty = walk_ptrs_ty(cx.tables().expr_ty_adjusted(&args[0][0]));
 
             if self_ty.kind != ty::Str {
                 return false;
@@ -3174,8 +3177,8 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, call_name: &str, a
     if match_trait_method(cx, expr, &paths::ASREF_TRAIT) || match_trait_method(cx, expr, &paths::ASMUT_TRAIT) {
         // check if the type after `as_ref` or `as_mut` is the same as before
         let recvr = &as_ref_args[0];
-        let rcv_ty = cx.tables.expr_ty(recvr);
-        let res_ty = cx.tables.expr_ty(expr);
+        let rcv_ty = cx.tables().expr_ty(recvr);
+        let res_ty = cx.tables().expr_ty(expr);
         let (base_res_ty, res_depth) = walk_ptrs_ty_depth(res_ty);
         let (base_rcv_ty, rcv_depth) = walk_ptrs_ty_depth(rcv_ty);
         if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
@@ -3244,7 +3247,7 @@ fn lint_maybe_uninit(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, outer: &hir
         if args.is_empty();
         if let hir::ExprKind::Path(ref path) = callee.kind;
         if match_qpath(path, &paths::MEM_MAYBEUNINIT_UNINIT);
-        if !is_maybe_uninit_ty_valid(cx, cx.tables.expr_ty_adjusted(outer));
+        if !is_maybe_uninit_ty_valid(cx, cx.tables().expr_ty_adjusted(outer));
         then {
             span_lint(
                 cx,
@@ -3286,7 +3289,7 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
 ) {
     let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
 
-    let option_ty = cx.tables.expr_ty(&as_ref_args[0]);
+    let option_ty = cx.tables().expr_ty(&as_ref_args[0]);
     if !is_type_diagnostic_item(cx, option_ty, sym!(option_type)) {
         return;
     }
@@ -3314,12 +3317,12 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
                     if_chain! {
                         if args.len() == 1;
                         if let hir::ExprKind::Path(qpath) = &args[0].kind;
-                        if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, args[0].hir_id);
+                        if let hir::def::Res::Local(local_id) = cx.tables().qpath_res(qpath, args[0].hir_id);
                         if closure_body.params[0].pat.hir_id == local_id;
-                        let adj = cx.tables.expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
+                        let adj = cx.tables().expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
                         if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
                         then {
-                            let method_did = cx.tables.type_dependent_def_id(closure_expr.hir_id).unwrap();
+                            let method_did = cx.tables().type_dependent_def_id(closure_expr.hir_id).unwrap();
                             deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
                         } else {
                             false
@@ -3331,7 +3334,7 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
                         if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner1) = inner.kind;
                         if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner2) = inner1.kind;
                         if let hir::ExprKind::Path(ref qpath) = inner2.kind;
-                        if let hir::def::Res::Local(local_id) = cx.tables.qpath_res(qpath, inner2.hir_id);
+                        if let hir::def::Res::Local(local_id) = cx.tables().qpath_res(qpath, inner2.hir_id);
                         then {
                             closure_body.params[0].pat.hir_id == local_id
                         } else {
@@ -3614,7 +3617,7 @@ fn contains_return(expr: &hir::Expr<'_>) -> bool {
 fn check_pointer_offset(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     if_chain! {
         if args.len() == 2;
-        if let ty::RawPtr(ty::TypeAndMut { ref ty, .. }) = cx.tables.expr_ty(&args[0]).kind;
+        if let ty::RawPtr(ty::TypeAndMut { ref ty, .. }) = cx.tables().expr_ty(&args[0]).kind;
         if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty));
         if layout.is_zst();
         then {
@@ -3624,7 +3627,7 @@ fn check_pointer_offset(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[
 }
 
 fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    let ty = cx.tables.expr_ty(&args[0]);
+    let ty = cx.tables().expr_ty(&args[0]);
 
     if !match_type(cx, ty, &paths::FILE_TYPE) {
         return;

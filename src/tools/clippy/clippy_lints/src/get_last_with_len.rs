@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
 
             // Argument 0 (the struct we're calling the method on) is a vector
             if let Some(struct_calling_on) = args.get(0);
-            let struct_ty = cx.tables.expr_ty(struct_calling_on);
+            let struct_ty = cx.tables().expr_ty(struct_calling_on);
             if is_type_diagnostic_item(cx, struct_ty, sym!(vec_type));
 
             // Argument to "get" is a subtraction
