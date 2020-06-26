@@ -10,6 +10,7 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 
 use rustc_hir::def_id::DefId;
+use rustc_target::spec::abi::Abi;
 
 use smallvec::SmallVec;
 
@@ -77,6 +78,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     type DefId = DefId;
     type InternedAdtId = &'tcx AdtDef;
     type Identifier = ();
+    type FnAbi = Abi;
 
     fn debug_program_clause_implication(
         pci: &chalk_ir::ProgramClauseImplication<Self>,
