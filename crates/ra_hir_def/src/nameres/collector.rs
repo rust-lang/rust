@@ -20,7 +20,7 @@ use test_utils::mark;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    item_scope::ImportType,
+    item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
         self, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, Mod, ModItem, ModKind, StructDefKind,
     },
@@ -81,7 +81,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> Cr
         mod_dirs: FxHashMap::default(),
         cfg_options,
         proc_macros,
-        import_types: FxHashMap::default(),
+        from_glob_import: Default::default(),
     };
     collector.collect();
     collector.finish()
@@ -188,7 +188,7 @@ struct DefCollector<'a> {
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
     proc_macros: Vec<(Name, ProcMacroExpander)>,
-    import_types: FxHashMap<Name, ImportType>,
+    from_glob_import: PerNsGlobImports,
 }
 
 impl DefCollector<'_> {
@@ -595,9 +595,9 @@ impl DefCollector<'_> {
         let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
         for (name, res) in resolutions {
-            changed |= scope.push_res(
-                &mut self.import_types,
-                name.clone(),
+            changed |= scope.push_res_with_import(
+                &mut self.from_glob_import,
+                (module_id, name.clone()),
                 res.with_visibility(vis),
                 import_type,
             );
@@ -1184,7 +1184,7 @@ mod tests {
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
             proc_macros: Default::default(),
-            import_types: FxHashMap::default(),
+            from_glob_import: Default::default(),
         };
         collector.collect();
         collector.def_map

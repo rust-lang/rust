@@ -4,12 +4,12 @@
 use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use ra_db::CrateId;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::mark;
 
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, HasModule, ImplId,
-    Lookup, MacroDefId, ModuleDefId, TraitId,
+    LocalModuleId, Lookup, MacroDefId, ModuleDefId, TraitId,
 };
 
 #[derive(Copy, Clone)]
@@ -19,19 +19,19 @@ pub(crate) enum ImportType {
 }
 
 impl ImportType {
-    fn is_glob(&self) -> bool {
-        match self {
-            ImportType::Glob => true,
-            ImportType::Named => false,
-        }
-    }
-
     fn is_named(&self) -> bool {
         match self {
             ImportType::Glob => false,
             ImportType::Named => true,
         }
     }
+}
+
+#[derive(Debug, Default)]
+pub struct PerNsGlobImports {
+    types: FxHashSet<(LocalModuleId, Name)>,
+    values: FxHashSet<(LocalModuleId, Name)>,
+    macros: FxHashSet<(LocalModuleId, Name)>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -145,30 +145,65 @@ impl ItemScope {
         self.legacy_macros.insert(name, mac);
     }
 
-    pub(crate) fn push_res(
+    pub(crate) fn push_res(&mut self, name: Name, def: PerNs) -> bool {
+        let mut changed = false;
+        let existing = self.visible.entry(name).or_default();
+
+        if existing.types.is_none() && def.types.is_some() {
+            existing.types = def.types;
+            changed = true;
+        }
+
+        if existing.values.is_none() && def.values.is_some() {
+            existing.values = def.values;
+            changed = true;
+        }
+
+        if existing.macros.is_none() && def.macros.is_some() {
+            existing.macros = def.macros;
+            changed = true;
+        }
+
+        changed
+    }
+
+    pub(crate) fn push_res_with_import(
         &mut self,
-        existing_import_map: &mut FxHashMap<Name, ImportType>,
-        name: Name,
+        glob_imports: &mut PerNsGlobImports,
+        lookup: (LocalModuleId, Name),
         def: PerNs,
         def_import_type: ImportType,
     ) -> bool {
         let mut changed = false;
-        let existing = self.visible.entry(name.clone()).or_default();
-        let existing_import_type = existing_import_map.entry(name).or_insert(def_import_type);
+        let existing = self.visible.entry(lookup.1.clone()).or_default();
 
         macro_rules! check_changed {
-            ($changed:ident, ($existing:ident/$def:ident).$field:ident, $existing_import_type:ident, $def_import_type:ident) => {
+            (
+                $changed:ident,
+                ( $existing:ident / $def:ident ) . $field:ident,
+                $glob_imports:ident [ $lookup:ident ],
+                $def_import_type:ident
+            ) => {
                 match ($existing.$field, $def.$field) {
                     (None, Some(_)) => {
-                        *existing_import_type = $def_import_type;
+                        match $def_import_type {
+                            ImportType::Glob => {
+                                $glob_imports.$field.insert($lookup.clone());
+                            }
+                            ImportType::Named => {
+                                $glob_imports.$field.remove(&$lookup);
+                            }
+                        }
+
                         $existing.$field = $def.$field;
                         $changed = true;
                     }
                     (Some(_), Some(_))
-                        if $existing_import_type.is_glob() && $def_import_type.is_named() =>
+                        if $glob_imports.$field.contains(&$lookup)
+                            && $def_import_type.is_named() =>
                     {
                         mark::hit!(import_shadowed);
-                        *$existing_import_type = $def_import_type;
+                        $glob_imports.$field.remove(&$lookup);
                         $existing.$field = $def.$field;
                         $changed = true;
                     }
@@ -177,9 +212,9 @@ impl ItemScope {
             };
         }
 
-        check_changed!(changed, (existing / def).types, existing_import_type, def_import_type);
-        check_changed!(changed, (existing / def).values, existing_import_type, def_import_type);
-        check_changed!(changed, (existing / def).macros, existing_import_type, def_import_type);
+        check_changed!(changed, (existing / def).types, glob_imports[lookup], def_import_type);
+        check_changed!(changed, (existing / def).values, glob_imports[lookup], def_import_type);
+        check_changed!(changed, (existing / def).macros, glob_imports[lookup], def_import_type);
 
         changed
     }

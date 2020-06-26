@@ -1739,6 +1739,52 @@ fn main() {
     assert_eq!(t, "u32");
 }
 
+// This test is actually testing the shadowing behavior within ra_hir_def. It
+// lives here because the testing infrastructure in ra_hir_def isn't currently
+// capable of asserting the necessary conditions.
+#[test]
+fn should_be_shadowing_imports() {
+    let t = type_at(
+        r#"
+mod a {
+    pub fn foo() -> i8 {0}
+    pub struct foo { a: i8 }
+}
+mod b { pub fn foo () -> u8 {0} }
+mod c { pub struct foo { a: u8 } }
+mod d {
+    pub use super::a::*;
+    pub use super::c::foo;
+    pub use super::b::foo;
+}
+
+fn main() {
+    d::foo()<|>;
+}"#,
+    );
+    assert_eq!(t, "u8");
+
+    let t = type_at(
+        r#"
+mod a {
+    pub fn foo() -> i8 {0}
+    pub struct foo { a: i8 }
+}
+mod b { pub fn foo () -> u8 {0} }
+mod c { pub struct foo { a: u8 } }
+mod d {
+    pub use super::a::*;
+    pub use super::c::foo;
+    pub use super::b::foo;
+}
+
+fn main() {
+    d::foo{a:0<|>};
+}"#,
+    );
+    assert_eq!(t, "u8");
+}
+
 #[test]
 fn closure_return() {
     assert_snapshot!(
