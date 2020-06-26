@@ -358,12 +358,13 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///     - an (unstable) [extern type], then this function is always safe to
 ///       call, but may panic or otherwise return the wrong value, as the
 ///       extern type's layout is not known. This is the same behavior as
-///       [`size_of_val`] on a reference to an extern type tail.
+///       [`size_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively not allowed to call this function.
 ///
 /// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
+/// [`size_of_val`]: ../../core/mem/fn.size_of_val.html
 ///
 /// # Examples
 ///
@@ -492,12 +493,13 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///     - an (unstable) [extern type], then this function is always safe to
 ///       call, but may panic or otherwise return the wrong value, as the
 ///       extern type's layout is not known. This is the same behavior as
-///       [`align_of_val`] on a reference to an extern type tail.
+///       [`align_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively not allowed to call this function.
 ///
 /// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
+/// [`align_of_val`]: ../../core/mem/fn.align_of_val.html
 ///
 /// # Examples
 ///
