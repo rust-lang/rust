@@ -9,6 +9,17 @@ use rustc_span::def_id::DefId;
 use crate::clean;
 use crate::clean::types::GetDefId;
 
+pub enum AssocItemRender<'a> {
+    All,
+    DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type, deref_mut_: bool },
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum RenderMode {
+    Normal,
+    ForDeref { mut_: bool },
+}
+
 /// Metadata about implementations for a type or trait.
 #[derive(Clone, Debug)]
 pub struct Impl {

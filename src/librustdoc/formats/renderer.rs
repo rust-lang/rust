@@ -10,6 +10,8 @@ use crate::formats::cache::{Cache, CACHE_KEY};
 pub trait FormatRenderer: Clone {
     type Output: FormatRenderer;
 
+    /// Sets up any state required for the emulator. When this is called the cache has already been
+    /// populated.
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
@@ -30,7 +32,7 @@ pub trait FormatRenderer: Clone {
     ) -> Result<(), Error>;
 
     /// Runs after recursively rendering all sub-items of a module.
-    fn mod_item_out(&mut self, name: &str) -> Result<(), Error>;
+    fn mod_item_out(&mut self, item_name: &str) -> Result<(), Error>;
 
     /// Post processing hook for cleanup and dumping output to files.
     fn after_krate(&mut self, krate: &clean::Crate, cache: &Cache) -> Result<(), Error>;

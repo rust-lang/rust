@@ -70,7 +70,7 @@ use crate::doctree;
 use crate::error::Error;
 use crate::formats::cache::{cache, Cache};
 use crate::formats::item_type::ItemType;
-use crate::formats::{FormatRenderer, Impl};
+use crate::formats::{AssocItemRender, FormatRenderer, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::fmt_impl_for_trait_page;
 use crate::html::format::Function;
@@ -626,7 +626,7 @@ impl FormatRenderer for Context {
         Ok(())
     }
 
-    fn mod_item_out(&mut self, _name: &str) -> Result<(), Error> {
+    fn mod_item_out(&mut self, _item_name: &str) -> Result<(), Error> {
         info!("Recursed; leaving {}", self.dst.display());
 
         // Go back to where we were at
@@ -3253,17 +3253,6 @@ impl<'a> AssocItemLink<'a> {
             ref other => *other,
         }
     }
-}
-
-enum AssocItemRender<'a> {
-    All,
-    DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type, deref_mut_: bool },
-}
-
-#[derive(Copy, Clone, PartialEq)]
-enum RenderMode {
-    Normal,
-    ForDeref { mut_: bool },
 }
 
 fn render_assoc_items(
