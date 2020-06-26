@@ -583,8 +583,6 @@ impl DefCollector<'_> {
         // All resolutions are imported with this visibility; the visibilies in
         // the `PerNs` values are ignored and overwritten
         vis: Visibility,
-        // All resolutions are imported with this glob status; the glob status
-        // in the `PerNs` values are ignored and overwritten
         import_type: ImportType,
         depth: usize,
     ) {
