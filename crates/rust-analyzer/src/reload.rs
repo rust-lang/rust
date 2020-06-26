@@ -1,5 +1,5 @@
 //! Project loading & configuration updates
-use std::sync::Arc;
+use std::{mem, sync::Arc};
 
 use crossbeam_channel::unbounded;
 use flycheck::FlycheckHandle;
@@ -14,12 +14,14 @@ use crate::{
 };
 
 impl GlobalState {
-    pub(crate) fn update_configuration(&mut self, new_config: Config) {
-        self.analysis_host.update_lru_capacity(new_config.lru_capacity);
-        if new_config.flycheck != self.config.flycheck {
+    pub(crate) fn update_configuration(&mut self, config: Config) {
+        let old_config = mem::replace(&mut self.config, config);
+        if self.config.lru_capacity != old_config.lru_capacity {
+            self.analysis_host.update_lru_capacity(old_config.lru_capacity);
+        }
+        if self.config.flycheck != old_config.flycheck {
             self.reload_flycheck();
         }
-        self.config = new_config;
     }
     pub(crate) fn reload(&mut self) {
         let workspaces = {
