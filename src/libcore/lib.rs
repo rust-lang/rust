@@ -74,7 +74,7 @@
 #![feature(const_alloc_layout)]
 #![feature(const_discriminant)]
 #![cfg_attr(bootstrap, feature(const_if_match))]
-#![feature(const_loop)]
+#![cfg_attr(bootstrap, feature(const_loop))]
 #![feature(const_checked_int_methods)]
 #![feature(const_euclidean_int_methods)]
 #![feature(const_overflowing_int_methods)]
