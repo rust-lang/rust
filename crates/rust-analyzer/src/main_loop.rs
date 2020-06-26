@@ -191,8 +191,6 @@ impl GlobalState {
                 }
             },
             Event::Flycheck(task) => match task {
-                flycheck::Message::ClearDiagnostics => self.diagnostics.clear_check(),
-
                 flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
                     let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                         &self.config.diagnostics,
@@ -215,11 +213,16 @@ impl GlobalState {
 
                 flycheck::Message::Progress(status) => {
                     let (state, message) = match status {
-                        flycheck::Progress::Being => (Progress::Begin, None),
+                        flycheck::Progress::DidStart => {
+                            self.diagnostics.clear_check();
+                            (Progress::Begin, None)
+                        },
                         flycheck::Progress::DidCheckCrate(target) => {
                             (Progress::Report, Some(target))
                         }
-                        flycheck::Progress::End => (Progress::End, None),
+                        flycheck::Progress::DidFinish | flycheck::Progress::DidCancel => {
+                            (Progress::End, None)
+                        }
                     };
 
                     report_progress(self, "cargo check", state, message, None);
@@ -466,7 +469,7 @@ impl GlobalState {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 enum Progress {
     Begin,
     Report,
