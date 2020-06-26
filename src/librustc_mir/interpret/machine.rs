@@ -11,7 +11,7 @@ use rustc_span::def_id::DefId;
 
 use super::{
     AllocId, Allocation, AllocationExtra, CheckInAllocMsg, Frame, ImmTy, InterpCx, InterpResult,
-    Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar,
+    LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -192,6 +192,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx>;
 
     /// Called to read the specified `local` from the `frame`.
+    /// Since reading a ZST is not actually accessing memory or locals, this is never invoked
+    /// for ZST reads.
     #[inline]
     fn access_local(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
@@ -199,6 +201,21 @@ pub trait Machine<'mir, 'tcx>: Sized {
         local: mir::Local,
     ) -> InterpResult<'tcx, Operand<Self::PointerTag>> {
         frame.locals[local].access()
+    }
+
+    /// Called to write the specified `local` from the `frame`.
+    /// Since writing a ZST is not actually accessing memory or locals, this is never invoked
+    /// for ZST reads.
+    #[inline]
+    fn access_local_mut<'a>(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+        frame: usize,
+        local: mir::Local,
+    ) -> InterpResult<'tcx, Result<&'a mut LocalValue<Self::PointerTag>, MemPlace<Self::PointerTag>>>
+    where
+        'tcx: 'mir,
+    {
+        ecx.stack_mut()[frame].locals[local].access_mut()
     }
 
     /// Called before a basic block terminator is executed.
