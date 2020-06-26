@@ -19,7 +19,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_no_prop.rs:7:9: 7:14
-          _1 = const 42u32;                // scope 0 at $DIR/mutable_variable_no_prop.rs:7:17: 7:19
+          _1 = const 42_u32;               // scope 0 at $DIR/mutable_variable_no_prop.rs:7:17: 7:19
                                            // ty::Const
                                            // + ty: u32
                                            // + val: Value(Scalar(0x0000002a))

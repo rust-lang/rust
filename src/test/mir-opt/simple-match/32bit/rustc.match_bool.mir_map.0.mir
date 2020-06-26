@@ -18,7 +18,7 @@ fn match_bool(_1: bool) -> usize {
     }
 
     bb3: {
-        _0 = const 20usize;              // scope 0 at $DIR/simple-match.rs:8:14: 8:16
+        _0 = const 20_usize;             // scope 0 at $DIR/simple-match.rs:8:14: 8:16
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x00000014))
@@ -29,7 +29,7 @@ fn match_bool(_1: bool) -> usize {
     }
 
     bb4: {
-        _0 = const 10usize;              // scope 0 at $DIR/simple-match.rs:7:17: 7:19
+        _0 = const 10_usize;             // scope 0 at $DIR/simple-match.rs:7:17: 7:19
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000a))

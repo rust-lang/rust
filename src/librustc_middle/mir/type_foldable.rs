@@ -58,15 +58,14 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Assert { ref cond, expected, ref msg, target, cleanup } => {
                 use AssertKind::*;
                 let msg = match msg {
-                    BoundsCheck { ref len, ref index } => {
+                    BoundsCheck { len, index } => {
                         BoundsCheck { len: len.fold_with(folder), index: index.fold_with(folder) }
                     }
-                    Overflow(_)
-                    | OverflowNeg
-                    | DivisionByZero
-                    | RemainderByZero
-                    | ResumedAfterReturn(_)
-                    | ResumedAfterPanic(_) => msg.clone(),
+                    Overflow(op, l, r) => Overflow(*op, l.fold_with(folder), r.fold_with(folder)),
+                    OverflowNeg(op) => OverflowNeg(op.fold_with(folder)),
+                    DivisionByZero(op) => DivisionByZero(op.fold_with(folder)),
+                    RemainderByZero(op) => RemainderByZero(op.fold_with(folder)),
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) => msg.clone(),
                 };
                 Assert { cond: cond.fold_with(folder), expected, msg, target, cleanup }
             }
@@ -117,12 +116,11 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                         BoundsCheck { ref len, ref index } => {
                             len.visit_with(visitor) || index.visit_with(visitor)
                         }
-                        Overflow(_)
-                        | OverflowNeg
-                        | DivisionByZero
-                        | RemainderByZero
-                        | ResumedAfterReturn(_)
-                        | ResumedAfterPanic(_) => false,
+                        Overflow(_, l, r) => l.visit_with(visitor) || r.visit_with(visitor),
+                        OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
+                            op.visit_with(visitor)
+                        }
+                        ResumedAfterReturn(_) | ResumedAfterPanic(_) => false,
                     }
                 } else {
                     false

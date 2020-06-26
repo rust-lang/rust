@@ -380,7 +380,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // checked operation, just a comparison with the minimum
         // value, so we have to check for the assert message.
         if !bx.check_overflow() {
-            if let AssertKind::OverflowNeg = *msg {
+            if let AssertKind::OverflowNeg(_) = *msg {
                 const_cond = Some(expected);
             }
         }

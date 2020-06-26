@@ -19,7 +19,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, ConstInt, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
@@ -449,7 +449,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         lint: &'static lint::Lint,
         source_info: SourceInfo,
         message: &'static str,
-        panic: AssertKind<u64>,
+        panic: AssertKind<ConstInt>,
     ) -> Option<()> {
         let lint_root = self.lint_root(source_info)?;
         self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, |lint| {
@@ -466,10 +466,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         arg: &Operand<'tcx>,
         source_info: SourceInfo,
     ) -> Option<()> {
-        if self.use_ecx(|this| {
+        if let (val, true) = self.use_ecx(|this| {
             let val = this.ecx.read_immediate(this.ecx.eval_operand(arg, None)?)?;
             let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, val)?;
-            Ok(overflow)
+            Ok((val, overflow))
         })? {
             // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
             // appropriate to use.
@@ -478,7 +478,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 lint::builtin::ARITHMETIC_OVERFLOW,
                 source_info,
                 "this arithmetic operation will overflow",
-                AssertKind::OverflowNeg,
+                AssertKind::OverflowNeg(val.to_const_int()),
             )?;
         }
 
@@ -494,29 +494,44 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> Option<()> {
         let r =
             self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?))?;
+        let l = self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(left, None)?));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if op == BinOp::Shr || op == BinOp::Shl {
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!
             let left_ty = left.ty(&self.local_decls, self.tcx);
-            let left_size_bits = self.ecx.layout_of(left_ty).ok()?.size.bits();
+            let left_size = self.ecx.layout_of(left_ty).ok()?.size;
             let right_size = r.layout.size;
             let r_bits = r.to_scalar().ok();
             // This is basically `force_bits`.
             let r_bits = r_bits.and_then(|r| r.to_bits_or_ptr(right_size, &self.tcx).ok());
-            if r_bits.map_or(false, |b| b >= left_size_bits as u128) {
+            if r_bits.map_or(false, |b| b >= left_size.bits() as u128) {
                 self.report_assert_as_lint(
                     lint::builtin::ARITHMETIC_OVERFLOW,
                     source_info,
                     "this arithmetic operation will overflow",
-                    AssertKind::Overflow(op),
+                    AssertKind::Overflow(
+                        op,
+                        match l {
+                            Some(l) => l.to_const_int(),
+                            // Invent a dummy value, the diagnostic ignores it anyway
+                            None => ConstInt::new(
+                                1,
+                                left_size,
+                                left_ty.is_signed(),
+                                left_ty.is_ptr_sized_integral(),
+                            ),
+                        },
+                        r.to_const_int(),
+                    ),
                 )?;
             }
         }
 
+        let l = l?;
+
         // The remaining operators are handled through `overflowing_binary_op`.
         if self.use_ecx(|this| {
-            let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
             let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
             Ok(overflow)
         })? {
@@ -524,7 +539,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 lint::builtin::ARITHMETIC_OVERFLOW,
                 source_info,
                 "this arithmetic operation will overflow",
-                AssertKind::Overflow(op),
+                AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
             )?;
         }
 
@@ -949,31 +964,26 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             }
                             Operand::Constant(_) => {}
                         }
+                        let mut eval_to_int = |op| {
+                            let op = self
+                                .eval_operand(op, source_info)
+                                .expect("if we got here, it must be const");
+                            self.ecx.read_immediate(op).unwrap().to_const_int()
+                        };
                         let msg = match msg {
-                            AssertKind::DivisionByZero => AssertKind::DivisionByZero,
-                            AssertKind::RemainderByZero => AssertKind::RemainderByZero,
+                            AssertKind::DivisionByZero(op) => {
+                                AssertKind::DivisionByZero(eval_to_int(op))
+                            }
+                            AssertKind::RemainderByZero(op) => {
+                                AssertKind::RemainderByZero(eval_to_int(op))
+                            }
                             AssertKind::BoundsCheck { ref len, ref index } => {
-                                let len =
-                                    self.eval_operand(len, source_info).expect("len must be const");
-                                let len = self
-                                    .ecx
-                                    .read_scalar(len)
-                                    .unwrap()
-                                    .to_machine_usize(&self.tcx)
-                                    .unwrap();
-                                let index = self
-                                    .eval_operand(index, source_info)
-                                    .expect("index must be const");
-                                let index = self
-                                    .ecx
-                                    .read_scalar(index)
-                                    .unwrap()
-                                    .to_machine_usize(&self.tcx)
-                                    .unwrap();
+                                let len = eval_to_int(len);
+                                let index = eval_to_int(index);
                                 AssertKind::BoundsCheck { len, index }
                             }
                             // Overflow is are already covered by checks on the binary operators.
-                            AssertKind::Overflow(_) | AssertKind::OverflowNeg => return,
+                            AssertKind::Overflow(..) | AssertKind::OverflowNeg(_) => return,
                             // Need proper const propagator for these.
                             _ => return,
                         };

@@ -128,7 +128,7 @@ fn address_of_reborrow() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/address-of.rs:4:9: 4:10
         StorageLive(_2);                 // scope 0 at $DIR/address-of.rs:4:14: 4:21
-        _2 = [const 0i32; 10];           // scope 0 at $DIR/address-of.rs:4:14: 4:21
+        _2 = [const 0_i32; 10];          // scope 0 at $DIR/address-of.rs:4:14: 4:21
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000000))
@@ -139,7 +139,7 @@ fn address_of_reborrow() -> () {
         FakeRead(ForLet, _1);            // scope 0 at $DIR/address-of.rs:4:9: 4:10
         StorageLive(_3);                 // scope 1 at $DIR/address-of.rs:5:9: 5:14
         StorageLive(_4);                 // scope 1 at $DIR/address-of.rs:5:22: 5:29
-        _4 = [const 0i32; 10];           // scope 1 at $DIR/address-of.rs:5:22: 5:29
+        _4 = [const 0_i32; 10];          // scope 1 at $DIR/address-of.rs:5:22: 5:29
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000000))

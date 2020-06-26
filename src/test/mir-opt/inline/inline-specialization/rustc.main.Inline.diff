@@ -13,7 +13,7 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/inline-specialization.rs:5:9: 5:10
 -         _1 = const <std::vec::Vec<()> as Foo>::bar() -> bb1; // scope 0 at $DIR/inline-specialization.rs:5:13: 5:38
-+         _1 = const 123u32;               // scope 2 at $DIR/inline-specialization.rs:14:31: 14:34
++         _1 = const 123_u32;              // scope 2 at $DIR/inline-specialization.rs:14:31: 14:34
                                            // ty::Const
 -                                          // + ty: fn() -> u32 {<std::vec::Vec<()> as Foo>::bar}
 -                                          // + val: Value(Scalar(<ZST>))

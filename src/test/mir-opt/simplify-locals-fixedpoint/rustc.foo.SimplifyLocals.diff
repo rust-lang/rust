@@ -26,7 +26,7 @@
           StorageDead(_3);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69
           StorageDead(_2);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69
           _5 = discriminant((_1.0: std::option::Option<u8>)); // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:13: 4:20
-          switchInt(move _5) -> [1isize: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:13: 4:20
+          switchInt(move _5) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:13: 4:20
       }
   
       bb1: {
@@ -42,7 +42,7 @@
   
       bb2: {
           _4 = discriminant((_1.1: std::option::Option<T>)); // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:22: 4:26
-          switchInt(move _4) -> [0isize: bb3, otherwise: bb1]; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:22: 4:26
+          switchInt(move _4) -> [0_isize: bb3, otherwise: bb1]; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:22: 4:26
       }
   
       bb3: {
@@ -51,7 +51,7 @@
           StorageLive(_7);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
           StorageLive(_8);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
           _8 = _6;                         // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
-          _7 = Gt(move _8, const 42u8);    // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
+          _7 = Gt(move _8, const 42_u8);   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
                                            // ty::Const
                                            // + ty: u8
                                            // + val: Value(Scalar(0x2a))

@@ -39,7 +39,7 @@
           StorageDead(_3);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:5:35: 5:36
           StorageLive(_5);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:13: 7:15
           StorageLive(_6);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:23: 7:24
-          _6 = const 3usize;               // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:23: 7:24
+          _6 = const 3_usize;              // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:23: 7:24
                                            // ty::Const
                                            // + ty: usize
                                            // + val: Value(Scalar(0x0000000000000003))

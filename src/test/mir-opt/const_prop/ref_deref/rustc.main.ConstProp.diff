@@ -20,7 +20,7 @@
                                            // + literal: Const { ty: &i32, val: Unevaluated(DefId(0:3 ~ ref_deref[317d]::main[0]), [], Some(promoted[0])) }
           _2 = _4;                         // scope 0 at $DIR/ref_deref.rs:5:6: 5:10
 -         _1 = (*_2);                      // scope 0 at $DIR/ref_deref.rs:5:5: 5:10
-+         _1 = const 4i32;                 // scope 0 at $DIR/ref_deref.rs:5:5: 5:10
++         _1 = const 4_i32;                // scope 0 at $DIR/ref_deref.rs:5:5: 5:10
 +                                          // ty::Const
 +                                          // + ty: i32
 +                                          // + val: Value(Scalar(0x00000004))

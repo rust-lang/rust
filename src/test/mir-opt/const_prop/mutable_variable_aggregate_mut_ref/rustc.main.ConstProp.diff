@@ -18,7 +18,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:5:9: 5:14
-          _1 = (const 42i32, const 43i32); // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:5:17: 5:25
+          _1 = (const 42_i32, const 43_i32); // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:5:17: 5:25
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x0000002a))
@@ -35,7 +35,7 @@
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x0000002b)) }
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_aggregate_mut_ref.rs:6:9: 6:10
           _2 = &mut _1;                    // scope 1 at $DIR/mutable_variable_aggregate_mut_ref.rs:6:13: 6:19
-          ((*_2).1: i32) = const 99i32;    // scope 2 at $DIR/mutable_variable_aggregate_mut_ref.rs:7:5: 7:13
+          ((*_2).1: i32) = const 99_i32;   // scope 2 at $DIR/mutable_variable_aggregate_mut_ref.rs:7:5: 7:13
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000063))

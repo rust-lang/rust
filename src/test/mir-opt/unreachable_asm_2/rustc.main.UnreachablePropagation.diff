@@ -36,7 +36,7 @@
   
       bb1: {
           _2 = discriminant(_1);           // scope 0 at $DIR/unreachable_asm_2.rs:11:12: 11:20
-          switchInt(move _2) -> [1isize: bb3, otherwise: bb2]; // scope 0 at $DIR/unreachable_asm_2.rs:11:12: 11:20
+          switchInt(move _2) -> [1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/unreachable_asm_2.rs:11:12: 11:20
       }
   
       bb2: {
@@ -78,7 +78,7 @@
                                            // + span: $DIR/unreachable_asm_2.rs:20:13: 20:41
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_8);                 // scope 2 at $DIR/unreachable_asm_2.rs:20:40: 20:41
-          _4 = const 42i32;                // scope 2 at $DIR/unreachable_asm_2.rs:21:13: 21:20
+          _4 = const 42_i32;               // scope 2 at $DIR/unreachable_asm_2.rs:21:13: 21:20
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x0000002a))
@@ -107,7 +107,7 @@
                                            // + span: $DIR/unreachable_asm_2.rs:16:13: 16:41
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_7);                 // scope 2 at $DIR/unreachable_asm_2.rs:16:40: 16:41
-          _4 = const 21i32;                // scope 2 at $DIR/unreachable_asm_2.rs:17:13: 17:20
+          _4 = const 21_i32;               // scope 2 at $DIR/unreachable_asm_2.rs:17:13: 17:20
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000015))

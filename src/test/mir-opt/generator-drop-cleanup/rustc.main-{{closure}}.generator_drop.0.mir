@@ -34,7 +34,7 @@ fn main::{{closure}}#0(_1: *mut [generator@$DIR/generator-drop-cleanup.rs:10:15:
 
     bb0: {
         _9 = discriminant((*_1));        // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
-        switchInt(move _9) -> [0u32: bb7, 3u32: bb11, otherwise: bb12]; // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
+        switchInt(move _9) -> [0_u32: bb7, 3_u32: bb11, otherwise: bb12]; // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     }
 
     bb1 (cleanup): {

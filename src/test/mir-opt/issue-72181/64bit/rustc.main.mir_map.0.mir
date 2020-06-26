@@ -39,7 +39,7 @@ fn main() -> () {
         StorageDead(_1);                 // scope 0 at $DIR/issue-72181.rs:24:34: 24:35
         StorageLive(_2);                 // scope 1 at $DIR/issue-72181.rs:26:9: 26:10
         StorageLive(_3);                 // scope 1 at $DIR/issue-72181.rs:26:14: 26:27
-        _3 = Foo { a: const 42u64 };     // scope 1 at $DIR/issue-72181.rs:26:14: 26:27
+        _3 = Foo { a: const 42_u64 };    // scope 1 at $DIR/issue-72181.rs:26:14: 26:27
                                          // ty::Const
                                          // + ty: u64
                                          // + val: Value(Scalar(0x000000000000002a))
@@ -47,7 +47,7 @@ fn main() -> () {
                                          // + span: $DIR/issue-72181.rs:26:23: 26:25
                                          // + literal: Const { ty: u64, val: Value(Scalar(0x000000000000002a)) }
         StorageLive(_4);                 // scope 1 at $DIR/issue-72181.rs:26:29: 26:42
-        _4 = Foo { a: const 10u64 };     // scope 1 at $DIR/issue-72181.rs:26:29: 26:42
+        _4 = Foo { a: const 10_u64 };    // scope 1 at $DIR/issue-72181.rs:26:29: 26:42
                                          // ty::Const
                                          // + ty: u64
                                          // + val: Value(Scalar(0x000000000000000a))
@@ -60,7 +60,7 @@ fn main() -> () {
         FakeRead(ForLet, _2);            // scope 1 at $DIR/issue-72181.rs:26:9: 26:10
         StorageLive(_5);                 // scope 2 at $DIR/issue-72181.rs:27:13: 27:30
         StorageLive(_6);                 // scope 4 at $DIR/issue-72181.rs:27:24: 27:25
-        _6 = const 0usize;               // scope 4 at $DIR/issue-72181.rs:27:24: 27:25
+        _6 = const 0_usize;              // scope 4 at $DIR/issue-72181.rs:27:24: 27:25
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000000))

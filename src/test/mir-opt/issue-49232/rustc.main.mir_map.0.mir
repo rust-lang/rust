@@ -58,7 +58,7 @@ fn main() -> () {
     }
 
     bb7: {
-        _2 = const 4i32;                 // scope 0 at $DIR/issue-49232.rs:9:26: 9:27
+        _2 = const 4_i32;                // scope 0 at $DIR/issue-49232.rs:9:26: 9:27
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000004))

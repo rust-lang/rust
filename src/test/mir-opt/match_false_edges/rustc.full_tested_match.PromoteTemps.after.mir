@@ -26,7 +26,7 @@ fn full_tested_match() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/match_false_edges.rs:15:13: 19:6
         StorageLive(_2);                 // scope 0 at $DIR/match_false_edges.rs:15:19: 15:27
-        _2 = std::option::Option::<i32>::Some(const 42i32); // scope 0 at $DIR/match_false_edges.rs:15:19: 15:27
+        _2 = std::option::Option::<i32>::Some(const 42_i32); // scope 0 at $DIR/match_false_edges.rs:15:19: 15:27
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x0000002a))
@@ -35,7 +35,7 @@ fn full_tested_match() -> () {
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
         FakeRead(ForMatchedPlace, _2);   // scope 0 at $DIR/match_false_edges.rs:15:19: 15:27
         _3 = discriminant(_2);           // scope 0 at $DIR/match_false_edges.rs:16:9: 16:16
-        switchInt(move _3) -> [0isize: bb2, 1isize: bb3, otherwise: bb5]; // scope 0 at $DIR/match_false_edges.rs:16:9: 16:16
+        switchInt(move _3) -> [0_isize: bb2, 1_isize: bb3, otherwise: bb5]; // scope 0 at $DIR/match_false_edges.rs:16:9: 16:16
     }
 
     bb1 (cleanup): {
@@ -43,7 +43,7 @@ fn full_tested_match() -> () {
     }
 
     bb2: {
-        _1 = (const 3i32, const 3i32);   // scope 0 at $DIR/match_false_edges.rs:18:17: 18:23
+        _1 = (const 3_i32, const 3_i32); // scope 0 at $DIR/match_false_edges.rs:18:17: 18:23
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000003))
@@ -104,7 +104,7 @@ fn full_tested_match() -> () {
         _5 = ((_2 as Some).0: i32);      // scope 0 at $DIR/match_false_edges.rs:16:14: 16:15
         StorageLive(_8);                 // scope 2 at $DIR/match_false_edges.rs:16:35: 16:36
         _8 = _5;                         // scope 2 at $DIR/match_false_edges.rs:16:35: 16:36
-        _1 = (const 1i32, move _8);      // scope 2 at $DIR/match_false_edges.rs:16:31: 16:37
+        _1 = (const 1_i32, move _8);     // scope 2 at $DIR/match_false_edges.rs:16:31: 16:37
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000001))
@@ -128,7 +128,7 @@ fn full_tested_match() -> () {
         _9 = ((_2 as Some).0: i32);      // scope 0 at $DIR/match_false_edges.rs:17:14: 17:15
         StorageLive(_10);                // scope 3 at $DIR/match_false_edges.rs:17:24: 17:25
         _10 = _9;                        // scope 3 at $DIR/match_false_edges.rs:17:24: 17:25
-        _1 = (const 2i32, move _10);     // scope 3 at $DIR/match_false_edges.rs:17:20: 17:26
+        _1 = (const 2_i32, move _10);    // scope 3 at $DIR/match_false_edges.rs:17:20: 17:26
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000002))

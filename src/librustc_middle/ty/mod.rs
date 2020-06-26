@@ -84,6 +84,8 @@ pub use self::trait_def::TraitDef;
 
 pub use self::query::queries;
 
+pub use self::consts::ConstInt;
+
 pub mod adjustment;
 pub mod binding;
 pub mod cast;
@@ -108,6 +110,7 @@ pub mod trait_def;
 pub mod util;
 pub mod walk;
 
+mod consts;
 mod context;
 mod diagnostics;
 mod instance;
