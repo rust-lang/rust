@@ -31,8 +31,16 @@ icon to start your program running.
     exit 0
 fi
 
+# Prefer rustc in the same directory as this script
+DIR="$(dirname "$0")"
+if [ -x "$DIR/rustc" ]; then
+  RUSTC="$DIR/rustc"
+else
+  RUSTC="rustc"
+fi
+
 # Find out where the pretty printer Python module is
-RUSTC_SYSROOT=`rustc --print=sysroot`
+RUSTC_SYSROOT="$("$RUSTC" --print=sysroot)"
 GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
 
 # Set the environment variable `RUST_GDB` to overwrite the call to a

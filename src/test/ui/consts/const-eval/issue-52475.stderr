@@ -1,5 +1,5 @@
 error[E0658]: `while` is not allowed in a `const`
-  --> $DIR/issue-52475.rs:6:9
+  --> $DIR/issue-52475.rs:5:9
    |
 LL | /         while n < 5 {
 LL | |
@@ -12,24 +12,11 @@ LL | |         }
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
-warning: Constant evaluating a complex constant, this might take some time
-  --> $DIR/issue-52475.rs:2:18
-   |
-LL |       let _ = [(); {
-   |  __________________^
-LL | |
-LL | |         let mut x = &0;
-LL | |         let mut n = 0;
-...  |
-LL | |         0
-LL | |     }];
-   | |_____^
-
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-52475.rs:8:17
+  --> $DIR/issue-52475.rs:7:17
    |
 LL |             n = (n + 1) % 5;
-   |                 ^^^^^^^^^^^ duplicate interpreter state observed here, const evaluation will never terminate
+   |                 ^^^^^^^^^^^ exceeded interpreter step limit (see `#[const_eval_limit]`)
 
 error: aborting due to 2 previous errors
 

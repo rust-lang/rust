@@ -28,7 +28,7 @@ pub fn lock() -> impl Drop {
 
     unsafe {
         LOCK.lock();
-        return Guard;
+        Guard
     }
 }
 

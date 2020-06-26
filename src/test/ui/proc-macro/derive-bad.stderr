@@ -1,16 +1,28 @@
 error: expected `:`, found `}`
-  --> $DIR/derive-bad.rs:7:5
+  --> $DIR/derive-bad.rs:6:10
    |
-LL |     A
-   |     ^ expected `:`
+LL | #[derive(A)]
+   |          ^ expected `:`
    |
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: proc-macro derive produced unparseable tokens
-  --> $DIR/derive-bad.rs:7:5
+  --> $DIR/derive-bad.rs:6:10
    |
-LL |     A
-   |     ^
+LL | #[derive(A)]
+   |          ^
 
-error: aborting due to 2 previous errors
+error[E0428]: the name `A` is defined multiple times
+  --> $DIR/derive-bad.rs:9:1
+   |
+LL | #[derive(A)]
+   |          - previous definition of the type `A` here
+...
+LL | struct A;
+   | ^^^^^^^^^ `A` redefined here
+   |
+   = note: `A` must be defined only once in the type namespace of this module
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

@@ -1,0 +1,19 @@
+error: `impl` item signature doesn't match `trait` item signature
+  --> $DIR/trait-param-without-lifetime-constraint.rs:14:5
+   |
+LL |     fn get_relation(&self) -> To;
+   |     ----------------------------- expected `fn(&Article) -> &ProofReader`
+...
+LL |     fn get_relation(&self) -> &ProofReader {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&Article) -> &ProofReader`
+   |
+   = note: expected `fn(&Article) -> &ProofReader`
+              found `fn(&Article) -> &ProofReader`
+help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
+  --> $DIR/trait-param-without-lifetime-constraint.rs:10:31
+   |
+LL |     fn get_relation(&self) -> To;
+   |                               ^^ consider borrowing this type parameter in the trait
+
+error: aborting due to previous error
+

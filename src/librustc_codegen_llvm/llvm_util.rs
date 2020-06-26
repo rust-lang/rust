@@ -1,11 +1,11 @@
 use crate::back::write::create_informational_target_machine;
 use crate::llvm;
 use libc::c_int;
-use rustc::bug;
-use rustc::session::config::PrintRequest;
-use rustc::session::Session;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::UnstableFeatures;
+use rustc_middle::bug;
+use rustc_session::config::PrintRequest;
+use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
@@ -80,21 +80,18 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.print_llvm_passes() {
             add("-debug-pass=Structure", false);
         }
-
-        if sess.opts.debugging_opts.generate_arange_section {
+        if !sess.opts.debugging_opts.no_generate_arange_section {
             add("-generate-arange-section", false);
         }
-        if get_major_version() >= 8 {
-            match sess
-                .opts
-                .debugging_opts
-                .merge_functions
-                .unwrap_or(sess.target.target.options.merge_functions)
-            {
-                MergeFunctions::Disabled | MergeFunctions::Trampolines => {}
-                MergeFunctions::Aliases => {
-                    add("-mergefunc-use-aliases", false);
-                }
+        match sess
+            .opts
+            .debugging_opts
+            .merge_functions
+            .unwrap_or(sess.target.target.options.merge_functions)
+        {
+            MergeFunctions::Disabled | MergeFunctions::Trampolines => {}
+            MergeFunctions::Aliases => {
+                add("-mergefunc-use-aliases", false);
             }
         }
 
@@ -173,6 +170,7 @@ const AARCH64_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("fp16", Some(sym::aarch64_target_feature)),
     ("rcpc", Some(sym::aarch64_target_feature)),
     ("dotprod", Some(sym::aarch64_target_feature)),
+    ("tme", Some(sym::aarch64_target_feature)),
     ("v8.1a", Some(sym::aarch64_target_feature)),
     ("v8.2a", Some(sym::aarch64_target_feature)),
     ("v8.3a", Some(sym::aarch64_target_feature)),
@@ -239,6 +237,15 @@ const POWERPC_WHITELIST: &[(&str, Option<Symbol>)] = &[
 const MIPS_WHITELIST: &[(&str, Option<Symbol>)] =
     &[("fp64", Some(sym::mips_target_feature)), ("msa", Some(sym::mips_target_feature))];
 
+const RISCV_WHITELIST: &[(&str, Option<Symbol>)] = &[
+    ("m", Some(sym::riscv_target_feature)),
+    ("a", Some(sym::riscv_target_feature)),
+    ("c", Some(sym::riscv_target_feature)),
+    ("f", Some(sym::riscv_target_feature)),
+    ("d", Some(sym::riscv_target_feature)),
+    ("e", Some(sym::riscv_target_feature)),
+];
+
 const WASM_WHITELIST: &[(&str, Option<Symbol>)] =
     &[("simd128", Some(sym::wasm_target_feature)), ("atomics", Some(sym::wasm_target_feature))];
 
@@ -256,6 +263,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol
         .chain(HEXAGON_WHITELIST.iter().cloned())
         .chain(POWERPC_WHITELIST.iter().cloned())
         .chain(MIPS_WHITELIST.iter().cloned())
+        .chain(RISCV_WHITELIST.iter().cloned())
         .chain(WASM_WHITELIST.iter().cloned())
 }
 
@@ -273,7 +281,7 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
 }
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
-    let target_machine = create_informational_target_machine(sess, true);
+    let target_machine = create_informational_target_machine(sess);
     target_feature_whitelist(sess)
         .iter()
         .filter_map(|&(feature, gate)| {
@@ -300,6 +308,7 @@ pub fn target_feature_whitelist(sess: &Session) -> &'static [(&'static str, Opti
         "hexagon" => HEXAGON_WHITELIST,
         "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
+        "riscv32" | "riscv64" => RISCV_WHITELIST,
         "wasm32" => WASM_WHITELIST,
         _ => &[],
     }
@@ -325,7 +334,7 @@ pub fn print_passes() {
 
 pub(crate) fn print(req: PrintRequest, sess: &Session) {
     require_inited();
-    let tm = create_informational_target_machine(sess, true);
+    let tm = create_informational_target_machine(sess);
     unsafe {
         match req {
             PrintRequest::TargetCPUs => llvm::LLVMRustPrintTargetCPUs(tm),

@@ -10,16 +10,16 @@ use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
-use rustc::middle::region;
-use rustc::mir::*;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::{fx::{FxHashMap, FxHashSet}, stack::ensure_sufficient_stack};
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::middle::region;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::Span;
+use rustc_span::symbol::Symbol;
+use rustc_target::abi::VariantIdx;
 use smallvec::{smallvec, SmallVec};
-use rustc_ast::ast::Name;
 
 // helper functions, broken out by category:
 mod simplify;
@@ -83,7 +83,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// * From each otherwise block to the next prebinding block.
     crate fn match_expr(
         &mut self,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         span: Span,
         mut block: BasicBlock,
         scrutinee: ExprRef<'tcx>,
@@ -218,7 +218,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// `outer_source_info` is the SourceInfo for the whole match.
     fn lower_match_arms(
         &mut self,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         scrutinee_place: Place<'tcx>,
         scrutinee_span: Span,
         arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
@@ -364,7 +364,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
-                unpack!(block = self.into(&place, block, initializer));
+                unpack!(block = self.into(place, block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
@@ -399,7 +399,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
-                unpack!(block = self.into(&place, block, initializer));
+                unpack!(block = self.into(place, block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
@@ -470,9 +470,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for binding in &candidate_ref.bindings {
                     let local = self.var_local_id(binding.var_id, OutsideGuard);
 
-                    if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                    if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                         VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
-                    ))) = self.local_decls[local].local_info
+                    )))) = self.local_decls[local].local_info
                     {
                         *match_place = Some(initializer);
                     } else {
@@ -511,7 +511,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
         debug!("declare_bindings: pattern={:?}", pattern);
-        self.visit_bindings(
+        self.visit_primary_bindings(
             &pattern,
             UserTypeProjections::none(),
             &mut |this, mutability, name, mode, var, span, ty, user_ty| {
@@ -563,14 +563,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.schedule_drop(span, region_scope, local_id, DropKind::Value);
     }
 
-    pub(super) fn visit_bindings(
+    /// Visit all of the primary bindings in a patterns, that is, visit the
+    /// leftmost occurrence of each variable bound in a pattern. A variable
+    /// will occur more than once in an or-pattern.
+    pub(super) fn visit_primary_bindings(
         &mut self,
         pattern: &Pat<'tcx>,
         pattern_user_ty: UserTypeProjections,
         f: &mut impl FnMut(
             &mut Self,
             Mutability,
-            Name,
+            Symbol,
             BindingMode,
             HirId,
             Span,
@@ -578,12 +581,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             UserTypeProjections,
         ),
     ) {
-        debug!("visit_bindings: pattern={:?} pattern_user_ty={:?}", pattern, pattern_user_ty);
+        debug!(
+            "visit_primary_bindings: pattern={:?} pattern_user_ty={:?}",
+            pattern, pattern_user_ty
+        );
         match *pattern.kind {
-            PatKind::Binding { mutability, name, mode, var, ty, ref subpattern, .. } => {
-                f(self, mutability, name, mode, var, pattern.span, ty, pattern_user_ty.clone());
+            PatKind::Binding {
+                mutability,
+                name,
+                mode,
+                var,
+                ty,
+                ref subpattern,
+                is_primary,
+                ..
+            } => {
+                if is_primary {
+                    f(self, mutability, name, mode, var, pattern.span, ty, pattern_user_ty.clone());
+                }
                 if let Some(subpattern) = subpattern.as_ref() {
-                    self.visit_bindings(subpattern, pattern_user_ty, f);
+                    self.visit_primary_bindings(subpattern, pattern_user_ty, f);
                 }
             }
 
@@ -592,20 +609,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let from = u32::try_from(prefix.len()).unwrap();
                 let to = u32::try_from(suffix.len()).unwrap();
                 for subpattern in prefix {
-                    self.visit_bindings(subpattern, pattern_user_ty.clone().index(), f);
+                    self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
                 for subpattern in slice {
-                    self.visit_bindings(subpattern, pattern_user_ty.clone().subslice(from, to), f);
+                    self.visit_primary_bindings(
+                        subpattern,
+                        pattern_user_ty.clone().subslice(from, to),
+                        f,
+                    );
                 }
                 for subpattern in suffix {
-                    self.visit_bindings(subpattern, pattern_user_ty.clone().index(), f);
+                    self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
             }
 
             PatKind::Constant { .. } | PatKind::Range { .. } | PatKind::Wild => {}
 
             PatKind::Deref { ref subpattern } => {
-                self.visit_bindings(subpattern, pattern_user_ty.deref(), f);
+                self.visit_primary_bindings(subpattern, pattern_user_ty.deref(), f);
             }
 
             PatKind::AscribeUserType {
@@ -630,14 +651,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     projs: Vec::new(),
                 };
                 let subpattern_user_ty = pattern_user_ty.push_projection(&projection, user_ty_span);
-                self.visit_bindings(subpattern, subpattern_user_ty, f)
+                self.visit_primary_bindings(subpattern, subpattern_user_ty, f)
             }
 
             PatKind::Leaf { ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty = pattern_user_ty.clone().leaf(subpattern.field);
-                    debug!("visit_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
-                    self.visit_bindings(&subpattern.pattern, subpattern_user_ty, f);
+                    debug!("visit_primary_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
+                    self.visit_primary_bindings(&subpattern.pattern, subpattern_user_ty, f);
                 }
             }
 
@@ -645,11 +666,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for subpattern in subpatterns {
                     let subpattern_user_ty =
                         pattern_user_ty.clone().variant(adt_def, variant_index, subpattern.field);
-                    self.visit_bindings(&subpattern.pattern, subpattern_user_ty, f);
+                    self.visit_primary_bindings(&subpattern.pattern, subpattern_user_ty, f);
                 }
             }
             PatKind::Or { ref pats } => {
-                self.visit_bindings(&pats[0], pattern_user_ty, f);
+                // In cases where we recover from errors the primary bindings
+                // may not all be in the leftmost subpattern. For example in
+                // `let (x | y) = ...`, the primary binding of `y` occurs in
+                // the right subpattern
+                for subpattern in pats {
+                    self.visit_primary_bindings(subpattern, pattern_user_ty.clone(), f);
+                }
             }
         }
     }
@@ -737,7 +764,7 @@ fn traverse_candidate<'pat, 'tcx: 'pat, C, T, I>(
 struct Binding<'tcx> {
     span: Span,
     source: Place<'tcx>,
-    name: Name,
+    name: Symbol,
     var_id: HirId,
     var_ty: Ty<'tcx>,
     mutability: Mutability,
@@ -882,30 +909,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             split_or_candidate |= self.simplify_candidate(candidate);
         }
 
-        if split_or_candidate {
-            // At least one of the candidates has been split into subcandidates.
-            // We need to change the candidate list to include those.
-            let mut new_candidates = Vec::new();
+        ensure_sufficient_stack(|| {
+            if split_or_candidate {
+                // At least one of the candidates has been split into subcandidates.
+                // We need to change the candidate list to include those.
+                let mut new_candidates = Vec::new();
 
-            for candidate in candidates {
-                candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
+                for candidate in candidates {
+                    candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
+                }
+                self.match_simplified_candidates(
+                    span,
+                    start_block,
+                    otherwise_block,
+                    &mut *new_candidates,
+                    fake_borrows,
+                );
+            } else {
+                self.match_simplified_candidates(
+                    span,
+                    start_block,
+                    otherwise_block,
+                    candidates,
+                    fake_borrows,
+                );
             }
-            self.match_simplified_candidates(
-                span,
-                start_block,
-                otherwise_block,
-                &mut *new_candidates,
-                fake_borrows,
-            );
-        } else {
-            self.match_simplified_candidates(
-                span,
-                start_block,
-                otherwise_block,
-                candidates,
-                fake_borrows,
-            );
-        };
+        });
     }
 
     fn match_simplified_candidates(
@@ -1017,7 +1046,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 matched_candidates.iter().flat_map(|candidate| &candidate.bindings)
             {
                 if let Some(i) =
-                    source.projection.iter().rposition(|elem| *elem == ProjectionElem::Deref)
+                    source.projection.iter().rposition(|elem| elem == ProjectionElem::Deref)
                 {
                     let proj_base = &source.projection[..i];
 
@@ -1388,7 +1417,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         // Insert a Shallow borrow of any places that is switched on.
-        fake_borrows.as_mut().map(|fb| fb.insert(match_place));
+        if let Some(fb) = fake_borrows {
+            fb.insert(match_place);
+        }
 
         // perform the test, branching to one of N blocks. For each of
         // those N possible outcomes, create a (initially empty)
@@ -1537,7 +1568,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
                 let fake_borrow_ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
                 let fake_borrow_temp =
-                    self.local_decls.push(LocalDecl::new_temp(fake_borrow_ty, temp_span));
+                    self.local_decls.push(LocalDecl::new(fake_borrow_ty, temp_span));
 
                 (matched_place, fake_borrow_temp)
             })
@@ -1691,7 +1722,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let scrutinee_source_info = self.source_info(scrutinee_span);
             for &(place, temp) in fake_borrows {
                 let borrow = Rvalue::Ref(re_erased, BorrowKind::Shallow, place);
-                self.cfg.push_assign(block, scrutinee_source_info, &Place::from(temp), borrow);
+                self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
             // the block to branch to if the guard fails; if there is no
@@ -1858,7 +1889,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             match binding.binding_mode {
                 BindingMode::ByValue => {
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, binding.source);
-                    self.cfg.push_assign(block, source_info, &ref_for_guard, rvalue);
+                    self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
                 BindingMode::ByRef(borrow_kind) => {
                     let value_for_arm = self.storage_live_binding(
@@ -1870,9 +1901,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
 
                     let rvalue = Rvalue::Ref(re_erased, borrow_kind, binding.source);
-                    self.cfg.push_assign(block, source_info, &value_for_arm, rvalue);
+                    self.cfg.push_assign(block, source_info, value_for_arm, rvalue);
                     let rvalue = Rvalue::Ref(re_erased, BorrowKind::Shared, value_for_arm);
-                    self.cfg.push_assign(block, source_info, &ref_for_guard, rvalue);
+                    self.cfg.push_assign(block, source_info, ref_for_guard, rvalue);
                 }
             }
         }
@@ -1903,14 +1934,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
             }
             let rvalue = match binding.binding_mode {
-                BindingMode::ByValue => {
-                    Rvalue::Use(self.consume_by_copy_or_move(binding.source.clone()))
-                }
+                BindingMode::ByValue => Rvalue::Use(self.consume_by_copy_or_move(binding.source)),
                 BindingMode::ByRef(borrow_kind) => {
                     Rvalue::Ref(re_erased, borrow_kind, binding.source)
                 }
             };
-            self.cfg.push_assign(block, source_info, &local, rvalue);
+            self.cfg.push_assign(block, source_info, local, rvalue);
         }
     }
 
@@ -1924,7 +1953,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
         visibility_scope: SourceScope,
         mutability: Mutability,
-        name: Name,
+        name: Symbol,
         mode: BindingMode,
         var_id: HirId,
         var_ty: Ty<'tcx>,
@@ -1949,20 +1978,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty,
-            user_ty,
+            user_ty: if user_ty.is_empty() { None } else { Some(box user_ty) },
             source_info,
             internal: false,
             is_block_tail: None,
-            local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+            local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode,
-                // hypothetically, `visit_bindings` could try to unzip
+                // hypothetically, `visit_primary_bindings` could try to unzip
                 // an outermost hir::Ty as we descend, matching up
                 // idents in pat; but complex w/ unclear UI payoff.
                 // Instead, just abandon providing diagnostic info.
                 opt_ty_info: None,
                 opt_match_place,
                 pat_span,
-            }))),
+            })))),
         };
         let for_arm_body = self.local_decls.push(local);
         self.var_debug_info.push(VarDebugInfo {
@@ -1976,11 +2005,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // immutable to avoid the unused mut lint.
                 mutability: Mutability::Not,
                 ty: tcx.mk_imm_ref(tcx.lifetimes.re_erased, var_ty),
-                user_ty: UserTypeProjections::none(),
+                user_ty: None,
                 source_info,
                 internal: false,
                 is_block_tail: None,
-                local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)),
+                local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))),
             });
             self.var_debug_info.push(VarDebugInfo {
                 name,

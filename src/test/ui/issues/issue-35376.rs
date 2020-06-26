@@ -1,5 +1,6 @@
 // check-pass
 #![feature(specialization)]
+//~^ WARN the feature `specialization` is incomplete
 
 fn main() {}
 

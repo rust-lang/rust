@@ -1,6 +1,6 @@
 use super::BackendTypes;
 use crate::mir::operand::OperandRef;
-use rustc::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
 
@@ -15,6 +15,7 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
         args: &[OperandRef<'tcx, Self::Value>],
         llresult: Self::Value,
         span: Span,
+        caller_instance: ty::Instance<'tcx>,
     );
 
     fn abort(&mut self);

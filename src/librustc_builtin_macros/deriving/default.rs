@@ -53,7 +53,7 @@ fn default_substructure(
     let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
     let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
 
-    return match *substr.fields {
+    match *substr.fields {
         StaticStruct(_, ref summary) => match *summary {
             Unnamed(ref fields, is_tuple) => {
                 if !is_tuple {
@@ -83,5 +83,5 @@ fn default_substructure(
             DummyResult::raw_expr(trait_span, true)
         }
         _ => cx.span_bug(trait_span, "method in `derive(Default)`"),
-    };
+    }
 }

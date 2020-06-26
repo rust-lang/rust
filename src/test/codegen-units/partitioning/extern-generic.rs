@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
-// We specify -Z incremental here because we want to test the partitioning for
+// We specify -C incremental here because we want to test the partitioning for
 // incremental compilation
-// compile-flags:-Zprint-mono-items=eager -Zincremental=tmp/partitioning-tests/extern-generic -Zshare-generics=y
+// compile-flags:-Zprint-mono-items=eager -Cincremental=tmp/partitioning-tests/extern-generic -Zshare-generics=y
 
 #![allow(dead_code)]
 #![crate_type="lib"]

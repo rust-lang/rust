@@ -1,5 +1,5 @@
 // run-pass
-
+#![allow(unused_braces, unused_parens)]
 #![feature(unsized_tuple_coercion, unsized_locals)]
 
 struct A<X: ?Sized>(X);
@@ -30,7 +30,6 @@ fn main() {
         *foo()
     });
     udrop::<[u8]>({*foo()});
-    #[allow(unused_parens)]
     udrop::<[u8]>((*foo()));
     udrop::<[u8]>((*tfoo()).1);
     *afoo() + 42;

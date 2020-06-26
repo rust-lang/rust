@@ -1,3 +1,12 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-39448.rs:1:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
 error[E0275]: overflow evaluating the requirement `T: FromA<U>`
   --> $DIR/issue-39448.rs:45:13
    |
@@ -7,6 +16,6 @@ LL |     x.foo(y.to()).to()
    = note: required because of the requirements on the impl of `FromA<U>` for `T`
    = note: required because of the requirements on the impl of `ToA<T>` for `U`
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0275`.

@@ -5,14 +5,14 @@
 pub use self::ConsumeMode::*;
 
 // Export these here so that Clippy can use them.
-pub use mc::{Place, PlaceBase, Projection};
+pub use mc::{PlaceBase, PlaceWithHirId, Projection};
 
-use rustc::ty::{self, adjustment, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::PatKind;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::ty::{self, adjustment, TyCtxt};
 
 use crate::mem_categorization as mc;
 use rustc_span::Span;
@@ -25,13 +25,13 @@ use rustc_span::Span;
 pub trait Delegate<'tcx> {
     // The value found at `place` is either copied or moved, depending
     // on mode.
-    fn consume(&mut self, place: &mc::Place<'tcx>, mode: ConsumeMode);
+    fn consume(&mut self, place_with_id: &mc::PlaceWithHirId<'tcx>, mode: ConsumeMode);
 
     // The value found at `place` is being borrowed with kind `bk`.
-    fn borrow(&mut self, place: &mc::Place<'tcx>, bk: ty::BorrowKind);
+    fn borrow(&mut self, place_with_id: &mc::PlaceWithHirId<'tcx>, bk: ty::BorrowKind);
 
-    // The path at `place` is being assigned to.
-    fn mutate(&mut self, assignee_place: &mc::Place<'tcx>);
+    // The path at `place_with_id` is being assigned to.
+    fn mutate(&mut self, assignee_place: &mc::PlaceWithHirId<'tcx>);
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -84,7 +84,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     pub fn new(
         delegate: &'a mut (dyn Delegate<'tcx> + 'a),
         infcx: &'a InferCtxt<'a, 'tcx>,
-        body_owner: DefId,
+        body_owner: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         tables: &'a ty::TypeckTables<'tcx>,
     ) -> Self {
@@ -113,11 +113,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.mc.tcx()
     }
 
-    fn delegate_consume(&mut self, place: &Place<'tcx>) {
-        debug!("delegate_consume(place={:?})", place);
+    fn delegate_consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>) {
+        debug!("delegate_consume(place_with_id={:?})", place_with_id);
 
-        let mode = copy_or_move(&self.mc, place);
-        self.delegate.consume(place, mode);
+        let mode = copy_or_move(&self.mc, place_with_id);
+        self.delegate.consume(place_with_id, mode);
     }
 
     fn consume_exprs(&mut self, exprs: &[hir::Expr<'_>]) {
@@ -129,22 +129,22 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     pub fn consume_expr(&mut self, expr: &hir::Expr<'_>) {
         debug!("consume_expr(expr={:?})", expr);
 
-        let place = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate_consume(&place);
+        let place_with_id = return_if_err!(self.mc.cat_expr(expr));
+        self.delegate_consume(&place_with_id);
         self.walk_expr(expr);
     }
 
     fn mutate_expr(&mut self, expr: &hir::Expr<'_>) {
-        let place = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate.mutate(&place);
+        let place_with_id = return_if_err!(self.mc.cat_expr(expr));
+        self.delegate.mutate(&place_with_id);
         self.walk_expr(expr);
     }
 
     fn borrow_expr(&mut self, expr: &hir::Expr<'_>, bk: ty::BorrowKind) {
         debug!("borrow_expr(expr={:?}, bk={:?})", expr, bk);
 
-        let place = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate.borrow(&place, bk);
+        let place_with_id = return_if_err!(self.mc.cat_expr(expr));
+        self.delegate.borrow(&place_with_id, bk);
 
         self.walk_expr(expr)
     }
@@ -185,7 +185,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_exprs(args);
             }
 
-            hir::ExprKind::MethodCall(.., ref args) => {
+            hir::ExprKind::MethodCall(.., ref args, _) => {
                 // callee.m(args)
                 self.consume_exprs(args);
             }
@@ -220,7 +220,31 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.borrow_expr(&base, bk);
             }
 
-            hir::ExprKind::InlineAsm(ref ia) => {
+            hir::ExprKind::InlineAsm(ref asm) => {
+                for op in asm.operands {
+                    match op {
+                        hir::InlineAsmOperand::In { expr, .. }
+                        | hir::InlineAsmOperand::Const { expr, .. }
+                        | hir::InlineAsmOperand::Sym { expr, .. } => self.consume_expr(expr),
+                        hir::InlineAsmOperand::Out { expr, .. } => {
+                            if let Some(expr) = expr {
+                                self.mutate_expr(expr);
+                            }
+                        }
+                        hir::InlineAsmOperand::InOut { expr, .. } => {
+                            self.mutate_expr(expr);
+                        }
+                        hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                            self.consume_expr(in_expr);
+                            if let Some(out_expr) = out_expr {
+                                self.mutate_expr(out_expr);
+                            }
+                        }
+                    }
+                }
+            }
+
+            hir::ExprKind::LlvmInlineAsm(ref ia) => {
                 for (o, output) in ia.inner.outputs.iter().zip(ia.outputs_exprs) {
                     if o.is_indirect {
                         self.consume_expr(output);
@@ -360,7 +384,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         // Select just those fields of the `with`
         // expression that will actually be used
-        match with_place.ty.kind {
+        match with_place.place.ty.kind {
             ty::Adt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
@@ -398,14 +422,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     // process.
     fn walk_adjustment(&mut self, expr: &hir::Expr<'_>) {
         let adjustments = self.mc.tables.expr_adjustments(expr);
-        let mut place = return_if_err!(self.mc.cat_expr_unadjusted(expr));
+        let mut place_with_id = return_if_err!(self.mc.cat_expr_unadjusted(expr));
         for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
                 adjustment::Adjust::NeverToAny | adjustment::Adjust::Pointer(_) => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
-                    self.delegate_consume(&place);
+                    self.delegate_consume(&place_with_id);
                 }
 
                 adjustment::Adjust::Deref(None) => {}
@@ -417,14 +441,15 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // this is an autoref of `x`.
                 adjustment::Adjust::Deref(Some(ref deref)) => {
                     let bk = ty::BorrowKind::from_mutbl(deref.mutbl);
-                    self.delegate.borrow(&place, bk);
+                    self.delegate.borrow(&place_with_id, bk);
                 }
 
                 adjustment::Adjust::Borrow(ref autoref) => {
-                    self.walk_autoref(expr, &place, autoref);
+                    self.walk_autoref(expr, &place_with_id, autoref);
                 }
             }
-            place = return_if_err!(self.mc.cat_expr_adjusted(expr, place, &adjustment));
+            place_with_id =
+                return_if_err!(self.mc.cat_expr_adjusted(expr, place_with_id, &adjustment));
         }
     }
 
@@ -434,7 +459,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_autoref(
         &mut self,
         expr: &hir::Expr<'_>,
-        base_place: &mc::Place<'tcx>,
+        base_place: &mc::PlaceWithHirId<'tcx>,
         autoref: &adjustment::AutoBorrow<'tcx>,
     ) {
         debug!(
@@ -455,7 +480,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_arm(&mut self, discr_place: &Place<'tcx>, arm: &hir::Arm<'_>) {
+    fn walk_arm(&mut self, discr_place: &PlaceWithHirId<'tcx>, arm: &hir::Arm<'_>) {
         self.walk_pat(discr_place, &arm.pat);
 
         if let Some(hir::Guard::If(ref e)) = arm.guard {
@@ -467,12 +492,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
     /// let binding, and *not* a match arm or nested pat.)
-    fn walk_irrefutable_pat(&mut self, discr_place: &Place<'tcx>, pat: &hir::Pat<'_>) {
+    fn walk_irrefutable_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
         self.walk_pat(discr_place, pat);
     }
 
     /// The core driver for walking a pattern
-    fn walk_pat(&mut self, discr_place: &Place<'tcx>, pat: &hir::Pat<'_>) {
+    fn walk_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
         debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
 
         let tcx = self.tcx();
@@ -515,11 +540,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("walk_captures({:?})", closure_expr);
 
         let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id);
-        if let Some(upvars) = self.tcx().upvars(closure_def_id) {
+        if let Some(upvars) = self.tcx().upvars_mentioned(closure_def_id) {
             for &var_id in upvars.keys() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_id },
-                    closure_expr_id: closure_def_id.to_local(),
+                    closure_expr_id: closure_def_id,
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let captured_place = return_if_err!(self.cat_captured_var(
@@ -545,7 +570,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         closure_hir_id: hir::HirId,
         closure_span: Span,
         var_id: hir::HirId,
-    ) -> mc::McResult<mc::Place<'tcx>> {
+    ) -> mc::McResult<mc::PlaceWithHirId<'tcx>> {
         // Create the place for the variable being borrowed, from the
         // perspective of the creator (parent) of the closure.
         let var_ty = self.mc.node_ty(var_id)?;
@@ -555,7 +580,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
 fn copy_or_move<'a, 'tcx>(
     mc: &mc::MemCategorizationContext<'a, 'tcx>,
-    place: &Place<'tcx>,
+    place_with_id: &PlaceWithHirId<'tcx>,
 ) -> ConsumeMode {
-    if !mc.type_is_copy_modulo_regions(place.ty, place.span) { Move } else { Copy }
+    if !mc.type_is_copy_modulo_regions(
+        place_with_id.place.ty,
+        mc.tcx().hir().span(place_with_id.hir_id),
+    ) {
+        Move
+    } else {
+        Copy
+    }
 }

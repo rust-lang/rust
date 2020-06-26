@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 // Test that default methods are cascaded correctly
 

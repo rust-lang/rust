@@ -1,4 +1,5 @@
 #![feature(optin_builtin_traits)]
+#![feature(negative_impls)]
 // edition:2018
 
 // This tests the the unspecialized async-await-specific error when futures don't implement an

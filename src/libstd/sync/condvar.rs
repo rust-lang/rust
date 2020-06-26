@@ -609,7 +609,6 @@ mod tests {
     use crate::sync::{Arc, Condvar, Mutex};
     use crate::thread;
     use crate::time::Duration;
-    use crate::u64;
 
     #[test]
     fn smoke() {

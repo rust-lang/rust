@@ -22,8 +22,8 @@ use serde::Deserialize;
 use crate::builder::Cargo;
 use crate::dist;
 use crate::native;
-use crate::util::{exe, is_dylib};
-use crate::{Compiler, GitRepo, Mode};
+use crate::util::{exe, is_dylib, symlink_dir};
+use crate::{Compiler, DependencyType, GitRepo, Mode};
 
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
@@ -74,6 +74,7 @@ impl Step for Std {
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
             copy_third_party_objects(builder, &compiler, target);
+            copy_self_contained_objects(builder, &compiler, target);
 
             builder.ensure(StdLink {
                 compiler: compiler_to_use,
@@ -83,10 +84,11 @@ impl Step for Std {
             return;
         }
 
-        target_deps.extend(copy_third_party_objects(builder, &compiler, target).into_iter());
+        target_deps.extend(copy_third_party_objects(builder, &compiler, target));
+        target_deps.extend(copy_self_contained_objects(builder, &compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
-        std_cargo(builder, target, &mut cargo);
+        std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!(
             "Building stage{} std artifacts ({} -> {})",
@@ -109,37 +111,28 @@ impl Step for Std {
     }
 }
 
+fn copy_and_stamp(
+    builder: &Builder<'_>,
+    libdir: &Path,
+    sourcedir: &Path,
+    name: &str,
+    target_deps: &mut Vec<(PathBuf, DependencyType)>,
+    dependency_type: DependencyType,
+) {
+    let target = libdir.join(name);
+    builder.copy(&sourcedir.join(name), &target);
+
+    target_deps.push((target, dependency_type));
+}
+
 /// Copies third party objects needed by various targets.
 fn copy_third_party_objects(
     builder: &Builder<'_>,
     compiler: &Compiler,
     target: Interned<String>,
-) -> Vec<PathBuf> {
+) -> Vec<(PathBuf, DependencyType)> {
     let libdir = builder.sysroot_libdir(*compiler, target);
-
     let mut target_deps = vec![];
-
-    let mut copy_and_stamp = |sourcedir: &Path, name: &str| {
-        let target = libdir.join(name);
-        builder.copy(&sourcedir.join(name), &target);
-        target_deps.push(target);
-    };
-
-    // Copies the crt(1,i,n).o startup objects
-    //
-    // Since musl supports fully static linking, we can cross link for it even
-    // with a glibc-targeting toolchain, given we have the appropriate startup
-    // files. As those shipped with glibc won't work, copy the ones provided by
-    // musl so we have them on linux-gnu hosts.
-    if target.contains("musl") {
-        let srcdir = builder.musl_root(target).unwrap().join("lib");
-        for &obj in &["crt1.o", "crti.o", "crtn.o"] {
-            copy_and_stamp(&srcdir, obj);
-        }
-    } else if target.ends_with("-wasi") {
-        let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
-        copy_and_stamp(&srcdir, "crt1.o");
-    }
 
     // Copies libunwind.a compiled to be linked with x86_64-fortanix-unknown-sgx.
     //
@@ -150,13 +143,81 @@ fn copy_third_party_objects(
         let src_path_env = "X86_FORTANIX_SGX_LIBS";
         let src =
             env::var(src_path_env).unwrap_or_else(|_| panic!("{} not found in env", src_path_env));
-        copy_and_stamp(Path::new(&src), "libunwind.a");
+        copy_and_stamp(
+            builder,
+            &*libdir,
+            Path::new(&src),
+            "libunwind.a",
+            &mut target_deps,
+            DependencyType::Target,
+        );
     }
 
     if builder.config.sanitizers && compiler.stage != 0 {
         // The sanitizers are only copied in stage1 or above,
         // to avoid creating dependency on LLVM.
-        target_deps.extend(copy_sanitizers(builder, &compiler, target));
+        target_deps.extend(
+            copy_sanitizers(builder, &compiler, target)
+                .into_iter()
+                .map(|d| (d, DependencyType::Target)),
+        );
+    }
+
+    target_deps
+}
+
+/// Copies third party objects needed by various targets for self-contained linkage.
+fn copy_self_contained_objects(
+    builder: &Builder<'_>,
+    compiler: &Compiler,
+    target: Interned<String>,
+) -> Vec<(PathBuf, DependencyType)> {
+    // cfg(bootstrap)
+    // Remove when upgrading bootstrap compiler.
+    let libdir_self_contained = if compiler.stage == 0 {
+        builder.sysroot_libdir(*compiler, target).to_path_buf()
+    } else {
+        builder.sysroot_libdir(*compiler, target).join("self-contained")
+    };
+    t!(fs::create_dir_all(&libdir_self_contained));
+    let mut target_deps = vec![];
+
+    // Copies the CRT objects.
+    //
+    // rustc historically provides a more self-contained installation for musl targets
+    // not requiring the presence of a native musl toolchain. For example, it can fall back
+    // to using gcc from a glibc-targeting toolchain for linking.
+    // To do that we have to distribute musl startup objects as a part of Rust toolchain
+    // and link with them manually in the self-contained mode.
+    if target.contains("musl") {
+        let srcdir = builder.musl_root(target).unwrap().join("lib");
+        for &obj in &["crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
+            copy_and_stamp(
+                builder,
+                &libdir_self_contained,
+                &srcdir,
+                obj,
+                &mut target_deps,
+                DependencyType::TargetSelfContained,
+            );
+        }
+    } else if target.ends_with("-wasi") {
+        let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
+        copy_and_stamp(
+            builder,
+            &libdir_self_contained,
+            &srcdir,
+            "crt1.o",
+            &mut target_deps,
+            DependencyType::TargetSelfContained,
+        );
+    } else if target.contains("windows-gnu") {
+        for obj in ["crt2.o", "dllcrt2.o"].iter() {
+            let src = compiler_file(builder, builder.cc(target), target, obj);
+            let target = libdir_self_contained.join(obj);
+            builder.copy(&src, &target);
+            target_deps.push((target, DependencyType::TargetSelfContained));
+        }
     }
 
     target_deps
@@ -164,7 +225,7 @@ fn copy_third_party_objects(
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, cargo: &mut Cargo) {
+pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, stage: u32, cargo: &mut Cargo) {
     if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
@@ -186,6 +247,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, cargo: &mut Ca
     // `compiler-rt` is located.
     let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
     let compiler_builtins_c_feature = if compiler_builtins_root.exists() {
+        // Note that `libprofiler_builtins/build.rs` also computes this so if
+        // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
         " compiler-builtins-c".to_string()
     } else {
@@ -228,6 +291,28 @@ pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, cargo: &mut Ca
                 cargo.rustflag("-L").rustflag(&root);
             }
         }
+    }
+
+    // By default, rustc uses `-Cembed-bitcode=yes`, and Cargo overrides that
+    // with `-Cembed-bitcode=no` for non-LTO builds. However, libstd must be
+    // built with bitcode so that the produced rlibs can be used for both LTO
+    // builds (which use bitcode) and non-LTO builds (which use object code).
+    // So we override the override here!
+    //
+    // But we don't bother for the stage 0 compiler because it's never used
+    // with LTO.
+    if stage >= 1 {
+        cargo.rustflag("-Cembed-bitcode=yes");
+    }
+
+    // By default, rustc does not include unwind tables unless they are required
+    // for a particular target. They are not required by RISC-V targets, but
+    // compiling the standard library with them means that users can get
+    // backtraces without having to recompile the standard library themselves.
+    //
+    // This choice was discussed in https://github.com/rust-lang/rust/pull/69890
+    if target.contains("riscv") {
+        cargo.rustflag("-Cforce-unwind-tables=yes");
     }
 }
 
@@ -310,7 +395,7 @@ pub struct StartupObjects {
 }
 
 impl Step for StartupObjects {
-    type Output = Vec<PathBuf>;
+    type Output = Vec<(PathBuf, DependencyType)>;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/rtstartup")
@@ -329,7 +414,7 @@ impl Step for StartupObjects {
     /// They don't require any library support as they're just plain old object
     /// files, so we just use the nightly snapshot compiler to always build them (as
     /// no other compilers are guaranteed to be available).
-    fn run(self, builder: &Builder<'_>) -> Vec<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Vec<(PathBuf, DependencyType)> {
         let for_compiler = self.compiler;
         let target = self.target;
         if !target.contains("windows-gnu") {
@@ -363,14 +448,7 @@ impl Step for StartupObjects {
 
             let target = sysroot_dir.join((*file).to_string() + ".o");
             builder.copy(dst_file, &target);
-            target_deps.push(target);
-        }
-
-        for obj in ["crt2.o", "dllcrt2.o"].iter() {
-            let src = compiler_file(builder, builder.cc(target), target, obj);
-            let target = sysroot_dir.join(obj);
-            builder.copy(&src, &target);
-            target_deps.push(target);
+            target_deps.push((target, DependencyType::Target));
         }
 
         target_deps
@@ -451,44 +529,6 @@ impl Step for Rustc {
             false,
         );
 
-        // We used to build librustc_codegen_llvm as a separate step,
-        // which produced a dylib that the compiler would dlopen() at runtime.
-        // This meant that we only needed to make sure that libLLVM.so was
-        // installed by the time we went to run a tool using it - since
-        // librustc_codegen_llvm was effectively a standalone artifact,
-        // other crates were completely oblivious to its dependency
-        // on `libLLVM.so` during build time.
-        //
-        // However, librustc_codegen_llvm is now built as an ordinary
-        // crate during the same step as the rest of the compiler crates.
-        // This means that any crates depending on it will see the fact
-        // that it uses `libLLVM.so` as a native library, and will
-        // cause us to pass `-llibLLVM.so` to the linker when we link
-        // a binary.
-        //
-        // For `rustc` itself, this works out fine.
-        // During the `Assemble` step, we call `dist::maybe_install_llvm_dylib`
-        // to copy libLLVM.so into the `stage` directory. We then link
-        // the compiler binary, which will find `libLLVM.so` in the correct place.
-        //
-        // However, this is insufficient for tools that are build against stage0
-        // (e.g. stage1 rustdoc). Since `Assemble` for stage0 doesn't actually do anything,
-        // we won't have `libLLVM.so` in the stage0 sysroot. In the past, this wasn't
-        // a problem - we would copy the tool binary into its correct stage directory
-        // (e.g. stage1 for a stage1 rustdoc built against a stage0 compiler).
-        // Since libLLVM.so wasn't resolved until runtime, it was fine for it to
-        // not exist while we were building it.
-        //
-        // To ensure that we can still build stage1 tools against a stage0 compiler,
-        // we explicitly copy libLLVM.so into the stage0 sysroot when building
-        // the stage0 compiler. This ensures that tools built against stage0
-        // will see libLLVM.so at build time, making the linker happy.
-        if compiler.stage == 0 {
-            builder.info(&format!("Installing libLLVM.so to stage 0 ({})", compiler.host));
-            let sysroot = builder.sysroot(compiler);
-            dist::maybe_install_llvm_dylib(builder, compiler.host, &sysroot);
-        }
-
         builder.ensure(RustcLink {
             compiler: builder.compiler(compiler.stage, builder.config.build),
             target_compiler: compiler,
@@ -541,9 +581,13 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: Interne
     // librustc_llvm and librustc_codegen_llvm.
     //
     // Note that this is disabled if LLVM itself is disabled or we're in a check
-    // build, where if we're in a check build there's no need to build all of
-    // LLVM and such.
-    if builder.config.llvm_enabled() && builder.kind != Kind::Check {
+    // build. If we are in a check build we still go ahead here presuming we've
+    // detected that LLVM is alreay built and good to go which helps prevent
+    // busting caches (e.g. like #71152).
+    if builder.config.llvm_enabled()
+        && (builder.kind != Kind::Check
+            || crate::native::prebuilt_llvm_config(builder, target).is_ok())
+    {
         if builder.is_rust_llvm(target) {
             cargo.env("LLVM_RUSTLLVM", "1");
         }
@@ -671,6 +715,30 @@ impl Step for Sysroot {
         };
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
+
+        // Symlink the source root into the same location inside the sysroot,
+        // where `rust-src` component would go (`$sysroot/lib/rustlib/src/rust`),
+        // so that any tools relying on `rust-src` also work for local builds,
+        // and also for translating the virtual `/rustc/$hash` back to the real
+        // directory (for running tests with `rust.remap-debuginfo = true`).
+        let sysroot_lib_rustlib_src = sysroot.join("lib/rustlib/src");
+        t!(fs::create_dir_all(&sysroot_lib_rustlib_src));
+        let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
+        if let Err(e) = symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust) {
+            eprintln!(
+                "warning: creating symbolic link `{}` to `{}` failed with {}",
+                sysroot_lib_rustlib_src_rust.display(),
+                builder.src.display(),
+                e,
+            );
+            if builder.config.rust_remap_debuginfo {
+                eprintln!(
+                    "warning: some `src/test/ui` tests will fail when lacking `{}`",
+                    sysroot_lib_rustlib_src_rust.display(),
+                );
+            }
+        }
+
         INTERNER.intern_path(sysroot)
     }
 }
@@ -768,7 +836,8 @@ impl Step for Assemble {
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.
-        dist::maybe_install_llvm_dylib(builder, target_compiler.host, &sysroot);
+        dist::maybe_install_llvm_runtime(builder, target_compiler.host, &sysroot);
+        dist::maybe_install_llvm_target(builder, target_compiler.host, &sysroot);
 
         // Link the compiler binary itself into place
         let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);
@@ -792,14 +861,17 @@ pub fn add_to_sysroot(
     sysroot_host_dst: &Path,
     stamp: &Path,
 ) {
+    let self_contained_dst = &sysroot_dst.join("self-contained");
     t!(fs::create_dir_all(&sysroot_dst));
     t!(fs::create_dir_all(&sysroot_host_dst));
-    for (path, host) in builder.read_stamp_file(stamp) {
-        if host {
-            builder.copy(&path, &sysroot_host_dst.join(path.file_name().unwrap()));
-        } else {
-            builder.copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
-        }
+    t!(fs::create_dir_all(&self_contained_dst));
+    for (path, dependency_type) in builder.read_stamp_file(stamp) {
+        let dst = match dependency_type {
+            DependencyType::Host => sysroot_host_dst,
+            DependencyType::Target => sysroot_dst,
+            DependencyType::TargetSelfContained => self_contained_dst,
+        };
+        builder.copy(&path, &dst.join(path.file_name().unwrap()));
     }
 }
 
@@ -808,7 +880,7 @@ pub fn run_cargo(
     cargo: Cargo,
     tail_args: Vec<String>,
     stamp: &Path,
-    additional_target_deps: Vec<PathBuf>,
+    additional_target_deps: Vec<(PathBuf, DependencyType)>,
     is_check: bool,
 ) -> Vec<PathBuf> {
     if builder.config.dry_run {
@@ -859,7 +931,7 @@ pub fn run_cargo(
             if filename.starts_with(&host_root_dir) {
                 // Unless it's a proc macro used in the compiler
                 if crate_types.iter().any(|t| t == "proc-macro") {
-                    deps.push((filename.to_path_buf(), true));
+                    deps.push((filename.to_path_buf(), DependencyType::Host));
                 }
                 continue;
             }
@@ -867,7 +939,7 @@ pub fn run_cargo(
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
             if filename.starts_with(&target_deps_dir) {
-                deps.push((filename.to_path_buf(), false));
+                deps.push((filename.to_path_buf(), DependencyType::Target));
                 continue;
             }
 
@@ -919,17 +991,21 @@ pub fn run_cargo(
             let candidate = format!("{}.lib", path_to_add);
             let candidate = PathBuf::from(candidate);
             if candidate.exists() {
-                deps.push((candidate, false));
+                deps.push((candidate, DependencyType::Target));
             }
         }
-        deps.push((path_to_add.into(), false));
+        deps.push((path_to_add.into(), DependencyType::Target));
     }
 
-    deps.extend(additional_target_deps.into_iter().map(|d| (d, false)));
+    deps.extend(additional_target_deps);
     deps.sort();
     let mut new_contents = Vec::new();
-    for (dep, proc_macro) in deps.iter() {
-        new_contents.extend(if *proc_macro { b"h" } else { b"t" });
+    for (dep, dependency_type) in deps.iter() {
+        new_contents.extend(match *dependency_type {
+            DependencyType::Host => b"h",
+            DependencyType::Target => b"t",
+            DependencyType::TargetSelfContained => b"s",
+        });
         new_contents.extend(dep.to_str().unwrap().as_bytes());
         new_contents.extend(b"\0");
     }
@@ -949,7 +1025,11 @@ pub fn stream_cargo(
     }
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
-    let mut message_format = String::from("json-render-diagnostics");
+    let mut message_format = if builder.config.json_output {
+        String::from("json")
+    } else {
+        String::from("json-render-diagnostics")
+    };
     if let Some(s) = &builder.config.rustc_error_format {
         message_format.push_str(",json-diagnostic-");
         message_format.push_str(s);
@@ -973,7 +1053,13 @@ pub fn stream_cargo(
     for line in stdout.lines() {
         let line = t!(line);
         match serde_json::from_str::<CargoMessage<'_>>(&line) {
-            Ok(msg) => cb(msg),
+            Ok(msg) => {
+                if builder.config.json_output {
+                    // Forward JSON to stdout.
+                    println!("{}", line);
+                }
+                cb(msg)
+            }
             // If this was informational, just print it out and continue
             Err(_) => println!("{}", line),
         }
@@ -1007,5 +1093,8 @@ pub enum CargoMessage<'a> {
     },
     BuildScriptExecuted {
         package_id: Cow<'a, str>,
+    },
+    BuildFinished {
+        success: bool,
     },
 }

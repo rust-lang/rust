@@ -1,6 +1,8 @@
 error[E0277]: `?` couldn't convert the error to `()`
   --> $DIR/issue-32709.rs:4:11
    |
+LL | fn a() -> Result<i32, ()> {
+   |           --------------- expected `()` because of this
 LL |     Err(5)?;
    |           ^ the trait `std::convert::From<{integer}>` is not implemented for `()`
    |

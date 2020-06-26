@@ -17,9 +17,6 @@ LL | fn foo() -> bool {
    |    ---      ^^^^ expected `bool`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
-LL |
-LL |     break true;
-   |               - help: consider removing this semicolon
 
 error: aborting due to 3 previous errors
 

@@ -173,7 +173,7 @@ fn encodable_substructure(
         ],
     ));
 
-    return match *substr.fields {
+    match *substr.fields {
         Struct(_, ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field", trait_span);
             let mut stmts = Vec::new();
@@ -283,5 +283,5 @@ fn encodable_substructure(
         }
 
         _ => cx.bug("expected Struct or EnumMatching in derive(Encodable)"),
-    };
+    }
 }

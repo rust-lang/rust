@@ -1,10 +1,8 @@
 use std::cmp::Reverse;
+use std::ptr;
 
 use log::debug;
-use rustc::bug;
-use rustc::session::Session;
-use rustc::ty::{self, DefIdTree};
-use rustc_ast::ast::{self, Ident, Path};
+use rustc_ast::ast::{self, Path};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -13,15 +11,20 @@ use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_middle::bug;
+use rustc_middle::ty::{self, DefIdTree};
+use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
 
 use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
-use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
+use crate::{
+    BindingError, CrateLint, HasGenericParams, MacroRulesScope, Module, ModuleOrUniformRoot,
+};
 use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
@@ -44,7 +47,9 @@ impl TypoSuggestion {
 /// A free importable items suggested in case of resolution failure.
 crate struct ImportSuggestion {
     pub did: Option<DefId>,
+    pub descr: &'static str,
     pub path: Path,
+    pub accessible: bool,
 }
 
 /// Adjust the impl span so that just the `impl` keyword is taken by removing
@@ -56,8 +61,7 @@ crate struct ImportSuggestion {
 /// `source_map` functions and this function to something more robust.
 fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
     let impl_span = sm.span_until_char(impl_span, '<');
-    let impl_span = sm.span_until_whitespace(impl_span);
-    impl_span
+    sm.span_until_whitespace(impl_span)
 }
 
 impl<'a> Resolver<'a> {
@@ -104,7 +108,7 @@ impl<'a> Resolver<'a> {
                 match outer_res {
                     Res::SelfTy(maybe_trait_defid, maybe_impl_defid) => {
                         if let Some(impl_span) =
-                            maybe_impl_defid.and_then(|def_id| self.definitions.opt_span(def_id))
+                            maybe_impl_defid.and_then(|def_id| self.opt_span(def_id))
                         {
                             err.span_label(
                                 reduce_impl_span_to_impl_keyword(sm, impl_span),
@@ -123,12 +127,12 @@ impl<'a> Resolver<'a> {
                         return err;
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
-                        if let Some(span) = self.definitions.opt_span(def_id) {
+                        if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "type parameter from outer function");
                         }
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
-                        if let Some(span) = self.definitions.opt_span(def_id) {
+                        if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "const parameter from outer function");
                         }
                     }
@@ -298,13 +302,40 @@ impl<'a> Resolver<'a> {
                 }
                 err
             }
-            ResolutionError::SelfImportsOnlyAllowedWithin => struct_span_err!(
-                self.session,
-                span,
-                E0429,
-                "{}",
-                "`self` imports are only allowed within a { } list"
-            ),
+            ResolutionError::SelfImportsOnlyAllowedWithin { root, span_with_rename } => {
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0429,
+                    "{}",
+                    "`self` imports are only allowed within a { } list"
+                );
+
+                // None of the suggestions below would help with a case like `use self`.
+                if !root {
+                    // use foo::bar::self        -> foo::bar
+                    // use foo::bar::self as abc -> foo::bar as abc
+                    err.span_suggestion(
+                        span,
+                        "consider importing the module directly",
+                        "".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+
+                    // use foo::bar::self        -> foo::bar::{self}
+                    // use foo::bar::self as abc -> foo::bar::{self as abc}
+                    let braces = vec![
+                        (span_with_rename.shrink_to_lo(), "{".to_string()),
+                        (span_with_rename.shrink_to_hi(), "}".to_string()),
+                    ];
+                    err.multipart_suggestion(
+                        "alternatively, use the multi-path `use` syntax to import `self`",
+                        braces,
+                        Applicability::MachineApplicable,
+                    );
+                }
+                err
+            }
             ResolutionError::SelfImportCanOnlyAppearOnceInTheList => {
                 let mut err = struct_span_err!(
                     self.session,
@@ -498,12 +529,12 @@ impl<'a> Resolver<'a> {
                         }
                     }
                 }
-                Scope::MacroRules(legacy_scope) => {
-                    if let LegacyScope::Binding(legacy_binding) = legacy_scope {
-                        let res = legacy_binding.binding.res();
+                Scope::MacroRules(macro_rules_scope) => {
+                    if let MacroRulesScope::Binding(macro_rules_binding) = macro_rules_scope {
+                        let res = macro_rules_binding.binding.res();
                         if filter_fn(res) {
                             suggestions
-                                .push(TypoSuggestion::from_res(legacy_binding.ident.name, res))
+                                .push(TypoSuggestion::from_res(macro_rules_binding.ident.name, res))
                         }
                     }
                 }
@@ -599,6 +630,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
+        parent_scope: &ParentScope<'a>,
         start_module: Module<'a>,
         crate_name: Ident,
         filter_fn: FilterFn,
@@ -609,23 +641,49 @@ impl<'a> Resolver<'a> {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
         let not_local_module = crate_name.name != kw::Crate;
-        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), not_local_module)];
+        let mut worklist =
+            vec![(start_module, Vec::<ast::PathSegment>::new(), true, not_local_module)];
+        let mut worklist_via_import = vec![];
 
-        while let Some((in_module, path_segments, in_module_is_extern)) = worklist.pop() {
+        while let Some((in_module, path_segments, accessible, in_module_is_extern)) =
+            match worklist.pop() {
+                None => worklist_via_import.pop(),
+                Some(x) => Some(x),
+            }
+        {
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
-                // avoid imports entirely
-                if name_binding.is_import() && !name_binding.is_extern_crate() {
-                    return;
-                }
-                // avoid non-importable candidates as well
+                // avoid non-importable candidates
                 if !name_binding.is_importable() {
                     return;
                 }
 
+                let child_accessible =
+                    accessible && this.is_accessible_from(name_binding.vis, parent_scope.module);
+
+                // do not venture inside inaccessible items of other crates
+                if in_module_is_extern && !child_accessible {
+                    return;
+                }
+
+                let via_import = name_binding.is_import() && !name_binding.is_extern_crate();
+
+                // There is an assumption elsewhere that paths of variants are in the enum's
+                // declaration and not imported. With this assumption, the variant component is
+                // chopped and the rest of the path is assumed to be the enum's own path. For
+                // errors where a variant is used as the type instead of the enum, this causes
+                // funny looking invalid suggestions, i.e `foo` instead of `foo::MyEnum`.
+                if via_import && name_binding.is_possibly_imported_variant() {
+                    return;
+                }
+
                 // collect results based on the filter function
-                if ident.name == lookup_ident.name && ns == namespace {
+                // avoid suggesting anything from the same module in which we are resolving
+                if ident.name == lookup_ident.name
+                    && ns == namespace
+                    && !ptr::eq(in_module, parent_scope.module)
+                {
                     let res = name_binding.res();
                     if filter_fn(res) {
                         // create the path
@@ -638,19 +696,28 @@ impl<'a> Resolver<'a> {
 
                         segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path { span: name_binding.span, segments: segms };
-                        // the entity is accessible in the following cases:
-                        // 1. if it's defined in the same crate, it's always
-                        // accessible (since private entities can be made public)
-                        // 2. if it's defined in another crate, it's accessible
-                        // only if both the module is public and the entity is
-                        // declared as public (due to pruning, we don't explore
-                        // outside crate private modules => no need to check this)
-                        if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
-                            let did = match res {
-                                Res::Def(DefKind::Ctor(..), did) => this.parent(did),
-                                _ => res.opt_def_id(),
-                            };
-                            candidates.push(ImportSuggestion { did, path });
+                        let did = match res {
+                            Res::Def(DefKind::Ctor(..), did) => this.parent(did),
+                            _ => res.opt_def_id(),
+                        };
+
+                        if child_accessible {
+                            // Remove invisible match if exists
+                            if let Some(idx) = candidates
+                                .iter()
+                                .position(|v: &ImportSuggestion| v.did == did && !v.accessible)
+                            {
+                                candidates.remove(idx);
+                            }
+                        }
+
+                        if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
+                            candidates.push(ImportSuggestion {
+                                did,
+                                descr: res.descr(),
+                                path,
+                                accessible: child_accessible,
+                            });
                         }
                     }
                 }
@@ -664,18 +731,21 @@ impl<'a> Resolver<'a> {
                     let is_extern_crate_that_also_appears_in_prelude =
                         name_binding.is_extern_crate() && lookup_ident.span.rust_2018();
 
-                    let is_visible_to_user =
-                        !in_module_is_extern || name_binding.vis == ty::Visibility::Public;
-
-                    if !is_extern_crate_that_also_appears_in_prelude && is_visible_to_user {
-                        // add the module to the lookup
+                    if !is_extern_crate_that_also_appears_in_prelude {
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
+                        // add the module to the lookup
                         if seen_modules.insert(module.def_id().unwrap()) {
-                            worklist.push((module, path_segments, is_extern));
+                            if via_import { &mut worklist_via_import } else { &mut worklist }
+                                .push((module, path_segments, child_accessible, is_extern));
                         }
                     }
                 }
             })
+        }
+
+        // If only some candidates are accessible, take just them
+        if !candidates.iter().all(|v: &ImportSuggestion| !v.accessible) {
+            candidates = candidates.into_iter().filter(|x| x.accessible).collect();
         }
 
         candidates
@@ -692,6 +762,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
+        parent_scope: &ParentScope<'a>,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
     where
@@ -700,6 +771,7 @@ impl<'a> Resolver<'a> {
         let mut suggestions = self.lookup_import_candidates_from_module(
             lookup_ident,
             namespace,
+            parent_scope,
             self.graph_root,
             Ident::with_dummy_span(kw::Crate),
             &filter_fn,
@@ -724,6 +796,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(self.lookup_import_candidates_from_module(
                         lookup_ident,
                         namespace,
+                        parent_scope,
                         crate_root,
                         ident,
                         &filter_fn,
@@ -756,7 +829,7 @@ impl<'a> Resolver<'a> {
             let msg = format!("unsafe traits like `{}` should be implemented explicitly", ident);
             err.span_note(ident.span, &msg);
         }
-        if self.macro_names.contains(&ident.modern()) {
+        if self.macro_names.contains(&ident.normalize_to_macros_2_0()) {
             err.help("have you added the `#[macro_use]` on the module/import?");
         }
     }
@@ -785,16 +858,16 @@ impl<'a> Resolver<'a> {
                 Applicability::MaybeIncorrect,
             );
             let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
-                LOCAL_CRATE => self.definitions.opt_span(def_id),
+                LOCAL_CRATE => self.opt_span(def_id),
                 _ => Some(
                     self.session
                         .source_map()
-                        .def_span(self.cstore().get_span_untracked(def_id, self.session)),
+                        .guess_head_span(self.cstore().get_span_untracked(def_id, self.session)),
                 ),
             });
             if let Some(span) = def_span {
                 err.span_label(
-                    span,
+                    self.session.source_map().guess_head_span(span),
                     &format!(
                         "similarly named {} `{}` defined here",
                         suggestion.res.descr(),
@@ -916,50 +989,81 @@ impl<'a> Resolver<'a> {
         err.emit();
     }
 
-    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
-        let PrivacyError { ident, binding, .. } = *privacy_error;
-        let session = &self.session;
-        let mk_struct_span_error = |is_constructor| {
-            let mut descr = binding.res().descr().to_string();
-            if is_constructor {
-                descr += " constructor";
-            }
-            if binding.is_import() {
-                descr += " import";
-            }
-
-            let mut err =
-                struct_span_err!(session, ident.span, E0603, "{} `{}` is private", descr, ident);
-
-            err.span_label(ident.span, &format!("this {} is private", descr));
-            err.span_note(
-                session.source_map().def_span(binding.span),
-                &format!("the {} `{}` is defined here", descr, ident),
-            );
-
-            err
-        };
-
-        let mut err = if let NameBindingKind::Res(
+    /// If the binding refers to a tuple struct constructor with fields,
+    /// returns the span of its fields.
+    fn ctor_fields_span(&self, binding: &NameBinding<'_>) -> Option<Span> {
+        if let NameBindingKind::Res(
             Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), ctor_def_id),
             _,
         ) = binding.kind
         {
             let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
             if let Some(fields) = self.field_names.get(&def_id) {
-                let mut err = mk_struct_span_error(true);
                 let first_field = fields.first().expect("empty field list in the map");
-                err.span_label(
-                    fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)),
-                    "a constructor is private if any of the fields is private",
-                );
-                err
-            } else {
-                mk_struct_span_error(false)
+                return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
             }
-        } else {
-            mk_struct_span_error(false)
-        };
+        }
+        None
+    }
+
+    crate fn report_privacy_error(&self, privacy_error: &PrivacyError<'_>) {
+        let PrivacyError { ident, binding, .. } = *privacy_error;
+
+        let res = binding.res();
+        let ctor_fields_span = self.ctor_fields_span(binding);
+        let plain_descr = res.descr().to_string();
+        let nonimport_descr =
+            if ctor_fields_span.is_some() { plain_descr + " constructor" } else { plain_descr };
+        let import_descr = nonimport_descr.clone() + " import";
+        let get_descr =
+            |b: &NameBinding<'_>| if b.is_import() { &import_descr } else { &nonimport_descr };
+
+        // Print the primary message.
+        let descr = get_descr(binding);
+        let mut err =
+            struct_span_err!(self.session, ident.span, E0603, "{} `{}` is private", descr, ident);
+        err.span_label(ident.span, &format!("private {}", descr));
+        if let Some(span) = ctor_fields_span {
+            err.span_label(span, "a constructor is private if any of the fields is private");
+        }
+
+        // Print the whole import chain to make it easier to see what happens.
+        let first_binding = binding;
+        let mut next_binding = Some(binding);
+        let mut next_ident = ident;
+        while let Some(binding) = next_binding {
+            let name = next_ident;
+            next_binding = match binding.kind {
+                _ if res == Res::Err => None,
+                NameBindingKind::Import { binding, import, .. } => match import.kind {
+                    _ if binding.span.is_dummy() => None,
+                    ImportKind::Single { source, .. } => {
+                        next_ident = source;
+                        Some(binding)
+                    }
+                    ImportKind::Glob { .. } | ImportKind::MacroUse => Some(binding),
+                    ImportKind::ExternCrate { .. } => None,
+                },
+                _ => None,
+            };
+
+            let first = ptr::eq(binding, first_binding);
+            let descr = get_descr(binding);
+            let msg = format!(
+                "{and_refers_to}the {item} `{name}`{which} is defined here{dots}",
+                and_refers_to = if first { "" } else { "...and refers to " },
+                item = descr,
+                name = name,
+                which = if first { "" } else { " which" },
+                dots = if next_binding.is_some() { "..." } else { "" },
+            );
+            let def_span = self.session.source_map().guess_head_span(binding.span);
+            let mut note_span = MultiSpan::from_span(def_span);
+            if !first && binding.vis == ty::Visibility::Public {
+                note_span.push_span_label(def_span, "consider importing it directly".into());
+            }
+            err.span_note(note_span, &msg);
+        }
 
         err.emit();
     }
@@ -998,7 +1102,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggest a missing `self::` if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `self::foo`?
@@ -1018,7 +1122,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggests a missing `crate::` if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `crate::foo`?
@@ -1050,7 +1154,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggests a missing `super::` if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `super::foo`?
@@ -1070,7 +1174,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggests a missing external crate name if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foobar::Baz;
     ///    |     ^^^^^^ did you mean `baz::foobar`?
@@ -1114,7 +1218,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// Suggests importing a macro from the root of the crate rather than a module within
     /// the crate.
     ///
-    /// ```
+    /// ```text
     /// help: a macro with this name exists at the root of the crate
     ///    |
     /// LL | use issue_59764::makro;
@@ -1412,29 +1516,33 @@ fn find_span_immediately_after_crate_name(
 crate fn show_candidates(
     err: &mut DiagnosticBuilder<'_>,
     // This is `None` if all placement locations are inside expansions
-    span: Option<Span>,
+    use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
-    better: bool,
+    instead: bool,
     found_use: bool,
 ) {
     if candidates.is_empty() {
         return;
     }
+
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
     let mut path_strings: Vec<_> =
         candidates.iter().map(|c| path_names_to_string(&c.path)).collect();
+
     path_strings.sort();
     path_strings.dedup();
 
-    let better = if better { "better " } else { "" };
-    let msg_diff = match path_strings.len() {
-        1 => " is found in another module, you can import it",
-        _ => "s are found in other modules, you can import them",
+    let (determiner, kind) = if candidates.len() == 1 {
+        ("this", candidates[0].descr)
+    } else {
+        ("one of these", "items")
     };
-    let msg = format!("possible {}candidate{} into scope", better, msg_diff);
 
-    if let Some(span) = span {
+    let instead = if instead { " instead" } else { "" };
+    let mut msg = format!("consider importing {} {}{}", determiner, kind, instead);
+
+    if let Some(span) = use_placement_span {
         for candidate in &mut path_strings {
             // produce an additional newline to separate the new use statement
             // from the directly following item.
@@ -1444,12 +1552,13 @@ crate fn show_candidates(
 
         err.span_suggestions(span, &msg, path_strings.into_iter(), Applicability::Unspecified);
     } else {
-        let mut msg = msg;
         msg.push(':');
+
         for candidate in path_strings {
             msg.push('\n');
             msg.push_str(&candidate);
         }
+
         err.note(&msg);
     }
 }

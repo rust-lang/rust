@@ -1,35 +1,38 @@
 #![feature(rustc_private)]
 
-extern crate rustc;
-extern crate rustc_codegen_utils;
+extern crate rustc_codegen_ssa;
+extern crate rustc_errors;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_data_structures;
-extern crate rustc_hir;
-extern crate rustc_target;
 extern crate rustc_driver;
+extern crate rustc_hir;
+extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_symbol_mangling;
+extern crate rustc_target;
 
-use std::any::Any;
-use std::sync::Arc;
-use std::path::Path;
-use rustc_span::symbol::Symbol;
-use rustc::session::Session;
-use rustc::session::config::OutputFilenames;
-use rustc::ty::TyCtxt;
-use rustc::ty::query::Providers;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
-use rustc::dep_graph::DepGraph;
-use rustc::util::common::ErrorReported;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_data_structures::sync::MetadataRef;
+use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::owning_ref::OwningRef;
+use rustc_data_structures::sync::MetadataRef;
+use rustc_errors::ErrorReported;
+use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
+use rustc_session::config::OutputFilenames;
+use rustc_session::Session;
+use rustc_span::symbol::Symbol;
 use rustc_target::spec::Target;
+use std::any::Any;
+use std::path::Path;
 
 pub struct NoLlvmMetadataLoader;
 
 impl MetadataLoader for NoLlvmMetadataLoader {
     fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<MetadataRef, String> {
-        let buf = std::fs::read(filename).map_err(|e| format!("metadata file open err: {:?}", e))?;
+        let buf =
+            std::fs::read(filename).map_err(|e| format!("metadata file open err: {:?}", e))?;
         let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf);
         Ok(rustc_erase_owner!(buf.map_owner_box()))
     }
@@ -47,13 +50,13 @@ impl CodegenBackend for TheBackend {
     }
 
     fn provide(&self, providers: &mut Providers) {
-        rustc_codegen_utils::symbol_names::provide(providers);
+        rustc_symbol_mangling::provide(providers);
 
         providers.target_features_whitelist = |tcx, _cnum| {
-            tcx.arena.alloc(Default::default()) // Just a dummy
+            Default::default() // Just a dummy
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
-        providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
+        providers.exported_symbols = |_tcx, _crate| &[];
     }
 
     fn provide_extern(&self, providers: &mut Providers) {
@@ -77,7 +80,8 @@ impl CodegenBackend for TheBackend {
         _sess: &Session,
         _dep_graph: &DepGraph,
     ) -> Result<Box<dyn Any>, ErrorReported> {
-        let crate_name = ongoing_codegen.downcast::<Symbol>()
+        let crate_name = ongoing_codegen
+            .downcast::<Symbol>()
             .expect("in join_codegen: ongoing_codegen is not a Symbol");
         Ok(crate_name)
     }
@@ -88,17 +92,15 @@ impl CodegenBackend for TheBackend {
         codegen_results: Box<dyn Any>,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
+        use rustc_session::{config::CrateType, output::out_filename};
         use std::io::Write;
-        use rustc::session::config::CrateType;
-        use rustc_codegen_utils::link::out_filename;
-        let crate_name = codegen_results.downcast::<Symbol>()
-            .expect("in link: codegen_results is not a Symbol");
+        let crate_name =
+            codegen_results.downcast::<Symbol>().expect("in link: codegen_results is not a Symbol");
         for &crate_type in sess.opts.crate_types.iter() {
             if crate_type != CrateType::Rlib {
                 sess.fatal(&format!("Crate type is {:?}", crate_type));
             }
-            let output_name =
-                out_filename(sess, crate_type, &outputs, &*crate_name.as_str());
+            let output_name = out_filename(sess, crate_type, &outputs, &*crate_name.as_str());
             let mut out_file = ::std::fs::File::create(output_name).unwrap();
             write!(out_file, "This has been \"compiled\" successfully.").unwrap();
         }

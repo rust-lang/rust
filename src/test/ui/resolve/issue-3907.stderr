@@ -4,8 +4,12 @@ error[E0404]: expected trait, found type alias `Foo`
 LL | impl Foo for S {
    |      ^^^ type aliases cannot be used as traits
    |
-   = note: did you mean to use a trait alias?
-help: possible better candidate is found in another module, you can import it into scope
+help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
+  --> $DIR/issue-3907.rs:5:1
+   |
+LL | type Foo = dyn issue_3907::Foo;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider importing this trait instead
    |
 LL | use issue_3907::Foo;
    |

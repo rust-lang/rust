@@ -13,6 +13,8 @@
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/Object/ObjectFile.h"
+#include "llvm/Object/IRObjectFile.h"
 #include "llvm/Passes/PassBuilder.h"
 #if LLVM_VERSION_GE(9, 0)
 #include "llvm/Passes/StandardInstrumentations.h"
@@ -33,10 +35,8 @@
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Support/TimeProfiler.h"
 #endif
-#if LLVM_VERSION_GE(8, 0)
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
-#endif
 #if LLVM_VERSION_GE(9, 0)
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
 #endif
@@ -67,7 +67,11 @@ extern "C" void LLVMInitializePasses() {
 }
 
 extern "C" void LLVMTimeTraceProfilerInitialize() {
-#if LLVM_VERSION_GE(9, 0)
+#if LLVM_VERSION_GE(10, 0)
+  timeTraceProfilerInitialize(
+      /* TimeTraceGranularity */ 0,
+      /* ProcName */ "rustc");
+#elif LLVM_VERSION_GE(9, 0)
   timeTraceProfilerInitialize();
 #endif
 }
@@ -134,19 +138,13 @@ extern "C" LLVMPassRef LLVMRustCreateMemorySanitizerPass(int TrackOrigins, bool 
 
   return wrap(createMemorySanitizerLegacyPassPass(
       MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}));
-#elif LLVM_VERSION_GE(8, 0)
-  return wrap(createMemorySanitizerLegacyPassPass(TrackOrigins, Recover));
 #else
-  return wrap(createMemorySanitizerPass(TrackOrigins, Recover));
+  return wrap(createMemorySanitizerLegacyPassPass(TrackOrigins, Recover));
 #endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateThreadSanitizerPass() {
-#if LLVM_VERSION_GE(8, 0)
   return wrap(createThreadSanitizerLegacyPassPass());
-#else
-  return wrap(createThreadSanitizerPass());
-#endif
 }
 
 extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
@@ -205,6 +203,12 @@ void LLVMRustAddLastExtensionPasses(
 #define SUBTARGET_AARCH64
 #endif
 
+#ifdef LLVM_COMPONENT_AVR
+#define SUBTARGET_AVR SUBTARGET(AVR)
+#else
+#define SUBTARGET_AVR
+#endif
+
 #ifdef LLVM_COMPONENT_MIPS
 #define SUBTARGET_MIPS SUBTARGET(Mips)
 #else
@@ -251,6 +255,7 @@ void LLVMRustAddLastExtensionPasses(
   SUBTARGET_X86                                                                \
   SUBTARGET_ARM                                                                \
   SUBTARGET_AARCH64                                                            \
+  SUBTARGET_AVR                                                                \
   SUBTARGET_MIPS                                                               \
   SUBTARGET_PPC                                                                \
   SUBTARGET_SYSTEMZ                                                            \
@@ -276,7 +281,7 @@ extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
 }
 
 enum class LLVMRustCodeModel {
-  Other,
+  Tiny,
   Small,
   Kernel,
   Medium,
@@ -284,8 +289,10 @@ enum class LLVMRustCodeModel {
   None,
 };
 
-static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
+static Optional<CodeModel::Model> fromRust(LLVMRustCodeModel Model) {
   switch (Model) {
+  case LLVMRustCodeModel::Tiny:
+    return CodeModel::Tiny;
   case LLVMRustCodeModel::Small:
     return CodeModel::Small;
   case LLVMRustCodeModel::Kernel:
@@ -294,6 +301,8 @@ static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
     return CodeModel::Medium;
   case LLVMRustCodeModel::Large:
     return CodeModel::Large;
+  case LLVMRustCodeModel::None:
+    return None;
   default:
     report_fatal_error("Bad CodeModel.");
   }
@@ -350,8 +359,7 @@ static PassBuilder::OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level
   }
 }
 
-enum class LLVMRustRelocMode {
-  Default,
+enum class LLVMRustRelocModel {
   Static,
   PIC,
   DynamicNoPic,
@@ -360,21 +368,19 @@ enum class LLVMRustRelocMode {
   ROPIRWPI,
 };
 
-static Optional<Reloc::Model> fromRust(LLVMRustRelocMode RustReloc) {
+static Reloc::Model fromRust(LLVMRustRelocModel RustReloc) {
   switch (RustReloc) {
-  case LLVMRustRelocMode::Default:
-    return None;
-  case LLVMRustRelocMode::Static:
+  case LLVMRustRelocModel::Static:
     return Reloc::Static;
-  case LLVMRustRelocMode::PIC:
+  case LLVMRustRelocModel::PIC:
     return Reloc::PIC_;
-  case LLVMRustRelocMode::DynamicNoPic:
+  case LLVMRustRelocModel::DynamicNoPic:
     return Reloc::DynamicNoPIC;
-  case LLVMRustRelocMode::ROPI:
+  case LLVMRustRelocModel::ROPI:
     return Reloc::ROPI;
-  case LLVMRustRelocMode::RWPI:
+  case LLVMRustRelocModel::RWPI:
     return Reloc::RWPI;
-  case LLVMRustRelocMode::ROPIRWPI:
+  case LLVMRustRelocModel::ROPIRWPI:
     return Reloc::ROPI_RWPI;
   }
   report_fatal_error("Bad RelocModel.");
@@ -418,6 +424,12 @@ extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef TM) {
   printf("Available features for this target:\n");
   for (auto &Feature : FeatTable)
     printf("    %-*s - %s.\n", MaxFeatLen, Feature.Key, Feature.Desc);
+  printf("\nRust-specific features:\n");
+  printf("    %-*s - %s.\n",
+    MaxFeatLen,
+    "crt-static",
+    "Enables libraries with C Run-time Libraries(CRT) to be statically linked"
+  );
   printf("\n");
 
   printf("Use +feature to enable a feature, or -feature to disable it.\n"
@@ -444,18 +456,20 @@ extern "C" const char* LLVMRustGetHostCPUName(size_t *len) {
 
 extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     const char *TripleStr, const char *CPU, const char *Feature,
-    const char *ABIStr, LLVMRustCodeModel RustCM, LLVMRustRelocMode RustReloc,
+    const char *ABIStr, LLVMRustCodeModel RustCM, LLVMRustRelocModel RustReloc,
     LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
-    bool PositionIndependentExecutable, bool FunctionSections,
+    bool FunctionSections,
     bool DataSections,
     bool TrapUnreachable,
     bool Singlethread,
     bool AsmComments,
     bool EmitStackSizeSection,
-    bool RelaxELFRelocations) {
+    bool RelaxELFRelocations,
+    bool UseInitArray) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
+  auto CM = fromRust(RustCM);
 
   std::string Error;
   Triple Trip(Triple::normalize(TripleStr));
@@ -478,6 +492,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.MCOptions.PreserveAsmComments = AsmComments;
   Options.MCOptions.ABIName = ABIStr;
   Options.RelaxELFRelocations = RelaxELFRelocations;
+  Options.UseInitArray = UseInitArray;
 
   if (TrapUnreachable) {
     // Tell LLVM to codegen `unreachable` into an explicit trap instruction.
@@ -493,9 +508,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
-  Optional<CodeModel::Model> CM;
-  if (RustCM != LLVMRustCodeModel::None)
-    CM = fromRust(RustCM);
   TargetMachine *TM = TheTarget->createTargetMachine(
       Trip.getTriple(), CPU, Feature, Options, RM, CM, OptLevel);
   return wrap(TM);
@@ -705,11 +717,12 @@ enum class LLVMRustOptStage {
 };
 
 struct LLVMRustSanitizerOptions {
-  bool SanitizeMemory;
-  bool SanitizeThread;
   bool SanitizeAddress;
-  bool SanitizeRecover;
-  int SanitizeMemoryTrackOrigins;
+  bool SanitizeAddressRecover;
+  bool SanitizeMemory;
+  bool SanitizeMemoryRecover;
+  int  SanitizeMemoryTrackOrigins;
+  bool SanitizeThread;
 };
 
 extern "C" void
@@ -720,7 +733,7 @@ LLVMRustOptimizeWithNewPassManager(
     LLVMRustOptStage OptStage,
     bool NoPrepopulatePasses, bool VerifyIR, bool UseThinLTOBuffers,
     bool MergeFunctions, bool UnrollLoops, bool SLPVectorize, bool LoopVectorize,
-    bool DisableSimplifyLibCalls,
+    bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
     LLVMRustSanitizerOptions *SanitizerOptions,
     const char *PGOGenPath, const char *PGOUsePath,
     void* LlvmSelfProfiler,
@@ -796,7 +809,7 @@ LLVMRustOptimizeWithNewPassManager(
     if (SanitizerOptions->SanitizeMemory) {
       MemorySanitizerOptions Options(
           SanitizerOptions->SanitizeMemoryTrackOrigins,
-          SanitizerOptions->SanitizeRecover,
+          SanitizerOptions->SanitizeMemoryRecover,
           /*CompileKernel=*/false);
 #if LLVM_VERSION_GE(10, 0)
       PipelineStartEPCallbacks.push_back([Options](ModulePassManager &MPM) {
@@ -830,14 +843,14 @@ LLVMRustOptimizeWithNewPassManager(
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
           FPM.addPass(AddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeRecover,
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover,
               /*UseAfterScope=*/true));
         }
       );
       PipelineStartEPCallbacks.push_back(
         [SanitizerOptions](ModulePassManager &MPM) {
           MPM.addPass(ModuleAddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeRecover));
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
         }
       );
     }
@@ -856,7 +869,7 @@ LLVMRustOptimizeWithNewPassManager(
         MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
       }
 
-      MPM.addPass(AlwaysInlinerPass(/*InsertLifetimeIntrinsics=*/false));
+      MPM.addPass(AlwaysInlinerPass(EmitLifetimeMarkers));
 
 #if LLVM_VERSION_GE(10, 0)
       if (PGOOpt) {
@@ -1232,15 +1245,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   auto deadIsPrevailing = [&](GlobalValue::GUID G) {
     return PrevailingType::Unknown;
   };
-#if LLVM_VERSION_GE(8, 0)
   // We don't have a complete picture in our use of ThinLTO, just our immediate
   // crate, so we need `ImportEnabled = false` to limit internalization.
   // Otherwise, we sometimes lose `static` values -- see #60184.
   computeDeadSymbolsWithConstProp(Ret->Index, Ret->GUIDPreservedSymbols,
                                   deadIsPrevailing, /* ImportEnabled = */ false);
-#else
-  computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols, deadIsPrevailing);
-#endif
   ComputeCrossModuleImport(
     Ret->Index,
     Ret->ModuleToDefinedGVSummaries,
@@ -1273,10 +1282,8 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
 #if LLVM_VERSION_GE(9, 0)
   thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage,
                                   Ret->GUIDPreservedSymbols);
-#elif LLVM_VERSION_GE(8, 0)
-  thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage);
 #else
-  thinLTOResolveWeakForLinkerInIndex(Ret->Index, isPrevailing, recordNewLinkage);
+  thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage);
 #endif
 
   // Here we calculate an `ExportedGUIDs` set for use in the `isExported`
@@ -1342,11 +1349,7 @@ extern "C" bool
 LLVMRustPrepareThinLTOResolveWeak(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
   Module &Mod = *unwrap(M);
   const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(Mod.getModuleIdentifier());
-#if LLVM_VERSION_GE(8, 0)
   thinLTOResolvePrevailingInModule(Mod, DefinedGlobals);
-#else
-  thinLTOResolveWeakForLinkerModule(Mod, DefinedGlobals);
-#endif
   return true;
 }
 
@@ -1490,6 +1493,32 @@ LLVMRustParseBitcodeForLTO(LLVMContextRef Context,
     return nullptr;
   }
   return wrap(std::move(*SrcOrError).release());
+}
+
+// Find the bitcode section in the object file data and return it as a slice.
+// Fail if the bitcode section is present but empty.
+//
+// On success, the return value is the pointer to the start of the slice and
+// `out_len` is filled with the (non-zero) length. On failure, the return value
+// is `nullptr` and `out_len` is set to zero.
+extern "C" const char*
+LLVMRustGetBitcodeSliceFromObjectData(const char *data,
+                                      size_t len,
+                                      size_t *out_len) {
+  *out_len = 0;
+
+  StringRef Data(data, len);
+  MemoryBufferRef Buffer(Data, ""); // The id is unused.
+
+  Expected<MemoryBufferRef> BitcodeOrError =
+    object::IRObjectFile::findBitcodeInMemBuffer(Buffer);
+  if (!BitcodeOrError) {
+    LLVMRustSetLastError(toString(BitcodeOrError.takeError()).c_str());
+    return nullptr;
+  }
+
+  *out_len = BitcodeOrError->getBufferSize();
+  return BitcodeOrError->getBufferStart();
 }
 
 // Rewrite all `DICompileUnit` pointers to the `DICompileUnit` specified. See

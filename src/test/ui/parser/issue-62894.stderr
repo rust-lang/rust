@@ -42,6 +42,11 @@ LL | fn f() { assert_eq!(f(), (), assert_eq!(assert_eq!
 LL | 
 LL | fn main() {}
    | ^^ unexpected token
+   | 
+  ::: $SRC_DIR/libcore/macros/mod.rs:LL:COL
+   |
+LL |     ($left:expr, $right:expr) => ({
+   |      ---------- while parsing argument for this `expr` macro fragment
 
 error: aborting due to 4 previous errors
 

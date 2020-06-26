@@ -10,7 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-fmt_macros = { path = "../libfmt_macros" }
+rustc_parse_format = { path = "../librustc_parse_format" }
 log = "0.4"
 rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_attr = { path = "../librustc_attr" }

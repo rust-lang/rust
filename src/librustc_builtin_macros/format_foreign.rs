@@ -27,11 +27,8 @@ pub mod printf {
         }
 
         pub fn set_position(&mut self, start: usize, end: usize) {
-            match self {
-                Substitution::Format(ref mut fmt) => {
-                    fmt.position = InnerSpan::new(start, end);
-                }
-                _ => {}
+            if let Substitution::Format(ref mut fmt) = self {
+                fmt.position = InnerSpan::new(start, end);
             }
         }
 
@@ -152,7 +149,7 @@ pub mod printf {
             };
 
             let alt = match type_ {
-                Some("x") | Some("X") => alt,
+                Some("x" | "X") => alt,
                 _ => false,
             };
 
@@ -311,9 +308,8 @@ pub mod printf {
 
         let at = {
             let start = s.find('%')?;
-            match s[start + 1..].chars().next()? {
-                '%' => return Some((Substitution::Escape, &s[start + 2..])),
-                _ => { /* fall-through */ }
+            if let '%' = s[start + 1..].chars().next()? {
+                return Some((Substitution::Escape, &s[start + 2..]));
             }
 
             Cur::new_at(&s[..], start)
@@ -359,7 +355,7 @@ pub mod printf {
         //
         // Note: `move` used to capture copies of the cursors as they are *now*.
         let fallback = move || {
-            return Some((
+            Some((
                 Substitution::Format(Format {
                     span: start.slice_between(next).unwrap(),
                     parameter: None,
@@ -371,7 +367,7 @@ pub mod printf {
                     position: InnerSpan::new(start.at, next.at),
                 }),
                 next.slice_after(),
-            ));
+            ))
         };
 
         // Next parsing state.
@@ -510,7 +506,7 @@ pub mod printf {
                     move_to!(next1);
                 }
 
-                ('h', _) | ('l', _) | ('L', _) | ('z', _) | ('j', _) | ('t', _) | ('q', _) => {
+                ('h' | 'l' | 'L' | 'z' | 'j' | 't' | 'q', _) => {
                     state = Type;
                     length = Some(at.slice_between(next).unwrap());
                     move_to!(next);

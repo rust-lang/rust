@@ -1,0 +1,39 @@
+error: you are deriving `serde::Deserialize` on a type that has methods using `unsafe`
+  --> $DIR/unsafe_derive_deserialize.rs:8:10
+   |
+LL | #[derive(Deserialize)]
+   |          ^^^^^^^^^^^
+   |
+   = note: `-D clippy::unsafe-derive-deserialize` implied by `-D warnings`
+   = help: consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: you are deriving `serde::Deserialize` on a type that has methods using `unsafe`
+  --> $DIR/unsafe_derive_deserialize.rs:16:10
+   |
+LL | #[derive(Deserialize)]
+   |          ^^^^^^^^^^^
+   |
+   = help: consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: you are deriving `serde::Deserialize` on a type that has methods using `unsafe`
+  --> $DIR/unsafe_derive_deserialize.rs:22:10
+   |
+LL | #[derive(Deserialize)]
+   |          ^^^^^^^^^^^
+   |
+   = help: consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: you are deriving `serde::Deserialize` on a type that has methods using `unsafe`
+  --> $DIR/unsafe_derive_deserialize.rs:30:10
+   |
+LL | #[derive(Deserialize)]
+   |          ^^^^^^^^^^^
+   |
+   = help: consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+

@@ -1,5 +1,5 @@
 // needs-sanitizer-support
-// only-x86_64
+// needs-sanitizer-address
 //
 // compile-flags: -Z sanitizer=address -O
 //

@@ -1,4 +1,4 @@
-//! Definitions shared by macros / syntax extensions and e.g. librustc.
+//! Definitions shared by macros / syntax extensions and e.g. librustc_middle.
 
 use crate::ast::Attribute;
 use rustc_span::symbol::sym;

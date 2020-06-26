@@ -26,6 +26,7 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::sanitize, sym::cfg_sanitize, cfg_fn!(cfg_sanitize)),
+    (sym::version, sym::cfg_version, cfg_fn!(cfg_version)),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -85,17 +86,11 @@ impl AttributeGate {
 
 /// A template that the attribute input must match.
 /// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct AttributeTemplate {
     pub word: bool,
     pub list: Option<&'static str>,
     pub name_value_str: Option<&'static str>,
-}
-
-impl AttributeTemplate {
-    pub fn only_word() -> Self {
-        Self { word: true, list: None, name_value_str: None }
-    }
 }
 
 /// A convenience macro for constructing attribute templates.
@@ -226,7 +221,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ABI, linking, symbols, and FFI
     ungated!(
         link, Whitelisted,
-        template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ cfg = "...""#),
+        template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...""#),
     ),
     ungated!(link_name, Whitelisted, template!(NameValueStr: "name")),
     ungated!(no_link, Normal, template!(Word)),
@@ -336,6 +331,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     gated!(ffi_returns_twice, Whitelisted, template!(Word), experimental!(ffi_returns_twice)),
+    gated!(ffi_pure, Whitelisted, template!(Word), experimental!(ffi_pure)),
+    gated!(ffi_const, Whitelisted, template!(Word), experimental!(ffi_const)),
     gated!(track_caller, Whitelisted, template!(Word), experimental!(track_caller)),
     gated!(
         register_attr, CrateLevel, template!(List: "attr1, attr2, ..."),
@@ -369,7 +366,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // FIXME(#14407)
     ungated!(rustc_const_stable, Whitelisted, template!(List: r#"feature = "name""#)),
     gated!(
-        allow_internal_unstable, Normal, template!(Word, List: "feat1, feat2, ..."),
+        allow_internal_unstable, Whitelisted, template!(Word, List: "feat1, feat2, ..."),
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
@@ -382,11 +379,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     gated!(fundamental, Whitelisted, template!(Word), experimental!(fundamental)),
-    gated!(
-        // RFC #1445.
-        structural_match, Whitelisted, template!(Word),
-        "the semantics of constant patterns is not yet settled",
-    ),
     gated!(
         may_dangle, Normal, template!(Word), dropck_eyepatch,
         "`may_dangle` has unstable semantics and may be removed in the future",
@@ -529,6 +521,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_test_marker, Normal, template!(Word),
         "the `#[rustc_test_marker]` attribute is used internally to track tests",
+    ),
+    rustc_attr!(
+        rustc_unsafe_specialization_marker, Normal, template!(Word),
+        "the `#[rustc_unsafe_specialization_marker]` attribute is used to check specializations"
+    ),
+    rustc_attr!(
+        rustc_specialization_trait, Normal, template!(Word),
+        "the `#[rustc_specialization_trait]` attribute is used to check specializations"
     ),
 
     // ==========================================================================

@@ -1,14 +1,13 @@
-use rustc::ty::query::Providers;
-use rustc::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
-use rustc::ty::{
-    FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
-};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
+use rustc_middle::ty::{self, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable, Variance};
+use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Predicate, ToPredicate};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -80,11 +79,11 @@ impl AscribeUserTypeCx<'me, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        Ok(self
-            .infcx
+        self.infcx
             .at(&ObligationCause::dummy(), self.param_env)
             .relate(a, variance, b)?
-            .into_value_registering_obligations(self.infcx, self.fulfill_cx))
+            .into_value_registering_obligations(self.infcx, self.fulfill_cx);
+        Ok(())
     }
 
     fn prove_predicate(&mut self, predicate: Predicate<'tcx>) {
@@ -140,7 +139,9 @@ impl AscribeUserTypeCx<'me, 'tcx> {
 
             self.relate(self_ty, Variance::Invariant, impl_self_ty)?;
 
-            self.prove_predicate(Predicate::WellFormed(impl_self_ty));
+            self.prove_predicate(
+                ty::PredicateKind::WellFormed(impl_self_ty.into()).to_predicate(self.tcx()),
+            );
         }
 
         // In addition to proving the predicates, we have to
@@ -154,7 +155,7 @@ impl AscribeUserTypeCx<'me, 'tcx> {
         // them?  This would only be relevant if some input
         // type were ill-formed but did not appear in `ty`,
         // which...could happen with normalization...
-        self.prove_predicate(Predicate::WellFormed(ty));
+        self.prove_predicate(ty::PredicateKind::WellFormed(ty.into()).to_predicate(self.tcx()));
         Ok(())
     }
 }
@@ -165,10 +166,11 @@ fn type_op_eq<'tcx>(
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
         let (param_env, Eq { a, b }) = key.into_parts();
-        Ok(infcx
+        infcx
             .at(&ObligationCause::dummy(), param_env)
             .eq(a, b)?
-            .into_value_registering_obligations(infcx, fulfill_cx))
+            .into_value_registering_obligations(infcx, fulfill_cx);
+        Ok(())
     })
 }
 
@@ -221,10 +223,11 @@ fn type_op_subtype<'tcx>(
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
         let (param_env, Subtype { sub, sup }) = key.into_parts();
-        Ok(infcx
+        infcx
             .at(&ObligationCause::dummy(), param_env)
             .sup(sup, sub)?
-            .into_value_registering_obligations(infcx, fulfill_cx))
+            .into_value_registering_obligations(infcx, fulfill_cx);
+        Ok(())
     })
 }
 

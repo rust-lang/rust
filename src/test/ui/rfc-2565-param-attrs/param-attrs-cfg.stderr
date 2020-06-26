@@ -2,7 +2,7 @@ error: unused variable: `a`
   --> $DIR/param-attrs-cfg.rs:24:23
    |
 LL |     #[cfg(something)] a: i32,
-   |                       ^ help: consider prefixing with an underscore: `_a`
+   |                       ^ help: if this is intentional, prefix it with an underscore: `_a`
    |
 note: the lint level is defined here
   --> $DIR/param-attrs-cfg.rs:5:9
@@ -14,109 +14,109 @@ error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:30:23
    |
 LL |     #[cfg(something)] b: i32,
-   |                       ^ help: consider prefixing with an underscore: `_b`
+   |                       ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `c`
   --> $DIR/param-attrs-cfg.rs:32:40
    |
 LL |     #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                        ^ help: consider prefixing with an underscore: `_c`
+   |                                        ^ help: if this is intentional, prefix it with an underscore: `_c`
 
 error: unused variable: `a`
   --> $DIR/param-attrs-cfg.rs:107:27
    |
 LL |         #[cfg(something)] a: i32,
-   |                           ^ help: consider prefixing with an underscore: `_a`
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:113:27
    |
 LL |         #[cfg(something)] b: i32,
-   |                           ^ help: consider prefixing with an underscore: `_b`
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `c`
   --> $DIR/param-attrs-cfg.rs:115:44
    |
 LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                            ^ help: consider prefixing with an underscore: `_c`
+   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
 
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:67:27
    |
 LL |         #[cfg(something)] b: i32,
-   |                           ^ help: consider prefixing with an underscore: `_b`
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `c`
   --> $DIR/param-attrs-cfg.rs:69:44
    |
 LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                            ^ help: consider prefixing with an underscore: `_c`
+   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
 
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:75:27
    |
 LL |         #[cfg(something)] b: i32,
-   |                           ^ help: consider prefixing with an underscore: `_b`
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `c`
   --> $DIR/param-attrs-cfg.rs:77:44
    |
 LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                            ^ help: consider prefixing with an underscore: `_c`
+   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
 
 error: unused variable: `a`
   --> $DIR/param-attrs-cfg.rs:41:27
    |
 LL |         #[cfg(something)] a: i32,
-   |                           ^ help: consider prefixing with an underscore: `_a`
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:48:27
    |
 LL |         #[cfg(something)] b: i32,
-   |                           ^ help: consider prefixing with an underscore: `_b`
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `c`
   --> $DIR/param-attrs-cfg.rs:50:44
    |
 LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                            ^ help: consider prefixing with an underscore: `_c`
+   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
 
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:56:27
    |
 LL |         #[cfg(something)] b: i32,
-   |                           ^ help: consider prefixing with an underscore: `_b`
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `c`
   --> $DIR/param-attrs-cfg.rs:58:44
    |
 LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                            ^ help: consider prefixing with an underscore: `_c`
+   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
 
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:86:27
    |
 LL |         #[cfg(something)] b: i32,
-   |                           ^ help: consider prefixing with an underscore: `_b`
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `c`
   --> $DIR/param-attrs-cfg.rs:88:44
    |
 LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                            ^ help: consider prefixing with an underscore: `_c`
+   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
 
 error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:94:27
    |
 LL |         #[cfg(something)] b: i32,
-   |                           ^ help: consider prefixing with an underscore: `_b`
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `c`
   --> $DIR/param-attrs-cfg.rs:96:44
    |
 LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                            ^ help: consider prefixing with an underscore: `_c`
+   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
 
 error: aborting due to 19 previous errors
 

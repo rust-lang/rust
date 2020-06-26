@@ -133,8 +133,6 @@
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [`i32`]: ../../std/primitive.i32.html
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
@@ -301,6 +299,8 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
+        // SAFETY: `x` is guaranteed to be pinned because it comes from `self`
+        // which is pinned.
         unsafe { Pin::get_ref(self).as_ref().map(|x| Pin::new_unchecked(x)) }
     }
 
@@ -310,6 +310,8 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
+        // SAFETY: `get_unchecked_mut` is never used to move the `Option` inside `self`.
+        // `x` is guaranteed to be pinned because it comes from `self` which is pinned.
         unsafe { Pin::get_unchecked_mut(self).as_mut().map(|x| Pin::new_unchecked(x)) }
     }
 
@@ -858,6 +860,8 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
+            // SAFETY: a `None` variant for `self` would have been replaced by a `Some`
+            // variant in the code above.
             None => unsafe { hint::unreachable_unchecked() },
         }
     }
@@ -912,6 +916,65 @@ impl<T> Option<T> {
     #[stable(feature = "option_replace", since = "1.31.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
+    }
+
+    /// Zips `self` with another `Option`.
+    ///
+    /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some((s, o))`.
+    /// Otherwise, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Some(1);
+    /// let y = Some("hi");
+    /// let z = None::<u8>;
+    ///
+    /// assert_eq!(x.zip(y), Some((1, "hi")));
+    /// assert_eq!(x.zip(z), None);
+    /// ```
+    #[stable(feature = "option_zip_option", since = "1.46.0")]
+    pub fn zip<U>(self, other: Option<U>) -> Option<(T, U)> {
+        match (self, other) {
+            (Some(a), Some(b)) => Some((a, b)),
+            _ => None,
+        }
+    }
+
+    /// Zips `self` and another `Option` with function `f`.
+    ///
+    /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some(f(s, o))`.
+    /// Otherwise, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_zip)]
+    ///
+    /// #[derive(Debug, PartialEq)]
+    /// struct Point {
+    ///     x: f64,
+    ///     y: f64,
+    /// }
+    ///
+    /// impl Point {
+    ///     fn new(x: f64, y: f64) -> Self {
+    ///         Self { x, y }
+    ///     }
+    /// }
+    ///
+    /// let x = Some(17.5);
+    /// let y = Some(42.7);
+    ///
+    /// assert_eq!(x.zip_with(y, Point::new), Some(Point { x: 17.5, y: 42.7 }));
+    /// assert_eq!(x.zip_with(None, Point::new), None);
+    /// ```
+    #[unstable(feature = "option_zip", issue = "70086")]
+    pub fn zip_with<U, F, R>(self, other: Option<U>, f: F) -> Option<R>
+    where
+        F: FnOnce(T, U) -> R,
+    {
+        Some(f(self?, other?))
     }
 }
 
@@ -1296,6 +1359,15 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 
 #[stable(since = "1.12.0", feature = "option_from")]
 impl<T> From<T> for Option<T> {
+    /// Copies `val` into a new `Some`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let o: Option<u8> = Option::from(67);
+    ///
+    /// assert_eq!(Some(67), o);
+    /// ```
     fn from(val: T) -> Option<T> {
         Some(val)
     }
@@ -1303,6 +1375,27 @@ impl<T> From<T> for Option<T> {
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
 impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
+    /// Converts from `&Option<T>` to `Option<&T>`.
+    ///
+    /// # Examples
+    ///
+    /// Converts an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, preserving the original.
+    /// The [`map`] method takes the `self` argument by value, consuming the original,
+    /// so this technique uses `as_ref` to first take an `Option` to a reference
+    /// to the value inside the original.
+    ///
+    /// [`map`]: ../../std/option/enum.Option.html#method.map
+    /// [`String`]: ../../std/string/struct.String.html
+    /// [`usize`]: ../../std/primitive.usize.html
+    ///
+    /// ```
+    /// let s: Option<String> = Some(String::from("Hello, Rustaceans!"));
+    /// let o: Option<usize> = Option::from(&s).map(|ss: &String| ss.len());
+    ///
+    /// println!("Can still print s: {:?}", s);
+    ///
+    /// assert_eq!(o, Some(18));
+    /// ```
     fn from(o: &'a Option<T>) -> Option<&'a T> {
         o.as_ref()
     }
@@ -1310,6 +1403,21 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
 impl<'a, T> From<&'a mut Option<T>> for Option<&'a mut T> {
+    /// Converts from `&mut Option<T>` to `Option<&mut T>`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut s = Some(String::from("Hello"));
+    /// let o: Option<&mut String> = Option::from(&mut s);
+    ///
+    /// match o {
+    ///     Some(t) => *t = String::from("Hello, Rustaceans!"),
+    ///     None => (),
+    /// }
+    ///
+    /// assert_eq!(s, Some(String::from("Hello, Rustaceans!")));
+    /// ```
     fn from(o: &'a mut Option<T>) -> Option<&'a mut T> {
         o.as_mut()
     }

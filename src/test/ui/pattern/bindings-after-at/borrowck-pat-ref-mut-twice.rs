@@ -27,7 +27,7 @@ fn main() {
 
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow value as mutable more than once at a time
-    //~| ERROR cannot borrow `_` as mutable more than once at a time
+    //~| ERROR cannot borrow value as mutable more than once at a time
     drop(a);
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow value as mutable more than once at a time
@@ -37,7 +37,7 @@ fn main() {
 
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow value as mutable more than once at a time
-    //~| ERROR cannot borrow `_` as mutable more than once at a time
+    //~| ERROR cannot borrow value as mutable more than once at a time
     *a = U;
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow value as mutable more than once at a time
@@ -95,11 +95,11 @@ fn main() {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
             //~^ ERROR cannot borrow value as mutable more than once at a time
             //~| ERROR cannot borrow value as mutable more than once at a time
-            //~| ERROR cannot borrow `_` as mutable more than once at a time
-            //~| ERROR cannot borrow `_` as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
             *a = Err(U);
 
-            // FIXME: The binding name `_` used above makes for problematic diagnostics.
+            // FIXME: The binding name value used above makes for problematic diagnostics.
             // Resolve that somehow...
         }
     }
@@ -107,8 +107,8 @@ fn main() {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
             //~^ ERROR cannot borrow value as mutable more than once at a time
             //~| ERROR cannot borrow value as mutable more than once at a time
-            //~| ERROR cannot borrow `_` as mutable more than once at a time
-            //~| ERROR cannot borrow `_` as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
             drop(a);
         }
     }

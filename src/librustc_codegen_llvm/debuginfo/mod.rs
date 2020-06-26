@@ -8,35 +8,34 @@ use self::namespace::mangled_name_of_instance;
 use self::type_names::compute_debuginfo_type_name;
 use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
 
+use crate::abi::FnAbi;
+use crate::builder::Builder;
+use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DISPFlags, DIScope, DIType, DIVariable,
 };
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
-
-use crate::abi::FnAbi;
-use crate::builder::Builder;
-use crate::common::CodegenCx;
 use crate::value::Value;
-use rustc::mir;
-use rustc::session::config::{self, DebugInfo};
-use rustc::ty::{self, Instance, ParamEnv, Ty};
+
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
+use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir;
+use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty};
+use rustc_session::config::{self, DebugInfo};
+use rustc_span::symbol::Symbol;
+use rustc_span::{self, BytePos, Span};
+use rustc_target::abi::{LayoutOf, Primitive, Size};
 
 use libc::c_uint;
 use log::debug;
-use std::cell::RefCell;
-
-use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, Size};
-use rustc_ast::ast;
-use rustc_codegen_ssa::traits::*;
-use rustc_span::symbol::Symbol;
-use rustc_span::{self, BytePos, Span};
 use smallvec::SmallVec;
+use std::cell::RefCell;
 
 mod create_scope_map;
 pub mod gdb;
@@ -60,7 +59,7 @@ pub struct CrateDebugContext<'a, 'tcx> {
     llmod: &'a llvm::Module,
     builder: &'a mut DIBuilder<'a>,
     created_files: RefCell<FxHashMap<(Option<String>, Option<String>), &'a DIFile>>,
-    created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Primitive), &'a DIType>>,
+    created_enum_disr_types: RefCell<FxHashMap<(DefId, Primitive), &'a DIType>>,
 
     type_map: RefCell<TypeMap<'a, 'tcx>>,
     namespace_map: RefCell<DefIdMap<&'a DIScope>>,
@@ -249,11 +248,11 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let def_id = instance.def_id();
         let containing_scope = get_containing_scope(self, instance);
         let loc = self.lookup_debug_loc(span.lo());
-        let file_metadata = file_metadata(self, &loc.file.name, def_id.krate);
+        let file_metadata = file_metadata(self, &loc.file, def_id.krate);
 
         let function_type_metadata = unsafe {
             let fn_signature = get_function_signature(self, fn_abi);
-            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), file_metadata, fn_signature)
+            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
         };
 
         // Find the enclosing function, in case this is a closure.
@@ -266,8 +265,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // name if necessary.
         let generics = self.tcx().generics_of(enclosing_fn_def_id);
         let substs = instance.substs.truncate_to(self.tcx(), generics);
-        let template_parameters =
-            get_template_parameters(self, &generics, substs, file_metadata, &mut name);
+        let template_parameters = get_template_parameters(self, &generics, substs, &mut name);
 
         // Get the linkage_name, which is just the symbol name
         let linkage_name = mangled_name_of_instance(self, instance);
@@ -290,7 +288,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             spflags |= DISPFlags::SPFlagOptimized;
         }
         if let Some((id, _)) = self.tcx.entry_fn(LOCAL_CRATE) {
-            if id == def_id {
+            if id.to_def_id() == def_id {
                 spflags |= DISPFlags::SPFlagMainSubprogram;
             }
         }
@@ -389,7 +387,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             cx: &CodegenCx<'ll, 'tcx>,
             generics: &ty::Generics,
             substs: SubstsRef<'tcx>,
-            file_metadata: &'ll DIFile,
             name_to_append_suffix_to: &mut String,
         ) -> &'ll DIArray {
             if substs.types().next().is_none() {
@@ -430,9 +427,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                                     name.as_ptr().cast(),
                                     name.len(),
                                     actual_type_metadata,
-                                    file_metadata,
-                                    0,
-                                    0,
                                 ))
                             })
                         } else {
@@ -444,7 +438,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 vec![]
             };
 
-            return create_DIArray(DIB(cx), &template_params[..]);
+            create_DIArray(DIB(cx), &template_params[..])
         }
 
         fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
@@ -475,7 +469,12 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     // so avoid methods on other types (e.g., `<*mut T>::null`).
                     match impl_self_ty.kind {
                         ty::Adt(def, ..) if !def.is_box() => {
-                            Some(type_metadata(cx, impl_self_ty, rustc_span::DUMMY_SP))
+                            // Again, only create type information if full debuginfo is enabled
+                            if cx.sess().opts.debuginfo == DebugInfo::Full {
+                                Some(type_metadata(cx, impl_self_ty, rustc_span::DUMMY_SP))
+                            } else {
+                                Some(namespace::item_namespace(cx, def.did))
+                            }
                         }
                         _ => None,
                     }
@@ -524,14 +523,14 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn create_dbg_var(
         &self,
         dbg_context: &FunctionDebugContext<&'ll DIScope>,
-        variable_name: ast::Name,
+        variable_name: Symbol,
         variable_type: Ty<'tcx>,
         scope_metadata: &'ll DIScope,
         variable_kind: VariableKind,
         span: Span,
     ) -> &'ll DIVariable {
         let loc = self.lookup_debug_loc(span.lo());
-        let file_metadata = file_metadata(self, &loc.file.name, dbg_context.defining_crate);
+        let file_metadata = file_metadata(self, &loc.file, dbg_context.defining_crate);
 
         let type_metadata = type_metadata(self, variable_type, span);
 

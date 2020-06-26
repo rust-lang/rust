@@ -25,7 +25,7 @@ use lazy_static::lazy_static;
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
     (
-        $( $variant:ident, $name:expr, $method:ident, $target:path; )*
+        $( $variant:ident, $name:expr, $method:ident, $target:expr; )*
     ) => {
 
         enum_from_u32! {
@@ -135,6 +135,8 @@ language_item_table! {
     SliceU8AllocImplItem,        "slice_u8_alloc",     slice_u8_alloc_impl,     Target::Impl;
     ConstPtrImplItem,            "const_ptr",          const_ptr_impl,          Target::Impl;
     MutPtrImplItem,              "mut_ptr",            mut_ptr_impl,            Target::Impl;
+    ConstSlicePtrImplItem,       "const_slice_ptr",    const_slice_ptr_impl,    Target::Impl;
+    MutSlicePtrImplItem,         "mut_slice_ptr",      mut_slice_ptr_impl,      Target::Impl;
     I8ImplItem,                  "i8",                 i8_impl,                 Target::Impl;
     I16ImplItem,                 "i16",                i16_impl,                Target::Impl;
     I32ImplItem,                 "i32",                i32_impl,                Target::Impl;
@@ -161,6 +163,7 @@ language_item_table! {
     CopyTraitLangItem,           "copy",               copy_trait,              Target::Trait;
     CloneTraitLangItem,          "clone",              clone_trait,             Target::Trait;
     SyncTraitLangItem,           "sync",               sync_trait,              Target::Trait;
+    DiscriminantKindTraitLangItem,"discriminant_kind", discriminant_kind_trait, Target::Trait;
     FreezeTraitLangItem,         "freeze",             freeze_trait,            Target::Trait;
 
     DropTraitLangItem,           "drop",               drop_trait,              Target::Trait;
@@ -204,6 +207,8 @@ language_item_table! {
     FnMutTraitLangItem,          "fn_mut",             fn_mut_trait,            Target::Trait;
     FnOnceTraitLangItem,         "fn_once",            fn_once_trait,           Target::Trait;
 
+    FnOnceOutputLangItem,        "fn_once_output",     fn_once_output,          Target::AssocTy;
+
     FutureTraitLangItem,         "future_trait",       future_trait,            Target::Trait;
     GeneratorStateLangItem,      "generator_state",    gen_state,               Target::Enum;
     GeneratorTraitLangItem,      "generator",          gen_trait,               Target::Trait;
@@ -239,6 +244,8 @@ language_item_table! {
 
     StartFnLangItem,             "start",              start_fn,                Target::Fn;
 
+    CountCodeRegionFnLangItem,   "count_code_region",  count_code_region_fn,    Target::Fn;
+
     EhPersonalityLangItem,       "eh_personality",     eh_personality,          Target::Fn;
     EhCatchTypeinfoLangItem,     "eh_catch_typeinfo",  eh_catch_typeinfo,       Target::Static;
 
@@ -255,6 +262,5 @@ language_item_table! {
 
     TerminationTraitLangItem,    "termination",        termination,             Target::Trait;
 
-    Arc,                         "arc",                arc,                     Target::Struct;
-    Rc,                          "rc",                 rc,                      Target::Struct;
+    TryTraitLangItem,            "try",                try_trait,               Target::Trait;
 }

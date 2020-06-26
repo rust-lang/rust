@@ -5,7 +5,6 @@
 
 mod rusti {
     extern "rust-intrinsic" {
-        pub fn init<T>() -> T;
         pub fn move_val_init<T>(dst: *mut T, src: T);
     }
 }
@@ -15,17 +14,17 @@ pub fn main() {
         // sanity check
         check_drops_state(0, None);
 
-        let mut x: Box<D> = box D(1);
-        assert_eq!(x.0, 1);
+        let mut x: Option<Box<D>> = Some(box D(1));
+        assert_eq!(x.as_ref().unwrap().0, 1);
 
         // A normal overwrite, to demonstrate `check_drops_state`.
-        x = box D(2);
+        x = Some(box D(2));
 
         // At this point, one destructor has run, because the
         // overwrite of `x` drops its initial value.
         check_drops_state(1, Some(1));
 
-        let mut y: Box<D> = rusti::init();
+        let mut y: Option<Box<D>> = std::mem::zeroed();
 
         // An initial binding does not overwrite anything.
         check_drops_state(1, Some(1));
@@ -51,9 +50,9 @@ pub fn main() {
         // during such a destructor call. We do so after the end of
         // this scope.
 
-        assert_eq!(y.0, 2);
-        y.0 = 3;
-        assert_eq!(y.0, 3);
+        assert_eq!(y.as_ref().unwrap().0, 2);
+        y.as_mut().unwrap().0 = 3;
+        assert_eq!(y.as_ref().unwrap().0, 3);
 
         check_drops_state(1, Some(1));
     }

@@ -2,13 +2,13 @@
 //! Clippy.
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_ast::ast::{Ident, Item, ItemKind};
+use rustc_ast::ast::{Item, ItemKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, Ty, TyKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
@@ -140,7 +140,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
                 }
             }
             TyKind::Rptr(_, MutTy { ty: inner_ty, mutbl: Mutability::Not }) => {
-                if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner_def_id()) {
+                if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner.to_def_id()) {
                     if cx.tcx.impl_trait_ref(impl_did).is_some() {
                         return;
                     }
@@ -175,18 +175,15 @@ fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment<'_>) -> bo
 }
 
 fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty<'_>) -> Option<String> {
-    match &ty.kind {
-        TyKind::Path(qpath) => {
-            if let QPath::Resolved(_, path) = qpath {
-                let did = path.res.opt_def_id()?;
-                if cx.tcx.is_diagnostic_item(sym::Ty, did) {
-                    return Some(format!("Ty{}", gen_args(path.segments.last().unwrap())));
-                } else if cx.tcx.is_diagnostic_item(sym::TyCtxt, did) {
-                    return Some(format!("TyCtxt{}", gen_args(path.segments.last().unwrap())));
-                }
+    if let TyKind::Path(qpath) = &ty.kind {
+        if let QPath::Resolved(_, path) = qpath {
+            let did = path.res.opt_def_id()?;
+            if cx.tcx.is_diagnostic_item(sym::Ty, did) {
+                return Some(format!("Ty{}", gen_args(path.segments.last().unwrap())));
+            } else if cx.tcx.is_diagnostic_item(sym::TyCtxt, did) {
+                return Some(format!("TyCtxt{}", gen_args(path.segments.last().unwrap())));
             }
         }
-        _ => {}
     }
 
     None

@@ -6,3 +6,5 @@ macro_rules! foo {
 }
 
 foo!();
+
+fn main() {}

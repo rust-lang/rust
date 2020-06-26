@@ -88,6 +88,7 @@ impl OptimizationDiagnostic<'ll> {
 
 #[derive(Copy, Clone)]
 pub struct InlineAsmDiagnostic<'ll> {
+    pub level: super::DiagnosticLevel,
     pub cookie: c_uint,
     pub message: &'ll Twine,
     pub instruction: Option<&'ll Value>,
@@ -98,10 +99,17 @@ impl InlineAsmDiagnostic<'ll> {
         let mut cookie = 0;
         let mut message = None;
         let mut instruction = None;
+        let mut level = super::DiagnosticLevel::Error;
 
-        super::LLVMRustUnpackInlineAsmDiagnostic(di, &mut cookie, &mut message, &mut instruction);
+        super::LLVMRustUnpackInlineAsmDiagnostic(
+            di,
+            &mut level,
+            &mut cookie,
+            &mut message,
+            &mut instruction,
+        );
 
-        InlineAsmDiagnostic { cookie, message: message.unwrap(), instruction }
+        InlineAsmDiagnostic { level, cookie, message: message.unwrap(), instruction }
     }
 }
 

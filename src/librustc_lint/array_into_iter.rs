@@ -1,8 +1,8 @@
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc::ty;
-use rustc::ty::adjustment::{Adjust, Adjustment};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_middle::ty;
+use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::symbol::sym;
 
@@ -24,7 +24,7 @@ declare_lint_pass!(
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIntoIter {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         // We only care about method call expressions.
-        if let hir::ExprKind::MethodCall(call, span, args) = &expr.kind {
+        if let hir::ExprKind::MethodCall(call, span, args, _) = &expr.kind {
             if call.ident.name != sym::into_iter {
                 return;
             }

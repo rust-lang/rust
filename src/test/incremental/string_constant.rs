@@ -18,7 +18,7 @@ pub mod x {
     }
 
     #[cfg(cfail2)]
-    #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
+    #[rustc_dirty(label="hir_owner_nodes", cfg="cfail2")]
     #[rustc_dirty(label="optimized_mir", cfg="cfail2")]
     pub fn x() {
         println!("{}", "2");

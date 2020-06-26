@@ -2,14 +2,14 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 
 use crate::borrow_check::{
+    def_use::{self, DefUse},
     nll::ToRegionVid,
     region_infer::{Cause, RegionInferenceContext},
 };
-use crate::util::liveness::{self, DefUse};
-use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
-use rustc::mir::{Body, Local, Location};
-use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::mir::visit::{MirVisitable, PlaceContext, Visitor};
+use rustc_middle::mir::{Body, Local, Location};
+use rustc_middle::ty::{RegionVid, TyCtxt};
 
 crate fn find<'tcx>(
     body: &Body<'tcx>,
@@ -117,7 +117,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
         });
 
         if found_it {
-            self.def_use_result = match liveness::categorize(context) {
+            self.def_use_result = match def_use::categorize(context) {
                 Some(DefUse::Def) => Some(DefUseResult::Def),
                 Some(DefUse::Use) => Some(DefUseResult::UseLive { local }),
                 Some(DefUse::Drop) => Some(DefUseResult::UseDrop { local }),

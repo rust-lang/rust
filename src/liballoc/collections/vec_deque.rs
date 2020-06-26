@@ -7,12 +7,14 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+// ignore-tidy-filelength
+
 use core::array::LengthAtMost32;
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{once, repeat_with, FromIterator, FusedIterator};
-use core::mem::{self, replace};
+use core::mem::{self, replace, ManuallyDrop};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{Index, IndexMut, RangeBounds, Try};
 use core::ptr::{self, NonNull};
@@ -50,6 +52,7 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (64 - 1); // Largest possible power of 
 /// [`pop_front`]: #method.pop_front
 /// [`extend`]: #method.extend
 /// [`append`]: #method.append
+#[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VecDeque<T> {
     // tail and head are pointers into the buffer. Tail always points
@@ -72,7 +75,7 @@ pub struct VecDeque<T> {
 /// It produces the following sequence of matching slices:
 ///
 /// ([0 1], [a b])
-/// ([2], [c])
+/// (\[2\], \[c\])
 /// ([3 4], [d e])
 ///
 /// and the uneven remainder of either A or B is skipped.
@@ -200,25 +203,27 @@ impl<T> VecDeque<T> {
     /// Turn ptr into a slice
     #[inline]
     unsafe fn buffer_as_slice(&self) -> &[T] {
-        slice::from_raw_parts(self.ptr(), self.cap())
+        unsafe { slice::from_raw_parts(self.ptr(), self.cap()) }
     }
 
     /// Turn ptr into a mut slice
     #[inline]
     unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
-        slice::from_raw_parts_mut(self.ptr(), self.cap())
+        unsafe { slice::from_raw_parts_mut(self.ptr(), self.cap()) }
     }
 
     /// Moves an element out of the buffer
     #[inline]
     unsafe fn buffer_read(&mut self, off: usize) -> T {
-        ptr::read(self.ptr().add(off))
+        unsafe { ptr::read(self.ptr().add(off)) }
     }
 
     /// Writes an element into the buffer, moving it.
     #[inline]
     unsafe fn buffer_write(&mut self, off: usize, value: T) {
-        ptr::write(self.ptr().add(off), value);
+        unsafe {
+            ptr::write(self.ptr().add(off), value);
+        }
     }
 
     /// Returns `true` if the buffer is at full capacity.
@@ -267,7 +272,9 @@ impl<T> VecDeque<T> {
             len,
             self.cap()
         );
-        ptr::copy(self.ptr().add(src), self.ptr().add(dst), len);
+        unsafe {
+            ptr::copy(self.ptr().add(src), self.ptr().add(dst), len);
+        }
     }
 
     /// Copies a contiguous block of memory len long from src to dst
@@ -289,7 +296,9 @@ impl<T> VecDeque<T> {
             len,
             self.cap()
         );
-        ptr::copy_nonoverlapping(self.ptr().add(src), self.ptr().add(dst), len);
+        unsafe {
+            ptr::copy_nonoverlapping(self.ptr().add(src), self.ptr().add(dst), len);
+        }
     }
 
     /// Copies a potentially wrapping block of memory len long from src to dest.
@@ -329,7 +338,9 @@ impl<T> VecDeque<T> {
                 // 2 [_ _ A A A A B B _]
                 //            D . . .
                 //
-                self.copy(dst, src, len);
+                unsafe {
+                    self.copy(dst, src, len);
+                }
             }
             (false, false, true) => {
                 // dst before src, src doesn't wrap, dst wraps
@@ -340,8 +351,10 @@ impl<T> VecDeque<T> {
                 // 3 [B B B B _ _ _ A A]
                 //    . .           D .
                 //
-                self.copy(dst, src, dst_pre_wrap_len);
-                self.copy(0, src + dst_pre_wrap_len, len - dst_pre_wrap_len);
+                unsafe {
+                    self.copy(dst, src, dst_pre_wrap_len);
+                    self.copy(0, src + dst_pre_wrap_len, len - dst_pre_wrap_len);
+                }
             }
             (true, false, true) => {
                 // src before dst, src doesn't wrap, dst wraps
@@ -352,8 +365,10 @@ impl<T> VecDeque<T> {
                 // 3 [B B _ _ _ A A A A]
                 //    . .           D .
                 //
-                self.copy(0, src + dst_pre_wrap_len, len - dst_pre_wrap_len);
-                self.copy(dst, src, dst_pre_wrap_len);
+                unsafe {
+                    self.copy(0, src + dst_pre_wrap_len, len - dst_pre_wrap_len);
+                    self.copy(dst, src, dst_pre_wrap_len);
+                }
             }
             (false, true, false) => {
                 // dst before src, src wraps, dst doesn't wrap
@@ -364,8 +379,10 @@ impl<T> VecDeque<T> {
                 // 3 [C C _ _ _ B B C C]
                 //              D . . .
                 //
-                self.copy(dst, src, src_pre_wrap_len);
-                self.copy(dst + src_pre_wrap_len, 0, len - src_pre_wrap_len);
+                unsafe {
+                    self.copy(dst, src, src_pre_wrap_len);
+                    self.copy(dst + src_pre_wrap_len, 0, len - src_pre_wrap_len);
+                }
             }
             (true, true, false) => {
                 // src before dst, src wraps, dst doesn't wrap
@@ -376,8 +393,10 @@ impl<T> VecDeque<T> {
                 // 3 [C C A A _ _ _ C C]
                 //    D . . .
                 //
-                self.copy(dst + src_pre_wrap_len, 0, len - src_pre_wrap_len);
-                self.copy(dst, src, src_pre_wrap_len);
+                unsafe {
+                    self.copy(dst + src_pre_wrap_len, 0, len - src_pre_wrap_len);
+                    self.copy(dst, src, src_pre_wrap_len);
+                }
             }
             (false, true, true) => {
                 // dst before src, src wraps, dst wraps
@@ -391,9 +410,11 @@ impl<T> VecDeque<T> {
                 //
                 debug_assert!(dst_pre_wrap_len > src_pre_wrap_len);
                 let delta = dst_pre_wrap_len - src_pre_wrap_len;
-                self.copy(dst, src, src_pre_wrap_len);
-                self.copy(dst + src_pre_wrap_len, 0, delta);
-                self.copy(0, delta, len - dst_pre_wrap_len);
+                unsafe {
+                    self.copy(dst, src, src_pre_wrap_len);
+                    self.copy(dst + src_pre_wrap_len, 0, delta);
+                    self.copy(0, delta, len - dst_pre_wrap_len);
+                }
             }
             (true, true, true) => {
                 // src before dst, src wraps, dst wraps
@@ -407,9 +428,11 @@ impl<T> VecDeque<T> {
                 //
                 debug_assert!(src_pre_wrap_len > dst_pre_wrap_len);
                 let delta = src_pre_wrap_len - dst_pre_wrap_len;
-                self.copy(delta, 0, len - src_pre_wrap_len);
-                self.copy(0, self.cap() - delta, delta);
-                self.copy(dst, src, dst_pre_wrap_len);
+                unsafe {
+                    self.copy(delta, 0, len - src_pre_wrap_len);
+                    self.copy(0, self.cap() - delta, delta);
+                    self.copy(dst, src, dst_pre_wrap_len);
+                }
             }
         }
     }
@@ -439,13 +462,17 @@ impl<T> VecDeque<T> {
             // Nop
         } else if self.head < old_capacity - self.tail {
             // B
-            self.copy_nonoverlapping(old_capacity, 0, self.head);
+            unsafe {
+                self.copy_nonoverlapping(old_capacity, 0, self.head);
+            }
             self.head += old_capacity;
             debug_assert!(self.head > self.tail);
         } else {
             // C
             let new_tail = new_capacity - (old_capacity - self.tail);
-            self.copy_nonoverlapping(new_tail, self.tail, old_capacity - self.tail);
+            unsafe {
+                self.copy_nonoverlapping(new_tail, self.tail, old_capacity - self.tail);
+            }
             self.tail = new_tail;
             debug_assert!(self.head < self.tail);
         }
@@ -488,7 +515,7 @@ impl<T> VecDeque<T> {
         VecDeque { tail: 0, head: 0, buf: RawVec::with_capacity(cap) }
     }
 
-    /// Retrieves an element in the `VecDeque` by index.
+    /// Provides a reference to the element at the given index.
     ///
     /// Element at index 0 is the front of the queue.
     ///
@@ -513,7 +540,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Retrieves an element in the `VecDeque` mutably by index.
+    /// Provides a mutable reference to the element at the given index.
     ///
     /// Element at index 0 is the front of the queue.
     ///
@@ -651,7 +678,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Tries to reserves the minimum capacity for exactly `additional` more elements to
+    /// Tries to reserve the minimum capacity for exactly `additional` more elements to
     /// be inserted in the given `VecDeque<T>`. After calling `reserve_exact`,
     /// capacity will be greater than or equal to `self.len() + additional`.
     /// Does nothing if the capacity is already sufficient.
@@ -662,7 +689,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Errors
     ///
-    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// If the capacity overflows `usize`, or the allocator reports a failure, then an error
     /// is returned.
     ///
     /// # Examples
@@ -678,7 +705,7 @@ impl<T> VecDeque<T> {
     ///     // Pre-reserve the memory, exiting if we can't
     ///     output.try_reserve_exact(data.len())?;
     ///
-    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     // Now we know this can't OOM(Out-Of-Memory) in the middle of our complex work
     ///     output.extend(data.iter().map(|&val| {
     ///         val * 2 + 5 // very complicated
     ///     }));
@@ -700,7 +727,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Errors
     ///
-    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// If the capacity overflows `usize`, or the allocator reports a failure, then an error
     /// is returned.
     ///
     /// # Examples
@@ -959,6 +986,9 @@ impl<T> VecDeque<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     ///
+    /// If [`make_contiguous`](#method.make_contiguous) was previously called, all elements
+    /// of the `VecDeque` will be in the first slice and the second slice will be empty.
+    ///
     /// # Examples
     ///
     /// ```
@@ -988,6 +1018,9 @@ impl<T> VecDeque<T> {
 
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
+    ///
+    /// If [`make_contiguous`](#method.make_contiguous) was previously called, all elements
+    /// of the `VecDeque` will be in the first slice and the second slice will be empty.
     ///
     /// # Examples
     ///
@@ -1347,7 +1380,9 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, value: T) {
-        self.grow_if_necessary();
+        if self.is_full() {
+            self.grow();
+        }
 
         self.tail = self.wrap_sub(self.tail, 1);
         let tail = self.tail;
@@ -1370,7 +1405,9 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_back(&mut self, value: T) {
-        self.grow_if_necessary();
+        if self.is_full() {
+            self.grow();
+        }
 
         let head = self.head;
         self.head = self.wrap_add(self.head, 1);
@@ -1385,7 +1422,7 @@ impl<T> VecDeque<T> {
     /// Removes an element from anywhere in the `VecDeque` and returns it,
     /// replacing it with the first element.
     ///
-    /// This does not preserve ordering, but is O(1).
+    /// This does not preserve ordering, but is `O(1)`.
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
@@ -1420,7 +1457,7 @@ impl<T> VecDeque<T> {
     /// Removes an element from anywhere in the `VecDeque` and returns it, replacing it with the
     /// last element.
     ///
-    /// This does not preserve ordering, but is O(1).
+    /// This does not preserve ordering, but is `O(1)`.
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
@@ -1478,7 +1515,9 @@ impl<T> VecDeque<T> {
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn insert(&mut self, index: usize, value: T) {
         assert!(index <= self.len(), "index out of bounds");
-        self.grow_if_necessary();
+        if self.is_full() {
+            self.grow();
+        }
 
         // Move the least number of elements in the ring buffer and insert
         // the given object
@@ -1876,6 +1915,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf2, [2, 3]);
     /// ```
     #[inline]
+    #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
     pub fn split_off(&mut self, at: usize) -> Self {
         let len = self.len();
@@ -1995,11 +2035,13 @@ impl<T> VecDeque<T> {
     }
 
     // This may panic or abort
-    #[inline]
-    fn grow_if_necessary(&mut self) {
+    #[inline(never)]
+    fn grow(&mut self) {
         if self.is_full() {
             let old_cap = self.cap();
-            self.buf.double();
+            // Double the buffer size.
+            self.buf.reserve_exact(old_cap, old_cap);
+            assert!(self.cap() == old_cap * 2);
             unsafe {
                 self.handle_capacity_increase(old_cap);
             }
@@ -2041,6 +2083,148 @@ impl<T> VecDeque<T> {
         } else {
             self.truncate(new_len);
         }
+    }
+
+    /// Rearranges the internal storage of this deque so it is one contiguous slice, which is then returned.
+    ///
+    /// This method does not allocate and does not change the order of the inserted elements.
+    /// As it returns a mutable slice, this can be used to sort or binary search a deque.
+    ///
+    /// Once the internal storage is contiguous, the [`as_slices`](#method.as_slices) and
+    /// [`as_mut_slices`](#method.as_mut_slices) methods will return the entire contents of the
+    /// `VecDeque` in a single slice.
+    ///
+    /// # Examples
+    ///
+    /// Sorting the content of a deque.
+    ///
+    /// ```
+    /// #![feature(deque_make_contiguous)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::with_capacity(15);
+    ///
+    /// buf.push_back(2);
+    /// buf.push_back(1);
+    /// buf.push_front(3);
+    ///
+    /// // sorting the deque
+    /// buf.make_contiguous().sort();
+    /// assert_eq!(buf.as_slices(), (&[1, 2, 3] as &[_], &[] as &[_]));
+    ///
+    /// // sorting it in reverse order
+    /// buf.make_contiguous().sort_by(|a, b| b.cmp(a));
+    /// assert_eq!(buf.as_slices(), (&[3, 2, 1] as &[_], &[] as &[_]));
+    /// ```
+    ///
+    /// Getting immutable access to the contiguous slice.
+    ///
+    /// ```rust
+    /// #![feature(deque_make_contiguous)]
+    ///
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    ///
+    /// buf.push_back(2);
+    /// buf.push_back(1);
+    /// buf.push_front(3);
+    ///
+    /// buf.make_contiguous();
+    /// if let (slice, &[]) = buf.as_slices() {
+    ///     // we can now be sure that `slice` contains all elements of the deque,
+    ///     // while still having immutable access to `buf`.
+    ///     assert_eq!(buf.len(), slice.len());
+    ///     assert_eq!(slice, &[3, 2, 1] as &[_]);
+    /// }
+    /// ```
+    #[unstable(feature = "deque_make_contiguous", issue = "70929")]
+    pub fn make_contiguous(&mut self) -> &mut [T] {
+        if self.is_contiguous() {
+            let tail = self.tail;
+            let head = self.head;
+            return unsafe { &mut self.buffer_as_mut_slice()[tail..head] };
+        }
+
+        let buf = self.buf.ptr();
+        let cap = self.cap();
+        let len = self.len();
+
+        let free = self.tail - self.head;
+        let tail_len = cap - self.tail;
+
+        if free >= tail_len {
+            // there is enough free space to copy the tail in one go,
+            // this means that we first shift the head backwards, and then
+            // copy the tail to the correct position.
+            //
+            // from: DEFGH....ABC
+            // to:   ABCDEFGH....
+            unsafe {
+                ptr::copy(buf, buf.add(tail_len), self.head);
+                // ...DEFGH.ABC
+                ptr::copy_nonoverlapping(buf.add(self.tail), buf, tail_len);
+                // ABCDEFGH....
+
+                self.tail = 0;
+                self.head = len;
+            }
+        } else if free >= self.head {
+            // there is enough free space to copy the head in one go,
+            // this means that we first shift the tail forwards, and then
+            // copy the head to the correct position.
+            //
+            // from: FGH....ABCDE
+            // to:   ...ABCDEFGH.
+            unsafe {
+                ptr::copy(buf.add(self.tail), buf.add(self.head), tail_len);
+                // FGHABCDE....
+                ptr::copy_nonoverlapping(buf, buf.add(self.head + tail_len), self.head);
+                // ...ABCDEFGH.
+
+                self.tail = self.head;
+                self.head = self.tail + len;
+            }
+        } else {
+            // free is smaller than both head and tail,
+            // this means we have to slowly "swap" the tail and the head.
+            //
+            // from: EFGHI...ABCD or HIJK.ABCDEFG
+            // to:   ABCDEFGHI... or ABCDEFGHIJK.
+            let mut left_edge: usize = 0;
+            let mut right_edge: usize = self.tail;
+            unsafe {
+                // The general problem looks like this
+                // GHIJKLM...ABCDEF - before any swaps
+                // ABCDEFM...GHIJKL - after 1 pass of swaps
+                // ABCDEFGHIJM...KL - swap until the left edge reaches the temp store
+                //                  - then restart the algorithm with a new (smaller) store
+                // Sometimes the temp store is reached when the right edge is at the end
+                // of the buffer - this means we've hit the right order with fewer swaps!
+                // E.g
+                // EF..ABCD
+                // ABCDEF.. - after four only swaps we've finished
+                while left_edge < len && right_edge != cap {
+                    let mut right_offset = 0;
+                    for i in left_edge..right_edge {
+                        right_offset = (i - left_edge) % (cap - right_edge);
+                        let src: isize = (right_edge + right_offset) as isize;
+                        ptr::swap(buf.add(i), buf.offset(src));
+                    }
+                    let n_ops = right_edge - left_edge;
+                    left_edge += n_ops;
+                    right_edge += right_offset + 1;
+                }
+
+                self.tail = 0;
+                self.head = len;
+            }
+        }
+
+        let tail = self.tail;
+        let head = self.head;
+        unsafe { &mut self.buffer_as_mut_slice()[tail..head] }
     }
 
     /// Rotates the double-ended queue `mid` places to the left.
@@ -2139,7 +2323,9 @@ impl<T> VecDeque<T> {
 
     unsafe fn rotate_left_inner(&mut self, mid: usize) {
         debug_assert!(mid * 2 <= self.len());
-        self.wrap_copy(self.head, self.tail, mid);
+        unsafe {
+            self.wrap_copy(self.head, self.tail, mid);
+        }
         self.head = self.wrap_add(self.head, mid);
         self.tail = self.wrap_add(self.tail, mid);
     }
@@ -2148,7 +2334,9 @@ impl<T> VecDeque<T> {
         debug_assert!(k * 2 <= self.len());
         self.head = self.wrap_sub(self.head, k);
         self.tail = self.wrap_sub(self.tail, k);
-        self.wrap_copy(self.tail, self.head, k);
+        unsafe {
+            self.wrap_copy(self.tail, self.head, k);
+        }
     }
 }
 
@@ -2723,12 +2911,32 @@ impl<A> Extend<A> for VecDeque<A> {
             }
         }
     }
+
+    #[inline]
+    fn extend_one(&mut self, elem: A) {
+        self.push_back(elem);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.reserve(additional);
+    }
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for VecDeque<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &elem: &T) {
+        self.push_back(elem);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.reserve(additional);
     }
 }
 
@@ -2749,12 +2957,12 @@ impl<T> From<Vec<T>> for VecDeque<T> {
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
-    fn from(mut other: Vec<T>) -> Self {
+    fn from(other: Vec<T>) -> Self {
         unsafe {
+            let mut other = ManuallyDrop::new(other);
             let other_buf = other.as_mut_ptr();
             let mut buf = RawVec::from_raw_parts(other_buf, other.capacity());
             let len = other.len();
-            mem::forget(other);
 
             // We need to extend the buf if it's not a power of two, too small
             // or doesn't have at least one free space
@@ -2778,7 +2986,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
     /// [`Vec<T>`]: crate::vec::Vec
     /// [`VecDeque<T>`]: crate::collections::VecDeque
     ///
-    /// This never needs to re-allocate, but does need to do O(n) data movement if
+    /// This never needs to re-allocate, but does need to do `O(n)` data movement if
     /// the circular buffer doesn't happen to be at the beginning of the allocation.
     ///
     /// # Examples
@@ -2802,67 +3010,19 @@ impl<T> From<VecDeque<T>> for Vec<T> {
     /// assert_eq!(vec, [8, 9, 1, 2, 3, 4]);
     /// assert_eq!(vec.as_ptr(), ptr);
     /// ```
-    fn from(other: VecDeque<T>) -> Self {
+    fn from(mut other: VecDeque<T>) -> Self {
+        other.make_contiguous();
+
         unsafe {
+            let other = ManuallyDrop::new(other);
             let buf = other.buf.ptr();
             let len = other.len();
-            let tail = other.tail;
-            let head = other.head;
             let cap = other.cap();
 
-            // Need to move the ring to the front of the buffer, as vec will expect this.
-            if other.is_contiguous() {
-                ptr::copy(buf.add(tail), buf, len);
-            } else {
-                if (tail - head) >= cmp::min(cap - tail, head) {
-                    // There is enough free space in the centre for the shortest block so we can
-                    // do this in at most three copy moves.
-                    if (cap - tail) > head {
-                        // right hand block is the long one; move that enough for the left
-                        ptr::copy(buf.add(tail), buf.add(tail - head), cap - tail);
-                        // copy left in the end
-                        ptr::copy(buf, buf.add(cap - head), head);
-                        // shift the new thing to the start
-                        ptr::copy(buf.add(tail - head), buf, len);
-                    } else {
-                        // left hand block is the long one, we can do it in two!
-                        ptr::copy(buf, buf.add(cap - tail), head);
-                        ptr::copy(buf.add(tail), buf, cap - tail);
-                    }
-                } else {
-                    // Need to use N swaps to move the ring
-                    // We can use the space at the end of the ring as a temp store
-
-                    let mut left_edge: usize = 0;
-                    let mut right_edge: usize = tail;
-
-                    // The general problem looks like this
-                    // GHIJKLM...ABCDEF - before any swaps
-                    // ABCDEFM...GHIJKL - after 1 pass of swaps
-                    // ABCDEFGHIJM...KL - swap until the left edge reaches the temp store
-                    //                  - then restart the algorithm with a new (smaller) store
-                    // Sometimes the temp store is reached when the right edge is at the end
-                    // of the buffer - this means we've hit the right order with fewer swaps!
-                    // E.g
-                    // EF..ABCD
-                    // ABCDEF.. - after four only swaps we've finished
-
-                    while left_edge < len && right_edge != cap {
-                        let mut right_offset = 0;
-                        for i in left_edge..right_edge {
-                            right_offset = (i - left_edge) % (cap - right_edge);
-                            let src: isize = (right_edge + right_offset) as isize;
-                            ptr::swap(buf.add(i), buf.offset(src));
-                        }
-                        let n_ops = right_edge - left_edge;
-                        left_edge += n_ops;
-                        right_edge += right_offset + 1;
-                    }
-                }
+            if other.head != 0 {
+                ptr::copy(buf.add(other.tail), buf, len);
             }
-            let out = Vec::from_raw_parts(buf, len, cap);
-            mem::forget(other);
-            out
+            Vec::from_raw_parts(buf, len, cap)
         }
     }
 }

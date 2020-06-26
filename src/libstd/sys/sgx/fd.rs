@@ -34,12 +34,22 @@ impl FileDesc {
         usercalls::read(self.fd, bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        true
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         usercalls::write(self.fd, &[IoSlice::new(buf)])
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         usercalls::write(self.fd, bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        true
     }
 
     pub fn flush(&self) -> io::Result<()> {

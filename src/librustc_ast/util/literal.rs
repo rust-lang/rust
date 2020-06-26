@@ -6,8 +6,7 @@ use crate::tokenstream::TokenTree;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_lexer::unescape::{unescape_byte, unescape_char};
-use rustc_lexer::unescape::{unescape_byte_str, unescape_str};
-use rustc_lexer::unescape::{unescape_raw_byte_str, unescape_raw_str};
+use rustc_lexer::unescape::{unescape_byte_literal, unescape_literal, Mode};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
@@ -59,45 +58,53 @@ impl LitKind {
                 // new symbol because the string in the LitKind is different to the
                 // string in the token.
                 let s = symbol.as_str();
-                let symbol = if s.contains(&['\\', '\r'][..]) {
-                    let mut buf = String::with_capacity(s.len());
-                    let mut error = Ok(());
-                    unescape_str(&s, &mut |_, unescaped_char| match unescaped_char {
-                        Ok(c) => buf.push(c),
-                        Err(_) => error = Err(LitError::LexerError),
-                    });
-                    error?;
-                    Symbol::intern(&buf)
-                } else {
-                    symbol
-                };
+                let symbol =
+                    if s.contains(&['\\', '\r'][..]) {
+                        let mut buf = String::with_capacity(s.len());
+                        let mut error = Ok(());
+                        unescape_literal(&s, Mode::Str, &mut |_, unescaped_char| {
+                            match unescaped_char {
+                                Ok(c) => buf.push(c),
+                                Err(_) => error = Err(LitError::LexerError),
+                            }
+                        });
+                        error?;
+                        Symbol::intern(&buf)
+                    } else {
+                        symbol
+                    };
                 LitKind::Str(symbol, ast::StrStyle::Cooked)
             }
             token::StrRaw(n) => {
                 // Ditto.
                 let s = symbol.as_str();
-                let symbol = if s.contains('\r') {
-                    let mut buf = String::with_capacity(s.len());
-                    let mut error = Ok(());
-                    unescape_raw_str(&s, &mut |_, unescaped_char| match unescaped_char {
-                        Ok(c) => buf.push(c),
-                        Err(_) => error = Err(LitError::LexerError),
-                    });
-                    error?;
-                    buf.shrink_to_fit();
-                    Symbol::intern(&buf)
-                } else {
-                    symbol
-                };
+                let symbol =
+                    if s.contains('\r') {
+                        let mut buf = String::with_capacity(s.len());
+                        let mut error = Ok(());
+                        unescape_literal(&s, Mode::RawStr, &mut |_, unescaped_char| {
+                            match unescaped_char {
+                                Ok(c) => buf.push(c),
+                                Err(_) => error = Err(LitError::LexerError),
+                            }
+                        });
+                        error?;
+                        buf.shrink_to_fit();
+                        Symbol::intern(&buf)
+                    } else {
+                        symbol
+                    };
                 LitKind::Str(symbol, ast::StrStyle::Raw(n))
             }
             token::ByteStr => {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
                 let mut error = Ok(());
-                unescape_byte_str(&s, &mut |_, unescaped_byte| match unescaped_byte {
-                    Ok(c) => buf.push(c),
-                    Err(_) => error = Err(LitError::LexerError),
+                unescape_byte_literal(&s, Mode::ByteStr, &mut |_, unescaped_byte| {
+                    match unescaped_byte {
+                        Ok(c) => buf.push(c),
+                        Err(_) => error = Err(LitError::LexerError),
+                    }
                 });
                 error?;
                 buf.shrink_to_fit();
@@ -108,9 +115,11 @@ impl LitKind {
                 let bytes = if s.contains('\r') {
                     let mut buf = Vec::with_capacity(s.len());
                     let mut error = Ok(());
-                    unescape_raw_byte_str(&s, &mut |_, unescaped_byte| match unescaped_byte {
-                        Ok(c) => buf.push(c),
-                        Err(_) => error = Err(LitError::LexerError),
+                    unescape_byte_literal(&s, Mode::RawByteStr, &mut |_, unescaped_byte| {
+                        match unescaped_byte {
+                            Ok(c) => buf.push(c),
+                            Err(_) => error = Err(LitError::LexerError),
+                        }
                     });
                     error?;
                     buf.shrink_to_fit();
@@ -189,7 +198,7 @@ impl Lit {
 
     /// Converts arbitrary token into an AST literal.
     ///
-    /// Keep this in sync with `Token::can_begin_literal_or_bool`.
+    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
     pub fn from_token(token: &Token) -> Result<Lit, LitError> {
         let lit = match token.uninterpolate().kind {
             token::Ident(name, false) if name.is_bool_lit() => {

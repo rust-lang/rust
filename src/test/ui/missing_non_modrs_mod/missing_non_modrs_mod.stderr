@@ -1,10 +1,10 @@
 error[E0583]: file not found for module `missing`
-  --> $DIR/foo.rs:4:5
+  --> $DIR/foo.rs:4:1
    |
 LL | mod missing;
-   |     ^^^^^^^
+   | ^^^^^^^^^^^^
    |
-   = help: name the file either foo/missing.rs or foo/missing/mod.rs inside the directory "$DIR"
+   = help: to create the module `missing`, create file "$DIR/foo/missing.rs"
 
 error: aborting due to previous error
 

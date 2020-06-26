@@ -7,3 +7,5 @@ warning: the `#![doc(passes = "...")]` attribute is considered deprecated
    |
    = warning: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
 
+warning: 2 warnings emitted
+

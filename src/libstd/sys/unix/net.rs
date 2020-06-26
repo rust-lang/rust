@@ -148,7 +148,7 @@ impl Socket {
                 timeout = 1;
             }
 
-            let timeout = cmp::min(timeout, c_int::max_value() as u64) as c_int;
+            let timeout = cmp::min(timeout, c_int::MAX as u64) as c_int;
 
             match unsafe { libc::poll(&mut pollfd, 1, timeout) } {
                 -1 => {
@@ -226,6 +226,11 @@ impl Socket {
         self.0.read_vectored(bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+
     fn recv_from_with_flags(
         &self,
         buf: &mut [u8],
@@ -263,6 +268,11 @@ impl Socket {
         self.0.write_vectored(bufs)
     }
 
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
+    }
+
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
         let timeout = match dur {
             Some(dur) => {
@@ -273,8 +283,8 @@ impl Socket {
                     ));
                 }
 
-                let secs = if dur.as_secs() > libc::time_t::max_value() as u64 {
-                    libc::time_t::max_value()
+                let secs = if dur.as_secs() > libc::time_t::MAX as u64 {
+                    libc::time_t::MAX
                 } else {
                     dur.as_secs() as libc::time_t
                 };
@@ -322,9 +332,17 @@ impl Socket {
         Ok(raw != 0)
     }
 
+    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as libc::c_int;
         cvt(unsafe { libc::ioctl(*self.as_inner(), libc::FIONBIO, &mut nonblocking) }).map(drop)
+    }
+
+    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        // FIONBIO is inadequate for sockets on illumos/Solaris, so use the
+        // fcntl(F_[GS]ETFL)-based method provided by FileDesc instead.
+        self.0.set_nonblocking(nonblocking)
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {

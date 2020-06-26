@@ -1,4 +1,5 @@
 // pp-exact
+// pretty-compare-only
 
 // The next line should not be expanded
 

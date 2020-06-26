@@ -6,3 +6,5 @@ LL |   if (true) { 12; };;; -num;
    |
    = note: `#[warn(redundant_semicolons)]` on by default
 
+warning: 1 warning emitted
+

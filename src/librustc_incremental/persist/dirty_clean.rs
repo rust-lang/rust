@@ -13,9 +13,6 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
-use rustc::dep_graph::{label_strs, DepNode};
-use rustc::hir::map::Map;
-use rustc::ty::TyCtxt;
 use rustc_ast::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
@@ -25,6 +22,9 @@ use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node as HirNode;
 use rustc_hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};
+use rustc_middle::dep_graph::{label_strs, DepNode, DepNodeExt};
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::iter::FromIterator;
@@ -53,9 +53,9 @@ const BASE_FN: &[&str] = &[
 
 /// DepNodes for Hir, which is pretty much everything
 const BASE_HIR: &[&str] = &[
-    // hir_owner and hir_owner_items should be computed for all nodes
+    // hir_owner and hir_owner_nodes should be computed for all nodes
     label_strs::hir_owner,
-    label_strs::hir_owner_items,
+    label_strs::hir_owner_nodes,
 ];
 
 /// `impl` implementation of struct/trait
@@ -306,7 +306,7 @@ impl DirtyCleanVisitor<'tcx> {
                     // michaelwoerister and vitiral came up with a possible solution,
                     // to just do this before every query
                     // ```
-                    // ::rustc::ty::query::plumbing::force_from_dep_node(tcx, dep_node)
+                    // ::rustc_middle::ty::query::plumbing::force_from_dep_node(tcx, dep_node)
                     // ```
                     //
                     // However, this did not seem to work effectively and more bugs were hit.
@@ -333,10 +333,9 @@ impl DirtyCleanVisitor<'tcx> {
                 TraitItemKind::Type(..) => ("NodeTraitType", LABELS_CONST_IN_TRAIT),
             },
             HirNode::ImplItem(item) => match item.kind {
-                ImplItemKind::Method(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
+                ImplItemKind::Fn(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                 ImplItemKind::TyAlias(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
-                ImplItemKind::OpaqueTy(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
             },
             _ => self.tcx.sess.span_fatal(
                 attr.span,
@@ -434,16 +433,16 @@ impl DirtyCleanVisitor<'tcx> {
 
     fn check_item(&mut self, item_id: hir::HirId, item_span: Span) {
         let def_id = self.tcx.hir().local_def_id(item_id);
-        for attr in self.tcx.get_attrs(def_id).iter() {
+        for attr in self.tcx.get_attrs(def_id.to_def_id()).iter() {
             let assertion = match self.assertion_maybe(item_id, attr) {
                 Some(a) => a,
                 None => continue,
             };
             self.checked_attrs.insert(attr.id);
-            for dep_node in self.dep_nodes(&assertion.clean, def_id) {
+            for dep_node in self.dep_nodes(&assertion.clean, def_id.to_def_id()) {
                 self.assert_clean(item_span, dep_node);
             }
-            for dep_node in self.dep_nodes(&assertion.dirty, def_id) {
+            for dep_node in self.dep_nodes(&assertion.dirty, def_id.to_def_id()) {
                 self.assert_dirty(item_span, dep_node);
             }
         }
@@ -499,7 +498,7 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
     }
 }
 
-fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> ast::Name {
+fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
     if let Some(value) = item.value_str() {
         value
     } else {

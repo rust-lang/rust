@@ -1,10 +1,8 @@
 #![feature(crate_visibility_modifier)]
-#![feature(test)]
+#![feature(or_patterns)]
 
-// Use the test crate here so we depend on getopts through it. This allow tools to link to both
-// librustc_session and libtest.
-extern crate getopts;
-extern crate test as _;
+#[macro_use]
+extern crate bitflags;
 
 pub mod cgu_reuse_tracker;
 pub mod utils;
@@ -21,3 +19,7 @@ pub mod search_paths;
 
 mod session;
 pub use session::*;
+
+pub mod output;
+
+pub use getopts;

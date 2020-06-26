@@ -9,7 +9,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use self::pattern::Pattern;
-use self::pattern::{DoubleEndedSearcher, ReverseSearcher, SearchStep, Searcher};
+use self::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 
 use crate::char;
 use crate::fmt::{self, Write};
@@ -1651,7 +1651,7 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
-            if align != usize::max_value() && align.wrapping_sub(index) % usize_bytes == 0 {
+            if align != usize::MAX && align.wrapping_sub(index) % usize_bytes == 0 {
                 let ptr = v.as_ptr();
                 while index < blocks_end {
                     // SAFETY: since `align - index` and `ascii_block_size` are
@@ -1794,6 +1794,7 @@ mod traits {
 
     #[inline(never)]
     #[cold]
+    #[track_caller]
     fn str_index_overflow_fail() -> ! {
         panic!("attempted to index str up to maximum usize");
     }
@@ -2082,7 +2083,7 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 None
             } else {
                 (*self.start()..self.end() + 1).get(slice)
@@ -2090,7 +2091,7 @@ mod traits {
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 None
             } else {
                 (*self.start()..self.end() + 1).get_mut(slice)
@@ -2106,14 +2107,14 @@ mod traits {
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 str_index_overflow_fail();
             }
             (*self.start()..self.end() + 1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 str_index_overflow_fail();
             }
             (*self.start()..self.end() + 1).index_mut(slice)
@@ -2139,11 +2140,11 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if self.end == usize::max_value() { None } else { (..self.end + 1).get(slice) }
+            if self.end == usize::MAX { None } else { (..self.end + 1).get(slice) }
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if self.end == usize::max_value() { None } else { (..self.end + 1).get_mut(slice) }
+            if self.end == usize::MAX { None } else { (..self.end + 1).get_mut(slice) }
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
@@ -2155,14 +2156,14 @@ mod traits {
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            if self.end == usize::max_value() {
+            if self.end == usize::MAX {
                 str_index_overflow_fail();
             }
             (..self.end + 1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            if self.end == usize::max_value() {
+            if self.end == usize::MAX {
                 str_index_overflow_fail();
             }
             (..self.end + 1).index_mut(slice)
@@ -2185,6 +2186,7 @@ fn truncate_to_char_boundary(s: &str, mut max: usize) -> (bool, &str) {
 
 #[inline(never)]
 #[cold]
+#[track_caller]
 fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     const MAX_DISPLAY_LENGTH: usize = 256;
     let (truncated, s_trunc) = truncate_to_char_boundary(s, MAX_DISPLAY_LENGTH);
@@ -2268,12 +2270,11 @@ impl str {
         self.len() == 0
     }
 
-    /// Checks that `index`-th byte lies at the start and/or end of a
-    /// UTF-8 code point sequence.
+    /// Checks that `index`-th byte is the first byte in a UTF-8 code point
+    /// sequence or the end of the string.
     ///
     /// The start and end of the string (when `index == self.len()`) are
-    /// considered to be
-    /// boundaries.
+    /// considered to be boundaries.
     ///
     /// Returns `false` if `index` is greater than `self.len()`.
     ///
@@ -2640,7 +2641,7 @@ impl str {
     /// # Panics
     ///
     /// Panics if `mid` is not on a UTF-8 code point boundary, or if it is
-    /// beyond the last code point of the string slice.
+    /// past the end of the last code point of the string slice.
     ///
     /// # Examples
     ///
@@ -2681,7 +2682,7 @@ impl str {
     /// # Panics
     ///
     /// Panics if `mid` is not on a UTF-8 code point boundary, or if it is
-    /// beyond the last code point of the string slice.
+    /// past the end of the last code point of the string slice.
     ///
     /// # Examples
     ///
@@ -3008,6 +3009,12 @@ impl str {
     ///
     /// Returns `false` if it does not.
     ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -3029,6 +3036,12 @@ impl str {
     ///
     /// Returns `false` if it does not.
     ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -3048,6 +3061,12 @@ impl str {
     /// string slice.
     ///
     /// Returns `false` if it does not.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3072,10 +3091,12 @@ impl str {
     ///
     /// Returns [`None`] if the pattern doesn't match.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
     ///
     /// [`None`]: option/enum.Option.html#variant.None
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3119,10 +3140,12 @@ impl str {
     ///
     /// Returns [`None`] if the pattern doesn't match.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
     ///
     /// [`None`]: option/enum.Option.html#variant.None
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3164,8 +3187,11 @@ impl str {
     /// An iterator over substrings of this string slice, separated by
     /// characters matched by a pattern.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3283,6 +3309,12 @@ impl str {
     /// `split` in that `split_inclusive` leaves the matched part as the
     /// terminator of the substring.
     ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -3302,7 +3334,7 @@ impl str {
     ///     .split_inclusive('\n').collect();
     /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb.\n"]);
     /// ```
-    #[unstable(feature = "split_inclusive", issue = "none")]
+    #[unstable(feature = "split_inclusive", issue = "72360")]
     #[inline]
     pub fn split_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
         SplitInclusive(SplitInternal {
@@ -3317,8 +3349,11 @@ impl str {
     /// An iterator over substrings of the given string slice, separated by
     /// characters matched by a pattern and yielded in reverse order.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3368,8 +3403,11 @@ impl str {
     /// An iterator over substrings of the given string slice, separated by
     /// characters matched by a pattern.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// Equivalent to [`split`], except that the trailing substring
     /// is skipped if empty.
@@ -3412,10 +3450,11 @@ impl str {
     /// An iterator over substrings of `self`, separated by characters
     /// matched by a pattern and yielded in reverse order.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
-    /// Additional libraries might provide more complex patterns like
-    /// regular expressions.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// Equivalent to [`split`], except that the trailing substring is
     /// skipped if empty.
@@ -3460,8 +3499,11 @@ impl str {
     /// If `n` substrings are returned, the last substring (the `n`th substring)
     /// will contain the remainder of the string.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3510,8 +3552,11 @@ impl str {
     /// If `n` substrings are returned, the last substring (the `n`th substring)
     /// will contain the remainder of the string.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3555,8 +3600,11 @@ impl str {
     /// An iterator over the disjoint matches of a pattern within the given string
     /// slice.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3591,8 +3639,11 @@ impl str {
     /// An iterator over the disjoint matches of a pattern within this string slice,
     /// yielded in reverse order.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3632,8 +3683,11 @@ impl str {
     /// For matches of `pat` within `self` that overlap, only the indices
     /// corresponding to the first match are returned.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines
-    /// if a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3674,8 +3728,11 @@ impl str {
     /// For matches of `pat` within `self` that overlap, only the indices
     /// corresponding to the last match are returned.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if a
-    /// character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3892,8 +3949,11 @@ impl str {
     /// Returns a string slice with all prefixes and suffixes that match a
     /// pattern repeatedly removed.
     ///
-    /// The pattern can be a [`char`] or a closure that determines if a
-    /// character matches.
+    /// The [pattern] can be a [`char`], a slice of [`char`]s, or a function
+    /// or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3937,8 +3997,11 @@ impl str {
     /// Returns a string slice with all prefixes that match a pattern
     /// repeatedly removed.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -3979,31 +4042,24 @@ impl str {
     ///
     /// If the string does not start with `prefix`, `None` is returned.
     ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
+    ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_strip)]
-    ///
-    /// assert_eq!("foobar".strip_prefix("foo"), Some("bar"));
-    /// assert_eq!("foobar".strip_prefix("bar"), None);
+    /// assert_eq!("foo:bar".strip_prefix("foo:"), Some("bar"));
+    /// assert_eq!("foo:bar".strip_prefix("bar"), None);
     /// assert_eq!("foofoo".strip_prefix("foo"), Some("foo"));
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "str_strip", reason = "newly added", issue = "67302")]
+    #[stable(feature = "str_strip", since = "1.45.0")]
     pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a str> {
-        let mut matcher = prefix.into_searcher(self);
-        if let SearchStep::Match(start, len) = matcher.next() {
-            debug_assert_eq!(
-                start, 0,
-                "The first search step from Searcher \
-                 must include the first character"
-            );
-            // SAFETY: `Searcher` is known to return valid indices.
-            unsafe { Some(self.get_unchecked(len..)) }
-        } else {
-            None
-        }
+        prefix.strip_prefix_of(self)
     }
 
     /// Returns a string slice with the suffix removed.
@@ -4014,42 +4070,38 @@ impl str {
     ///
     /// If the string does not end with `suffix`, `None` is returned.
     ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
+    ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_strip)]
-    /// assert_eq!("barfoo".strip_suffix("foo"), Some("bar"));
-    /// assert_eq!("barfoo".strip_suffix("bar"), None);
+    /// assert_eq!("bar:foo".strip_suffix(":foo"), Some("bar"));
+    /// assert_eq!("bar:foo".strip_suffix("bar"), None);
     /// assert_eq!("foofoo".strip_suffix("foo"), Some("foo"));
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "str_strip", reason = "newly added", issue = "67302")]
+    #[stable(feature = "str_strip", since = "1.45.0")]
     pub fn strip_suffix<'a, P>(&'a self, suffix: P) -> Option<&'a str>
     where
         P: Pattern<'a>,
         <P as Pattern<'a>>::Searcher: ReverseSearcher<'a>,
     {
-        let mut matcher = suffix.into_searcher(self);
-        if let SearchStep::Match(start, end) = matcher.next_back() {
-            debug_assert_eq!(
-                end,
-                self.len(),
-                "The first search step from ReverseSearcher \
-                 must include the last character"
-            );
-            // SAFETY: `Searcher` is known to return valid indices.
-            unsafe { Some(self.get_unchecked(..start)) }
-        } else {
-            None
-        }
+        suffix.strip_suffix_of(self)
     }
 
     /// Returns a string slice with all suffixes that match a pattern
     /// repeatedly removed.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that
-    /// determines if a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4094,10 +4146,11 @@ impl str {
     /// Returns a string slice with all prefixes that match a pattern
     /// repeatedly removed.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4130,10 +4183,11 @@ impl str {
     /// Returns a string slice with all suffixes that match a pattern
     /// repeatedly removed.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that
-    /// determines if a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4517,7 +4571,7 @@ pub struct SplitAsciiWhitespace<'a> {
 ///
 /// [`split_inclusive`]: ../../std/primitive.str.html#method.split_inclusive
 /// [`str`]: ../../std/primitive.str.html
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 pub struct SplitInclusive<'a, P: Pattern<'a>>(SplitInternal<'a, P>);
 
 impl_fn_for_zst! {
@@ -4610,7 +4664,7 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl FusedIterator for SplitAsciiWhitespace<'_> {}
 
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
     type Item = &'a str;
 
@@ -4620,7 +4674,7 @@ impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitInclusive").field("0", &self.0).finish()
@@ -4628,14 +4682,14 @@ impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a,
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitInclusive<'a, P> {
     fn clone(&self) -> Self {
         SplitInclusive(self.0.clone())
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     for SplitInclusive<'a, P>
 {
@@ -4645,7 +4699,7 @@ impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
 
 /// An iterator of [`u16`] over the string encoded as UTF-16.

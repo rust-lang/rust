@@ -1,0 +1,24 @@
+error: this loop could be written as a `while let` loop
+  --> $DIR/ice-360.rs:5:5
+   |
+LL | /     loop {
+LL | |         let _ = match iter.next() {
+LL | |             Some(ele) => ele,
+LL | |             None => break,
+LL | |         };
+LL | |         loop {}
+LL | |     }
+   | |_____^ help: try: `while let Some(ele) = iter.next() { .. }`
+   |
+   = note: `-D clippy::while-let-loop` implied by `-D warnings`
+
+error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
+  --> $DIR/ice-360.rs:10:9
+   |
+LL |         loop {}
+   |         ^^^^^^^
+   |
+   = note: `-D clippy::empty-loop` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+

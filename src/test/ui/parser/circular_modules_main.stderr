@@ -1,8 +1,20 @@
 error: circular modules: $DIR/circular_modules_hello.rs -> $DIR/circular_modules_main.rs -> $DIR/circular_modules_hello.rs
-  --> $DIR/circular_modules_main.rs:2:5
+  --> $DIR/circular_modules_main.rs:2:1
    |
 LL | mod circular_modules_hello;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0425]: cannot find function `say_hello` in module `circular_modules_hello`
+  --> $DIR/circular_modules_main.rs:9:29
+   |
+LL |     circular_modules_hello::say_hello();
+   |                             ^^^^^^^^^ not found in `circular_modules_hello`
+   |
+help: consider importing this function
+   |
+LL | use circular_modules_hello::say_hello;
+   |
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

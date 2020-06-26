@@ -1,7 +1,7 @@
 use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::DefId;
 use crate::hir::{self, HirId, PatKind};
-use rustc_ast::ast;
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use std::iter::{Enumerate, ExactSizeIterator};
@@ -62,8 +62,9 @@ impl hir::Pat<'_> {
         match self.kind {
             PatKind::Lit(_)
             | PatKind::Range(..)
-            | PatKind::Path(hir::QPath::Resolved(Some(..), _))
-            | PatKind::Path(hir::QPath::TypeRelative(..)) => true,
+            | PatKind::Path(hir::QPath::Resolved(Some(..), _) | hir::QPath::TypeRelative(..)) => {
+                true
+            }
 
             PatKind::Path(hir::QPath::Resolved(_, ref path))
             | PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..)
@@ -78,7 +79,7 @@ impl hir::Pat<'_> {
 
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
-    pub fn each_binding(&self, mut f: impl FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident)) {
+    pub fn each_binding(&self, mut f: impl FnMut(hir::BindingAnnotation, HirId, Span, Ident)) {
         self.walk_always(|p| {
             if let PatKind::Binding(binding_mode, _, ident, _) = p.kind {
                 f(binding_mode, p.hir_id, p.span, ident);
@@ -92,7 +93,7 @@ impl hir::Pat<'_> {
     /// When encountering an or-pattern `p_0 | ... | p_n` only `p_0` will be visited.
     pub fn each_binding_or_first(
         &self,
-        f: &mut impl FnMut(hir::BindingAnnotation, HirId, Span, ast::Ident),
+        f: &mut impl FnMut(hir::BindingAnnotation, HirId, Span, Ident),
     ) {
         self.walk(|p| match &p.kind {
             PatKind::Or(ps) => {
@@ -139,10 +140,14 @@ impl hir::Pat<'_> {
         satisfies
     }
 
-    pub fn simple_ident(&self) -> Option<ast::Ident> {
+    pub fn simple_ident(&self) -> Option<Ident> {
         match self.kind {
-            PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, None)
-            | PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, None) => Some(ident),
+            PatKind::Binding(
+                hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Mutable,
+                _,
+                ident,
+                None,
+            ) => Some(ident),
             _ => None,
         }
     }
@@ -155,8 +160,8 @@ impl hir::Pat<'_> {
             PatKind::Path(hir::QPath::Resolved(_, path))
             | PatKind::TupleStruct(hir::QPath::Resolved(_, path), ..)
             | PatKind::Struct(hir::QPath::Resolved(_, path), ..) => {
-                if let Res::Def(DefKind::Variant, id)
-                | Res::Def(DefKind::Ctor(CtorOf::Variant, ..), id) = path.res
+                if let Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), id) =
+                    path.res
                 {
                     variants.push(id);
                 }

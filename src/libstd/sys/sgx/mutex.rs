@@ -75,7 +75,7 @@ impl ReentrantMutex {
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {}
+    pub unsafe fn init(&self) {}
 
     #[inline]
     pub unsafe fn lock(&self) {

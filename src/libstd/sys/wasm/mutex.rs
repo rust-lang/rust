@@ -47,11 +47,11 @@ impl Mutex {
 pub struct ReentrantMutex {}
 
 impl ReentrantMutex {
-    pub unsafe fn uninitialized() -> ReentrantMutex {
+    pub const unsafe fn uninitialized() -> ReentrantMutex {
         ReentrantMutex {}
     }
 
-    pub unsafe fn init(&mut self) {}
+    pub unsafe fn init(&self) {}
 
     pub unsafe fn lock(&self) {}
 

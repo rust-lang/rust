@@ -1,5 +1,4 @@
 #![crate_name = "compiletest"]
-#![feature(vec_remove_item)]
 #![deny(warnings)]
 // The `test` crate is the only unstable feature
 // allowed here, just to share similar code.
@@ -10,8 +9,6 @@ extern crate test;
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, Pretty, TestPaths};
 use crate::util::logv;
-use env_logger;
-use getopts;
 use getopts::Options;
 use log::*;
 use std::env;
@@ -347,7 +344,10 @@ pub fn run_tests(config: Config) {
         Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
         Err(e) => {
-            println!("I/O failure during tests: {:?}", e);
+            // We don't know if tests passed or not, but if there was an error
+            // during testing we don't want to just suceeed (we may not have
+            // tested something), so fail.
+            panic!("I/O failure during tests: {:?}", e);
         }
     }
 }
@@ -449,15 +449,8 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
 pub fn make_tests(config: &Config, tests: &mut Vec<test::TestDescAndFn>) {
     debug!("making tests from {:?}", config.src_base.display());
     let inputs = common_inputs_stamp(config);
-    collect_tests_from_dir(
-        config,
-        &config.src_base,
-        &config.src_base,
-        &PathBuf::new(),
-        &inputs,
-        tests,
-    )
-    .expect(&format!("Could not read tests from {}", config.src_base.display()));
+    collect_tests_from_dir(config, &config.src_base, &PathBuf::new(), &inputs, tests)
+        .expect(&format!("Could not read tests from {}", config.src_base.display()));
 }
 
 /// Returns a stamp constructed from input files common to all test cases.
@@ -468,11 +461,13 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
 
     // Relevant pretty printer files
     let pretty_printer_files = [
-        "src/etc/debugger_pretty_printers_common.py",
+        "src/etc/rust_types.py",
         "src/etc/gdb_load_rust_pretty_printers.py",
-        "src/etc/gdb_rust_pretty_printing.py",
+        "src/etc/gdb_lookup.py",
+        "src/etc/gdb_providers.py",
         "src/etc/lldb_batchmode.py",
-        "src/etc/lldb_rust_formatters.py",
+        "src/etc/lldb_lookup.py",
+        "src/etc/lldb_providers.py",
     ];
     for file in &pretty_printer_files {
         let path = rust_src_dir.join(file);
@@ -494,7 +489,6 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
 
 fn collect_tests_from_dir(
     config: &Config,
-    base: &Path,
     dir: &Path,
     relative_dir_path: &Path,
     inputs: &Stamp,
@@ -538,14 +532,7 @@ fn collect_tests_from_dir(
             let relative_file_path = relative_dir_path.join(file.file_name());
             if &file_name != "auxiliary" {
                 debug!("found directory: {:?}", file_path.display());
-                collect_tests_from_dir(
-                    config,
-                    base,
-                    &file_path,
-                    &relative_file_path,
-                    inputs,
-                    tests,
-                )?;
+                collect_tests_from_dir(config, &file_path, &relative_file_path, inputs, tests)?;
             }
         } else {
             debug!("found other file/directory: {:?}", file_path.display());
@@ -846,12 +833,28 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
     // GDB versions look like this: "major.minor.patch?.yyyymmdd?", with both
     // of the ? sections being optional
 
-    // We will parse up to 3 digits for minor and patch, ignoring the date
-    // We limit major to 1 digit, otherwise, on openSUSE, we parse the openSUSE version
+    // We will parse up to 3 digits for each component, ignoring the date
+
+    // We skip text in parentheses.  This avoids accidentally parsing
+    // the openSUSE version, which looks like:
+    //  GNU gdb (GDB; openSUSE Leap 15.0) 8.1
+    // This particular form is documented in the GNU coding standards:
+    // https://www.gnu.org/prep/standards/html_node/_002d_002dversion.html#g_t_002d_002dversion
 
     // don't start parsing in the middle of a number
     let mut prev_was_digit = false;
+    let mut in_parens = false;
     for (pos, c) in full_version_line.char_indices() {
+        if in_parens {
+            if c == ')' {
+                in_parens = false;
+            }
+            continue;
+        } else if c == '(' {
+            in_parens = true;
+            continue;
+        }
+
         if prev_was_digit || !c.is_digit(10) {
             prev_was_digit = c.is_digit(10);
             continue;
@@ -891,7 +894,7 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
             None => (line, None),
         };
 
-        if major.len() != 1 || minor.is_empty() {
+        if minor.is_empty() {
             continue;
         }
 

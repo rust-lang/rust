@@ -1,17 +1,16 @@
-error[E0308]: `match` arms have incompatible types
-  --> $DIR/old-lub-glb-object.rs:12:14
+error[E0308]: mismatched types
+  --> $DIR/old-lub-glb-object.rs:7:13
    |
 LL |       let z = match 22 {
-   |  _____________-
+   |  _____________^
+LL | |
 LL | |         0 => x,
-   | |              - this is found to be of type `&dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
 LL | |         _ => y,
-   | |              ^ expected bound lifetime parameter 'a, found concrete lifetime
 LL | |     };
-   | |_____- `match` arms have incompatible types
+   | |_____^ one type is more general than the other
    |
-   = note:   expected type `&dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
-           found reference `&dyn for<'a> Foo<&'a u8, &'a u8>`
+   = note: expected trait object `dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
+              found trait object `dyn for<'a> Foo<&'a u8, &'a u8>`
 
 error: aborting due to previous error
 

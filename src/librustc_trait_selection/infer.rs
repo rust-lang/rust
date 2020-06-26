@@ -1,14 +1,14 @@
 use crate::traits::query::outlives_bounds::InferCtxtExt as _;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
 
-use rustc::arena::ArenaAllocatable;
-use rustc::infer::canonical::{Canonical, CanonicalizedQueryResponse, QueryResponse};
-use rustc::middle::lang_items;
-use rustc::traits::query::Fallible;
-use rustc::ty::{self, Ty, TypeFoldable};
 use rustc_hir as hir;
+use rustc_hir::lang_items;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::traits::ObligationCause;
+use rustc_middle::arena::ArenaAllocatable;
+use rustc_middle::infer::canonical::{Canonical, CanonicalizedQueryResponse, QueryResponse};
+use rustc_middle::traits::query::Fallible;
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt::Debug;
@@ -43,8 +43,8 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     ) -> bool {
         let ty = self.resolve_vars_if_possible(&ty);
 
-        if !(param_env, ty).has_local_value() {
-            return ty.is_copy_modulo_regions(self.tcx, param_env, span);
+        if !(param_env, ty).needs_infer() {
+            return ty.is_copy_modulo_regions(self.tcx.at(span), param_env);
         }
 
         let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
@@ -90,7 +90,7 @@ pub trait InferCtxtBuilderExt<'tcx> {
     where
         K: TypeFoldable<'tcx>,
         R: Debug + TypeFoldable<'tcx>,
-        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable;
+        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>;
 }
 
 impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
@@ -118,7 +118,7 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
     where
         K: TypeFoldable<'tcx>,
         R: Debug + TypeFoldable<'tcx>,
-        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable,
+        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
     {
         self.enter_with_canonical(
             DUMMY_SP,

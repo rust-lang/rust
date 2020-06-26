@@ -36,8 +36,6 @@
 //! Once stack has been unwound down to the handler frame level, unwinding stops
 //! and the last personality routine transfers control to the catch block.
 
-#![allow(private_no_mangle_fns)]
-
 use alloc::boxed::Box;
 use core::any::Any;
 
@@ -311,18 +309,6 @@ unsafe fn find_eh_action(
         get_data_start: &|| uw::_Unwind_GetDataRelBase(context),
     };
     eh::find_eh_action(lsda, &eh_context, foreign_exception)
-}
-
-#[cfg(all(
-    bootstrap,
-    target_os = "windows",
-    any(target_arch = "x86", target_arch = "x86_64"),
-    target_env = "gnu"
-))]
-#[lang = "eh_unwind_resume"]
-#[unwind(allowed)]
-unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
-    uw::_Unwind_Resume(panic_ctx as *mut uw::_Unwind_Exception);
 }
 
 // Frame unwind info registration

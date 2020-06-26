@@ -1,7 +1,5 @@
 #![allow(overflowing_literals)]
 
-use std::{f32, f64, i64};
-
 mod parse;
 mod rawfp;
 

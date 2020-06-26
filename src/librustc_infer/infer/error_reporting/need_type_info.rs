@@ -1,58 +1,69 @@
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
-use rustc::hir::map::Map;
-use rustc::ty::print::Print;
-use rustc::ty::{self, DefIdTree, Infer, Ty, TyVar};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, Pat};
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::print::Print;
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
 use std::borrow::Cow;
 
-struct FindLocalByTypeVisitor<'a, 'tcx> {
+struct FindHirNodeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    target_ty: Ty<'tcx>,
-    hir_map: Map<'tcx>,
+    target: GenericArg<'tcx>,
+    target_span: Span,
+    found_node_ty: Option<Ty<'tcx>>,
     found_local_pattern: Option<&'tcx Pat<'tcx>>,
     found_arg_pattern: Option<&'tcx Pat<'tcx>>,
-    found_ty: Option<Ty<'tcx>>,
-    found_closure: Option<&'tcx ExprKind<'tcx>>,
+    found_closure: Option<&'tcx Expr<'tcx>>,
     found_method_call: Option<&'tcx Expr<'tcx>>,
+    found_exact_method_call: Option<&'tcx Expr<'tcx>>,
 }
 
-impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target_ty: Ty<'tcx>, hir_map: Map<'tcx>) -> Self {
+impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
+    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target: GenericArg<'tcx>, target_span: Span) -> Self {
         Self {
             infcx,
-            target_ty,
-            hir_map,
+            target,
+            target_span,
+            found_node_ty: None,
             found_local_pattern: None,
             found_arg_pattern: None,
-            found_ty: None,
             found_closure: None,
             found_method_call: None,
+            found_exact_method_call: None,
         }
     }
 
-    fn node_matches_type(&mut self, hir_id: HirId) -> Option<Ty<'tcx>> {
+    fn node_ty_contains_target(&mut self, hir_id: HirId) -> Option<Ty<'tcx>> {
         let ty_opt =
             self.infcx.in_progress_tables.and_then(|tables| tables.borrow().node_type_opt(hir_id));
         match ty_opt {
             Some(ty) => {
                 let ty = self.infcx.resolve_vars_if_possible(&ty);
-                if ty.walk().any(|inner_ty| {
-                    inner_ty == self.target_ty
-                        || match (&inner_ty.kind, &self.target_ty.kind) {
-                            (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
-                                .infcx
-                                .inner
-                                .borrow_mut()
-                                .type_variables
-                                .sub_unified(a_vid, b_vid),
+                if ty.walk().any(|inner| {
+                    inner == self.target
+                        || match (inner.unpack(), self.target.unpack()) {
+                            (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
+                                match (&inner_ty.kind, &target_ty.kind) {
+                                    (
+                                        &ty::Infer(ty::TyVar(a_vid)),
+                                        &ty::Infer(ty::TyVar(b_vid)),
+                                    ) => self
+                                        .infcx
+                                        .inner
+                                        .borrow_mut()
+                                        .type_variables()
+                                        .sub_unified(a_vid, b_vid),
+                                    _ => false,
+                                }
+                            }
                             _ => false,
                         }
                 }) {
@@ -66,36 +77,63 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.hir_map)
+        NestedVisitorMap::OnlyBodies(self.infcx.tcx.hir())
     }
 
     fn visit_local(&mut self, local: &'tcx Local<'tcx>) {
-        if let (None, Some(ty)) = (self.found_local_pattern, self.node_matches_type(local.hir_id)) {
+        if let (None, Some(ty)) =
+            (self.found_local_pattern, self.node_ty_contains_target(local.hir_id))
+        {
+            // FIXME: There's a trade-off here - we can either check that our target span
+            // is contained in `local.span` or not. If we choose to check containment
+            // we can avoid some spurious suggestions (see #72690), but we lose
+            // the ability to report on things like:
+            //
+            // ```
+            // let x = vec![];
+            // ```
+            //
+            // because the target span will be in the macro expansion of `vec![]`.
+            // At present we choose not to check containment.
             self.found_local_pattern = Some(&*local.pat);
-            self.found_ty = Some(ty);
+            self.found_node_ty = Some(ty);
         }
         intravisit::walk_local(self, local);
     }
 
     fn visit_body(&mut self, body: &'tcx Body<'tcx>) {
         for param in body.params {
-            if let (None, Some(ty)) = (self.found_arg_pattern, self.node_matches_type(param.hir_id))
+            if let (None, Some(ty)) =
+                (self.found_arg_pattern, self.node_ty_contains_target(param.hir_id))
             {
-                self.found_arg_pattern = Some(&*param.pat);
-                self.found_ty = Some(ty);
+                if self.target_span.contains(param.pat.span) {
+                    self.found_arg_pattern = Some(&*param.pat);
+                    self.found_node_ty = Some(ty);
+                }
             }
         }
         intravisit::walk_body(self, body);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if self.node_matches_type(expr.hir_id).is_some() {
+        if let ExprKind::MethodCall(_, call_span, exprs, _) = expr.kind {
+            if call_span == self.target_span
+                && Some(self.target)
+                    == self.infcx.in_progress_tables.and_then(|tables| {
+                        tables.borrow().node_type_opt(exprs.first().unwrap().hir_id).map(Into::into)
+                    })
+            {
+                self.found_exact_method_call = Some(&expr);
+                return;
+            }
+        }
+        if self.node_ty_contains_target(expr.hir_id).is_some() {
             match expr.kind {
-                ExprKind::Closure(..) => self.found_closure = Some(&expr.kind),
+                ExprKind::Closure(..) => self.found_closure = Some(&expr),
                 ExprKind::MethodCall(..) => self.found_method_call = Some(&expr),
                 _ => {}
             }
@@ -147,8 +185,19 @@ fn closure_args(fn_sig: &ty::PolyFnSig<'_>) -> String {
 }
 
 pub enum TypeAnnotationNeeded {
+    /// ```compile_fail,E0282
+    /// let x = "hello".chars().rev().collect();
+    /// ```
     E0282,
+    /// An implementation cannot be chosen unambiguously because of lack of information.
+    /// ```compile_fail,E0283
+    /// let _ = Default::default();
+    /// ```
     E0283,
+    /// ```compile_fail,E0284
+    /// let mut d: u64 = 2;
+    /// d = d % 1u32.into();
+    /// ```
     E0284,
 }
 
@@ -169,7 +218,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         highlight: Option<ty::print::RegionHighlightMode>,
     ) -> (String, Option<Span>, Cow<'static, str>, Option<String>, Option<&'static str>) {
         if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind {
-            let ty_vars = &self.inner.borrow().type_variables;
+            let mut inner = self.inner.borrow_mut();
+            let ty_vars = &inner.type_variables();
             let var_origin = ty_vars.var_origin(ty_vid);
             if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) = var_origin.kind {
                 let parent_def_id = def_id.and_then(|def_id| self.tcx.parent(def_id));
@@ -182,12 +232,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         .get_opt_name()
                         .map(|parent_symbol| parent_symbol.to_string());
 
-                    let type_parent_desc = self
-                        .tcx
-                        .def_kind(parent_def_id)
-                        .map(|parent_def_kind| parent_def_kind.descr(parent_def_id));
-
-                    (parent_name, type_parent_desc)
+                    (parent_name, Some(self.tcx.def_kind(parent_def_id).descr(parent_def_id)))
                 } else {
                     (None, None)
                 };
@@ -213,6 +258,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         (s, None, ty.prefix_string(), None, None)
     }
 
+    // FIXME(eddyb) generalize all of this to handle `ty::Const` inference variables as well.
     pub fn need_type_info_err(
         &self,
         body_id: Option<hir::BodyId>,
@@ -223,11 +269,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let (name, name_sp, descr, parent_name, parent_descr) = self.extract_type_name(&ty, None);
 
-        let mut local_visitor = FindLocalByTypeVisitor::new(&self, ty, self.tcx.hir());
+        let mut local_visitor = FindHirNodeVisitor::new(&self, ty.into(), span);
         let ty_to_string = |ty: Ty<'tcx>| -> String {
             let mut s = String::new();
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
-            let ty_vars = &self.inner.borrow().type_variables;
+            let mut inner = self.inner.borrow_mut();
+            let ty_vars = inner.type_variables();
             let getter = move |ty_vid| {
                 let var_origin = ty_vars.var_origin(ty_vid);
                 if let TypeVariableOriginKind::TypeParameterDefinition(name, _) = var_origin.kind {
@@ -236,7 +283,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 None
             };
             printer.name_resolver = Some(Box::new(&getter));
-            let _ = ty.print(printer);
+            let _ = if let ty::FnDef(..) = ty.kind {
+                // We don't want the regular output for `fn`s because it includes its path in
+                // invalid pseudo-syntax, we want the `fn`-pointer output instead.
+                ty.fn_sig(self.tcx).print(printer)
+            } else {
+                ty.print(printer)
+            };
             s
         };
 
@@ -254,7 +307,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // 3 |     let _ = x.sum() as f64;
             //   |               ^^^ cannot infer type for `S`
             span
-        } else if let Some(ExprKind::MethodCall(_, call_span, _)) =
+        } else if let Some(ExprKind::MethodCall(_, call_span, _, _)) =
             local_visitor.found_method_call.map(|e| &e.kind)
         {
             // Point at the call instead of the whole expression:
@@ -276,14 +329,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings)
         };
 
-        let ty_msg = match local_visitor.found_ty {
-            Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
-                let fn_sig = substs.as_closure().sig(*def_id, self.tcx);
+        let ty_msg = match (local_visitor.found_node_ty, local_visitor.found_exact_method_call) {
+            (_, Some(_)) => String::new(),
+            (Some(ty::TyS { kind: ty::Closure(_, substs), .. }), _) => {
+                let fn_sig = substs.as_closure().sig();
                 let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
                 format!(" for the closure `fn({}) -> {}`", args, ret)
             }
-            Some(ty) if is_named_and_not_impl_trait(ty) => {
+            (Some(ty), _) if is_named_and_not_impl_trait(ty) => {
                 let ty = ty_to_string(ty);
                 format!(" for `{}`", ty)
             }
@@ -310,28 +364,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             error_code,
         );
 
-        let suffix = match local_visitor.found_ty {
-            Some(ty::TyS { kind: ty::Closure(def_id, substs), .. }) => {
-                let fn_sig = substs.as_closure().sig(*def_id, self.tcx);
+        let suffix = match local_visitor.found_node_ty {
+            Some(ty::TyS { kind: ty::Closure(_, substs), .. }) => {
+                let fn_sig = substs.as_closure().sig();
                 let ret = fn_sig.output().skip_binder().to_string();
 
-                if let Some(ExprKind::Closure(_, decl, body_id, ..)) = local_visitor.found_closure {
-                    if let Some(body) = self.tcx.hir().krate().bodies.get(body_id) {
-                        closure_return_type_suggestion(
-                            span,
-                            &mut err,
-                            &decl.output,
-                            &body,
-                            &descr,
-                            &name,
-                            &ret,
-                            parent_name,
-                            parent_descr,
-                        );
-                        // We don't want to give the other suggestions when the problem is the
-                        // closure return type.
-                        return err;
-                    }
+                let closure_decl_and_body_id =
+                    local_visitor.found_closure.and_then(|closure| match &closure.kind {
+                        ExprKind::Closure(_, decl, body_id, ..) => Some((decl, *body_id)),
+                        _ => None,
+                    });
+
+                if let Some((decl, body_id)) = closure_decl_and_body_id {
+                    closure_return_type_suggestion(
+                        span,
+                        &mut err,
+                        &decl.output,
+                        self.tcx.hir().body(body_id),
+                        &descr,
+                        &name,
+                        &ret,
+                        parent_name,
+                        parent_descr,
+                    );
+                    // We don't want to give the other suggestions when the problem is the
+                    // closure return type.
+                    return err;
                 }
 
                 // This shouldn't be reachable, but just in case we leave a reasonable fallback.
@@ -355,7 +413,37 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => "a type".to_string(),
         };
 
-        if let Some(pattern) = local_visitor.found_arg_pattern {
+        if let Some(e) = local_visitor.found_exact_method_call {
+            if let ExprKind::MethodCall(segment, ..) = &e.kind {
+                // Suggest specifying type params or point out the return type of the call:
+                //
+                // error[E0282]: type annotations needed
+                //   --> $DIR/type-annotations-needed-expr.rs:2:39
+                //    |
+                // LL |     let _ = x.into_iter().sum() as f64;
+                //    |                           ^^^
+                //    |                           |
+                //    |                           cannot infer type for `S`
+                //    |                           help: consider specifying the type argument in
+                //    |                           the method call: `sum::<S>`
+                //    |
+                //    = note: type must be known at this point
+                //
+                // or
+                //
+                // error[E0282]: type annotations needed
+                //   --> $DIR/issue-65611.rs:59:20
+                //    |
+                // LL |     let x = buffer.last().unwrap().0.clone();
+                //    |             -------^^^^--
+                //    |             |      |
+                //    |             |      cannot infer type for `T`
+                //    |             this method call resolves to `std::option::Option<&T>`
+                //    |
+                //    = note: type must be known at this point
+                self.annotate_method_call(segment, e, &mut err);
+            }
+        } else if let Some(pattern) = local_visitor.found_arg_pattern {
             // We don't want to show the default label for closures.
             //
             // So, before clearing, the output would look something like this:
@@ -454,6 +542,36 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err
     }
 
+    // FIXME(const_generics): We should either try and merge this with `need_type_info_err`
+    // or improve the errors created here.
+    //
+    // Unlike for type inference variables, we don't yet store the origin of const inference variables.
+    // This is needed for to get a more relevant error span.
+    pub fn need_type_info_err_const(
+        &self,
+        body_id: Option<hir::BodyId>,
+        span: Span,
+        ct: &'tcx ty::Const<'tcx>,
+        error_code: TypeAnnotationNeeded,
+    ) -> DiagnosticBuilder<'tcx> {
+        let mut local_visitor = FindHirNodeVisitor::new(&self, ct.into(), span);
+        if let Some(body_id) = body_id {
+            let expr = self.tcx.hir().expect_expr(body_id.hir_id);
+            local_visitor.visit_expr(expr);
+        }
+
+        let error_code = error_code.into();
+        let mut err = self.tcx.sess.struct_span_err_with_code(
+            local_visitor.target_span,
+            "type annotations needed",
+            error_code,
+        );
+
+        err.note("unable to infer the value of a const parameter");
+
+        err
+    }
+
     /// If the `FnSig` for the method call can be found and type arguments are identified as
     /// needed, suggest annotating the call, otherwise point out the resulting type of the call.
     fn annotate_method_call(
@@ -462,24 +580,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         e: &Expr<'_>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
-        if let (Ok(snippet), Some(tables), None) = (
-            self.tcx.sess.source_map().span_to_snippet(segment.ident.span),
-            self.in_progress_tables,
-            &segment.args,
-        ) {
+        if let (Some(tables), None) = (self.in_progress_tables, &segment.args) {
             let borrow = tables.borrow();
             if let Some((DefKind::AssocFn, did)) = borrow.type_dependent_def(e.hir_id) {
                 let generics = self.tcx.generics_of(did);
                 if !generics.params.is_empty() {
-                    err.span_suggestion(
-                        segment.ident.span,
+                    err.span_suggestion_verbose(
+                        segment.ident.span.shrink_to_hi(),
                         &format!(
                             "consider specifying the type argument{} in the method call",
-                            if generics.params.len() > 1 { "s" } else { "" },
+                            pluralize!(generics.params.len()),
                         ),
                         format!(
-                            "{}::<{}>",
-                            snippet,
+                            "::<{}>",
                             generics
                                 .params
                                 .iter()
@@ -495,7 +608,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let output = bound_output.skip_binder();
                     err.span_label(e.span, &format!("this method call resolves to `{:?}`", output));
                     let kind = &output.kind;
-                    if let ty::Projection(proj) | ty::UnnormalizedProjection(proj) = kind {
+                    if let ty::Projection(proj) = kind {
                         if let Some(span) = self.tcx.hir().span_if_local(proj.item_def_id) {
                             err.span_label(span, &format!("`{:?}` defined here", output));
                         }

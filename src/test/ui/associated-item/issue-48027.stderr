@@ -22,7 +22,7 @@ LL |     fn return_n(&self) -> [u8; Bar::X];
    |                                cannot infer type
    |                                help: use the fully qualified path to an implementation: `<Type as Bar>::X`
    |
-   = note: cannot resolve `_: Bar`
+   = note: cannot satisfy `_: Bar`
    = note: associated constants cannot be accessed directly on a `trait`, they can only be accessed through a specific `impl`
 
 error: aborting due to 2 previous errors

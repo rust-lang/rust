@@ -6,3 +6,5 @@ LL | #![macro_escape]
    |
    = help: try an outer attribute: `#[macro_use]`
 
+warning: 1 warning emitted
+

@@ -1,5 +1,4 @@
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc::ty;
 use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_errors::Applicability;
@@ -7,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{GenericParamKind, PatKind};
+use rustc_middle::ty;
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, BytePos, Span};
 use rustc_target::spec::abi::Abi;
@@ -343,7 +343,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::TraitItem<'_>) {
-        if let hir::TraitItemKind::Fn(_, hir::TraitMethod::Required(pnames)) = item.kind {
+        if let hir::TraitItemKind::Fn(_, hir::TraitFn::Required(pnames)) = item.kind {
             self.check_snake_case(cx, "trait method", &item.ident);
             for param_name in pnames {
                 self.check_snake_case(cx, "variable", param_name);

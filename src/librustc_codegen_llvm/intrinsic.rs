@@ -2,31 +2,32 @@ use crate::abi::{Abi, FnAbi, LlvmType, PassMode};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm;
-use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
-use rustc::ty::layout::{self, FnAbiExt, HasTyCtxt, LayoutOf, Primitive};
-use rustc::ty::{self, Ty};
-use rustc::{bug, span_bug};
+
+use log::debug;
+
 use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
+use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_hir as hir;
-use rustc_target::abi::HasDataLayout;
-
-use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
-use rustc_codegen_ssa::traits::*;
-
+use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
+use rustc_middle::ty::{self, Ty};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
+use rustc_target::abi::{self, HasDataLayout, LayoutOf, Primitive};
+use rustc_target::spec::PanicStrategy;
 
 use std::cmp::Ordering;
-use std::{i128, iter, u128};
+use std::iter;
 
 fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
     let llvm_name = match name {
@@ -87,6 +88,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
+        caller_instance: ty::Instance<'tcx>,
     ) {
         let tcx = self.tcx;
         let callee_ty = instance.monomorphic_ty(tcx);
@@ -137,6 +139,22 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 let llfn = self.get_intrinsic(&("llvm.debugtrap"));
                 self.call(llfn, &[], None)
             }
+            "count_code_region" => {
+                // FIXME(richkadel): The current implementation assumes the MIR for the given
+                // caller_instance represents a single function. Validate and/or correct if inlining
+                // and/or monomorphization invalidates these assumptions.
+                let coverage_data = tcx.coverage_data(caller_instance.def_id());
+                let mangled_fn = tcx.symbol_name(caller_instance);
+                let (mangled_fn_name, _len_val) = self.const_str(mangled_fn.name);
+                let hash = self.const_u64(coverage_data.hash);
+                let num_counters = self.const_u32(coverage_data.num_counters);
+                let index = args[0].immediate();
+                debug!(
+                    "count_code_region to LLVM intrinsic instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
+                    mangled_fn.name, hash, num_counters, index
+                );
+                self.instrprof_increment(mangled_fn_name, hash, num_counters, index)
+            }
             "va_start" => self.va_start(args[0].immediate()),
             "va_end" => self.va_end(args[0].immediate()),
             "va_copy" => {
@@ -145,7 +163,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             "va_arg" => {
                 match fn_abi.ret.layout.abi {
-                    layout::Abi::Scalar(ref scalar) => {
+                    abi::Abi::Scalar(ref scalar) => {
                         match scalar.value {
                             Primitive::Int(..) => {
                                 if self.cx().size_of(ret_ty).bytes() < 4 {
@@ -189,32 +207,14 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             "size_of" | "pref_align_of" | "min_align_of" | "needs_drop" | "type_id"
             | "type_name" => {
-                let ty_name = self
+                let value = self
                     .tcx
                     .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
                     .unwrap();
-                OperandRef::from_const(self, ty_name, ret_ty).immediate_or_packed_pair(self)
+                OperandRef::from_const(self, value, ret_ty).immediate_or_packed_pair(self)
             }
-            "init" => {
-                let ty = substs.type_at(0);
-                if !self.layout_of(ty).is_zst() {
-                    // Just zero out the stack slot.
-                    // If we store a zero constant, LLVM will drown in vreg allocation for large
-                    // data structures, and the generated code will be awful. (A telltale sign of
-                    // this is large quantities of `mov [byte ptr foo],0` in the generated code.)
-                    memset_intrinsic(
-                        self,
-                        false,
-                        ty,
-                        llresult,
-                        self.const_u8(0),
-                        self.const_usize(1),
-                    );
-                }
-                return;
-            }
-            // Effectively no-ops
-            "uninit" | "forget" => {
+            // Effectively no-op
+            "forget" => {
                 return;
             }
             "offset" => {
@@ -480,46 +480,14 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             let is_add = name == "saturating_add";
                             let lhs = args[0].immediate();
                             let rhs = args[1].immediate();
-                            if llvm_util::get_major_version() >= 8 {
-                                let llvm_name = &format!(
-                                    "llvm.{}{}.sat.i{}",
-                                    if signed { 's' } else { 'u' },
-                                    if is_add { "add" } else { "sub" },
-                                    width
-                                );
-                                let llfn = self.get_intrinsic(llvm_name);
-                                self.call(llfn, &[lhs, rhs], None)
-                            } else {
-                                let llvm_name = &format!(
-                                    "llvm.{}{}.with.overflow.i{}",
-                                    if signed { 's' } else { 'u' },
-                                    if is_add { "add" } else { "sub" },
-                                    width
-                                );
-                                let llfn = self.get_intrinsic(llvm_name);
-                                let pair = self.call(llfn, &[lhs, rhs], None);
-                                let val = self.extract_value(pair, 0);
-                                let overflow = self.extract_value(pair, 1);
-                                let llty = self.type_ix(width);
-
-                                let limit = if signed {
-                                    let limit_lo = self
-                                        .const_uint_big(llty, (i128::MIN >> (128 - width)) as u128);
-                                    let limit_hi = self
-                                        .const_uint_big(llty, (i128::MAX >> (128 - width)) as u128);
-                                    let neg = self.icmp(
-                                        IntPredicate::IntSLT,
-                                        val,
-                                        self.const_uint(llty, 0),
-                                    );
-                                    self.select(neg, limit_hi, limit_lo)
-                                } else if is_add {
-                                    self.const_uint_big(llty, u128::MAX >> (128 - width))
-                                } else {
-                                    self.const_uint(llty, 0)
-                                };
-                                self.select(overflow, limit, val)
-                            }
+                            let llvm_name = &format!(
+                                "llvm.{}{}.sat.i{}",
+                                if signed { 's' } else { 'u' },
+                                if is_add { "add" } else { "sub" },
+                                width
+                            );
+                            let llfn = self.get_intrinsic(llvm_name);
+                            self.call(llfn, &[lhs, rhs], None)
                         }
                         _ => bug!(),
                     },
@@ -562,13 +530,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
 
-            "float_to_int_approx_unchecked" => {
+            "float_to_int_unchecked" => {
                 if float_type_width(arg_tys[0]).is_none() {
                     span_invalid_monomorphization_error(
                         tcx.sess,
                         span,
                         &format!(
-                            "invalid monomorphization of `float_to_int_approx_unchecked` \
+                            "invalid monomorphization of `float_to_int_unchecked` \
                                   intrinsic: expected basic float type, \
                                   found `{}`",
                             arg_tys[0]
@@ -589,7 +557,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             tcx.sess,
                             span,
                             &format!(
-                                "invalid monomorphization of `float_to_int_approx_unchecked` \
+                                "invalid monomorphization of `float_to_int_unchecked` \
                                       intrinsic:  expected basic integer type, \
                                       found `{}`",
                                 ret_ty
@@ -600,7 +568,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
 
-            "discriminant_value" => args[0].deref(self.cx()).codegen_get_discr(self, ret_ty),
+            "discriminant_value" => {
+                if ret_ty.is_integral() {
+                    args[0].deref(self.cx()).codegen_get_discr(self, ret_ty)
+                } else {
+                    span_bug!(span, "Invalid discriminant type for `{:?}`", arg_tys[0])
+                }
+            }
 
             name if name.starts_with("simd_") => {
                 match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
@@ -750,6 +724,16 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 return;
             }
 
+            "ptr_guaranteed_eq" | "ptr_guaranteed_ne" => {
+                let a = args[0].immediate();
+                let b = args[1].immediate();
+                if name == "ptr_guaranteed_eq" {
+                    self.icmp(IntPredicate::IntEQ, a, b)
+                } else {
+                    self.icmp(IntPredicate::IntNE, a, b)
+                }
+            }
+
             "ptr_offset_from" => {
                 let ty = substs.type_at(0);
                 let pointee_size = self.size_of(ty);
@@ -856,7 +840,7 @@ fn try_intrinsic(
     catch_func: &'ll Value,
     dest: &'ll Value,
 ) {
-    if bx.sess().no_landing_pads() {
+    if bx.sess().panic_strategy() == PanicStrategy::Abort {
         bx.call(try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
@@ -1190,8 +1174,8 @@ fn generic_simd_intrinsic(
         let m_len = match in_ty.kind {
             // Note that this `.unwrap()` crashes for isize/usize, that's sort
             // of intentional as there's not currently a use case for that.
-            ty::Int(i) => i.bit_width().unwrap() as u64,
-            ty::Uint(i) => i.bit_width().unwrap() as u64,
+            ty::Int(i) => i.bit_width().unwrap(),
+            ty::Uint(i) => i.bit_width().unwrap(),
             _ => return_error!("`{}` is not an integral type", in_ty),
         };
         require_simd!(arg_tys[1], "argument");
@@ -1372,20 +1356,18 @@ fn generic_simd_intrinsic(
         // trailing bits.
         let expected_int_bits = in_len.max(8);
         match ret_ty.kind {
-            ty::Uint(i) if i.bit_width() == Some(expected_int_bits as usize) => (),
+            ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => (),
             _ => return_error!("bitmask `{}`, expected `u{}`", ret_ty, expected_int_bits),
         }
 
         // Integer vector <i{in_bitwidth} x in_len>:
         let (i_xn, in_elem_bitwidth) = match in_elem.kind {
-            ty::Int(i) => (
-                args[0].immediate(),
-                i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits() as _),
-            ),
-            ty::Uint(i) => (
-                args[0].immediate(),
-                i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits() as _),
-            ),
+            ty::Int(i) => {
+                (args[0].immediate(), i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits()))
+            }
+            ty::Uint(i) => {
+                (args[0].immediate(), i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits()))
+            }
             _ => return_error!(
                 "vector argument `{}`'s element type `{}`, expected integer element type",
                 in_ty,
@@ -1396,22 +1378,22 @@ fn generic_simd_intrinsic(
         // Shift the MSB to the right by "in_elem_bitwidth - 1" into the first bit position.
         let shift_indices =
             vec![
-                bx.cx.const_int(bx.type_ix(in_elem_bitwidth as _), (in_elem_bitwidth - 1) as _);
+                bx.cx.const_int(bx.type_ix(in_elem_bitwidth), (in_elem_bitwidth - 1) as _);
                 in_len as _
             ];
         let i_xn_msb = bx.lshr(i_xn, bx.const_vector(shift_indices.as_slice()));
         // Truncate vector to an <i1 x N>
-        let i1xn = bx.trunc(i_xn_msb, bx.type_vector(bx.type_i1(), in_len as _));
+        let i1xn = bx.trunc(i_xn_msb, bx.type_vector(bx.type_i1(), in_len));
         // Bitcast <i1 x N> to iN:
-        let i_ = bx.bitcast(i1xn, bx.type_ix(in_len as _));
+        let i_ = bx.bitcast(i1xn, bx.type_ix(in_len));
         // Zero-extend iN to the bitmask type:
-        return Ok(bx.zext(i_, bx.type_ix(expected_int_bits as _)));
+        return Ok(bx.zext(i_, bx.type_ix(expected_int_bits)));
     }
 
     fn simd_simple_float_intrinsic(
         name: &str,
-        in_elem: &::rustc::ty::TyS<'_>,
-        in_ty: &::rustc::ty::TyS<'_>,
+        in_elem: &::rustc_middle::ty::TyS<'_>,
+        in_ty: &::rustc_middle::ty::TyS<'_>,
         in_len: u64,
         bx: &mut Builder<'a, 'll, 'tcx>,
         span: Span,
@@ -1680,7 +1662,7 @@ fn generic_simd_intrinsic(
                 llvm_elem_vec_ty,
             ),
         );
-        llvm::SetUnnamedAddr(f, false);
+        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[args[1].immediate(), alignment, mask, args[0].immediate()], None);
         return Ok(v);
     }
@@ -1802,7 +1784,7 @@ fn generic_simd_intrinsic(
             &llvm_intrinsic,
             bx.type_func(&[llvm_elem_vec_ty, llvm_pointer_vec_ty, alignment_ty, mask_ty], ret_t),
         );
-        llvm::SetUnnamedAddr(f, false);
+        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[args[0].immediate(), args[1].immediate(), alignment, mask], None);
         return Ok(v);
     }
@@ -2101,7 +2083,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
         let f = bx.declare_cfn(&llvm_intrinsic, bx.type_func(&[vec_ty, vec_ty], vec_ty));
-        llvm::SetUnnamedAddr(f, false);
+        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         let v = bx.call(f, &[lhs, rhs], None);
         return Ok(v);
     }
@@ -2117,7 +2099,7 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
     match ty.kind {
         ty::Int(t) => Some((
             match t {
-                ast::IntTy::Isize => cx.tcx.sess.target.ptr_width as u64,
+                ast::IntTy::Isize => u64::from(cx.tcx.sess.target.ptr_width),
                 ast::IntTy::I8 => 8,
                 ast::IntTy::I16 => 16,
                 ast::IntTy::I32 => 32,
@@ -2128,7 +2110,7 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
         )),
         ty::Uint(t) => Some((
             match t {
-                ast::UintTy::Usize => cx.tcx.sess.target.ptr_width as u64,
+                ast::UintTy::Usize => u64::from(cx.tcx.sess.target.ptr_width),
                 ast::UintTy::U8 => 8,
                 ast::UintTy::U16 => 16,
                 ast::UintTy::U32 => 32,
@@ -2145,7 +2127,7 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
 // Returns None if the type is not a float
 fn float_type_width(ty: Ty<'_>) -> Option<u64> {
     match ty.kind {
-        ty::Float(t) => Some(t.bit_width() as u64),
+        ty::Float(t) => Some(t.bit_width()),
         _ => None,
     }
 }

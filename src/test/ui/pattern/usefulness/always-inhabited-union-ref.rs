@@ -21,7 +21,7 @@ fn uninhab_union() -> Foo {
 
 fn match_on_uninhab() {
     match uninhab_ref() {
-        //~^ ERROR non-exhaustive patterns: type `&'static !` is non-empty
+        //~^ ERROR non-exhaustive patterns: type `&!` is non-empty
     }
 
     match uninhab_union() {

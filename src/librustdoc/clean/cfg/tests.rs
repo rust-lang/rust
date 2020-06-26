@@ -3,7 +3,7 @@ use super::*;
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::with_default_globals;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
 
 fn word_cfg(s: &str) -> Cfg {

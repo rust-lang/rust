@@ -6,9 +6,9 @@
 //! other phases of the compiler, which are generally required to hold in order
 //! to compile the program at all.
 //!
-//! Most lints can be written as `LintPass` instances. These run after
+//! Most lints can be written as [LintPass] instances. These run after
 //! all other analyses. The `LintPass`es built into rustc are defined
-//! within `rustc_session::lint::builtin`,
+//! within [rustc_session::lint::builtin],
 //! which has further comments on how to add such a lint.
 //! rustc can also load user-defined lint plugins via the plugin mechanism.
 //!
@@ -19,7 +19,7 @@
 //! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
 //! in `context.rs`.
 //!
-//! Some code also exists in `rustc_session::lint`, `rustc::lint`.
+//! Some code also exists in [rustc_session::lint], [rustc_middle::lint].
 //!
 //! ## Note
 //!
@@ -30,12 +30,14 @@
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
+#![feature(iter_order_by)]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_session;
 
@@ -53,15 +55,17 @@ mod redundant_semicolon;
 mod types;
 mod unused;
 
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
     BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
-    INTRA_DOC_LINK_RESOLUTION_FAILURE, MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
+    INTRA_DOC_LINK_RESOLUTION_FAILURE, INVALID_CODEBLOCK_ATTRIBUTE, MISSING_DOC_CODE_EXAMPLES,
+    PRIVATE_DOC_TESTS,
 };
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
@@ -88,7 +92,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers { lint_mod, ..*providers };
 }
 
-fn lint_mod(tcx: TyCtxt<'_>, module_def_id: DefId) {
+fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     late::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
@@ -104,6 +108,7 @@ macro_rules! early_lint_passes {
             $args,
             [
                 UnusedParens: UnusedParens,
+                UnusedBraces: UnusedBraces,
                 UnusedImportBraces: UnusedImportBraces,
                 UnsafeCode: UnsafeCode,
                 AnonymousParameters: AnonymousParameters,
@@ -150,6 +155,7 @@ macro_rules! late_lint_passes {
                 // and change this to a module lint pass
                 MissingDebugImplementations: MissingDebugImplementations::default(),
                 ArrayIntoIter: ArrayIntoIter,
+                ClashingExternDecl: ClashingExternDecl::new(),
             ]
         );
     };
@@ -161,7 +167,8 @@ macro_rules! late_lint_mod_passes {
             $args,
             [
                 HardwiredLints: HardwiredLints,
-                ImproperCTypes: ImproperCTypes,
+                ImproperCTypesDeclarations: ImproperCTypesDeclarations,
+                ImproperCTypesDefinitions: ImproperCTypesDefinitions,
                 VariantSizeDifferences: VariantSizeDifferences,
                 BoxPointers: BoxPointers,
                 PathStatements: PathStatements,
@@ -275,6 +282,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_FEATURES,
         UNUSED_LABELS,
         UNUSED_PARENS,
+        UNUSED_BRACES,
         REDUNDANT_SEMICOLONS
     );
 
@@ -296,6 +304,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     add_lint_group!(
         "rustdoc",
         INTRA_DOC_LINK_RESOLUTION_FAILURE,
+        INVALID_CODEBLOCK_ATTRIBUTE,
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS
     );

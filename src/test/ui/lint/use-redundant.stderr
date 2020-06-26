@@ -25,3 +25,5 @@ LL | use crate::foo::Bar;
 LL |     use crate::foo::Bar;
    |         ^^^^^^^^^^^^^^^
 
+warning: 3 warnings emitted
+

@@ -4,13 +4,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL | impl<'a, T> Trait<'a, T> for usize {
    |          - help: consider adding an explicit lifetime bound...: `T: 'a`
 LL |     type Out = &'a T;
-   |     ^^^^^^^^^^^^^^^^^
-   |
-note: ...so that the reference type `&'a T` does not outlive the data it points at
-  --> $DIR/regions-struct-not-wf.rs:13:5
-   |
-LL |     type Out = &'a T;
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^ ...so that the reference type `&'a T` does not outlive the data it points at
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/regions-struct-not-wf.rs:21:5
@@ -18,13 +12,7 @@ error[E0309]: the parameter type `T` may not live long enough
 LL | impl<'a, T> Trait<'a, T> for u32 {
    |          - help: consider adding an explicit lifetime bound...: `T: 'a`
 LL |     type Out = RefOk<'a, T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: ...so that the type `T` will meet its required lifetime bounds
-  --> $DIR/regions-struct-not-wf.rs:21:5
-   |
-LL |     type Out = RefOk<'a, T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
 
 error[E0491]: in type `&'a &'b T`, reference has a longer lifetime than the data it references
   --> $DIR/regions-struct-not-wf.rs:25:5

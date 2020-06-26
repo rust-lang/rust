@@ -8,18 +8,18 @@
 struct Paramd<'a> { x: &'a usize }
 
 fn call2<'a, 'b>(a: &'a usize, b: &'b usize) {
-    let z: Option<&'b &'a usize> = None;//[migrate]~ ERROR E0623
+    let z: Option<&'b &'a usize> = None;//[migrate]~ ERROR E0491
     //[nll]~^ ERROR lifetime may not live long enough
 }
 
 fn call3<'a, 'b>(a: &'a usize, b: &'b usize) {
     let y: Paramd<'a> = Paramd { x: a };
-    let z: Option<&'b Paramd<'a>> = None;//[migrate]~ ERROR E0623
+    let z: Option<&'b Paramd<'a>> = None;//[migrate]~ ERROR E0491
     //[nll]~^ ERROR lifetime may not live long enough
 }
 
 fn call4<'a, 'b>(a: &'a usize, b: &'b usize) {
-    let z: Option<&'a &'b usize> = None;//[migrate]~ ERROR E0623
+    let z: Option<&'a &'b usize> = None;//[migrate]~ ERROR E0491
     //[nll]~^ ERROR lifetime may not live long enough
 }
 

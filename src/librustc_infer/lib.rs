@@ -16,7 +16,12 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(const_fn)]
+#![feature(const_if_match)]
+#![feature(const_panic)]
+#![feature(extend_one)]
 #![feature(never_type)]
+#![feature(or_patterns)]
 #![feature(range_is_empty)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
@@ -30,7 +35,7 @@ extern crate rustc_data_structures;
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 
 pub mod infer;
 pub mod traits;

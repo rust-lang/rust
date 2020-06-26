@@ -1,0 +1,13 @@
+[package]
+name = "cargo_common_metadata"
+version = "0.1.0"
+publish = false
+authors = ["Random person from the Internet <someone@someplace.org>"]
+description = "A test package for the cargo_common_metadata lint"
+repository = "https://github.com/someone/cargo_common_metadata"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["metadata", "lint", "clippy"]
+categories = ["development-tools::testing"]
+
+[workspace]

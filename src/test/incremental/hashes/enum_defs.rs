@@ -26,7 +26,7 @@
 enum EnumVisibility { A }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 pub enum EnumVisibility {
     A
@@ -42,7 +42,7 @@ enum EnumChangeNameCStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeNameCStyleVariant {
     Variant1,
@@ -59,7 +59,7 @@ enum EnumChangeNameTupleStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeNameTupleStyleVariant {
     Variant1,
@@ -76,7 +76,7 @@ enum EnumChangeNameStructStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeNameStructStyleVariant {
     Variant1,
@@ -93,7 +93,7 @@ enum EnumChangeValueCStyleVariant0 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeValueCStyleVariant0 {
     Variant1,
@@ -109,7 +109,7 @@ enum EnumChangeValueCStyleVariant1 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeValueCStyleVariant1 {
     Variant1,
@@ -125,7 +125,7 @@ enum EnumAddCStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddCStyleVariant {
     Variant1,
@@ -142,7 +142,7 @@ enum EnumRemoveCStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumRemoveCStyleVariant {
     Variant1,
@@ -157,7 +157,7 @@ enum EnumAddTupleStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddTupleStyleVariant {
     Variant1,
@@ -174,7 +174,7 @@ enum EnumRemoveTupleStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumRemoveTupleStyleVariant {
     Variant1,
@@ -189,7 +189,7 @@ enum EnumAddStructStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddStructStyleVariant {
     Variant1,
@@ -206,7 +206,7 @@ enum EnumRemoveStructStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumRemoveStructStyleVariant {
     Variant1,
@@ -221,7 +221,7 @@ enum EnumChangeFieldTypeTupleStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeFieldTypeTupleStyleVariant {
     Variant1(u32,
@@ -238,7 +238,7 @@ enum EnumChangeFieldTypeStructStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeFieldTypeStructStyleVariant {
     Variant1,
@@ -257,7 +257,7 @@ enum EnumChangeFieldNameStructStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeFieldNameStructStyleVariant {
     Variant1 { a: u32, c: u32 },
@@ -272,7 +272,7 @@ enum EnumChangeOrderTupleStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeOrderTupleStyleVariant {
     Variant1(
@@ -289,7 +289,7 @@ enum EnumChangeFieldOrderStructStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumChangeFieldOrderStructStyleVariant {
     Variant1 { b: f32, a: u32 },
@@ -304,7 +304,7 @@ enum EnumAddFieldTupleStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddFieldTupleStyleVariant {
     Variant1(u32, u32, u32),
@@ -319,7 +319,7 @@ enum EnumAddFieldStructStyleVariant {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumAddFieldStructStyleVariant {
     Variant1 { a: u32, b: u32, c: u32 },
@@ -335,7 +335,7 @@ enum EnumAddMustUse {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 #[must_use]
 enum EnumAddMustUse {
@@ -353,7 +353,7 @@ enum EnumAddReprC {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,type_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail3")]
 #[repr(C)]
 enum EnumAddReprC {
@@ -531,7 +531,7 @@ enum EnumSwapUsageTypeParameters<A, B> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumSwapUsageTypeParameters<A, B> {
     Variant1 {
@@ -552,7 +552,7 @@ enum EnumSwapUsageLifetimeParameters<'a, 'b> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 enum EnumSwapUsageLifetimeParameters<'a, 'b> {
     Variant1 {
@@ -577,7 +577,7 @@ mod change_field_type_indirectly_tuple_style {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as FieldType;
 
-    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
+    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
     #[rustc_clean(cfg="cfail3")]
     enum TupleStyle {
         Variant1(
@@ -595,7 +595,7 @@ mod change_field_type_indirectly_struct_style {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as FieldType;
 
-    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items")]
+    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
     #[rustc_clean(cfg="cfail3")]
     enum StructStyle {
         Variant1 {
@@ -618,7 +618,7 @@ mod change_trait_bound_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,predicates_of")]
+    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,predicates_of")]
     #[rustc_clean(cfg="cfail3")]
     enum Enum<T: Trait> {
         Variant1(T)
@@ -634,7 +634,7 @@ mod change_trait_bound_indirectly_where {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_items,predicates_of")]
+    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,predicates_of")]
     #[rustc_clean(cfg="cfail3")]
     enum Enum<T> where T: Trait {
         Variant1(T)

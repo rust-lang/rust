@@ -1,7 +1,7 @@
 use crate::fmt;
 use crate::ops::Try;
 
-use super::super::{DoubleEndedIterator, FusedIterator, Iterator};
+use super::super::{DoubleEndedIterator, Fuse, FusedIterator, Iterator};
 use super::Map;
 
 /// An iterator that maps each element to an iterator, and yields the elements
@@ -239,14 +239,17 @@ where
 /// this type.
 #[derive(Clone, Debug)]
 struct FlattenCompat<I, U> {
-    iter: I,
+    iter: Fuse<I>,
     frontiter: Option<U>,
     backiter: Option<U>,
 }
-impl<I, U> FlattenCompat<I, U> {
+impl<I, U> FlattenCompat<I, U>
+where
+    I: Iterator,
+{
     /// Adapts an iterator by flattening it, for use in `flatten()` and `flat_map()`.
     fn new(iter: I) -> FlattenCompat<I, U> {
-        FlattenCompat { iter, frontiter: None, backiter: None }
+        FlattenCompat { iter: iter.fuse(), frontiter: None, backiter: None }
     }
 }
 
@@ -261,8 +264,9 @@ where
     fn next(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.frontiter {
-                if let elt @ Some(_) = inner.next() {
-                    return elt;
+                match inner.next() {
+                    None => self.frontiter = None,
+                    elt @ Some(_) => return elt,
                 }
             }
             match self.iter.next() {
@@ -348,8 +352,9 @@ where
     fn next_back(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.backiter {
-                if let elt @ Some(_) = inner.next_back() {
-                    return elt;
+                match inner.next_back() {
+                    None => self.backiter = None,
+                    elt @ Some(_) => return elt,
                 }
             }
             match self.iter.next_back() {

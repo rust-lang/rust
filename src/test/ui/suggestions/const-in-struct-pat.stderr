@@ -9,7 +9,11 @@ LL |     let Thing { foo } = t;
    |                 |
    |                 expected struct `std::string::String`, found struct `foo`
    |                 `foo` is interpreted as a unit struct, not a new binding
-   |                 help: bind the struct field to a different name instead: `foo: other_foo`
+   |
+help: bind the struct field to a different name instead
+   |
+LL |     let Thing { foo: other_foo } = t;
+   |                    ^^^^^^^^^^^
 
 error: aborting due to previous error
 

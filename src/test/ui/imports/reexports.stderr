@@ -14,25 +14,35 @@ error[E0603]: module import `foo` is private
   --> $DIR/reexports.rs:33:15
    |
 LL |     use b::a::foo::S;
-   |               ^^^ this module import is private
+   |               ^^^ private module import
    |
-note: the module import `foo` is defined here
+note: the module import `foo` is defined here...
   --> $DIR/reexports.rs:21:17
    |
 LL |         pub use super::foo; // This is OK since the value `foo` is visible enough.
    |                 ^^^^^^^^^^
+note: ...and refers to the module `foo` which is defined here
+  --> $DIR/reexports.rs:16:5
+   |
+LL |     mod foo {
+   |     ^^^^^^^
 
 error[E0603]: module import `foo` is private
   --> $DIR/reexports.rs:34:15
    |
 LL |     use b::b::foo::S as T;
-   |               ^^^ this module import is private
+   |               ^^^ private module import
    |
-note: the module import `foo` is defined here
+note: the module import `foo` is defined here...
   --> $DIR/reexports.rs:26:17
    |
 LL |         pub use super::*; // This is also OK since the value `foo` is visible enough.
    |                 ^^^^^^^^
+note: ...and refers to the module `foo` which is defined here
+  --> $DIR/reexports.rs:16:5
+   |
+LL |     mod foo {
+   |     ^^^^^^^
 
 warning: glob import doesn't reexport anything because no candidate is public enough
   --> $DIR/reexports.rs:9:17
@@ -46,7 +56,7 @@ note: the lint level is defined here
 LL | #![warn(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0364, E0603.
 For more information about an error, try `rustc --explain E0364`.

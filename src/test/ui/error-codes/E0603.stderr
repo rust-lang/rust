@@ -2,7 +2,7 @@ error[E0603]: constant `PRIVATE` is private
   --> $DIR/E0603.rs:6:17
    |
 LL |     SomeModule::PRIVATE;
-   |                 ^^^^^^^ this constant is private
+   |                 ^^^^^^^ private constant
    |
 note: the constant `PRIVATE` is defined here
   --> $DIR/E0603.rs:2:5

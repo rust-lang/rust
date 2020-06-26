@@ -5,6 +5,7 @@ use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::layout;
 use crate::html::render::{Error, SharedContext, BASIC_KEYWORDS};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileName;
 use std::ffi::OsStr;
 use std::fs;
@@ -37,8 +38,8 @@ impl<'a> DocFolder for SourceCollector<'a> {
         if self.scx.include_sources
             // skip all synthetic "files"
             && item.source.filename.is_real()
-            // skip non-local items
-            && item.def_id.is_local()
+            // skip non-local files
+            && item.source.cnum == LOCAL_CRATE
         {
             // If it turns out that we couldn't read this file, then we probably
             // can't read any of the files (generating html output from json or
@@ -66,10 +67,10 @@ impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &FileName) -> Result<(), Error> {
         let p = match *filename {
-            FileName::Real(ref file) => file,
+            FileName::Real(ref file) => file.local_path().to_path_buf(),
             _ => return Ok(()),
         };
-        if self.scx.local_sources.contains_key(&**p) {
+        if self.scx.local_sources.contains_key(&*p) {
             // We've already emitted this source
             return Ok(());
         }
@@ -125,7 +126,7 @@ impl<'a> SourceCollector<'a> {
             &self.scx.themes,
         );
         self.scx.fs.write(&cur, v.as_bytes())?;
-        self.scx.local_sources.insert(p.clone(), href);
+        self.scx.local_sources.insert(p, href);
         Ok(())
     }
 }

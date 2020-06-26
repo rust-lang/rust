@@ -62,3 +62,5 @@ LL |     'lt: loop { break; }
 LL |     'lt: while let Some(_) = None::<i32> { break; }
    |     ^^^ lifetime 'lt already in scope
 
+warning: 8 warnings emitted
+

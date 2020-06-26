@@ -2,7 +2,7 @@ error[E0277]: the trait bound `C: std::marker::Copy` is not satisfied
   --> $DIR/deriving-copyclone.rs:31:13
    |
 LL | fn is_copy<T: Copy>(_: T) {}
-   |    -------    ---- required by this bound in `is_copy`
+   |               ---- required by this bound in `is_copy`
 ...
 LL |     is_copy(B { a: 1, b: C });
    |             ^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ error[E0277]: the trait bound `C: std::clone::Clone` is not satisfied
   --> $DIR/deriving-copyclone.rs:32:14
    |
 LL | fn is_clone<T: Clone>(_: T) {}
-   |    --------    ----- required by this bound in `is_clone`
+   |                ----- required by this bound in `is_clone`
 ...
 LL |     is_clone(B { a: 1, b: C });
    |              ^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ error[E0277]: the trait bound `D: std::marker::Copy` is not satisfied
   --> $DIR/deriving-copyclone.rs:35:13
    |
 LL | fn is_copy<T: Copy>(_: T) {}
-   |    -------    ---- required by this bound in `is_copy`
+   |               ---- required by this bound in `is_copy`
 ...
 LL |     is_copy(B { a: 1, b: D });
    |             ^^^^^^^^^^^^^^^^

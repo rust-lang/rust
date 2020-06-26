@@ -15,12 +15,13 @@
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
 use crate::hair::{self, *};
-use rustc::mir::interpret::truncate;
-use rustc::mir::Place;
-use rustc::ty;
-use rustc::ty::layout::{Integer, IntegerExt, Size};
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::RangeEnd;
+use rustc_middle::mir::interpret::truncate;
+use rustc_middle::mir::Place;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::IntegerExt;
+use rustc_target::abi::{Integer, Size};
 
 use std::mem;
 
@@ -128,7 +129,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Ok(())
             }
 
-            PatKind::Binding { name, mutability, mode, var, ty, ref subpattern } => {
+            PatKind::Binding { name, mutability, mode, var, ty, ref subpattern, is_primary: _ } => {
                 candidate.bindings.push(Binding {
                     name,
                     mutability,
@@ -159,13 +160,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     ty::Int(ity) => {
                         let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
-                        let max = truncate(u128::max_value(), size);
+                        let max = truncate(u128::MAX, size);
                         let bias = 1u128 << (size.bits() - 1);
                         (Some((0, max, size)), bias)
                     }
                     ty::Uint(uty) => {
                         let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
-                        let max = truncate(u128::max_value(), size);
+                        let max = truncate(u128::MAX, size);
                         (Some((0, max, size)), 0)
                     }
                     _ => (None, 0),
@@ -209,7 +210,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     i == variant_index || {
                         self.hir.tcx().features().exhaustive_patterns
                             && !v
-                                .uninhabited_from(self.hir.tcx(), substs, adt_def.adt_kind())
+                                .uninhabited_from(
+                                    self.hir.tcx(),
+                                    substs,
+                                    adt_def.adt_kind(),
+                                    self.hir.param_env,
+                                )
                                 .is_empty()
                     }
                 }) && (adt_def.did.is_local()

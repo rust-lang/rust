@@ -12,7 +12,7 @@ rustc_index::newtype_index! {
 rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeId);
 
 /// `NodeId` used to represent the root of the crate.
-pub const CRATE_NODE_ID: NodeId = NodeId::from_u32_const(0);
+pub const CRATE_NODE_ID: NodeId = NodeId::from_u32(0);
 
 /// When parsing and doing expansions, we initially give all AST nodes this AST
 /// node value. Then later, in the renumber pass, we renumber them to have

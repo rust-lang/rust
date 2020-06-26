@@ -2,15 +2,23 @@ use super::write::WriteBackendMethods;
 use super::CodegenObject;
 use crate::ModuleCodegen;
 
-use rustc::middle::cstore::EncodedMetadata;
-use rustc::session::{config, Session};
-use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyLayout};
-use rustc::ty::Ty;
-use rustc::ty::TyCtxt;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_errors::ErrorReported;
+use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoaderDyn};
+use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_session::{
+    config::{self, OutputFilenames, PrintRequest},
+    Session,
+};
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::LayoutOf;
 
+pub use rustc_data_structures::sync::MetadataRef;
+
+use std::any::Any;
 use std::sync::Arc;
 
 pub trait BackendTypes {
@@ -28,13 +36,57 @@ pub trait BackendTypes {
 }
 
 pub trait Backend<'tcx>:
-    Sized + BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+    Sized + BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
 {
 }
 
 impl<'tcx, T> Backend<'tcx> for T where
-    Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+    Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
 {
+}
+
+pub trait CodegenBackend {
+    fn init(&self, _sess: &Session) {}
+    fn print(&self, _req: PrintRequest, _sess: &Session) {}
+    fn target_features(&self, _sess: &Session) -> Vec<Symbol> {
+        vec![]
+    }
+    fn print_passes(&self) {}
+    fn print_version(&self) {}
+
+    fn metadata_loader(&self) -> Box<MetadataLoaderDyn>;
+    fn provide(&self, _providers: &mut Providers<'_>);
+    fn provide_extern(&self, _providers: &mut Providers<'_>);
+    fn codegen_crate<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        metadata: EncodedMetadata,
+        need_metadata_module: bool,
+    ) -> Box<dyn Any>;
+
+    /// This is called on the returned `Box<dyn Any>` from `codegen_backend`
+    ///
+    /// # Panics
+    ///
+    /// Panics when the passed `Box<dyn Any>` was not returned by `codegen_backend`.
+    fn join_codegen(
+        &self,
+        ongoing_codegen: Box<dyn Any>,
+        sess: &Session,
+        dep_graph: &DepGraph,
+    ) -> Result<Box<dyn Any>, ErrorReported>;
+
+    /// This is called on the returned `Box<dyn Any>` from `join_codegen`
+    ///
+    /// # Panics
+    ///
+    /// Panics when the passed `Box<dyn Any>` was not returned by `join_codegen`.
+    fn link(
+        &self,
+        sess: &Session,
+        codegen_results: Box<dyn Any>,
+        outputs: &OutputFilenames,
+    ) -> Result<(), ErrorReported>;
 }
 
 pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Send + Sync {
@@ -58,14 +110,10 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64);
-    // If find_features is true this won't access `sess.crate_types` by assuming
-    // that `is_pie_binary` is false. When we discover LLVM target features
-    // `sess.crate_types` is uninitialized so we cannot access it.
     fn target_machine_factory(
         &self,
         sess: &Session,
         opt_level: config::OptLevel,
-        find_features: bool,
     ) -> Arc<dyn Fn() -> Result<Self::TargetMachine, String> + Send + Sync>;
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str;
 }

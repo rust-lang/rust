@@ -1,7 +1,6 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ptr;
 use crate::sys_common::alloc::{realloc_fallback, MIN_ALIGN};
-use libc;
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {
@@ -10,7 +9,7 @@ unsafe impl GlobalAlloc for System {
         if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
             libc::malloc(layout.size()) as *mut u8
         } else {
-            libc::aligned_alloc(layout.size(), layout.align()) as *mut u8
+            libc::aligned_alloc(layout.align(), layout.size()) as *mut u8
         }
     }
 

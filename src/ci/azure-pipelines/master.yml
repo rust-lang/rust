@@ -1,3 +1,14 @@
+#####################################
+##    READ BEFORE CHANGING THIS    ##
+#####################################
+
+# We're in the process of evaluating GitHub Actions as a possible replacement
+# for Azure Pipelines, and at the moment the configuration is duplicated
+# between the two CI providers. Be sure to also change the configuration in
+# src/ci/github-actions when changing this file.
+
+#####################################
+
 #
 # Azure Pipelines job to publish toolstate. Only triggers on pushes to master.
 #

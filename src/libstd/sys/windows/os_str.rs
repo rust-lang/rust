@@ -77,7 +77,19 @@ impl Buf {
     }
 
     pub fn as_slice(&self) -> &Slice {
+        // Safety: Slice is just a wrapper for Wtf8,
+        // and self.inner.as_slice() returns &Wtf8.
+        // Therefore, transmuting &Wtf8 to &Slice is safe.
         unsafe { mem::transmute(self.inner.as_slice()) }
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut Slice {
+        // Safety: Slice is just a wrapper for Wtf8,
+        // and self.inner.as_mut_slice() returns &mut Wtf8.
+        // Therefore, transmuting &mut Wtf8 to &mut Slice is safe.
+        // Additionally, care should be taken to ensure the slice
+        // is always valid Wtf8.
+        unsafe { mem::transmute(self.inner.as_mut_slice()) }
     }
 
     pub fn into_string(self) -> Result<String, Buf> {
@@ -147,6 +159,10 @@ impl Slice {
         Buf { inner: buf }
     }
 
+    pub fn clone_into(&self, buf: &mut Buf) {
+        self.inner.clone_into(&mut buf.inner)
+    }
+
     #[inline]
     pub fn into_box(&self) -> Box<Slice> {
         unsafe { mem::transmute(self.inner.into_box()) }
@@ -166,5 +182,35 @@ impl Slice {
     pub fn into_rc(&self) -> Rc<Slice> {
         let rc = self.inner.into_rc();
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
+    }
+
+    #[inline]
+    pub fn make_ascii_lowercase(&mut self) {
+        self.inner.make_ascii_lowercase()
+    }
+
+    #[inline]
+    pub fn make_ascii_uppercase(&mut self) {
+        self.inner.make_ascii_uppercase()
+    }
+
+    #[inline]
+    pub fn to_ascii_lowercase(&self) -> Buf {
+        Buf { inner: self.inner.to_ascii_lowercase() }
+    }
+
+    #[inline]
+    pub fn to_ascii_uppercase(&self) -> Buf {
+        Buf { inner: self.inner.to_ascii_uppercase() }
+    }
+
+    #[inline]
+    pub fn is_ascii(&self) -> bool {
+        self.inner.is_ascii()
+    }
+
+    #[inline]
+    pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
+        self.inner.eq_ignore_ascii_case(&other.inner)
     }
 }

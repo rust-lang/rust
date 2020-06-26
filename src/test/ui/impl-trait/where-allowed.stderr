@@ -256,16 +256,16 @@ LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    |                                              ^^^^^^^^^
 
 error: could not find defining uses
-  --> $DIR/where-allowed.rs:155:1
-   |
-LL | type InTypeAlias<R> = impl Debug;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: could not find defining uses
-  --> $DIR/where-allowed.rs:119:5
+  --> $DIR/where-allowed.rs:119:16
    |
 LL |     type Out = impl Debug;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^^^^
+
+error: could not find defining uses
+  --> $DIR/where-allowed.rs:155:23
+   |
+LL | type InTypeAlias<R> = impl Debug;
+   |                       ^^^^^^^^^^
 
 error: aborting due to 42 previous errors
 

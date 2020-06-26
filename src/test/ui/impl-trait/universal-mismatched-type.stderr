@@ -10,8 +10,6 @@ LL |     x
    |
    = note:      expected struct `std::string::String`
            found type parameter `impl Debug`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error: aborting due to previous error
 

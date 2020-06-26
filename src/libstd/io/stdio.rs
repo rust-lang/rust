@@ -6,7 +6,7 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
 use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
-use crate::sync::{Arc, Mutex, MutexGuard};
+use crate::sync::{Arc, Mutex, MutexGuard, Once};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
@@ -88,6 +88,11 @@ impl Read for StdinRaw {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -101,6 +106,11 @@ impl Write for StdoutRaw {
         self.0.write_vectored(bufs)
     }
 
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         self.0.flush()
     }
@@ -112,6 +122,11 @@ impl Write for StderrRaw {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -140,6 +155,14 @@ impl<W: io::Write> io::Write for Maybe<W> {
         }
     }
 
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        match self {
+            Maybe::Real(w) => w.is_write_vectored(),
+            Maybe::Fake => true,
+        }
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             Maybe::Real(ref mut w) => handle_ebadf(w.flush(), ()),
@@ -160,6 +183,14 @@ impl<R: io::Read> io::Read for Maybe<R> {
         match self {
             Maybe::Real(r) => handle_ebadf(r.read_vectored(bufs), 0),
             Maybe::Fake => Ok(0),
+        }
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        match self {
+            Maybe::Real(w) => w.is_read_vectored(),
+            Maybe::Fake => true,
         }
     }
 }
@@ -352,6 +383,10 @@ impl Read for Stdin {
         self.lock().read_vectored(bufs)
     }
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.lock().is_read_vectored()
+    }
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -374,6 +409,11 @@ impl Read for StdinLock<'_> {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
     }
 
     #[inline]
@@ -493,7 +533,11 @@ pub fn stdout() -> Stdout {
             Ok(stdout) => Maybe::Real(stdout),
             _ => Maybe::Fake,
         };
-        Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))))
+        unsafe {
+            let ret = Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))));
+            ret.init();
+            ret
+        }
     }
 }
 
@@ -520,7 +564,7 @@ impl Stdout {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock<'_> {
-        StdoutLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StdoutLock { inner: self.inner.lock() }
     }
 }
 
@@ -539,6 +583,10 @@ impl Write for Stdout {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.lock().write_vectored(bufs)
     }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.lock().is_write_vectored()
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.lock().flush()
     }
@@ -556,6 +604,10 @@ impl Write for StdoutLock<'_> {
     }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.borrow_mut().write_vectored(bufs)
+    }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.inner.borrow_mut().is_write_vectored()
     }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
@@ -581,7 +633,7 @@ impl fmt::Debug for StdoutLock<'_> {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>>,
+    inner: &'static ReentrantMutex<RefCell<Maybe<StderrRaw>>>,
 }
 
 /// A locked reference to the `Stderr` handle.
@@ -639,19 +691,28 @@ pub struct StderrLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
-    return Stderr {
-        inner: unsafe { INSTANCE.get(stderr_init).expect("cannot access stderr during shutdown") },
-    };
+    // Note that unlike `stdout()` we don't use `Lazy` here which registers a
+    // destructor. Stderr is not buffered nor does the `stderr_raw` type consume
+    // any owned resources, so there's no need to run any destructors at some
+    // point in the future.
+    //
+    // This has the added benefit of allowing `stderr` to be usable during
+    // process shutdown as well!
+    static INSTANCE: ReentrantMutex<RefCell<Maybe<StderrRaw>>> =
+        unsafe { ReentrantMutex::new(RefCell::new(Maybe::Fake)) };
 
-    fn stderr_init() -> Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> {
-        // This must not reentrantly access `INSTANCE`
-        let stderr = match stderr_raw() {
-            Ok(stderr) => Maybe::Real(stderr),
-            _ => Maybe::Fake,
-        };
-        Arc::new(ReentrantMutex::new(RefCell::new(stderr)))
-    }
+    // When accessing stderr we need one-time initialization of the reentrant
+    // mutex, followed by one-time detection of whether we actually have a
+    // stderr handle or not. Afterwards we can just always use the now-filled-in
+    // `INSTANCE` value.
+    static INIT: Once = Once::new();
+    INIT.call_once(|| unsafe {
+        INSTANCE.init();
+        if let Ok(stderr) = stderr_raw() {
+            *INSTANCE.lock().borrow_mut() = Maybe::Real(stderr);
+        }
+    });
+    Stderr { inner: &INSTANCE }
 }
 
 impl Stderr {
@@ -677,7 +738,7 @@ impl Stderr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StderrLock<'_> {
-        StderrLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StderrLock { inner: self.inner.lock() }
     }
 }
 
@@ -696,6 +757,10 @@ impl Write for Stderr {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.lock().write_vectored(bufs)
     }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.lock().is_write_vectored()
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.lock().flush()
     }
@@ -713,6 +778,10 @@ impl Write for StderrLock<'_> {
     }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.borrow_mut().write_vectored(bufs)
+    }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.inner.borrow_mut().is_write_vectored()
     }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
@@ -792,10 +861,14 @@ fn print_to<T>(
 {
     let result = local_s
         .try_with(|s| {
-            if let Ok(mut borrowed) = s.try_borrow_mut() {
-                if let Some(w) = borrowed.as_mut() {
-                    return w.write_fmt(args);
-                }
+            // Note that we completely remove a local sink to write to in case
+            // our printing recursively panics/prints, so the recursive
+            // panic/print goes to the global sink instead of our local sink.
+            let prev = s.borrow_mut().take();
+            if let Some(mut w) = prev {
+                let result = w.write_fmt(args);
+                *s.borrow_mut() = Some(w);
+                return result;
             }
             global_s().write_fmt(args)
         })

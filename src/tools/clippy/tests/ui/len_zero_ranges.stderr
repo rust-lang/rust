@@ -1,0 +1,10 @@
+error: length comparison to zero
+  --> $DIR/len_zero_ranges.rs:10:17
+   |
+LL |         let _ = (0..42).len() == 0;
+   |                 ^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `(0..42).is_empty()`
+   |
+   = note: `-D clippy::len-zero` implied by `-D warnings`
+
+error: aborting due to previous error
+

@@ -4,9 +4,9 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use rustc::hir::map::Map;
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
+use rustc_middle::hir::map::Map;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 
 use rustc_ast::ast::{Attribute, NestedMetaItem};
 use rustc_ast::attr;
@@ -14,7 +14,6 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::DUMMY_HIR_ID;
 use rustc_hir::{self, HirId, Item, ItemKind, TraitItem};
 use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
@@ -22,10 +21,13 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
-fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
+pub(crate) fn target_from_impl_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_item: &hir::ImplItem<'_>,
+) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
-        hir::ImplItemKind::Method(..) => {
+        hir::ImplItemKind::Fn(..) => {
             let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
             let containing_item = tcx.hir().expect_item(parent_hir_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
@@ -38,7 +40,7 @@ fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>)
                 Target::Method(MethodKind::Inherent)
             }
         }
-        hir::ImplItemKind::TyAlias(..) | hir::ImplItemKind::OpaqueTy(..) => Target::AssocTy,
+        hir::ImplItemKind::TyAlias(..) => Target::AssocTy,
     }
 }
 
@@ -77,8 +79,8 @@ impl CheckAttrVisitor<'tcx> {
             return;
         }
 
-        if target == Target::Fn {
-            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
+        if matches!(target, Target::Fn | Target::Method(_) | Target::ForeignFn) {
+            self.tcx.ensure().codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
 
         self.check_repr(attrs, span, target, item, hir_id);
@@ -90,8 +92,7 @@ impl CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn
             | Target::Closure
-            | Target::Method(MethodKind::Trait { body: true })
-            | Target::Method(MethodKind::Inherent) => true,
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
                     lint.build("`#[inline]` is ignored on function prototypes").emit()
@@ -141,7 +142,7 @@ impl CheckAttrVisitor<'tcx> {
         target: Target,
     ) -> bool {
         match target {
-            Target::Fn if attr::contains_name(attrs, sym::naked) => {
+            _ if attr::contains_name(attrs, sym::naked) => {
                 struct_span_err!(
                     self.tcx.sess,
                     *attr_span,
@@ -151,17 +152,7 @@ impl CheckAttrVisitor<'tcx> {
                 .emit();
                 false
             }
-            Target::Fn | Target::Method(MethodKind::Inherent) => true,
-            Target::Method(_) => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    *attr_span,
-                    E0738,
-                    "`#[track_caller]` may not be used on trait methods",
-                )
-                .emit();
-                false
-            }
+            Target::Fn | Target::Method(..) | Target::ForeignFn => true,
             _ => {
                 struct_span_err!(
                     self.tcx.sess,
@@ -213,8 +204,7 @@ impl CheckAttrVisitor<'tcx> {
     fn check_target_feature(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
             Target::Fn
-            | Target::Method(MethodKind::Trait { body: true })
-            | Target::Method(MethodKind::Inherent) => true,
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             _ => {
                 self.tcx
                     .sess
@@ -370,7 +360,7 @@ impl CheckAttrVisitor<'tcx> {
         if let hir::StmtKind::Local(ref l) = stmt.kind {
             for attr in l.attrs.iter() {
                 if attr.check_name(sym::inline) {
-                    self.check_inline(DUMMY_HIR_ID, attr, &stmt.span, Target::Statement);
+                    self.check_inline(l.hir_id, attr, &stmt.span, Target::Statement);
                 }
                 if attr.check_name(sym::repr) {
                     self.emit_repr_error(
@@ -391,7 +381,7 @@ impl CheckAttrVisitor<'tcx> {
         };
         for attr in expr.attrs.iter() {
             if attr.check_name(sym::inline) {
-                self.check_inline(DUMMY_HIR_ID, attr, &expr.span, target);
+                self.check_inline(expr.hir_id, attr, &expr.span, target);
             }
             if attr.check_name(sym::repr) {
                 self.emit_repr_error(
@@ -401,6 +391,9 @@ impl CheckAttrVisitor<'tcx> {
                     "not defining a struct, enum, or union",
                 );
             }
+        }
+        if target == Target::Closure {
+            self.tcx.ensure().codegen_fn_attrs(self.tcx.hir().local_def_id(expr.hir_id));
         }
     }
 

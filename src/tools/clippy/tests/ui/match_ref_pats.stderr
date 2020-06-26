@@ -1,0 +1,91 @@
+error: you don't need to add `&` to all patterns
+  --> $DIR/match_ref_pats.rs:6:9
+   |
+LL | /         match v {
+LL | |             &Some(v) => println!("{:?}", v),
+LL | |             &None => println!("none"),
+LL | |         }
+   | |_________^
+   |
+   = note: `-D clippy::match-ref-pats` implied by `-D warnings`
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+   |
+LL |         match *v {
+LL |             Some(v) => println!("{:?}", v),
+LL |             None => println!("none"),
+   |
+
+error: you don't need to add `&` to all patterns
+  --> $DIR/match_ref_pats.rs:17:5
+   |
+LL | /     match tup {
+LL | |         &(v, 1) => println!("{}", v),
+LL | |         _ => println!("none"),
+LL | |     }
+   | |_____^
+   |
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+   |
+LL |     match *tup {
+LL |         (v, 1) => println!("{}", v),
+   |
+
+error: you don't need to add `&` to both the expression and the patterns
+  --> $DIR/match_ref_pats.rs:23:5
+   |
+LL | /     match &w {
+LL | |         &Some(v) => println!("{:?}", v),
+LL | |         &None => println!("none"),
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL |     match w {
+LL |         Some(v) => println!("{:?}", v),
+LL |         None => println!("none"),
+   |
+
+error: you don't need to add `&` to all patterns
+  --> $DIR/match_ref_pats.rs:35:5
+   |
+LL | /     if let &None = a {
+LL | |         println!("none");
+LL | |     }
+   | |_____^
+   |
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+   |
+LL |     if let None = *a {
+   |            ^^^^   ^^
+
+error: you don't need to add `&` to both the expression and the patterns
+  --> $DIR/match_ref_pats.rs:40:5
+   |
+LL | /     if let &None = &b {
+LL | |         println!("none");
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL |     if let None = b {
+   |            ^^^^   ^
+
+error: you don't need to add `&` to all patterns
+  --> $DIR/match_ref_pats.rs:67:9
+   |
+LL | /         match foo_variant!(0) {
+LL | |             &Foo::A => println!("A"),
+LL | |             _ => println!("Wild"),
+LL | |         }
+   | |_________^
+   |
+help: instead of prefixing all patterns with `&`, you can dereference the expression
+   |
+LL |         match *foo_variant!(0) {
+LL |             Foo::A => println!("A"),
+   |
+
+error: aborting due to 6 previous errors
+

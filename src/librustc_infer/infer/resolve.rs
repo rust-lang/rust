@@ -1,7 +1,7 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{FixupError, FixupResult, InferCtxt, Span};
-use rustc::ty::fold::{TypeFolder, TypeVisitor};
-use rustc::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::fold::{TypeFolder, TypeVisitor};
+use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC VAR RESOLVER
@@ -46,51 +46,56 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
     }
 }
 
-/// The opportunistic type and region resolver is similar to the
-/// opportunistic type resolver, but also opportunistically resolves
-/// regions. It is useful for canonicalization.
-pub struct OpportunisticTypeAndRegionResolver<'a, 'tcx> {
+/// The opportunistic region resolver opportunistically resolves regions
+/// variables to the variable with the least variable id. It is used when
+/// normlizing projections to avoid hitting the recursion limit by creating
+/// many versions of a predicate for types that in the end have to unify.
+///
+/// If you want to resolve type and const variables as well, call
+/// [InferCtxt::resolve_vars_if_possible] first.
+pub struct OpportunisticRegionResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> OpportunisticTypeAndRegionResolver<'a, 'tcx> {
+impl<'a, 'tcx> OpportunisticRegionResolver<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
-        OpportunisticTypeAndRegionResolver { infcx }
+        OpportunisticRegionResolver { infcx }
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticTypeAndRegionResolver<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.needs_infer() {
+        if !t.has_infer_regions() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
-            let t0 = self.infcx.shallow_resolve(t);
-            t0.super_fold_with(self)
+            t.super_fold_with(self)
         }
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReVar(rid) => self
-                .infcx
-                .inner
-                .borrow_mut()
-                .unwrap_region_constraints()
-                .opportunistic_resolve_var(self.tcx(), rid),
+            ty::ReVar(rid) => {
+                let resolved = self
+                    .infcx
+                    .inner
+                    .borrow_mut()
+                    .unwrap_region_constraints()
+                    .opportunistic_resolve_var(rid);
+                self.tcx().reuse_or_mk_region(r, ty::ReVar(resolved))
+            }
             _ => r,
         }
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if !ct.needs_infer() {
+        if !ct.has_infer_regions() {
             ct // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
-            let c0 = self.infcx.shallow_resolve(ct);
-            c0.super_fold_with(self)
+            ct.super_fold_with(self)
         }
     }
 }
@@ -123,7 +128,8 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
                 // Since we called `shallow_resolve` above, this must
                 // be an (as yet...) unresolved inference variable.
                 let ty_var_span = if let ty::TyVar(ty_vid) = infer_ty {
-                    let ty_vars = &self.infcx.inner.borrow().type_variables;
+                    let mut inner = self.infcx.inner.borrow_mut();
+                    let ty_vars = &inner.type_variables();
                     if let TypeVariableOrigin {
                         kind: TypeVariableOriginKind::TypeParameterDefinition(_, _),
                         span,
@@ -181,24 +187,22 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.needs_infer() && !ty::keep_local(&t) {
+        if !t.needs_infer() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
-        // ^ we need to have the `keep_local` check to un-default
-        // defaulted tuples.
         } else {
             let t = self.infcx.shallow_resolve(t);
             match t.kind {
                 ty::Infer(ty::TyVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedTy(vid));
-                    self.tcx().types.err
+                    self.tcx().ty_error()
                 }
                 ty::Infer(ty::IntVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedIntTy(vid));
-                    self.tcx().types.err
+                    self.tcx().ty_error()
                 }
                 ty::Infer(ty::FloatVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedFloatTy(vid));
-                    self.tcx().types.err
+                    self.tcx().ty_error()
                 }
                 ty::Infer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
@@ -222,16 +226,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if !c.needs_infer() && !ty::keep_local(&c) {
+        if !c.needs_infer() {
             c // micro-optimize -- if there is nothing in this const that this fold affects...
-        // ^ we need to have the `keep_local` check to un-default
-        // defaulted tuples.
         } else {
             let c = self.infcx.shallow_resolve(c);
             match c.val {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     self.err = Some(FixupError::UnresolvedConst(vid));
-                    return self.tcx().consts.err;
+                    return self.tcx().const_error(c.ty);
                 }
                 ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);

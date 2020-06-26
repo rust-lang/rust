@@ -1,5 +1,5 @@
 // run-pass
-
+#![allow(unused_braces)]
 #![feature(box_syntax)]
 
 fn test_generic<T, F>(expected: Box<T>, eq: F) where T: Clone, F: FnOnce(Box<T>, Box<T>) -> bool {

@@ -26,7 +26,6 @@ use self::Blocker::*;
 pub use self::Failure::*;
 
 use core::intrinsics::abort;
-use core::isize;
 use core::mem;
 use core::ptr;
 
@@ -344,8 +343,12 @@ impl<T> Packet<T> {
         mem::drop(guard);
 
         // only outside of the lock do we wake up the pending threads
-        pending_sender1.map(|t| t.signal());
-        pending_sender2.map(|t| t.signal());
+        if let Some(token) = pending_sender1 {
+            token.signal();
+        }
+        if let Some(token) = pending_sender2 {
+            token.signal();
+        }
     }
 
     // Prepares this shared packet for a channel clone, essentially just bumping
@@ -355,9 +358,7 @@ impl<T> Packet<T> {
 
         // See comments on Arc::clone() on why we do this (for `mem::forget`).
         if old_count > MAX_REFCOUNT {
-            unsafe {
-                abort();
-            }
+            abort();
         }
     }
 
@@ -411,7 +412,9 @@ impl<T> Packet<T> {
         while let Some(token) = queue.dequeue() {
             token.signal();
         }
-        waiter.map(|t| t.signal());
+        if let Some(token) = waiter {
+            token.signal();
+        }
     }
 }
 

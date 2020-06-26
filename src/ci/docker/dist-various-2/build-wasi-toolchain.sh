@@ -12,7 +12,7 @@ export PATH=`pwd`/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-14.04/bin:$PATH
 git clone https://github.com/CraneStation/wasi-libc
 
 cd wasi-libc
-git reset --hard 1fad33890a5e299027ce0eab7b6ad5260585e347
+git reset --hard 9efc2f428358564fe64c374d762d0bfce1d92507
 make -j$(nproc) INSTALL_DIR=/wasm32-wasi install
 
 cd ..

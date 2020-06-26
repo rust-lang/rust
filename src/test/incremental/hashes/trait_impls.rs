@@ -64,8 +64,8 @@ impl ChangeMethodBodyTrait for Foo {
 impl ChangeMethodBodyTrait for Foo {
     #[rustc_clean(label="hir_owner", cfg="cfail2")]
     #[rustc_clean(label="hir_owner", cfg="cfail3")]
-    #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
+    #[rustc_dirty(label="hir_owner_nodes", cfg="cfail2")]
+    #[rustc_clean(label="hir_owner_nodes", cfg="cfail3")]
     fn method_name() {
         ()
     }
@@ -91,8 +91,8 @@ impl ChangeMethodBodyTraitInlined for Foo {
 impl ChangeMethodBodyTraitInlined for Foo {
     #[rustc_clean(label="hir_owner", cfg="cfail2")]
     #[rustc_clean(label="hir_owner", cfg="cfail3")]
-    #[rustc_dirty(label="hir_owner_items", cfg="cfail2")]
-    #[rustc_clean(label="hir_owner_items", cfg="cfail3")]
+    #[rustc_dirty(label="hir_owner_nodes", cfg="cfail2")]
+    #[rustc_clean(label="hir_owner_nodes", cfg="cfail3")]
     #[inline]
     fn method_name() {
         panic!()

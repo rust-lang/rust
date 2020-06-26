@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   file \
   curl \
   ca-certificates \
-  python \
+  python3 \
   git \
   cmake \
   sudo \
@@ -20,10 +20,16 @@ RUN bash /scripts/emscripten.sh
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+# emcc seems to need python to specifically be "python" and not "python3"
+RUN ln `which python3` /usr/bin/python
+
 ENV PATH=$PATH:/emsdk-portable
 ENV PATH=$PATH:/emsdk-portable/upstream/emscripten/
 ENV PATH=$PATH:/emsdk-portable/node/12.9.1_64bit/bin/
 ENV BINARYEN_ROOT=/emsdk-portable/upstream/
+ENV EMSDK=/emsdk-portable
+ENV EM_CONFIG=/emsdk-portable/.emscripten
+ENV EM_CACHE=/emsdk-portable/upstream/emscripten/cache
 
 ENV TARGETS=wasm32-unknown-emscripten
 
@@ -35,7 +41,7 @@ ENV NO_CHANGE_USER=1
 
 # FIXME: Re-enable these tests once https://github.com/rust-lang/cargo/pull/7476
 # is picked up by CI
-ENV SCRIPT python2.7 ../x.py test --target $TARGETS \
+ENV SCRIPT python3 ../x.py test --target $TARGETS \
     --exclude src/libcore \
     --exclude src/liballoc \
     --exclude src/libproc_macro \

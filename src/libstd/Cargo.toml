@@ -20,14 +20,14 @@ panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
 core = { path = "../libcore" }
 libc = { version = "0.2.51", default-features = false, features = ['rustc-dep-of-std'] }
-compiler_builtins = { version = "0.1.16" }
+compiler_builtins = { version = "0.1.32" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 hashbrown = { version = "0.6.2", default-features = false, features = ['rustc-dep-of-std'] }
 
 [dependencies.backtrace_rs]
 package = "backtrace"
-version = "0.3.44"
+version = "0.3.46"
 default-features = false # without the libstd `backtrace` feature, stub out everything
 features = [ "rustc-dep-of-std" ] # enable build support for integrating into libstd
 
@@ -41,13 +41,13 @@ dlmalloc = { version = "0.1", features = ['rustc-dep-of-std'] }
 fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_os = "hermit"))'.dependencies]
-hermit-abi = { version = "0.1", features = ['rustc-dep-of-std'] }
+hermit-abi = { version = "0.1.14", features = ['rustc-dep-of-std'] }
 
 [target.wasm32-wasi.dependencies]
 wasi = { version = "0.9.0", features = ['rustc-dep-of-std'], default-features = false }
 
 [features]
-default = ["std_detect_file_io", "std_detect_dlsym_getauxval"]
+default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind"]
 
 backtrace = [
   "backtrace_rs/dbghelp",          # backtrace/symbolize on MSVC
@@ -74,3 +74,8 @@ std_detect_dlsym_getauxval = []
 threads = 125
 # Maximum heap size
 heap_size = 0x8000000
+
+[[bench]]
+name = "stdbenches"
+path = "benches/lib.rs"
+test = true

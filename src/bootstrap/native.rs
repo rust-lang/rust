@@ -11,6 +11,7 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -22,6 +23,72 @@ use crate::channel;
 use crate::util::{self, exe};
 use crate::GitRepo;
 use build_helper::up_to_date;
+
+pub struct Meta {
+    stamp: HashStamp,
+    build_llvm_config: PathBuf,
+    out_dir: PathBuf,
+    root: String,
+}
+
+// This returns whether we've already previously built LLVM.
+//
+// It's used to avoid busting caches during x.py check -- if we've already built
+// LLVM, it's fine for us to not try to avoid doing so.
+//
+// This will return the llvm-config if it can get it (but it will not build it
+// if not).
+pub fn prebuilt_llvm_config(
+    builder: &Builder<'_>,
+    target: Interned<String>,
+) -> Result<PathBuf, Meta> {
+    // If we're using a custom LLVM bail out here, but we can only use a
+    // custom LLVM for the build triple.
+    if let Some(config) = builder.config.target_config.get(&target) {
+        if let Some(ref s) = config.llvm_config {
+            check_llvm_version(builder, s);
+            return Ok(s.to_path_buf());
+        }
+    }
+
+    let root = "src/llvm-project/llvm";
+    let out_dir = builder.llvm_out(target);
+    let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
+    if !builder.config.build.contains("msvc") || builder.config.ninja {
+        llvm_config_ret_dir.push("build");
+    }
+    llvm_config_ret_dir.push("bin");
+
+    let build_llvm_config = llvm_config_ret_dir.join(exe("llvm-config", &*builder.config.build));
+
+    let stamp = out_dir.join("llvm-finished-building");
+    let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
+
+    if builder.config.llvm_skip_rebuild && stamp.path.exists() {
+        builder.info(
+            "Warning: \
+                Using a potentially stale build of LLVM; \
+                This may not behave well.",
+        );
+        return Ok(build_llvm_config);
+    }
+
+    if stamp.is_done() {
+        if stamp.hash.is_none() {
+            builder.info(
+                "Could not determine the LLVM submodule commit hash. \
+                     Assuming that an LLVM rebuild is not necessary.",
+            );
+            builder.info(&format!(
+                "To force LLVM to rebuild, remove the file `{}`",
+                stamp.path.display()
+            ));
+        }
+        return Ok(build_llvm_config);
+    }
+
+    Err(Meta { stamp, build_llvm_config, out_dir, root: root.into() })
+}
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
@@ -45,60 +112,14 @@ impl Step for Llvm {
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let target = self.target;
 
-        // If we're using a custom LLVM bail out here, but we can only use a
-        // custom LLVM for the build triple.
-        if let Some(config) = builder.config.target_config.get(&target) {
-            if let Some(ref s) = config.llvm_config {
-                check_llvm_version(builder, s);
-                return s.to_path_buf();
-            }
-        }
-
-        let llvm_info = &builder.in_tree_llvm_info;
-        let root = "src/llvm-project/llvm";
-        let out_dir = builder.llvm_out(target);
-        let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
-        if !builder.config.build.contains("msvc") || builder.config.ninja {
-            llvm_config_ret_dir.push("build");
-        }
-        llvm_config_ret_dir.push("bin");
-
-        let build_llvm_config =
-            llvm_config_ret_dir.join(exe("llvm-config", &*builder.config.build));
-        let done_stamp = out_dir.join("llvm-finished-building");
-
-        if done_stamp.exists() {
-            if builder.config.llvm_skip_rebuild {
-                builder.info(
-                    "Warning: \
-                    Using a potentially stale build of LLVM; \
-                    This may not behave well.",
-                );
-                return build_llvm_config;
-            }
-
-            if let Some(llvm_commit) = llvm_info.sha() {
-                let done_contents = t!(fs::read(&done_stamp));
-
-                // If LLVM was already built previously and the submodule's commit didn't change
-                // from the previous build, then no action is required.
-                if done_contents == llvm_commit.as_bytes() {
-                    return build_llvm_config;
-                }
-            } else {
-                builder.info(
-                    "Could not determine the LLVM submodule commit hash. \
-                     Assuming that an LLVM rebuild is not necessary.",
-                );
-                builder.info(&format!(
-                    "To force LLVM to rebuild, remove the file `{}`",
-                    done_stamp.display()
-                ));
-                return build_llvm_config;
-            }
-        }
+        let Meta { stamp, build_llvm_config, out_dir, root } =
+            match prebuilt_llvm_config(builder, target) {
+                Ok(p) => return p,
+                Err(m) => m,
+            };
 
         builder.info(&format!("Building LLVM for {}", target));
+        t!(stamp.remove());
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
@@ -123,7 +144,7 @@ impl Step for Llvm {
 
         let llvm_exp_targets = match builder.config.llvm_experimental_targets {
             Some(ref s) => s,
-            None => "",
+            None => "AVR",
         };
 
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
@@ -137,7 +158,6 @@ impl Step for Llvm {
             .define("LLVM_INCLUDE_TESTS", "OFF")
             .define("LLVM_INCLUDE_DOCS", "OFF")
             .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
-            .define("LLVM_ENABLE_ZLIB", "OFF")
             .define("WITH_POLLY", "OFF")
             .define("LLVM_ENABLE_TERMINFO", "OFF")
             .define("LLVM_ENABLE_LIBEDIT", "OFF")
@@ -146,6 +166,14 @@ impl Step for Llvm {
             .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
             .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
             .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+
+        if !target.contains("netbsd") {
+            cfg.define("LLVM_ENABLE_ZLIB", "ON");
+        } else {
+            // FIXME: Enable zlib on NetBSD too
+            // https://github.com/rust-lang/rust/pull/72696#issuecomment-641517185
+            cfg.define("LLVM_ENABLE_ZLIB", "OFF");
+        }
 
         if builder.config.llvm_thin_lto {
             cfg.define("LLVM_ENABLE_LTO", "Thin");
@@ -163,7 +191,7 @@ impl Step for Llvm {
         }
 
         // For distribution we want the LLVM tools to be *statically* linked to libstdc++
-        if builder.config.llvm_tools_enabled || builder.config.lldb_enabled {
+        if builder.config.llvm_tools_enabled {
             if !target.contains("msvc") {
                 if target.contains("apple") {
                     cfg.define("CMAKE_EXE_LINKER_FLAGS", "-static-libstdc++");
@@ -191,17 +219,9 @@ impl Step for Llvm {
             enabled_llvm_projects.push("compiler-rt");
         }
 
-        if builder.config.lldb_enabled {
-            enabled_llvm_projects.push("clang");
-            enabled_llvm_projects.push("lldb");
-            // For the time being, disable code signing.
-            cfg.define("LLDB_CODESIGN_IDENTITY", "");
-            cfg.define("LLDB_NO_DEBUGSERVER", "ON");
-        } else {
-            // LLDB requires libxml2; but otherwise we want it to be disabled.
-            // See https://github.com/rust-lang/rust/pull/50104
-            cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
-        }
+        // We want libxml to be disabled.
+        // See https://github.com/rust-lang/rust/pull/50104
+        cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
 
         if !enabled_llvm_projects.is_empty() {
             enabled_llvm_projects.sort();
@@ -240,10 +260,14 @@ impl Step for Llvm {
             if !suffix.is_empty() {
                 cfg.define("LLVM_VERSION_SUFFIX", suffix);
             }
+        } else if builder.config.channel == "dev" {
+            // Changes to a version suffix require a complete rebuild of the LLVM.
+            // To avoid rebuilds during a time of version bump, don't include rustc
+            // release number on the dev channel.
+            cfg.define("LLVM_VERSION_SUFFIX", "-rust-dev");
         } else {
-            let default_suffix =
-                format!("-rust-{}-{}", channel::CFG_RELEASE_NUM, builder.config.channel);
-            cfg.define("LLVM_VERSION_SUFFIX", default_suffix);
+            let suffix = format!("-rust-{}-{}", channel::CFG_RELEASE_NUM, builder.config.channel);
+            cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
         if let Some(ref linker) = builder.config.llvm_use_linker {
@@ -271,7 +295,7 @@ impl Step for Llvm {
 
         cfg.build();
 
-        t!(fs::write(&done_stamp, llvm_info.sha().unwrap_or("")));
+        t!(stamp.write());
 
         build_llvm_config
     }
@@ -290,11 +314,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 7 {
+        if major >= 8 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=7.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=8.0\n\n", version)
 }
 
 fn configure_cmake(
@@ -480,9 +504,32 @@ impl Step for Lld {
         let llvm_config_shim = env::current_exe().unwrap().with_file_name("llvm-config-wrapper");
         cfg.out_dir(&out_dir)
             .profile("Release")
-            .env("LLVM_CONFIG_REAL", llvm_config)
+            .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_CONFIG_PATH", llvm_config_shim)
             .define("LLVM_INCLUDE_TESTS", "OFF");
+
+        // While we're using this horrible workaround to shim the execution of
+        // llvm-config, let's just pile on more. I can't seem to figure out how
+        // to build LLD as a standalone project and also cross-compile it at the
+        // same time. It wants a natively executable `llvm-config` to learn
+        // about LLVM, but then it learns about all the host configuration of
+        // LLVM and tries to link to host LLVM libraries.
+        //
+        // To work around that we tell our shim to replace anything with the
+        // build target with the actual target instead. This'll break parts of
+        // LLD though which try to execute host tools, such as llvm-tblgen, so
+        // we specifically tell it where to find those. This is likely super
+        // brittle and will break over time. If anyone knows better how to
+        // cross-compile LLD it would be much appreciated to fix this!
+        if target != builder.config.build {
+            cfg.env("LLVM_CONFIG_SHIM_REPLACE", &builder.config.build)
+                .env("LLVM_CONFIG_SHIM_REPLACE_WITH", &target)
+                .define("LLVM_TABLEGEN_EXE", llvm_config.with_file_name("llvm-tblgen"));
+        }
+
+        // Explicitly set C++ standard, because upstream doesn't do so
+        // for standalone builds.
+        cfg.define("CMAKE_CXX_STANDARD", "14");
 
         cfg.build();
 
@@ -584,17 +631,21 @@ impl Step for Sanitizers {
             return runtimes;
         }
 
-        let done_stamp = out_dir.join("sanitizers-finished-building");
-        if done_stamp.exists() {
-            builder.info(&format!(
-                "Assuming that sanitizers rebuild is not necessary. \
-                To force a rebuild, remove the file `{}`",
-                done_stamp.display()
-            ));
+        let stamp = out_dir.join("sanitizers-finished-building");
+        let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
+
+        if stamp.is_done() {
+            if stamp.hash.is_none() {
+                builder.info(&format!(
+                    "Rebuild sanitizers by removing the file `{}`",
+                    stamp.path.display()
+                ));
+            }
             return runtimes;
         }
 
         builder.info(&format!("Building sanitizers for {}", self.target));
+        t!(stamp.remove());
         let _time = util::timeit(&builder);
 
         let mut cfg = cmake::Config::new(&compiler_rt_dir);
@@ -623,8 +674,7 @@ impl Step for Sanitizers {
             cfg.build_target(&runtime.cmake_target);
             cfg.build();
         }
-
-        t!(fs::write(&done_stamp, b""));
+        t!(stamp.write());
 
         runtimes
     }
@@ -646,46 +696,77 @@ fn supported_sanitizers(
     target: Interned<String>,
     channel: &str,
 ) -> Vec<SanitizerRuntime> {
-    let mut result = Vec::new();
+    let darwin_libs = |os: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
+        components
+            .into_iter()
+            .map(move |c| SanitizerRuntime {
+                cmake_target: format!("clang_rt.{}_{}_dynamic", c, os),
+                path: out_dir
+                    .join(&format!("build/lib/darwin/libclang_rt.{}_{}_dynamic.dylib", c, os)),
+                name: format!("librustc-{}_rt.{}.dylib", channel, c),
+            })
+            .collect()
+    };
+
+    let common_libs = |os: &str, arch: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
+        components
+            .into_iter()
+            .map(move |c| SanitizerRuntime {
+                cmake_target: format!("clang_rt.{}-{}", c, arch),
+                path: out_dir.join(&format!("build/lib/{}/libclang_rt.{}-{}.a", os, c, arch)),
+                name: format!("librustc-{}_rt.{}.a", channel, c),
+            })
+            .collect()
+    };
+
     match &*target {
-        "x86_64-apple-darwin" => {
-            for s in &["asan", "lsan", "tsan"] {
-                result.push(SanitizerRuntime {
-                    cmake_target: format!("clang_rt.{}_osx_dynamic", s),
-                    path: out_dir
-                        .join(&format!("build/lib/darwin/libclang_rt.{}_osx_dynamic.dylib", s)),
-                    name: format!("librustc-{}_rt.{}.dylib", channel, s),
-                });
-            }
+        "aarch64-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
+        "aarch64-unknown-linux-gnu" => {
+            common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan"])
         }
+        "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
+        "x86_64-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
         "x86_64-unknown-linux-gnu" => {
-            for s in &["asan", "lsan", "msan", "tsan"] {
-                result.push(SanitizerRuntime {
-                    cmake_target: format!("clang_rt.{}-x86_64", s),
-                    path: out_dir.join(&format!("build/lib/linux/libclang_rt.{}-x86_64.a", s)),
-                    name: format!("librustc-{}_rt.{}.a", channel, s),
-                });
-            }
+            common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
         }
-        "x86_64-fuchsia" => {
-            for s in &["asan"] {
-                result.push(SanitizerRuntime {
-                    cmake_target: format!("clang_rt.{}-x86_64", s),
-                    path: out_dir.join(&format!("build/lib/fuchsia/libclang_rt.{}-x86_64.a", s)),
-                    name: format!("librustc-{}_rt.{}.a", channel, s),
-                });
-            }
-        }
-        "aarch64-fuchsia" => {
-            for s in &["asan"] {
-                result.push(SanitizerRuntime {
-                    cmake_target: format!("clang_rt.{}-aarch64", s),
-                    path: out_dir.join(&format!("build/lib/fuchsia/libclang_rt.{}-aarch64.a", s)),
-                    name: format!("librustc-{}_rt.{}.a", channel, s),
-                });
-            }
-        }
-        _ => {}
+        _ => Vec::new(),
     }
-    result
+}
+
+struct HashStamp {
+    path: PathBuf,
+    hash: Option<Vec<u8>>,
+}
+
+impl HashStamp {
+    fn new(path: PathBuf, hash: Option<&str>) -> Self {
+        HashStamp { path, hash: hash.map(|s| s.as_bytes().to_owned()) }
+    }
+
+    fn is_done(&self) -> bool {
+        match fs::read(&self.path) {
+            Ok(h) => self.hash.as_deref().unwrap_or(b"") == h.as_slice(),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => false,
+            Err(e) => {
+                panic!("failed to read stamp file `{}`: {}", self.path.display(), e);
+            }
+        }
+    }
+
+    fn remove(&self) -> io::Result<()> {
+        match fs::remove_file(&self.path) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                if e.kind() == io::ErrorKind::NotFound {
+                    Ok(())
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    fn write(&self) -> io::Result<()> {
+        fs::write(&self.path, self.hash.as_deref().unwrap_or(b""))
+    }
 }

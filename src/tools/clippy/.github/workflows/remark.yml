@@ -1,0 +1,55 @@
+name: Remark
+
+on:
+  push:
+    branches:
+      - auto
+      - try
+  pull_request:
+    paths:
+    - '**.md'
+
+jobs:
+  remark:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Setup
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v1.1.0
+
+    - name: Install remark
+      run: npm install remark-cli remark-lint remark-lint-maximum-line-length remark-preset-lint-recommended
+
+    # Run
+    - name: Check *.md files
+      run: git ls-files -z '*.md' | xargs -0 -n 1 -I {} ./node_modules/.bin/remark {} -u lint -f > /dev/null
+
+  # These jobs doesn't actually test anything, but they're only used to tell
+  # bors the build completed, as there is no practical way to detect when a
+  # workflow is successful listening to webhooks only.
+  #
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+
+  end-success:
+    name: bors remark test finished
+    if: github.event.pusher.name == 'bors' && success()
+    runs-on: ubuntu-latest
+    needs: [remark]
+
+    steps:
+      - name: Mark the job as successful
+        run: exit 0
+
+  end-failure:
+    name: bors remark test finished
+    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
+    runs-on: ubuntu-latest
+    needs: [remark]
+
+    steps:
+      - name: Mark the job as a failure
+        run: exit 1

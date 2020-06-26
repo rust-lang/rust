@@ -1,5 +1,5 @@
-use rustc::ty::{self, CanonicalUserType, TyCtxt, UserType};
 use rustc_hir as hir;
+use rustc_middle::ty::{self, CanonicalUserType, TyCtxt, UserType};
 
 crate trait UserAnnotatedTyHelpers<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;

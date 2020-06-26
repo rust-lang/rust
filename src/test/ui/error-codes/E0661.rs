@@ -1,9 +1,9 @@
 // ignore-emscripten
 
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 fn main() {
     let a; //~ ERROR type annotations needed
-    asm!("nop" : "r"(a));
+    llvm_asm!("nop" : "r"(a));
     //~^ ERROR E0661
 }

@@ -1,8 +1,8 @@
-use crate::rustc::ty::{self, Ty};
-use rustc::infer::MemberConstraint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
+use rustc_middle::infer::MemberConstraint;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use std::hash::Hash;
 use std::ops::Index;
@@ -71,7 +71,7 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
     /// Pushes a member constraint into the set.
     ///
     /// The input member constraint `m_c` is in the form produced by
-    /// the the `rustc::infer` code.
+    /// the the `rustc_middle::infer` code.
     ///
     /// The `to_region_vid` callback fn is used to convert the regions
     /// within into `RegionVid` format -- it typically consults the

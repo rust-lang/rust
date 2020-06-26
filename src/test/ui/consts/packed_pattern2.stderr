@@ -6,3 +6,5 @@ LL |         FOO => unreachable!(),
    |
    = note: `#[warn(unreachable_patterns)]` on by default
 
+warning: 1 warning emitted
+

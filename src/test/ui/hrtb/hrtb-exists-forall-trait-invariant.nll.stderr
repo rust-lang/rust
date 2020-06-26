@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/hrtb-exists-forall-trait-invariant.rs:28:5
+   |
+LL |     foo::<()>();
+   |     ^^^^^^^^^^^
+
+error: aborting due to previous error
+

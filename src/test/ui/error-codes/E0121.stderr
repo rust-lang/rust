@@ -14,7 +14,7 @@ LL | static BAR: _ = "test";
    |             ^
    |             |
    |             not allowed in type signatures
-   |             help: replace `_` with the correct type: `&'static str`
+   |             help: replace `_` with the correct type: `&str`
 
 error: aborting due to 2 previous errors
 

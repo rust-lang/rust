@@ -1,5 +1,6 @@
 // compile-flags: -Z span_free_formats -Z mir-opt-level=3
 
+// EMIT_MIR rustc.test2.Inline.after.mir
 fn test2(x: &dyn X) -> bool {
     test(x)
 }
@@ -24,13 +25,3 @@ impl X for () {
 fn main() {
     println!("Should be true: {}", test2(&()));
 }
-
-// END RUST SOURCE
-// START rustc.test2.Inline.after.mir
-// ...
-// bb0: {
-// ...
-//     _0 = const <dyn X as X>::y(move _2) -> bb1;
-// }
-// ...
-// END rustc.test2.Inline.after.mir

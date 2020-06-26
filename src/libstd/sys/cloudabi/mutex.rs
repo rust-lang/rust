@@ -53,16 +53,16 @@ pub struct ReentrantMutex {
 }
 
 impl ReentrantMutex {
-    pub unsafe fn uninitialized() -> ReentrantMutex {
+    pub const unsafe fn uninitialized() -> ReentrantMutex {
         ReentrantMutex {
             lock: UnsafeCell::new(MaybeUninit::uninit()),
             recursion: UnsafeCell::new(MaybeUninit::uninit()),
         }
     }
 
-    pub unsafe fn init(&mut self) {
-        self.lock = UnsafeCell::new(MaybeUninit::new(AtomicU32::new(abi::LOCK_UNLOCKED.0)));
-        self.recursion = UnsafeCell::new(MaybeUninit::new(0));
+    pub unsafe fn init(&self) {
+        *self.lock.get() = MaybeUninit::new(AtomicU32::new(abi::LOCK_UNLOCKED.0));
+        *self.recursion.get() = MaybeUninit::new(0);
     }
 
     pub unsafe fn try_lock(&self) -> bool {

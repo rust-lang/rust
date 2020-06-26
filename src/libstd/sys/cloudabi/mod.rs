@@ -51,7 +51,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
-pub unsafe fn abort_internal() -> ! {
+pub fn abort_internal() -> ! {
     core::intrinsics::abort();
 }
 

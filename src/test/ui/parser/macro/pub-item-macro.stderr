@@ -14,7 +14,7 @@ error[E0603]: static `x` is private
   --> $DIR/pub-item-macro.rs:20:23
    |
 LL |     let y: u32 = foo::x;
-   |                       ^ this static is private
+   |                       ^ private static
    |
 note: the static `x` is defined here
   --> $DIR/pub-item-macro.rs:5:9

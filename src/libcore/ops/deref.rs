@@ -18,8 +18,8 @@
 ///
 /// If `T` implements `Deref<Target = U>`, and `x` is a value of type `T`, then:
 ///
-/// * In immutable contexts, `*x` on non-pointer types is equivalent to
-///   `*Deref::deref(&x)`.
+/// * In immutable contexts, `*x` (where `T` is neither a reference nor a raw pointer)
+///   is equivalent to `*Deref::deref(&x)`.
 /// * Values of type `&T` are coerced to values of type `&U`
 /// * `T` implicitly implements all the (immutable) methods of the type `U`.
 ///
@@ -82,6 +82,9 @@ impl<T: ?Sized> Deref for &T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> !DerefMut for &T {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Deref for &mut T {
     type Target = T;
 
@@ -112,8 +115,8 @@ impl<T: ?Sized> Deref for &mut T {
 /// If `T` implements `DerefMut<Target = U>`, and `x` is a value of type `T`,
 /// then:
 ///
-/// * In mutable contexts, `*x` on non-pointer types is equivalent to
-///   `*DerefMut::deref_mut(&mut x)`.
+/// * In mutable contexts, `*x` (where `T` is neither a reference nor a raw pointer)
+///   is equivalent to `*DerefMut::deref_mut(&mut x)`.
 /// * Values of type `&mut T` are coerced to values of type `&mut U`
 /// * `T` implicitly implements all the (mutable) methods of the type `U`.
 ///

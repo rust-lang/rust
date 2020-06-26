@@ -307,7 +307,7 @@ impl<'a, T: Idx> BitIter<'a, T> {
         // additional state about whether we have started.
         BitIter {
             word: 0,
-            offset: std::usize::MAX - (WORD_BITS - 1),
+            offset: usize::MAX - (WORD_BITS - 1),
             iter: words.iter(),
             marker: PhantomData,
         }

@@ -34,6 +34,29 @@ pre {
 	background-color: #F1F1F1;
 }
 
+/* Improve the scrollbar display on firefox */
+* {
+	scrollbar-color: rgba(36, 37, 39, 0.6) #e6e6e6;
+}
+
+.sidebar {
+	scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
+}
+
+/* Improve the scrollbar display on webkit-based browsers */
+::-webkit-scrollbar-track {
+	background-color: #ecebeb;
+}
+::-webkit-scrollbar-thumb {
+	background-color: rgba(36, 37, 39, 0.6);
+}
+.sidebar::-webkit-scrollbar-track {
+	background-color: #dcdcdc;
+}
+.sidebar::-webkit-scrollbar-thumb {
+	background-color: rgba(36, 37, 39, 0.6);
+}
+
 .sidebar .current {
 	background-color: #fff;
 }
@@ -248,15 +271,23 @@ a.test-arrow:hover{
 }
 
 pre.compile_fail {
-	border-left: 2px solid rgba(255,0,0,.4);
+	border-left: 2px solid rgba(255,0,0,.5);
 }
 
 pre.compile_fail:hover, .information:hover + pre.compile_fail {
 	border-left: 2px solid #f00;
 }
 
+pre.should_panic {
+	border-left: 2px solid rgba(255,0,0,.5);
+}
+
+pre.should_panic:hover, .information:hover + pre.should_panic {
+	border-left: 2px solid #f00;
+}
+
 pre.ignore {
-	border-left: 2px solid rgba(255,142,0,.4);
+	border-left: 2px solid rgba(255,142,0,.6);
 }
 
 pre.ignore:hover, .information:hover + pre.ignore {
@@ -264,19 +295,27 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .tooltip.compile_fail {
-	color: rgba(255,0,0,.3);
+	color: rgba(255,0,0,.5);
 }
 
 .information > .compile_fail:hover {
 	color: #f00;
 }
 
+.tooltip.should_panic {
+	color: rgba(255,0,0,.5);
+}
+
+.information > .should_panic:hover {
+	color: #f00;
+}
+
 .tooltip.ignore {
-	color: rgba(255,142,0,.3);
+	color: rgba(255,142,0,.6);
 }
 
 .information > .ignore:hover {
-	color: rgba(255,142,0,1);
+	color: #ff9200;
 }
 
 .search-failed a {
@@ -284,7 +323,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .tooltip .tooltiptext {
-	background-color: black;
+	background-color: #000;
 	color: #fff;
 }
 

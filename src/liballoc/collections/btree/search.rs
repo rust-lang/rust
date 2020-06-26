@@ -67,19 +67,16 @@ where
     Q: Ord,
     K: Borrow<Q>,
 {
-    // This function is defined over all borrow types (immutable, mutable, owned),
-    // and may be called on the shared root in each case.
+    // This function is defined over all borrow types (immutable, mutable, owned).
     // Using `keys()` is fine here even if BorrowType is mutable, as all we return
     // is an index -- not a reference.
     let len = node.len();
-    if len > 0 {
-        let keys = unsafe { node.keys() }; // safe because a non-empty node cannot be the shared root
-        for (i, k) in keys.iter().enumerate() {
-            match key.cmp(k.borrow()) {
-                Ordering::Greater => {}
-                Ordering::Equal => return (i, true),
-                Ordering::Less => return (i, false),
-            }
+    let keys = node.keys();
+    for (i, k) in keys.iter().enumerate() {
+        match key.cmp(k.borrow()) {
+            Ordering::Greater => {}
+            Ordering::Equal => return (i, true),
+            Ordering::Less => return (i, false),
         }
     }
     (len, false)

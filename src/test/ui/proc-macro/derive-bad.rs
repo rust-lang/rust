@@ -3,11 +3,9 @@
 #[macro_use]
 extern crate derive_bad;
 
-#[derive(
-    A
-)]
-//~^^ ERROR proc-macro derive produced unparseable tokens
+#[derive(A)]
+//~^ ERROR proc-macro derive produced unparseable tokens
 //~| ERROR expected `:`, found `}`
-struct A;
+struct A; //~ ERROR the name `A` is defined multiple times
 
 fn main() {}

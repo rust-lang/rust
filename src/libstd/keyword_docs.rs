@@ -234,12 +234,55 @@ mod crate_keyword {}
 
 #[doc(keyword = "else")]
 //
-/// What to do when an [`if`] condition does not hold.
+/// What expression to evaluate when an [`if`] condition evaluates to [`false`].
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `else` expressions are optional. When no else expressions are supplied it is assumed to evaluate
+/// to the unit type `()`.
 ///
+/// The type that the `else` blocks evaluate to must be compatible with the type that the `if` block
+/// evaluates to.
+///
+/// As can be seen below, `else` must be followed by either: `if`, `if let`, or a block `{}` and it
+/// will return the value of that expression.
+///
+/// ```rust
+/// let result = if true == false {
+///     "oh no"
+/// } else if "something" == "other thing" {
+///     "oh dear"
+/// } else if let Some(200) = "blarg".parse::<i32>().ok() {
+///     "uh oh"
+/// } else {
+///     println!("Sneaky side effect.");
+///     "phew, nothing's broken"
+/// };
+/// ```
+///
+/// Here's another example but here we do not try and return an expression:
+///
+/// ```rust
+/// if true == false {
+///     println!("oh no");
+/// } else if "something" == "other thing" {
+///     println!("oh dear");
+/// } else if let Some(200) = "blarg".parse::<i32>().ok() {
+///     println!("uh oh");
+/// } else {
+///     println!("phew, nothing's broken");
+/// }
+/// ```
+///
+/// The above is _still_ an expression but it will always evaluate to `()`.
+///
+/// There is possibly no limit to the number of `else` blocks that could follow an `if` expression
+/// however if you have several then a [`match`] expression might be preferable.
+///
+/// Read more about control flow in the [Rust Book].
+///
+/// [Rust Book]: ../book/ch03-05-control-flow.html#handling-multiple-conditions-with-else-if
+/// [`match`]: keyword.match.html
+/// [`false`]: keyword.false.html
 /// [`if`]: keyword.if.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod else_keyword {}
 
 #[doc(keyword = "enum")]
@@ -637,10 +680,18 @@ mod impl_keyword {}
 //
 /// Iterate over a series of values with [`for`].
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// The expression immediately following `in` must implement the [`Iterator`] trait.
 ///
+/// ## Literal Examples:
+///
+///    * `for _ **in** 1..3 {}` - Iterate over an exclusive range up to but excluding 3.
+///    * `for _ **in** 1..=3 {}` - Iterate over an inclusive range up to and including 3.
+///
+/// (Read more about [range patterns])
+///
+/// [`Iterator`]: ../book/ch13-04-performance.html
+/// [range patterns]: ../reference/patterns.html?highlight=range#range-patterns
 /// [`for`]: keyword.for.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod in_keyword {}
 
 #[doc(keyword = "let")]
@@ -958,9 +1009,93 @@ mod return_keyword {}
 //
 /// The receiver of a method, or the current module.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `self` is used in two situations: referencing the current module and marking
+/// the receiver of a method.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// In paths, `self` can be used to refer to the current module, either in a
+/// [`use`] statement or in a path to access an element:
+///
+/// ```
+/// # #![allow(unused_imports)]
+/// use std::io::{self, Read};
+/// ```
+///
+/// Is functionally the same as:
+///
+/// ```
+/// # #![allow(unused_imports)]
+/// use std::io;
+/// use std::io::Read;
+/// ```
+///
+/// Using `self` to access an element in the current module:
+///
+/// ```
+/// # #![allow(dead_code)]
+/// # fn main() {}
+/// fn foo() {}
+/// fn bar() {
+///     self::foo()
+/// }
+/// ```
+///
+/// `self` as the current receiver for a method allows to omit the parameter
+/// type most of the time. With the exception of this particularity, `self` is
+/// used much like any other parameter:
+///
+/// ```
+/// struct Foo(i32);
+///
+/// impl Foo {
+///     // No `self`.
+///     fn new() -> Self {
+///         Self(0)
+///     }
+///
+///     // Consuming `self`.
+///     fn consume(self) -> Self {
+///         Self(self.0 + 1)
+///     }
+///
+///     // Borrowing `self`.
+///     fn borrow(&self) -> &i32 {
+///         &self.0
+///     }
+///
+///     // Borrowing `self` mutably.
+///     fn borrow_mut(&mut self) -> &mut i32 {
+///         &mut self.0
+///     }
+/// }
+///
+/// // This method must be called with a `Type::` prefix.
+/// let foo = Foo::new();
+/// assert_eq!(foo.0, 0);
+///
+/// // Those two calls produces the same result.
+/// let foo = Foo::consume(foo);
+/// assert_eq!(foo.0, 1);
+/// let foo = foo.consume();
+/// assert_eq!(foo.0, 2);
+///
+/// // Borrowing is handled automatically with the second syntax.
+/// let borrow_1 = Foo::borrow(&foo);
+/// let borrow_2 = foo.borrow();
+/// assert_eq!(borrow_1, borrow_2);
+///
+/// // Borrowing mutably is handled automatically too with the second syntax.
+/// let mut foo = Foo::new();
+/// *Foo::borrow_mut(&mut foo) += 1;
+/// assert_eq!(foo.0, 1);
+/// *foo.borrow_mut() += 1;
+/// assert_eq!(foo.0, 2);
+/// ```
+///
+/// Note that this automatic conversion when calling `foo.method()` is not
+/// limited to the examples above. See the [Reference] for more information.
+///
+/// [`use`]: keyword.use.html
+/// [Reference]: ../reference/items/associated-items.html#methods
 mod self_keyword {}
 
 #[doc(keyword = "Self")]
@@ -1162,9 +1297,61 @@ mod unsafe_keyword {}
 //
 /// Import or rename items from other crates or modules.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// Usually a `use` keyword is used to shorten the path required to refer to a module item.
+/// The keyword may appear in modules, blocks and even functions, usually at the top.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// The most basic usage of the keyword is `use path::to::item;`,
+/// though a number of convenient shortcuts are supported:
+///
+///   * Simultaneously binding a list of paths with a common prefix,
+///     using the glob-like brace syntax `use a::b::{c, d, e::f, g::h::i};`
+///   * Simultaneously binding a list of paths with a common prefix and their common parent module,
+///     using the [`self`] keyword, such as `use a::b::{self, c, d::e};`
+///   * Rebinding the target name as a new local name, using the syntax `use p::q::r as x;`.
+///     This can also be used with the last two features: `use a::b::{self as ab, c as abc}`.
+///   * Binding all paths matching a given prefix,
+///     using the asterisk wildcard syntax `use a::b::*;`.
+///   * Nesting groups of the previous features multiple times,
+///     such as `use a::b::{self as ab, c, d::{*, e::f}};`
+///   * Reexporting with visibility modifiers such as `pub use a::b;`
+///   * Importing with `_` to only import the methods of a trait without binding it to a name
+///     (to avoid conflict for example): `use ::std::io::Read as _;`.
+///
+/// Using path qualifiers like [`crate`], [`super`] or [`self`] is supported: `use crate::a::b;`.
+///
+/// Note that when the wildcard `*` is used on a type, it does not import its methods (though
+/// for `enum`s it imports the variants, as shown in the example below).
+///
+/// ```compile_fail,edition2018
+/// enum ExampleEnum {
+///     VariantA,
+///     VariantB,
+/// }
+///
+/// impl ExampleEnum {
+///     fn new() -> Self {
+///         Self::VariantA
+///     }
+/// }
+///
+/// use ExampleEnum::*;
+///
+/// // Compiles.
+/// let _ = VariantA;
+///
+/// // Does not compile !
+/// let n = new();
+/// ```
+///
+/// For more information on `use` and paths in general, see the [Reference].
+///
+/// The differences about paths and the `use` keyword between the 2015 and 2018 editions
+/// can also be found in the [Reference].
+///
+/// [`crate`]: keyword.crate.html
+/// [`self`]: keyword.self.html
+/// [`super`]: keyword.super.html
+/// [Reference]: ../reference/items/use-declarations.html
 mod use_keyword {}
 
 #[doc(keyword = "where")]

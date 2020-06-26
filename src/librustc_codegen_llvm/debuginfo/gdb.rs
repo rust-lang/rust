@@ -5,9 +5,9 @@ use crate::llvm;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::value::Value;
-use rustc::bug;
-use rustc::session::config::DebugInfo;
 use rustc_codegen_ssa::traits::*;
+use rustc_middle::bug;
+use rustc_session::config::DebugInfo;
 
 use rustc_ast::attr;
 use rustc_span::symbol::sym;
@@ -50,7 +50,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_>) -
             llvm::LLVMSetSection(section_var, section_name.as_ptr().cast());
             llvm::LLVMSetInitializer(section_var, cx.const_bytes(section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
-            llvm::LLVMSetUnnamedAddr(section_var, llvm::True);
+            llvm::LLVMSetUnnamedAddress(section_var, llvm::UnnamedAddr::Global);
             llvm::LLVMRustSetLinkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
             // This should make sure that the whole section is not larger than
             // the string it contains. Otherwise we get a warning from GDB.

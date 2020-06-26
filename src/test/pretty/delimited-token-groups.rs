@@ -7,7 +7,7 @@ macro_rules! mac { ($ ($ tt : tt) *) => () }
 mac! {
     struct S { field1 : u8, field2 : u16, } impl Clone for S
     {
-        fn clone () -> S
+        fn clone() -> S
         {
             panic ! () ;
 
@@ -16,9 +16,8 @@ mac! {
 }
 
 mac! {
-    a
-    (aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
-     aaaaaaaa aaaaaaaa) a
+    a(aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
+      aaaaaaaa aaaaaaaa) a
     [aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
      aaaaaaaa aaaaaaaa] a
     {

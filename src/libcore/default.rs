@@ -54,7 +54,7 @@
 ///
 /// ## How can I implement `Default`?
 ///
-/// Provides an implementation for the `default()` method that returns the value of
+/// Provide an implementation for the `default()` method that returns the value of
 /// your type that should be the default:
 ///
 /// ```
@@ -113,6 +113,50 @@ pub trait Default: Sized {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Self;
+}
+
+/// Return the default value of a type according to the `Default` trait.
+///
+/// The type to return is inferred from context; this is equivalent to
+/// `Default::default()` but shorter to type.
+///
+/// For example:
+/// ```
+/// #![feature(default_free_fn)]
+///
+/// use std::default::default;
+///
+/// #[derive(Default)]
+/// struct AppConfig {
+///     foo: FooConfig,
+///     bar: BarConfig,
+/// }
+///
+/// #[derive(Default)]
+/// struct FooConfig {
+///     foo: i32,
+/// }
+///
+/// #[derive(Default)]
+/// struct BarConfig {
+///     bar: f32,
+///     baz: u8,
+/// }
+///
+/// fn main() {
+///     let options = AppConfig {
+///         foo: default(),
+///         bar: BarConfig {
+///             bar: 10.1,
+///             ..default()
+///         },
+///     };
+/// }
+/// ```
+#[unstable(feature = "default_free_fn", issue = "73014")]
+#[inline]
+pub fn default<T: Default>() -> T {
+    Default::default()
 }
 
 /// Derive macro generating an impl of the trait `Default`.

@@ -1,4 +1,4 @@
-error: the type `&'static T` does not permit zero-initialization
+error: the type `&T` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:29:32
    |
 LL |         let _val: &'static T = mem::zeroed();
@@ -14,7 +14,7 @@ LL | #![deny(invalid_value)]
    |         ^^^^^^^^^^^^^
    = note: references must be non-null
 
-error: the type `&'static T` does not permit being left uninitialized
+error: the type `&T` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:30:32
    |
 LL |         let _val: &'static T = mem::uninitialized();
@@ -25,7 +25,7 @@ LL |         let _val: &'static T = mem::uninitialized();
    |
    = note: references must be non-null
 
-error: the type `Wrap<&'static T>` does not permit zero-initialization
+error: the type `Wrap<&T>` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:32:38
    |
 LL |         let _val: Wrap<&'static T> = mem::zeroed();
@@ -40,7 +40,7 @@ note: references must be non-null (in this struct field)
 LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
 
-error: the type `Wrap<&'static T>` does not permit being left uninitialized
+error: the type `Wrap<&T>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:33:38
    |
 LL |         let _val: Wrap<&'static T> = mem::uninitialized();
@@ -121,7 +121,7 @@ LL |         let _val: Void = mem::uninitialized();
    |
    = note: enums with no variants have no valid value
 
-error: the type `&'static i32` does not permit zero-initialization
+error: the type `&i32` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:49:34
    |
 LL |         let _val: &'static i32 = mem::zeroed();
@@ -132,7 +132,7 @@ LL |         let _val: &'static i32 = mem::zeroed();
    |
    = note: references must be non-null
 
-error: the type `&'static i32` does not permit being left uninitialized
+error: the type `&i32` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:50:34
    |
 LL |         let _val: &'static i32 = mem::uninitialized();
@@ -366,7 +366,7 @@ LL |         let _val: NonBig = mem::uninitialized();
    |
    = note: `NonBig` must be initialized inside its custom valid range
 
-error: the type `&'static i32` does not permit zero-initialization
+error: the type `&i32` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:84:34
    |
 LL |         let _val: &'static i32 = mem::transmute(0usize);
@@ -377,7 +377,7 @@ LL |         let _val: &'static i32 = mem::transmute(0usize);
    |
    = note: references must be non-null
 
-error: the type `&'static [i32]` does not permit zero-initialization
+error: the type `&[i32]` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:85:36
    |
 LL |         let _val: &'static [i32] = mem::transmute((0usize, 0usize));

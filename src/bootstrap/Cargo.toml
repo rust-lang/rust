@@ -48,10 +48,11 @@ toml = "0.5"
 lazy_static = "1.3.0"
 time = "0.1"
 ignore = "0.4.10"
+opener = "0.4"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
 features = ["fileapi", "ioapiset", "jobapi2", "handleapi", "winioctl"]
 
 [dev-dependencies]
-pretty_assertions = "0.5"
+pretty_assertions = "0.6"

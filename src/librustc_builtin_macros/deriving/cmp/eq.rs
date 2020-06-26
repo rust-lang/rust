@@ -2,10 +2,10 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-use rustc_ast::ast::{self, Expr, GenericArg, Ident, MetaItem};
+use rustc_ast::ast::{self, Expr, GenericArg, MetaItem};
 use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 pub fn expand_deriving_eq(

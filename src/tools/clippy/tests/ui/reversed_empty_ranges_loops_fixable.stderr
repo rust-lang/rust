@@ -1,0 +1,69 @@
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_loops_fixable.rs:7:14
+   |
+LL |     for i in 10..0 {
+   |              ^^^^^
+   |
+   = note: `-D clippy::reversed-empty-ranges` implied by `-D warnings`
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in (0..10).rev() {
+   |              ^^^^^^^^^^^^^
+
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_loops_fixable.rs:11:14
+   |
+LL |     for i in 10..=0 {
+   |              ^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in (0..=10).rev() {
+   |              ^^^^^^^^^^^^^^
+
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_loops_fixable.rs:15:14
+   |
+LL |     for i in MAX_LEN..0 {
+   |              ^^^^^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in (0..MAX_LEN).rev() {
+   |              ^^^^^^^^^^^^^^^^^^
+
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_loops_fixable.rs:34:14
+   |
+LL |     for i in (10..0).map(|x| x * 2) {
+   |              ^^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in (0..10).rev().map(|x| x * 2) {
+   |              ^^^^^^^^^^^^^
+
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_loops_fixable.rs:39:14
+   |
+LL |     for i in 10..5 + 4 {
+   |              ^^^^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in (5 + 4..10).rev() {
+   |              ^^^^^^^^^^^^^^^^^
+
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_loops_fixable.rs:43:14
+   |
+LL |     for i in (5 + 2)..(3 - 1) {
+   |              ^^^^^^^^^^^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in ((3 - 1)..(5 + 2)).rev() {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

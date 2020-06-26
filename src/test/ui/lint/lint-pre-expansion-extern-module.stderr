@@ -1,0 +1,12 @@
+warning: `try` is a keyword in the 2018 edition
+  --> $DIR/lint_pre_expansion_extern_module_aux.rs:3:8
+   |
+LL | pub fn try() {}
+   |        ^^^ help: you can use a raw identifier to stay compatible: `r#try`
+   |
+   = note: `-W keyword-idents` implied by `-W rust-2018-compatibility`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+warning: 1 warning emitted
+

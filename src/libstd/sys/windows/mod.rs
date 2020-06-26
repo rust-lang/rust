@@ -61,7 +61,22 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_FILE_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_PATH_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_NO_DATA => return ErrorKind::BrokenPipe,
-        c::ERROR_OPERATION_ABORTED => return ErrorKind::TimedOut,
+        c::ERROR_SEM_TIMEOUT
+        | c::WAIT_TIMEOUT
+        | c::ERROR_DRIVER_CANCEL_TIMEOUT
+        | c::ERROR_OPERATION_ABORTED
+        | c::ERROR_SERVICE_REQUEST_TIMEOUT
+        | c::ERROR_COUNTER_TIMEOUT
+        | c::ERROR_TIMEOUT
+        | c::ERROR_RESOURCE_CALL_TIMED_OUT
+        | c::ERROR_CTX_MODEM_RESPONSE_TIMEOUT
+        | c::ERROR_CTX_CLIENT_QUERY_TIMEOUT
+        | c::FRS_ERR_SYSVOL_POPULATE_TIMEOUT
+        | c::ERROR_DS_TIMELIMIT_EXCEEDED
+        | c::DNS_ERROR_RECORD_TIMED_OUT
+        | c::ERROR_IPSEC_IKE_TIMED_OUT
+        | c::ERROR_RUNLEVEL_SWITCH_TIMEOUT
+        | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return ErrorKind::TimedOut,
         _ => {}
     }
 
@@ -81,10 +96,54 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
+pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
+    let ptr = haystack.as_ptr();
+    let mut len = haystack.len();
+    let mut start = &haystack[..];
+
+    // For performance reasons unfold the loop eight times.
+    while len >= 8 {
+        if start[0] == needle {
+            return Some((start.as_ptr() as usize - ptr as usize) / 2);
+        }
+        if start[1] == needle {
+            return Some((start[1..].as_ptr() as usize - ptr as usize) / 2);
+        }
+        if start[2] == needle {
+            return Some((start[2..].as_ptr() as usize - ptr as usize) / 2);
+        }
+        if start[3] == needle {
+            return Some((start[3..].as_ptr() as usize - ptr as usize) / 2);
+        }
+        if start[4] == needle {
+            return Some((start[4..].as_ptr() as usize - ptr as usize) / 2);
+        }
+        if start[5] == needle {
+            return Some((start[5..].as_ptr() as usize - ptr as usize) / 2);
+        }
+        if start[6] == needle {
+            return Some((start[6..].as_ptr() as usize - ptr as usize) / 2);
+        }
+        if start[7] == needle {
+            return Some((start[7..].as_ptr() as usize - ptr as usize) / 2);
+        }
+
+        start = &start[8..];
+        len -= 8;
+    }
+
+    for (i, c) in start.iter().enumerate() {
+        if *c == needle {
+            return Some((start.as_ptr() as usize - ptr as usize) / 2 + i);
+        }
+    }
+    None
+}
+
 pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
         let mut maybe_result: Vec<u16> = s.encode_wide().collect();
-        if maybe_result.iter().any(|&u| u == 0) {
+        if unrolled_find_u16s(0, &maybe_result).is_some() {
             return Err(crate::io::Error::new(
                 ErrorKind::InvalidInput,
                 "strings passed to WinAPI cannot contain NULs",
@@ -214,7 +273,7 @@ fn wide_char_to_multi_byte(
 }
 
 pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
-    match v.iter().position(|c| *c == 0) {
+    match unrolled_find_u16s(0, v) {
         // don't include the 0
         Some(i) => &v[..i],
         None => v,
@@ -251,7 +310,7 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
         .checked_mul(1000)
         .and_then(|ms| ms.checked_add((dur.subsec_nanos() as u64) / 1_000_000))
         .and_then(|ms| ms.checked_add(if dur.subsec_nanos() % 1_000_000 > 0 { 1 } else { 0 }))
-        .map(|ms| if ms > <c::DWORD>::max_value() as u64 { c::INFINITE } else { ms as c::DWORD })
+        .map(|ms| if ms > <c::DWORD>::MAX as u64 { c::INFINITE } else { ms as c::DWORD })
         .unwrap_or(c::INFINITE)
 }
 
@@ -264,10 +323,10 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 //
 // https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
 #[allow(unreachable_code)]
-pub unsafe fn abort_internal() -> ! {
+pub fn abort_internal() -> ! {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
+    unsafe {
+        llvm_asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
         crate::intrinsics::unreachable();
     }
     crate::intrinsics::abort();

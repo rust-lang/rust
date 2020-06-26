@@ -3,7 +3,7 @@
 // test that errors in a (selection) of macros don't kill compilation
 // immediately, so that we get more errors listed at a time.
 
-#![feature(asm)]
+#![feature(asm, llvm_asm)]
 #![feature(trace_macros, concat_idents)]
 
 #[derive(Default)] //~ ERROR
@@ -11,6 +11,7 @@ enum OrDeriveThis {}
 
 fn main() {
     asm!(invalid); //~ ERROR
+    llvm_asm!(invalid); //~ ERROR
 
     concat_idents!("not", "idents"); //~ ERROR
 

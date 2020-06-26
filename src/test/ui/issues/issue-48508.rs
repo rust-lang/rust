@@ -11,7 +11,7 @@
 // ignore-asmjs wasm2js does not support source maps yet
 
 #![feature(non_ascii_idents)]
-#[allow(uncommon_codepoints)]
+#![allow(uncommon_codepoints)]
 
 #[path = "issue-48508-aux.rs"]
 mod other_file;

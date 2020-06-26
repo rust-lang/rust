@@ -1,5 +1,5 @@
 error[E0599]: no method named `clone` found for struct `std::boxed::Box<R>` in the current scope
-  --> $DIR/unique-pinned-nocopy.rs:16:16
+  --> $DIR/unique-pinned-nocopy.rs:12:16
    |
 LL | struct R {
    | -------- doesn't satisfy `R: std::clone::Clone`
@@ -11,6 +11,14 @@ LL |     let _j = i.clone();
    |
 LL | pub struct Box<T: ?Sized>(Unique<T>);
    | ------------------------------------- doesn't satisfy `std::boxed::Box<R>: std::clone::Clone`
+   | 
+  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+   |
+LL |     fn clone(&self) -> Self;
+   |        -----
+   |        |
+   |        the method is available for `std::sync::Arc<std::boxed::Box<R>>` here
+   |        the method is available for `std::rc::Rc<std::boxed::Box<R>>` here
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `R: std::clone::Clone`

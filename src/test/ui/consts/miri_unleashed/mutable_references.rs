@@ -1,5 +1,4 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
-#![feature(const_mut_refs)]
 #![allow(const_err)]
 
 use std::cell::UnsafeCell;
@@ -18,15 +17,13 @@ struct Foo<T>(T);
 // this is fine for the same reason as `BAR`.
 static BOO: &mut Foo<()> = &mut Foo(());
 
+// interior mutability is fine
 struct Meh {
     x: &'static UnsafeCell<i32>,
 }
-
 unsafe impl Sync for Meh {}
-
 static MEH: Meh = Meh {
     x: &UnsafeCell::new(42),
-    //~^ WARN: skipping const checks
 };
 
 // this is fine for the same reason as `BAR`.

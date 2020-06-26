@@ -1,4 +1,4 @@
 #![feature(staged_api)]
-//~^ ERROR crate has missing stability attribute
+//~^ ERROR module has missing stability attribute
 
 fn main() {}

@@ -1,6 +1,6 @@
-use rustc::ty::fold::{TypeFoldable, TypeVisitor};
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::source_map::Span;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -79,10 +79,18 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
-        if let ty::ConstKind::Param(data) = c.val {
-            self.parameters.push(Parameter::from(data));
+        match c.val {
+            ty::ConstKind::Unevaluated(..) if !self.include_nonconstraining => {
+                // Constant expressions are not injective
+                return c.ty.visit_with(self);
+            }
+            ty::ConstKind::Param(data) => {
+                self.parameters.push(Parameter::from(data));
+            }
+            _ => {}
         }
-        false
+
+        c.super_visit_with(self)
     }
 }
 
@@ -172,7 +180,7 @@ pub fn setup_constraining_predicates<'tcx>(
         changed = false;
 
         for j in i..predicates.len() {
-            if let ty::Predicate::Projection(ref poly_projection) = predicates[j].0 {
+            if let ty::PredicateKind::Projection(ref poly_projection) = predicates[j].0.kind() {
                 // Note that we can skip binder here because the impl
                 // trait ref never contains any late-bound regions.
                 let projection = poly_projection.skip_binder();

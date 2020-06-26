@@ -9,11 +9,11 @@
 // `InferredIndex` is a newtype'd int representing the index of such
 // a variable.
 
-use arena::TypedArena;
-use rustc::ty::{self, TyCtxt};
+use rustc_arena::TypedArena;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::HirIdMap;
+use rustc_middle::ty::{self, TyCtxt};
 use std::fmt;
 
 use self::VarianceTerm::*;
@@ -94,7 +94,7 @@ fn lang_items(tcx: TyCtxt<'_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
     all.into_iter() // iterating over (Option<DefId>, Variance)
         .filter(|&(ref d, _)| d.is_some())
         .map(|(d, v)| (d.unwrap(), v)) // (DefId, Variance)
-        .filter_map(|(d, v)| tcx.hir().as_local_hir_id(d).map(|n| (n, v))) // (HirId, Variance)
+        .filter_map(|(d, v)| d.as_local().map(|d| tcx.hir().as_local_hir_id(d)).map(|n| (n, v))) // (HirId, Variance)
         .collect()
 }
 
@@ -170,7 +170,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        if let hir::ImplItemKind::Method(..) = impl_item.kind {
+        if let hir::ImplItemKind::Fn(..) = impl_item.kind {
             self.add_inferreds_for_item(impl_item.hir_id);
         }
     }

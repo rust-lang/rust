@@ -34,8 +34,9 @@
 use crate::hir::*;
 use crate::hir_id::CRATE_HIR_ID;
 use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
-use rustc_ast::ast::{Attribute, Ident, Label, Name};
+use rustc_ast::ast::{Attribute, Label};
 use rustc_ast::walk_list;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
 pub struct DeepVisitor<'v, V> {
@@ -119,12 +120,36 @@ impl<'a> FnKind<'a> {
     }
 }
 
-/// An abstract representation of the HIR `rustc::hir::map::Map`.
+/// An abstract representation of the HIR `rustc_middle::hir::map::Map`.
 pub trait Map<'hir> {
+    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
+    fn find(&self, hir_id: HirId) -> Option<Node<'hir>>;
     fn body(&self, id: BodyId) -> &'hir Body<'hir>;
     fn item(&self, id: HirId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
     fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
+}
+
+/// An erased version of `Map<'hir>`, using dynamic dispatch.
+/// NOTE: This type is effectively only usable with `NestedVisitorMap::None`.
+pub struct ErasedMap<'hir>(&'hir dyn Map<'hir>);
+
+impl<'hir> Map<'hir> for ErasedMap<'hir> {
+    fn find(&self, _: HirId) -> Option<Node<'hir>> {
+        None
+    }
+    fn body(&self, id: BodyId) -> &'hir Body<'hir> {
+        self.0.body(id)
+    }
+    fn item(&self, id: HirId) -> &'hir Item<'hir> {
+        self.0.item(id)
+    }
+    fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
+        self.0.trait_item(id)
+    }
+    fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
+        self.0.impl_item(id)
+    }
 }
 
 /// Specifies what nested things a visitor wants to visit. The most
@@ -293,7 +318,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_id(&mut self, _hir_id: HirId) {
         // Nothing to do.
     }
-    fn visit_name(&mut self, _span: Span, _name: Name) {
+    fn visit_name(&mut self, _span: Span, _name: Symbol) {
         // Nothing to do.
     }
     fn visit_ident(&mut self, ident: Ident) {
@@ -371,7 +396,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_variant_data(
         &mut self,
         s: &'v VariantData<'v>,
-        _: Name,
+        _: Symbol,
         _: &'v Generics<'v>,
         _parent_id: HirId,
         _: Span,
@@ -571,6 +596,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             defaultness: _,
             polarity: _,
             constness: _,
+            defaultness_span: _,
             ref generics,
             ref of_trait,
             ref self_ty,
@@ -664,7 +690,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
         TyKind::Path(ref qpath) => {
             visitor.visit_qpath(qpath, typ.hir_id, typ.span);
         }
-        TyKind::Def(item_id, lifetimes) => {
+        TyKind::OpaqueDef(item_id, lifetimes) => {
             visitor.visit_nested_item(item_id);
             walk_list!(visitor, visit_generic_arg, lifetimes);
         }
@@ -911,14 +937,14 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_nested_body, default);
         }
-        TraitItemKind::Fn(ref sig, TraitMethod::Required(param_names)) => {
+        TraitItemKind::Fn(ref sig, TraitFn::Required(param_names)) => {
             visitor.visit_id(trait_item.hir_id);
             visitor.visit_fn_decl(&sig.decl);
             for &param_name in param_names {
                 visitor.visit_ident(param_name);
             }
         }
-        TraitItemKind::Fn(ref sig, TraitMethod::Provided(body_id)) => {
+        TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {
             visitor.visit_fn(
                 FnKind::Method(trait_item.ident, sig, None, &trait_item.attrs),
                 &sig.decl,
@@ -968,7 +994,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_ty(ty);
             visitor.visit_nested_body(body);
         }
-        ImplItemKind::Method(ref sig, body_id) => {
+        ImplItemKind::Fn(ref sig, body_id) => {
             visitor.visit_fn(
                 FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis), &impl_item.attrs),
                 &sig.decl,
@@ -980,10 +1006,6 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         ImplItemKind::TyAlias(ref ty) => {
             visitor.visit_id(impl_item.hir_id);
             visitor.visit_ty(ty);
-        }
-        ImplItemKind::OpaqueTy(bounds) => {
-            visitor.visit_id(impl_item.hir_id);
-            walk_list!(visitor, visit_param_bound, bounds);
         }
     }
 }
@@ -1064,7 +1086,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_expr(callee_expression);
             walk_list!(visitor, visit_expr, arguments);
         }
-        ExprKind::MethodCall(ref segment, _, arguments) => {
+        ExprKind::MethodCall(ref segment, _, arguments, _) => {
             visitor.visit_path_segment(expression.span, segment);
             walk_list!(visitor, visit_expr, arguments);
         }
@@ -1132,6 +1154,27 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, optional_expression);
         }
         ExprKind::InlineAsm(ref asm) => {
+            for op in asm.operands {
+                match op {
+                    InlineAsmOperand::In { expr, .. }
+                    | InlineAsmOperand::InOut { expr, .. }
+                    | InlineAsmOperand::Const { expr, .. }
+                    | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
+                    InlineAsmOperand::Out { expr, .. } => {
+                        if let Some(expr) = expr {
+                            visitor.visit_expr(expr);
+                        }
+                    }
+                    InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        visitor.visit_expr(in_expr);
+                        if let Some(out_expr) = out_expr {
+                            visitor.visit_expr(out_expr);
+                        }
+                    }
+                }
+            }
+        }
+        ExprKind::LlvmInlineAsm(ref asm) => {
             walk_list!(visitor, visit_expr, asm.outputs_exprs);
             walk_list!(visitor, visit_expr, asm.inputs_exprs);
         }

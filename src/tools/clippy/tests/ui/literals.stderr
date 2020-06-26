@@ -1,0 +1,73 @@
+error: inconsistent casing in hexadecimal literal
+  --> $DIR/literals.rs:14:17
+   |
+LL |     let fail1 = 0xabCD;
+   |                 ^^^^^^
+   |
+   = note: `-D clippy::mixed-case-hex-literals` implied by `-D warnings`
+
+error: inconsistent casing in hexadecimal literal
+  --> $DIR/literals.rs:15:17
+   |
+LL |     let fail2 = 0xabCD_u32;
+   |                 ^^^^^^^^^^
+
+error: inconsistent casing in hexadecimal literal
+  --> $DIR/literals.rs:16:17
+   |
+LL |     let fail2 = 0xabCD_isize;
+   |                 ^^^^^^^^^^^^
+
+error: this is a decimal constant
+  --> $DIR/literals.rs:17:27
+   |
+LL |     let fail_multi_zero = 000_123usize;
+   |                           ^^^^^^^^^^^^
+   |
+   = note: `-D clippy::zero-prefixed-literal` implied by `-D warnings`
+help: if you mean to use a decimal constant, remove the `0` to avoid confusion
+   |
+LL |     let fail_multi_zero = 123usize;
+   |                           ^^^^^^^^
+help: if you mean to use an octal constant, use `0o`
+   |
+LL |     let fail_multi_zero = 0o123usize;
+   |                           ^^^^^^^^^^
+
+error: this is a decimal constant
+  --> $DIR/literals.rs:21:17
+   |
+LL |     let fail8 = 0123;
+   |                 ^^^^
+   |
+help: if you mean to use a decimal constant, remove the `0` to avoid confusion
+   |
+LL |     let fail8 = 123;
+   |                 ^^^
+help: if you mean to use an octal constant, use `0o`
+   |
+LL |     let fail8 = 0o123;
+   |                 ^^^^^
+
+error: digits grouped inconsistently by underscores
+  --> $DIR/literals.rs:33:18
+   |
+LL |     let fail19 = 12_3456_21;
+   |                  ^^^^^^^^^^ help: consider: `12_345_621`
+   |
+   = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
+
+error: digits grouped inconsistently by underscores
+  --> $DIR/literals.rs:34:18
+   |
+LL |     let fail22 = 3__4___23;
+   |                  ^^^^^^^^^ help: consider: `3_423`
+
+error: digits grouped inconsistently by underscores
+  --> $DIR/literals.rs:35:18
+   |
+LL |     let fail23 = 3__16___23;
+   |                  ^^^^^^^^^^ help: consider: `31_623`
+
+error: aborting due to 8 previous errors
+

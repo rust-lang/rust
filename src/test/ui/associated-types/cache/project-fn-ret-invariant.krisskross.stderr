@@ -1,23 +1,23 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/project-fn-ret-invariant.rs:53:21
+  --> $DIR/project-fn-ret-invariant.rs:54:22
    |
-LL | fn transmute<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
-   |                                     --------     --------------------
-   |                                     |
-   |                                     this parameter and the return type are declared with different lifetimes...
-LL |    let a = bar(foo, y);
-   |                     ^ ...but data from `x` is returned here
+LL | fn transmute<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
+   |                                      --------     --------------------
+   |                                      |
+   |                                      this parameter and the return type are declared with different lifetimes...
+LL |     let a = bar(foo, y);
+   |                      ^ ...but data from `x` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/project-fn-ret-invariant.rs:54:21
+  --> $DIR/project-fn-ret-invariant.rs:56:9
    |
-LL | fn transmute<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
-   |                        --------                  --------------------
-   |                        |
-   |                        this parameter and the return type are declared with different lifetimes...
-LL |    let a = bar(foo, y);
-LL |    let b = bar(foo, x);
-   |                     ^ ...but data from `y` is returned here
+LL | fn transmute<'a, 'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
+   |                                      --------     --------------------
+   |                                      |
+   |                                      this parameter and the return type are declared with different lifetimes...
+...
+LL |     (a, b)
+   |         ^ ...but data from `x` is returned here
 
 error: aborting due to 2 previous errors
 

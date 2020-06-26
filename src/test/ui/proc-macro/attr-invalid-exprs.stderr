@@ -1,11 +1,11 @@
 error: expected expression, found end of macro arguments
-  --> $DIR/attr-invalid-exprs.rs:11:13
+  --> $DIR/attr-invalid-exprs.rs:12:13
    |
 LL |     let _ = #[no_output] "Hello, world!";
    |             ^^^^^^^^^^^^
 
 error: macro expansion ignores token `,` and any following
-  --> $DIR/attr-invalid-exprs.rs:14:13
+  --> $DIR/attr-invalid-exprs.rs:15:13
    |
 LL |     let _ = #[duplicate] "Hello, world!";
    |             ^^^^^^^^^^^^- help: you might be missing a semicolon here: `;`
@@ -15,7 +15,7 @@ LL |     let _ = #[duplicate] "Hello, world!";
    = note: the usage of `duplicate!` is likely invalid in expression context
 
 error: macro expansion ignores token `,` and any following
-  --> $DIR/attr-invalid-exprs.rs:23:9
+  --> $DIR/attr-invalid-exprs.rs:24:9
    |
 LL |         #[duplicate]
    |         ^^^^^^^^^^^^- help: you might be missing a semicolon here: `;`

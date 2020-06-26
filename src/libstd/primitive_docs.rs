@@ -320,7 +320,7 @@ mod prim_char {}
 
 #[doc(primitive = "unit")]
 //
-/// The `()` type, sometimes called "unit" or "nil".
+/// The `()` type, also called "unit".
 ///
 /// The `()` type has exactly one value `()`, and is used when there
 /// is no other meaningful value that could be returned. `()` is most

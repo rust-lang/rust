@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // aux-build:underscore-imports.rs
 
 #![warn(unused_imports, unused_extern_crates)]

@@ -43,40 +43,26 @@ pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
     // to allow the SDK path to be set. (For clang, xcrun sets
     // SDKROOT; for rustc, the user or build system can set it, or we
     // can fall back to checking for xcrun on PATH.)
-    if let Some(sdkroot) = env::var("SDKROOT").ok() {
+    if let Ok(sdkroot) = env::var("SDKROOT") {
         let p = Path::new(&sdkroot);
         match sdk_name {
             // Ignore `SDKROOT` if it's clearly set for the wrong platform.
             "appletvos"
                 if sdkroot.contains("TVSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") =>
-            {
-                ()
-            }
+                    || sdkroot.contains("MacOSX.platform") => {}
             "appletvsimulator"
-                if sdkroot.contains("TVOS.platform") || sdkroot.contains("MacOSX.platform") =>
-            {
-                ()
-            }
+                if sdkroot.contains("TVOS.platform") || sdkroot.contains("MacOSX.platform") => {}
             "iphoneos"
                 if sdkroot.contains("iPhoneSimulator.platform")
-                    || sdkroot.contains("MacOSX.platform") =>
-            {
-                ()
-            }
+                    || sdkroot.contains("MacOSX.platform") => {}
             "iphonesimulator"
-                if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("MacOSX.platform") =>
-            {
-                ()
+                if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("MacOSX.platform") => {
             }
             "macosx10.15"
                 if sdkroot.contains("iPhoneOS.platform")
-                    || sdkroot.contains("iPhoneSimulator.platform") =>
-            {
-                ()
-            }
+                    || sdkroot.contains("iPhoneSimulator.platform") => {}
             // Ignore `SDKROOT` if it's not a valid path.
-            _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => (),
+            _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
             _ => return Ok(sdkroot),
         }
     }
@@ -136,7 +122,7 @@ fn target_cpu(arch: Arch) -> String {
     match arch {
         Armv7 => "cortex-a8", // iOS7 is supported on iPhone 4 and higher
         Armv7s => "cortex-a9",
-        Arm64 => "cyclone",
+        Arm64 => "apple-a7",
         I386 => "yonah",
         X86_64 => "core2",
         X86_64_macabi => "core2",
@@ -155,7 +141,6 @@ pub fn opts(arch: Arch, os: AppleOS) -> Result<TargetOptions, String> {
     let pre_link_args = build_pre_link_args(arch, os)?;
     Ok(TargetOptions {
         cpu: target_cpu(arch),
-        dynamic_linking: false,
         executables: true,
         pre_link_args,
         link_env_remove: link_env_remove(arch),

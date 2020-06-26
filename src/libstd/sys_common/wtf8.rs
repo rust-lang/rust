@@ -201,9 +201,8 @@ impl Wtf8Buf {
     /// Copied from String::push
     /// This does **not** include the WTF-8 concatenation check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
-        let c = unsafe { char::from_u32_unchecked(code_point.value) };
         let mut bytes = [0; 4];
-        let bytes = c.encode_utf8(&mut bytes).as_bytes();
+        let bytes = char::encode_utf8_raw(code_point.value, &mut bytes);
         self.bytes.extend_from_slice(bytes)
     }
 
@@ -385,6 +384,17 @@ impl Extend<CodePoint> for Wtf8Buf {
         // Lower bound of one byte per code point (ASCII only)
         self.bytes.reserve(low);
         iterator.for_each(move |code_point| self.push(code_point));
+    }
+
+    #[inline]
+    fn extend_one(&mut self, code_point: CodePoint) {
+        self.push(code_point);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        // Lower bound of one byte per code point (ASCII only)
+        self.bytes.reserve(additional);
     }
 }
 
@@ -599,26 +609,22 @@ impl Wtf8 {
 
     #[inline]
     fn final_lead_surrogate(&self) -> Option<u16> {
-        let len = self.len();
-        if len < 3 {
-            return None;
-        }
-        match self.bytes[(len - 3)..] {
-            [0xED, b2 @ 0xA0..=0xAF, b3] => Some(decode_surrogate(b2, b3)),
+        match self.bytes {
+            [.., 0xED, b2 @ 0xA0..=0xAF, b3] => Some(decode_surrogate(b2, b3)),
             _ => None,
         }
     }
 
     #[inline]
     fn initial_trail_surrogate(&self) -> Option<u16> {
-        let len = self.len();
-        if len < 3 {
-            return None;
-        }
-        match self.bytes[..3] {
-            [0xED, b2 @ 0xB0..=0xBF, b3] => Some(decode_surrogate(b2, b3)),
+        match self.bytes {
+            [0xED, b2 @ 0xB0..=0xBF, b3, ..] => Some(decode_surrogate(b2, b3)),
             _ => None,
         }
+    }
+
+    pub fn clone_into(&self, buf: &mut Wtf8Buf) {
+        self.bytes.clone_into(&mut buf.bytes)
     }
 
     /// Boxes this `Wtf8`.
@@ -644,6 +650,36 @@ impl Wtf8 {
     pub fn into_rc(&self) -> Rc<Wtf8> {
         let rc: Rc<[u8]> = Rc::from(&self.bytes);
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Wtf8) }
+    }
+
+    #[inline]
+    pub fn make_ascii_lowercase(&mut self) {
+        self.bytes.make_ascii_lowercase()
+    }
+
+    #[inline]
+    pub fn make_ascii_uppercase(&mut self) {
+        self.bytes.make_ascii_uppercase()
+    }
+
+    #[inline]
+    pub fn to_ascii_lowercase(&self) -> Wtf8Buf {
+        Wtf8Buf { bytes: self.bytes.to_ascii_lowercase() }
+    }
+
+    #[inline]
+    pub fn to_ascii_uppercase(&self) -> Wtf8Buf {
+        Wtf8Buf { bytes: self.bytes.to_ascii_uppercase() }
+    }
+
+    #[inline]
+    pub fn is_ascii(&self) -> bool {
+        self.bytes.is_ascii()
+    }
+
+    #[inline]
+    pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
+        self.bytes.eq_ignore_ascii_case(&other.bytes)
     }
 }
 
@@ -803,8 +839,7 @@ impl<'a> Iterator for EncodeWide<'a> {
 
         let mut buf = [0; 2];
         self.code_points.next().map(|code_point| {
-            let c = unsafe { char::from_u32_unchecked(code_point.value) };
-            let n = c.encode_utf16(&mut buf).len();
+            let n = char::encode_utf16_raw(code_point.value, &mut buf).len();
             if n == 2 {
                 self.extra = buf[1];
             }
@@ -842,12 +877,6 @@ impl Hash for Wtf8 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write(&self.bytes);
         0xfeu8.hash(state)
-    }
-}
-
-impl Wtf8 {
-    pub fn make_ascii_uppercase(&mut self) {
-        self.bytes.make_ascii_uppercase()
     }
 }
 

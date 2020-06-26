@@ -1,6 +1,6 @@
 //! The data that we will serialize and deserialize.
 
-use rustc::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedWorkProduct {

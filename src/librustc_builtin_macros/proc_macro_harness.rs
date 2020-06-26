@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc_ast::ast::{self, Ident, NodeId};
+use rustc_ast::ast::{self, NodeId};
 use rustc_ast::attr;
 use rustc_ast::expand::is_proc_macro_attr;
 use rustc_ast::ptr::P;
@@ -10,17 +10,18 @@ use rustc_expand::base::{ExtCtxt, Resolver};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::AstPass;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::source_map::SourceMap;
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
 use std::cell::RefCell;
 
 struct ProcMacroDerive {
     id: NodeId,
-    trait_name: ast::Name,
+    trait_name: Symbol,
     function_name: Ident,
     span: Span,
-    attrs: Vec<ast::Name>,
+    attrs: Vec<Symbol>,
 }
 
 enum ProcMacroDefType {
@@ -44,6 +45,7 @@ struct CollectProcMacros<'a> {
     macros: Vec<ProcMacro>,
     in_root: bool,
     handler: &'a rustc_errors::Handler,
+    source_map: &'a SourceMap,
     is_proc_macro_crate: bool,
     is_test_crate: bool,
 }
@@ -59,12 +61,13 @@ pub fn inject(
     handler: &rustc_errors::Handler,
 ) -> ast::Crate {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
-    let mut cx = ExtCtxt::new(sess, ecfg, resolver);
+    let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
     let mut collect = CollectProcMacros {
         macros: Vec::new(),
         in_root: true,
         handler,
+        source_map: sess.source_map(),
         is_proc_macro_crate,
         is_test_crate,
     };
@@ -195,7 +198,7 @@ impl<'a> CollectProcMacros<'a> {
             } else {
                 "functions tagged with `#[proc_macro_derive]` must be `pub`"
             };
-            self.handler.span_err(item.span, msg);
+            self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
         }
     }
 
@@ -214,7 +217,7 @@ impl<'a> CollectProcMacros<'a> {
             } else {
                 "functions tagged with `#[proc_macro_attribute]` must be `pub`"
             };
-            self.handler.span_err(item.span, msg);
+            self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
         }
     }
 
@@ -233,7 +236,7 @@ impl<'a> CollectProcMacros<'a> {
             } else {
                 "functions tagged with `#[proc_macro]` must be `pub`"
             };
-            self.handler.span_err(item.span, msg);
+            self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
         }
     }
 }
@@ -244,7 +247,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             if self.is_proc_macro_crate && attr::contains_name(&item.attrs, sym::macro_export) {
                 let msg =
                     "cannot export macro_rules! macros from a `proc-macro` crate type currently";
-                self.handler.span_err(item.span, msg);
+                self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
             }
         }
 
@@ -295,7 +298,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
         let attr = match found_attr {
             None => {
-                self.check_not_pub_in_root(&item.vis, item.span);
+                self.check_not_pub_in_root(&item.vis, self.source_map.guess_head_span(item.span));
                 let prev_in_root = mem::replace(&mut self.in_root, false);
                 visit::walk_item(self, item);
                 self.in_root = prev_in_root;
@@ -477,7 +480,7 @@ fn mk_decls(
 
     let anon_constant = cx.item_const(
         span,
-        ast::Ident::new(kw::Underscore, span),
+        Ident::new(kw::Underscore, span),
         cx.ty(span, ast::TyKind::Tup(Vec::new())),
         block,
     );

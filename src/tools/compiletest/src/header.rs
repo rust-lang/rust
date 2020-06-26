@@ -43,6 +43,10 @@ impl EarlyProps {
         let mut props = EarlyProps::default();
         let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
         let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
+        let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
 
         iter_header(testfile, None, rdr, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
@@ -74,7 +78,25 @@ impl EarlyProps {
                     props.ignore = true;
                 }
 
-                if !rustc_has_sanitizer_support && config.parse_needs_sanitizer_support(ln) {
+                if !rustc_has_sanitizer_support
+                    && config.parse_name_directive(ln, "needs-sanitizer-support")
+                {
+                    props.ignore = true;
+                }
+
+                if !has_asan && config.parse_name_directive(ln, "needs-sanitizer-address") {
+                    props.ignore = true;
+                }
+
+                if !has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak") {
+                    props.ignore = true;
+                }
+
+                if !has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory") {
+                    props.ignore = true;
+                }
+
+                if !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread") {
                     props.ignore = true;
                 }
 
@@ -191,6 +213,7 @@ impl EarlyProps {
                 return true;
             }
             if let Some(ref actual_version) = config.llvm_version {
+                let actual_version = version_to_int(actual_version);
                 if line.starts_with("min-llvm-version") {
                     let min_version = line
                         .trim_end()
@@ -199,7 +222,7 @@ impl EarlyProps {
                         .expect("Malformed llvm version directive");
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    &actual_version[..] < min_version
+                    actual_version < version_to_int(min_version)
                 } else if line.starts_with("min-system-llvm-version") {
                     let min_version = line
                         .trim_end()
@@ -208,7 +231,7 @@ impl EarlyProps {
                         .expect("Malformed llvm version directive");
                     // Ignore if using system LLVM and actual version
                     // is smaller the minimum required version
-                    config.system_llvm && &actual_version[..] < min_version
+                    config.system_llvm && actual_version < version_to_int(min_version)
                 } else if line.starts_with("ignore-llvm-version") {
                     // Syntax is: "ignore-llvm-version <version1> [- <version2>]"
                     let range_components = line
@@ -219,15 +242,15 @@ impl EarlyProps {
                         .take(3) // 3 or more = invalid, so take at most 3.
                         .collect::<Vec<&str>>();
                     match range_components.len() {
-                        1 => &actual_version[..] == range_components[0],
+                        1 => actual_version == version_to_int(range_components[0]),
                         2 => {
-                            let v_min = range_components[0];
-                            let v_max = range_components[1];
+                            let v_min = version_to_int(range_components[0]);
+                            let v_max = version_to_int(range_components[1]);
                             if v_max < v_min {
                                 panic!("Malformed LLVM version range: max < min")
                             }
                             // Ignore if version lies inside of range.
-                            &actual_version[..] >= v_min && &actual_version[..] <= v_max
+                            actual_version >= v_min && actual_version <= v_max
                         }
                         _ => panic!("Malformed LLVM version directive"),
                     }
@@ -236,6 +259,20 @@ impl EarlyProps {
                 }
             } else {
                 false
+            }
+        }
+
+        fn version_to_int(version: &str) -> u32 {
+            let version_without_suffix = version.split('-').next().unwrap();
+            let components: Vec<u32> = version_without_suffix
+                .split('.')
+                .map(|s| s.parse().expect("Malformed version component"))
+                .collect();
+            match components.len() {
+                1 => components[0] * 10000,
+                2 => components[0] * 10000 + components[1] * 100,
+                3 => components[0] * 10000 + components[1] * 100 + components[2],
+                _ => panic!("Malformed version"),
             }
         }
     }
@@ -814,10 +851,6 @@ impl Config {
         self.parse_name_directive(line, "needs-profiler-support")
     }
 
-    fn parse_needs_sanitizer_support(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "needs-sanitizer-support")
-    }
-
     /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
     /// or `normalize-stderr-32bit`.
     fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> ParsedNameDirective {
@@ -838,9 +871,11 @@ impl Config {
             name == util::get_pointer_width(&self.target) ||    // pointer width
             name == self.stage_id.split('-').next().unwrap() || // stage
             (self.target != self.host && name == "cross-compile") ||
+            (self.remote_test_client.is_some() && name == "remote") ||
             match self.compare_mode {
                 Some(CompareMode::Nll) => name == "compare-mode-nll",
                 Some(CompareMode::Polonius) => name == "compare-mode-polonius",
+                Some(CompareMode::Chalk) => name == "compare-mode-chalk",
                 None => false,
             } ||
             (cfg!(debug_assertions) && name == "debug") ||

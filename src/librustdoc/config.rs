@@ -4,15 +4,15 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
-use rustc::lint::Level;
-use rustc::session;
-use rustc::session::config::{
+use rustc_session::config::{self, parse_crate_types_from_list, parse_externs, CrateType};
+use rustc_session::config::{
     build_codegen_options, build_debugging_options, get_cmd_lint_options, host_triple,
     nightly_options,
 };
-use rustc::session::config::{parse_crate_types_from_list, parse_externs, CrateType};
-use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
-use rustc::session::search_paths::SearchPath;
+use rustc_session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
+use rustc_session::getopts;
+use rustc_session::lint::Level;
+use rustc_session::search_paths::SearchPath;
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_target::spec::TargetTriple;
 
@@ -299,9 +299,9 @@ impl Options {
             return Err(0);
         }
 
-        let color = session::config::parse_color(&matches);
-        let (json_rendered, _artifacts) = session::config::parse_json(&matches);
-        let error_format = session::config::parse_error_format(&matches, color, json_rendered);
+        let color = config::parse_color(&matches);
+        let (json_rendered, _artifacts) = config::parse_json(&matches);
+        let error_format = config::parse_error_format(&matches, color, json_rendered);
 
         let codegen_options = build_codegen_options(matches, error_format);
         let debugging_options = build_debugging_options(matches, error_format);
@@ -447,7 +447,7 @@ impl Options {
             None => return Err(3),
         };
 
-        match matches.opt_str("r").as_ref().map(|s| &**s) {
+        match matches.opt_str("r").as_deref() {
             Some("rust") | None => {}
             Some(s) => {
                 diag.struct_err(&format!("unknown input format: {}", s)).emit();

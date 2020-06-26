@@ -28,15 +28,13 @@
 //
 // holds because 'a can be instantiated to 'empty.
 
-trait Foo {
+trait Foo {}
 
-}
-
-impl<A> Foo for fn(A) { }
+impl<A> Foo for fn(A) {}
 
 fn assert_foo<T: Foo>() {}
 
 fn main() {
     assert_foo::<fn(&i32)>();
-    //~^ ERROR the trait bound `for<'r> fn(&'r i32): Foo` is not satisfied
+    //~^ ERROR implementation of `Foo` is not general enough
 }

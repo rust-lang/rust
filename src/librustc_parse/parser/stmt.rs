@@ -5,7 +5,6 @@ use super::pat::GateOr;
 use super::path::PathStyle;
 use super::{BlockMode, Parser, Restrictions, SemiColonMode};
 use crate::maybe_whole;
-use crate::DirectoryOwnership;
 
 use rustc_ast::ast;
 use rustc_ast::ast::{AttrStyle, AttrVec, Attribute, MacCall, MacStmtStyle};
@@ -54,7 +53,7 @@ impl<'a> Parser<'a> {
             // that starts like a path (1 token), but it fact not a path.
             // Also, we avoid stealing syntax from `parse_item_`.
             self.parse_stmt_path_start(lo, attrs)?
-        } else if let Some(item) = self.parse_stmt_item(attrs.clone())? {
+        } else if let Some(item) = self.parse_item_common(attrs.clone(), false, true, |_| true)? {
             // FIXME: Bad copy of attrs
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
         } else if self.eat(&token::Semi) {
@@ -72,13 +71,6 @@ impl<'a> Parser<'a> {
         Ok(Some(stmt))
     }
 
-    fn parse_stmt_item(&mut self, attrs: Vec<Attribute>) -> PResult<'a, Option<ast::Item>> {
-        let old = mem::replace(&mut self.directory.ownership, DirectoryOwnership::UnownedViaBlock);
-        let item = self.parse_item_common(attrs, false, true, |_| true)?;
-        self.directory.ownership = old;
-        Ok(item)
-    }
-
     fn parse_stmt_path_start(&mut self, lo: Span, attrs: Vec<Attribute>) -> PResult<'a, Stmt> {
         let path = self.parse_path(PathStyle::Expr)?;
 
@@ -87,7 +79,7 @@ impl<'a> Parser<'a> {
         }
 
         let expr = if self.check(&token::OpenDelim(token::Brace)) {
-            self.parse_struct_expr(lo, path, AttrVec::new())?
+            self.parse_struct_expr(path, AttrVec::new())?
         } else {
             let hi = self.prev_token.span;
             self.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())
@@ -171,11 +163,11 @@ impl<'a> Parser<'a> {
                 Ok(ty) => (None, Some(ty)),
                 Err(mut err) => {
                     // Rewind to before attempting to parse the type and continue parsing.
-                    let parser_snapshot_after_type = self.clone();
-                    mem::replace(self, parser_snapshot_before_type);
-
-                    let snippet = self.span_to_snippet(pat.span).unwrap();
-                    err.span_label(pat.span, format!("while parsing the type for `{}`", snippet));
+                    let parser_snapshot_after_type =
+                        mem::replace(self, parser_snapshot_before_type);
+                    if let Ok(snip) = self.span_to_snippet(pat.span) {
+                        err.span_label(pat.span, format!("while parsing the type for `{}`", snip));
+                    }
                     (Some((parser_snapshot_after_type, colon_sp, err)), None)
                 }
             }
@@ -209,7 +201,7 @@ impl<'a> Parser<'a> {
                 // Couldn't parse the type nor the initializer, only raise the type error and
                 // return to the parser state before parsing the type as the initializer.
                 // let x: <parse_error>;
-                mem::replace(self, snapshot);
+                *self = snapshot;
                 return Err(ty_err);
             }
             (Err(err), None) => {
@@ -224,14 +216,28 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the RHS of a local variable declaration (e.g., '= 14;').
-    fn parse_initializer(&mut self, skip_eq: bool) -> PResult<'a, Option<P<Expr>>> {
-        if self.eat(&token::Eq) {
-            Ok(Some(self.parse_expr()?))
-        } else if skip_eq {
-            Ok(Some(self.parse_expr()?))
-        } else {
-            Ok(None)
-        }
+    fn parse_initializer(&mut self, eq_optional: bool) -> PResult<'a, Option<P<Expr>>> {
+        let eq_consumed = match self.token.kind {
+            token::BinOpEq(..) => {
+                // Recover `let x <op>= 1` as `let x = 1`
+                self.struct_span_err(
+                    self.token.span,
+                    "can't reassign to an uninitialized variable",
+                )
+                .span_suggestion_short(
+                    self.token.span,
+                    "initialize the variable",
+                    "=".to_string(),
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
+                self.bump();
+                true
+            }
+            _ => self.eat(&token::Eq),
+        };
+
+        Ok(if eq_consumed || eq_optional { Some(self.parse_expr()?) } else { None })
     }
 
     /// Parses a block. No inner attributes are allowed.
@@ -286,7 +292,7 @@ impl<'a> Parser<'a> {
             _ => {}
         }
         e.span_label(sp, "expected `{`");
-        return Err(e);
+        Err(e)
     }
 
     /// Parses a block. Inner attributes are allowed.

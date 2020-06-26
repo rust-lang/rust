@@ -14,6 +14,14 @@ where
     Vec::<A>::new()
 }
 
+pub fn yes_array_into_vec<T>() -> Vec<T> {
+    [].into()
+}
+
+pub fn yes_array_into_box<T>() -> Box<[T]> {
+    [].into()
+}
+
 use std::collections::VecDeque;
 
 pub fn yes_vecdeque_partial_eq_array<A, B>() -> impl PartialEq<[B; 32]>

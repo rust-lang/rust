@@ -1,7 +1,7 @@
 use crate::generated_code;
-use rustc::session::Session;
 use rustc_ast::token::{self, TokenKind};
 use rustc_parse::lexer::{self, StringReader};
+use rustc_session::Session;
 use rustc_span::*;
 
 #[derive(Clone)]
@@ -16,12 +16,13 @@ impl<'a> SpanUtils<'a> {
 
     pub fn make_filename_string(&self, file: &SourceFile) -> String {
         match &file.name {
-            FileName::Real(path) if !file.name_was_remapped => {
+            FileName::Real(name) if !file.name_was_remapped => {
+                let path = name.local_path();
                 if path.is_absolute() {
                     self.sess
                         .source_map()
                         .path_mapping()
-                        .map_prefix(path.clone())
+                        .map_prefix(path.into())
                         .0
                         .display()
                         .to_string()

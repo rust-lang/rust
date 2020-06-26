@@ -1,6 +1,7 @@
 use crate::expand::{self, AstFragment, Invocation};
+use crate::module::DirectoryOwnership;
 
-use rustc_ast::ast::{self, Attribute, Name, NodeId, PatKind};
+use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -9,9 +10,10 @@ use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{DiagnosticBuilder, DiagnosticId};
-use rustc_parse::{self, parser, DirectoryOwnership, MACRO_ARGUMENTS};
-use rustc_session::parse::ParseSess;
+use rustc_errors::{DiagnosticBuilder, ErrorReported};
+use rustc_parse::{self, parser, MACRO_ARGUMENTS};
+use rustc_session::{parse::ParseSess, Limit};
+use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
 use rustc_span::source_map::SourceMap;
@@ -258,8 +260,17 @@ impl Annotatable {
     }
 }
 
-// `meta_item` is the annotation, and `item` is the item being modified.
-// FIXME Decorators should follow the same pattern too.
+/// Result of an expansion that may need to be retried.
+/// Consider using this for non-`MultiItemModifier` expanders as well.
+pub enum ExpandResult<T, U> {
+    /// Expansion produced a result (possibly dummy).
+    Ready(T),
+    /// Expansion could not produce a result and needs to be retried.
+    /// The string is an explanation that will be printed if we are stuck in an infinite retry loop.
+    Retry(U, String),
+}
+
+// `meta_item` is the attribute, and `item` is the item being modified.
 pub trait MultiItemModifier {
     fn expand(
         &self,
@@ -267,13 +278,12 @@ pub trait MultiItemModifier {
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
-    ) -> Vec<Annotatable>;
+    ) -> ExpandResult<Vec<Annotatable>, Annotatable>;
 }
 
-impl<F, T> MultiItemModifier for F
+impl<F> MultiItemModifier for F
 where
-    F: Fn(&mut ExtCtxt<'_>, Span, &ast::MetaItem, Annotatable) -> T,
-    T: Into<Vec<Annotatable>>,
+    F: Fn(&mut ExtCtxt<'_>, Span, &ast::MetaItem, Annotatable) -> Vec<Annotatable>,
 {
     fn expand(
         &self,
@@ -281,28 +291,32 @@ where
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
-    ) -> Vec<Annotatable> {
-        (*self)(ecx, span, meta_item, item).into()
-    }
-}
-
-impl Into<Vec<Annotatable>> for Annotatable {
-    fn into(self) -> Vec<Annotatable> {
-        vec![self]
+    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+        ExpandResult::Ready(self(ecx, span, meta_item, item))
     }
 }
 
 pub trait ProcMacro {
-    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt<'_>, span: Span, ts: TokenStream) -> TokenStream;
+    fn expand<'cx>(
+        &self,
+        ecx: &'cx mut ExtCtxt<'_>,
+        span: Span,
+        ts: TokenStream,
+    ) -> Result<TokenStream, ErrorReported>;
 }
 
 impl<F> ProcMacro for F
 where
     F: Fn(TokenStream) -> TokenStream,
 {
-    fn expand<'cx>(&self, _ecx: &'cx mut ExtCtxt<'_>, _span: Span, ts: TokenStream) -> TokenStream {
+    fn expand<'cx>(
+        &self,
+        _ecx: &'cx mut ExtCtxt<'_>,
+        _span: Span,
+        ts: TokenStream,
+    ) -> Result<TokenStream, ErrorReported> {
         // FIXME setup implicit context in TLS before calling self.
-        (*self)(ts)
+        Ok((*self)(ts))
     }
 }
 
@@ -313,7 +327,7 @@ pub trait AttrProcMacro {
         span: Span,
         annotation: TokenStream,
         annotated: TokenStream,
-    ) -> TokenStream;
+    ) -> Result<TokenStream, ErrorReported>;
 }
 
 impl<F> AttrProcMacro for F
@@ -326,9 +340,9 @@ where
         _span: Span,
         annotation: TokenStream,
         annotated: TokenStream,
-    ) -> TokenStream {
+    ) -> Result<TokenStream, ErrorReported> {
         // FIXME setup implicit context in TLS before calling self.
-        (*self)(annotation, annotated)
+        Ok((*self)(annotation, annotated))
     }
 }
 
@@ -580,6 +594,7 @@ impl DummyResult {
             kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
             span: sp,
             attrs: ast::AttrVec::new(),
+            tokens: None,
         })
     }
 
@@ -783,7 +798,7 @@ impl SyntaxExtension {
         span: Span,
         helper_attrs: Vec<Symbol>,
         edition: Edition,
-        name: Name,
+        name: Symbol,
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
         let allow_internal_unstable = attr::allow_internal_unstable(&attrs, &sess.span_diagnostic)
@@ -844,7 +859,13 @@ impl SyntaxExtension {
         SyntaxExtension::default(SyntaxExtensionKind::NonMacroAttr { mark_used }, edition)
     }
 
-    pub fn expn_data(&self, parent: ExpnId, call_site: Span, descr: Symbol) -> ExpnData {
+    pub fn expn_data(
+        &self,
+        parent: ExpnId,
+        call_site: Span,
+        descr: Symbol,
+        macro_def_id: Option<DefId>,
+    ) -> ExpnData {
         ExpnData {
             kind: ExpnKind::Macro(self.macro_kind(), descr),
             parent,
@@ -854,6 +875,7 @@ impl SyntaxExtension {
             allow_internal_unsafe: self.allow_internal_unsafe,
             local_inner_macros: self.local_inner_macros,
             edition: self.edition,
+            macro_def_id,
         }
     }
 }
@@ -872,7 +894,7 @@ pub trait Resolver {
 
     fn resolve_dollar_crates(&mut self);
     fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment);
-    fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension);
+    fn register_builtin_macro(&mut self, ident: Ident, ext: SyntaxExtension);
 
     fn expansion_for_ast_pass(
         &mut self,
@@ -893,13 +915,17 @@ pub trait Resolver {
 
     fn check_unused_macros(&mut self);
 
+    /// Some parent node that is close enough to the given macro call.
+    fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId;
+
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
     fn add_derive_copy(&mut self, expn_id: ExpnId);
+    fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
 }
 
 #[derive(Clone)]
 pub struct ModuleData {
-    pub mod_path: Vec<ast::Ident>,
+    pub mod_path: Vec<Ident>,
     pub directory: PathBuf,
 }
 
@@ -918,10 +944,13 @@ pub struct ExpansionData {
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
+    pub reduced_recursion_limit: Option<Limit>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn Resolver,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
+    /// Called directly after having parsed an external `mod foo;` in expansion.
+    pub(super) extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -929,12 +958,15 @@ impl<'a> ExtCtxt<'a> {
         parse_sess: &'a ParseSess,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn Resolver,
+        extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess,
             ecfg,
-            root_path: PathBuf::new(),
+            reduced_recursion_limit: None,
             resolver,
+            extern_mod_loaded,
+            root_path: PathBuf::new(),
             current_expansion: ExpansionData {
                 id: ExpnId::root(),
                 depth: 0,
@@ -994,30 +1026,8 @@ impl<'a> ExtCtxt<'a> {
         self.current_expansion.id.expansion_cause()
     }
 
-    pub fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'a> {
-        self.parse_sess.span_diagnostic.struct_span_warn(sp, msg)
-    }
     pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.struct_span_err(sp, msg)
-    }
-    pub fn struct_span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'a> {
-        self.parse_sess.span_diagnostic.struct_span_fatal(sp, msg)
-    }
-
-    /// Emit `msg` attached to `sp`, and stop compilation immediately.
-    ///
-    /// `span_err` should be strongly preferred where-ever possible:
-    /// this should *only* be used when:
-    ///
-    /// - continuing has a high risk of flow-on errors (e.g., errors in
-    ///   declaring a macro would cause all uses of that macro to
-    ///   complain about "undefined macro"), or
-    /// - there is literally nothing else that can be done (however,
-    ///   in most cases one can construct a dummy expression/item to
-    ///   substitute; we never hit resolve/type-checking so the dummy
-    ///   value doesn't have to match anything)
-    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.parse_sess.span_diagnostic.span_fatal(sp, msg).raise();
     }
 
     /// Emit `msg` attached to `sp`, without immediately stopping
@@ -1027,9 +1037,6 @@ impl<'a> ExtCtxt<'a> {
     /// the macro expansion phase).
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_err(sp, msg);
-    }
-    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
-        self.parse_sess.span_diagnostic.span_err_with_code(sp, msg, code);
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_warn(sp, msg);
@@ -1057,16 +1064,16 @@ impl<'a> ExtCtxt<'a> {
     pub fn set_trace_macros(&mut self, x: bool) {
         self.ecfg.trace_mac = x
     }
-    pub fn ident_of(&self, st: &str, sp: Span) -> ast::Ident {
-        ast::Ident::from_str_and_span(st, sp)
+    pub fn ident_of(&self, st: &str, sp: Span) -> Ident {
+        Ident::from_str_and_span(st, sp)
     }
-    pub fn std_path(&self, components: &[Symbol]) -> Vec<ast::Ident> {
+    pub fn std_path(&self, components: &[Symbol]) -> Vec<Ident> {
         let def_site = self.with_def_site_ctxt(DUMMY_SP);
         iter::once(Ident::new(kw::DollarCrate, def_site))
             .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()
     }
-    pub fn name_of(&self, st: &str) -> ast::Name {
+    pub fn name_of(&self, st: &str) -> Symbol {
         Symbol::intern(st)
     }
 
@@ -1091,7 +1098,7 @@ impl<'a> ExtCtxt<'a> {
         if !path.is_absolute() {
             let callsite = span.source_callsite();
             let mut result = match self.source_map().span_to_unmapped_path(callsite) {
-                FileName::Real(path) => path,
+                FileName::Real(name) => name.into_local_path(),
                 FileName::DocTest(path, _) => path,
                 other => {
                     return Err(self.struct_span_err(
@@ -1158,6 +1165,18 @@ pub fn check_zero_tts(cx: &ExtCtxt<'_>, sp: Span, tts: TokenStream, name: &str) 
     }
 }
 
+/// Parse an expression. On error, emit it, advancing to `Eof`, and return `None`.
+pub fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
+    match p.parse_expr() {
+        Ok(e) => return Some(e),
+        Err(mut err) => err.emit(),
+    }
+    while p.token != token::Eof {
+        p.bump();
+    }
+    None
+}
+
 /// Interpreting `tts` as a comma-separated sequence of expressions,
 /// expect exactly one string literal, or emit an error and return `None`.
 pub fn get_single_str_from_tts(
@@ -1171,7 +1190,7 @@ pub fn get_single_str_from_tts(
         cx.span_err(sp, &format!("{} takes 1 argument", name));
         return None;
     }
-    let ret = panictry!(p.parse_expr());
+    let ret = parse_expr(&mut p)?;
     let _ = p.eat(&token::Comma);
 
     if p.token != token::Eof {
@@ -1180,8 +1199,8 @@ pub fn get_single_str_from_tts(
     expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s.to_string())
 }
 
-/// Extracts comma-separated expressions from `tts`. If there is a
-/// parsing error, emit a non-fatal error and return `None`.
+/// Extracts comma-separated expressions from `tts`.
+/// On error, emit it, and return `None`.
 pub fn get_exprs_from_tts(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -1190,7 +1209,7 @@ pub fn get_exprs_from_tts(
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
-        let expr = panictry!(p.parse_expr());
+        let expr = parse_expr(&mut p)?;
 
         // Perform eager expansion on the expression.
         // We want to be able to handle e.g., `concat!("foo", "bar")`.

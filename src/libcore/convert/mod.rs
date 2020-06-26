@@ -41,6 +41,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
+use crate::hash::{Hash, Hasher};
 
 mod num;
 
@@ -373,6 +374,7 @@ pub trait Into<T>: Sized {
 /// [`Into`]: trait.Into.html
 /// [`from`]: trait.From.html#tymethod.from
 /// [book]: ../../book/ch09-00-error-handling.html
+#[rustc_diagnostic_item = "from_trait"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(on(
     all(_Self = "&str", T = "std::string::String"),
@@ -744,5 +746,12 @@ impl Ord for Infallible {
 impl From<!> for Infallible {
     fn from(x: !) -> Self {
         x
+    }
+}
+
+#[stable(feature = "convert_infallible_hash", since = "1.44.0")]
+impl Hash for Infallible {
+    fn hash<H: Hasher>(&self, _: &mut H) {
+        match *self {}
     }
 }

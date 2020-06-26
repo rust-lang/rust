@@ -5,13 +5,13 @@ use crate::context::CodegenCx;
 use crate::llvm;
 use crate::type_of::LayoutLlvmExt;
 use log::debug;
-use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::layout::{FnAbiExt, LayoutOf};
-use rustc::ty::{Instance, TypeFoldable};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-
-pub use rustc::mir::mono::MonoItem;
+pub use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::mir::mono::{Linkage, Visibility};
+use rustc_middle::ty::layout::FnAbiExt;
+use rustc_middle::ty::{Instance, TypeFoldable};
+use rustc_target::abi::LayoutOf;
 
 impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn predefine_static(
@@ -47,7 +47,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         visibility: Visibility,
         symbol_name: &str,
     ) {
-        assert!(!instance.substs.needs_infer() && !instance.substs.has_param_types());
+        assert!(!instance.substs.needs_infer() && !instance.substs.has_param_types_or_consts());
 
         let fn_abi = FnAbi::of_instance(self, instance, &[]);
         let lldecl = self.declare_fn(symbol_name, &fn_abi);
@@ -77,7 +77,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         debug!("predefine_fn: instance = {:?}", instance);
 
-        attributes::from_fn_attrs(self, lldecl, instance, &fn_abi);
+        attributes::from_fn_attrs(self, lldecl, instance);
 
         self.instances.borrow_mut().insert(instance, lldecl);
     }

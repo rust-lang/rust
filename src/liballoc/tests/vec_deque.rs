@@ -3,7 +3,6 @@ use std::collections::{vec_deque::Drain, VecDeque};
 use std::fmt::Debug;
 use std::mem::size_of;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::{isize, usize};
 
 use crate::hash;
 
@@ -955,16 +954,14 @@ fn test_append_permutations() {
         out
     }
 
-    #[cfg(not(miri))] // Miri is too slow
-    const MAX: usize = 5;
-    #[cfg(miri)]
-    const MAX: usize = 3;
+    // Miri is too slow
+    let max = if cfg!(miri) { 3 } else { 5 };
 
     // Many different permutations of both the `VecDeque` getting appended to
     // and the one getting appended are generated to check `append`.
     // This ensures all 6 code paths of `append` are tested.
-    for src_push_back in 0..MAX {
-        for src_push_front in 0..MAX {
+    for src_push_back in 0..max {
+        for src_push_front in 0..max {
             // doesn't pop more values than are pushed
             for src_pop_back in 0..(src_push_back + src_push_front) {
                 for src_pop_front in 0..(src_push_back + src_push_front - src_pop_back) {
@@ -975,8 +972,8 @@ fn test_append_permutations() {
                         src_pop_front,
                     );
 
-                    for dst_push_back in 0..MAX {
-                        for dst_push_front in 0..MAX {
+                    for dst_push_back in 0..max {
+                        for dst_push_front in 0..max {
                             for dst_pop_back in 0..(dst_push_back + dst_push_front) {
                                 for dst_pop_front in
                                     0..(dst_push_back + dst_push_front - dst_pop_back)
@@ -1135,6 +1132,7 @@ fn test_reserve_exact_2() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
+#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve() {
     // These are the interesting cases:
     // * exactly isize::MAX should never trigger a CapacityOverflow (can be OOM)
@@ -1249,6 +1247,7 @@ fn test_try_reserve() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
+#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve_exact() {
     // This is exactly the same as test_try_reserve with the method changed.
     // See that test for comments.

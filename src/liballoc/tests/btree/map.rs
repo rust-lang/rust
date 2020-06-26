@@ -5,19 +5,31 @@ use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
-use std::panic::catch_unwind;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::DeterministicRng;
+
+// Value of node::CAPACITY, thus capacity of a tree with a single level,
+// i.e. a tree who's root is a leaf node at height 0.
+const NODE_CAPACITY: usize = 11;
+
+// Minimum number of elements to insert in order to guarantee a tree with 2 levels,
+// i.e. a tree who's root is an internal node at height 1, with edges to leaf nodes.
+// It's not the minimum size: removing an element from such a tree does not always reduce height.
+const MIN_INSERTS_HEIGHT_1: usize = NODE_CAPACITY + 1;
+
+// Minimum number of elements to insert in order to guarantee a tree with 3 levels,
+// i.e. a tree who's root is an internal node at height 2, with edges to more internal nodes.
+// It's not the minimum size: removing an element from such a tree does not always reduce height.
+const MIN_INSERTS_HEIGHT_2: usize = NODE_CAPACITY + (NODE_CAPACITY + 1) * NODE_CAPACITY + 1;
 
 #[test]
 fn test_basic_large() {
     let mut map = BTreeMap::new();
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 10000;
-    #[cfg(miri)]
-    let size = 144; // to obtain height 3 tree (having edges to both kinds of nodes)
+    // Miri is too slow
+    let size = if cfg!(miri) { MIN_INSERTS_HEIGHT_2 } else { 10000 };
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
@@ -67,7 +79,7 @@ fn test_basic_large() {
 #[test]
 fn test_basic_small() {
     let mut map = BTreeMap::new();
-    // Empty, shared root:
+    // Empty, root is absent (None):
     assert_eq!(map.remove(&1), None);
     assert_eq!(map.len(), 0);
     assert_eq!(map.get(&1), None);
@@ -123,7 +135,7 @@ fn test_basic_small() {
     assert_eq!(map.values().collect::<Vec<_>>(), vec![&4]);
     assert_eq!(map.remove(&2), Some(4));
 
-    // Empty but private root:
+    // Empty but root is owned (Some(...)):
     assert_eq!(map.len(), 0);
     assert_eq!(map.get(&1), None);
     assert_eq!(map.get_mut(&1), None);
@@ -141,10 +153,8 @@ fn test_basic_small() {
 
 #[test]
 fn test_iter() {
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 10000;
-    #[cfg(miri)]
-    let size = 200;
+    // Miri is too slow
+    let size = if cfg!(miri) { 200 } else { 10000 };
 
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
@@ -166,10 +176,8 @@ fn test_iter() {
 
 #[test]
 fn test_iter_rev() {
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 10000;
-    #[cfg(miri)]
-    let size = 200;
+    // Miri is too slow
+    let size = if cfg!(miri) { 200 } else { 10000 };
 
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
@@ -237,37 +245,26 @@ impl TryFrom<usize> for Align32 {
 
 #[test]
 fn test_iter_mut_mutation() {
-    // Check many alignments because various fields precede array in NodeHeader.
-    // Check with size 0 which should not iterate at all.
-    // Check with size 1 for a tree with one kind of node (root = leaf).
-    // Check with size 12 for a tree with two kinds of nodes (root and leaves).
-    // Check with size 144 for a tree with all kinds of nodes (root, internals and leaves).
+    // Check many alignments and trees with roots at various heights.
     do_test_iter_mut_mutation::<u8>(0);
     do_test_iter_mut_mutation::<u8>(1);
-    do_test_iter_mut_mutation::<u8>(12);
-    do_test_iter_mut_mutation::<u8>(127); // not enough unique values to test 144
+    do_test_iter_mut_mutation::<u8>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<u8>(127); // not enough unique values to test MIN_INSERTS_HEIGHT_2
     do_test_iter_mut_mutation::<u16>(1);
-    do_test_iter_mut_mutation::<u16>(12);
-    do_test_iter_mut_mutation::<u16>(144);
+    do_test_iter_mut_mutation::<u16>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<u16>(MIN_INSERTS_HEIGHT_2);
     do_test_iter_mut_mutation::<u32>(1);
-    do_test_iter_mut_mutation::<u32>(12);
-    do_test_iter_mut_mutation::<u32>(144);
+    do_test_iter_mut_mutation::<u32>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<u32>(MIN_INSERTS_HEIGHT_2);
     do_test_iter_mut_mutation::<u64>(1);
-    do_test_iter_mut_mutation::<u64>(12);
-    do_test_iter_mut_mutation::<u64>(144);
+    do_test_iter_mut_mutation::<u64>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<u64>(MIN_INSERTS_HEIGHT_2);
     do_test_iter_mut_mutation::<u128>(1);
-    do_test_iter_mut_mutation::<u128>(12);
-    do_test_iter_mut_mutation::<u128>(144);
+    do_test_iter_mut_mutation::<u128>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<u128>(MIN_INSERTS_HEIGHT_2);
     do_test_iter_mut_mutation::<Align32>(1);
-    do_test_iter_mut_mutation::<Align32>(12);
-    do_test_iter_mut_mutation::<Align32>(144);
-}
-
-#[test]
-fn test_into_key_slice_with_shared_root_past_bounds() {
-    let mut map: BTreeMap<Align32, ()> = BTreeMap::new();
-    assert_eq!(map.get(&Align32(1)), None);
-    assert_eq!(map.get_mut(&Align32(1)), None);
+    do_test_iter_mut_mutation::<Align32>(MIN_INSERTS_HEIGHT_1);
+    do_test_iter_mut_mutation::<Align32>(MIN_INSERTS_HEIGHT_2);
 }
 
 #[test]
@@ -286,10 +283,8 @@ fn test_values_mut() {
 
 #[test]
 fn test_iter_mixed() {
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 10000;
-    #[cfg(miri)]
-    let size = 200;
+    // Miri is too slow
+    let size = if cfg!(miri) { 200 } else { 10000 };
 
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
@@ -383,12 +378,11 @@ fn test_range_small() {
 }
 
 #[test]
-fn test_range_height_2() {
-    // Assuming that node.CAPACITY is 11, having 12 pairs implies a height 2 tree
-    // with 2 leaves. Depending on details we don't want or need to rely upon,
-    // the single key at the root will be 6 or 7.
+fn test_range_height_1() {
+    // Tests tree with a root and 2 leaves. Depending on details we don't want or need
+    // to rely upon, the single key at the root will be 6 or 7.
 
-    let map: BTreeMap<_, _> = (1..=12).map(|i| (i, i)).collect();
+    let map: BTreeMap<_, _> = (1..=MIN_INSERTS_HEIGHT_1 as i32).map(|i| (i, i)).collect();
     for &root in &[6, 7] {
         assert_eq!(range_keys(&map, (Excluded(root), Excluded(root + 1))), vec![]);
         assert_eq!(range_keys(&map, (Excluded(root), Included(root + 1))), vec![root + 1]);
@@ -473,7 +467,7 @@ fn test_range_large() {
 
 #[test]
 fn test_range_inclusive_max_value() {
-    let max = std::usize::MAX;
+    let max = usize::MAX;
     let map: BTreeMap<_, _> = vec![(max, 0)].into_iter().collect();
 
     assert_eq!(map.range(max..=max).collect::<Vec<_>>(), &[(&max, &0)]);
@@ -523,10 +517,8 @@ fn test_range_backwards_4() {
 
 #[test]
 fn test_range_1000() {
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 1000;
-    #[cfg(miri)]
-    let size = 144; // to obtain height 3 tree (having edges to both kinds of nodes)
+    // Miri is too slow
+    let size = if cfg!(miri) { MIN_INSERTS_HEIGHT_2 as u32 } else { 1000 };
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
@@ -564,10 +556,8 @@ fn test_range_borrowed_key() {
 #[test]
 fn test_range() {
     let size = 200;
-    #[cfg(not(miri))] // Miri is too slow
-    let step = 1;
-    #[cfg(miri)]
-    let step = 66;
+    // Miri is too slow
+    let step = if cfg!(miri) { 66 } else { 1 };
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     for i in (0..size).step_by(step) {
@@ -587,10 +577,8 @@ fn test_range() {
 #[test]
 fn test_range_mut() {
     let size = 200;
-    #[cfg(not(miri))] // Miri is too slow
-    let step = 1;
-    #[cfg(miri)]
-    let step = 66;
+    // Miri is too slow
+    let step = if cfg!(miri) { 66 } else { 1 };
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     for i in (0..size).step_by(step) {
@@ -604,6 +592,263 @@ fn test_range_mut() {
             assert_eq!(kvs.next(), None);
             assert_eq!(pairs.next(), None);
         }
+    }
+}
+
+mod test_drain_filter {
+    use super::*;
+
+    #[test]
+    fn empty() {
+        let mut map: BTreeMap<i32, i32> = BTreeMap::new();
+        map.drain_filter(|_, _| unreachable!("there's nothing to decide on"));
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn consuming_nothing() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        assert!(map.drain_filter(|_, _| false).eq(std::iter::empty()));
+    }
+
+    #[test]
+    fn consuming_all() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.clone().collect();
+        assert!(map.drain_filter(|_, _| true).eq(pairs));
+    }
+
+    #[test]
+    fn mutating_and_keeping() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        assert!(
+            map.drain_filter(|_, v| {
+                *v += 6;
+                false
+            })
+            .eq(std::iter::empty())
+        );
+        assert!(map.keys().copied().eq(0..3));
+        assert!(map.values().copied().eq(6..9));
+    }
+
+    #[test]
+    fn mutating_and_removing() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        assert!(
+            map.drain_filter(|_, v| {
+                *v += 6;
+                true
+            })
+            .eq((0..3).map(|i| (i, i + 6)))
+        );
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn underfull_keeping_all() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| false);
+        assert!(map.keys().copied().eq(0..3));
+    }
+
+    #[test]
+    fn underfull_removing_one() {
+        let pairs = (0..3).map(|i| (i, i));
+        for doomed in 0..3 {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i == doomed);
+            assert_eq!(map.len(), 2);
+        }
+    }
+
+    #[test]
+    fn underfull_keeping_one() {
+        let pairs = (0..3).map(|i| (i, i));
+        for sacred in 0..3 {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i != sacred);
+            assert!(map.keys().copied().eq(sacred..=sacred));
+        }
+    }
+
+    #[test]
+    fn underfull_removing_all() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| true);
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn height_0_keeping_all() {
+        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| false);
+        assert!(map.keys().copied().eq(0..NODE_CAPACITY));
+    }
+
+    #[test]
+    fn height_0_removing_one() {
+        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
+        for doomed in 0..NODE_CAPACITY {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i == doomed);
+            assert_eq!(map.len(), NODE_CAPACITY - 1);
+        }
+    }
+
+    #[test]
+    fn height_0_keeping_one() {
+        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
+        for sacred in 0..NODE_CAPACITY {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i != sacred);
+            assert!(map.keys().copied().eq(sacred..=sacred));
+        }
+    }
+
+    #[test]
+    fn height_0_removing_all() {
+        let pairs = (0..NODE_CAPACITY).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| true);
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn height_0_keeping_half() {
+        let mut map: BTreeMap<_, _> = (0..16).map(|i| (i, i)).collect();
+        assert_eq!(map.drain_filter(|i, _| *i % 2 == 0).count(), 8);
+        assert_eq!(map.len(), 8);
+    }
+
+    #[test]
+    fn height_1_removing_all() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| true);
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn height_1_removing_one() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
+        for doomed in 0..MIN_INSERTS_HEIGHT_1 {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i == doomed);
+            assert_eq!(map.len(), MIN_INSERTS_HEIGHT_1 - 1);
+        }
+    }
+
+    #[test]
+    fn height_1_keeping_one() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
+        for sacred in 0..MIN_INSERTS_HEIGHT_1 {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i != sacred);
+            assert!(map.keys().copied().eq(sacred..=sacred));
+        }
+    }
+
+    #[cfg(not(miri))] // Miri is too slow
+    #[test]
+    fn height_2_removing_one() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
+        for doomed in (0..MIN_INSERTS_HEIGHT_2).step_by(12) {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i == doomed);
+            assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2 - 1);
+        }
+    }
+
+    #[cfg(not(miri))] // Miri is too slow
+    #[test]
+    fn height_2_keeping_one() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
+        for sacred in (0..MIN_INSERTS_HEIGHT_2).step_by(12) {
+            let mut map: BTreeMap<_, _> = pairs.clone().collect();
+            map.drain_filter(|i, _| *i != sacred);
+            assert!(map.keys().copied().eq(sacred..=sacred));
+        }
+    }
+
+    #[test]
+    fn height_2_removing_all() {
+        let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| true);
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn drop_panic_leak() {
+        static PREDS: AtomicUsize = AtomicUsize::new(0);
+        static DROPS: AtomicUsize = AtomicUsize::new(0);
+
+        struct D;
+        impl Drop for D {
+            fn drop(&mut self) {
+                if DROPS.fetch_add(1, Ordering::SeqCst) == 1 {
+                    panic!("panic in `drop`");
+                }
+            }
+        }
+
+        let mut map = BTreeMap::new();
+        map.insert(0, D);
+        map.insert(4, D);
+        map.insert(8, D);
+
+        catch_unwind(move || {
+            drop(map.drain_filter(|i, _| {
+                PREDS.fetch_add(1usize << i, Ordering::SeqCst);
+                true
+            }))
+        })
+        .ok();
+
+        assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
+        assert_eq!(DROPS.load(Ordering::SeqCst), 3);
+    }
+
+    #[test]
+    fn pred_panic_leak() {
+        static PREDS: AtomicUsize = AtomicUsize::new(0);
+        static DROPS: AtomicUsize = AtomicUsize::new(0);
+
+        struct D;
+        impl Drop for D {
+            fn drop(&mut self) {
+                DROPS.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        let mut map = BTreeMap::new();
+        map.insert(0, D);
+        map.insert(4, D);
+        map.insert(8, D);
+
+        catch_unwind(AssertUnwindSafe(|| {
+            drop(map.drain_filter(|i, _| {
+                PREDS.fetch_add(1usize << i, Ordering::SeqCst);
+                match i {
+                    0 => true,
+                    _ => panic!(),
+                }
+            }))
+        }))
+        .ok();
+
+        assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
+        assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+        assert_eq!(map.len(), 2);
+        assert_eq!(map.first_entry().unwrap().key(), &4);
+        assert_eq!(map.last_entry().unwrap().key(), &8);
     }
 }
 
@@ -762,7 +1007,7 @@ fn test_bad_zst() {
 #[test]
 fn test_clone() {
     let mut map = BTreeMap::new();
-    let size = 12; // to obtain height 2 tree (having edges to leaf nodes)
+    let size = MIN_INSERTS_HEIGHT_1;
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
@@ -790,20 +1035,19 @@ fn test_clone() {
         assert_eq!(map, map.clone());
     }
 
-    // Full 2-level and minimal 3-level tree (sizes 143, 144 -- the only ones we clone for).
-    for i in 1..=144 {
-        assert_eq!(map.insert(i, i), None);
-        assert_eq!(map.len(), i);
-        if i >= 143 {
-            assert_eq!(map, map.clone());
-        }
-    }
+    // Test a tree with 2 chock-full levels and a tree with 3 levels.
+    map = (1..MIN_INSERTS_HEIGHT_2).map(|i| (i, i)).collect();
+    assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2 - 1);
+    assert_eq!(map, map.clone());
+    map.insert(0, 0);
+    assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2);
+    assert_eq!(map, map.clone());
 }
 
 #[test]
 fn test_clone_from() {
     let mut map1 = BTreeMap::new();
-    let max_size = 12; // to obtain height 2 tree (having edges to leaf nodes)
+    let max_size = MIN_INSERTS_HEIGHT_1;
 
     // Range to max_size inclusive, because i is the size of map1 being tested.
     for i in 0..=max_size {
@@ -1005,10 +1249,8 @@ fn test_split_off_empty_left() {
 
 #[test]
 fn test_split_off_large_random_sorted() {
-    #[cfg(not(miri))] // Miri is too slow
-    let mut data = rand_data(1529);
-    #[cfg(miri)]
-    let mut data = rand_data(529);
+    // Miri is too slow
+    let mut data = if cfg!(miri) { rand_data(529) } else { rand_data(1529) };
     // special case with maximum height.
     data.sort();
 
@@ -1021,8 +1263,8 @@ fn test_split_off_large_random_sorted() {
 }
 
 #[test]
-fn test_into_iter_drop_leak_1() {
-    static DROPS: AtomicU32 = AtomicU32::new(0);
+fn test_into_iter_drop_leak_height_0() {
+    static DROPS: AtomicUsize = AtomicUsize::new(0);
 
     struct D;
 
@@ -1047,10 +1289,10 @@ fn test_into_iter_drop_leak_1() {
 }
 
 #[test]
-fn test_into_iter_drop_leak_2() {
-    let size = 12; // to obtain tree with 2 levels (having edges to leaf nodes)
-    static DROPS: AtomicU32 = AtomicU32::new(0);
-    static PANIC_POINT: AtomicU32 = AtomicU32::new(0);
+fn test_into_iter_drop_leak_height_1() {
+    let size = MIN_INSERTS_HEIGHT_1;
+    static DROPS: AtomicUsize = AtomicUsize::new(0);
+    static PANIC_POINT: AtomicUsize = AtomicUsize::new(0);
 
     struct D;
     impl Drop for D {

@@ -1,10 +1,11 @@
-use crate::abi::{self, Abi, Align, FieldPlacement, Size};
-use crate::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use crate::abi::{self, Abi, Align, FieldsShape, Size};
+use crate::abi::{HasDataLayout, LayoutOf, TyAndLayout, TyAndLayoutMethods};
 use crate::spec::{self, HasTargetSpec};
 
 mod aarch64;
 mod amdgpu;
 mod arm;
+mod avr;
 mod hexagon;
 mod mips;
 mod mips64;
@@ -264,7 +265,7 @@ impl HomogeneousAggregate {
     }
 }
 
-impl<'a, Ty> TyLayout<'a, Ty> {
+impl<'a, Ty> TyAndLayout<'a, Ty> {
     fn is_aggregate(&self) -> bool {
         match self.abi {
             Abi::Uninhabited | Abi::Scalar(_) | Abi::Vector { .. } => false,
@@ -284,8 +285,8 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// specific targets.
     pub fn homogeneous_aggregate<C>(&self, cx: &C) -> Result<HomogeneousAggregate, Heterogeneous>
     where
-        Ty: TyLayoutMethods<'a, C> + Copy,
-        C: LayoutOf<Ty = Ty, TyLayout = Self>,
+        Ty: TyAndLayoutMethods<'a, C> + Copy,
+        C: LayoutOf<Ty = Ty, TyAndLayout = Self>,
     {
         match self.abi {
             Abi::Uninhabited => Err(Heterogeneous),
@@ -308,14 +309,17 @@ impl<'a, Ty> TyLayout<'a, Ty> {
             }
 
             Abi::ScalarPair(..) | Abi::Aggregate { .. } => {
-                // Helper for computing `homogenous_aggregate`, allowing a custom
+                // Helper for computing `homogeneous_aggregate`, allowing a custom
                 // starting offset (used below for handling variants).
                 let from_fields_at =
                     |layout: Self,
                      start: Size|
                      -> Result<(HomogeneousAggregate, Size), Heterogeneous> {
                         let is_union = match layout.fields {
-                            FieldPlacement::Array { count, .. } => {
+                            FieldsShape::Primitive => {
+                                unreachable!("aggregates can't have `FieldsShape::Primitive`")
+                            }
+                            FieldsShape::Array { count, .. } => {
                                 assert_eq!(start, Size::ZERO);
 
                                 let result = if count > 0 {
@@ -325,8 +329,8 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                                 };
                                 return Ok((result, layout.size));
                             }
-                            FieldPlacement::Union(_) => true,
-                            FieldPlacement::Arbitrary { .. } => false,
+                            FieldsShape::Union(_) => true,
+                            FieldsShape::Arbitrary { .. } => false,
                         };
 
                         let mut result = HomogeneousAggregate::NoData;
@@ -404,7 +408,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
 /// or return a value from, a function, under some ABI.
 #[derive(Debug)]
 pub struct ArgAbi<'a, Ty> {
-    pub layout: TyLayout<'a, Ty>,
+    pub layout: TyAndLayout<'a, Ty>,
 
     /// Dummy argument, which is emitted before the real argument.
     pub pad: Option<Reg>,
@@ -413,7 +417,7 @@ pub struct ArgAbi<'a, Ty> {
 }
 
 impl<'a, Ty> ArgAbi<'a, Ty> {
-    pub fn new(layout: TyLayout<'a, Ty>) -> Self {
+    pub fn new(layout: TyAndLayout<'a, Ty>) -> Self {
         ArgAbi { layout, pad: None, mode: PassMode::Direct(ArgAttributes::new()) }
     }
 
@@ -522,6 +526,8 @@ pub enum Conv {
     X86_64Win64,
 
     AmdGpuKernel,
+    AvrInterrupt,
+    AvrNonBlockingInterrupt,
 }
 
 /// Metadata describing how the arguments to a native function
@@ -546,13 +552,15 @@ pub struct FnAbi<'a, Ty> {
     pub fixed_count: usize,
 
     pub conv: Conv,
+
+    pub can_unwind: bool,
 }
 
 impl<'a, Ty> FnAbi<'a, Ty> {
     pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: spec::abi::Abi) -> Result<(), String>
     where
-        Ty: TyLayoutMethods<'a, C> + Copy,
-        C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
+        Ty: TyAndLayoutMethods<'a, C> + Copy,
+        C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
     {
         match &cx.target_spec().arch[..] {
             "x86" => {
@@ -575,6 +583,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "aarch64" => aarch64::compute_abi_info(cx, self),
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
+            "avr" => avr::compute_abi_info(self),
             "mips" => mips::compute_abi_info(cx, self),
             "mips64" => mips64::compute_abi_info(cx, self),
             "powerpc" => powerpc::compute_abi_info(self),

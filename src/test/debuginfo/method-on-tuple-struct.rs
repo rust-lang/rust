@@ -63,8 +63,8 @@
 
 // STACK BY REF
 // lldb-command:print *self
-// lldbg-check:[...]$0 = TupleStruct(100, -100.5)
-// lldbr-check:(method_on_tuple_struct::TupleStruct) *self = TupleStruct(100, -100.5)
+// lldbg-check:[...]$0 = { 0 = 100 1 = -100.5 }
+// lldbr-check:(method_on_tuple_struct::TupleStruct) *self = { 0 = 100 1 = -100.5 }
 // lldb-command:print arg1
 // lldbg-check:[...]$1 = -1
 // lldbr-check:(isize) arg1 = -1
@@ -75,8 +75,8 @@
 
 // STACK BY VAL
 // lldb-command:print self
-// lldbg-check:[...]$3 = TupleStruct(100, -100.5)
-// lldbr-check:(method_on_tuple_struct::TupleStruct) self = TupleStruct(100, -100.5)
+// lldbg-check:[...]$3 = { 0 = 100 1 = -100.5 }
+// lldbr-check:(method_on_tuple_struct::TupleStruct) self = { 0 = 100 1 = -100.5 }
 // lldb-command:print arg1
 // lldbg-check:[...]$4 = -3
 // lldbr-check:(isize) arg1 = -3
@@ -87,8 +87,8 @@
 
 // OWNED BY REF
 // lldb-command:print *self
-// lldbg-check:[...]$6 = TupleStruct(200, -200.5)
-// lldbr-check:(method_on_tuple_struct::TupleStruct) *self = TupleStruct(200, -200.5)
+// lldbg-check:[...]$6 = { 0 = 200 1 = -200.5 }
+// lldbr-check:(method_on_tuple_struct::TupleStruct) *self = { 0 = 200 1 = -200.5 }
 // lldb-command:print arg1
 // lldbg-check:[...]$7 = -5
 // lldbr-check:(isize) arg1 = -5
@@ -99,8 +99,8 @@
 
 // OWNED BY VAL
 // lldb-command:print self
-// lldbg-check:[...]$9 = TupleStruct(200, -200.5)
-// lldbr-check:(method_on_tuple_struct::TupleStruct) self = TupleStruct(200, -200.5)
+// lldbg-check:[...]$9 = { 0 = 200 1 = -200.5 }
+// lldbr-check:(method_on_tuple_struct::TupleStruct) self = { 0 = 200 1 = -200.5 }
 // lldb-command:print arg1
 // lldbg-check:[...]$10 = -7
 // lldbr-check:(isize) arg1 = -7
@@ -111,8 +111,8 @@
 
 // OWNED MOVED
 // lldb-command:print *self
-// lldbg-check:[...]$12 = TupleStruct(200, -200.5)
-// lldbr-check:(method_on_tuple_struct::TupleStruct) *self = TupleStruct(200, -200.5)
+// lldbg-check:[...]$12 = { 0 = 200 1 = -200.5 }
+// lldbr-check:(method_on_tuple_struct::TupleStruct) *self = { 0 = 200 1 = -200.5 }
 // lldb-command:print arg1
 // lldbg-check:[...]$13 = -9
 // lldbr-check:(isize) arg1 = -9

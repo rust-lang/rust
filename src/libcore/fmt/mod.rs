@@ -282,10 +282,10 @@ impl<'a> ArgumentV1<'a> {
         // SAFETY: `mem::transmute(x)` is safe because
         //     1. `&'b T` keeps the lifetime it originated with `'b`
         //              (so as to not have an unbounded lifetime)
-        //     2. `&'b T` and `&'b Void` have the same memory layout
+        //     2. `&'b T` and `&'b Opaque` have the same memory layout
         //              (when `T` is `Sized`, as it is here)
         // `mem::transmute(f)` is safe since `fn(&T, &mut Formatter<'_>) -> Result`
-        // and `fn(&Void, &mut Formatter<'_>) -> Result` have the same ABI
+        // and `fn(&Opaque, &mut Formatter<'_>) -> Result` have the same ABI
         // (as long as `T` is `Sized`)
         unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
     }
@@ -440,6 +440,13 @@ impl Display for Arguments<'_> {
 /// comma-separated list of each field's name and `Debug` value, then `}`. For
 /// `enum`s, it will use the name of the variant and, if applicable, `(`, then the
 /// `Debug` values of the fields, then `)`.
+///
+/// # Stability
+///
+/// Derived `Debug` formats are not stable, and so may change with future Rust
+/// versions. Additionally, `Debug` implementations of types provided by the
+/// standard library (`libstd`, `libcore`, `liballoc`, etc.) are not stable, and
+/// may also change with future Rust versions.
 ///
 /// # Examples
 ///
@@ -852,7 +859,7 @@ pub trait LowerHex {
 ///     }
 /// }
 ///
-/// let l = Length(i32::max_value());
+/// let l = Length(i32::MAX);
 ///
 /// assert_eq!(format!("l as hex is: {:X}", l), "l as hex is: 7FFFFFFF");
 ///
@@ -1611,7 +1618,8 @@ impl<'a> Formatter<'a> {
         self.width
     }
 
-    /// Optionally specified precision for numeric types.
+    /// Optionally specified precision for numeric types. Alternatively, the
+    /// maximum width for string types.
     ///
     /// # Examples
     ///

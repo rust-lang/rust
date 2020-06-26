@@ -1,24 +1,24 @@
 pub use crate::passes::BoxedResolver;
 use crate::util;
 
-use rustc::lint;
-use rustc::session::config::{self, ErrorOutputType, Input, OutputFilenames};
-use rustc::session::early_error;
-use rustc::session::{DiagnosticOutput, Session};
-use rustc::ty;
-use rustc::util::common::ErrorReported;
 use rustc_ast::ast::{self, MetaItemKind};
 use rustc_ast::token;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
+use rustc_errors::ErrorReported;
 use rustc_lint::LintStore;
+use rustc_middle::ty;
 use rustc_parse::new_parser_from_source_str;
+use rustc_session::config::{self, ErrorOutputType, Input, OutputFilenames};
+use rustc_session::early_error;
+use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
+use rustc_session::{DiagnosticOutput, Session};
 use rustc_span::edition;
-use rustc_span::source_map::{FileLoader, FileName, SourceMap};
+use rustc_span::source_map::{FileLoader, FileName};
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
@@ -31,7 +31,6 @@ pub type Result<T> = result::Result<T, ErrorReported>;
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
-    source_map: Lrc<SourceMap>,
     pub(crate) input: Input,
     pub(crate) input_path: Option<PathBuf>,
     pub(crate) output_dir: Option<PathBuf>,
@@ -48,9 +47,6 @@ impl Compiler {
     }
     pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
         &self.codegen_backend
-    }
-    pub fn source_map(&self) -> &Lrc<SourceMap> {
-        &self.source_map
     }
     pub fn input(&self) -> &Input {
         &self.input
@@ -168,7 +164,7 @@ pub fn run_compiler_in_existing_thread_pool<R>(
     f: impl FnOnce(&Compiler) -> R,
 ) -> R {
     let registry = &config.registry;
-    let (sess, codegen_backend, source_map) = util::create_session(
+    let (sess, codegen_backend) = util::create_session(
         config.opts,
         config.crate_cfg,
         config.diagnostic_output,
@@ -181,7 +177,6 @@ pub fn run_compiler_in_existing_thread_pool<R>(
     let compiler = Compiler {
         sess,
         codegen_backend,
-        source_map,
         input: config.input,
         input_path: config.input_path,
         output_dir: config.output_dir,
@@ -191,20 +186,23 @@ pub fn run_compiler_in_existing_thread_pool<R>(
         override_queries: config.override_queries,
     };
 
-    let r = {
-        let _sess_abort_error = OnDrop(|| {
-            compiler.sess.diagnostic().print_error_count(registry);
-        });
+    rustc_span::with_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
+        let r = {
+            let _sess_abort_error = OnDrop(|| {
+                compiler.sess.finish_diagnostics(registry);
+            });
 
-        f(&compiler)
-    };
+            f(&compiler)
+        };
 
-    let prof = compiler.sess.prof.clone();
-    prof.generic_activity("drop_compiler").run(move || drop(compiler));
-    r
+        let prof = compiler.sess.prof.clone();
+        prof.generic_activity("drop_compiler").run(move || drop(compiler));
+        r
+    })
 }
 
 pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
+    log::trace!("run_compiler");
     let stderr = config.stderr.take();
     util::spawn_thread_pool(
         config.opts.edition,

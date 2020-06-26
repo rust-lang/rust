@@ -4,13 +4,9 @@ error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar
 LL |     Bar();
    |     ^^^ not a function, tuple struct or tuple variant
    |
-help: possible better candidates are found in other modules, you can import them into scope
-   |
-LL | use foo1::Bar;
+help: consider importing this function instead
    |
 LL | use foo2::Bar;
-   |
-LL | use foo3::Bar;
    |
 
 error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
@@ -26,13 +22,9 @@ help: a unit struct with a similar name exists
    |
 LL |     Baz();
    |     ^^^
-help: possible better candidates are found in other modules, you can import them into scope
-   |
-LL | use foo1::Bar;
+help: consider importing this function instead
    |
 LL | use foo2::Bar;
-   |
-LL | use foo3::Bar;
    |
 
 error[E0573]: expected type, found function `Bar`
@@ -45,20 +37,16 @@ help: use `=` if you meant to assign
    |
 LL |     let _x = Bar();
    |            ^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing this trait instead
    |
 LL | use foo1::Bar;
-   |
-LL | use foo2::Bar;
-   |
-LL | use foo3::Bar;
    |
 
 error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ns2.rs:63:15
    |
 LL |     use foo3::Bar;
-   |               ^^^ this trait is private
+   |               ^^^ private trait
    |
 note: the trait `Bar` is defined here
   --> $DIR/privacy-ns2.rs:55:5
@@ -70,7 +58,7 @@ error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ns2.rs:67:15
    |
 LL |     use foo3::Bar;
-   |               ^^^ this trait is private
+   |               ^^^ private trait
    |
 note: the trait `Bar` is defined here
   --> $DIR/privacy-ns2.rs:55:5
@@ -82,7 +70,7 @@ error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ns2.rs:74:16
    |
 LL |     use foo3::{Bar,Baz};
-   |                ^^^ this trait is private
+   |                ^^^ private trait
    |
 note: the trait `Bar` is defined here
   --> $DIR/privacy-ns2.rs:55:5

@@ -55,6 +55,10 @@ pub mod net {
             unimpl!();
         }
 
+        pub fn is_read_vectored(&self) -> bool {
+            unimpl!();
+        }
+
         pub fn peek(&self, _: &mut [u8]) -> io::Result<usize> {
             unimpl!();
         }
@@ -72,6 +76,10 @@ pub mod net {
         }
 
         pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
+            unimpl!();
+        }
+
+        pub fn is_write_vectored(&self) -> bool {
             unimpl!();
         }
 
@@ -171,11 +179,19 @@ pub mod net {
             unimpl!();
         }
 
+        pub fn is_read_vectored(&self) -> bool {
+            unimpl!();
+        }
+
         pub fn write(&self, _: &[u8]) -> io::Result<usize> {
             unimpl!();
         }
 
         pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
+            unimpl!();
+        }
+
+        pub fn is_write_vectored(&self) -> bool {
             unimpl!();
         }
 

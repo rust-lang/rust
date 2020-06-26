@@ -8,8 +8,8 @@ use core::fmt::{self, Debug};
 use core::iter::{FromIterator, FusedIterator, Peekable};
 use core::ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub};
 
+use super::map::{BTreeMap, Keys};
 use super::Recover;
-use crate::collections::btree_map::{self, BTreeMap, Keys};
 
 // FIXME(conventions): implement bounded iterators
 
@@ -102,7 +102,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IntoIter<T> {
-    iter: btree_map::IntoIter<T, ()>,
+    iter: super::map::IntoIter<T, ()>,
 }
 
 /// An iterator over a sub-range of items in a `BTreeSet`.
@@ -115,7 +115,7 @@ pub struct IntoIter<T> {
 #[derive(Debug)]
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, T: 'a> {
-    iter: btree_map::Range<'a, T, ()>,
+    iter: super::map::Range<'a, T, ()>,
 }
 
 /// Core of SymmetricDifference and Union.
@@ -309,7 +309,8 @@ impl<T: Ord> BTreeSet<T> {
     /// let mut set: BTreeSet<i32> = BTreeSet::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> BTreeSet<T> {
+    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    pub const fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
     }
 
@@ -944,6 +945,41 @@ impl<T: Ord> BTreeSet<T> {
     {
         BTreeSet { map: self.map.split_off(key) }
     }
+
+    /// Creates an iterator which uses a closure to determine if a value should be removed.
+    ///
+    /// If the closure returns true, then the value is removed and yielded.
+    /// If the closure returns false, the value will remain in the list and will not be yielded
+    /// by the iterator.
+    ///
+    /// If the iterator is only partially consumed or not consumed at all, each of the remaining
+    /// values will still be subjected to the closure and removed and dropped if it returns true.
+    ///
+    /// It is unspecified how many more values will be subjected to the closure
+    /// if a panic occurs in the closure, or if a panic occurs while dropping a value, or if the
+    /// `DrainFilter` itself is leaked.
+    ///
+    /// # Examples
+    ///
+    /// Splitting a set into even and odd values, reusing the original set:
+    ///
+    /// ```
+    /// #![feature(btree_drain_filter)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set: BTreeSet<i32> = (0..8).collect();
+    /// let evens: BTreeSet<_> = set.drain_filter(|v| v % 2 == 0).collect();
+    /// let odds = set;
+    /// assert_eq!(evens.into_iter().collect::<Vec<_>>(), vec![0, 2, 4, 6]);
+    /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 7]);
+    /// ```
+    #[unstable(feature = "btree_drain_filter", issue = "70530")]
+    pub fn drain_filter<'a, F>(&'a mut self, pred: F) -> DrainFilter<'a, T, F>
+    where
+        F: 'a + FnMut(&T) -> bool,
+    {
+        DrainFilter { pred, inner: self.map.drain_filter_inner() }
+    }
 }
 
 impl<T> BTreeSet<T> {
@@ -1055,6 +1091,59 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
     }
 }
 
+/// An iterator produced by calling `drain_filter` on BTreeSet.
+#[unstable(feature = "btree_drain_filter", issue = "70530")]
+pub struct DrainFilter<'a, T, F>
+where
+    T: 'a,
+    F: 'a + FnMut(&T) -> bool,
+{
+    pred: F,
+    inner: super::map::DrainFilterInner<'a, T, ()>,
+}
+
+#[unstable(feature = "btree_drain_filter", issue = "70530")]
+impl<T, F> Drop for DrainFilter<'_, T, F>
+where
+    F: FnMut(&T) -> bool,
+{
+    fn drop(&mut self) {
+        self.for_each(drop);
+    }
+}
+
+#[unstable(feature = "btree_drain_filter", issue = "70530")]
+impl<T, F> fmt::Debug for DrainFilter<'_, T, F>
+where
+    T: fmt::Debug,
+    F: FnMut(&T) -> bool,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("DrainFilter").field(&self.inner.peek().map(|(k, _)| k)).finish()
+    }
+}
+
+#[unstable(feature = "btree_drain_filter", issue = "70530")]
+impl<'a, T, F> Iterator for DrainFilter<'_, T, F>
+where
+    F: 'a + FnMut(&T) -> bool,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        let pred = &mut self.pred;
+        let mut mapped_pred = |k: &T, _v: &mut ()| pred(k);
+        self.inner.next(&mut mapped_pred).map(|(k, _)| k)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+#[unstable(feature = "btree_drain_filter", issue = "70530")]
+impl<T, F> FusedIterator for DrainFilter<'_, T, F> where F: FnMut(&T) -> bool {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
@@ -1063,12 +1152,22 @@ impl<T: Ord> Extend<T> for BTreeSet<T> {
             self.insert(elem);
         });
     }
+
+    #[inline]
+    fn extend_one(&mut self, elem: T) {
+        self.insert(elem);
+    }
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BTreeSet<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &elem: &'a T) {
+        self.insert(elem);
     }
 }
 

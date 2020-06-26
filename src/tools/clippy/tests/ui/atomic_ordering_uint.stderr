@@ -1,0 +1,163 @@
+error: atomic loads cannot have `Release` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:15:20
+   |
+LL |     let _ = x.load(Ordering::Release);
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::invalid-atomic-ordering` implied by `-D warnings`
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic loads cannot have `Release` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:16:20
+   |
+LL |     let _ = x.load(Ordering::AcqRel);
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:24:16
+   |
+LL |     x.store(1, Ordering::Acquire);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:25:16
+   |
+LL |     x.store(1, Ordering::AcqRel);
+   |                ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: atomic loads cannot have `Release` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:33:20
+   |
+LL |     let _ = x.load(Ordering::Release);
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic loads cannot have `Release` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:34:20
+   |
+LL |     let _ = x.load(Ordering::AcqRel);
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:39:16
+   |
+LL |     x.store(1, Ordering::Acquire);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:40:16
+   |
+LL |     x.store(1, Ordering::AcqRel);
+   |                ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: atomic loads cannot have `Release` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:48:20
+   |
+LL |     let _ = x.load(Ordering::Release);
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic loads cannot have `Release` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:49:20
+   |
+LL |     let _ = x.load(Ordering::AcqRel);
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:54:16
+   |
+LL |     x.store(1, Ordering::Acquire);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:55:16
+   |
+LL |     x.store(1, Ordering::AcqRel);
+   |                ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: atomic loads cannot have `Release` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:63:20
+   |
+LL |     let _ = x.load(Ordering::Release);
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic loads cannot have `Release` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:64:20
+   |
+LL |     let _ = x.load(Ordering::AcqRel);
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:69:16
+   |
+LL |     x.store(1, Ordering::Acquire);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:70:16
+   |
+LL |     x.store(1, Ordering::AcqRel);
+   |                ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: atomic loads cannot have `Release` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:78:20
+   |
+LL |     let _ = x.load(Ordering::Release);
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic loads cannot have `Release` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:79:20
+   |
+LL |     let _ = x.load(Ordering::AcqRel);
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:84:16
+   |
+LL |     x.store(1, Ordering::Acquire);
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: atomic stores cannot have `Acquire` and `AcqRel` ordering
+  --> $DIR/atomic_ordering_uint.rs:85:16
+   |
+LL |     x.store(1, Ordering::AcqRel);
+   |                ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Release`, `SeqCst` or `Relaxed`
+
+error: aborting due to 20 previous errors
+

@@ -42,5 +42,29 @@ LL |     m!();
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error[E0412]: cannot find type `i` in this scope
+  --> $DIR/macro-context.rs:3:13
+   |
+LL |     () => ( i ; typeof );
+   |             ^ help: a builtin type with a similar name exists: `i8`
+...
+LL |     let a: m!();
+   |            ---- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error[E0425]: cannot find value `i` in this scope
+  --> $DIR/macro-context.rs:3:13
+   |
+LL |     () => ( i ; typeof );
+   |             ^ help: a local variable with a similar name exists: `a`
+...
+LL |     let i = m!();
+   |             ---- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0412, E0425.
+For more information about an error, try `rustc --explain E0412`.

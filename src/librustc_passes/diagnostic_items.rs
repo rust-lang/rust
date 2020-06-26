@@ -9,13 +9,13 @@
 //!
 //! * Compiler internal types like `Ty` and `TyCtxt`
 
-use rustc::ty::query::Providers;
-use rustc::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 
 struct DiagnosticItemCollector<'tcx> {
@@ -47,7 +47,7 @@ impl<'tcx> DiagnosticItemCollector<'tcx> {
         if let Some(name) = extract(attrs) {
             let def_id = self.tcx.hir().local_def_id(hir_id);
             // insert into our table
-            collect_item(self.tcx, &mut self.items, name, def_id);
+            collect_item(self.tcx, &mut self.items, name, def_id.to_def_id());
         }
     }
 }
@@ -93,18 +93,18 @@ fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
 }
 
 /// Traverse and collect the diagnostic items in the current
-fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx FxHashMap<Symbol, DefId> {
+fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
     // Initialize the collector.
     let mut collector = DiagnosticItemCollector::new(tcx);
 
     // Collect diagnostic items in this crate.
     tcx.hir().krate().visit_all_item_likes(&mut collector);
 
-    tcx.arena.alloc(collector.items)
+    collector.items
 }
 
 /// Traverse and collect all the diagnostic items in all crates.
-fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx FxHashMap<Symbol, DefId> {
+fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
     // Initialize the collector.
     let mut collector = FxHashMap::default();
 
@@ -115,7 +115,7 @@ fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> &'tcx FxHashMap<Symbol, DefId> {
         }
     }
 
-    tcx.arena.alloc(collector)
+    collector
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

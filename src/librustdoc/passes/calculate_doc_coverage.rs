@@ -8,7 +8,6 @@ use rustc_ast::attr;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use serde::Serialize;
-use serde_json;
 
 use std::collections::BTreeMap;
 use std::ops;

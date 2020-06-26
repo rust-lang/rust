@@ -4,24 +4,80 @@ use super::{FollowedByType, Parser, PathStyle};
 
 use crate::maybe_whole;
 
-use rustc_ast::ast::{self, Async, AttrStyle, AttrVec, Attribute, Ident, DUMMY_NODE_ID};
-use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind};
-use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, MacArgs, MacCall, MacDelimiter, Param};
-use rustc_ast::ast::{Const, Defaultness, IsAuto, PathSegment, Unsafe, UseTree, UseTreeKind};
+use rustc_ast::ast::{self, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID};
+use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
+use rustc_ast::ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
+use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
-use rustc_ast::ast::{FnHeader, ForeignItem, Mutability, SelfKind, Visibility, VisibilityKind};
+use rustc_ast::ast::{FnHeader, ForeignItem, PathSegment, Visibility, VisibilityKind};
+use rustc_ast::ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast::ptr::P;
-use rustc_ast::token;
+use rustc_ast::token::{self, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{self, Span};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 use log::debug;
 use std::convert::TryFrom;
 use std::mem;
+
+impl<'a> Parser<'a> {
+    /// Parses a source module as a crate. This is the main entry point for the parser.
+    pub fn parse_crate_mod(&mut self) -> PResult<'a, ast::Crate> {
+        let lo = self.token.span;
+        let (module, attrs) = self.parse_mod(&token::Eof)?;
+        let span = lo.to(self.token.span);
+        let proc_macros = Vec::new(); // Filled in by `proc_macro_harness::inject()`.
+        Ok(ast::Crate { attrs, module, span, proc_macros })
+    }
+
+    /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
+    fn parse_item_mod(&mut self, attrs: &mut Vec<Attribute>) -> PResult<'a, ItemInfo> {
+        let id = self.parse_ident()?;
+        let (module, mut inner_attrs) = if self.eat(&token::Semi) {
+            Default::default()
+        } else {
+            self.expect(&token::OpenDelim(token::Brace))?;
+            self.parse_mod(&token::CloseDelim(token::Brace))?
+        };
+        attrs.append(&mut inner_attrs);
+        Ok((id, ItemKind::Mod(module)))
+    }
+
+    /// Parses the contents of a module (inner attributes followed by module items).
+    pub fn parse_mod(&mut self, term: &TokenKind) -> PResult<'a, (Mod, Vec<Attribute>)> {
+        let lo = self.token.span;
+        let attrs = self.parse_inner_attributes()?;
+        let module = self.parse_mod_items(term, lo)?;
+        Ok((module, attrs))
+    }
+
+    /// Given a termination token, parses all of the items in a module.
+    fn parse_mod_items(&mut self, term: &TokenKind, inner_lo: Span) -> PResult<'a, Mod> {
+        let mut items = vec![];
+        while let Some(item) = self.parse_item()? {
+            items.push(item);
+            self.maybe_consume_incorrect_semicolon(&items);
+        }
+
+        if !self.eat(term) {
+            let token_str = super::token_descr(&self.token);
+            if !self.maybe_consume_incorrect_semicolon(&items) {
+                let msg = &format!("expected item, found {}", token_str);
+                let mut err = self.struct_span_err(self.token.span, msg);
+                err.span_label(self.token.span, "expected item");
+                return Err(err);
+            }
+        }
+
+        let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_token.span };
+
+        Ok(Mod { inner: inner_lo.to(hi), items, inline: true })
+    }
+}
 
 pub(super) type ItemInfo = (Ident, ItemKind);
 
@@ -50,11 +106,20 @@ impl<'a> Parser<'a> {
         });
 
         let mut unclosed_delims = vec![];
-        let (mut item, tokens) = self.collect_tokens(|this| {
+        let has_attrs = !attrs.is_empty();
+        let parse_item = |this: &mut Self| {
             let item = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name);
             unclosed_delims.append(&mut this.unclosed_delims);
             item
-        })?;
+        };
+
+        let (mut item, tokens) = if has_attrs {
+            let (item, tokens) = self.collect_tokens(parse_item)?;
+            (item, Some(tokens))
+        } else {
+            (parse_item(self)?, None)
+        };
+
         self.unclosed_delims.append(&mut unclosed_delims);
 
         // Once we've parsed an item and recorded the tokens we got while
@@ -71,9 +136,11 @@ impl<'a> Parser<'a> {
         // it (bad!). To work around this case for now we just avoid recording
         // `tokens` if we detect any inner attributes. This should help keep
         // expansion correct, but we should fix this bug one day!
-        if let Some(item) = &mut item {
-            if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-                item.tokens = Some(tokens);
+        if let Some(tokens) = tokens {
+            if let Some(item) = &mut item {
+                if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
+                    item.tokens = Some(tokens);
+                }
             }
         }
         Ok(item)
@@ -258,7 +325,7 @@ impl<'a> Parser<'a> {
                 " struct ".into(),
                 Applicability::MaybeIncorrect, // speculative
             );
-            return Err(err);
+            Err(err)
         } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
             let ident = self.parse_ident().unwrap();
             self.bump(); // `(`
@@ -306,7 +373,7 @@ impl<'a> Parser<'a> {
                     );
                 }
             }
-            return Err(err);
+            Err(err)
         } else if self.look_ahead(1, |t| *t == token::Lt) {
             let ident = self.parse_ident().unwrap();
             self.eat_to_tokens(&[&token::Gt]);
@@ -328,7 +395,7 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
             }
-            return Err(err);
+            Err(err)
         } else {
             Ok(())
         }
@@ -402,7 +469,7 @@ impl<'a> Parser<'a> {
         self.expect_keyword(kw::Impl)?;
 
         // First, parse generic parameters if necessary.
-        let mut generics = if self.choose_generics_over_qpath() {
+        let mut generics = if self.choose_generics_over_qpath(0) {
             self.parse_generics()?
         } else {
             let mut generics = Generics::default();
@@ -687,7 +754,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `UseTree`.
     ///
-    /// ```
+    /// ```text
     /// USE_TREE = [`::`] `*` |
     ///            [`::`] `{` USE_TREE_LIST `}` |
     ///            PATH `::` `*` |
@@ -736,7 +803,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `UseTreeKind::Nested(list)`.
     ///
-    /// ```
+    /// ```text
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, Vec<(UseTree, ast::NodeId)>> {
@@ -748,7 +815,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(kw::As) { self.parse_ident_or_underscore().map(Some) } else { Ok(None) }
     }
 
-    fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
+    fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
             Some((ident @ Ident { name: kw::Underscore, .. }, false)) => {
                 self.bump();
@@ -778,7 +845,7 @@ impl<'a> Parser<'a> {
         Ok((item_name, ItemKind::ExternCrate(orig_name)))
     }
 
-    fn parse_crate_name_with_dashes(&mut self) -> PResult<'a, ast::Ident> {
+    fn parse_crate_name_with_dashes(&mut self) -> PResult<'a, Ident> {
         let error_msg = "crate name using dashes are not valid in `extern crate` statements";
         let suggestion_msg = "if the original crate name uses dashes you need to use underscores \
                               in the code";
@@ -851,10 +918,12 @@ impl<'a> Parser<'a> {
     }
 
     fn error_bad_item_kind<T>(&self, span: Span, kind: &ItemKind, ctx: &str) -> Option<T> {
-        let span = self.sess.source_map().def_span(span);
-        let msg = format!("{} is not supported in {}", kind.descr(), ctx);
-        self.struct_span_err(span, &msg).emit();
-        return None;
+        let span = self.sess.source_map().guess_head_span(span);
+        let descr = kind.descr();
+        self.struct_span_err(span, &format!("{} is not supported in {}", descr, ctx))
+            .help(&format!("consider moving the {} out to a nearby module scope", descr))
+            .emit();
+        None
     }
 
     fn error_on_foreign_const(&self, span: Span, ident: Ident) {
@@ -1260,7 +1329,7 @@ impl<'a> Parser<'a> {
         };
 
         self.sess.gated_spans.gate(sym::decl_macro, lo.to(self.prev_token.span));
-        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: false })))
+        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, macro_rules: false })))
     }
 
     /// Is this unambiguously the start of a `macro_rules! foo` item defnition?
@@ -1270,7 +1339,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(2, |t| t.is_ident())
     }
 
-    /// Parses a legacy `macro_rules! foo { ... }` declarative macro.
+    /// Parses a `macro_rules! foo { ... }` declarative macro.
     fn parse_item_macro_rules(&mut self, vis: &Visibility) -> PResult<'a, ItemInfo> {
         self.expect_keyword(kw::MacroRules)?; // `macro_rules`
         self.expect(&token::Not)?; // `!`
@@ -1280,7 +1349,7 @@ impl<'a> Parser<'a> {
         self.eat_semi_for_macro_if_needed(&body);
         self.complain_if_pub_macro(vis, true);
 
-        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, legacy: true })))
+        Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, macro_rules: true })))
     }
 
     /// Item macro invocations or `macro_rules!` definitions need inherited visibility.
@@ -1438,7 +1507,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Is the current token the start of an `FnHeader` / not a valid parse?
-    fn check_fn_front_matter(&mut self) -> bool {
+    pub(super) fn check_fn_front_matter(&mut self) -> bool {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
         const QUALS: [Symbol; 4] = [kw::Const, kw::Async, kw::Unsafe, kw::Extern];
@@ -1453,7 +1522,7 @@ impl<'a> Parser<'a> {
                 })
             // `extern ABI fn`
             || self.check_keyword(kw::Extern)
-                && self.look_ahead(1, |t| t.can_begin_literal_or_bool())
+                && self.look_ahead(1, |t| t.can_begin_literal_maybe_minus())
                 && self.look_ahead(2, |t| t.is_keyword(kw::Fn))
     }
 
@@ -1465,7 +1534,7 @@ impl<'a> Parser<'a> {
     /// FnQual = "const"? "async"? "unsafe"? Extern? ;
     /// FnFrontMatter = FnQual? "fn" ;
     /// ```
-    fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
+    pub(super) fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
         let constness = self.parse_constness();
         let asyncness = self.parse_asyncness();
         let unsafety = self.parse_unsafety();
@@ -1492,7 +1561,7 @@ impl<'a> Parser<'a> {
         if span.rust_2015() {
             let diag = self.diagnostic();
             struct_span_err!(diag, span, E0670, "`async fn` is not permitted in the 2015 edition")
-                .note("to use `async fn`, switch to Rust 2018")
+                .span_label(span, "to use `async fn`, switch to Rust 2018")
                 .help("set `edition = \"2018\"` in `Cargo.toml`")
                 .note("for more on editions, read https://doc.rust-lang.org/edition-guide")
                 .emit();
@@ -1592,7 +1661,7 @@ impl<'a> Parser<'a> {
                 // Recover from attempting to parse the argument as a type without pattern.
                 Err(mut err) => {
                     err.cancel();
-                    mem::replace(self, parser_snapshot_before_ty);
+                    *self = parser_snapshot_before_ty;
                     self.recover_arg_parse()?
                 }
             }

@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `for<'a, 'b> fn(&'a u32, &'b u32)`:
+  --> $DIR/coherence-fn-inputs.rs:15:1
+   |
+LL | impl Trait for for<'a, 'b> fn(&'a u32, &'b u32) {}
+   | ----------------------------------------------- first implementation here
+LL | impl Trait for for<'c> fn(&'c u32, &'c u32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a, 'b> fn(&'a u32, &'b u32)`
+   |
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -272,7 +272,7 @@ impl Once {
     /// result in an immediate panic. If `f` panics, the `Once` will remain
     /// in a poison state. If `f` does _not_ panic, the `Once` will no
     /// longer be in a poison state and all future calls to `call_once` or
-    /// `call_one_force` will be no-ops.
+    /// `call_once_force` will be no-ops.
     ///
     /// The closure `f` is yielded a [`OnceState`] structure which can be used
     /// to query the poison status of the `Once`.
@@ -497,7 +497,7 @@ impl Drop for WaiterQueue<'_> {
             let mut queue = (state_and_queue & !STATE_MASK) as *const Waiter;
             while !queue.is_null() {
                 let next = (*queue).next;
-                let thread = (*queue).thread.replace(None).unwrap();
+                let thread = (*queue).thread.take().unwrap();
                 (*queue).signaled.store(true, Ordering::Release);
                 // ^- FIXME (maybe): This is another case of issue #55005
                 // `store()` has a potentially dangling ref to `signaled`.

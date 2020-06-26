@@ -27,13 +27,13 @@ impl ArchiveRO {
     /// If this archive is used with a mutable method, then an error will be
     /// raised.
     pub fn open(dst: &Path) -> Result<ArchiveRO, String> {
-        return unsafe {
+        unsafe {
             let s = path_to_c_string(dst);
             let ar = super::LLVMRustOpenArchive(s.as_ptr()).ok_or_else(|| {
                 super::last_error().unwrap_or_else(|| "failed to open archive".to_owned())
             })?;
             Ok(ArchiveRO { raw: ar })
-        };
+        }
     }
 
     pub fn iter(&self) -> Iter<'_> {

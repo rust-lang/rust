@@ -139,10 +139,12 @@
 //! otherwise invalidating the memory used to store the data is restricted, too.
 //! Concretely, for pinned data you have to maintain the invariant
 //! that *its memory will not get invalidated or repurposed from the moment it gets pinned until
-//! when [`drop`] is called*. Memory can be invalidated by deallocation, but also by
+//! when [`drop`] is called*.  Only once [`drop`] returns or panics, the memory may be reused.
+//!
+//! Memory can be "invalidated" by deallocation, but also by
 //! replacing a [`Some(v)`] by [`None`], or calling [`Vec::set_len`] to "kill" some elements
 //! off of a vector. It can be repurposed by using [`ptr::write`] to overwrite it without
-//! calling the destructor first.
+//! calling the destructor first. None of this is allowed for pinned data without calling [`drop`].
 //!
 //! This is exactly the kind of guarantee that the intrusive linked list from the previous
 //! section needs to function correctly.

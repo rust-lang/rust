@@ -1,0 +1,20 @@
+[package]
+name = "clippy-mini-macro-test"
+version = "0.2.0"
+authors = [
+	"Manish Goregaokar <manishsmail@gmail.com>",
+	"Andre Bogus <bogusandre@gmail.com>",
+	"Georg Brandl <georg@python.org>",
+	"Martin Carton <cartonmartin@gmail.com>",
+	"Oliver Schneider <clippy-iethah7aipeen8neex1a@oli-obk.de>"
+]
+license = "MIT OR Apache-2.0"
+description = "A macro to test clippy's procedural macro checks"
+repository = "https://github.com/rust-lang/rust-clippy"
+edition = "2018"
+
+[lib]
+name = "clippy_mini_macro_test"
+proc-macro = true
+
+[dependencies]

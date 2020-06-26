@@ -4,20 +4,24 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(const_if_match)]
+#![feature(const_fn)]
+#![feature(const_panic)]
 #![feature(crate_visibility_modifier)]
 #![feature(bool_to_option)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 
 mod build;
 mod hair;
 mod lints;
 
-use rustc::ty::query::Providers;
+use rustc_middle::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers<'_>) {
     providers.check_match = hair::pattern::check_match;

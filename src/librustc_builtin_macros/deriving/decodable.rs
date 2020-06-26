@@ -87,7 +87,7 @@ fn decodable_substructure(
     let blkarg = cx.ident_of("_d", trait_span);
     let blkdecoder = cx.expr_ident(trait_span, blkarg);
 
-    return match *substr.fields {
+    match *substr.fields {
         StaticStruct(_, ref summary) => {
             let nfields = match *summary {
                 Unnamed(ref fields, _) => fields.len(),
@@ -178,7 +178,7 @@ fn decodable_substructure(
             )
         }
         _ => cx.bug("expected StaticEnum or StaticStruct in derive(Decodable)"),
-    };
+    }
 }
 
 /// Creates a decoder for a single enum variant/struct:

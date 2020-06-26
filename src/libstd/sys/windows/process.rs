@@ -20,7 +20,7 @@ use crate::sys::mutex::Mutex;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
 use crate::sys_common::process::CommandEnv;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::AsInner;
 
 use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 
@@ -33,10 +33,9 @@ use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 pub struct EnvKey(OsString);
 
 impl From<OsString> for EnvKey {
-    fn from(k: OsString) -> Self {
-        let mut buf = k.into_inner().into_inner();
-        buf.make_ascii_uppercase();
-        EnvKey(FromInner::from_inner(FromInner::from_inner(buf)))
+    fn from(mut k: OsString) -> Self {
+        k.make_ascii_uppercase();
+        EnvKey(k)
     }
 }
 

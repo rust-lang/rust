@@ -7,9 +7,9 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use rustc::mir::*;
-use rustc::ty::Ty;
 use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_middle::mir::*;
+use rustc_middle::ty::Ty;
 
 use rustc_index::vec::Idx;
 use rustc_span::Span;
@@ -33,43 +33,48 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         //
         // e.g., `|x: FxHashMap<_, &'static u32>| ...`
         let user_provided_sig;
-        if !self.tcx().is_closure(self.mir_def_id) {
+        if !self.tcx().is_closure(self.mir_def_id.to_def_id()) {
             user_provided_sig = None;
         } else {
             let typeck_tables = self.tcx().typeck_tables_of(self.mir_def_id);
-            user_provided_sig = match typeck_tables.user_provided_sigs.get(&self.mir_def_id) {
-                None => None,
-                Some(user_provided_poly_sig) => {
-                    // Instantiate the canonicalized variables from
-                    // user-provided signature (e.g., the `_` in the code
-                    // above) with fresh variables.
-                    let (poly_sig, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
-                        body.span,
-                        &user_provided_poly_sig,
-                    );
-
-                    // Replace the bound items in the fn sig with fresh
-                    // variables, so that they represent the view from
-                    // "inside" the closure.
-                    Some(
-                        self.infcx
-                            .replace_bound_vars_with_fresh_vars(
+            user_provided_sig =
+                match typeck_tables.user_provided_sigs.get(&self.mir_def_id.to_def_id()) {
+                    None => None,
+                    Some(user_provided_poly_sig) => {
+                        // Instantiate the canonicalized variables from
+                        // user-provided signature (e.g., the `_` in the code
+                        // above) with fresh variables.
+                        let (poly_sig, _) =
+                            self.infcx.instantiate_canonical_with_fresh_inference_vars(
                                 body.span,
-                                LateBoundRegionConversionTime::FnCall,
-                                &poly_sig,
-                            )
-                            .0,
-                    )
+                                &user_provided_poly_sig,
+                            );
+
+                        // Replace the bound items in the fn sig with fresh
+                        // variables, so that they represent the view from
+                        // "inside" the closure.
+                        Some(
+                            self.infcx
+                                .replace_bound_vars_with_fresh_vars(
+                                    body.span,
+                                    LateBoundRegionConversionTime::FnCall,
+                                    &poly_sig,
+                                )
+                                .0,
+                        )
+                    }
                 }
-            }
         };
+
+        debug!(
+            "equate_inputs_and_outputs: normalized_input_tys = {:?}, local_decls = {:?}",
+            normalized_input_tys, body.local_decls
+        );
 
         // Equate expected input tys with those in the MIR.
         for (&normalized_input_ty, argument_index) in normalized_input_tys.iter().zip(0..) {
             // In MIR, argument N is stored in local N+1.
             let local = Local::new(argument_index + 1);
-
-            debug!("equate_inputs_and_outputs: normalized_input_ty = {:?}", normalized_input_ty);
 
             let mir_input_ty = body.local_decls[local].ty;
             let mir_input_span = body.local_decls[local].source_info.span;
@@ -117,7 +122,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Err(terr) = self.eq_opaque_type_and_type(
             mir_output_ty,
             normalized_output_ty,
-            self.mir_def_id,
+            self.mir_def_id.to_def_id(),
             Locations::All(output_span),
             ConstraintCategory::BoringNoLocation,
         ) {
@@ -140,7 +145,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             if let Err(err) = self.eq_opaque_type_and_type(
                 mir_output_ty,
                 user_provided_output_ty,
-                self.mir_def_id,
+                self.mir_def_id.to_def_id(),
                 Locations::All(output_span),
                 ConstraintCategory::BoringNoLocation,
             ) {

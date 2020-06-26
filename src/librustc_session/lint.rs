@@ -1,6 +1,7 @@
 pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
 
@@ -84,6 +85,11 @@ pub struct Lint {
     pub future_incompatible: Option<FutureIncompatibleInfo>,
 
     pub is_plugin: bool,
+
+    /// `Some` if this lint is feature gated, otherwise `None`.
+    pub feature_gate: Option<Symbol>,
+
+    pub crate_level_only: bool,
 }
 
 /// Extra information for a future incompatibility lint.
@@ -106,6 +112,8 @@ impl Lint {
             is_plugin: false,
             report_in_external_macro: false,
             future_incompatible: None,
+            feature_gate: None,
+            crate_level_only: false,
         }
     }
 
@@ -194,7 +202,7 @@ pub enum BuiltinLintDiagnostics {
 }
 
 /// Lints that are buffered up early on in the `Session` before the
-/// `LintLevels` is calculated. These are later passed to `librustc`.
+/// `LintLevels` is calculated.
 #[derive(PartialEq)]
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
@@ -206,7 +214,8 @@ pub struct BufferedEarlyLint {
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
 
-    /// A lint Id that can be passed to `rustc::lint::Lint::from_parser_lint_id`.
+    /// A lint Id that can be passed to
+    /// `rustc_lint::early::EarlyContextAndPass::check_id`.
     pub lint_id: LintId,
 
     /// Customization of the `DiagnosticBuilder<'_>` for the lint.
@@ -274,7 +283,9 @@ macro_rules! declare_lint {
         );
     );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $(@future_incompatible = $fi:expr;)? $($v:ident),*) => (
+     $(@future_incompatible = $fi:expr;)?
+     $(@feature_gate = $gate:expr;)?
+     $($v:ident),*) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
@@ -283,6 +294,7 @@ macro_rules! declare_lint {
             is_plugin: false,
             $($v: true,)*
             $(future_incompatible: Some($fi),)*
+            $(feature_gate: Some($gate),)*
             ..$crate::lint::Lint::default_fields_for_macro()
         };
     );
@@ -326,6 +338,8 @@ macro_rules! declare_tool_lint {
             report_in_external_macro: $external,
             future_incompatible: None,
             is_plugin: true,
+            feature_gate: None,
+            crate_level_only: false,
         };
     );
 }
@@ -345,14 +359,14 @@ pub trait LintPass {
     fn name(&self) -> &'static str;
 }
 
-/// Implements `LintPass for $name` with the given list of `Lint` statics.
+/// Implements `LintPass for $ty` with the given list of `Lint` statics.
 #[macro_export]
 macro_rules! impl_lint_pass {
-    ($name:ident => [$($lint:expr),* $(,)?]) => {
-        impl $crate::lint::LintPass for $name {
-            fn name(&self) -> &'static str { stringify!($name) }
+    ($ty:ty => [$($lint:expr),* $(,)?]) => {
+        impl $crate::lint::LintPass for $ty {
+            fn name(&self) -> &'static str { stringify!($ty) }
         }
-        impl $name {
+        impl $ty {
             pub fn get_lints() -> $crate::lint::LintArray { $crate::lint_array!($($lint),*) }
         }
     };
@@ -366,4 +380,46 @@ macro_rules! declare_lint_pass {
         $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
         $crate::impl_lint_pass!($name => [$($lint),*]);
     };
+}
+
+pub fn add_elided_lifetime_in_path_suggestion(
+    sess: &crate::Session,
+    db: &mut DiagnosticBuilder<'_>,
+    n: usize,
+    path_span: Span,
+    incl_angl_brckt: bool,
+    insertion_span: Span,
+    anon_lts: String,
+) {
+    let (replace_span, suggestion) = if incl_angl_brckt {
+        (insertion_span, anon_lts)
+    } else {
+        // When possible, prefer a suggestion that replaces the whole
+        // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
+        // at a point (which makes for an ugly/confusing label)
+        if let Ok(snippet) = sess.source_map().span_to_snippet(path_span) {
+            // But our spans can get out of whack due to macros; if the place we think
+            // we want to insert `'_` isn't even within the path expression's span, we
+            // should bail out of making any suggestion rather than panicking on a
+            // subtract-with-overflow or string-slice-out-out-bounds (!)
+            // FIXME: can we do better?
+            if insertion_span.lo().0 < path_span.lo().0 {
+                return;
+            }
+            let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
+            if insertion_index > snippet.len() {
+                return;
+            }
+            let (before, after) = snippet.split_at(insertion_index);
+            (path_span, format!("{}{}{}", before, anon_lts, after))
+        } else {
+            (insertion_span, anon_lts)
+        }
+    };
+    db.span_suggestion(
+        replace_span,
+        &format!("indicate the anonymous lifetime{}", pluralize!(n)),
+        suggestion,
+        Applicability::MachineApplicable,
+    );
 }

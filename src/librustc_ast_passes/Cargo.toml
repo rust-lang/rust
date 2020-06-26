@@ -9,6 +9,7 @@ name = "rustc_ast_passes"
 path = "lib.rs"
 
 [dependencies]
+itertools = "0.8"
 log = "0.4"
 rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_attr = { path = "../librustc_attr" }

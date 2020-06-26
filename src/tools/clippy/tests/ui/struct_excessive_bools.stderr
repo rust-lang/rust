@@ -1,0 +1,29 @@
+error: more than 3 bools in a struct
+  --> $DIR/struct_excessive_bools.rs:22:1
+   |
+LL | / struct BadFoo {
+LL | |     a: bool,
+LL | |     b: bool,
+LL | |     c: bool,
+LL | |     d: bool,
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::struct-excessive-bools` implied by `-D warnings`
+   = help: consider using a state machine or refactoring bools into two-variant enums
+
+error: more than 3 bools in a struct
+  --> $DIR/struct_excessive_bools.rs:38:5
+   |
+LL | /     struct FooFoo {
+LL | |         a: bool,
+LL | |         b: bool,
+LL | |         c: bool,
+LL | |         d: bool,
+LL | |     }
+   | |_____^
+   |
+   = help: consider using a state machine or refactoring bools into two-variant enums
+
+error: aborting due to 2 previous errors
+

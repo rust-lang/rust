@@ -1,14 +1,16 @@
 //! Code related to processing overloaded binary and unary operators.
 
 use super::method::MethodCallee;
-use super::{FnCtxt, Needs};
-use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
-use rustc::ty::{self, Ty, TypeFoldable};
-use rustc_ast::ast::Ident;
+use super::FnCtxt;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
+};
+use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
+use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TyCtxt, TypeFoldable};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 
@@ -55,9 +57,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
                 // && and || are a simple case.
-                self.check_expr_coercable_to_type(lhs_expr, tcx.types.bool);
+                self.check_expr_coercable_to_type(lhs_expr, tcx.types.bool, None);
                 let lhs_diverges = self.diverges.get();
-                self.check_expr_coercable_to_type(rhs_expr, tcx.types.bool);
+                self.check_expr_coercable_to_type(rhs_expr, tcx.types.bool, None);
 
                 // Depending on the LHS' value, the RHS can never execute.
                 self.diverges.set(lhs_diverges);
@@ -119,9 +121,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
-                self.demand_suptype(*lhs_span, tcx.mk_bool(), lhs_ty);
-                self.demand_suptype(*rhs_span, tcx.mk_bool(), rhs_ty);
-                tcx.mk_bool()
+                self.demand_suptype(*lhs_span, tcx.types.bool, lhs_ty);
+                self.demand_suptype(*rhs_span, tcx.types.bool, rhs_ty);
+                tcx.types.bool
             }
 
             BinOpCategory::Shift => {
@@ -138,7 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             BinOpCategory::Comparison => {
                 // both LHS and RHS and result will have the same type
                 self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
-                tcx.mk_bool()
+                tcx.types.bool
             }
         }
     }
@@ -163,19 +165,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // trait matching creating lifetime constraints that are too strict.
                 // e.g., adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
                 // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
-                let lhs_ty = self.check_expr_with_needs(lhs_expr, Needs::None);
+                let lhs_ty = self.check_expr(lhs_expr);
                 let fresh_var = self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: lhs_expr.span,
                 });
-                self.demand_coerce(lhs_expr, lhs_ty, fresh_var, AllowTwoPhase::No)
+                self.demand_coerce(lhs_expr, lhs_ty, fresh_var, Some(rhs_expr), AllowTwoPhase::No)
             }
             IsAssign::Yes => {
                 // rust-lang/rust#52126: We have to use strict
                 // equivalence on the LHS of an assign-op like `+=`;
                 // overwritten or mutably-borrowed places cannot be
                 // coerced to a supertype.
-                self.check_expr_with_needs(lhs_expr, Needs::MutPlace)
+                self.check_expr(lhs_expr)
             }
         };
         let lhs_ty = self.resolve_vars_with_obligations(lhs_ty);
@@ -194,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
 
         // see `NB` above
-        let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var);
+        let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
         let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {
@@ -249,8 +251,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(()) => {
                 // error types are considered "builtin"
-                if !lhs_ty.references_error() {
+                if !lhs_ty.references_error() && !rhs_ty.references_error() {
                     let source_map = self.tcx.sess.source_map();
+
                     match is_assign {
                         IsAssign::Yes => {
                             let mut err = struct_span_err!(
@@ -315,12 +318,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " += "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::Param(_) = lhs_ty.kind {
-                                    // FIXME: point to span of param
-                                    err.note(&format!(
-                                        "`{}` might need a bound for `{}`",
-                                        lhs_ty, missing_trait
-                                    ));
+                                } else if let ty::Param(p) = lhs_ty.kind {
+                                    suggest_constraining_param(
+                                        self.tcx,
+                                        self.body_id,
+                                        &mut err,
+                                        lhs_ty,
+                                        rhs_ty,
+                                        missing_trait,
+                                        p,
+                                        false,
+                                    );
                                 } else if !suggested_deref {
                                     suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
                                 }
@@ -328,46 +336,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.emit();
                         }
                         IsAssign::No => {
-                            let (message, missing_trait) = match op.node {
+                            let (message, missing_trait, use_output) = match op.node {
                                 hir::BinOpKind::Add => (
                                     format!("cannot add `{}` to `{}`", rhs_ty, lhs_ty),
                                     Some("std::ops::Add"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Sub => (
                                     format!("cannot subtract `{}` from `{}`", rhs_ty, lhs_ty),
                                     Some("std::ops::Sub"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Mul => (
                                     format!("cannot multiply `{}` to `{}`", rhs_ty, lhs_ty),
                                     Some("std::ops::Mul"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Div => (
                                     format!("cannot divide `{}` by `{}`", lhs_ty, rhs_ty),
                                     Some("std::ops::Div"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Rem => (
                                     format!("cannot mod `{}` by `{}`", lhs_ty, rhs_ty),
                                     Some("std::ops::Rem"),
+                                    true,
                                 ),
                                 hir::BinOpKind::BitAnd => (
                                     format!("no implementation for `{} & {}`", lhs_ty, rhs_ty),
                                     Some("std::ops::BitAnd"),
+                                    true,
                                 ),
                                 hir::BinOpKind::BitXor => (
                                     format!("no implementation for `{} ^ {}`", lhs_ty, rhs_ty),
                                     Some("std::ops::BitXor"),
+                                    true,
                                 ),
                                 hir::BinOpKind::BitOr => (
                                     format!("no implementation for `{} | {}`", lhs_ty, rhs_ty),
                                     Some("std::ops::BitOr"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Shl => (
                                     format!("no implementation for `{} << {}`", lhs_ty, rhs_ty),
                                     Some("std::ops::Shl"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Shr => (
                                     format!("no implementation for `{} >> {}`", lhs_ty, rhs_ty),
                                     Some("std::ops::Shr"),
+                                    true,
                                 ),
                                 hir::BinOpKind::Eq | hir::BinOpKind::Ne => (
                                     format!(
@@ -376,6 +394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         lhs_ty
                                     ),
                                     Some("std::cmp::PartialEq"),
+                                    false,
                                 ),
                                 hir::BinOpKind::Lt
                                 | hir::BinOpKind::Le
@@ -387,6 +406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         lhs_ty
                                     ),
                                     Some("std::cmp::PartialOrd"),
+                                    false,
                                 ),
                                 _ => (
                                     format!(
@@ -395,6 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         lhs_ty
                                     ),
                                     None,
+                                    false,
                                 ),
                             };
                             let mut err = struct_span_err!(
@@ -457,12 +478,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // This has nothing here because it means we did string
                                     // concatenation (e.g., "Hello " + "World!"). This means
                                     // we don't want the note in the else clause to be emitted
-                                } else if let ty::Param(_) = lhs_ty.kind {
-                                    // FIXME: point to span of param
-                                    err.note(&format!(
-                                        "`{}` might need a bound for `{}`",
-                                        lhs_ty, missing_trait
-                                    ));
+                                } else if let ty::Param(p) = lhs_ty.kind {
+                                    suggest_constraining_param(
+                                        self.tcx,
+                                        self.body_id,
+                                        &mut err,
+                                        lhs_ty,
+                                        rhs_ty,
+                                        missing_trait,
+                                        p,
+                                        use_output,
+                                    );
                                 } else if !suggested_deref && !involves_fn {
                                     suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
                                 }
@@ -471,7 +497,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                self.tcx.types.err
+                self.tcx.ty_error()
             }
         };
 
@@ -479,7 +505,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// If one of the types is an uncalled function and calling it would yield the other type,
-    /// suggest calling the function. Returns whether a suggestion was given.
+    /// suggest calling the function. Returns `true` if suggestion would apply (even if not given).
     fn add_type_neq_err_label(
         &self,
         err: &mut rustc_errors::DiagnosticBuilder<'_>,
@@ -492,36 +518,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(span, ty.to_string());
         if let FnDef(def_id, _) = ty.kind {
             let source_map = self.tcx.sess.source_map();
-            let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
-                Some(hir_id) => hir_id,
-                None => return false,
-            };
             if !self.tcx.has_typeck_tables(def_id) {
                 return false;
             }
-            let fn_sig = {
-                match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(hir_id) {
-                    Some(f) => *f,
-                    None => {
-                        bug!("No fn-sig entry for def_id={:?}", def_id);
-                    }
-                }
-            };
+            // We're emitting a suggestion, so we can just ignore regions
+            let fn_sig = *self.tcx.fn_sig(def_id).skip_binder();
 
             let other_ty = if let FnDef(def_id, _) = other_ty.kind {
-                let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
-                    Some(hir_id) => hir_id,
-                    None => return false,
-                };
                 if !self.tcx.has_typeck_tables(def_id) {
                     return false;
                 }
-                match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(hir_id) {
-                    Some(f) => f.clone().output(),
-                    None => {
-                        bug!("No fn-sig entry for def_id={:?}", def_id);
-                    }
-                }
+                // We're emitting a suggestion, so we can just ignore regions
+                self.tcx.fn_sig(def_id).skip_binder().output()
             } else {
                 other_ty
             };
@@ -530,24 +538,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .lookup_op_method(fn_sig.output(), &[other_ty], Op::Binary(op, is_assign))
                 .is_ok()
             {
-                let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
-                    (
-                        format!("{}( /* arguments */ )", source_map.span_to_snippet(span).unwrap()),
-                        Applicability::HasPlaceholders,
-                    )
-                } else {
-                    (
-                        format!("{}()", source_map.span_to_snippet(span).unwrap()),
-                        Applicability::MaybeIncorrect,
-                    )
-                };
+                if let Ok(snippet) = source_map.span_to_snippet(span) {
+                    let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
+                        (format!("{}( /* arguments */ )", snippet), Applicability::HasPlaceholders)
+                    } else {
+                        (format!("{}()", snippet), Applicability::MaybeIncorrect)
+                    };
 
-                err.span_suggestion(
-                    span,
-                    "you might have forgotten to call this function",
-                    variable_snippet,
-                    applicability,
-                );
+                    err.span_suggestion(
+                        span,
+                        "you might have forgotten to call this function",
+                        variable_snippet,
+                        applicability,
+                    );
+                }
                 return true;
             }
         }
@@ -705,7 +709,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     err.emit();
                 }
-                self.tcx.types.err
+                self.tcx.ty_error()
             }
         }
     }
@@ -929,5 +933,45 @@ fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_tra
                 missing_trait, ty
             ));
         }
+    }
+}
+
+fn suggest_constraining_param(
+    tcx: TyCtxt<'_>,
+    body_id: hir::HirId,
+    mut err: &mut DiagnosticBuilder<'_>,
+    lhs_ty: Ty<'_>,
+    rhs_ty: Ty<'_>,
+    missing_trait: &str,
+    p: ty::ParamTy,
+    set_output: bool,
+) {
+    let hir = tcx.hir();
+    let msg = &format!("`{}` might need a bound for `{}`", lhs_ty, missing_trait);
+    // Try to find the def-id and details for the parameter p. We have only the index,
+    // so we have to find the enclosing function's def-id, then look through its declared
+    // generic parameters to get the declaration.
+    let def_id = hir.body_owner_def_id(hir::BodyId { hir_id: body_id });
+    let generics = tcx.generics_of(def_id);
+    let param_def_id = generics.type_param(&p, tcx).def_id;
+    if let Some(generics) = param_def_id
+        .as_local()
+        .map(|id| hir.as_local_hir_id(id))
+        .and_then(|id| hir.find(hir.get_parent_item(id)))
+        .as_ref()
+        .and_then(|node| node.generics())
+    {
+        let output = if set_output { format!("<Output = {}>", rhs_ty) } else { String::new() };
+        suggest_constraining_type_param(
+            tcx,
+            generics,
+            &mut err,
+            &format!("{}", lhs_ty),
+            &format!("{}{}", missing_trait, output),
+            None,
+        );
+    } else {
+        let span = tcx.def_span(param_def_id);
+        err.span_label(span, msg);
     }
 }

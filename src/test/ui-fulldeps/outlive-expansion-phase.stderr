@@ -6,3 +6,5 @@ LL | #![plugin(outlive_expansion_phase)]
    |
    = note: `#[warn(deprecated)]` on by default
 
+warning: 1 warning emitted
+

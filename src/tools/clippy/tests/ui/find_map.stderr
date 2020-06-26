@@ -1,0 +1,26 @@
+error: called `find(p).map(q)` on an `Iterator`
+  --> $DIR/find_map.rs:20:26
+   |
+LL |     let _: Option<i32> = a.iter().find(|s| s.parse::<i32>().is_ok()).map(|s| s.parse().unwrap());
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::find-map` implied by `-D warnings`
+   = help: this is more succinctly expressed by calling `.find_map(..)` instead
+
+error: called `find(p).map(q)` on an `Iterator`
+  --> $DIR/find_map.rs:22:29
+   |
+LL |       let _: Option<Flavor> = desserts_of_the_week
+   |  _____________________________^
+LL | |         .iter()
+LL | |         .find(|dessert| match *dessert {
+LL | |             Dessert::Cake(_) => true,
+...  |
+LL | |             _ => unreachable!(),
+LL | |         });
+   | |__________^
+   |
+   = help: this is more succinctly expressed by calling `.find_map(..)` instead
+
+error: aborting due to 2 previous errors
+

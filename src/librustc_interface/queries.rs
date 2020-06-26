@@ -1,20 +1,21 @@
 use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, QueryContext};
 
-use rustc::arena::Arena;
-use rustc::dep_graph::DepGraph;
-use rustc::session::config::{OutputFilenames, OutputType};
-use rustc::session::Session;
-use rustc::ty::steal::Steal;
-use rustc::ty::{GlobalCtxt, ResolverOutputs};
-use rustc::util::common::ErrorReported;
 use rustc_ast::{self, ast};
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
+use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
+use rustc_errors::ErrorReported;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::Crate;
 use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
+use rustc_middle::arena::Arena;
+use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::ty::steal::Steal;
+use rustc_middle::ty::{GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_session::{output::find_crate_name, Session};
+use rustc_span::symbol::sym;
 use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
 use std::mem;
@@ -64,9 +65,10 @@ impl<T> Default for Query<T> {
 
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
-    gcx: Once<GlobalCtxt<'tcx>>,
+    gcx: OnceCell<GlobalCtxt<'tcx>>,
 
     arena: WorkerLocal<Arena<'tcx>>,
+    hir_arena: WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
@@ -84,8 +86,9 @@ impl<'tcx> Queries<'tcx> {
     pub fn new(compiler: &'tcx Compiler) -> Queries<'tcx> {
         Queries {
             compiler,
-            gcx: Once::new(),
+            gcx: OnceCell::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
+            hir_arena: WorkerLocal::new(|_| rustc_ast_lowering::Arena::default()),
             dep_graph_future: Default::default(),
             parse: Default::default(),
             crate_name: Default::default(),
@@ -134,7 +137,7 @@ impl<'tcx> Queries<'tcx> {
             let result = passes::register_plugins(
                 self.session(),
                 &*self.codegen_backend().metadata_loader(),
-                self.compiler.register_lints.as_ref().map(|p| &**p).unwrap_or_else(|| empty),
+                self.compiler.register_lints.as_deref().unwrap_or_else(|| empty),
                 krate,
                 &crate_name,
             );
@@ -157,11 +160,7 @@ impl<'tcx> Queries<'tcx> {
                 None => {
                     let parse_result = self.parse()?;
                     let krate = parse_result.peek();
-                    rustc_codegen_utils::link::find_crate_name(
-                        Some(self.session()),
-                        &krate.attrs,
-                        &self.compiler.input,
-                    )
+                    find_crate_name(Some(self.session()), &krate.attrs, &self.compiler.input)
                 }
             })
         })
@@ -170,6 +169,7 @@ impl<'tcx> Queries<'tcx> {
     pub fn expansion(
         &self,
     ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
+        log::trace!("expansion");
         self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, lint_store) = self.register_plugins()?.take();
@@ -221,10 +221,10 @@ impl<'tcx> Queries<'tcx> {
                     resolver,
                     &*self.dep_graph()?.peek(),
                     &krate,
-                    &self.arena,
+                    &self.hir_arena,
                 ))
             })?;
-            let hir = self.arena.alloc(hir);
+            let hir = self.hir_arena.alloc(hir);
             Ok((hir, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
         })
     }
@@ -277,9 +277,56 @@ impl<'tcx> Queries<'tcx> {
                 // Don't do code generation if there were any errors
                 self.session().compile_status()?;
 
+                // Hook for compile-fail tests.
+                Self::check_for_rustc_errors_attr(tcx);
+
                 Ok(passes::start_codegen(&***self.codegen_backend(), tcx, &*outputs.peek()))
             })
         })
+    }
+
+    /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
+    /// to write compile-fail tests that actually test that compilation succeeds without reporting
+    /// an error.
+    fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
+        let def_id = match tcx.entry_fn(LOCAL_CRATE) {
+            Some((def_id, _)) => def_id,
+            _ => return,
+        };
+
+        let attrs = &*tcx.get_attrs(def_id.to_def_id());
+        let attrs = attrs.iter().filter(|attr| attr.check_name(sym::rustc_error));
+        for attr in attrs {
+            match attr.meta_item_list() {
+                // Check if there is a `#[rustc_error(delay_span_bug_from_inside_query)]`.
+                Some(list)
+                    if list.iter().any(|list_item| {
+                        matches!(
+                            list_item.ident().map(|i| i.name),
+                            Some(sym::delay_span_bug_from_inside_query)
+                        )
+                    }) =>
+                {
+                    tcx.ensure().trigger_delay_span_bug(def_id);
+                }
+
+                // Bare `#[rustc_error]`.
+                None => {
+                    tcx.sess.span_fatal(
+                        tcx.def_span(def_id),
+                        "fatal error triggered by #[rustc_error]",
+                    );
+                }
+
+                // Some other attribute.
+                Some(_) => {
+                    tcx.sess.span_warn(
+                        tcx.def_span(def_id),
+                        "unexpected annotation used with `#[rustc_error(...)]!",
+                    );
+                }
+            }
+        }
     }
 
     pub fn linker(&'tcx self) -> Result<Linker> {

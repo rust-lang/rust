@@ -1,0 +1,11 @@
+error: specializing impl repeats parameter `'a`
+  --> $DIR/repeating_lifetimes.rs:14:1
+   |
+LL | / impl<'a> X for (&'a u8, &'a u8) {
+LL | |
+LL | |     fn f() {}
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

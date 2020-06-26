@@ -1,7 +1,5 @@
-// FIXME: missing sysroot spans (#53081)
-// ignore-i586-unknown-linux-gnu
-// ignore-i586-unknown-linux-musl
-// ignore-i686-unknown-linux-musl
+// ignore-sgx std::os::fortanix_sgx::usercalls::raw::Result changes compiler suggestions
+
 use foo::MyEnum::Result;
 use foo::NoResult; // Through a re-export
 

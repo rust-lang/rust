@@ -140,6 +140,7 @@ mod format;
 mod install;
 mod metadata;
 mod native;
+mod run;
 mod sanity;
 mod test;
 mod tool;
@@ -242,6 +243,7 @@ pub struct Build {
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
+    initial_libdir: PathBuf,
 
     // Runtime state filled in later on
     // C/C++ compilers and archiver for all targets
@@ -268,14 +270,20 @@ struct Crate {
 }
 
 impl Crate {
-    fn is_local(&self, build: &Build) -> bool {
-        self.path.starts_with(&build.config.src) && !self.path.to_string_lossy().ends_with("_shim")
-    }
-
     fn local_path(&self, build: &Build) -> PathBuf {
-        assert!(self.is_local(build));
         self.path.strip_prefix(&build.config.src).unwrap().into()
     }
+}
+
+/// When building Rust various objects are handled differently.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DependencyType {
+    /// Libraries originating from proc-macros.
+    Host,
+    /// Typical Rust libraries.
+    Target,
+    /// Non Rust libraries and objects shipped to ease usage of certain targets.
+    TargetSelfContained,
 }
 
 /// The various "modes" of invoking Cargo.
@@ -343,18 +351,39 @@ impl Build {
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-project"));
 
-        let initial_sysroot = config.initial_rustc.parent().unwrap().parent().unwrap();
-        let initial_lld = initial_sysroot
-            .join("lib")
-            .join("rustlib")
-            .join(config.build)
-            .join("bin")
-            .join("rust-lld");
+        let initial_target_libdir_str = if config.dry_run {
+            "/dummy/lib/path/to/lib/".to_string()
+        } else {
+            output(
+                Command::new(&config.initial_rustc)
+                    .arg("--target")
+                    .arg(config.build)
+                    .arg("--print")
+                    .arg("target-libdir"),
+            )
+        };
+        let initial_target_dir = Path::new(&initial_target_libdir_str).parent().unwrap();
+        let initial_lld = initial_target_dir.join("bin").join("rust-lld");
+
+        let initial_sysroot = if config.dry_run {
+            "/dummy".to_string()
+        } else {
+            output(Command::new(&config.initial_rustc).arg("--print").arg("sysroot"))
+        };
+        let initial_libdir = initial_target_dir
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .strip_prefix(initial_sysroot.trim())
+            .unwrap()
+            .to_path_buf();
 
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             initial_lld,
+            initial_libdir,
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
@@ -739,19 +768,18 @@ impl Build {
         self.config.jobs.unwrap_or_else(|| num_cpus::get() as u32)
     }
 
-    fn debuginfo_map(&self, which: GitRepo) -> Option<String> {
+    fn debuginfo_map_to(&self, which: GitRepo) -> Option<String> {
         if !self.config.rust_remap_debuginfo {
             return None;
         }
 
-        let path = match which {
+        match which {
             GitRepo::Rustc => {
                 let sha = self.rust_sha().unwrap_or(channel::CFG_RELEASE_NUM);
-                format!("/rustc/{}", sha)
+                Some(format!("/rustc/{}", sha))
             }
-            GitRepo::Llvm => String::from("/rustc/llvm"),
-        };
-        Some(format!("{}={}", self.src.display(), path))
+            GitRepo::Llvm => Some(String::from("/rustc/llvm")),
+        }
     }
 
     /// Returns the path to the C compiler for the target specified.
@@ -786,7 +814,8 @@ impl Build {
             base.push("-fno-omit-frame-pointer".into());
         }
 
-        if let Some(map) = self.debuginfo_map(which) {
+        if let Some(map_to) = self.debuginfo_map_to(which) {
+            let map = format!("{}={}", self.src.display(), map_to);
             let cc = self.cc(target);
             if cc.ends_with("clang") || cc.ends_with("gcc") {
                 base.push(format!("-fdebug-prefix-map={}", map));
@@ -940,29 +969,15 @@ impl Build {
             return s;
         }
 
-        let beta = output(
-            Command::new("git").arg("ls-remote").arg("origin").arg("beta").current_dir(&self.src),
-        );
-        let beta = beta.trim().split_whitespace().next().unwrap();
-        let master = output(
-            Command::new("git").arg("ls-remote").arg("origin").arg("master").current_dir(&self.src),
-        );
-        let master = master.trim().split_whitespace().next().unwrap();
-
-        // Figure out where the current beta branch started.
-        let base = output(
-            Command::new("git").arg("merge-base").arg(beta).arg(master).current_dir(&self.src),
-        );
-        let base = base.trim();
-
-        // Next figure out how many merge commits happened since we branched off
-        // beta. That's our beta number!
+        // Figure out how many merge commits happened since we branched off master.
+        // That's our beta number!
+        // (Note that we use a `..` range, not the `...` symmetric difference.)
         let count = output(
             Command::new("git")
                 .arg("rev-list")
                 .arg("--count")
                 .arg("--merges")
-                .arg(format!("{}...HEAD", base))
+                .arg("refs/remotes/origin/master..HEAD")
                 .current_dir(&self.src),
         );
         let n = count.trim().parse().unwrap();
@@ -1028,14 +1043,6 @@ impl Build {
         self.rust_version()
     }
 
-    fn lldb_package_vers(&self) -> String {
-        self.package_vers(channel::CFG_RELEASE_NUM)
-    }
-
-    fn lldb_vers(&self) -> String {
-        self.rust_version()
-    }
-
     fn llvm_link_tools_dynamically(&self, target: Interned<String>) -> bool {
         target.contains("linux-gnu") || target.contains("apple-darwin")
     }
@@ -1078,17 +1085,29 @@ impl Build {
         }
     }
 
+    /// Returns a Vec of all the dependencies of the given root crate,
+    /// including transitive dependencies and the root itself. Only includes
+    /// "local" crates (those in the local source tree, not from a registry).
     fn in_tree_crates(&self, root: &str) -> Vec<&Crate> {
         let mut ret = Vec::new();
         let mut list = vec![INTERNER.intern_str(root)];
         let mut visited = HashSet::new();
         while let Some(krate) = list.pop() {
             let krate = &self.crates[&krate];
-            if krate.is_local(self) {
-                ret.push(krate);
-            }
+            ret.push(krate);
             for dep in &krate.deps {
-                if visited.insert(dep) && dep != "build_helper" {
+                // Don't include optional deps if their features are not
+                // enabled. Ideally this would be computed from `cargo
+                // metadata --features …`, but that is somewhat slow. Just
+                // skip `build_helper` since there aren't any operations we
+                // want to perform on it. In the future, we may want to
+                // consider just filtering all build and dev dependencies in
+                // metadata::build.
+                if visited.insert(dep)
+                    && dep != "build_helper"
+                    && (dep != "profiler_builtins" || self.config.profiler)
+                    && (dep != "rustc_codegen_llvm" || self.config.llvm_enabled())
+                {
                     list.push(*dep);
                 }
             }
@@ -1096,7 +1115,7 @@ impl Build {
         ret
     }
 
-    fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, bool)> {
+    fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, DependencyType)> {
         if self.config.dry_run {
             return Vec::new();
         }
@@ -1109,9 +1128,14 @@ impl Build {
             if part.is_empty() {
                 continue;
             }
-            let host = part[0] as char == 'h';
+            let dependency_type = match part[0] as char {
+                'h' => DependencyType::Host,
+                's' => DependencyType::TargetSelfContained,
+                't' => DependencyType::Target,
+                _ => unreachable!(),
+            };
             let path = PathBuf::from(t!(str::from_utf8(&part[1..])));
-            paths.push((path, host));
+            paths.push((path, dependency_type));
         }
         paths
     }

@@ -19,13 +19,13 @@
 
 // lldb-command:run
 // lldb-command:print u
-// lldbg-check:[...]$0 = U { a: ('\x02', '\x02'), b: 514 }
-// lldbr-check:(union_smoke::U) u = { a = { = 2 = 2 } b = 514 }
+// lldbg-check:[...]$0 = { a = { 0 = '\x02' 1 = '\x02' } b = 514 }
+// lldbr-check:(union_smoke::U) u = { a = { 0 = '\x02' 1 = '\x02' } b = 514 }
 
 // Don't test this with rust-enabled lldb for now; see
 // https://github.com/rust-lang-nursery/lldb/issues/18
 // lldbg-command:print union_smoke::SU
-// lldbg-check:[...]$1 = U { a: ('\x01', '\x01'), b: 257 }
+// lldbg-check:[...]$1 = { a = { 0 = '\x01' 1 = '\x01' } b = 257 }
 
 #![allow(unused)]
 #![feature(omit_gdb_pretty_printer_section)]

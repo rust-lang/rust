@@ -25,6 +25,7 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
+use crate::def_id::{DefId, CRATE_DEF_INDEX};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
 use crate::GLOBALS;
@@ -59,18 +60,8 @@ pub struct ExpnId(u32);
 
 /// A property of a macro expansion that determines how identifiers
 /// produced by that expansion are resolved.
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Hash,
-    Debug,
-    RustcEncodable,
-    RustcDecodable,
-    HashStable_Generic
-)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
@@ -165,7 +156,12 @@ crate struct HygieneData {
 impl HygieneData {
     crate fn new(edition: Edition) -> Self {
         HygieneData {
-            expn_data: vec![Some(ExpnData::default(ExpnKind::Root, DUMMY_SP, edition))],
+            expn_data: vec![Some(ExpnData::default(
+                ExpnKind::Root,
+                DUMMY_SP,
+                edition,
+                Some(DefId::local(CRATE_DEF_INDEX)),
+            ))],
             syntax_context_data: vec![SyntaxContextData {
                 outer_expn: ExpnId::root(),
                 outer_transparency: Transparency::Opaque,
@@ -201,11 +197,11 @@ impl HygieneData {
         true
     }
 
-    fn modern(&self, ctxt: SyntaxContext) -> SyntaxContext {
+    fn normalize_to_macros_2_0(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_context_data[ctxt.0 as usize].opaque
     }
 
-    fn modern_and_legacy(&self, ctxt: SyntaxContext) -> SyntaxContext {
+    fn normalize_to_macro_rules(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent
     }
 
@@ -266,9 +262,9 @@ impl HygieneData {
 
         let call_site_ctxt = self.expn_data(expn_id).call_site.ctxt();
         let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
-            self.modern(call_site_ctxt)
+            self.normalize_to_macros_2_0(call_site_ctxt)
         } else {
-            self.modern_and_legacy(call_site_ctxt)
+            self.normalize_to_macro_rules(call_site_ctxt)
         };
 
         if call_site_ctxt == SyntaxContext::root() {
@@ -491,10 +487,10 @@ impl SyntaxContext {
         HygieneData::with(|data| data.adjust(self, expn_id))
     }
 
-    /// Like `SyntaxContext::adjust`, but also modernizes `self`.
-    pub fn modernize_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
+    /// Like `SyntaxContext::adjust`, but also normalizes `self` to macros 2.0.
+    pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         HygieneData::with(|data| {
-            *self = data.modern(*self);
+            *self = data.normalize_to_macros_2_0(*self);
             data.adjust(self, expn_id)
         })
     }
@@ -527,7 +523,7 @@ impl SyntaxContext {
     pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
         HygieneData::with(|data| {
             let mut scope = None;
-            let mut glob_ctxt = data.modern(glob_span.ctxt());
+            let mut glob_ctxt = data.normalize_to_macros_2_0(glob_span.ctxt());
             while !data.is_descendant_of(expn_id, data.outer_expn(glob_ctxt)) {
                 scope = Some(data.remove_mark(&mut glob_ctxt).0);
                 if data.remove_mark(self).0 != scope.unwrap() {
@@ -558,7 +554,7 @@ impl SyntaxContext {
                 return None;
             }
 
-            let mut glob_ctxt = data.modern(glob_span.ctxt());
+            let mut glob_ctxt = data.normalize_to_macros_2_0(glob_span.ctxt());
             let mut marks = Vec::new();
             while !data.is_descendant_of(expn_id, data.outer_expn(glob_ctxt)) {
                 marks.push(data.remove_mark(&mut glob_ctxt));
@@ -574,20 +570,20 @@ impl SyntaxContext {
 
     pub fn hygienic_eq(self, other: SyntaxContext, expn_id: ExpnId) -> bool {
         HygieneData::with(|data| {
-            let mut self_modern = data.modern(self);
-            data.adjust(&mut self_modern, expn_id);
-            self_modern == data.modern(other)
+            let mut self_normalized = data.normalize_to_macros_2_0(self);
+            data.adjust(&mut self_normalized, expn_id);
+            self_normalized == data.normalize_to_macros_2_0(other)
         })
     }
 
     #[inline]
-    pub fn modern(self) -> SyntaxContext {
-        HygieneData::with(|data| data.modern(self))
+    pub fn normalize_to_macros_2_0(self) -> SyntaxContext {
+        HygieneData::with(|data| data.normalize_to_macros_2_0(self))
     }
 
     #[inline]
-    pub fn modern_and_legacy(self) -> SyntaxContext {
-        HygieneData::with(|data| data.modern_and_legacy(self))
+    pub fn normalize_to_macro_rules(self) -> SyntaxContext {
+        HygieneData::with(|data| data.normalize_to_macro_rules(self))
     }
 
     #[inline]
@@ -671,7 +667,7 @@ pub struct ExpnData {
     /// The span of the macro definition (possibly dummy).
     /// This span serves only informational purpose and is not used for resolution.
     pub def_site: Span,
-    /// List of #[unstable]/feature-gated features that the macro is allowed to use
+    /// List of `#[unstable]`/feature-gated features that the macro is allowed to use
     /// internally without forcing the whole crate to opt-in
     /// to them.
     pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
@@ -683,11 +679,19 @@ pub struct ExpnData {
     pub local_inner_macros: bool,
     /// Edition of the crate in which the macro is defined.
     pub edition: Edition,
+    /// The `DefId` of the macro being invoked,
+    /// if this `ExpnData` corresponds to a macro invocation
+    pub macro_def_id: Option<DefId>,
 }
 
 impl ExpnData {
     /// Constructs expansion data with default properties.
-    pub fn default(kind: ExpnKind, call_site: Span, edition: Edition) -> ExpnData {
+    pub fn default(
+        kind: ExpnKind,
+        call_site: Span,
+        edition: Edition,
+        macro_def_id: Option<DefId>,
+    ) -> ExpnData {
         ExpnData {
             kind,
             parent: ExpnId::root(),
@@ -697,6 +701,7 @@ impl ExpnData {
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition,
+            macro_def_id,
         }
     }
 
@@ -705,10 +710,11 @@ impl ExpnData {
         call_site: Span,
         edition: Edition,
         allow_internal_unstable: Lrc<[Symbol]>,
+        macro_def_id: Option<DefId>,
     ) -> ExpnData {
         ExpnData {
             allow_internal_unstable: Some(allow_internal_unstable),
-            ..ExpnData::default(kind, call_site, edition)
+            ..ExpnData::default(kind, call_site, edition, macro_def_id)
         }
     }
 
@@ -747,17 +753,8 @@ impl ExpnKind {
 }
 
 /// The kind of macro invocation or definition.
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    RustcEncodable,
-    RustcDecodable,
-    Hash,
-    Debug,
-    HashStable_Generic
-)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
     Bang,

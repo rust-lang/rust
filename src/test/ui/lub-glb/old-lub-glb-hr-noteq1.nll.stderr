@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/old-lub-glb-hr-noteq1.rs:11:14
+   |
+LL |         _ => y,
+   |              ^
+
+error: aborting due to previous error
+

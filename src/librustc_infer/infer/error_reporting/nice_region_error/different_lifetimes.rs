@@ -3,9 +3,10 @@
 
 use crate::infer::error_reporting::nice_region_error::util::AnonymousParamInfo;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc::util::common::ErrorReported;
+use crate::infer::lexical_region_resolve::RegionResolutionError;
+use crate::infer::SubregionOrigin;
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, ErrorReported};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when both the concerned regions are anonymous.
@@ -46,6 +47,15 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// It will later be extended to trait objects.
     pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorReported> {
         let (span, sub, sup) = self.regions()?;
+
+        if let Some(RegionResolutionError::ConcreteFailure(
+            SubregionOrigin::ReferenceOutlivesReferent(..),
+            ..,
+        )) = self.error
+        {
+            // This error doesn't make much sense in this case.
+            return None;
+        }
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
         let anon_reg_sup = self.tcx().is_suitable_region(sup)?;
@@ -111,16 +121,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             (Some(ret_span), _) => (
                 ty_sub.span,
                 ret_span,
-                "this parameter and the return type are declared \
-                 with different lifetimes..."
+                "this parameter and the return type are declared with different lifetimes..."
                     .to_owned(),
                 format!("...but data{} is returned here", span_label_var1),
             ),
             (_, Some(ret_span)) => (
                 ty_sup.span,
                 ret_span,
-                "this parameter and the return type are declared \
-                 with different lifetimes..."
+                "this parameter and the return type are declared with different lifetimes..."
                     .to_owned(),
                 format!("...but data{} is returned here", span_label_var1),
             ),
@@ -131,6 +139,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             .span_label(span_2, String::new())
             .span_label(span, span_label)
             .emit();
-        return Some(ErrorReported);
+        Some(ErrorReported)
     }
 }

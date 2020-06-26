@@ -1,12 +1,12 @@
 use crate::mbe::macro_parser;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, SequenceRepetition, TokenTree};
 
-use rustc_ast::ast;
+use rustc_ast::ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream;
 use rustc_ast_pretty::pprust;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident};
 
 use rustc_span::Span;
 
@@ -37,6 +37,7 @@ pub(super) fn parse(
     input: tokenstream::TokenStream,
     expect_matchers: bool,
     sess: &ParseSess,
+    node_id: NodeId,
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
     let mut result = Vec::new();
@@ -47,7 +48,7 @@ pub(super) fn parse(
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
-        let tree = parse_tree(tree, &mut trees, expect_matchers, sess);
+        let tree = parse_tree(tree, &mut trees, expect_matchers, sess, node_id);
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
@@ -66,8 +67,11 @@ pub(super) fn parse(
                     }
                     tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
                 };
-                sess.missing_fragment_specifiers.borrow_mut().insert(span);
-                result.push(TokenTree::MetaVarDecl(span, ident, ast::Ident::invalid()));
+                if node_id != DUMMY_NODE_ID {
+                    // Macros loaded from other crates have dummy node ids.
+                    sess.missing_fragment_specifiers.borrow_mut().insert(span, node_id);
+                }
+                result.push(TokenTree::MetaVarDecl(span, ident, Ident::invalid()));
             }
 
             // Not a metavar or no matchers allowed, so just return the tree
@@ -97,6 +101,7 @@ fn parse_tree(
     trees: &mut impl Iterator<Item = tokenstream::TokenTree>,
     expect_matchers: bool,
     sess: &ParseSess,
+    node_id: NodeId,
 ) -> TokenTree {
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
@@ -112,7 +117,7 @@ fn parse_tree(
                     sess.span_diagnostic.span_err(span.entire(), &msg);
                 }
                 // Parse the contents of the sequence itself
-                let sequence = parse(tts, expect_matchers, sess);
+                let sequence = parse(tts, expect_matchers, sess, node_id);
                 // Get the Kleene operator and optional separator
                 let (separator, kleene) = parse_sep_and_kleene_op(trees, span.entire(), sess);
                 // Count the number of captured "names" (i.e., named metavars)
@@ -145,7 +150,7 @@ fn parse_tree(
                 let msg =
                     format!("expected identifier, found `{}`", pprust::token_to_string(&token),);
                 sess.span_diagnostic.span_err(token.span, &msg);
-                TokenTree::MetaVar(token.span, ast::Ident::invalid())
+                TokenTree::MetaVar(token.span, Ident::invalid())
             }
 
             // There are no more tokens. Just return the `$` we already have.
@@ -159,7 +164,7 @@ fn parse_tree(
         // descend into the delimited set and further parse it.
         tokenstream::TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
             span,
-            Lrc::new(Delimited { delim, tts: parse(tts, expect_matchers, sess) }),
+            Lrc::new(Delimited { delim, tts: parse(tts, expect_matchers, sess, node_id) }),
         ),
     }
 }

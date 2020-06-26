@@ -1,20 +1,21 @@
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::util::comments;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{error_code, DiagnosticBuilder, FatalError};
-use rustc_lexer::unescape;
+use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError};
 use rustc_lexer::Base;
+use rustc_lexer::{unescape, RawStrError};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Pos, Span};
 
 use log::debug;
 use std::char;
-use std::convert::TryInto;
 
 mod tokentrees;
 mod unescape_error_reporting;
 mod unicode_chars;
+
+use rustc_lexer::unescape::Mode;
 use unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
 #[derive(Clone, Debug)]
@@ -31,8 +32,7 @@ pub struct StringReader<'a> {
     /// Initial position, read-only.
     start_pos: BytePos,
     /// The absolute offset within the source_map of the current character.
-    // FIXME(#64197): `pub` is needed by tests for now.
-    pub pos: BytePos,
+    pos: BytePos,
     /// Stop reading src at this index.
     end_src_index: usize,
     /// Source text to tokenize.
@@ -46,12 +46,19 @@ impl<'a> StringReader<'a> {
         source_file: Lrc<rustc_span::SourceFile>,
         override_span: Option<Span>,
     ) -> Self {
-        if source_file.src.is_none() {
+        // Make sure external source is loaded first, before accessing it.
+        // While this can't show up during normal parsing, `retokenize` may
+        // be called with a source file from an external crate.
+        sess.source_map().ensure_source_file_source_present(Lrc::clone(&source_file));
+
+        let src = if let Some(src) = &source_file.src {
+            Lrc::clone(&src)
+        } else if let Some(src) = source_file.external_src.borrow().get_source() {
+            Lrc::clone(&src)
+        } else {
             sess.span_diagnostic
                 .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
-        }
-
-        let src = (*source_file.src.as_ref().unwrap()).clone();
+        };
 
         StringReader {
             sess,
@@ -85,9 +92,6 @@ impl<'a> StringReader<'a> {
     }
 
     /// Returns the next token, including trivia like whitespace or comments.
-    ///
-    /// `Err(())` means that some errors were encountered, which can be
-    /// retrieved using `buffer_fatal_errors`.
     pub fn next_token(&mut self) -> Token {
         let start_src_index = self.src_index(self.pos);
         let text: &str = &self.src[start_src_index..self.end_src_index];
@@ -120,10 +124,7 @@ impl<'a> StringReader<'a> {
 
         debug!("try_next_token: {:?}({:?})", token.kind, self.str_from(start));
 
-        // This could use `?`, but that makes code significantly (10-20%) slower.
-        // https://github.com/rust-lang/rust/issues/37939
         let kind = self.cook_lexer_token(token.kind, start);
-
         let span = self.mk_sp(start, self.pos);
         Token::new(kind, span)
     }
@@ -148,15 +149,6 @@ impl<'a> StringReader<'a> {
         self.err_span(self.mk_sp(from_pos, to_pos), m)
     }
 
-    fn struct_span_fatal(
-        &self,
-        from_pos: BytePos,
-        to_pos: BytePos,
-        m: &str,
-    ) -> DiagnosticBuilder<'a> {
-        self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), m)
-    }
-
     fn struct_fatal_span_char(
         &self,
         from_pos: BytePos,
@@ -179,14 +171,12 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::LineComment => {
                 let string = self.str_from(start);
                 // comments with only more "/"s are not doc comments
-                let tok = if comments::is_line_doc_comment(string) {
+                if comments::is_line_doc_comment(string) {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in doc-comment");
                     token::DocComment(Symbol::intern(string))
                 } else {
                     token::Comment
-                };
-
-                tok
+                }
             }
             rustc_lexer::TokenKind::BlockComment { terminated } => {
                 let string = self.str_from(start);
@@ -201,17 +191,23 @@ impl<'a> StringReader<'a> {
                         "unterminated block comment"
                     };
                     let last_bpos = self.pos;
-                    self.fatal_span_(start, last_bpos, msg).raise();
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start, last_bpos),
+                            msg,
+                            error_code!(E0758),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
 
-                let tok = if is_doc_comment {
+                if is_doc_comment {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in block doc-comment");
                     token::DocComment(Symbol::intern(string))
                 } else {
                     token::Comment
-                };
-
-                tok
+                }
             }
             rustc_lexer::TokenKind::Whitespace => token::Whitespace,
             rustc_lexer::TokenKind::Ident | rustc_lexer::TokenKind::RawIdent => {
@@ -221,8 +217,9 @@ impl<'a> StringReader<'a> {
                     ident_start = ident_start + BytePos(2);
                 }
                 let sym = nfc_normalize(self.str_from(ident_start));
+                let span = self.mk_sp(start, self.pos);
+                self.sess.symbol_gallery.insert(sym, span);
                 if is_raw_ident {
-                    let span = self.mk_sp(start, self.pos);
                     if !sym.can_be_raw() {
                         self.err_span(span, &format!("`{}` cannot be a raw identifier", sym));
                     }
@@ -324,38 +321,49 @@ impl<'a> StringReader<'a> {
         suffix_start: BytePos,
         kind: rustc_lexer::LiteralKind,
     ) -> (token::LitKind, Symbol) {
-        match kind {
+        // prefix means `"` or `br"` or `r###"`, ...
+        let (lit_kind, mode, prefix_len, postfix_len) = match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated character literal").raise()
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start, suffix_start),
+                            "unterminated character literal",
+                            error_code!(E0762),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
-                let content_start = start + BytePos(1);
-                let content_end = suffix_start - BytePos(1);
-                self.validate_char_escape(content_start, content_end);
-                let id = self.symbol_from_to(content_start, content_end);
-                (token::Char, id)
+                (token::Char, Mode::Char, 1, 1) // ' '
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start + BytePos(1), suffix_start, "unterminated byte constant")
-                        .raise()
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start + BytePos(1), suffix_start),
+                            "unterminated byte constant",
+                            error_code!(E0763),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
-                let content_start = start + BytePos(2);
-                let content_end = suffix_start - BytePos(1);
-                self.validate_byte_escape(content_start, content_end);
-                let id = self.symbol_from_to(content_start, content_end);
-                (token::Byte, id)
+                (token::Byte, Mode::Byte, 2, 1) // b' '
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated double quote string")
-                        .raise()
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start, suffix_start),
+                            "unterminated double quote string",
+                            error_code!(E0765),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
-                let content_start = start + BytePos(1);
-                let content_end = suffix_start - BytePos(1);
-                self.validate_str_escape(content_start, content_end);
-                let id = self.symbol_from_to(content_start, content_end);
-                (token::Str, id)
+                (token::Str, Mode::Str, 1, 1) // " "
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
@@ -366,59 +374,30 @@ impl<'a> StringReader<'a> {
                     )
                     .raise()
                 }
-                let content_start = start + BytePos(2);
-                let content_end = suffix_start - BytePos(1);
-                self.validate_byte_str_escape(content_start, content_end);
-                let id = self.symbol_from_to(content_start, content_end);
-                (token::ByteStr, id)
+                (token::ByteStr, Mode::ByteStr, 2, 1) // b" "
             }
-            rustc_lexer::LiteralKind::RawStr { n_hashes, started, terminated } => {
-                if !started {
-                    self.report_non_started_raw_string(start);
-                }
-                if !terminated {
-                    self.report_unterminated_raw_string(start, n_hashes)
-                }
-                let n_hashes: u16 = self.restrict_n_hashes(start, n_hashes);
+            rustc_lexer::LiteralKind::RawStr { n_hashes, err } => {
+                self.report_raw_str_error(start, err);
                 let n = u32::from(n_hashes);
-                let content_start = start + BytePos(2 + n);
-                let content_end = suffix_start - BytePos(1 + n);
-                self.validate_raw_str_escape(content_start, content_end);
-                let id = self.symbol_from_to(content_start, content_end);
-                (token::StrRaw(n_hashes), id)
+                (token::StrRaw(n_hashes), Mode::RawStr, 2 + n, 1 + n) // r##" "##
             }
-            rustc_lexer::LiteralKind::RawByteStr { n_hashes, started, terminated } => {
-                if !started {
-                    self.report_non_started_raw_string(start);
-                }
-                if !terminated {
-                    self.report_unterminated_raw_string(start, n_hashes)
-                }
-                let n_hashes: u16 = self.restrict_n_hashes(start, n_hashes);
+            rustc_lexer::LiteralKind::RawByteStr { n_hashes, err } => {
+                self.report_raw_str_error(start, err);
                 let n = u32::from(n_hashes);
-                let content_start = start + BytePos(3 + n);
-                let content_end = suffix_start - BytePos(1 + n);
-                self.validate_raw_byte_str_escape(content_start, content_end);
-                let id = self.symbol_from_to(content_start, content_end);
-                (token::ByteStrRaw(n_hashes), id)
+                (token::ByteStrRaw(n_hashes), Mode::RawByteStr, 3 + n, 1 + n) // br##" "##
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
-                if empty_int {
+                return if empty_int {
                     self.err_span_(start, suffix_start, "no valid digits found for number");
                     (token::Integer, sym::integer(0))
                 } else {
                     self.validate_int_literal(base, start, suffix_start);
                     (token::Integer, self.symbol_from_to(start, suffix_start))
-                }
+                };
             }
             rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
                 if empty_exponent {
-                    let mut err = self.struct_span_fatal(
-                        start,
-                        self.pos,
-                        "expected at least one digit in exponent",
-                    );
-                    err.emit();
+                    self.err_span_(start, self.pos, "expected at least one digit in exponent");
                 }
 
                 match base {
@@ -437,9 +416,18 @@ impl<'a> StringReader<'a> {
                 }
 
                 let id = self.symbol_from_to(start, suffix_start);
-                (token::Float, id)
+                return (token::Float, id);
             }
-        }
+        };
+        let content_start = start + BytePos(prefix_len);
+        let content_end = suffix_start - BytePos(postfix_len);
+        let id = self.symbol_from_to(content_start, content_end);
+        self.validate_literal_escape(mode, content_start, content_end);
+        (lit_kind, id)
+    }
+
+    pub fn pos(&self) -> BytePos {
+        self.pos
     }
 
     #[inline]
@@ -481,143 +469,101 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn report_non_started_raw_string(&self, start: BytePos) -> ! {
-        let bad_char = self.str_from(start).chars().last().unwrap();
+    fn report_raw_str_error(&self, start: BytePos, opt_err: Option<RawStrError>) {
+        match opt_err {
+            Some(RawStrError::InvalidStarter { bad_char }) => {
+                self.report_non_started_raw_string(start, bad_char)
+            }
+            Some(RawStrError::NoTerminator { expected, found, possible_terminator_offset }) => self
+                .report_unterminated_raw_string(start, expected, possible_terminator_offset, found),
+            Some(RawStrError::TooManyDelimiters { found }) => {
+                self.report_too_many_hashes(start, found)
+            }
+            None => (),
+        }
+    }
+
+    fn report_non_started_raw_string(&self, start: BytePos, bad_char: char) -> ! {
         self.struct_fatal_span_char(
             start,
             self.pos,
-            "found invalid character; only `#` is allowed \
-                 in raw string delimitation",
+            "found invalid character; only `#` is allowed in raw string delimitation",
             bad_char,
         )
         .emit();
         FatalError.raise()
     }
 
-    fn report_unterminated_raw_string(&self, start: BytePos, n_hashes: usize) -> ! {
+    fn report_unterminated_raw_string(
+        &self,
+        start: BytePos,
+        n_hashes: usize,
+        possible_offset: Option<usize>,
+        found_terminators: usize,
+    ) -> ! {
         let mut err = self.sess.span_diagnostic.struct_span_fatal_with_code(
             self.mk_sp(start, start),
             "unterminated raw string",
             error_code!(E0748),
         );
+
         err.span_label(self.mk_sp(start, start), "unterminated raw string");
 
         if n_hashes > 0 {
             err.note(&format!(
                 "this raw string should be terminated with `\"{}`",
-                "#".repeat(n_hashes as usize)
+                "#".repeat(n_hashes)
             ));
+        }
+
+        if let Some(possible_offset) = possible_offset {
+            let lo = start + BytePos(possible_offset as u32);
+            let hi = lo + BytePos(found_terminators as u32);
+            let span = self.mk_sp(lo, hi);
+            err.span_suggestion(
+                span,
+                "consider terminating the string here",
+                "#".repeat(n_hashes),
+                Applicability::MaybeIncorrect,
+            );
         }
 
         err.emit();
         FatalError.raise()
     }
 
-    fn restrict_n_hashes(&self, start: BytePos, n_hashes: usize) -> u16 {
-        match n_hashes.try_into() {
-            Ok(n_hashes) => n_hashes,
-            Err(_) => {
-                self.fatal_span_(
-                    start,
-                    self.pos,
-                    "too many `#` symbols: raw strings may be \
-                                  delimited by up to 65535 `#` symbols",
-                )
-                .raise();
-            }
-        }
+    /// Note: It was decided to not add a test case, because it would be to big.
+    /// https://github.com/rust-lang/rust/pull/50296#issuecomment-392135180
+    fn report_too_many_hashes(&self, start: BytePos, found: usize) -> ! {
+        self.fatal_span_(
+            start,
+            self.pos,
+            &format!(
+                "too many `#` symbols: raw strings may be delimited \
+                by up to 65535 `#` symbols, but found {}",
+                found
+            ),
+        )
+        .raise();
     }
 
-    fn validate_char_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        if let Err((off, err)) = unescape::unescape_char(lit) {
-            emit_unescape_error(
-                &self.sess.span_diagnostic,
-                lit,
-                self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                unescape::Mode::Char,
-                0..off,
-                err,
-            )
-        }
-    }
-
-    fn validate_byte_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        if let Err((off, err)) = unescape::unescape_byte(lit) {
-            emit_unescape_error(
-                &self.sess.span_diagnostic,
-                lit,
-                self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                unescape::Mode::Byte,
-                0..off,
-                err,
-            )
-        }
-    }
-
-    fn validate_str_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        unescape::unescape_str(lit, &mut |range, c| {
-            if let Err(err) = c {
+    fn validate_literal_escape(&self, mode: Mode, content_start: BytePos, content_end: BytePos) {
+        let lit_content = self.str_from_to(content_start, content_end);
+        unescape::unescape_literal(lit_content, mode, &mut |range, result| {
+            // Here we only check for errors. The actual unescaping is done later.
+            if let Err(err) = result {
+                let span_with_quotes =
+                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1));
                 emit_unescape_error(
                     &self.sess.span_diagnostic,
-                    lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                    unescape::Mode::Str,
+                    lit_content,
+                    span_with_quotes,
+                    mode,
                     range,
                     err,
-                )
+                );
             }
-        })
-    }
-
-    fn validate_raw_str_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        unescape::unescape_raw_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
-                    &self.sess.span_diagnostic,
-                    lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                    unescape::Mode::Str,
-                    range,
-                    err,
-                )
-            }
-        })
-    }
-
-    fn validate_raw_byte_str_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        unescape::unescape_raw_byte_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
-                    &self.sess.span_diagnostic,
-                    lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                    unescape::Mode::ByteStr,
-                    range,
-                    err,
-                )
-            }
-        })
-    }
-
-    fn validate_byte_str_escape(&self, content_start: BytePos, content_end: BytePos) {
-        let lit = self.str_from_to(content_start, content_end);
-        unescape::unescape_byte_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
-                    &self.sess.span_diagnostic,
-                    lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
-                    unescape::Mode::ByteStr,
-                    range,
-                    err,
-                )
-            }
-        })
+        });
     }
 
     fn validate_int_literal(&self, base: Base, content_start: BytePos, content_end: BytePos) {

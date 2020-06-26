@@ -108,5 +108,6 @@ pub fn print_attr(_: TokenStream, input: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(Print, attributes(print_helper))]
 pub fn print_derive(input: TokenStream) -> TokenStream {
-    print_helper(input, "DERIVE")
+    print_helper(input, "DERIVE");
+    TokenStream::new()
 }

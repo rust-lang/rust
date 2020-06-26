@@ -1,0 +1,51 @@
+error: I see you're using a LinkedList! Perhaps you meant some other data structure?
+  --> $DIR/dlist.rs:9:16
+   |
+LL |     type Baz = LinkedList<u8>;
+   |                ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::linkedlist` implied by `-D warnings`
+   = help: a `VecDeque` might work
+
+error: I see you're using a LinkedList! Perhaps you meant some other data structure?
+  --> $DIR/dlist.rs:10:15
+   |
+LL |     fn foo(_: LinkedList<u8>);
+   |               ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: I see you're using a LinkedList! Perhaps you meant some other data structure?
+  --> $DIR/dlist.rs:11:23
+   |
+LL |     const BAR: Option<LinkedList<u8>>;
+   |                       ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: I see you're using a LinkedList! Perhaps you meant some other data structure?
+  --> $DIR/dlist.rs:22:15
+   |
+LL |     fn foo(_: LinkedList<u8>) {}
+   |               ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: I see you're using a LinkedList! Perhaps you meant some other data structure?
+  --> $DIR/dlist.rs:25:39
+   |
+LL | pub fn test(my_favourite_linked_list: LinkedList<u8>) {
+   |                                       ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: I see you're using a LinkedList! Perhaps you meant some other data structure?
+  --> $DIR/dlist.rs:29:29
+   |
+LL | pub fn test_ret() -> Option<LinkedList<u8>> {
+   |                             ^^^^^^^^^^^^^^
+   |
+   = help: a `VecDeque` might work
+
+error: aborting due to 6 previous errors
+

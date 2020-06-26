@@ -1,0 +1,168 @@
+error: requires at least a template string argument
+  --> $DIR/parse-error.rs:9:9
+   |
+LL |         asm!();
+   |         ^^^^^^^
+
+error: asm template must be a string literal
+  --> $DIR/parse-error.rs:11:14
+   |
+LL |         asm!(foo);
+   |              ^^^
+
+error: expected token: `,`
+  --> $DIR/parse-error.rs:13:19
+   |
+LL |         asm!("{}" foo);
+   |                   ^^^ expected `,`
+
+error: expected operand, options, or additional template string
+  --> $DIR/parse-error.rs:15:20
+   |
+LL |         asm!("{}", foo);
+   |                    ^^^ expected operand, options, or additional template string
+
+error: expected `(`, found `foo`
+  --> $DIR/parse-error.rs:17:23
+   |
+LL |         asm!("{}", in foo);
+   |                       ^^^ expected `(`
+
+error: expected `)`, found `foo`
+  --> $DIR/parse-error.rs:19:27
+   |
+LL |         asm!("{}", in(reg foo));
+   |                           ^^^ expected `)`
+
+error: expected expression, found end of macro arguments
+  --> $DIR/parse-error.rs:21:27
+   |
+LL |         asm!("{}", in(reg));
+   |                           ^ expected expression
+
+error: expected register class or explicit register
+  --> $DIR/parse-error.rs:23:26
+   |
+LL |         asm!("{}", inout(=) foo => bar);
+   |                          ^
+
+error: expected expression, found end of macro arguments
+  --> $DIR/parse-error.rs:25:37
+   |
+LL |         asm!("{}", inout(reg) foo =>);
+   |                                     ^ expected expression
+
+error: expected one of `!`, `,`, `.`, `::`, `?`, `{`, or an operator, found `=>`
+  --> $DIR/parse-error.rs:27:32
+   |
+LL |         asm!("{}", in(reg) foo => bar);
+   |                                ^^ expected one of 7 possible tokens
+
+error: argument to `sym` must be a path expression
+  --> $DIR/parse-error.rs:29:24
+   |
+LL |         asm!("{}", sym foo + bar);
+   |                        ^^^^^^^^^
+
+error: expected one of `)`, `att_syntax`, `nomem`, `noreturn`, `nostack`, `preserves_flags`, `pure`, or `readonly`, found `foo`
+  --> $DIR/parse-error.rs:31:26
+   |
+LL |         asm!("", options(foo));
+   |                          ^^^ expected one of 8 possible tokens
+
+error: expected one of `)` or `,`, found `foo`
+  --> $DIR/parse-error.rs:33:32
+   |
+LL |         asm!("", options(nomem foo));
+   |                                ^^^ expected one of `)` or `,`
+
+error: expected one of `)`, `att_syntax`, `nomem`, `noreturn`, `nostack`, `preserves_flags`, `pure`, or `readonly`, found `foo`
+  --> $DIR/parse-error.rs:35:33
+   |
+LL |         asm!("", options(nomem, foo));
+   |                                 ^^^ expected one of 8 possible tokens
+
+error: arguments are not allowed after options
+  --> $DIR/parse-error.rs:37:31
+   |
+LL |         asm!("{}", options(), const foo);
+   |                    ---------  ^^^^^^^^^ argument
+   |                    |
+   |                    previous options
+
+error: duplicate argument named `a`
+  --> $DIR/parse-error.rs:39:36
+   |
+LL |         asm!("{a}", a = const foo, a = const bar);
+   |                     -------------  ^^^^^^^^^^^^^ duplicate argument
+   |                     |
+   |                     previously here
+
+error: argument never used
+  --> $DIR/parse-error.rs:39:36
+   |
+LL |         asm!("{a}", a = const foo, a = const bar);
+   |                                    ^^^^^^^^^^^^^ argument never used
+   |
+   = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {1} */"`
+
+error: explicit register arguments cannot have names
+  --> $DIR/parse-error.rs:42:18
+   |
+LL |         asm!("", a = in("eax") foo);
+   |                  ^^^^^^^^^^^^^^^^^
+
+error: named arguments cannot follow explicit register arguments
+  --> $DIR/parse-error.rs:44:36
+   |
+LL |         asm!("{a}", in("eax") foo, a = const bar);
+   |                     -------------  ^^^^^^^^^^^^^ named argument
+   |                     |
+   |                     explicit register argument
+
+error: named arguments cannot follow explicit register arguments
+  --> $DIR/parse-error.rs:46:36
+   |
+LL |         asm!("{a}", in("eax") foo, a = const bar);
+   |                     -------------  ^^^^^^^^^^^^^ named argument
+   |                     |
+   |                     explicit register argument
+
+error: positional arguments cannot follow named arguments or explicit register arguments
+  --> $DIR/parse-error.rs:48:36
+   |
+LL |         asm!("{1}", in("eax") foo, const bar);
+   |                     -------------  ^^^^^^^^^ positional argument
+   |                     |
+   |                     explicit register argument
+
+error: expected one of `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `""`
+  --> $DIR/parse-error.rs:50:29
+   |
+LL |         asm!("", options(), "");
+   |                             ^^ expected one of 8 possible tokens
+
+error: expected one of `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
+  --> $DIR/parse-error.rs:52:33
+   |
+LL |         asm!("{}", in(reg) foo, "{}", out(reg) foo);
+   |                                 ^^^^ expected one of 8 possible tokens
+
+error: asm template must be a string literal
+  --> $DIR/parse-error.rs:54:14
+   |
+LL |         asm!(format!("{{{}}}", 0), in(reg) foo);
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: asm template must be a string literal
+  --> $DIR/parse-error.rs:56:21
+   |
+LL |         asm!("{1}", format!("{{{}}}", 0), in(reg) foo, out(reg) bar);
+   |                     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 25 previous errors
+

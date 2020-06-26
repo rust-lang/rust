@@ -1,2 +1,2 @@
 all:
-	python2.7 test.py
+	'$(PYTHON)' test.py

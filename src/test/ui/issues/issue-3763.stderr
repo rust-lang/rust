@@ -1,32 +1,32 @@
 error[E0616]: field `priv_field` of struct `my_mod::MyStruct` is private
-  --> $DIR/issue-3763.rs:18:19
+  --> $DIR/issue-3763.rs:18:32
    |
 LL |     let _woohoo = (&my_struct).priv_field;
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |                                ^^^^^^^^^^ private field
 
 error[E0616]: field `priv_field` of struct `my_mod::MyStruct` is private
-  --> $DIR/issue-3763.rs:21:19
+  --> $DIR/issue-3763.rs:21:41
    |
 LL |     let _woohoo = (Box::new(my_struct)).priv_field;
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                         ^^^^^^^^^^ private field
 
 error[E0624]: associated function `happyfun` is private
   --> $DIR/issue-3763.rs:24:18
    |
 LL |     (&my_struct).happyfun();
-   |                  ^^^^^^^^
+   |                  ^^^^^^^^ private associated function
 
 error[E0624]: associated function `happyfun` is private
   --> $DIR/issue-3763.rs:26:27
    |
 LL |     (Box::new(my_struct)).happyfun();
-   |                           ^^^^^^^^
+   |                           ^^^^^^^^ private associated function
 
 error[E0616]: field `priv_field` of struct `my_mod::MyStruct` is private
-  --> $DIR/issue-3763.rs:27:16
+  --> $DIR/issue-3763.rs:27:26
    |
 LL |     let nope = my_struct.priv_field;
-   |                ^^^^^^^^^^^^^^^^^^^^
+   |                          ^^^^^^^^^^ private field
 
 error: aborting due to 5 previous errors
 

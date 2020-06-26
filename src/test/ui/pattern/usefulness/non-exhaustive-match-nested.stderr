@@ -5,6 +5,7 @@ LL |     match (l1, l2) {
    |           ^^^^^^^^ pattern `(Some(&[]), Err(_))` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `(std::option::Option<&[T]>, std::result::Result<&[T], ()>)`
 
 error[E0004]: non-exhaustive patterns: `A(C)` not covered
   --> $DIR/non-exhaustive-match-nested.rs:15:11
@@ -19,6 +20,7 @@ LL |     match x {
    |           ^ pattern `A(C)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `T`
 
 error: aborting due to 2 previous errors
 

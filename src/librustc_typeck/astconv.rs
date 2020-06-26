@@ -6,40 +6,38 @@
 // ignore-tidy-filelength
 
 use crate::collect::PlaceholderHirTyCollector;
-use crate::lint;
-use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
-use crate::util::common::ErrorReported;
-use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
-use rustc::session::{parse::feature_err, Session};
-use rustc::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
-use rustc::ty::{self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
-use rustc::ty::{GenericParamDef, GenericParamDefKind};
-use rustc_ast::ast;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast::{ast::ParamKindOrd, util::lev_distance::find_best_match_for_name};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId};
+use rustc_errors::ErrorReported;
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::print;
-use rustc_hir::{Constness, ExprKind, GenericArg, GenericArgs};
-use rustc_span::symbol::sym;
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::{walk_generics, Visitor as _};
+use rustc_hir::lang_items::SizedTraitLangItem;
+use rustc_hir::{Constness, GenericArg, GenericArgs};
+use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::{
+    self, Const, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+};
+use rustc_middle::ty::{GenericParamDef, GenericParamDefKind};
+use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETIME_ARGUMENTS};
+use rustc_session::parse::feature_err;
+use rustc_session::Session;
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::astconv_object_safety_violations;
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 use rustc_trait_selection::traits::wf::object_region_bounds;
-use smallvec::SmallVec;
 
+use smallvec::SmallVec;
 use std::collections::BTreeSet;
 use std::iter;
 use std::slice;
-
-use rustc::mir::interpret::LitToConstInput;
 
 #[derive(Debug)]
 pub struct PathSeg(pub DefId, pub usize);
@@ -115,7 +113,7 @@ pub enum SizedByDefault {
 }
 
 struct ConvertedBinding<'a, 'tcx> {
-    item_name: ast::Ident,
+    item_name: Ident,
     kind: ConvertedBindingKind<'a, 'tcx>,
     span: Span,
 }
@@ -125,7 +123,22 @@ enum ConvertedBindingKind<'a, 'tcx> {
     Constraint(&'a [hir::GenericBound<'a>]),
 }
 
-#[derive(PartialEq)]
+/// New-typed boolean indicating whether explicit late-bound lifetimes
+/// are present in a set of generic arguments.
+///
+/// For example if we have some method `fn f<'a>(&'a self)` implemented
+/// for some type `T`, although `f` is generic in the lifetime `'a`, `'a`
+/// is late-bound so should not be provided explicitly. Thus, if `f` is
+/// instantiated with some generic arguments providing `'a` explicitly,
+/// we taint those arguments with `ExplicitLateBound::Yes` so that we
+/// can provide an appropriate diagnostic later.
+#[derive(Copy, Clone, PartialEq)]
+pub enum ExplicitLateBound {
+    Yes,
+    No,
+}
+
+#[derive(Copy, Clone, PartialEq)]
 enum GenericArgPosition {
     Type,
     Value, // e.g., functions
@@ -134,11 +147,20 @@ enum GenericArgPosition {
 
 /// A marker denoting that the generic arguments that were
 /// provided did not match the respective generic parameters.
+#[derive(Clone, Default)]
 pub struct GenericArgCountMismatch {
     /// Indicates whether a fatal error was reported (`Some`), or just a lint (`None`).
     pub reported: Option<ErrorReported>,
     /// A list of spans of arguments provided that were not valid.
     pub invalid_args: Vec<Span>,
+}
+
+/// Decorates the result of a generic argument count mismatch
+/// check with whether explicit late bounds were provided.
+#[derive(Clone)]
+pub struct GenericArgCountResult {
+    pub explicit_late_bound: ExplicitLateBound,
+    pub correct: Result<(), GenericArgCountMismatch>,
 }
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
@@ -148,13 +170,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         def: Option<&ty::GenericParamDef>,
     ) -> ty::Region<'tcx> {
         let tcx = self.tcx();
-        let lifetime_name = |def_id| tcx.hir().name(tcx.hir().as_local_hir_id(def_id).unwrap());
+        let lifetime_name = |def_id| tcx.hir().name(tcx.hir().as_local_hir_id(def_id));
 
         let r = match tcx.named_region(lifetime.hir_id) {
             Some(rl::Region::Static) => tcx.lifetimes.re_static,
 
             Some(rl::Region::LateBound(debruijn, id, _)) => {
-                let name = lifetime_name(id);
+                let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReLateBound(debruijn, ty::BrNamed(id, name)))
             }
 
@@ -163,12 +185,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
 
             Some(rl::Region::EarlyBound(index, id, _)) => {
-                let name = lifetime_name(id);
+                let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id: id, index, name }))
             }
 
             Some(rl::Region::Free(scope, id)) => {
-                let name = lifetime_name(id);
+                let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
                     scope,
                     bound_region: ty::BrNamed(id, name),
@@ -214,7 +236,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             None,
         );
 
-        assoc_bindings.first().map(|b| Self::prohibit_assoc_ty_binding(self.tcx(), b.span));
+        if let Some(b) = assoc_bindings.first() {
+            Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
+        }
 
         substs
     }
@@ -271,7 +295,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         def: &ty::Generics,
         seg: &hir::PathSegment<'_>,
         is_method_call: bool,
-    ) -> Result<(), GenericArgCountMismatch> {
+    ) -> GenericArgCountResult {
         let empty_args = hir::GenericArgs::none();
         let suppress_mismatch = Self::check_impl_trait(tcx, seg, &def);
         Self::check_generic_arg_count(
@@ -295,7 +319,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         position: GenericArgPosition,
         has_self: bool,
         infer_args: bool,
-    ) -> Result<(), GenericArgCountMismatch> {
+    ) -> GenericArgCountResult {
         // At this stage we are guaranteed that the generic arguments are in the correct order, e.g.
         // that lifetimes will proceed types. So it suffices to check the number of each generic
         // arguments in order to validate them with respect to the generic parameters.
@@ -320,105 +344,86 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             AstConv::prohibit_assoc_ty_binding(tcx, args.bindings[0].span);
         }
 
-        // Prohibit explicit lifetime arguments if late-bound lifetime parameters are present.
-        let mut explicit_lifetimes = Ok(());
-        if !infer_lifetimes {
-            if let Some(span_late) = def.has_late_bound_regions {
-                let msg = "cannot specify lifetime arguments explicitly \
-                           if late bound lifetime parameters are present";
-                let note = "the late bound lifetime parameter is introduced here";
-                let span = args.args[0].span();
-                if position == GenericArgPosition::Value
-                    && arg_counts.lifetimes != param_counts.lifetimes
-                {
-                    explicit_lifetimes = Err(true);
-                    let mut err = tcx.sess.struct_span_err(span, msg);
-                    err.span_note(span_late, note);
-                    err.emit();
-                } else {
-                    explicit_lifetimes = Err(false);
-                    let mut multispan = MultiSpan::from_span(span);
-                    multispan.push_span_label(span_late, note.to_string());
-                    tcx.struct_span_lint_hir(
-                        lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
-                        args.args[0].id(),
-                        multispan,
-                        |lint| lint.build(msg).emit(),
-                    );
-                }
+        let explicit_late_bound =
+            Self::prohibit_explicit_late_bound_lifetimes(tcx, def, args, position);
+
+        let check_kind_count = |kind,
+                                required,
+                                permitted,
+                                provided,
+                                offset,
+                                unexpected_spans: &mut Vec<Span>,
+                                silent| {
+            debug!(
+                "check_kind_count: kind: {} required: {} permitted: {} provided: {} offset: {}",
+                kind, required, permitted, provided, offset
+            );
+            // We enforce the following: `required` <= `provided` <= `permitted`.
+            // For kinds without defaults (e.g.., lifetimes), `required == permitted`.
+            // For other kinds (i.e., types), `permitted` may be greater than `required`.
+            if required <= provided && provided <= permitted {
+                return Ok(());
             }
-        }
 
-        let check_kind_count =
-            |kind, required, permitted, provided, offset, unexpected_spans: &mut Vec<Span>| {
-                debug!(
-                    "check_kind_count: kind: {} required: {} permitted: {} provided: {} offset: {}",
-                    kind, required, permitted, provided, offset
-                );
-                // We enforce the following: `required` <= `provided` <= `permitted`.
-                // For kinds without defaults (e.g.., lifetimes), `required == permitted`.
-                // For other kinds (i.e., types), `permitted` may be greater than `required`.
-                if required <= provided && provided <= permitted {
-                    return Ok(());
-                }
+            if silent {
+                return Err(true);
+            }
 
-                // Unfortunately lifetime and type parameter mismatches are typically styled
-                // differently in diagnostics, which means we have a few cases to consider here.
-                let (bound, quantifier) = if required != permitted {
-                    if provided < required {
-                        (required, "at least ")
-                    } else {
-                        // provided > permitted
-                        (permitted, "at most ")
-                    }
+            // Unfortunately lifetime and type parameter mismatches are typically styled
+            // differently in diagnostics, which means we have a few cases to consider here.
+            let (bound, quantifier) = if required != permitted {
+                if provided < required {
+                    (required, "at least ")
                 } else {
-                    (required, "")
-                };
-
-                let (spans, label) = if required == permitted && provided > permitted {
-                    // In the case when the user has provided too many arguments,
-                    // we want to point to the unexpected arguments.
-                    let spans: Vec<Span> = args.args[offset + permitted..offset + provided]
-                        .iter()
-                        .map(|arg| arg.span())
-                        .collect();
-                    unexpected_spans.extend(spans.clone());
-                    (spans, format!("unexpected {} argument", kind))
-                } else {
-                    (
-                        vec![span],
-                        format!(
-                            "expected {}{} {} argument{}",
-                            quantifier,
-                            bound,
-                            kind,
-                            pluralize!(bound),
-                        ),
-                    )
-                };
-
-                let mut err = tcx.sess.struct_span_err_with_code(
-                    spans.clone(),
-                    &format!(
-                        "wrong number of {} arguments: expected {}{}, found {}",
-                        kind, quantifier, bound, provided,
-                    ),
-                    DiagnosticId::Error("E0107".into()),
-                );
-                for span in spans {
-                    err.span_label(span, label.as_str());
+                    // provided > permitted
+                    (permitted, "at most ")
                 }
-                err.emit();
-
-                Err(true)
+            } else {
+                (required, "")
             };
 
-        let mut arg_count_correct = explicit_lifetimes;
+            let (spans, label) = if required == permitted && provided > permitted {
+                // In the case when the user has provided too many arguments,
+                // we want to point to the unexpected arguments.
+                let spans: Vec<Span> = args.args[offset + permitted..offset + provided]
+                    .iter()
+                    .map(|arg| arg.span())
+                    .collect();
+                unexpected_spans.extend(spans.clone());
+                (spans, format!("unexpected {} argument", kind))
+            } else {
+                (
+                    vec![span],
+                    format!(
+                        "expected {}{} {} argument{}",
+                        quantifier,
+                        bound,
+                        kind,
+                        pluralize!(bound),
+                    ),
+                )
+            };
+
+            let mut err = tcx.sess.struct_span_err_with_code(
+                spans.clone(),
+                &format!(
+                    "wrong number of {} arguments: expected {}{}, found {}",
+                    kind, quantifier, bound, provided,
+                ),
+                DiagnosticId::Error("E0107".into()),
+            );
+            for span in spans {
+                err.span_label(span, label.as_str());
+            }
+            err.emit();
+
+            Err(true)
+        };
+
+        let mut arg_count_correct = Ok(());
         let mut unexpected_spans = vec![];
 
-        if arg_count_correct.is_ok()
-            && (!infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes)
-        {
+        if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
             arg_count_correct = check_kind_count(
                 "lifetime",
                 param_counts.lifetimes,
@@ -426,6 +431,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 arg_counts.lifetimes,
                 0,
                 &mut unexpected_spans,
+                explicit_late_bound == ExplicitLateBound::Yes,
             )
             .and(arg_count_correct);
         }
@@ -438,6 +444,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 arg_counts.consts,
                 arg_counts.lifetimes + arg_counts.types,
                 &mut unexpected_spans,
+                false,
             )
             .and(arg_count_correct);
         }
@@ -451,19 +458,28 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 arg_counts.types,
                 arg_counts.lifetimes,
                 &mut unexpected_spans,
+                false,
             )
             .and(arg_count_correct);
         }
 
-        arg_count_correct.map_err(|reported_err| GenericArgCountMismatch {
-            reported: if reported_err { Some(ErrorReported) } else { None },
-            invalid_args: unexpected_spans,
-        })
+        GenericArgCountResult {
+            explicit_late_bound,
+            correct: arg_count_correct.map_err(|reported_err| GenericArgCountMismatch {
+                reported: if reported_err { Some(ErrorReported) } else { None },
+                invalid_args: unexpected_spans,
+            }),
+        }
     }
 
     /// Report an error that a generic argument did not match the generic parameter that was
     /// expected.
-    fn generic_arg_mismatch_err(sess: &Session, arg: &GenericArg<'_>, kind: &'static str) {
+    fn generic_arg_mismatch_err(
+        sess: &Session,
+        arg: &GenericArg<'_>,
+        kind: &'static str,
+        help: Option<&str>,
+    ) {
         let mut err = struct_span_err!(
             sess,
             arg.span(),
@@ -472,8 +488,29 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             arg.descr(),
             kind,
         );
+
+        let kind_ord = match kind {
+            "lifetime" => ParamKindOrd::Lifetime,
+            "type" => ParamKindOrd::Type,
+            "constant" => ParamKindOrd::Const,
+            // It's more concise to match on the string representation, though it means
+            // the match is non-exhaustive.
+            _ => bug!("invalid generic parameter kind {}", kind),
+        };
+        let arg_ord = match arg {
+            GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
+            GenericArg::Type(_) => ParamKindOrd::Type,
+            GenericArg::Const(_) => ParamKindOrd::Const,
+        };
+
         // This note will be true as long as generic parameters are strictly ordered by their kind.
-        err.note(&format!("{} arguments must be provided before {} arguments", kind, arg.descr()));
+        let (first, last) =
+            if kind_ord < arg_ord { (kind, arg.descr()) } else { (arg.descr(), kind) };
+        err.note(&format!("{} arguments must be provided before {} arguments", first, last));
+
+        if let Some(help) = help {
+            err.help(help);
+        }
         err.emit();
     }
 
@@ -512,7 +549,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         parent_substs: &[subst::GenericArg<'tcx>],
         has_self: bool,
         self_ty: Option<Ty<'tcx>>,
-        arg_count_correct: bool,
+        arg_count: GenericArgCountResult,
         args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs<'b>>, bool),
         mut provided_kind: impl FnMut(&GenericParamDef, &GenericArg<'_>) -> subst::GenericArg<'tcx>,
         mut inferred_kind: impl FnMut(
@@ -585,29 +622,94 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // input. We try to handle both sensibly.
                 match (args.peek(), params.peek()) {
                     (Some(&arg), Some(&param)) => {
-                        match (arg, &param.kind) {
-                            (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime)
-                            | (GenericArg::Type(_), GenericParamDefKind::Type { .. })
-                            | (GenericArg::Const(_), GenericParamDefKind::Const) => {
+                        match (arg, &param.kind, arg_count.explicit_late_bound) {
+                            (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
+                            | (GenericArg::Type(_), GenericParamDefKind::Type { .. }, _)
+                            | (GenericArg::Const(_), GenericParamDefKind::Const, _) => {
                                 substs.push(provided_kind(param, arg));
                                 args.next();
                                 params.next();
                             }
-                            (GenericArg::Type(_), GenericParamDefKind::Lifetime)
-                            | (GenericArg::Const(_), GenericParamDefKind::Lifetime) => {
+                            (
+                                GenericArg::Type(_) | GenericArg::Const(_),
+                                GenericParamDefKind::Lifetime,
+                                _,
+                            ) => {
                                 // We expected a lifetime argument, but got a type or const
                                 // argument. That means we're inferring the lifetimes.
                                 substs.push(inferred_kind(None, param, infer_args));
                                 force_infer_lt = Some(arg);
                                 params.next();
                             }
-                            (_, kind) => {
+                            (GenericArg::Lifetime(_), _, ExplicitLateBound::Yes) => {
+                                // We've come across a lifetime when we expected something else in
+                                // the presence of explicit late bounds. This is most likely
+                                // due to the presence of the explicit bound so we're just going to
+                                // ignore it.
+                                args.next();
+                            }
+                            (_, kind, _) => {
                                 // We expected one kind of parameter, but the user provided
                                 // another. This is an error. However, if we already know that
                                 // the arguments don't match up with the parameters, we won't issue
                                 // an additional error, as the user already knows what's wrong.
-                                if arg_count_correct {
-                                    Self::generic_arg_mismatch_err(tcx.sess, arg, kind.descr());
+                                if arg_count.correct.is_ok()
+                                    && arg_count.explicit_late_bound == ExplicitLateBound::No
+                                {
+                                    // We're going to iterate over the parameters to sort them out, and
+                                    // show that order to the user as a possible order for the parameters
+                                    let mut param_types_present = defs
+                                        .params
+                                        .clone()
+                                        .into_iter()
+                                        .map(|param| {
+                                            (
+                                                match param.kind {
+                                                    GenericParamDefKind::Lifetime => {
+                                                        ParamKindOrd::Lifetime
+                                                    }
+                                                    GenericParamDefKind::Type { .. } => {
+                                                        ParamKindOrd::Type
+                                                    }
+                                                    GenericParamDefKind::Const => {
+                                                        ParamKindOrd::Const
+                                                    }
+                                                },
+                                                param,
+                                            )
+                                        })
+                                        .collect::<Vec<(ParamKindOrd, GenericParamDef)>>();
+                                    param_types_present.sort_by_key(|(ord, _)| *ord);
+                                    let (mut param_types_present, ordered_params): (
+                                        Vec<ParamKindOrd>,
+                                        Vec<GenericParamDef>,
+                                    ) = param_types_present.into_iter().unzip();
+                                    param_types_present.dedup();
+
+                                    Self::generic_arg_mismatch_err(
+                                        tcx.sess,
+                                        arg,
+                                        kind.descr(),
+                                        Some(&format!(
+                                            "reorder the arguments: {}: `<{}>`",
+                                            param_types_present
+                                                .into_iter()
+                                                .map(|ord| format!("{}s", ord.to_string()))
+                                                .collect::<Vec<String>>()
+                                                .join(", then "),
+                                            ordered_params
+                                                .into_iter()
+                                                .filter_map(|param| {
+                                                    if param.name == kw::SelfUpper {
+                                                        None
+                                                    } else {
+                                                        Some(param.name.to_string())
+                                                    }
+                                                })
+                                                .collect::<Vec<String>>()
+                                                .join(", ")
+                                        )),
+                                    );
                                 }
 
                                 // We've reported the error, but we want to make sure that this
@@ -622,22 +724,24 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                     (Some(&arg), None) => {
                         // We should never be able to reach this point with well-formed input.
-                        // There are two situations in which we can encounter this issue.
+                        // There are three situations in which we can encounter this issue.
                         //
                         //  1.  The number of arguments is incorrect. In this case, an error
-                        //      will already have been emitted, and we can ignore it. This case
-                        //      also occurs when late-bound lifetime parameters are present, yet
-                        //      the lifetime arguments have also been explicitly specified by the
+                        //      will already have been emitted, and we can ignore it.
+                        //  2.  There are late-bound lifetime parameters present, yet the
+                        //      lifetime arguments have also been explicitly specified by the
                         //      user.
-                        //  2.  We've inferred some lifetimes, which have been provided later (i.e.
+                        //  3.  We've inferred some lifetimes, which have been provided later (i.e.
                         //      after a type or const). We want to throw an error in this case.
 
-                        if arg_count_correct {
+                        if arg_count.correct.is_ok()
+                            && arg_count.explicit_late_bound == ExplicitLateBound::No
+                        {
                             let kind = arg.descr();
                             assert_eq!(kind, "lifetime");
                             let provided =
                                 force_infer_lt.expect("lifetimes ought to have been inferred");
-                            Self::generic_arg_mismatch_err(tcx.sess, provided, kind);
+                            Self::generic_arg_mismatch_err(tcx.sess, provided, kind, None);
                         }
 
                         break;
@@ -697,8 +801,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         generic_args: &'a hir::GenericArgs<'_>,
         infer_args: bool,
         self_ty: Option<Ty<'tcx>>,
-    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Result<(), GenericArgCountMismatch>)
-    {
+    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, GenericArgCountResult) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
@@ -724,7 +827,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             assert!(self_ty.is_none() && parent_substs.is_empty());
         }
 
-        let arg_count_correct = Self::check_generic_arg_count(
+        let arg_count = Self::check_generic_arg_count(
             tcx,
             span,
             &generic_params,
@@ -738,8 +841,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let default_needs_object_self = |param: &ty::GenericParamDef| {
             if let GenericParamDefKind::Type { has_default, .. } = param.kind {
                 if is_object && has_default {
+                    let default_ty = tcx.at(span).type_of(param.def_id);
                     let self_param = tcx.types.self_param;
-                    if tcx.at(span).type_of(param.def_id).walk().any(|ty| ty == self_param) {
+                    if default_ty.walk().any(|arg| arg == self_param.into()) {
                         // There is no suitable inference default for a type parameter
                         // that references self, in an object type.
                         return true;
@@ -758,7 +862,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             parent_substs,
             self_ty.is_some(),
             self_ty,
-            arg_count_correct.is_ok(),
+            arg_count.clone(),
             // Provide the generic args, and whether types should be inferred.
             |did| {
                 if did == def_id {
@@ -776,13 +880,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.allow_ty_infer()) {
                         inferred_params.push(ty.span);
-                        tcx.types.err.into()
+                        tcx.ty_error().into()
                     } else {
                         self.ast_ty_to_ty(&ty).into()
                     }
                 }
                 (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                    self.ast_const_to_const(&ct.value, tcx.type_of(param.def_id)).into()
+                    let ct_def_id = tcx.hir().local_def_id(ct.value.hir_id);
+                    ty::Const::from_anon_const(tcx, ct_def_id).into()
                 }
                 _ => unreachable!(),
             },
@@ -801,7 +906,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             // careful!
                             if default_needs_object_self(param) {
                                 missing_type_params.push(param.name.to_string());
-                                tcx.types.err.into()
+                                tcx.ty_error().into()
                             } else {
                                 // This is a default type parameter.
                                 self.normalize_ty(
@@ -821,35 +926,23 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             self.ty_infer(param, span).into()
                         } else {
                             // We've already errored above about the mismatch.
-                            tcx.types.err.into()
+                            tcx.ty_error().into()
                         }
                     }
                     GenericParamDefKind::Const => {
+                        let ty = tcx.at(span).type_of(param.def_id);
                         // FIXME(const_generics:defaults)
                         if infer_args {
                             // No const parameters were provided, we can infer all.
-                            let ty = tcx.at(span).type_of(param.def_id);
                             self.ct_infer(ty, Some(param), span).into()
                         } else {
                             // We've already errored above about the mismatch.
-                            tcx.consts.err.into()
+                            tcx.const_error(ty).into()
                         }
                     }
                 }
             },
         );
-        if !inferred_params.is_empty() {
-            // We always collect the spans for placeholder types when evaluating `fn`s, but we
-            // only want to emit an error complaining about them if infer types (`_`) are not
-            // allowed. `allow_ty_infer` gates this behavior.
-            crate::collect::placeholder_type_error(
-                tcx,
-                inferred_params[0],
-                &[],
-                inferred_params,
-                false,
-            );
-        }
 
         self.complain_about_missing_type_params(
             missing_type_params,
@@ -888,7 +981,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             generic_params, self_ty, substs
         );
 
-        (substs, assoc_bindings, arg_count_correct)
+        (substs, assoc_bindings, arg_count)
     }
 
     crate fn create_substs_for_associated_item(
@@ -1004,7 +1097,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         self.ast_path_to_mono_trait_ref(
             trait_ref.path.span,
-            trait_ref.trait_def_id(),
+            trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise()),
             self_ty,
             trait_ref.path.segments.last().unwrap(),
         )
@@ -1019,25 +1112,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
-    ) -> Result<(), GenericArgCountMismatch> {
-        let trait_def_id = trait_ref.trait_def_id();
+    ) -> GenericArgCountResult {
+        let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
 
         debug!("instantiate_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
 
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
-        let path_span = if let [segment] = &trait_ref.path.segments[..] {
-            // FIXME: `trait_ref.path.span` can point to a full path with multiple
-            // segments, even though `trait_ref.path.segments` is of length `1`. Work
-            // around that bug here, even though it should be fixed elsewhere.
-            // This would otherwise cause an invalid suggestion. For an example, look at
-            // `src/test/ui/issues/issue-28344.rs`.
-            segment.ident.span
-        } else {
-            trait_ref.path.span
-        };
-        let (substs, assoc_bindings, arg_count_correct) = self.create_substs_for_ast_trait_ref(
-            path_span,
+        let (substs, assoc_bindings, arg_count) = self.create_substs_for_ast_trait_ref(
+            trait_ref.path.span,
             trait_def_id,
             self_ty,
             trait_ref.path.segments.last().unwrap(),
@@ -1056,7 +1139,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 bounds,
                 speculative,
                 &mut dup_bindings,
-                span,
+                binding.span,
             );
             // Okay to ignore `Err` because of `ErrorReported` (see above).
         }
@@ -1066,7 +1149,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_ref, bounds, poly_trait_ref
         );
 
-        arg_count_correct
+        arg_count
     }
 
     /// Given a trait bound like `Debug`, applies that trait bound the given self-type to construct
@@ -1094,7 +1177,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         constness: Constness,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
-    ) -> Result<(), GenericArgCountMismatch> {
+    ) -> GenericArgCountResult {
         self.instantiate_poly_trait_ref_inner(
             &poly_trait_ref.trait_ref,
             poly_trait_ref.span,
@@ -1114,7 +1197,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> ty::TraitRef<'tcx> {
         let (substs, assoc_bindings, _) =
             self.create_substs_for_ast_trait_ref(span, trait_def_id, self_ty, trait_segment);
-        assoc_bindings.first().map(|b| AstConv::prohibit_assoc_ty_binding(self.tcx(), b.span));
+        if let Some(b) = assoc_bindings.first() {
+            AstConv::prohibit_assoc_ty_binding(self.tcx(), b.span);
+        }
         ty::TraitRef::new(trait_def_id, substs)
     }
 
@@ -1131,6 +1216,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if !self.tcx().features().unboxed_closures
             && trait_segment.generic_args().parenthesized != trait_def.paren_sugar
         {
+            let sess = &self.tcx().sess.parse_sess;
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let (msg, sugg) = if trait_def.paren_sugar {
                 (
@@ -1144,9 +1230,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .as_ref()
                             .and_then(|args| args.args.get(0))
                             .and_then(|arg| match arg {
-                                hir::GenericArg::Type(ty) => {
-                                    Some(print::to_string(print::NO_ANN, |s| s.print_type(ty)))
+                                hir::GenericArg::Type(ty) => match ty.kind {
+                                    hir::TyKind::Tup(t) => t
+                                        .iter()
+                                        .map(|e| sess.source_map().span_to_snippet(e.span))
+                                        .collect::<Result<Vec<_>, _>>()
+                                        .map(|a| a.join(", ")),
+                                    _ => sess.source_map().span_to_snippet(ty.span),
                                 }
+                                .map(|s| format!("({})", s))
+                                .ok(),
                                 _ => None,
                             })
                             .unwrap_or_else(|| "()".to_string()),
@@ -1154,20 +1247,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .generic_args()
                             .bindings
                             .iter()
-                            .filter_map(|b| match (b.ident.as_str() == "Output", &b.kind) {
+                            .find_map(|b| match (b.ident.as_str() == "Output", &b.kind) {
                                 (true, hir::TypeBindingKind::Equality { ty }) => {
-                                    Some(print::to_string(print::NO_ANN, |s| s.print_type(ty)))
+                                    sess.source_map().span_to_snippet(ty.span).ok()
                                 }
                                 _ => None,
                             })
-                            .next()
                             .unwrap_or_else(|| "()".to_string()),
                     )),
                 )
             } else {
                 ("parenthetical notation is only stable when used with `Fn`-family traits", None)
             };
-            let sess = &self.tcx().sess.parse_sess;
             let mut err = feature_err(sess, sym::unboxed_closures, span, msg);
             if let Some(sugg) = sugg {
                 let msg = "use parenthetical notation instead";
@@ -1183,8 +1274,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         trait_segment: &'a hir::PathSegment<'a>,
-    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Result<(), GenericArgCountMismatch>)
-    {
+    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, GenericArgCountResult) {
         debug!("create_substs_for_ast_trait_ref(trait_segment={:?})", trait_segment);
 
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment);
@@ -1199,11 +1289,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         )
     }
 
-    fn trait_defines_associated_type_named(
-        &self,
-        trait_def_id: DefId,
-        assoc_name: ast::Ident,
-    ) -> bool {
+    fn trait_defines_associated_type_named(&self, trait_def_id: DefId, assoc_name: Ident) -> bool {
         self.tcx()
             .associated_items(trait_def_id)
             .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, trait_def_id)
@@ -1261,7 +1347,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// This helper takes a *converted* parameter type (`param_ty`)
     /// and an *unconverted* list of bounds:
     ///
-    /// ```
+    /// ```text
     /// fn foo<T: Debug>
     ///        ^  ^^^^^ `ast_bounds` parameter, in HIR form
     ///        |
@@ -1369,13 +1455,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // That is, consider this case:
             //
             // ```
-            // trait SubTrait: SuperTrait<int> { }
+            // trait SubTrait: SuperTrait<i32> { }
             // trait SuperTrait<A> { type T; }
             //
             // ... B: SubTrait<T = foo> ...
             // ```
             //
-            // We want to produce `<B as SuperTrait<int>>::T == foo`.
+            // We want to produce `<B as SuperTrait<i32>>::T == foo`.
 
             // Find any late-bound regions declared in `ty` that are not
             // declared in the trait-ref. These are not well-formed.
@@ -1441,17 +1527,24 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(binding.item_name, candidate.def_id(), hir_ref_id);
 
-        // We have already adjusted the item name above, so compare with `ident.modern()` instead
+        // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
         // of calling `filter_by_name_and_kind`.
         let assoc_ty = tcx
             .associated_items(candidate.def_id())
             .filter_by_name_unhygienic(assoc_ident.name)
-            .find(|i| i.kind == ty::AssocKind::Type && i.ident.modern() == assoc_ident)
+            .find(|i| {
+                i.kind == ty::AssocKind::Type && i.ident.normalize_to_macros_2_0() == assoc_ident
+            })
             .expect("missing associated type");
 
         if !assoc_ty.vis.is_accessible_from(def_scope, tcx) {
-            let msg = format!("associated type `{}` is private", binding.item_name);
-            tcx.sess.span_err(binding.span, &msg);
+            tcx.sess
+                .struct_span_err(
+                    binding.span,
+                    &format!("associated type `{}` is private", binding.item_name),
+                )
+                .span_label(binding.span, "private associated type")
+                .emit();
         }
         tcx.check_stability(assoc_ty.def_id, Some(hir_ref_id), binding.span);
 
@@ -1529,9 +1622,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
         for trait_bound in trait_bounds.iter().rev() {
-            if let Err(GenericArgCountMismatch {
-                invalid_args: cur_potential_assoc_types, ..
-            }) = self.instantiate_poly_trait_ref(
+            if let GenericArgCountResult {
+                correct:
+                    Err(GenericArgCountMismatch { invalid_args: cur_potential_assoc_types, .. }),
+                ..
+            } = self.instantiate_poly_trait_ref(
                 trait_bound,
                 Constness::NotConst,
                 dummy_self,
@@ -1573,7 +1668,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "at least one trait is required for an object type"
             )
             .emit();
-            return tcx.types.err;
+            return tcx.ty_error();
         }
 
         // Check that there are no gross object safety violations;
@@ -1587,10 +1682,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     tcx,
                     span,
                     item.trait_ref().def_id(),
-                    object_safety_violations,
+                    &object_safety_violations[..],
                 )
                 .emit();
-                return tcx.types.err;
+                return tcx.ty_error();
             }
         }
 
@@ -1605,13 +1700,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for (base_trait_ref, span, constness) in regular_traits_refs_spans {
             assert_eq!(constness, Constness::NotConst);
 
-            for trait_ref in traits::elaborate_trait_ref(tcx, base_trait_ref) {
+            for obligation in traits::elaborate_trait_ref(tcx, base_trait_ref) {
                 debug!(
                     "conv_object_ty_poly_trait_ref: observing object predicate `{:?}`",
-                    trait_ref
+                    obligation.predicate
                 );
-                match trait_ref {
-                    ty::Predicate::Trait(pred, _) => {
+                match obligation.predicate.kind() {
+                    ty::PredicateKind::Trait(pred, _) => {
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
@@ -1619,10 +1714,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .map(|item| item.def_id),
                         );
                     }
-                    ty::Predicate::Projection(pred) => {
+                    &ty::PredicateKind::Projection(pred) => {
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
-                        let references_self = pred.skip_binder().ty.walk().any(|t| t == dummy_self);
+                        let references_self =
+                            pred.skip_binder().ty.walk().any(|arg| arg == dummy_self.into());
 
                         // If the projection output contains `Self`, force the user to
                         // elaborate it explicitly to avoid a lot of complexity.
@@ -1691,9 +1787,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
 
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
-        let existential_trait_refs = regular_traits
-            .iter()
-            .map(|i| i.trait_ref().map_bound(|trait_ref| trait_ref_to_existential(trait_ref)));
+        let existential_trait_refs =
+            regular_traits.iter().map(|i| i.trait_ref().map_bound(trait_ref_to_existential));
         let existential_projections = bounds.projection_bounds.iter().map(|(bound, _)| {
             bound.map_bound(|b| {
                 let trait_ref = trait_ref_to_existential(b.projection_ty.trait_ref(tcx));
@@ -1731,6 +1826,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
+                        // FIXME: these can be redundant with E0106, but not always.
                         struct_span_err!(
                             tcx.sess,
                             span,
@@ -1761,7 +1857,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         potential_assoc_types: Vec<Span>,
         trait_bounds: &[hir::PolyTraitRef<'_>],
     ) {
-        if !associated_types.values().any(|v| !v.is_empty()) {
+        if associated_types.values().all(|v| v.is_empty()) {
             return;
         }
         let tcx = self.tcx();
@@ -1791,9 +1887,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ));
             }
         }
-
-        match (&potential_assoc_types[..], &trait_bounds) {
-            ([], [bound]) => match &bound.trait_ref.path.segments[..] {
+        if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
+            match &bound.trait_ref.path.segments[..] {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.
@@ -1825,8 +1920,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .collect();
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         }
         names.sort();
         trait_bound_spans.sort();
@@ -1948,7 +2042,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
         type_str: &str,
         trait_str: &str,
-        name: ast::Name,
+        name: Symbol,
     ) {
         let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
         if let (Some(_), Ok(snippet)) = (
@@ -1978,8 +2072,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     // any ambiguity.
     fn find_bound_for_assoc_item(
         &self,
-        ty_param_def_id: DefId,
-        assoc_name: ast::Ident,
+        ty_param_def_id: LocalDefId,
+        assoc_name: Ident,
         span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported> {
         let tcx = self.tcx();
@@ -1989,11 +2083,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty_param_def_id, assoc_name, span,
         );
 
-        let predicates = &self.get_type_parameter_bounds(span, ty_param_def_id).predicates;
+        let predicates =
+            &self.get_type_parameter_bounds(span, ty_param_def_id.to_def_id()).predicates;
 
         debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
 
-        let param_hir_id = tcx.hir().as_local_hir_id(ty_param_def_id).unwrap();
+        let param_hir_id = tcx.hir().as_local_hir_id(ty_param_def_id);
         let param_name = tcx.hir().ty_param_name(param_hir_id);
         self.one_bound_for_assoc_type(
             || {
@@ -2015,7 +2110,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         all_candidates: impl Fn() -> I,
         ty_param_name: impl Fn() -> String,
-        assoc_name: ast::Ident,
+        assoc_name: Ident,
         span: Span,
         is_equality: impl Fn() -> Option<String>,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
@@ -2126,14 +2221,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 return Err(ErrorReported);
             }
         }
-        return Ok(bound);
+        Ok(bound)
     }
 
     fn complain_about_assoc_type_not_found<I>(
         &self,
         all_candidates: impl Fn() -> I,
         ty_param_name: &str,
-        assoc_name: ast::Ident,
+        assoc_name: Ident,
         span: Span,
     ) where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -2237,10 +2332,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     || None,
                 )?
             }
-            (&ty::Param(_), Res::SelfTy(Some(param_did), None))
-            | (&ty::Param(_), Res::Def(DefKind::TyParam, param_did)) => {
-                self.find_bound_for_assoc_item(param_did, assoc_ident, span)?
-            }
+            (
+                &ty::Param(_),
+                Res::SelfTy(Some(param_did), None) | Res::Def(DefKind::TyParam, param_did),
+            ) => self.find_bound_for_assoc_item(param_did.expect_local(), assoc_ident, span)?,
             _ => {
                 if variant_resolution.is_some() {
                     // Variant in type position
@@ -2276,7 +2371,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
 
                     if let Some(sp) = tcx.hir().span_if_local(adt_def.did) {
-                        let sp = tcx.sess.source_map().def_span(sp);
+                        let sp = tcx.sess.source_map().guess_head_span(sp);
                         err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
                     }
 
@@ -2298,12 +2393,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let (assoc_ident, def_scope) =
             tcx.adjust_ident_and_get_scope(assoc_ident, trait_did, hir_ref_id);
 
-        // We have already adjusted the item name above, so compare with `ident.modern()` instead
+        // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
         // of calling `filter_by_name_and_kind`.
         let item = tcx
             .associated_items(trait_did)
             .in_definition_order()
-            .find(|i| i.kind.namespace() == Namespace::TypeNS && i.ident.modern() == assoc_ident)
+            .find(|i| {
+                i.kind.namespace() == Namespace::TypeNS
+                    && i.ident.normalize_to_macros_2_0() == assoc_ident
+            })
             .expect("missing associated type");
 
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, assoc_segment, bound);
@@ -2311,8 +2409,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let kind = DefKind::AssocTy;
         if !item.vis.is_accessible_from(def_scope, tcx) {
-            let msg = format!("{} `{}` is private", kind.descr(item.def_id), assoc_ident);
-            tcx.sess.span_err(span, &msg);
+            let kind = kind.descr(item.def_id);
+            let msg = format!("{} `{}` is private", kind, assoc_ident);
+            tcx.sess
+                .struct_span_err(span, &msg)
+                .span_label(span, &format!("private {}", kind))
+                .emit();
         }
         tcx.check_stability(item.def_id, Some(hir_ref_id), span);
 
@@ -2369,8 +2471,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             debug!("qpath_to_ty: self.item_def_id()={:?}", def_id);
 
             let parent_def_id = def_id
-                .and_then(|def_id| tcx.hir().as_local_hir_id(def_id))
-                .map(|hir_id| tcx.hir().get_parent_did(hir_id));
+                .and_then(|def_id| {
+                    def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
+                })
+                .map(|hir_id| tcx.hir().get_parent_did(hir_id).to_def_id());
 
             debug!("qpath_to_ty: parent_def_id={:?}", parent_def_id);
 
@@ -2391,7 +2495,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 &path_str,
                 item_segment.ident.name,
             );
-            return tcx.types.err;
+            return tcx.ty_error();
         };
 
         debug!("qpath_to_ty: self_type={:?}", self_ty);
@@ -2441,6 +2545,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             continue;
                         }
                         err_for_ct = true;
+                        has_err = true;
                         (ct.span, "const")
                     }
                 };
@@ -2475,6 +2580,47 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             "associated type bindings are not allowed here"
         );
         err.span_label(span, "associated type not allowed here").emit();
+    }
+
+    /// Prohibits explicit lifetime arguments if late-bound lifetime parameters
+    /// are present. This is used both for datatypes and function calls.
+    fn prohibit_explicit_late_bound_lifetimes(
+        tcx: TyCtxt<'_>,
+        def: &ty::Generics,
+        args: &hir::GenericArgs<'_>,
+        position: GenericArgPosition,
+    ) -> ExplicitLateBound {
+        let param_counts = def.own_counts();
+        let arg_counts = args.own_counts();
+        let infer_lifetimes = position != GenericArgPosition::Type && arg_counts.lifetimes == 0;
+
+        if infer_lifetimes {
+            ExplicitLateBound::No
+        } else if let Some(span_late) = def.has_late_bound_regions {
+            let msg = "cannot specify lifetime arguments explicitly \
+                       if late bound lifetime parameters are present";
+            let note = "the late bound lifetime parameter is introduced here";
+            let span = args.args[0].span();
+            if position == GenericArgPosition::Value
+                && arg_counts.lifetimes != param_counts.lifetimes
+            {
+                let mut err = tcx.sess.struct_span_err(span, msg);
+                err.span_note(span_late, note);
+                err.emit();
+            } else {
+                let mut multispan = MultiSpan::from_span(span);
+                multispan.push_span_label(span_late, note.to_string());
+                tcx.struct_span_lint_hir(
+                    LATE_BOUND_LIFETIME_ARGUMENTS,
+                    args.args[0].id(),
+                    multispan,
+                    |lint| lint.build(msg).emit(),
+                );
+            }
+            ExplicitLateBound::Yes
+        } else {
+            ExplicitLateBound::No
+        }
     }
 
     // FIXME(eddyb, varkor) handle type paths here too, not just value ones.
@@ -2628,11 +2774,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
                 self.normalize_ty(span, tcx.mk_opaque(did, substs))
             }
-            Res::Def(DefKind::Enum, did)
-            | Res::Def(DefKind::TyAlias, did)
-            | Res::Def(DefKind::Struct, did)
-            | Res::Def(DefKind::Union, did)
-            | Res::Def(DefKind::ForeignTy, did) => {
+            Res::Def(
+                DefKind::Enum
+                | DefKind::TyAlias
+                | DefKind::Struct
+                | DefKind::Union
+                | DefKind::ForeignTy,
+                did,
+            ) => {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(span, did, path.segments.last().unwrap())
@@ -2659,7 +2808,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments);
 
-                let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+                let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
                 let item_id = tcx.hir().get_parent_node(hir_id);
                 let item_def_id = tcx.hir().local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
@@ -2699,12 +2848,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     hir::PrimTy::Int(it) => tcx.mk_mach_int(it),
                     hir::PrimTy::Uint(uit) => tcx.mk_mach_uint(uit),
                     hir::PrimTy::Float(ft) => tcx.mk_mach_float(ft),
-                    hir::PrimTy::Str => tcx.mk_str(),
+                    hir::PrimTy::Str => tcx.types.str_,
                 }
             }
             Res::Err => {
                 self.set_tainted_by_errors();
-                return self.tcx().types.err;
+                self.tcx().ty_error()
             }
             _ => span_bug!(span, "unexpected resolution: {:?}", path.res),
         }
@@ -2734,7 +2883,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::BareFn(ref bf) => {
                 require_c_abi_if_c_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-                tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl, &[], None))
+                tcx.mk_fn_ptr(self.ty_of_fn(
+                    bf.unsafety,
+                    bf.abi,
+                    &bf.decl,
+                    &hir::Generics::empty(),
+                    None,
+                ))
             }
             hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
@@ -2744,9 +2899,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.ast_ty_to_ty(qself));
                 self.res_to_ty(opt_self_ty, path, false)
             }
-            hir::TyKind::Def(item_id, ref lifetimes) => {
-                let did = tcx.hir().local_def_id(item_id.id);
-                self.impl_trait_ty_to_ty(did, lifetimes)
+            hir::TyKind::OpaqueDef(item_id, ref lifetimes) => {
+                let opaque_ty = tcx.hir().expect_item(item_id.id);
+                let def_id = tcx.hir().local_def_id(item_id.id).to_def_id();
+
+                match opaque_ty.kind {
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => {
+                        self.impl_trait_ty_to_ty(def_id, lifetimes, impl_trait_fn.is_some())
+                    }
+                    ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
+                }
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);
@@ -2759,10 +2921,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 };
                 self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, res, segment, false)
                     .map(|(ty, _, _)| ty)
-                    .unwrap_or(tcx.types.err)
+                    .unwrap_or_else(|_| tcx.ty_error())
             }
             hir::TyKind::Array(ref ty, ref length) => {
-                let length = self.ast_const_to_const(length, tcx.types.usize);
+                let length_def_id = tcx.hir().local_def_id(length.hir_id);
+                let length = ty::Const::from_anon_const(tcx, length_def_id);
                 let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(&ty), length));
                 self.normalize_ty(ast_ty.span, array_ty)
             }
@@ -2776,7 +2939,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .span_label(ast_ty.span, "reserved keyword")
                 .emit();
 
-                tcx.types.err
+                tcx.ty_error()
             }
             hir::TyKind::Infer => {
                 // Infer also appears as the type of arguments or return
@@ -2785,7 +2948,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, ast_ty.span)
             }
-            hir::TyKind::Err => tcx.types.err,
+            hir::TyKind::Err => tcx.ty_error(),
         };
 
         debug!("ast_ty_to_ty: result_ty={:?}", result_ty);
@@ -2794,79 +2957,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         result_ty
     }
 
-    /// Returns the `DefId` of the constant parameter that the provided expression is a path to.
-    pub fn const_param_def_id(&self, expr: &hir::Expr<'_>) -> Option<DefId> {
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        let expr = match &expr.kind {
-            ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
-                block.expr.as_ref().unwrap()
-            }
-            _ => expr,
-        };
-
-        match &expr.kind {
-            ExprKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
-                Res::Def(DefKind::ConstParam, did) => Some(did),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-
-    pub fn ast_const_to_const(
-        &self,
-        ast_const: &hir::AnonConst,
-        ty: Ty<'tcx>,
-    ) -> &'tcx ty::Const<'tcx> {
-        debug!("ast_const_to_const(id={:?}, ast_const={:?})", ast_const.hir_id, ast_const);
-
-        let tcx = self.tcx();
-        let def_id = tcx.hir().local_def_id(ast_const.hir_id);
-
-        let expr = &tcx.hir().body(ast_const.body).value;
-
-        let lit_input = match expr.kind {
-            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => match expr.kind {
-                hir::ExprKind::Lit(ref lit) => {
-                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
-                }
-                _ => None,
-            },
-            _ => None,
-        };
-
-        if let Some(lit_input) = lit_input {
-            // If an error occurred, ignore that it's a literal and leave reporting the error up to
-            // mir.
-            if let Ok(c) = tcx.at(expr.span).lit_to_const(lit_input) {
-                return c;
-            } else {
-                tcx.sess.delay_span_bug(expr.span, "ast_const_to_const: couldn't lit_to_const");
-            }
-        }
-
-        let kind = if let Some(def_id) = self.const_param_def_id(expr) {
-            // Find the name and index of the const parameter by indexing the generics of the
-            // parent item and construct a `ParamConst`.
-            let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-            let item_id = tcx.hir().get_parent_node(hir_id);
-            let item_def_id = tcx.hir().local_def_id(item_id);
-            let generics = tcx.generics_of(item_def_id);
-            let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id)];
-            let name = tcx.hir().name(hir_id);
-            ty::ConstKind::Param(ty::ParamConst::new(index, name))
-        } else {
-            ty::ConstKind::Unevaluated(def_id, InternalSubsts::identity_for_item(tcx, def_id), None)
-        };
-        tcx.mk_const(ty::Const { val: kind, ty })
-    }
-
     pub fn impl_trait_ty_to_ty(
         &self,
         def_id: DefId,
         lifetimes: &[hir::GenericArg<'_>],
+        replace_parent_lifetimes: bool,
     ) -> Ty<'tcx> {
         debug!("impl_trait_ty_to_ty(def_id={:?}, lifetimes={:?})", def_id, lifetimes);
         let tcx = self.tcx();
@@ -2888,9 +2983,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     _ => bug!(),
                 }
             } else {
-                // Replace all parent lifetimes with `'static`.
                 match param.kind {
-                    GenericParamDefKind::Lifetime => tcx.lifetimes.re_static.into(),
+                    // For RPIT (return position impl trait), only lifetimes
+                    // mentioned in the impl Trait predicate are captured by
+                    // the opaque type, so the lifetime parameters from the
+                    // parent item need to be replaced with `'static`.
+                    //
+                    // For `impl Trait` in the types of statics, constants,
+                    // locals and type aliases. These capture all parent
+                    // lifetimes, so they can use their identity subst.
+                    GenericParamDefKind::Lifetime if replace_parent_lifetimes => {
+                        tcx.lifetimes.re_static.into()
+                    }
                     _ => tcx.mk_param_from_def(param),
                 }
             }
@@ -2917,7 +3021,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         unsafety: hir::Unsafety,
         abi: abi::Abi,
         decl: &hir::FnDecl<'_>,
-        generic_params: &[hir::GenericParam<'_>],
+        generics: &hir::Generics<'_>,
         ident_span: Option<Span>,
     ) -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
@@ -2929,6 +3033,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for ty in decl.inputs {
             visitor.visit_ty(ty);
         }
+        walk_generics(&mut visitor, generics);
+
         let input_tys = decl.inputs.iter().map(|a| self.ty_of_arg(a, None));
         let output_ty = match decl.output {
             hir::FnRetTy::Return(ref output) => {
@@ -2943,16 +3049,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let bare_fn_ty =
             ty::Binder::bind(tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi));
 
-        if !self.allow_ty_infer() {
+        if let (false, Some(ident_span)) = (self.allow_ty_infer(), ident_span) {
             // We always collect the spans for placeholder types when evaluating `fn`s, but we
             // only want to emit an error complaining about them if infer types (`_`) are not
-            // allowed. `allow_ty_infer` gates this behavior.
+            // allowed. `allow_ty_infer` gates this behavior. We check for the presence of
+            // `ident_span` to not emit an error twice when we have `fn foo(_: fn() -> _)`.
             crate::collect::placeholder_type_error(
                 tcx,
-                ident_span.map(|sp| sp.shrink_to_hi()).unwrap_or(DUMMY_SP),
-                generic_params,
+                ident_span.shrink_to_hi(),
+                &generics.params[..],
                 visitor.0,
-                ident_span.is_some(),
+                true,
             );
         }
 
@@ -2976,8 +3083,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.sess,
                 decl.output.span(),
                 E0581,
-                "return type references {} \
-                                            which is not constrained by the fn input types",
+                "return type references {} which is not constrained by the fn input types",
                 lifetime_name
             );
             if let ty::BrAnon(_) = *br {
@@ -2988,8 +3094,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // though we can easily give a hint that ought to be
                 // relevant.
                 err.note(
-                    "lifetimes appearing in an associated type \
-                          are not considered constrained",
+                    "lifetimes appearing in an associated type are not considered constrained",
                 );
             }
             err.emit();
@@ -3042,7 +3147,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             )
             .emit();
         }
-        return Some(r);
+        Some(r)
     }
 }
 
@@ -3051,7 +3156,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 /// representations). These lists of bounds occur in many places in
 /// Rust's syntax:
 ///
-/// ```
+/// ```text
 /// trait Foo: Bar + Baz { }
 ///            ^^^^^^^^^ supertrait list bounding the `Self` type parameter
 ///
@@ -3104,7 +3209,7 @@ impl<'tcx> Bounds<'tcx> {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[]),
                 });
-                (trait_ref.without_const().to_predicate(), span)
+                (trait_ref.without_const().to_predicate(tcx), span)
             })
         });
 
@@ -3119,16 +3224,16 @@ impl<'tcx> Bounds<'tcx> {
                         // or it's a generic associated type that deliberately has escaping bound vars.
                         let region_bound = ty::fold::shift_region(tcx, region_bound, 1);
                         let outlives = ty::OutlivesPredicate(param_ty, region_bound);
-                        (ty::Binder::bind(outlives).to_predicate(), span)
+                        (ty::Binder::bind(outlives).to_predicate(tcx), span)
                     })
                     .chain(self.trait_bounds.iter().map(|&(bound_trait_ref, span, constness)| {
-                        let predicate = bound_trait_ref.with_constness(constness).to_predicate();
+                        let predicate = bound_trait_ref.with_constness(constness).to_predicate(tcx);
                         (predicate, span)
                     }))
                     .chain(
                         self.projection_bounds
                             .iter()
-                            .map(|&(projection, span)| (projection.to_predicate(), span)),
+                            .map(|&(projection, span)| (projection.to_predicate(tcx), span)),
                     ),
             )
             .collect()

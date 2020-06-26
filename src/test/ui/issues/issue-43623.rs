@@ -9,11 +9,12 @@ impl<'a> Trait<'a> for Type {
 }
 
 pub fn break_me<T, F>(f: F)
-where T: for<'b> Trait<'b>,
-      F: for<'b> FnMut(<T as Trait<'b>>::Assoc) {
+where
+    T: for<'b> Trait<'b>,
+    F: for<'b> FnMut(<T as Trait<'b>>::Assoc),
+{
     break_me::<Type, fn(_)>;
     //~^ ERROR: type mismatch in function arguments
-    //~| ERROR: type mismatch resolving
 }
 
 fn main() {}

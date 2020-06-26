@@ -92,11 +92,13 @@
 //! pub struct Foo;
 //!
 //! #[no_mangle]
+//! #[allow(improper_ctypes_definitions)]
 //! pub extern "C" fn foo_new() -> Box<Foo> {
 //!     Box::new(Foo)
 //! }
 //!
 //! #[no_mangle]
+//! #[allow(improper_ctypes_definitions)]
 //! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}
 //! ```
 //!
@@ -143,10 +145,10 @@ use core::ops::{
 };
 use core::pin::Pin;
 use core::ptr::{self, NonNull, Unique};
-use core::slice;
 use core::task::{Context, Poll};
 
-use crate::alloc::{self, AllocRef, Global};
+use crate::alloc::{self, AllocInit, AllocRef, Global};
+use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
 use crate::vec::Vec;
@@ -196,14 +198,12 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        unsafe {
-            let ptr = if layout.size() == 0 {
-                NonNull::dangling()
-            } else {
-                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).0.cast()
-            };
-            Box::from_raw(ptr.as_ptr())
-        }
+        let ptr = Global
+            .alloc(layout, AllocInit::Uninitialized)
+            .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
+            .ptr
+            .cast();
+        unsafe { Box::from_raw(ptr.as_ptr()) }
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
@@ -226,11 +226,13 @@ impl<T> Box<T> {
     /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
-        unsafe {
-            let mut uninit = Self::new_uninit();
-            ptr::write_bytes::<T>(uninit.as_mut_ptr(), 0, 1);
-            uninit
-        }
+        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
+        let ptr = Global
+            .alloc(layout, AllocInit::Zeroed)
+            .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
+            .ptr
+            .cast();
+        unsafe { Box::from_raw(ptr.as_ptr()) }
     }
 
     /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
@@ -239,6 +241,16 @@ impl<T> Box<T> {
     #[inline(always)]
     pub fn pin(x: T) -> Pin<Box<T>> {
         (box x).into()
+    }
+
+    /// Converts a `Box<T>` into a `Box<[T]>`
+    ///
+    /// This conversion does not allocate on the heap and happens in place.
+    ///
+    #[unstable(feature = "box_into_boxed_slice", issue = "71582")]
+    pub fn into_boxed_slice(boxed: Box<T>) -> Box<[T]> {
+        // *mut T and *mut [T; 1] have the same size and alignment
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut [T; 1]) }
     }
 }
 
@@ -265,15 +277,7 @@ impl<T> Box<[T]> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        unsafe {
-            let ptr = if layout.size() == 0 {
-                NonNull::dangling()
-            } else {
-                Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).0.cast()
-            };
-            Box::from_raw(slice::from_raw_parts_mut(ptr.as_ptr(), len))
-        }
+        unsafe { RawVec::with_capacity(len).into_box(len) }
     }
 }
 
@@ -309,7 +313,7 @@ impl<T> Box<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<T> {
-        Box::from_raw(Box::into_raw(self) as *mut T)
+        unsafe { Box::from_raw(Box::into_raw(self) as *mut T) }
     }
 }
 
@@ -347,7 +351,7 @@ impl<T> Box<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<[T]> {
-        Box::from_raw(Box::into_raw(self) as *mut [T])
+        unsafe { Box::from_raw(Box::into_raw(self) as *mut [T]) }
     }
 }
 
@@ -391,7 +395,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Box(Unique::new_unchecked(raw))
+        Box(unsafe { Unique::new_unchecked(raw) })
     }
 
     /// Consumes the `Box`, returning a wrapped raw pointer.
@@ -437,7 +441,12 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
-        Box::into_raw_non_null(b).as_ptr()
+        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
+        // raw pointer for the type system. Turning it directly into a raw pointer would not be
+        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
+        // so all raw pointer methods go through `leak` which creates a (unique)
+        // mutable reference. Turning *that* to a raw pointer behaves correctly.
+        Box::leak(b) as *mut T
     }
 
     /// Consumes the `Box`, returning the wrapped pointer as `NonNull<T>`.
@@ -460,6 +469,7 @@ impl<T: ?Sized> Box<T> {
     ///
     /// ```
     /// #![feature(box_into_raw_non_null)]
+    /// #![allow(deprecated)]
     ///
     /// let x = Box::new(5);
     /// let ptr = Box::into_raw_non_null(x);
@@ -469,24 +479,34 @@ impl<T: ?Sized> Box<T> {
     /// let x = unsafe { Box::from_raw(ptr.as_ptr()) };
     /// ```
     #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
+    #[rustc_deprecated(
+        since = "1.44.0",
+        reason = "use `Box::leak(b).into()` or `NonNull::from(Box::leak(b))` instead"
+    )]
     #[inline]
     pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
-        Box::into_unique(b).into()
+        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
+        // raw pointer for the type system. Turning it directly into a raw pointer would not be
+        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
+        // so all raw pointer methods go through `leak` which creates a (unique)
+        // mutable reference. Turning *that* to a raw pointer behaves correctly.
+        Box::leak(b).into()
     }
 
-    #[unstable(feature = "ptr_internals", issue = "none", reason = "use into_raw_non_null instead")]
+    #[unstable(
+        feature = "ptr_internals",
+        issue = "none",
+        reason = "use `Box::leak(b).into()` or `Unique::from(Box::leak(b))` instead"
+    )]
     #[inline]
     #[doc(hidden)]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
-        let mut unique = b.0;
-        mem::forget(b);
-        // Box is kind-of a library type, but recognized as a "unique pointer" by
-        // Stacked Borrows.  This function here corresponds to "reborrowing to
-        // a raw pointer", but there is no actual reborrow here -- so
-        // without some care, the pointer we are returning here still carries
-        // the tag of `b`, with `Unique` permission.
-        // We round-trip through a mutable reference to avoid that.
-        unsafe { Unique::new_unchecked(unique.as_mut() as *mut T) }
+        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
+        // raw pointer for the type system. Turning it directly into a raw pointer would not be
+        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
+        // so all raw pointer methods go through `leak` which creates a (unique)
+        // mutable reference. Turning *that* to a raw pointer behaves correctly.
+        Box::leak(b).into()
     }
 
     /// Consumes and leaks the `Box`, returning a mutable reference,
@@ -532,7 +552,7 @@ impl<T: ?Sized> Box<T> {
     where
         T: 'a, // Technically not needed, but kept to be explicit.
     {
-        unsafe { &mut *Box::into_raw(b) }
+        unsafe { &mut *mem::ManuallyDrop::new(b).0.as_ptr() }
     }
 
     /// Converts a `Box<T>` into a `Pin<Box<T>>`
@@ -778,7 +798,18 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
         let buf = RawVec::with_capacity(len);
         unsafe {
             ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
-            buf.into_box()
+            buf.into_box(slice.len()).assume_init()
+        }
+    }
+}
+
+#[stable(feature = "box_from_cow", since = "1.45.0")]
+impl<T: Copy> From<Cow<'_, [T]>> for Box<[T]> {
+    #[inline]
+    fn from(cow: Cow<'_, [T]>) -> Box<[T]> {
+        match cow {
+            Cow::Borrowed(slice) => Box::from(slice),
+            Cow::Owned(slice) => Box::from(slice),
         }
     }
 }
@@ -798,6 +829,17 @@ impl From<&str> for Box<str> {
     #[inline]
     fn from(s: &str) -> Box<str> {
         unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
+    }
+}
+
+#[stable(feature = "box_from_cow", since = "1.45.0")]
+impl From<Cow<'_, str>> for Box<str> {
+    #[inline]
+    fn from(cow: Cow<'_, str>) -> Box<str> {
+        match cow {
+            Cow::Borrowed(s) => Box::from(s),
+            Cow::Owned(s) => Box::from(s),
+        }
     }
 }
 
@@ -822,6 +864,25 @@ impl From<Box<str>> for Box<[u8]> {
     #[inline]
     fn from(s: Box<str>) -> Self {
         unsafe { Box::from_raw(Box::into_raw(s) as *mut [u8]) }
+    }
+}
+
+#[stable(feature = "box_from_array", since = "1.45.0")]
+impl<T, const N: usize> From<[T; N]> for Box<[T]>
+where
+    [T; N]: LengthAtMost32,
+{
+    /// Converts a `[T; N]` into a `Box<[T]>`
+    ///
+    /// This conversion moves the array to newly heap-allocated memory.
+    ///
+    /// # Examples
+    /// ```rust
+    /// let boxed: Box<[u8]> = Box::from([4, 2]);
+    /// println!("{:?}", boxed);
+    /// ```
+    fn from(array: [T; N]) -> Box<[T]> {
+        box array
     }
 }
 
@@ -1050,6 +1111,14 @@ impl<T: Clone> Clone for Box<[T]> {
     fn clone(&self) -> Self {
         self.to_vec().into_boxed_slice()
     }
+
+    fn clone_from(&mut self, other: &Self) {
+        if self.len() == other.len() {
+            self.clone_from_slice(&other);
+        } else {
+            *self = other.clone();
+        }
+    }
 }
 
 #[stable(feature = "box_borrow", since = "1.1.0")]
@@ -1105,29 +1174,6 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Box<T> {}
 
-#[cfg(bootstrap)]
-#[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator + Unpin> Generator for Box<G> {
-    type Yield = G::Yield;
-    type Return = G::Return;
-
-    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
-        G::resume(Pin::new(&mut *self))
-    }
-}
-
-#[cfg(bootstrap)]
-#[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
-    type Yield = G::Yield;
-    type Return = G::Return;
-
-    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
-        G::resume((*self).as_mut())
-    }
-}
-
-#[cfg(not(bootstrap))]
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator<R> + Unpin, R> Generator<R> for Box<G> {
     type Yield = G::Yield;
@@ -1138,7 +1184,6 @@ impl<G: ?Sized + Generator<R> + Unpin, R> Generator<R> for Box<G> {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "generator_trait", issue = "43122")]
 impl<G: ?Sized + Generator<R>, R> Generator<R> for Pin<Box<G>> {
     type Yield = G::Yield;

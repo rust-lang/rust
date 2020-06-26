@@ -26,12 +26,14 @@
 use crate::imports::ImportKind;
 use crate::Resolver;
 
-use rustc::{lint, ty};
 use rustc_ast::ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
+use rustc_ast_lowering::Resolver as ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
+use rustc_middle::ty;
+use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 
@@ -63,8 +65,9 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     fn check_import(&mut self, id: ast::NodeId) {
         let mut used = false;
         self.r.per_ns(|this, ns| used |= this.used_imports.contains(&(id, ns)));
+        let def_id = self.r.local_def_id(id);
         if !used {
-            if self.r.maybe_unused_trait_imports.contains(&id) {
+            if self.r.maybe_unused_trait_imports.contains(&def_id) {
                 // Check later.
                 return;
             }
@@ -72,7 +75,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
-            self.r.maybe_unused_trait_imports.remove(&id);
+            self.r.maybe_unused_trait_imports.remove(&def_id);
             if let Some(i) = self.unused_imports.get_mut(&self.base_id) {
                 i.unused.remove(&id);
             }
@@ -232,7 +235,7 @@ impl Resolver<'_> {
                     if let ImportKind::MacroUse = import.kind {
                         if !import.span.is_dummy() {
                             self.lint_buffer.buffer_lint(
-                                lint::builtin::MACRO_USE_EXTERN_CRATE,
+                                MACRO_USE_EXTERN_CRATE,
                                 import.id,
                                 import.span,
                                 "deprecated `#[macro_use]` attribute used to \
@@ -244,12 +247,12 @@ impl Resolver<'_> {
                     }
                 }
                 ImportKind::ExternCrate { .. } => {
-                    self.maybe_unused_extern_crates.push((import.id, import.span));
+                    let def_id = self.local_def_id(import.id);
+                    self.maybe_unused_extern_crates.push((def_id, import.span));
                 }
                 ImportKind::MacroUse => {
-                    let lint = lint::builtin::UNUSED_IMPORTS;
                     let msg = "unused `#[macro_use]` import";
-                    self.lint_buffer.buffer_lint(lint, import.id, import.span, msg);
+                    self.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.id, import.span, msg);
                 }
                 _ => {}
             }
@@ -314,7 +317,7 @@ impl Resolver<'_> {
             };
 
             visitor.r.lint_buffer.buffer_lint_with_diagnostic(
-                lint::builtin::UNUSED_IMPORTS,
+                UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,
                 &msg,

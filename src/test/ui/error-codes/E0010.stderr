@@ -9,6 +9,8 @@ error[E0019]: constant contains unimplemented expression type
    |
 LL | const CON : Box<i32> = box 0;
    |                            ^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

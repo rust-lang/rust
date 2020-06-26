@@ -3,9 +3,9 @@
 use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, ObligationCause};
 
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use crate::traits::error_reporting::InferCtxtExt;
 
@@ -48,7 +48,7 @@ pub fn can_type_implement_copy(
                     continue;
                 }
                 let span = tcx.def_span(field.did);
-                let cause = ObligationCause { span, ..ObligationCause::dummy() };
+                let cause = ObligationCause::dummy_with_span(span);
                 let ctx = traits::FulfillmentContext::new();
                 match traits::fully_normalize(&infcx, ctx, cause, param_env, &ty) {
                     Ok(ty) => {

@@ -1,10 +1,10 @@
 use crate::base;
 use crate::traits::*;
-use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::layout::HasTyCtxt;
 use rustc_hir as hir;
+use rustc_middle::mir::mono::{Linkage, Visibility};
+use rustc_middle::ty::layout::HasTyCtxt;
 
-use rustc::mir::mono::MonoItem;
+use rustc_middle::mir::mono::MonoItem;
 
 pub trait MonoItemExt<'a, 'tcx> {
     fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx);

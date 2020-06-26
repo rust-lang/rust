@@ -2,7 +2,7 @@ error[E0603]: struct `Foo` is private
   --> $DIR/issue-13641.rs:9:8
    |
 LL |     a::Foo::new();
-   |        ^^^ this struct is private
+   |        ^^^ private struct
    |
 note: the struct `Foo` is defined here
   --> $DIR/issue-13641.rs:2:5
@@ -14,7 +14,7 @@ error[E0603]: enum `Bar` is private
   --> $DIR/issue-13641.rs:11:8
    |
 LL |     a::Bar::new();
-   |        ^^^ this enum is private
+   |        ^^^ private enum
    |
 note: the enum `Bar` is defined here
   --> $DIR/issue-13641.rs:4:5

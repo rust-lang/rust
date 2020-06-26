@@ -1,6 +1,6 @@
 // Tests that default impls do not have to supply all items but regular impls do.
 
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 trait Foo {
     fn foo_one(&self) -> &'static str;

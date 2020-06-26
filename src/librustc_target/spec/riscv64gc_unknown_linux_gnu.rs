@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{CodeModel, LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -14,7 +14,7 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             abi_blacklist: super::riscv_base::abi_blacklist(),
-            code_model: Some("medium".to_string()),
+            code_model: Some(CodeModel::Medium),
             cpu: "generic-rv64".to_string(),
             features: "+m,+a,+f,+d,+c".to_string(),
             llvm_abiname: "lp64d".to_string(),

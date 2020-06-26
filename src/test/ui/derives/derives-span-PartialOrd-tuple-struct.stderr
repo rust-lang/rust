@@ -1,5 +1,5 @@
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:12:5
+  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:8:5
    |
 LL |     Error
    |     ^^^^^ no implementation for `Error < Error` and `Error > Error`
@@ -9,7 +9,7 @@ LL |     Error
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:12:5
+  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:8:5
    |
 LL |     Error
    |     ^^^^^ no implementation for `Error < Error` and `Error > Error`
@@ -19,7 +19,7 @@ LL |     Error
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:12:5
+  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:8:5
    |
 LL |     Error
    |     ^^^^^ no implementation for `Error < Error` and `Error > Error`
@@ -29,7 +29,7 @@ LL |     Error
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:12:5
+  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:8:5
    |
 LL |     Error
    |     ^^^^^ no implementation for `Error < Error` and `Error > Error`
@@ -39,7 +39,7 @@ LL |     Error
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `Error` with `Error`
-  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:12:5
+  --> $DIR/derives-span-PartialOrd-tuple-struct.rs:8:5
    |
 LL |     Error
    |     ^^^^^ no implementation for `Error < Error` and `Error > Error`

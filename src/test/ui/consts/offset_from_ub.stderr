@@ -5,9 +5,10 @@ LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
    |           ptr_offset_from cannot compute offset of pointers into different allocations.
-   |           inside call to `std::ptr::const_ptr::<impl *const Struct>::offset_from` at $DIR/offset_from_ub.rs:22:27
+   |           inside `std::ptr::const_ptr::<impl *const Struct>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+   |           inside `DIFFERENT_ALLOC` at $DIR/offset_from_ub.rs:17:27
    | 
-  ::: $DIR/offset_from_ub.rs:16:1
+  ::: $DIR/offset_from_ub.rs:11:1
    |
 LL | / pub const DIFFERENT_ALLOC: usize = {
 LL | |
@@ -26,10 +27,11 @@ error: any use of this value will cause an error
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
-   |           a memory access tried to interpret some bytes as a pointer
-   |           inside call to `std::ptr::const_ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:28:14
+   |           unable to turn bytes into a pointer
+   |           inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+   |           inside `NOT_PTR` at $DIR/offset_from_ub.rs:23:14
    | 
-  ::: $DIR/offset_from_ub.rs:26:1
+  ::: $DIR/offset_from_ub.rs:21:1
    |
 LL | / pub const NOT_PTR: usize = {
 LL | |
@@ -43,10 +45,11 @@ error: any use of this value will cause an error
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
-   |           exact_div: 1 cannot be divided by 2 without remainder
-   |           inside call to `std::ptr::const_ptr::<impl *const u16>::offset_from` at $DIR/offset_from_ub.rs:36:14
+   |           exact_div: 1isize cannot be divided by 2isize without remainder
+   |           inside `std::ptr::const_ptr::<impl *const u16>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+   |           inside `NOT_MULTIPLE_OF_SIZE` at $DIR/offset_from_ub.rs:31:14
    | 
-  ::: $DIR/offset_from_ub.rs:31:1
+  ::: $DIR/offset_from_ub.rs:26:1
    |
 LL | / pub const NOT_MULTIPLE_OF_SIZE: isize = {
 LL | |
@@ -63,10 +66,11 @@ error: any use of this value will cause an error
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
-   |           invalid use of NULL pointer
-   |           inside call to `std::ptr::const_ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:42:14
+   |           inbounds test failed: 0x0 is not a valid pointer
+   |           inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+   |           inside `OFFSET_FROM_NULL` at $DIR/offset_from_ub.rs:37:14
    | 
-  ::: $DIR/offset_from_ub.rs:39:1
+  ::: $DIR/offset_from_ub.rs:34:1
    |
 LL | / pub const OFFSET_FROM_NULL: isize = {
 LL | |
@@ -81,10 +85,11 @@ error: any use of this value will cause an error
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
-   |           a memory access tried to interpret some bytes as a pointer
-   |           inside call to `std::ptr::const_ptr::<impl *const u8>::offset_from` at $DIR/offset_from_ub.rs:49:14
+   |           unable to turn bytes into a pointer
+   |           inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+   |           inside `DIFFERENT_INT` at $DIR/offset_from_ub.rs:44:14
    | 
-  ::: $DIR/offset_from_ub.rs:45:1
+  ::: $DIR/offset_from_ub.rs:40:1
    |
 LL | / pub const DIFFERENT_INT: isize = { // offset_from with two different integers: like DIFFERENT_ALLOC
 LL | |

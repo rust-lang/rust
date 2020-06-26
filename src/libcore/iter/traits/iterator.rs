@@ -198,7 +198,7 @@ pub trait Iterator {
     /// // and the maximum possible lower bound
     /// let iter = 0..;
     ///
-    /// assert_eq!((usize::max_value(), None), iter.size_hint());
+    /// assert_eq!((usize::MAX, None), iter.size_hint());
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -333,7 +333,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        for x in self {
+        while let Some(x) = self.next() {
             if n == 0 {
                 return Some(x);
             }
@@ -1037,9 +1037,6 @@ pub trait Iterator {
     /// closure on each element of the iterator, and yield elements
     /// while it returns [`Some(_)`][`Some`].
     ///
-    /// After [`None`] is returned, `map_while()`'s job is over, and the
-    /// rest of the elements are ignored.
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1079,15 +1076,14 @@ pub trait Iterator {
     /// #![feature(iter_map_while)]
     /// use std::convert::TryFrom;
     ///
-    /// let a = [0, -1, 1, -2];
+    /// let a = [0, 1, 2, -3, 4, 5, -6];
     ///
-    /// let mut iter = a.iter().map_while(|x| u32::try_from(*x).ok());
+    /// let iter = a.iter().map_while(|x| u32::try_from(*x).ok());
+    /// let vec = iter.collect::<Vec<_>>();
     ///
-    /// assert_eq!(iter.next(), Some(0u32));
-    ///
-    /// // We have more elements that are fit in u32, but since we already
-    /// // got a None, map_while() isn't used any more
-    /// assert_eq!(iter.next(), None);
+    /// // We have more elements which could fit in u32 (4, 5), but `map_while` returned `None` for `-3`
+    /// // (as the `predicate` returned `None`) and `collect` stops at the first `None` entcountered.
+    /// assert_eq!(vec, vec![0, 1, 2]);
     /// ```
     ///
     /// Because `map_while()` needs to look at the value in order to see if it
@@ -1115,8 +1111,13 @@ pub trait Iterator {
     /// The `-3` is no longer there, because it was consumed in order to see if
     /// the iteration should stop, but wasn't placed back into the iterator.
     ///
+    /// Note that unlike [`take_while`] this iterator is **not** fused.
+    /// It is also not specified what this iterator returns after the first` None` is returned.
+    /// If you need fused iterator, use [`fuse`].
+    ///
     /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`fuse`]: #method.fuse
     #[inline]
     #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
     fn map_while<B, P>(self, predicate: P) -> MapWhile<Self, P>
@@ -1175,6 +1176,17 @@ pub trait Iterator {
     /// let mut iter = (0..).take(3);
     ///
     /// assert_eq!(iter.next(), Some(0));
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// If less than `n` elements are available,
+    /// `take` will limit itself to the size of the underlying iterator:
+    ///
+    /// ```
+    /// let v = vec![1, 2];
+    /// let mut iter = v.into_iter().take(5);
     /// assert_eq!(iter.next(), Some(1));
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), None);
@@ -1696,12 +1708,12 @@ pub trait Iterator {
             mut f: impl FnMut(&T) -> bool + 'a,
             left: &'a mut B,
             right: &'a mut B,
-        ) -> impl FnMut(T) + 'a {
-            move |x| {
+        ) -> impl FnMut((), T) + 'a {
+            move |(), x| {
                 if f(&x) {
-                    left.extend(Some(x));
+                    left.extend_one(x);
                 } else {
-                    right.extend(Some(x));
+                    right.extend_one(x);
                 }
             }
         }
@@ -1709,7 +1721,7 @@ pub trait Iterator {
         let mut left: B = Default::default();
         let mut right: B = Default::default();
 
-        self.for_each(extend(f, &mut left, &mut right));
+        self.fold((), extend(f, &mut left, &mut right));
 
         (left, right)
     }
@@ -1825,7 +1837,7 @@ pub trait Iterator {
     ///
     /// # Note to Implementors
     ///
-    /// Most of the other (forward) methods have default implementations in
+    /// Several of the other (forward) methods have default implementations in
     /// terms of this one, so try to implement this explicitly if it can
     /// do something better than the default `for` loop implementation.
     ///
@@ -1943,6 +1955,15 @@ pub trait Iterator {
     /// may not terminate for infinite iterators, even on traits for which a
     /// result is determinable in finite time.
     ///
+    /// # Note to Implementors
+    ///
+    /// Several of the other (forward) methods have default implementations in
+    /// terms of this one, so try to implement this explicitly if it can
+    /// do something better than the default `for` loop implementation.
+    ///
+    /// In particular, try to have this call `fold()` on the internal parts
+    /// from which this iterator is composed.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1991,17 +2012,53 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(mut self, init: B, f: F) -> B
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x);
         }
+        accum
+    }
 
-        self.try_fold(init, ok(f)).unwrap()
+    /// The same as [`fold()`](#method.fold), but uses the first element in the
+    /// iterator as the initial value, folding every subsequent element into it.
+    /// If the iterator is empty, return `None`; otherwise, return the result
+    /// of the fold.
+    ///
+    /// # Example
+    ///
+    /// Find the maximum value:
+    ///
+    /// ```
+    /// #![feature(iterator_fold_self)]
+    ///
+    /// fn find_max<I>(iter: I) -> Option<I::Item>
+    ///     where I: Iterator,
+    ///           I::Item: Ord,
+    /// {
+    ///     iter.fold_first(|a, b| {
+    ///         if a >= b { a } else { b }
+    ///     })
+    /// }
+    /// let a = [10, 20, 5, -23, 0];
+    /// let b: [u32; 0] = [];
+    ///
+    /// assert_eq!(find_max(a.iter()), Some(&20));
+    /// assert_eq!(find_max(b.iter()), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_fold_self", issue = "68125")]
+    fn fold_first<F>(mut self, f: F) -> Option<Self::Item>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item, Self::Item) -> Self::Item,
+    {
+        let first = self.next()?;
+        Some(self.fold(first, f))
     }
 
     /// Tests if every element of the iterator matches a predicate.
@@ -2208,7 +2265,7 @@ pub trait Iterator {
     }
 
     /// Applies function to the elements of iterator and returns
-    /// the first non-none result or the first error.
+    /// the first true result or the first error.
     ///
     /// # Examples
     ///
@@ -2229,19 +2286,26 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
-    fn try_find<F, E, R>(&mut self, mut f: F) -> Result<Option<Self::Item>, E>
+    fn try_find<F, R>(&mut self, f: F) -> Result<Option<Self::Item>, R::Error>
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
-        R: Try<Ok = bool, Error = E>,
+        R: Try<Ok = bool>,
     {
-        self.try_for_each(move |x| match f(&x).into_result() {
-            Ok(false) => LoopState::Continue(()),
-            Ok(true) => LoopState::Break(Ok(x)),
-            Err(x) => LoopState::Break(Err(x)),
-        })
-        .break_value()
-        .transpose()
+        #[inline]
+        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> LoopState<(), Result<T, R::Error>>
+        where
+            F: FnMut(&T) -> R,
+            R: Try<Ok = bool>,
+        {
+            move |(), x| match f(&x).into_result() {
+                Ok(false) => LoopState::Continue(()),
+                Ok(true) => LoopState::Break(Ok(x)),
+                Err(x) => LoopState::Break(Err(x)),
+            }
+        }
+
+        self.try_fold((), check(f)).break_value().transpose()
     }
 
     /// Searches for an element in an iterator, returning its index.
@@ -2496,7 +2560,7 @@ pub trait Iterator {
             move |x, y| cmp::max_by(x, y, &mut compare)
         }
 
-        fold1(self, fold(compare))
+        self.fold_first(fold(compare))
     }
 
     /// Returns the element that gives the minimum value from the
@@ -2560,7 +2624,7 @@ pub trait Iterator {
             move |x, y| cmp::min_by(x, y, &mut compare)
         }
 
-        fold1(self, fold(compare))
+        self.fold_first(fold(compare))
     }
 
     /// Reverses an iterator's direction.
@@ -2627,17 +2691,23 @@ pub trait Iterator {
         fn extend<'a, A, B>(
             ts: &'a mut impl Extend<A>,
             us: &'a mut impl Extend<B>,
-        ) -> impl FnMut((A, B)) + 'a {
-            move |(t, u)| {
-                ts.extend(Some(t));
-                us.extend(Some(u));
+        ) -> impl FnMut((), (A, B)) + 'a {
+            move |(), (t, u)| {
+                ts.extend_one(t);
+                us.extend_one(u);
             }
         }
 
         let mut ts: FromA = Default::default();
         let mut us: FromB = Default::default();
 
-        self.for_each(extend(&mut ts, &mut us));
+        let (lower_bound, _) = self.size_hint();
+        if lower_bound > 0 {
+            ts.extend_reserve(lower_bound);
+            us.extend_reserve(lower_bound);
+        }
+
+        self.fold((), extend(&mut ts, &mut us));
 
         (ts, us)
     }
@@ -2654,12 +2724,12 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let v_cloned: Vec<_> = a.iter().copied().collect();
+    /// let v_copied: Vec<_> = a.iter().copied().collect();
     ///
     /// // copied is the same as .map(|&x| x)
     /// let v_map: Vec<_> = a.iter().map(|&x| x).collect();
     ///
-    /// assert_eq!(v_cloned, vec![1, 2, 3]);
+    /// assert_eq!(v_copied, vec![1, 2, 3]);
     /// assert_eq!(v_map, vec![1, 2, 3]);
     /// ```
     #[stable(feature = "iter_copied", since = "1.36.0")]
@@ -2882,7 +2952,7 @@ pub trait Iterator {
     /// assert_eq!([1.].iter().partial_cmp([1., 2.].iter()), Some(Ordering::Less));
     /// assert_eq!([1., 2.].iter().partial_cmp([1.].iter()), Some(Ordering::Greater));
     ///
-    /// assert_eq!([std::f64::NAN].iter().partial_cmp([1.].iter()), None);
+    /// assert_eq!([f64::NAN].iter().partial_cmp([1.].iter()), None);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn partial_cmp<I>(self, other: I) -> Option<Ordering>
@@ -3071,7 +3141,7 @@ pub trait Iterator {
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        matches!(self.partial_cmp(other), Some(Ordering::Less) | Some(Ordering::Equal))
+        matches!(self.partial_cmp(other), Some(Ordering::Less | Ordering::Equal))
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
@@ -3111,7 +3181,7 @@ pub trait Iterator {
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        matches!(self.partial_cmp(other), Some(Ordering::Greater) | Some(Ordering::Equal))
+        matches!(self.partial_cmp(other), Some(Ordering::Greater | Ordering::Equal))
     }
 
     /// Checks if the elements of this iterator are sorted.
@@ -3132,7 +3202,7 @@ pub trait Iterator {
     /// assert!(![1, 3, 2, 4].iter().is_sorted());
     /// assert!([0].iter().is_sorted());
     /// assert!(std::iter::empty::<i32>().is_sorted());
-    /// assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted());
+    /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     /// ```
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
@@ -3159,7 +3229,7 @@ pub trait Iterator {
     /// assert!(![1, 3, 2, 4].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!([0].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// ```
     ///
     /// [`is_sorted`]: trait.Iterator.html#method.is_sorted
@@ -3211,20 +3281,6 @@ pub trait Iterator {
     {
         self.map(f).is_sorted()
     }
-}
-
-/// Fold an iterator without having to provide an initial value.
-#[inline]
-fn fold1<I, F>(mut it: I, f: F) -> Option<I::Item>
-where
-    I: Iterator,
-    F: FnMut(I::Item, I::Item) -> I::Item,
-{
-    // start with the first element as our selection. This avoids
-    // having to use `Option`s inside the loop, translating to a
-    // sizeable performance gain (6x in one case).
-    let first = it.next()?;
-    Some(it.fold(first, f))
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

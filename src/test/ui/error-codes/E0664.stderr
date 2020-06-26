@@ -1,8 +1,8 @@
 error[E0664]: clobber should not be surrounded by braces
-  --> $DIR/E0664.rs:9:12
+  --> $DIR/E0664.rs:9:17
    |
-LL |          : "{eax}"
-   |            ^^^^^^^
+LL |               : "{eax}"
+   |                 ^^^^^^^
 
 error: aborting due to previous error
 

@@ -1,6 +1,5 @@
 use crate::fmt;
 use crate::marker;
-use crate::usize;
 
 use super::{FusedIterator, TrustedLen};
 

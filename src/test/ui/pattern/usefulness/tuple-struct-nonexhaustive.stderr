@@ -8,6 +8,7 @@ LL |     match x {
    |           ^ pattern `Foo(_, _)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Foo`
 
 error: aborting due to previous error
 

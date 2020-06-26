@@ -12,7 +12,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::kw;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::{fmt, mem};
@@ -145,7 +145,7 @@ impl Lit {
     }
 }
 
-pub fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) -> bool {
+pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: bool) -> bool {
     let ident_token = Token::new(Ident(name, is_raw), span);
 
     !ident_token.is_reserved_ident()
@@ -173,7 +173,7 @@ pub fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) -> bool {
         .contains(&name)
 }
 
-fn ident_can_begin_type(name: ast::Name, span: Span, is_raw: bool) -> bool {
+fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
     let ident_token = Token::new(Ident(name, is_raw), span);
 
     !ident_token.is_reserved_ident()
@@ -229,18 +229,18 @@ pub enum TokenKind {
     /// Do not forget about `NtIdent` when you want to match on identifiers.
     /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated identifiers in the same way.
-    Ident(ast::Name, /* is_raw */ bool),
+    Ident(Symbol, /* is_raw */ bool),
     /// Lifetime identifier token.
     /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
     /// It's recommended to use `Token::(lifetime,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated lifetime identifiers in the same way.
-    Lifetime(ast::Name),
+    Lifetime(Symbol),
 
     Interpolated(Lrc<Nonterminal>),
 
     // Can be expanded into several tokens.
     /// A doc comment.
-    DocComment(ast::Name),
+    DocComment(Symbol),
 
     // Junk. These carry no data because we don't really care about the data
     // they *would* carry, and don't really want to allocate a new ident for
@@ -249,9 +249,9 @@ pub enum TokenKind {
     Whitespace,
     /// A comment.
     Comment,
-    Shebang(ast::Name),
+    Shebang(Symbol),
     /// A completely invalid token which should be skipped.
-    Unknown(ast::Name),
+    Unknown(Symbol),
 
     Eof,
 }
@@ -325,8 +325,8 @@ impl Token {
         Token::new(TokenKind::Whitespace, DUMMY_SP)
     }
 
-    /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
-    pub fn from_ast_ident(ident: ast::Ident) -> Self {
+    /// Recovers a `Token` from an `Ident`. This creates a raw identifier if necessary.
+    pub fn from_ast_ident(ident: Ident) -> Self {
         Token::new(Ident(ident.name, ident.is_raw_guess()), ident.span)
     }
 
@@ -424,7 +424,7 @@ impl Token {
                 NtExpr(..) | NtBlock(..) | NtLiteral(..) => true,
                 _ => false,
             },
-            _ => self.can_begin_literal_or_bool(),
+            _ => self.can_begin_literal_maybe_minus(),
         }
     }
 
@@ -448,13 +448,22 @@ impl Token {
     /// Returns `true` if the token is any literal, a minus (which can prefix a literal,
     /// for example a '-42', or one of the boolean idents).
     ///
-    /// Keep this in sync with `Lit::from_token`.
-    pub fn can_begin_literal_or_bool(&self) -> bool {
+    /// In other words, would this token be a valid start of `parse_literal_maybe_minus`?
+    ///
+    /// Keep this in sync with and `Lit::from_token`, excluding unary negation.
+    pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match &**nt {
-                NtExpr(e) | NtLiteral(e) => matches!(e.kind, ast::ExprKind::Lit(_)),
+                NtLiteral(_) => true,
+                NtExpr(e) => match &e.kind {
+                    ast::ExprKind::Lit(_) => true,
+                    ast::ExprKind::Unary(ast::UnOp::Neg, e) => {
+                        matches!(&e.kind, ast::ExprKind::Lit(_))
+                    }
+                    _ => false,
+                },
                 _ => false,
             },
             _ => false,
@@ -479,19 +488,19 @@ impl Token {
     }
 
     /// Returns an identifier if this token is an identifier.
-    pub fn ident(&self) -> Option<(ast::Ident, /* is_raw */ bool)> {
+    pub fn ident(&self) -> Option<(Ident, /* is_raw */ bool)> {
         let token = self.uninterpolate();
         match token.kind {
-            Ident(name, is_raw) => Some((ast::Ident::new(name, token.span), is_raw)),
+            Ident(name, is_raw) => Some((Ident::new(name, token.span), is_raw)),
             _ => None,
         }
     }
 
     /// Returns a lifetime identifier if this token is a lifetime.
-    pub fn lifetime(&self) -> Option<ast::Ident> {
+    pub fn lifetime(&self) -> Option<Ident> {
         let token = self.uninterpolate();
         match token.kind {
-            Lifetime(name) => Some(ast::Ident::new(name, token.span)),
+            Lifetime(name) => Some(Ident::new(name, token.span)),
             _ => None,
         }
     }
@@ -568,28 +577,28 @@ impl Token {
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
-        self.is_non_raw_ident_where(ast::Ident::is_path_segment_keyword)
+        self.is_non_raw_ident_where(Ident::is_path_segment_keyword)
     }
 
     // Returns true for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
-        self.is_non_raw_ident_where(ast::Ident::is_special)
+        self.is_non_raw_ident_where(Ident::is_special)
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(&self) -> bool {
-        self.is_non_raw_ident_where(ast::Ident::is_used_keyword)
+        self.is_non_raw_ident_where(Ident::is_used_keyword)
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(&self) -> bool {
-        self.is_non_raw_ident_where(ast::Ident::is_unused_keyword)
+        self.is_non_raw_ident_where(Ident::is_unused_keyword)
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
-        self.is_non_raw_ident_where(ast::Ident::is_reserved)
+        self.is_non_raw_ident_where(Ident::is_reserved)
     }
 
     /// Returns `true` if the token is the identifier `true` or `false`.
@@ -598,7 +607,7 @@ impl Token {
     }
 
     /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
-    pub fn is_non_raw_ident_where(&self, pred: impl FnOnce(ast::Ident) -> bool) -> bool {
+    pub fn is_non_raw_ident_where(&self, pred: impl FnOnce(Ident) -> bool) -> bool {
         match self.ident() {
             Some((id, false)) => pred(id),
             _ => false,
@@ -737,8 +746,8 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    NtIdent(ast::Ident, /* is_raw */ bool),
-    NtLifetime(ast::Ident),
+    NtIdent(Ident, /* is_raw */ bool),
+    NtLifetime(Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::AttrItem>),

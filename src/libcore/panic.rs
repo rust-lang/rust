@@ -39,8 +39,7 @@ pub struct PanicInfo<'a> {
 impl<'a> PanicInfo<'a> {
     #[unstable(
         feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` \
-                         and related macros",
+        reason = "internal details of the implementation of the `panic!` and related macros",
         issue = "none"
     )]
     #[doc(hidden)]
@@ -55,8 +54,7 @@ impl<'a> PanicInfo<'a> {
 
     #[unstable(
         feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` \
-                         and related macros",
+        reason = "internal details of the implementation of the `panic!` and related macros",
         issue = "none"
     )]
     #[doc(hidden)]
@@ -77,7 +75,11 @@ impl<'a> PanicInfo<'a> {
     /// use std::panic;
     ///
     /// panic::set_hook(Box::new(|panic_info| {
-    ///     println!("panic occurred: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
+    ///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+    ///         println!("panic occurred: {:?}", s);
+    ///     } else {
+    ///         println!("panic occurred");
+    ///     }
     /// }));
     ///
     /// panic!("Normal panic");
@@ -112,8 +114,10 @@ impl<'a> PanicInfo<'a> {
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occurred in file '{}' at line {}", location.file(),
-    ///             location.line());
+    ///         println!("panic occurred in file '{}' at line {}",
+    ///             location.file(),
+    ///             location.line(),
+    ///         );
     ///     } else {
     ///         println!("panic occurred but can't get location information...");
     ///     }
@@ -222,6 +226,8 @@ impl<'a> Location<'a> {
     /// assert_ne!(this_location.line(), another_location.line());
     /// assert_ne!(this_location.column(), another_location.column());
     /// ```
+    // FIXME: When stabilizing this method, please also update the documentation
+    // of `intrinsics::caller_location`.
     #[unstable(
         feature = "track_caller",
         reason = "uses #[track_caller] which is not yet stable",
@@ -236,8 +242,7 @@ impl<'a> Location<'a> {
 impl<'a> Location<'a> {
     #![unstable(
         feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` \
-                          and related macros",
+        reason = "internal details of the implementation of the `panic!` and related macros",
         issue = "none"
     )]
     #[doc(hidden)]

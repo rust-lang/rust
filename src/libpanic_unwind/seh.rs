@@ -45,7 +45,6 @@
 //! [llvm]: http://llvm.org/docs/ExceptionHandling.html#background-on-windows-exceptions
 
 #![allow(nonstandard_style)]
-#![allow(private_no_mangle_fns)]
 
 use alloc::boxed::Box;
 use core::any::Any;
@@ -118,7 +117,7 @@ mod imp {
     }
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "arm"))]
+#[cfg(not(target_arch = "x86"))]
 #[macro_use]
 mod imp {
     pub type ptr_t = u32;
@@ -214,7 +213,6 @@ extern "C" {
 //
 // This is fine since the MSVC runtime uses string comparison on the type name
 // to match TypeDescriptors rather than pointer equality.
-#[cfg_attr(bootstrap, lang = "eh_catch_typeinfo")]
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
     pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
     spare: core::ptr::null_mut(),
@@ -329,5 +327,5 @@ pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
 #[lang = "eh_personality"]
 #[cfg(not(test))]
 fn rust_eh_personality() {
-    unsafe { core::intrinsics::abort() }
+    core::intrinsics::abort()
 }

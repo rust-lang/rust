@@ -12,7 +12,7 @@ use crate::channel;
 use crate::channel::GitInfo;
 use crate::compile;
 use crate::toolstate::ToolState;
-use crate::util::{add_lib_path, exe, CiEnv};
+use crate::util::{add_dylib_path, exe, CiEnv};
 use crate::Compiler;
 use crate::Mode;
 
@@ -252,6 +252,10 @@ pub fn prepare_tool_cargo(
     // own copy
     cargo.env("LZMA_API_STATIC", "1");
 
+    // CFG_RELEASE is needed by rustfmt (and possibly other tools) which
+    // import rustc-ap-rustc_attr which requires this to be set for the
+    // `#[cfg(version(...))]` attribute.
+    cargo.env("CFG_RELEASE", builder.rust_release());
     cargo.env("CFG_RELEASE_CHANNEL", &builder.config.channel);
     cargo.env("CFG_VERSION", builder.rust_version());
     cargo.env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM);
@@ -378,6 +382,7 @@ bootstrap_tool!(
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
+    ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -388,7 +393,7 @@ pub struct ErrorIndex {
 impl ErrorIndex {
     pub fn command(builder: &Builder<'_>, compiler: Compiler) -> Command {
         let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
-        add_lib_path(
+        add_dylib_path(
             vec![PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host))],
             &mut cmd,
         );
@@ -476,7 +481,7 @@ impl Step for Rustdoc {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rustdoc")
+        run.path("src/tools/rustdoc").path("src/librustdoc")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -590,6 +595,7 @@ macro_rules! tool_extended {
        $toolstate:ident,
        $path:expr,
        $tool_name:expr,
+       stable = $stable:expr,
        $extra_deps:block;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -601,12 +607,25 @@ macro_rules! tool_extended {
 
         impl Step for $name {
             type Output = Option<PathBuf>;
-            const DEFAULT: bool = true;
+            const DEFAULT: bool = true; // Overwritten below
             const ONLY_HOSTS: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let builder = run.builder;
-                run.path($path).default_condition(builder.config.extended)
+                run.path($path).default_condition(
+                    builder.config.extended
+                        && builder.config.tools.as_ref().map_or(
+                            // By default, on nightly/dev enable all tools, else only
+                            // build stable tools.
+                            $stable || builder.build.unstable_features(),
+                            // If `tools` is set, search list for this tool.
+                            |tools| {
+                                tools.iter().any(|tool| match tool.as_ref() {
+                                    "clippy" => $tool_name == "clippy-driver",
+                                    x => $tool_name == x,
+                            })
+                        }),
+                )
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -636,23 +655,23 @@ macro_rules! tool_extended {
     }
 }
 
+// Note: tools need to be also added to `Builder::get_step_descriptions` in `build.rs`
+// to make `./x.py build <tool>` work.
 tool_extended!((self, builder),
-    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", {};
-    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", {};
-    Clippy, clippy, "src/tools/clippy", "clippy-driver", {};
-    Miri, miri, "src/tools/miri", "miri", {};
-    CargoMiri, miri, "src/tools/miri", "cargo-miri", {};
-    Rls, rls, "src/tools/rls", "rls", {
-        let clippy = builder.ensure(Clippy {
+    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", stable=true, {};
+    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", stable=true, {};
+    Clippy, clippy, "src/tools/clippy", "clippy-driver", stable=true, {};
+    Miri, miri, "src/tools/miri", "miri", stable=false, {};
+    CargoMiri, miri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, {};
+    Rls, rls, "src/tools/rls", "rls", stable=true, {
+        builder.ensure(Clippy {
             compiler: self.compiler,
             target: self.target,
             extra_features: Vec::new(),
         });
-        if clippy.is_some() {
-            self.extra_features.push("clippy".to_owned());
-        }
+        self.extra_features.push("clippy".to_owned());
     };
-    Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", {};
+    Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, {};
 );
 
 impl<'a> Builder<'a> {
@@ -689,7 +708,7 @@ impl<'a> Builder<'a> {
             }
         }
 
-        add_lib_path(lib_paths, &mut cmd);
+        add_dylib_path(lib_paths, &mut cmd);
         cmd
     }
 }

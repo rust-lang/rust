@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
 use std::mem::size_of;
-use std::{isize, usize};
 
 pub trait IntoCow<'a, B: ?Sized>
 where
@@ -266,14 +265,14 @@ fn test_split_off_empty() {
 fn test_split_off_past_end() {
     let orig = "Hello, world!";
     let mut split = String::from(orig);
-    split.split_off(orig.len() + 1);
+    let _ = split.split_off(orig.len() + 1);
 }
 
 #[test]
 #[should_panic]
 fn test_split_off_mid_char() {
     let mut orig = String::from("山");
-    orig.split_off(1);
+    let _ = orig.split_off(1);
 }
 
 #[test]
@@ -556,6 +555,7 @@ fn test_reserve_exact() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
+#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve() {
     // These are the interesting cases:
     // * exactly isize::MAX should never trigger a CapacityOverflow (can be OOM)
@@ -645,6 +645,7 @@ fn test_try_reserve() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
+#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve_exact() {
     // This is exactly the same as test_try_reserve with the method changed.
     // See that test for comments.

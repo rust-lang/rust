@@ -1,0 +1,40 @@
+error: mutable memory (`UnsafeCell`) is not allowed in constant
+  --> $DIR/mutable_references_err.rs:16:1
+   |
+LL | / const MUH: Meh = Meh {
+LL | |     x: &UnsafeCell::new(42),
+LL | | };
+   | |__^
+
+error: mutable memory (`UnsafeCell`) is not allowed in constant
+  --> $DIR/mutable_references_err.rs:26:1
+   |
+LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable memory (`&mut`) is not allowed in constant
+  --> $DIR/mutable_references_err.rs:30:1
+   |
+LL | const BLUNT: &mut i32 = &mut 42;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_references_err.rs:17:8
+   |
+LL |     x: &UnsafeCell::new(42),
+   |        ^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_references_err.rs:26:27
+   |
+LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check for `const_mut_refs` feature
+  --> $DIR/mutable_references_err.rs:30:25
+   |
+LL | const BLUNT: &mut i32 = &mut 42;
+   |                         ^^^^^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
+

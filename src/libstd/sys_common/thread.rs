@@ -1,17 +1,6 @@
 use crate::env;
 use crate::sync::atomic::{self, Ordering};
-use crate::sys::stack_overflow;
 use crate::sys::thread as imp;
-
-#[allow(dead_code)]
-pub unsafe fn start_thread(main: *mut u8) {
-    // Next, set up our stack overflow handler which may get triggered if we run
-    // out of stack.
-    let _handler = stack_overflow::Handler::new();
-
-    // Finally, let's run some code.
-    Box::from_raw(main as *mut Box<dyn FnOnce()>)()
-}
 
 pub fn min_stack() -> usize {
     static MIN: atomic::AtomicUsize = atomic::AtomicUsize::new(0);

@@ -2,14 +2,14 @@
 //!
 //! This contains the dataflow analysis used to track `Qualif`s on complex control-flow graphs.
 
-use rustc::mir::visit::Visitor;
-use rustc::mir::{self, BasicBlock, Local, Location};
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::{self, BasicBlock, Local, Location};
 
 use std::marker::PhantomData;
 
-use super::{Item, Qualif};
-use crate::dataflow::{self as old_dataflow, generic as dataflow};
+use super::{qualifs, ConstCx, Qualif};
+use crate::dataflow;
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.
@@ -18,7 +18,7 @@ use crate::dataflow::{self as old_dataflow, generic as dataflow};
 /// the `MaybeMutBorrowedLocals` dataflow pass to see if a `Local` may have become qualified via
 /// an indirect assignment or function call.
 struct TransferFunction<'a, 'mir, 'tcx, Q> {
-    item: &'a Item<'mir, 'tcx>,
+    ccx: &'a ConstCx<'mir, 'tcx>,
     qualifs_per_local: &'a mut BitSet<Local>,
 
     _qualif: PhantomData<Q>,
@@ -28,16 +28,16 @@ impl<Q> TransferFunction<'a, 'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    fn new(item: &'a Item<'mir, 'tcx>, qualifs_per_local: &'a mut BitSet<Local>) -> Self {
-        TransferFunction { item, qualifs_per_local, _qualif: PhantomData }
+    fn new(ccx: &'a ConstCx<'mir, 'tcx>, qualifs_per_local: &'a mut BitSet<Local>) -> Self {
+        TransferFunction { ccx, qualifs_per_local, _qualif: PhantomData }
     }
 
     fn initialize_state(&mut self) {
         self.qualifs_per_local.clear();
 
-        for arg in self.item.body.args_iter() {
-            let arg_ty = self.item.body.local_decls[arg].ty;
-            if Q::in_any_value_of_ty(self.item, arg_ty) {
+        for arg in self.ccx.body.args_iter() {
+            let arg_ty = self.ccx.body.local_decls[arg].ty;
+            if Q::in_any_value_of_ty(self.ccx, arg_ty) {
                 self.qualifs_per_local.insert(arg);
             }
         }
@@ -66,20 +66,17 @@ where
     fn apply_call_return_effect(
         &mut self,
         _block: BasicBlock,
-        func: &mir::Operand<'tcx>,
-        args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        _func: &mir::Operand<'tcx>,
+        _args: &[mir::Operand<'tcx>],
+        return_place: mir::Place<'tcx>,
     ) {
-        let return_ty = return_place.ty(*self.item.body, self.item.tcx).ty;
-        let qualif = Q::in_call(
-            self.item,
-            &mut |l| self.qualifs_per_local.contains(l),
-            func,
-            args,
-            return_ty,
-        );
+        // We cannot reason about another function's internals, so use conservative type-based
+        // qualification for the result of a function call.
+        let return_ty = return_place.ty(self.ccx.body, self.ccx.tcx).ty;
+        let qualif = Q::in_any_value_of_ty(self.ccx, return_ty);
+
         if !return_place.is_indirect() {
-            self.assign_qualif_direct(return_place, qualif);
+            self.assign_qualif_direct(&return_place, qualif);
         }
     }
 }
@@ -110,7 +107,11 @@ where
         rvalue: &mir::Rvalue<'tcx>,
         location: Location,
     ) {
-        let qualif = Q::in_rvalue(self.item, &mut |l| self.qualifs_per_local.contains(l), rvalue);
+        let qualif = qualifs::in_rvalue::<Q, _>(
+            self.ccx,
+            &mut |l| self.qualifs_per_local.contains(l),
+            rvalue,
+        );
         if !place.is_indirect() {
             self.assign_qualif_direct(place, qualif);
         }
@@ -120,27 +121,31 @@ where
         self.super_assign(place, rvalue, location);
     }
 
-    fn visit_terminator_kind(&mut self, kind: &mir::TerminatorKind<'tcx>, location: Location) {
+    fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         // The effect of assignment to the return place in `TerminatorKind::Call` is not applied
         // here; that occurs in `apply_call_return_effect`.
 
-        if let mir::TerminatorKind::DropAndReplace { value, location: dest, .. } = kind {
-            let qualif =
-                Q::in_operand(self.item, &mut |l| self.qualifs_per_local.contains(l), value);
-            if !dest.is_indirect() {
-                self.assign_qualif_direct(dest, qualif);
+        if let mir::TerminatorKind::DropAndReplace { value, place, .. } = &terminator.kind {
+            let qualif = qualifs::in_operand::<Q, _>(
+                self.ccx,
+                &mut |l| self.qualifs_per_local.contains(l),
+                value,
+            );
+
+            if !place.is_indirect() {
+                self.assign_qualif_direct(place, qualif);
             }
         }
 
         // We need to assign qualifs to the dropped location before visiting the operand that
         // replaces it since qualifs can be cleared on move.
-        self.super_terminator_kind(kind, location);
+        self.super_terminator(terminator, location);
     }
 }
 
 /// The dataflow analysis used to propagate qualifs on arbitrary CFGs.
 pub(super) struct FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q> {
-    item: &'a Item<'mir, 'tcx>,
+    ccx: &'a ConstCx<'mir, 'tcx>,
     _qualif: PhantomData<Q>,
 }
 
@@ -148,19 +153,19 @@ impl<'a, 'mir, 'tcx, Q> FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    pub(super) fn new(_: Q, item: &'a Item<'mir, 'tcx>) -> Self {
-        FlowSensitiveAnalysis { item, _qualif: PhantomData }
+    pub(super) fn new(_: Q, ccx: &'a ConstCx<'mir, 'tcx>) -> Self {
+        FlowSensitiveAnalysis { ccx, _qualif: PhantomData }
     }
 
     fn transfer_function(
         &self,
         state: &'a mut BitSet<Local>,
     ) -> TransferFunction<'a, 'mir, 'tcx, Q> {
-        TransferFunction::<Q>::new(self.item, state)
+        TransferFunction::<Q>::new(self.ccx, state)
     }
 }
 
-impl<Q> old_dataflow::BottomValue for FlowSensitiveAnalysis<'_, '_, '_, Q> {
+impl<Q> dataflow::BottomValue for FlowSensitiveAnalysis<'_, '_, '_, Q> {
     const BOTTOM_VALUE: bool = false;
 }
 
@@ -209,7 +214,7 @@ where
         block: BasicBlock,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
-        return_place: &mir::Place<'tcx>,
+        return_place: mir::Place<'tcx>,
     ) {
         self.transfer_function(state).apply_call_return_effect(block, func, args, return_place)
     }

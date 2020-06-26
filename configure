@@ -11,6 +11,7 @@ try() {
     fi
 }
 
+try python3 "$@"
 try python2.7 "$@"
 try python27 "$@"
 try python2 "$@"

@@ -3,8 +3,11 @@ error[E0038]: the trait `issue_3907::Foo` cannot be made into an object
    |
 LL | fn bar(_x: Foo) {}
    |            ^^^ the trait `issue_3907::Foo` cannot be made into an object
+   | 
+  ::: $DIR/auxiliary/issue-3907.rs:2:8
    |
-   = note: the trait cannot be made into an object because associated function `bar` has no `self` parameter
+LL |     fn bar();
+   |        --- the trait cannot be made into an object because associated function `bar` has no `self` parameter
 
 error: aborting due to previous error
 

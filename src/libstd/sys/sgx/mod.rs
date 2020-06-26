@@ -124,7 +124,7 @@ pub unsafe fn strlen(mut s: *const c_char) -> usize {
     return n;
 }
 
-pub unsafe fn abort_internal() -> ! {
+pub fn abort_internal() -> ! {
     abi::usercalls::exit(true)
 }
 
@@ -133,7 +133,7 @@ pub unsafe fn abort_internal() -> ! {
 #[cfg(not(test))]
 #[no_mangle]
 // NB. used by both libunwind and libpanic_abort
-pub unsafe extern "C" fn __rust_abort() {
+pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 

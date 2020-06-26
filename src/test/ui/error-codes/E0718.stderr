@@ -1,8 +1,8 @@
-error[E0718]: `arc` language item must be applied to a struct
+error[E0718]: `owned_box` language item must be applied to a struct
   --> $DIR/E0718.rs:4:1
    |
-LL | #[lang = "arc"]
-   | ^^^^^^^^^^^^^^^ attribute should be applied to a struct, not a static item
+LL | #[lang = "owned_box"]
+   | ^^^^^^^^^^^^^^^^^^^^^ attribute should be applied to a struct, not a static item
 
 error: aborting due to previous error
 

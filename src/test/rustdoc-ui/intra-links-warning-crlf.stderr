@@ -31,3 +31,5 @@ LL |  * It also has an [error].
    |
    = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
+warning: 4 warnings emitted
+

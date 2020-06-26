@@ -3,8 +3,8 @@
 use super::namespace::item_namespace;
 use super::CrateDebugContext;
 
-use rustc::ty::DefIdTree;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::DefIdTree;
 
 use crate::common::CodegenCx;
 use crate::llvm;
@@ -24,9 +24,7 @@ pub fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
 
 #[allow(non_snake_case)]
 pub fn create_DIArray(builder: &DIBuilder<'ll>, arr: &[Option<&'ll DIDescriptor>]) -> &'ll DIArray {
-    return unsafe {
-        llvm::LLVMRustDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32)
-    };
+    unsafe { llvm::LLVMRustDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32) }
 }
 
 #[inline]

@@ -1,0 +1,28 @@
+error[E0412]: cannot find type `Nonexistent` in this scope
+  --> $DIR/issue-72590-type-error-sized.rs:6:10
+   |
+LL |     foo: Nonexistent,
+   |          ^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/issue-72590-type-error-sized.rs:11:11
+   |
+LL |     test: Missing
+   |           ^^^^^^^ not found in this scope
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/issue-72590-type-error-sized.rs:15:19
+   |
+LL |     async fn frob(self) {}
+   |                   ^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Foo`, the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required because it appears within the type `Foo`
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0412.
+For more information about an error, try `rustc --explain E0277`.

@@ -46,11 +46,11 @@
 // lldbg-check:[...]$1 = 2
 // lldbr-check:(isize) constant = 2
 // lldb-command:print a_struct
-// lldbg-check:[...]$2 = Struct { a: -3, b: 4.5, c: 5 }
-// lldbr-check:(var_captured_in_stack_closure::Struct) a_struct = Struct { a: -3, b: 4.5, c: 5 }
+// lldbg-check:[...]$2 = { a = -3 b = 4.5 c = 5 }
+// lldbr-check:(var_captured_in_stack_closure::Struct) a_struct = { a = -3 b = 4.5 c = 5 }
 // lldb-command:print *struct_ref
-// lldbg-check:[...]$3 = Struct { a: -3, b: 4.5, c: 5 }
-// lldbr-check:(var_captured_in_stack_closure::Struct) *struct_ref = Struct { a: -3, b: 4.5, c: 5 }
+// lldbg-check:[...]$3 = { a = -3 b = 4.5 c = 5 }
+// lldbr-check:(var_captured_in_stack_closure::Struct) *struct_ref = { a = -3 b = 4.5 c = 5 }
 // lldb-command:print *owned
 // lldbg-check:[...]$4 = 6
 // lldbr-check:(isize) *owned = 6
@@ -64,11 +64,11 @@
 // lldbg-check:[...]$6 = 2
 // lldbr-check:(isize) constant = 2
 // lldb-command:print a_struct
-// lldbg-check:[...]$7 = Struct { a: -3, b: 4.5, c: 5 }
-// lldbr-check:(var_captured_in_stack_closure::Struct) a_struct = Struct { a: -3, b: 4.5, c: 5 }
+// lldbg-check:[...]$7 = { a = -3 b = 4.5 c = 5 }
+// lldbr-check:(var_captured_in_stack_closure::Struct) a_struct = { a = -3 b = 4.5 c = 5 }
 // lldb-command:print *struct_ref
-// lldbg-check:[...]$8 = Struct { a: -3, b: 4.5, c: 5 }
-// lldbr-check:(var_captured_in_stack_closure::Struct) *struct_ref = Struct { a: -3, b: 4.5, c: 5 }
+// lldbg-check:[...]$8 = { a = -3 b = 4.5 c = 5 }
+// lldbr-check:(var_captured_in_stack_closure::Struct) *struct_ref = { a = -3 b = 4.5 c = 5 }
 // lldb-command:print *owned
 // lldbg-check:[...]$9 = 6
 // lldbr-check:(isize) *owned = 6

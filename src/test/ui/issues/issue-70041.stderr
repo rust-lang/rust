@@ -1,0 +1,21 @@
+warning: unused macro definition
+  --> $DIR/issue-70041.rs:4:1
+   |
+LL | / macro_rules! regex {
+LL | |
+LL | |     () => {};
+LL | | }
+   | |_^
+   |
+   = note: `#[warn(unused_macros)]` on by default
+
+warning: unused import: `regex`
+  --> $DIR/issue-70041.rs:10:5
+   |
+LL | use regex;
+   |     ^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: 2 warnings emitted
+

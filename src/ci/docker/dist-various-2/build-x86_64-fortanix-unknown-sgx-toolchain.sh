@@ -13,12 +13,15 @@ url="https://github.com/fortanix/llvm-project/archive/${1}.tar.gz"
 repo_name="llvm-project"
 
 install_prereq() {
+    curl https://apt.llvm.org/llvm-snapshot.gpg.key|apt-key add -
+    add-apt-repository -y 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic main'
     apt-get update
     apt-get install -y --no-install-recommends \
             build-essential \
             ca-certificates \
             cmake \
-            git
+            git \
+            clang-11
 }
 
 build_unwind() {
@@ -35,7 +38,14 @@ build_unwind() {
     # Build libunwind
     mkdir -p build
     cd build
+    target_CC="CC_${target//-/_}"
+    target_CXX="CXX_${target//-/_}"
+    target_CFLAGS="CFLAGS_${target//-/_}"
+    target_CXXFLAGS="CXXFLAGS_${target//-/_}"
     cmake -DCMAKE_BUILD_TYPE="RELEASE" -DRUST_SGX=1 -G "Unix Makefiles" \
+        -DCMAKE_C_COMPILER="${!target_CC}" -DCMAKE_CXX_COMPILER="${!target_CXX}" \
+        -DCMAKE_C_FLAGS="${!target_CFLAGS}" -DCMAKE_CXX_FLAGS="${!target_CXXFLAGS}" \
+        -DCMAKE_C_COMPILER_TARGET=$target -DCMAKE_CXX_COMPILER_TARGET=$target \
         -DLLVM_ENABLE_WARNINGS=1 -DLIBUNWIND_ENABLE_WERROR=1 -DLIBUNWIND_ENABLE_PEDANTIC=0 \
         -DLLVM_PATH=../../llvm/ ../
     make unwind_static

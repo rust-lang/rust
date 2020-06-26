@@ -744,7 +744,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
                 Status::OK
             }
 
-            (Category::Zero, _) | (_, Category::NaN) | (_, Category::Infinity) => {
+            (Category::Zero, _) | (_, Category::NaN | Category::Infinity) => {
                 self = rhs;
                 Status::OK
             }
@@ -954,7 +954,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
                 Status::INVALID_OP.and(Self::NAN)
             }
 
-            (Category::Infinity, _) | (Category::Zero, _) => Status::OK.and(self),
+            (Category::Infinity | Category::Zero, _) => Status::OK.and(self),
 
             (Category::Normal, Category::Infinity) => {
                 self.category = Category::Zero;
@@ -989,8 +989,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
     fn c_fmod(mut self, rhs: Self) -> StatusAnd<Self> {
         match (self.category, rhs.category) {
             (Category::NaN, _)
-            | (Category::Zero, Category::Infinity)
-            | (Category::Zero, Category::Normal)
+            | (Category::Zero, Category::Infinity | Category::Normal)
             | (Category::Normal, Category::Infinity) => Status::OK.and(self),
 
             (_, Category::NaN) => {

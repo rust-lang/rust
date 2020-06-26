@@ -29,17 +29,17 @@ mod mod3 {
     use mod2::Foo;
 
     #[rustc_clean(label="hir_owner", cfg="rpass2")]
-    #[rustc_clean(label="hir_owner_items", cfg="rpass2")]
+    #[rustc_clean(label="hir_owner_nodes", cfg="rpass2")]
     #[rustc_clean(label="hir_owner", cfg="rpass3")]
-    #[rustc_dirty(label="hir_owner_items", cfg="rpass3")]
+    #[rustc_dirty(label="hir_owner_nodes", cfg="rpass3")]
     fn in_expr() {
         Foo(0);
     }
 
     #[rustc_clean(label="hir_owner", cfg="rpass2")]
-    #[rustc_clean(label="hir_owner_items", cfg="rpass2")]
+    #[rustc_clean(label="hir_owner_nodes", cfg="rpass2")]
     #[rustc_clean(label="hir_owner", cfg="rpass3")]
-    #[rustc_dirty(label="hir_owner_items", cfg="rpass3")]
+    #[rustc_dirty(label="hir_owner_nodes", cfg="rpass3")]
     fn in_type() {
         test::<Foo>();
     }

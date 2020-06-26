@@ -31,7 +31,6 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
 use std::error;
-
 use std::ffi::OsStr;
 use std::fmt::{self, Formatter, Write};
 use std::fs::{self, File};
@@ -40,17 +39,18 @@ use std::io::{self, BufReader};
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::str;
+use std::string::ToString;
 use std::sync::Arc;
 
-use rustc::middle::privacy::AccessLevels;
-use rustc::middle::stability;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
+use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::stability;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::FileName;
@@ -58,7 +58,7 @@ use rustc_span::symbol::{sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy};
+use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, TypeKind};
 use crate::config::{OutputFormat, RenderOptions};
 use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
@@ -92,7 +92,7 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 #[derive(Debug)]
 pub struct Error {
     pub file: PathBuf,
-    pub error: io::Error,
+    pub error: String,
 }
 
 impl error::Error for Error {}
@@ -109,8 +109,11 @@ impl std::fmt::Display for Error {
 }
 
 impl PathError for Error {
-    fn new<P: AsRef<Path>>(e: io::Error, path: P) -> Error {
-        Error { file: path.as_ref().to_path_buf(), error: e }
+    fn new<S, P: AsRef<Path>>(e: S, path: P) -> Error
+    where
+        S: ToString + Sized,
+    {
+        Error { file: path.as_ref().to_path_buf(), error: e.to_string() }
     }
 }
 
@@ -293,7 +296,12 @@ impl Serialize for IndexItem {
     where
         S: Serializer,
     {
-        assert_eq!(self.parent.is_some(), self.parent_idx.is_some());
+        assert_eq!(
+            self.parent.is_some(),
+            self.parent_idx.is_some(),
+            "`{}` is missing idx",
+            self.name
+        );
 
         (self.ty, &self.name, &self.path, &self.desc, self.parent_idx, &self.search_type)
             .serialize(serializer)
@@ -302,19 +310,25 @@ impl Serialize for IndexItem {
 
 /// A type used for the search index.
 #[derive(Debug)]
-struct Type {
+struct RenderType {
+    ty: Option<DefId>,
+    idx: Option<usize>,
     name: Option<String>,
-    generics: Option<Vec<String>>,
+    generics: Option<Vec<Generic>>,
 }
 
-impl Serialize for Type {
+impl Serialize for RenderType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         if let Some(name) = &self.name {
             let mut seq = serializer.serialize_seq(None)?;
-            seq.serialize_element(&name)?;
+            if let Some(id) = self.idx {
+                seq.serialize_element(&id)?;
+            } else {
+                seq.serialize_element(&name)?;
+            }
             if let Some(generics) = &self.generics {
                 seq.serialize_element(&generics)?;
             }
@@ -325,11 +339,32 @@ impl Serialize for Type {
     }
 }
 
+/// A type used for the search index.
+#[derive(Debug)]
+struct Generic {
+    name: String,
+    defid: Option<DefId>,
+    idx: Option<usize>,
+}
+
+impl Serialize for Generic {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(id) = self.idx {
+            serializer.serialize_some(&id)
+        } else {
+            serializer.serialize_some(&self.name)
+        }
+    }
+}
+
 /// Full type of functions/methods in the search index.
 #[derive(Debug)]
 struct IndexItemFunctionType {
-    inputs: Vec<Type>,
-    output: Option<Vec<Type>>,
+    inputs: Vec<TypeWithKind>,
+    output: Option<Vec<TypeWithKind>>,
 }
 
 impl Serialize for IndexItemFunctionType {
@@ -340,8 +375,8 @@ impl Serialize for IndexItemFunctionType {
         // If we couldn't figure out a type, just write `null`.
         let mut iter = self.inputs.iter();
         if match self.output {
-            Some(ref output) => iter.chain(output.iter()).any(|ref i| i.name.is_none()),
-            None => iter.any(|ref i| i.name.is_none()),
+            Some(ref output) => iter.chain(output.iter()).any(|ref i| i.ty.name.is_none()),
+            None => iter.any(|ref i| i.ty.name.is_none()),
         } {
             serializer.serialize_none()
         } else {
@@ -356,6 +391,31 @@ impl Serialize for IndexItemFunctionType {
             }
             seq.end()
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct TypeWithKind {
+    ty: RenderType,
+    kind: TypeKind,
+}
+
+impl From<(RenderType, TypeKind)> for TypeWithKind {
+    fn from(x: (RenderType, TypeKind)) -> TypeWithKind {
+        TypeWithKind { ty: x.0, kind: x.1 }
+    }
+}
+
+impl Serialize for TypeWithKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        seq.serialize_element(&self.ty.name)?;
+        let x: ItemType = self.kind.into();
+        seq.serialize_element(&x)?;
+        seq.end()
     }
 }
 
@@ -413,7 +473,7 @@ pub fn run(
     } = options;
 
     let src_root = match krate.src {
-        FileName::Real(ref p) => match p.parent() {
+        FileName::Real(ref p) => match p.local_path().parent() {
             Some(p) => p.to_path_buf(),
             None => PathBuf::new(),
         },
@@ -505,7 +565,7 @@ pub fn run(
 
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-    write_shared(&cx, &krate, index, &md_opts, diag)?;
+    write_shared(&cx, &krate, index, &md_opts)?;
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
 
     // And finally render the whole crate's documentation
@@ -525,7 +585,6 @@ fn write_shared(
     krate: &clean::Crate,
     search_index: String,
     options: &RenderOptions,
-    diag: &rustc_errors::Handler,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
@@ -730,47 +789,41 @@ themePicker.onblur = handleThemeButtonsBlur;
                         .split('"')
                         .next()
                         .map(|s| s.to_owned())
-                        .unwrap_or_else(|| String::new()),
+                        .unwrap_or_else(String::new),
                 );
             }
         }
         Ok((ret, krates))
     }
 
-    fn show_item(item: &IndexItem, krate: &str) -> String {
-        format!(
-            "{{'crate':'{}','ty':{},'name':'{}','desc':'{}','p':'{}'{}}}",
-            krate,
-            item.ty as usize,
-            item.name,
-            item.desc.replace("'", "\\'"),
-            item.path,
-            if let Some(p) = item.parent_idx { format!(",'parent':{}", p) } else { String::new() }
-        )
-    }
+    fn collect_json(path: &Path, krate: &str) -> io::Result<(Vec<String>, Vec<String>)> {
+        let mut ret = Vec::new();
+        let mut krates = Vec::new();
 
-    let dst = cx.dst.join(&format!("aliases{}.js", cx.shared.resource_suffix));
-    {
-        let (mut all_aliases, _) = try_err!(collect(&dst, &krate.name, "ALIASES"), &dst);
-        let mut output = String::with_capacity(100);
-        for (alias, items) in &cx.cache.aliases {
-            if items.is_empty() {
-                continue;
+        if path.exists() {
+            for line in BufReader::new(File::open(path)?).lines() {
+                let line = line?;
+                if !line.starts_with('"') {
+                    continue;
+                }
+                if line.starts_with(&format!("\"{}\"", krate)) {
+                    continue;
+                }
+                if line.ends_with(",\\") {
+                    ret.push(line[..line.len() - 2].to_string());
+                } else {
+                    // Ends with "\\" (it's the case for the last added crate line)
+                    ret.push(line[..line.len() - 1].to_string());
+                }
+                krates.push(
+                    line.split('"')
+                        .find(|s| !s.is_empty())
+                        .map(|s| s.to_owned())
+                        .unwrap_or_else(String::new),
+                );
             }
-            output.push_str(&format!(
-                "\"{}\":[{}],",
-                alias,
-                items.iter().map(|v| show_item(v, &krate.name)).collect::<Vec<_>>().join(",")
-            ));
         }
-        all_aliases.push(format!("ALIASES[\"{}\"] = {{{}}};", krate.name, output));
-        all_aliases.sort();
-        let mut v = Buffer::html();
-        writeln!(&mut v, "var ALIASES = {{}};");
-        for aliases in &all_aliases {
-            writeln!(&mut v, "{}", aliases);
-        }
-        cx.shared.fs.write(&dst, v.into_inner().into_bytes())?;
+        Ok((ret, krates))
     }
 
     use std::ffi::OsString;
@@ -857,18 +910,18 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     // Update the search index
     let dst = cx.dst.join(&format!("search-index{}.js", cx.shared.resource_suffix));
-    let (mut all_indexes, mut krates) = try_err!(collect(&dst, &krate.name, "searchIndex"), &dst);
+    let (mut all_indexes, mut krates) = try_err!(collect_json(&dst, &krate.name), &dst);
     all_indexes.push(search_index);
 
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
     {
-        let mut v = String::from("var searchIndex={};\n");
-        v.push_str(&all_indexes.join("\n"));
+        let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
+        v.push_str(&all_indexes.join(",\\\n"));
         // "addSearchOptions" has to be called first so the crate filtering can be set before the
         // search might start (if it's set into the URL for example).
-        v.push_str("\naddSearchOptions(searchIndex);initSearch(searchIndex);");
+        v.push_str("\\\n}');\naddSearchOptions(searchIndex);initSearch(searchIndex);");
         cx.shared.fs.write(&dst, &v)?;
     }
     if options.enable_index_page {
@@ -877,7 +930,8 @@ themePicker.onblur = handleThemeButtonsBlur;
             md_opts.output = cx.dst.clone();
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
-            crate::markdown::render(index_page, md_opts, diag, cx.shared.edition);
+            crate::markdown::render(&index_page, md_opts, cx.shared.edition)
+                .map_err(|e| Error::new(e, &index_page))?;
         } else {
             let dst = cx.dst.join("index.html");
             let page = layout::Page {
@@ -1567,18 +1621,19 @@ impl Context {
 
         // We can safely ignore synthetic `SourceFile`s.
         let file = match item.source.filename {
-            FileName::Real(ref path) => path,
+            FileName::Real(ref path) => path.local_path().to_path_buf(),
             _ => return None,
         };
+        let file = &file;
 
-        let (krate, path) = if item.def_id.is_local() {
+        let (krate, path) = if item.source.cnum == LOCAL_CRATE {
             if let Some(path) = self.shared.local_sources.get(file) {
                 (&self.shared.layout.krate, path)
             } else {
                 return None;
             }
         } else {
-            let (krate, src_root) = match *self.cache.extern_locations.get(&item.def_id.krate)? {
+            let (krate, src_root) = match *self.cache.extern_locations.get(&item.source.cnum)? {
                 (ref name, ref src, Local) => (name, src),
                 (ref name, ref src, Remote(ref s)) => {
                     root = s.to_string();
@@ -2106,7 +2161,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                     docs = MarkdownSummaryLine(doc_value, &myitem.links()).to_string(),
                     class = myitem.type_(),
                     add = add,
-                    stab = stab.unwrap_or_else(|| String::new()),
+                    stab = stab.unwrap_or_else(String::new),
                     unsafety_flag = unsafety_flag,
                     href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
                     title = [full_path(cx, myitem), myitem.type_().to_string()]
@@ -2198,7 +2253,10 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             );
             message.push_str(&format!(": {}", html.to_string()));
         }
-        stability.push(format!("<div class='stab deprecated'>{}</div>", message));
+        stability.push(format!(
+            "<div class='stab deprecated'><span class='emoji'>👎</span> {}</div>",
+            message,
+        ));
     }
 
     if let Some(stab) = item.stability.as_ref().filter(|stab| stab.level == stability::Unstable) {
@@ -3151,7 +3209,6 @@ fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
             continue;
         }
 
-        // FIXME: this currently renders too many spaces as in: `#[repr(C, align (8))]`.
         attrs.push_str(&pprust::attribute_to_string(&attr));
     }
     if !attrs.is_empty() {
@@ -3331,8 +3388,8 @@ fn render_assoc_items(
                 write!(
                     w,
                     "\
-                    <h2 id='methods' class='small-section-header'>\
-                      Methods<a href='#methods' class='anchor'></a>\
+                    <h2 id='implementations' class='small-section-header'>\
+                      Implementations<a href='#implementations' class='anchor'></a>\
                     </h2>\
                 "
                 );
@@ -3393,10 +3450,10 @@ fn render_assoc_items(
             write!(
                 w,
                 "\
-                <h2 id='implementations' class='small-section-header'>\
-                  Trait Implementations<a href='#implementations' class='anchor'></a>\
+                <h2 id='trait-implementations' class='small-section-header'>\
+                  Trait Implementations<a href='#trait-implementations' class='anchor'></a>\
                 </h2>\
-                <div id='implementations-list'>{}</div>",
+                <div id='trait-implementations-list'>{}</div>",
                 impls
             );
         }
@@ -3445,14 +3502,13 @@ fn render_deref_methods(
         .inner_impl()
         .items
         .iter()
-        .filter_map(|item| match item.inner {
+        .find_map(|item| match item.inner {
             clean::TypedefItem(ref t, true) => Some(match *t {
                 clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
             _ => None,
         })
-        .next()
         .expect("Expected associated type binding");
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
@@ -4012,12 +4068,12 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_none())
                 .flat_map(move |i| get_methods(i.inner_impl(), false, used_links_bor, false))
                 .collect::<Vec<_>>();
-            // We want links' order to be reproducible so we don't use unstable sort.
-            ret.sort();
             if !ret.is_empty() {
+                // We want links' order to be reproducible so we don't use unstable sort.
+                ret.sort();
                 out.push_str(&format!(
-                    "<a class=\"sidebar-title\" href=\"#methods\">Methods\
-                                       </a><div class=\"sidebar-links\">{}</div>",
+                    "<a class=\"sidebar-title\" href=\"#implementations\">Methods</a>\
+                     <div class=\"sidebar-links\">{}</div>",
                     ret.join("")
                 ));
             }
@@ -4029,18 +4085,14 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
-                if let Some((target, real_target)) = impl_
-                    .inner_impl()
-                    .items
-                    .iter()
-                    .filter_map(|item| match item.inner {
+                if let Some((target, real_target)) =
+                    impl_.inner_impl().items.iter().find_map(|item| match item.inner {
                         clean::TypedefItem(ref t, true) => Some(match *t {
                             clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                             _ => (&t.type_, &t.type_),
                         }),
                         _ => None,
                     })
-                    .next()
                 {
                     let inner_impl = target
                         .def_id()
@@ -4114,8 +4166,8 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
 
             if !concrete_format.is_empty() {
                 out.push_str(
-                    "<a class=\"sidebar-title\" href=\"#implementations\">\
-                              Trait Implementations</a>",
+                    "<a class=\"sidebar-title\" href=\"#trait-implementations\">\
+                        Trait Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", concrete_format));
             }
@@ -4123,7 +4175,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             if !synthetic_format.is_empty() {
                 out.push_str(
                     "<a class=\"sidebar-title\" href=\"#synthetic-implementations\">\
-                              Auto Trait Implementations</a>",
+                        Auto Trait Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", synthetic_format));
             }
@@ -4131,7 +4183,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             if !blanket_format.is_empty() {
                 out.push_str(
                     "<a class=\"sidebar-title\" href=\"#blanket-implementations\">\
-                              Blanket Implementations</a>",
+                        Blanket Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", blanket_format));
             }
@@ -4189,7 +4241,7 @@ fn is_negative_impl(i: &clean::Impl) -> bool {
 fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     let mut sidebar = String::new();
 
-    let types = t
+    let mut types = t
         .items
         .iter()
         .filter_map(|m| match m.name {
@@ -4198,8 +4250,8 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             }
             _ => None,
         })
-        .collect::<String>();
-    let consts = t
+        .collect::<Vec<_>>();
+    let mut consts = t
         .items
         .iter()
         .filter_map(|m| match m.name {
@@ -4208,7 +4260,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             }
             _ => None,
         })
-        .collect::<String>();
+        .collect::<Vec<_>>();
     let mut required = t
         .items
         .iter()
@@ -4231,24 +4283,26 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         .collect::<Vec<String>>();
 
     if !types.is_empty() {
+        types.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#associated-types\">\
-                                   Associated Types</a><div class=\"sidebar-links\">{}</div>",
-            types
+                Associated Types</a><div class=\"sidebar-links\">{}</div>",
+            types.join("")
         ));
     }
     if !consts.is_empty() {
+        consts.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#associated-const\">\
-                                   Associated Constants</a><div class=\"sidebar-links\">{}</div>",
-            consts
+                Associated Constants</a><div class=\"sidebar-links\">{}</div>",
+            consts.join("")
         ));
     }
     if !required.is_empty() {
         required.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#required-methods\">\
-                                   Required Methods</a><div class=\"sidebar-links\">{}</div>",
+                Required Methods</a><div class=\"sidebar-links\">{}</div>",
             required.join("")
         ));
     }
@@ -4256,7 +4310,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         provided.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#provided-methods\">\
-                                   Provided Methods</a><div class=\"sidebar-links\">{}</div>",
+                Provided Methods</a><div class=\"sidebar-links\">{}</div>",
             provided.join("")
         ));
     }
@@ -4267,33 +4321,32 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         let mut res = implementors
             .iter()
             .filter(|i| i.inner_impl().for_.def_id().map_or(false, |d| !c.paths.contains_key(&d)))
-            .filter_map(|i| match extract_for_impl_name(&i.impl_item) {
-                Some((ref name, ref id)) => {
-                    Some(format!("<a href=\"#{}\">{}</a>", id, Escape(name)))
-                }
-                _ => None,
-            })
-            .collect::<Vec<String>>();
+            .filter_map(|i| extract_for_impl_name(&i.impl_item))
+            .collect::<Vec<_>>();
+
         if !res.is_empty() {
             res.sort();
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#foreign-impls\">\
-                                       Implementations on Foreign Types</a><div \
-                                       class=\"sidebar-links\">{}</div>",
-                res.join("")
+                    Implementations on Foreign Types</a><div \
+                    class=\"sidebar-links\">{}</div>",
+                res.into_iter()
+                    .map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name)))
+                    .collect::<Vec<_>>()
+                    .join("")
             ));
         }
     }
+
+    sidebar.push_str(&sidebar_assoc_items(it));
 
     sidebar.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
     if t.auto {
         sidebar.push_str(
             "<a class=\"sidebar-title\" \
-                          href=\"#synthetic-implementors\">Auto Implementors</a>",
+                href=\"#synthetic-implementors\">Auto Implementors</a>",
         );
     }
-
-    sidebar.push_str(&sidebar_assoc_items(it));
 
     write!(buf, "<div class=\"block items\">{}</div>", sidebar)
 }
@@ -4315,18 +4368,18 @@ fn sidebar_typedef(buf: &mut Buffer, it: &clean::Item) {
 }
 
 fn get_struct_fields_name(fields: &[clean::Item]) -> String {
-    fields
+    let mut fields = fields
         .iter()
         .filter(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false })
         .filter_map(|f| match f.name {
-            Some(ref name) => Some(format!(
-                "<a href=\"#structfield.{name}\">\
-                                              {name}</a>",
-                name = name
-            )),
+            Some(ref name) => {
+                Some(format!("<a href=\"#structfield.{name}\">{name}</a>", name = name))
+            }
             _ => None,
         })
-        .collect()
+        .collect::<Vec<_>>();
+    fields.sort();
+    fields.join("")
 }
 
 fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
@@ -4336,7 +4389,7 @@ fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
     if !fields.is_empty() {
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
-                                   <div class=\"sidebar-links\">{}</div>",
+             <div class=\"sidebar-links\">{}</div>",
             fields
         ));
     }
@@ -4351,23 +4404,20 @@ fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
 fn sidebar_enum(buf: &mut Buffer, it: &clean::Item, e: &clean::Enum) {
     let mut sidebar = String::new();
 
-    let variants = e
+    let mut variants = e
         .variants
         .iter()
         .filter_map(|v| match v.name {
-            Some(ref name) => Some(format!(
-                "<a href=\"#variant.{name}\">{name}\
-                                                                 </a>",
-                name = name
-            )),
+            Some(ref name) => Some(format!("<a href=\"#variant.{name}\">{name}</a>", name = name)),
             _ => None,
         })
-        .collect::<String>();
+        .collect::<Vec<_>>();
     if !variants.is_empty() {
+        variants.sort_unstable();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#variants\">Variants</a>\
-                                   <div class=\"sidebar-links\">{}</div>",
-            variants
+             <div class=\"sidebar-links\">{}</div>",
+            variants.join(""),
         ));
     }
 
@@ -4542,12 +4592,9 @@ fn collect_paths_for_type(first_ty: clean::Type) -> Vec<String> {
                 let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
                 let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
 
-                match fqp {
-                    Some(path) => {
-                        out.push(path.join("::"));
-                    }
-                    _ => {}
-                };
+                if let Some(path) = fqp {
+                    out.push(path.join("::"));
+                }
             }
             clean::Type::Tuple(tys) => {
                 work.extend(tys.into_iter());

@@ -1,0 +1,51 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+      - beta
+    tags:
+      - rust-1.**
+
+env:
+  TARGET_BRANCH: 'gh-pages'
+  SHA: '${{ github.sha }}'
+  SSH_REPO: 'git@github.com:${{ github.repository }}.git'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.repository == 'rust-lang/rust-clippy'
+
+    steps:
+    # Setup
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+      with:
+        ref: ${{ env.TARGET_BRANCH }}
+        path: 'out'
+
+    # Run
+    - name: Set tag name
+      if: startswith(github.ref, 'refs/tags/')
+      run: |
+        TAG=$(basename ${{ github.ref }})
+        echo "::set-env name=TAG_NAME::$TAG"
+    - name: Set beta to true
+      if: github.ref == 'refs/heads/beta'
+      run: echo "::set-env name=BETA::true"
+
+    - name: Use scripts and templates from master branch
+      run: |
+        git fetch --no-tags --prune --depth=1 origin master
+        git checkout origin/master -- .github/deploy.sh util/gh-pages/ util/*.py
+
+    - name: Deploy
+      run: |
+        eval "$(ssh-agent -s)"
+        ssh-add - <<< "${{ secrets.DEPLOY_KEY }}"
+        bash .github/deploy.sh

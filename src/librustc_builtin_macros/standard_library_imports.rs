@@ -39,7 +39,7 @@ pub fn inject(
     let call_site = DUMMY_SP.with_call_site_ctxt(expn_id);
 
     let ecfg = ExpansionConfig::default("std_lib_injection".to_string());
-    let cx = ExtCtxt::new(sess, ecfg, resolver);
+    let cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
     // .rev() to preserve ordering above in combination with insert(0, ...)
     for &name in names.iter().rev() {
@@ -60,17 +60,17 @@ pub fn inject(
     let name = names[0];
 
     let import_path = if rust_2018 {
-        [name, sym::prelude, sym::v1].iter().map(|symbol| ast::Ident::new(*symbol, span)).collect()
+        [name, sym::prelude, sym::v1].iter().map(|symbol| Ident::new(*symbol, span)).collect()
     } else {
         [kw::PathRoot, name, sym::prelude, sym::v1]
             .iter()
-            .map(|symbol| ast::Ident::new(*symbol, span))
+            .map(|symbol| Ident::new(*symbol, span))
             .collect()
     };
 
     let use_item = cx.item(
         span,
-        ast::Ident::invalid(),
+        Ident::invalid(),
         vec![cx.attribute(cx.meta_word(span, sym::prelude_import))],
         ast::ItemKind::Use(P(ast::UseTree {
             prefix: cx.path(span, import_path),

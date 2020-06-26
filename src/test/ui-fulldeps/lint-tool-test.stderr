@@ -96,5 +96,5 @@ warning: lint name `test_group` is deprecated and may not have an effect in the 
 LL | #[allow(test_group)]
    |         ^^^^^^^^^^ help: change it to: `clippy::test_group`
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 11 warnings emitted
 

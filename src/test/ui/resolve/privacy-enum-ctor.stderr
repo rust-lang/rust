@@ -16,15 +16,11 @@ LL |         m::Z::Unit;
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
    |
-LL | /     fn f() {
-LL | |         n::Z;
-LL | |
-LL | |         Z;
-   | |         ^
-...  |
-LL | |         // This is ok, it is equivalent to not having braces
-LL | |     }
-   | |_____- similarly named function `f` defined here
+LL |     fn f() {
+   |     ------ similarly named function `f` defined here
+...
+LL |         Z;
+   |         ^
    |
 help: a function with a similar name exists
    |
@@ -53,17 +49,11 @@ LL |           let _: Z = Z::Struct;
 error[E0423]: expected value, found enum `m::E`
   --> $DIR/privacy-enum-ctor.rs:41:16
    |
-LL | /     fn f() {
-LL | |         n::Z;
-LL | |
-LL | |         Z;
-...  |
-LL | |         // This is ok, it is equivalent to not having braces
-LL | |     }
-   | |_____- similarly named function `f` defined here
+LL |     fn f() {
+   |     ------ similarly named function `f` defined here
 ...
-LL |       let _: E = m::E;
-   |                  ^^^^
+LL |     let _: E = m::E;
+   |                ^^^^
    |
 help: a function with a similar name exists
    |
@@ -77,7 +67,7 @@ LL |     let _: E = E::Struct;
    |                ^^^^^^^^^
 LL |     let _: E = E::Unit;
    |                ^^^^^^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use std::f32::consts::E;
    |
@@ -109,7 +99,7 @@ LL |     let _: E = E::Struct;
    |                ^^^^^^^^^
 LL |     let _: E = E::Unit;
    |                ^^^^^^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use std::f32::consts::E;
    |
@@ -130,25 +120,19 @@ LL |       let _: E = E::Struct;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:57:12
    |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____- similarly named enum `E` defined here
+LL |     pub enum E {
+   |     ---------- similarly named enum `E` defined here
 ...
-LL |       let _: Z = m::n::Z;
-   |              ^
+LL |     let _: Z = m::n::Z;
+   |            ^
    |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z;
    |            ^
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this enum
    |
-LL | use m::n::Z;
+LL | use m::Z;
    |
 
 error[E0423]: expected value, found enum `m::n::Z`
@@ -169,49 +153,37 @@ LL |     let _: Z = m::Z::Unit;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12
    |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____- similarly named enum `E` defined here
+LL |     pub enum E {
+   |     ---------- similarly named enum `E` defined here
 ...
-LL |       let _: Z = m::n::Z::Fn;
-   |              ^
+LL |     let _: Z = m::n::Z::Fn;
+   |            ^
    |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Fn;
    |            ^
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this enum
    |
-LL | use m::n::Z;
+LL | use m::Z;
    |
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:64:12
    |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____- similarly named enum `E` defined here
+LL |     pub enum E {
+   |     ---------- similarly named enum `E` defined here
 ...
-LL |       let _: Z = m::n::Z::Struct;
-   |              ^
+LL |     let _: Z = m::n::Z::Struct;
+   |            ^
    |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Struct;
    |            ^
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this enum
    |
-LL | use m::n::Z;
+LL | use m::Z;
    |
 
 error[E0423]: expected value, found struct variant `m::n::Z::Struct`
@@ -228,32 +200,26 @@ LL |       let _: Z = m::n::Z::Struct;
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:68:12
    |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____- similarly named enum `E` defined here
+LL |     pub enum E {
+   |     ---------- similarly named enum `E` defined here
 ...
-LL |       let _: Z = m::n::Z::Unit {};
-   |              ^
+LL |     let _: Z = m::n::Z::Unit {};
+   |            ^
    |
 help: an enum with a similar name exists
    |
 LL |     let _: E = m::n::Z::Unit {};
    |            ^
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this enum
    |
-LL | use m::n::Z;
+LL | use m::Z;
    |
 
 error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:57:22
    |
 LL |     let _: Z = m::n::Z;
-   |                      ^ this enum is private
+   |                      ^ private enum
    |
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
@@ -265,7 +231,7 @@ error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:61:22
    |
 LL |     let _: Z = m::n::Z::Fn;
-   |                      ^ this enum is private
+   |                      ^ private enum
    |
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
@@ -277,7 +243,7 @@ error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:64:22
    |
 LL |     let _: Z = m::n::Z::Struct;
-   |                      ^ this enum is private
+   |                      ^ private enum
    |
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
@@ -289,7 +255,7 @@ error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:68:22
    |
 LL |     let _: Z = m::n::Z::Unit {};
-   |                      ^ this enum is private
+   |                      ^ private enum
    |
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
@@ -304,14 +270,16 @@ LL |             Fn(u8),
    |             ------ fn(u8) -> m::n::Z {m::n::Z::Fn} defined here
 ...
 LL |         let _: Z = Z::Fn;
-   |                -   ^^^^^
-   |                |   |
-   |                |   expected enum `m::n::Z`, found fn item
-   |                |   help: use parentheses to instantiate this tuple variant: `Z::Fn(_)`
+   |                -   ^^^^^ expected enum `m::n::Z`, found fn item
+   |                |
    |                expected due to this
    |
    = note: expected enum `m::n::Z`
            found fn item `fn(u8) -> m::n::Z {m::n::Z::Fn}`
+help: use parentheses to instantiate this tuple variant
+   |
+LL |         let _: Z = Z::Fn(_);
+   |                         ^^^
 
 error[E0618]: expected function, found enum variant `Z::Unit`
   --> $DIR/privacy-enum-ctor.rs:31:17
@@ -336,14 +304,16 @@ LL |         Fn(u8),
    |         ------ fn(u8) -> m::E {m::E::Fn} defined here
 ...
 LL |     let _: E = m::E::Fn;
-   |            -   ^^^^^^^^
-   |            |   |
-   |            |   expected enum `m::E`, found fn item
-   |            |   help: use parentheses to instantiate this tuple variant: `m::E::Fn(_)`
+   |            -   ^^^^^^^^ expected enum `m::E`, found fn item
+   |            |
    |            expected due to this
    |
    = note: expected enum `m::E`
            found fn item `fn(u8) -> m::E {m::E::Fn}`
+help: use parentheses to instantiate this tuple variant
+   |
+LL |     let _: E = m::E::Fn(_);
+   |                        ^^^
 
 error[E0618]: expected function, found enum variant `m::E::Unit`
   --> $DIR/privacy-enum-ctor.rs:47:16
@@ -368,14 +338,16 @@ LL |         Fn(u8),
    |         ------ fn(u8) -> m::E {m::E::Fn} defined here
 ...
 LL |     let _: E = E::Fn;
-   |            -   ^^^^^
-   |            |   |
-   |            |   expected enum `m::E`, found fn item
-   |            |   help: use parentheses to instantiate this tuple variant: `E::Fn(_)`
+   |            -   ^^^^^ expected enum `m::E`, found fn item
+   |            |
    |            expected due to this
    |
    = note: expected enum `m::E`
            found fn item `fn(u8) -> m::E {m::E::Fn}`
+help: use parentheses to instantiate this tuple variant
+   |
+LL |     let _: E = E::Fn(_);
+   |                     ^^^
 
 error[E0618]: expected function, found enum variant `E::Unit`
   --> $DIR/privacy-enum-ctor.rs:55:16

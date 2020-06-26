@@ -1,6 +1,6 @@
-use rustc::mir::*;
-use rustc::ty::Ty;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::*;
+use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
 /// This struct represents a patch to MIR, which can add
@@ -50,7 +50,7 @@ impl<'tcx> MirPatch<'tcx> {
             result.new_block(BasicBlockData {
                 statements: vec![],
                 terminator: Some(Terminator {
-                    source_info: SourceInfo { span: body.span, scope: OUTERMOST_SOURCE_SCOPE },
+                    source_info: SourceInfo::outermost(body.span),
                     kind: TerminatorKind::Resume,
                 }),
                 is_cleanup: true,
@@ -83,14 +83,14 @@ impl<'tcx> MirPatch<'tcx> {
     pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
         let index = self.next_local;
         self.next_local += 1;
-        self.new_locals.push(LocalDecl::new_temp(ty, span));
+        self.new_locals.push(LocalDecl::new(ty, span));
         Local::new(index as usize)
     }
 
     pub fn new_internal(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
         let index = self.next_local;
         self.next_local += 1;
-        self.new_locals.push(LocalDecl::new_internal(ty, span));
+        self.new_locals.push(LocalDecl::new(ty, span).internal());
         Local::new(index as usize)
     }
 
@@ -121,7 +121,7 @@ impl<'tcx> MirPatch<'tcx> {
         self.make_nop.push(loc);
     }
 
-    pub fn apply(self, body: &mut BodyAndCache<'tcx>) {
+    pub fn apply(self, body: &mut Body<'tcx>) {
         debug!("MirPatch: make nops at: {:?}", self.make_nop);
         for loc in self.make_nop {
             body.make_statement_nop(loc);

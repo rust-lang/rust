@@ -12,3 +12,5 @@ warning: use of deprecated item 'deprecated_macro': deprecation note
 LL |     deprecated_macro!();
    |     ^^^^^^^^^^^^^^^^
 
+warning: 2 warnings emitted
+

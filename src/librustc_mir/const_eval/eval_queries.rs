@@ -1,16 +1,17 @@
 use super::{error_to_const_error, CompileTimeEvalContext, CompileTimeInterpreter, MemoryExtra};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, ImmTy, Immediate, InternKind,
+    intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, Immediate, InternKind,
     InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst, RefTracking, Scalar,
-    ScalarMaybeUndef, StackPopCleanup,
+    ScalarMaybeUninit, StackPopCleanup,
 };
-use rustc::mir;
-use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
-use rustc::traits::Reveal;
-use rustc::ty::{self, layout, layout::LayoutOf, subst::Subst, TyCtxt};
 use rustc_hir::def::DefKind;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{ConstEvalErr, ErrorHandled};
+use rustc_middle::traits::Reveal;
+use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
+use rustc_target::abi::{Abi, LayoutOf};
 use std::convert::TryInto;
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
@@ -26,7 +27,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     body: &'mir mir::Body<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
-    let tcx = ecx.tcx.tcx;
+    let tcx = *ecx.tcx;
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
@@ -46,7 +47,6 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
     ecx.push_stack_frame(
         cid.instance,
-        body.span,
         body,
         Some(ret.into()),
         StackPopCleanup::None { cleanup: false },
@@ -66,7 +66,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         intern_kind,
         ret,
         body.ignore_interior_mut_in_const_validation,
-    )?;
+    );
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
@@ -81,15 +81,16 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
 pub(super) fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
-    span: Span,
+    root_span: Span,
     param_env: ty::ParamEnv<'tcx>,
     can_access_statics: bool,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
     InterpCx::new(
-        tcx.at(span),
+        tcx,
+        root_span,
         param_env,
-        CompileTimeInterpreter::new(*tcx.sess.const_eval_limit.get()),
+        CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
         MemoryExtra { can_access_statics },
     )
 }
@@ -100,14 +101,14 @@ pub(super) fn op_to_const<'tcx>(
 ) -> ConstValue<'tcx> {
     // We do not have value optimizations for everything.
     // Only scalars and slices, since they are very common.
-    // Note that further down we turn scalars of undefined bits back to `ByRef`. These can result
+    // Note that further down we turn scalars of uninitialized bits back to `ByRef`. These can result
     // from scalar unions that are initialized with one of their zero sized variants. We could
-    // instead allow `ConstValue::Scalar` to store `ScalarMaybeUndef`, but that would affect all
+    // instead allow `ConstValue::Scalar` to store `ScalarMaybeUninit`, but that would affect all
     // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
     // `Undef` situation.
     let try_as_immediate = match op.layout.abi {
-        layout::Abi::Scalar(..) => true,
-        layout::Abi::ScalarPair(..) => match op.layout.ty.kind {
+        Abi::Scalar(..) => true,
+        Abi::ScalarPair(..) => match op.layout.ty.kind {
             ty::Ref(_, inner, _) => match inner.kind {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,
                 ty::Str => true,
@@ -122,7 +123,7 @@ pub(super) fn op_to_const<'tcx>(
     } else {
         // It is guaranteed that any non-slice scalar pair is actually ByRef here.
         // When we come back from raw const eval, we are always by-ref. The only way our op here is
-        // by-val is if we are in const_field, i.e., if this is (a field of) something that we
+        // by-val is if we are in destructure_const, i.e., if this is (a field of) something that we
         // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
         // structs containing such.
         op.try_as_mplace(ecx)
@@ -130,7 +131,7 @@ pub(super) fn op_to_const<'tcx>(
 
     let to_const_value = |mplace: MPlaceTy<'_>| match mplace.ptr {
         Scalar::Ptr(ptr) => {
-            let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
+            let alloc = ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory();
             ConstValue::ByRef { alloc, offset: ptr.offset }
         }
         Scalar::Raw { data, .. } => {
@@ -147,25 +148,28 @@ pub(super) fn op_to_const<'tcx>(
     match immediate {
         Ok(mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
-        Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
-            ScalarMaybeUndef::Scalar(s) => ConstValue::Scalar(s),
-            ScalarMaybeUndef::Undef => to_const_value(op.assert_mem_place(ecx)),
+        Err(imm) => match *imm {
+            Immediate::Scalar(x) => match x {
+                ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
+                ScalarMaybeUninit::Uninit => to_const_value(op.assert_mem_place(ecx)),
+            },
+            Immediate::ScalarPair(a, b) => {
+                let (data, start) = match a.not_undef().unwrap() {
+                    Scalar::Ptr(ptr) => {
+                        (ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(), ptr.offset.bytes())
+                    }
+                    Scalar::Raw { .. } => (
+                        ecx.tcx
+                            .intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
+                        0,
+                    ),
+                };
+                let len = b.to_machine_usize(ecx).unwrap();
+                let start = start.try_into().unwrap();
+                let len: usize = len.try_into().unwrap();
+                ConstValue::Slice { data, start, end: start + len }
+            }
         },
-        Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
-            let (data, start) = match a.not_undef().unwrap() {
-                Scalar::Ptr(ptr) => {
-                    (ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id), ptr.offset.bytes())
-                }
-                Scalar::Raw { .. } => (
-                    ecx.tcx.intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
-                    0,
-                ),
-            };
-            let len = b.to_machine_usize(&ecx.tcx.tcx).unwrap();
-            let start = start.try_into().unwrap();
-            let len: usize = len.try_into().unwrap();
-            ConstValue::Slice { data, start, end: start + len }
-        }
     }
 }
 
@@ -173,7 +177,7 @@ fn validate_and_turn_into_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: RawConst<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+) -> ::rustc_middle::mir::interpret::ConstEvalResult<'tcx> {
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
@@ -190,7 +194,7 @@ fn validate_and_turn_into_const<'tcx>(
                     mplace.into(),
                     path,
                     &mut ref_tracking,
-                    /*may_ref_to_static*/ is_static,
+                    /*may_ref_to_static*/ ecx.memory.extra.can_access_statics,
                 )?;
             }
         }
@@ -200,7 +204,7 @@ fn validate_and_turn_into_const<'tcx>(
         if is_static || cid.promoted.is_some() {
             let ptr = mplace.ptr.assert_ptr();
             Ok(ConstValue::ByRef {
-                alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                alloc: ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(),
                 offset: ptr.offset,
             })
         } else {
@@ -209,21 +213,18 @@ fn validate_and_turn_into_const<'tcx>(
     })();
 
     val.map_err(|error| {
-        let err = error_to_const_error(&ecx, error);
-        match err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
+        let err = error_to_const_error(&ecx, error, None);
+        err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
             diag.note(note_on_undefined_behavior_error());
             diag.emit();
-        }) {
-            Ok(_) => ErrorHandled::Reported,
-            Err(err) => err,
-        }
+        })
     })
 }
 
 pub fn const_eval_validated_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+) -> ::rustc_middle::mir::interpret::ConstEvalResult<'tcx> {
     // see comment in const_eval_raw_provider for what we're doing here
     if key.param_env.reveal == Reveal::All {
         let mut key = key;
@@ -257,7 +258,7 @@ pub fn const_eval_validated_provider<'tcx>(
 pub fn const_eval_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc::mir::interpret::ConstEvalRawResult<'tcx> {
+) -> ::rustc_middle::mir::interpret::ConstEvalRawResult<'tcx> {
     // Because the constant is computed twice (once per value of `Reveal`), we are at risk of
     // reporting the same error twice here. To resolve this, we check whether we can evaluate the
     // constant in the more restrictive `Reveal::UserFacing`, which most likely already was
@@ -289,35 +290,37 @@ pub fn const_eval_raw_provider<'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
 
-    if def_id.is_local()
-        && tcx.has_typeck_tables(def_id)
-        && tcx.typeck_tables_of(def_id).tainted_by_errors
-    {
-        return Err(ErrorHandled::Reported);
+    if let Some(def_id) = def_id.as_local() {
+        if tcx.has_typeck_tables(def_id) {
+            if let Some(error_reported) = tcx.typeck_tables_of(def_id).tainted_by_errors {
+                return Err(ErrorHandled::Reported(error_reported));
+            }
+        }
     }
 
     let is_static = tcx.is_static(def_id);
 
-    let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = InterpCx::new(
-        tcx.at(span),
+        tcx,
+        tcx.def_span(cid.instance.def_id()),
         key.param_env,
-        CompileTimeInterpreter::new(*tcx.sess.const_eval_limit.get()),
+        CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
         MemoryExtra { can_access_statics: is_static },
     );
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
-    res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, *body))
-        .and_then(|place| {
-            Ok(RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
-        })
+    res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body))
+        .map(|place| RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
         .map_err(|error| {
-            let err = error_to_const_error(&ecx, error);
+            let err = error_to_const_error(&ecx, error, None);
             // errors in statics are always emitted as fatal errors
             if is_static {
                 // Ensure that if the above error was either `TooGeneric` or `Reported`
                 // an error must be reported.
-                let v = err.report_as_error(ecx.tcx, "could not evaluate static initializer");
+                let v = err.report_as_error(
+                    ecx.tcx.at(ecx.cur_span()),
+                    "could not evaluate static initializer",
+                );
 
                 // If this is `Reveal:All`, then we need to make sure an error is reported but if
                 // this is `Reveal::UserFacing`, then it's expected that we could get a
@@ -342,8 +345,8 @@ pub fn const_eval_raw_provider<'tcx>(
                     // because any code that existed before validation could not have failed
                     // validation thus preventing such a hard error from being a backwards
                     // compatibility hazard
-                    Some(DefKind::Const) | Some(DefKind::AssocConst) => {
-                        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+                    DefKind::Const | DefKind::AssocConst => {
+                        let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
                         err.report_as_lint(
                             tcx.at(tcx.def_span(def_id)),
                             "any use of this value will cause an error",
@@ -366,20 +369,23 @@ pub fn const_eval_raw_provider<'tcx>(
                                 err.report_as_lint(
                                     tcx.at(span),
                                     "reaching this expression at runtime will panic or abort",
-                                    tcx.hir().as_local_hir_id(def_id).unwrap(),
+                                    tcx.hir().as_local_hir_id(def_id.expect_local()),
                                     Some(err.span),
                                 )
                             }
                         // anything else (array lengths, enum initializers, constant patterns) are
                         // reported as hard errors
                         } else {
-                            err.report_as_error(ecx.tcx, "evaluation of constant value failed")
+                            err.report_as_error(
+                                ecx.tcx.at(ecx.cur_span()),
+                                "evaluation of constant value failed",
+                            )
                         }
                     }
                 }
             } else {
                 // use of broken constant from other crate
-                err.report_as_error(ecx.tcx, "could not evaluate constant")
+                err.report_as_error(ecx.tcx.at(ecx.cur_span()), "could not evaluate constant")
             }
         })
 }

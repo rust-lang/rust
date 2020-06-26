@@ -4,13 +4,14 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{self, *};
-use rustc_expand::panictry;
-use rustc_parse::{self, new_sub_parser_from_file, parser::Parser, DirectoryOwnership};
+use rustc_expand::module::DirectoryOwnership;
+use rustc_parse::{self, new_parser_from_file, parser::Parser};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, Pos, Span};
 
 use smallvec::SmallVec;
+use std::rc::Rc;
 
 use rustc_data_structures::sync::Lrc;
 
@@ -101,27 +102,36 @@ pub fn expand_include<'cx>(
         None => return DummyResult::any(sp),
     };
     // The file will be added to the code map by the parser
-    let file = match cx.resolve_path(file, sp) {
+    let mut file = match cx.resolve_path(file, sp) {
         Ok(f) => f,
         Err(mut err) => {
             err.emit();
             return DummyResult::any(sp);
         }
     };
-    let directory_ownership = DirectoryOwnership::Owned { relative: None };
-    let p = new_sub_parser_from_file(cx.parse_sess(), &file, directory_ownership, None, sp);
+    let p = new_parser_from_file(cx.parse_sess(), &file, Some(sp));
+
+    // If in the included file we have e.g., `mod bar;`,
+    // then the path of `bar.rs` should be relative to the directory of `file`.
+    // See https://github.com/rust-lang/rust/pull/69838/files#r395217057 for a discussion.
+    // `MacroExpander::fully_expand_fragment` later restores, so "stack discipline" is maintained.
+    file.pop();
+    cx.current_expansion.directory_ownership = DirectoryOwnership::Owned { relative: None };
+    let mod_path = cx.current_expansion.module.mod_path.clone();
+    cx.current_expansion.module = Rc::new(ModuleData { mod_path, directory: file });
 
     struct ExpandResult<'a> {
         p: Parser<'a>,
+        node_id: ast::NodeId,
     }
     impl<'a> base::MacResult for ExpandResult<'a> {
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
-            let r = panictry!(self.p.parse_expr());
+            let r = base::parse_expr(&mut self.p)?;
             if self.p.token != token::Eof {
                 self.p.sess.buffer_lint(
                     &INCOMPLETE_INCLUDE,
                     self.p.token.span,
-                    ast::CRATE_NODE_ID,
+                    self.node_id,
                     "include macro expected single expression in source",
                 );
             }
@@ -131,18 +141,17 @@ pub fn expand_include<'cx>(
         fn make_items(mut self: Box<ExpandResult<'a>>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
             let mut ret = SmallVec::new();
             while self.p.token != token::Eof {
-                match panictry!(self.p.parse_item()) {
-                    Some(item) => ret.push(item),
-                    None => {
+                match self.p.parse_item() {
+                    Err(mut err) => {
+                        err.emit();
+                        break;
+                    }
+                    Ok(Some(item)) => ret.push(item),
+                    Ok(None) => {
                         let token = pprust::token_to_string(&self.p.token);
-                        self.p
-                            .sess
-                            .span_diagnostic
-                            .span_fatal(
-                                self.p.token.span,
-                                &format!("expected item, found `{}`", token),
-                            )
-                            .raise();
+                        let msg = format!("expected item, found `{}`", token);
+                        self.p.struct_span_err(self.p.token.span, &msg).emit();
+                        break;
                     }
                 }
             }
@@ -150,7 +159,7 @@ pub fn expand_include<'cx>(
         }
     }
 
-    Box::new(ExpandResult { p })
+    Box::new(ExpandResult { p, node_id: cx.resolver.lint_node_id(cx.current_expansion.id) })
 }
 
 // include_str! : read the given file, insert it as a literal string expr

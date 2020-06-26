@@ -43,8 +43,8 @@
 //! terminator, so the buffer length is really `len+1` characters.
 //! Rust strings don't have a nul terminator; their length is always
 //! stored and does not need to be calculated. While in Rust
-//! accessing a string's length is a O(1) operation (because the
-//! length is stored); in C it is an O(length) operation because the
+//! accessing a string's length is a `O(1)` operation (because the
+//! length is stored); in C it is an `O(length)` operation because the
 //! length needs to be computed by scanning the string for the nul
 //! terminator.
 //!
@@ -157,6 +157,8 @@
 
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
 pub use self::c_str::FromBytesWithNulError;
+#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+pub use self::c_str::FromVecWithNulError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::c_str::{CStr, CString, IntoStringError, NulError};
 

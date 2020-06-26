@@ -162,7 +162,7 @@ impl<'a> DiagnosticBuilder<'a> {
         message: &str,
         span: Option<S>,
     ) -> &mut Self {
-        let span = span.map(|s| s.into()).unwrap_or_else(|| MultiSpan::new());
+        let span = span.map(|s| s.into()).unwrap_or_else(MultiSpan::new);
         self.0.diagnostic.sub(level, message, span, None);
         self
     }
@@ -260,6 +260,19 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    pub fn multipart_suggestions(
+        &mut self,
+        msg: &str,
+        suggestions: Vec<Vec<(Span, String)>>,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.0.allow_suggestions {
+            return self;
+        }
+        self.0.diagnostic.multipart_suggestions(msg, suggestions, applicability);
+        self
+    }
+
     pub fn tool_only_multipart_suggestion(
         &mut self,
         msg: &str,
@@ -312,6 +325,20 @@ impl<'a> DiagnosticBuilder<'a> {
             return self;
         }
         self.0.diagnostic.span_suggestion_short(sp, msg, suggestion, applicability);
+        self
+    }
+
+    pub fn span_suggestion_verbose(
+        &mut self,
+        sp: Span,
+        msg: &str,
+        suggestion: String,
+        applicability: Applicability,
+    ) -> &mut Self {
+        if !self.0.allow_suggestions {
+            return self;
+        }
+        self.0.diagnostic.span_suggestion_verbose(sp, msg, suggestion, applicability);
         self
     }
 

@@ -215,14 +215,15 @@
 use crate::creader::Library;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
-use rustc::middle::cstore::{CrateSource, MetadataLoader};
-use rustc::session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
-use rustc::session::search_paths::PathKind;
-use rustc::session::{config, CrateDisambiguator, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_middle::middle::cstore::{CrateSource, MetadataLoader};
+use rustc_session::config::{self, CrateType};
+use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
+use rustc_session::search_paths::PathKind;
+use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
@@ -327,7 +328,7 @@ impl<'a> CrateLocator<'a> {
                     .into_iter()
                     .filter_map(|entry| entry.files())
                     .flatten()
-                    .map(|location| PathBuf::from(location))
+                    .map(PathBuf::from)
                     .collect()
             } else {
                 // SVH being specified means this is a transitive dependency,
@@ -487,6 +488,8 @@ impl<'a> CrateLocator<'a> {
                 && self.triple != TargetTriple::from_triple(config::host_triple())
             {
                 err.note(&format!("the `{}` target may not be installed", self.triple));
+            } else if self.crate_name == sym::profiler_builtins {
+                err.note(&"the compiler may have been built without the profiler runtime");
             }
             err.span_label(self.span, "can't find crate");
             err
@@ -543,8 +546,8 @@ impl<'a> CrateLocator<'a> {
         // of the crate id (path/name/id).
         //
         // The goal of this step is to look at as little metadata as possible.
-        self.filesearch.search(|path, kind| {
-            let file = match path.file_name().and_then(|s| s.to_str()) {
+        self.filesearch.search(|spf, kind| {
+            let file = match &spf.file_name_str {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
@@ -556,20 +559,18 @@ impl<'a> CrateLocator<'a> {
                 (&file[(dylib_prefix.len())..(file.len() - dypair.1.len())], CrateFlavor::Dylib)
             } else {
                 if file.starts_with(&staticlib_prefix) && file.ends_with(&staticpair.1) {
-                    staticlibs.push(CrateMismatch {
-                        path: path.to_path_buf(),
-                        got: "static".to_string(),
-                    });
+                    staticlibs
+                        .push(CrateMismatch { path: spf.path.clone(), got: "static".to_string() });
                 }
                 return FileDoesntMatch;
             };
 
-            info!("lib candidate: {}", path.display());
+            info!("lib candidate: {}", spf.path.display());
 
             let hash_str = hash.to_string();
             let slot = candidates.entry(hash_str).or_default();
             let (ref mut rlibs, ref mut rmetas, ref mut dylibs) = *slot;
-            fs::canonicalize(path)
+            fs::canonicalize(&spf.path)
                 .map(|p| {
                     if seen_paths.contains(&p) {
                         return FileDoesntMatch;
@@ -671,7 +672,7 @@ impl<'a> CrateLocator<'a> {
 
         // The all loop is because `--crate-type=rlib --crate-type=rlib` is
         // legal and produces both inside this type.
-        let is_rlib = self.sess.crate_types.borrow().iter().all(|c| *c == config::CrateType::Rlib);
+        let is_rlib = self.sess.crate_types().iter().all(|c| *c == CrateType::Rlib);
         let needs_object_code = self.sess.opts.output_types.should_codegen();
         // If we're producing an rlib, then we don't need object code.
         // Or, if we're not producing object code, then we don't need it either
@@ -949,7 +950,7 @@ fn get_metadata_section(
     let start = Instant::now();
     let ret = get_metadata_section_imp(target, flavor, filename, loader);
     info!("reading {:?} => {:?}", filename.file_name().unwrap(), start.elapsed());
-    return ret;
+    ret
 }
 
 /// A trivial wrapper for `Mmap` that implements `StableDeref`.

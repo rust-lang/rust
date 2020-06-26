@@ -14,8 +14,9 @@
 // reconsider what crate these items belong in.
 
 use core::array;
+use core::convert::Infallible;
 
-use crate::alloc::{AllocErr, CannotReallocInPlace, LayoutErr};
+use crate::alloc::{AllocErr, LayoutErr};
 use crate::any::TypeId;
 use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
@@ -88,7 +89,7 @@ pub trait Error: Debug + Display {
     /// fn main() {
     ///     match get_super_error() {
     ///         Err(e) => {
-    ///             println!("Error: {}", e.description());
+    ///             println!("Error: {}", e);
     ///             println!("Caused by: {}", e.source().unwrap());
     ///         }
     ///         _ => println!("No error"),
@@ -409,13 +410,6 @@ impl Error for AllocErr {}
 )]
 impl Error for LayoutErr {}
 
-#[unstable(
-    feature = "allocator_api",
-    reason = "the precise API and guarantees it provides may be tweaked.",
-    issue = "32838"
-)]
-impl Error for CannotReallocInPlace {}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {
     #[allow(deprecated)]
@@ -481,7 +475,7 @@ impl Error for string::FromUtf16Error {
 }
 
 #[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl Error for string::ParseError {
+impl Error for Infallible {
     fn description(&self) -> &str {
         match *self {}
     }

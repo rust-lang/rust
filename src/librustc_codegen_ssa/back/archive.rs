@@ -1,4 +1,4 @@
-use rustc::session::Session;
+use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
 use std::io;

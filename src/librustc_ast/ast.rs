@@ -5,7 +5,7 @@
 //! additional metadata), and [`ItemKind`] (which represents a concrete type and contains
 //! information specific to the type of the item).
 //!
-//! Other module items that worth mentioning:
+//! Other module items worth mentioning:
 //! - [`Ty`] and [`TyKind`]: A parsed Rust type.
 //! - [`Expr`] and [`ExprKind`]: A parsed Rust expression.
 //! - [`Pat`] and [`PatKind`]: A parsed Rust pattern. Patterns are often dual to expressions.
@@ -14,15 +14,13 @@
 //! - [`Generics`], [`GenericParam`], [`WhereClause`]: Metadata associated with generic parameters.
 //! - [`EnumDef`] and [`Variant`]: Enum declaration.
 //! - [`Lit`] and [`LitKind`]: Literal expressions.
-//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimeter`]: Macro definition and invocation.
+//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimiter`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.
-//! - [`UnOp`], [`UnOpKind`], [`BinOp`], [`BinOpKind`]: Unary and binary operators.
+//! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 pub use crate::util::parser::ExprPrecedence;
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
-
-pub use rustc_span::symbol::{Ident, Symbol as Name};
 
 use crate::ptr::P;
 use crate::token::{self, DelimToken};
@@ -31,11 +29,10 @@ use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{self, Decoder, Encoder};
 use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::convert::TryFrom;
@@ -215,11 +212,18 @@ impl GenericArg {
 pub struct AngleBracketedArgs {
     /// The overall span.
     pub span: Span,
-    /// The arguments for this path segment.
-    pub args: Vec<GenericArg>,
-    /// Constraints on associated types, if any.
-    /// E.g., `Foo<A = Bar, B: Baz>`.
-    pub constraints: Vec<AssocTyConstraint>,
+    /// The comma separated parts in the `<...>`.
+    pub args: Vec<AngleBracketedArg>,
+}
+
+/// Either an argument for a parameter e.g., `'a`, `Vec<u8>`, `0`,
+/// or a constraint on an associated item, e.g., `Item = String` or `Item: Bound`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum AngleBracketedArg {
+    /// Argument for a generic parameter.
+    Arg(GenericArg),
+    /// Constraint for an associated item.
+    Constraint(AssocTyConstraint),
 }
 
 impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
@@ -249,11 +253,13 @@ pub struct ParenthesizedArgs {
 
 impl ParenthesizedArgs {
     pub fn as_angle_bracketed_args(&self) -> AngleBracketedArgs {
-        AngleBracketedArgs {
-            span: self.span,
-            args: self.inputs.iter().cloned().map(|input| GenericArg::Type(input)).collect(),
-            constraints: vec![],
-        }
+        let args = self
+            .inputs
+            .iter()
+            .cloned()
+            .map(|input| AngleBracketedArg::Arg(GenericArg::Type(input)))
+            .collect();
+        AngleBracketedArgs { span: self.span, args }
     }
 }
 
@@ -292,8 +298,8 @@ pub enum GenericBound {
 impl GenericBound {
     pub fn span(&self) -> Span {
         match self {
-            &GenericBound::Trait(ref t, ..) => t.span,
-            &GenericBound::Outlives(ref l) => l.ident.span,
+            GenericBound::Trait(ref t, ..) => t.span,
+            GenericBound::Outlives(ref l) => l.ident.span,
         }
     }
 }
@@ -356,7 +362,11 @@ impl Default for Generics {
     fn default() -> Generics {
         Generics {
             params: Vec::new(),
-            where_clause: WhereClause { predicates: Vec::new(), span: DUMMY_SP },
+            where_clause: WhereClause {
+                has_where_token: false,
+                predicates: Vec::new(),
+                span: DUMMY_SP,
+            },
             span: DUMMY_SP,
         }
     }
@@ -365,6 +375,11 @@ impl Default for Generics {
 /// A where-clause in a definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
+    /// `true` if we ate a `where` token: this can happen
+    /// if we parsed no predicates (e.g. `struct Foo where {}
+    /// This allows us to accurately pretty-print
+    /// in `nt_to_tokenstream`
+    pub has_where_token: bool,
     pub predicates: Vec<WherePredicate>,
     pub span: Span,
 }
@@ -685,19 +700,8 @@ pub enum PatKind {
     MacCall(MacCall),
 }
 
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    Copy,
-    HashStable_Generic
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(HashStable_Generic)]
 pub enum Mutability {
     Mut,
     Not,
@@ -1011,11 +1015,12 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
+    pub tokens: Option<TokenStream>,
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr, 96);
+rustc_data_structures::static_assert_size!(Expr, 104);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
@@ -1126,7 +1131,7 @@ impl Expr {
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
-            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::InlineAsm(..) | ExprKind::LlvmInlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
@@ -1169,7 +1174,9 @@ pub enum ExprKind {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
-    MethodCall(PathSegment, Vec<P<Expr>>),
+    /// This `Span` is the span of the function, without the dot and receiver
+    /// (e.g. `foo(a, b)` in `x.foo(a, b)`
+    MethodCall(PathSegment, Vec<P<Expr>>, Span),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(Vec<P<Expr>>),
     /// A binary operation (e.g., `a + b`, `a * b`).
@@ -1257,6 +1264,8 @@ pub enum ExprKind {
 
     /// Output of the `asm!()` macro.
     InlineAsm(P<InlineAsm>),
+    /// Output of the `llvm_asm!()` macro.
+    LlvmInlineAsm(P<LlvmInlineAsm>),
 
     /// A macro invocation; pre-expansion.
     MacCall(MacCall),
@@ -1322,19 +1331,8 @@ pub enum CaptureBy {
 
 /// The movability of a generator / closure literal:
 /// whether a generator contains self-references, causing it to be `!Unpin`.
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    Copy,
-    HashStable_Generic
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(HashStable_Generic)]
 pub enum Movability {
     /// May contain self-references, `!Unpin`.
     Static,
@@ -1450,7 +1448,7 @@ impl MacDelimiter {
 pub struct MacroDef {
     pub body: P<MacArgs>,
     /// `true` if macro was defined with `macro_rules`.
-    pub legacy: bool,
+    pub macro_rules: bool,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, Eq, PartialEq)]
@@ -1583,8 +1581,7 @@ impl LitKind {
     pub fn is_suffixed(&self) -> bool {
         match *self {
             // suffixed variants
-            LitKind::Int(_, LitIntType::Signed(..))
-            | LitKind::Int(_, LitIntType::Unsigned(..))
+            LitKind::Int(_, LitIntType::Signed(..) | LitIntType::Unsigned(..))
             | LitKind::Float(_, LitFloatType::Suffixed(..)) => true,
             // unsuffixed variants
             LitKind::Str(..)
@@ -1615,19 +1612,8 @@ pub struct FnSig {
     pub decl: P<FnDecl>,
 }
 
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    HashStable_Generic,
-    RustcEncodable,
-    RustcDecodable,
-    Debug
-)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
 pub enum FloatTy {
     F32,
     F64,
@@ -1648,7 +1634,7 @@ impl FloatTy {
         }
     }
 
-    pub fn bit_width(self) -> usize {
+    pub fn bit_width(self) -> u64 {
         match self {
             FloatTy::F32 => 32,
             FloatTy::F64 => 64,
@@ -1656,19 +1642,8 @@ impl FloatTy {
     }
 }
 
-#[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    HashStable_Generic,
-    RustcEncodable,
-    RustcDecodable,
-    Debug
-)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(HashStable_Generic)]
 pub enum IntTy {
     Isize,
     I8,
@@ -1708,7 +1683,7 @@ impl IntTy {
         format!("{}{}", val as u128, self.name_str())
     }
 
-    pub fn bit_width(&self) -> Option<usize> {
+    pub fn bit_width(&self) -> Option<u64> {
         Some(match *self {
             IntTy::Isize => return None,
             IntTy::I8 => 8,
@@ -1732,19 +1707,8 @@ impl IntTy {
     }
 }
 
-#[derive(
-    Clone,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    HashStable_Generic,
-    RustcEncodable,
-    RustcDecodable,
-    Copy,
-    Debug
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Copy, Debug)]
+#[derive(HashStable_Generic)]
 pub enum UintTy {
     Usize,
     U8,
@@ -1781,7 +1745,7 @@ impl UintTy {
         format!("{}{}", val, self.name_str())
     }
 
-    pub fn bit_width(&self) -> Option<usize> {
+    pub fn bit_width(&self) -> Option<u64> {
         Some(match *self {
             UintTy::Usize => return None,
             UintTy::U8 => 8,
@@ -1896,15 +1860,6 @@ impl TyKind {
     pub fn is_unit(&self) -> bool {
         if let TyKind::Tup(ref tys) = *self { tys.is_empty() } else { false }
     }
-
-    /// HACK(type_alias_impl_trait, Centril): A temporary crutch used
-    /// in lowering to avoid making larger changes there and beyond.
-    pub fn opaque_top_hack(&self) -> Option<&GenericBounds> {
-        match self {
-            Self::ImplTrait(_, bounds) => Some(bounds),
-            _ => None,
-        }
-    }
 }
 
 /// Syntax used to declare a trait object.
@@ -1914,24 +1869,100 @@ pub enum TraitObjectSyntax {
     None,
 }
 
-/// Inline assembly dialect.
+/// Inline assembly operand explicit register or register class.
 ///
-/// E.g., `"intel"` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
-pub enum AsmDialect {
-    Att,
-    Intel,
+/// E.g., `"eax"` as in `asm!("mov eax, 2", out("eax") result)`.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum InlineAsmRegOrRegClass {
+    Reg(Symbol),
+    RegClass(Symbol),
 }
 
-/// Inline assembly.
+bitflags::bitflags! {
+    #[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+    pub struct InlineAsmOptions: u8 {
+        const PURE = 1 << 0;
+        const NOMEM = 1 << 1;
+        const READONLY = 1 << 2;
+        const PRESERVES_FLAGS = 1 << 3;
+        const NORETURN = 1 << 4;
+        const NOSTACK = 1 << 5;
+        const ATT_SYNTAX = 1 << 6;
+    }
+}
+
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub enum InlineAsmTemplatePiece {
+    String(String),
+    Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
+}
+
+impl fmt::Display for InlineAsmTemplatePiece {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::String(s) => {
+                for c in s.chars() {
+                    match c {
+                        '{' => f.write_str("{{")?,
+                        '}' => f.write_str("}}")?,
+                        _ => c.fmt(f)?,
+                    }
+                }
+                Ok(())
+            }
+            Self::Placeholder { operand_idx, modifier: Some(modifier), .. } => {
+                write!(f, "{{{}:{}}}", operand_idx, modifier)
+            }
+            Self::Placeholder { operand_idx, modifier: None, .. } => {
+                write!(f, "{{{}}}", operand_idx)
+            }
+        }
+    }
+}
+
+impl InlineAsmTemplatePiece {
+    /// Rebuilds the asm template string from its pieces.
+    pub fn to_string(s: &[Self]) -> String {
+        use fmt::Write;
+        let mut out = String::new();
+        for p in s.iter() {
+            let _ = write!(out, "{}", p);
+        }
+        out
+    }
+}
+
+/// Inline assembly operand.
 ///
-/// E.g., `"={eax}"(result)` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
+/// E.g., `out("eax") result` as in `asm!("mov eax, 2", out("eax") result)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct InlineAsmOutput {
-    pub constraint: Symbol,
-    pub expr: P<Expr>,
-    pub is_rw: bool,
-    pub is_indirect: bool,
+pub enum InlineAsmOperand {
+    In {
+        reg: InlineAsmRegOrRegClass,
+        expr: P<Expr>,
+    },
+    Out {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: Option<P<Expr>>,
+    },
+    InOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: P<Expr>,
+    },
+    SplitInOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        in_expr: P<Expr>,
+        out_expr: Option<P<Expr>>,
+    },
+    Const {
+        expr: P<Expr>,
+    },
+    Sym {
+        expr: P<Expr>,
+    },
 }
 
 /// Inline assembly.
@@ -1939,14 +1970,45 @@ pub struct InlineAsmOutput {
 /// E.g., `asm!("NOP");`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct InlineAsm {
+    pub template: Vec<InlineAsmTemplatePiece>,
+    pub operands: Vec<(InlineAsmOperand, Span)>,
+    pub options: InlineAsmOptions,
+    pub line_spans: Vec<Span>,
+}
+
+/// Inline assembly dialect.
+///
+/// E.g., `"intel"` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
+pub enum LlvmAsmDialect {
+    Att,
+    Intel,
+}
+
+/// LLVM-style inline assembly.
+///
+/// E.g., `"={eax}"(result)` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct LlvmInlineAsmOutput {
+    pub constraint: Symbol,
+    pub expr: P<Expr>,
+    pub is_rw: bool,
+    pub is_indirect: bool,
+}
+
+/// LLVM-style inline assembly.
+///
+/// E.g., `llvm_asm!("NOP");`.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct LlvmInlineAsm {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,
-    pub outputs: Vec<InlineAsmOutput>,
+    pub outputs: Vec<LlvmInlineAsmOutput>,
     pub inputs: Vec<(Symbol, P<Expr>)>,
     pub clobbers: Vec<Symbol>,
     pub volatile: bool,
     pub alignstack: bool,
-    pub dialect: AsmDialect,
+    pub dialect: LlvmAsmDialect,
 }
 
 /// A parameter in a function header.
@@ -2153,7 +2215,7 @@ impl FnRetTy {
 /// Module declaration.
 ///
 /// E.g., `mod foo;` or `mod foo { .. }`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
 pub struct Mod {
     /// A span from the first token past `{` to the last token until `}`.
     /// For `mod foo;`, the inner span ranges from the first token
@@ -2251,15 +2313,10 @@ pub enum AttrStyle {
     Inner,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, Copy)]
-pub struct AttrId(pub usize);
-
-impl Idx for AttrId {
-    fn new(idx: usize) -> Self {
-        AttrId(idx)
-    }
-    fn index(self) -> usize {
-        self.0
+rustc_index::newtype_index! {
+    pub struct AttrId {
+        ENCODABLE = custom
+        DEBUG_FORMAT = "AttrId({})"
     }
 }
 
@@ -2504,7 +2561,7 @@ pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
     /// E.g., `extern crate foo` or `extern crate foo_bar as foo`.
-    ExternCrate(Option<Name>),
+    ExternCrate(Option<Symbol>),
     /// A use declaration item (`use`).
     ///
     /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.

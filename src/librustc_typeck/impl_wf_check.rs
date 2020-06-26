@@ -9,16 +9,20 @@
 //! fixed, but for the moment it's easier to do these checks early.
 
 use crate::constrained_generic_params as cgp;
-use rustc::ty::query::Providers;
-use rustc::ty::{self, TyCtxt, TypeFoldable};
+use min_specialization::check_min_specialization;
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_span::Span;
+
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-use rustc_span::Span;
+mod min_specialization;
 
 /// Checks that all the type/lifetime parameters on an impl also
 /// appear in the trait ref or self type (or are constrained by a
@@ -55,12 +59,14 @@ pub fn impl_wf_check(tcx: TyCtxt<'_>) {
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
     for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module));
+        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module).to_def_id());
     }
 }
 
 fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut ImplWfCheck { tcx });
+    let min_specialization = tcx.features().min_specialization;
+    tcx.hir()
+        .visit_item_likes_in_module(module_def_id, &mut ImplWfCheck { tcx, min_specialization });
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -69,6 +75,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 
 struct ImplWfCheck<'tcx> {
     tcx: TyCtxt<'tcx>,
+    min_specialization: bool,
 }
 
 impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
@@ -77,6 +84,9 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
             enforce_impl_params_are_constrained(self.tcx, impl_def_id, items);
             enforce_impl_items_are_distinct(self.tcx, items);
+            if self.min_specialization {
+                check_min_specialization(self.tcx, impl_def_id.to_def_id(), item.span);
+            }
         }
     }
 
@@ -87,7 +97,7 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
 
 fn enforce_impl_params_are_constrained(
     tcx: TyCtxt<'_>,
-    impl_def_id: DefId,
+    impl_def_id: LocalDefId,
     impl_item_refs: &[hir::ImplItemRef<'_>],
 ) {
     // Every lifetime used in an associated type must be constrained.
@@ -130,14 +140,7 @@ fn enforce_impl_params_are_constrained(
                         Vec::new()
                     }
                 }
-                ty::AssocKind::OpaqueTy => {
-                    // We don't know which lifetimes appear in the actual
-                    // opaque type, so use all of the lifetimes that appear
-                    // in the type's predicates.
-                    let predicates = tcx.predicates_of(def_id).instantiate_identity(tcx);
-                    cgp::parameters_for(&predicates, true)
-                }
-                ty::AssocKind::Method | ty::AssocKind::Const => Vec::new(),
+                ty::AssocKind::Fn | ty::AssocKind::Const => Vec::new(),
             }
         })
         .collect();
@@ -227,7 +230,7 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
             hir::ImplItemKind::TyAlias(_) => &mut seen_type_items,
             _ => &mut seen_value_items,
         };
-        match seen_items.entry(impl_item.ident.modern()) {
+        match seen_items.entry(impl_item.ident.normalize_to_macros_2_0()) {
             Occupied(entry) => {
                 let mut err = struct_span_err!(
                     tcx.sess,

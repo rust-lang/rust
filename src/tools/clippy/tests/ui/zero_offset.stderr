@@ -1,0 +1,9 @@
+error[E0606]: casting `&i32` as `*const u8` is invalid
+  --> $DIR/zero_offset.rs:9:17
+   |
+LL |         let y = &1 as *const u8;
+   |                 ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0606`.

@@ -3,16 +3,17 @@
 
 use super::FunctionCx;
 use crate::traits::*;
-use rustc::mir::traversal;
-use rustc::mir::visit::{
-    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
-};
-use rustc::mir::{self, Location, TerminatorKind};
-use rustc::ty;
-use rustc::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::traversal;
+use rustc_middle::mir::visit::{
+    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
+};
+use rustc_middle::mir::{self, Location, TerminatorKind};
+use rustc_middle::ty;
+use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_target::abi::LayoutOf;
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
@@ -20,7 +21,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
-    analyzer.visit_body(mir);
+    analyzer.visit_body(&mir);
 
     for (local, decl) in mir.local_decls.iter_enumerated() {
         let ty = fx.monomorphize(&decl.ty);
@@ -103,7 +104,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     ) {
         let cx = self.fx.cx;
 
-        if let [proj_base @ .., elem] = place_ref.projection {
+        if let &[ref proj_base @ .., elem] = place_ref.projection {
             let mut base_context = if context.is_mutating_use() {
                 PlaceContext::MutatingUse(MutatingUseContext::Projection)
             } else {
@@ -112,13 +113,14 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
 
             // Allow uses of projections that are ZSTs or from scalar fields.
             let is_consume = match context {
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
-                | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => true,
+                PlaceContext::NonMutatingUse(
+                    NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
+                ) => true,
                 _ => false,
             };
             if is_consume {
                 let base_ty =
-                    mir::Place::ty_from(place_ref.local, proj_base, *self.fx.mir, cx.tcx());
+                    mir::Place::ty_from(place_ref.local, proj_base, self.fx.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
@@ -184,7 +186,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             // now that we have moved to the "slice of projections" representation.
             if let mir::ProjectionElem::Index(local) = elem {
                 self.visit_local(
-                    local,
+                    &local,
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                     location,
                 );
@@ -202,7 +204,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 };
             }
 
-            self.visit_place_base(&place_ref.local, context, location);
+            self.visit_local(&place_ref.local, context, location);
             self.visit_projection(place_ref.local, place_ref.projection, context, location);
         }
     }
@@ -232,8 +234,8 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         self.visit_rvalue(rvalue, location);
     }
 
-    fn visit_terminator_kind(&mut self, kind: &mir::TerminatorKind<'tcx>, location: Location) {
-        let check = match *kind {
+    fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
+        let check = match terminator.kind {
             mir::TerminatorKind::Call { func: mir::Operand::Constant(ref c), ref args, .. } => {
                 match c.literal.ty.kind {
                     ty::FnDef(did, _) => Some((did, args)),
@@ -257,7 +259,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             }
         }
 
-        self.super_terminator_kind(kind, location);
+        self.super_terminator(terminator, location);
     }
 
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
@@ -267,14 +269,16 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
     fn visit_local(&mut self, &local: &mir::Local, context: PlaceContext, location: Location) {
         match context {
-            PlaceContext::MutatingUse(MutatingUseContext::Call) => {
+            PlaceContext::MutatingUse(MutatingUseContext::Call)
+            | PlaceContext::MutatingUse(MutatingUseContext::Yield) => {
                 self.assign(local, location);
             }
 
             PlaceContext::NonUse(_) | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
 
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
+            PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
+            ) => {
                 // Reads from uninitialized variables (e.g., in dead code, after
                 // optimizations) require locals to be in (uninitialized) memory.
                 // N.B., there can be uninitialized reads of a local visited after
@@ -290,17 +294,21 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 }
             }
 
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect)
-            | PlaceContext::MutatingUse(MutatingUseContext::Store)
-            | PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
-            | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
-            | PlaceContext::MutatingUse(MutatingUseContext::AddressOf)
-            | PlaceContext::MutatingUse(MutatingUseContext::Projection)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => {
+            PlaceContext::MutatingUse(
+                MutatingUseContext::Store
+                | MutatingUseContext::AsmOutput
+                | MutatingUseContext::Borrow
+                | MutatingUseContext::AddressOf
+                | MutatingUseContext::Projection,
+            )
+            | PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::Inspect
+                | NonMutatingUseContext::SharedBorrow
+                | NonMutatingUseContext::UniqueBorrow
+                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::AddressOf
+                | NonMutatingUseContext::Projection,
+            ) => {
                 self.not_ssa(local);
             }
 
@@ -349,8 +357,9 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::Unreachable
                 | TerminatorKind::SwitchInt { .. }
                 | TerminatorKind::Yield { .. }
-                | TerminatorKind::FalseEdges { .. }
-                | TerminatorKind::FalseUnwind { .. } => { /* nothing to do */ }
+                | TerminatorKind::FalseEdge { .. }
+                | TerminatorKind::FalseUnwind { .. }
+                | TerminatorKind::InlineAsm { .. } => { /* nothing to do */ }
                 TerminatorKind::Call { cleanup: unwind, .. }
                 | TerminatorKind::Assert { cleanup: unwind, .. }
                 | TerminatorKind::DropAndReplace { unwind, .. }

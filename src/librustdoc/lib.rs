@@ -7,16 +7,14 @@
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(test)]
-#![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
 
 extern crate env_logger;
-extern crate getopts;
-extern crate rustc;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
@@ -26,12 +24,14 @@ extern crate rustc_errors;
 extern crate rustc_expand;
 extern crate rustc_feature;
 extern crate rustc_hir;
+extern crate rustc_hir_pretty;
 extern crate rustc_index;
 extern crate rustc_infer;
 extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_metadata;
+extern crate rustc_middle;
 extern crate rustc_mir;
 extern crate rustc_parse;
 extern crate rustc_resolve;
@@ -49,8 +49,9 @@ use std::env;
 use std::panic;
 use std::process;
 
-use rustc::session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
-use rustc::session::{early_error, early_warn};
+use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
+use rustc_session::getopts;
+use rustc_session::{early_error, early_warn};
 
 #[macro_use]
 mod externalfiles;
@@ -163,9 +164,8 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optmulti(
                 "",
                 "passes",
-                "list of passes to also run, you might want \
-                        to pass it multiple times; a value of `list` \
-                        will print available passes",
+                "list of passes to also run, you might want to pass it multiple times; a value of \
+                        `list` will print available passes",
                 "PASSES",
             )
         }),
@@ -246,8 +246,8 @@ fn opts() -> Vec<RustcOptGroup> {
                 "e",
                 "extend-css",
                 "To add some CSS rules with a given file to generate doc with your \
-                      own theme. However, your theme might break if the rustdoc's generated HTML \
-                      changes, so be careful!",
+                        own theme. However, your theme might break if the rustdoc's generated HTML \
+                        changes, so be careful!",
                 "PATH",
             )
         }),
@@ -260,22 +260,21 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "playground-url",
                 "URL to send code snippets to, may be reset by --markdown-playground-url \
-                      or `#![doc(html_playground_url=...)]`",
+                        or `#![doc(html_playground_url=...)]`",
                 "URL",
             )
         }),
         unstable("display-warnings", |o| {
             o.optflag("", "display-warnings", "to print code warnings when testing doc")
         }),
-        unstable("crate-version", |o| {
+        stable("crate-version", |o| {
             o.optopt("", "crate-version", "crate version to print into documentation", "VERSION")
         }),
         unstable("sort-modules-by-appearance", |o| {
             o.optflag(
                 "",
                 "sort-modules-by-appearance",
-                "sort modules by where they appear in the \
-                                                         program, rather than alphabetically",
+                "sort modules by where they appear in the program, rather than alphabetically",
             )
         }),
         stable("theme", |o| {
@@ -356,7 +355,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "static-root-path",
                 "Path string to force loading static files from in output pages. \
-                      If not set, uses combinations of '../' to reach the documentation root.",
+                        If not set, uses combinations of '../' to reach the documentation root.",
                 "PATH",
             )
         }),
@@ -448,14 +447,29 @@ fn main_args(args: &[String]) -> i32 {
     rustc_interface::interface::default_thread_pool(options.edition, move || main_options(options))
 }
 
+fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> i32 {
+    match res {
+        Ok(()) => 0,
+        Err(err) => {
+            if !err.is_empty() {
+                diag.struct_err(&err).emit();
+            }
+            1
+        }
+    }
+}
+
 fn main_options(options: config::Options) -> i32 {
     let diag = core::new_handler(options.error_format, None, &options.debugging_options);
 
     match (options.should_test, options.markdown_input()) {
-        (true, true) => return markdown::test(options, &diag),
-        (true, false) => return test::run(options),
+        (true, true) => return wrap_return(&diag, markdown::test(options)),
+        (true, false) => return wrap_return(&diag, test::run(options)),
         (false, true) => {
-            return markdown::render(options.input, options.render_options, &diag, options.edition);
+            return wrap_return(
+                &diag,
+                markdown::render(&options.input, options.render_options, options.edition),
+            );
         }
         (false, false) => {}
     }

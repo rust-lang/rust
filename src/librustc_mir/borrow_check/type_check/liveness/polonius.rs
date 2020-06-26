@@ -1,10 +1,10 @@
+use crate::borrow_check::def_use::{self, DefUse};
 use crate::borrow_check::location::{LocationIndex, LocationTable};
 use crate::dataflow::indexes::MovePathIndex;
 use crate::dataflow::move_paths::{LookupResult, MoveData};
-use crate::util::liveness::{categorize, DefUse};
-use rustc::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Place, ReadOnlyBodyAndCache};
-use rustc::ty::subst::GenericArg;
+use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::{Body, Local, Location, Place};
+use rustc_middle::ty::subst::GenericArg;
 
 use super::TypeChecker;
 
@@ -43,7 +43,7 @@ impl UseFactsExtractor<'_> {
 
     fn insert_path_access(&mut self, path: MovePathIndex, location: Location) {
         debug!("UseFactsExtractor::insert_path_access({:?}, {:?})", path, location);
-        self.path_accessed_at_base.push((path, self.location_table.start_index(location)));
+        self.path_accessed_at_base.push((path, self.location_to_index(location)));
     }
 
     fn place_to_mpi(&self, place: &Place<'_>) -> Option<MovePathIndex> {
@@ -56,7 +56,7 @@ impl UseFactsExtractor<'_> {
 
 impl Visitor<'tcx> for UseFactsExtractor<'_> {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
-        match categorize(context) {
+        match def_use::categorize(context) {
             Some(DefUse::Def) => self.insert_def(local, location),
             Some(DefUse::Use) => self.insert_use(local, location),
             Some(DefUse::Drop) => self.insert_drop_use(local, location),
@@ -85,7 +85,7 @@ impl Visitor<'tcx> for UseFactsExtractor<'_> {
 
 pub(super) fn populate_access_facts(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    body: &Body<'tcx>,
     location_table: &LocationTable,
     move_data: &MoveData<'_>,
     dropped_at: &mut Vec<(Local, Location)>,
@@ -101,7 +101,7 @@ pub(super) fn populate_access_facts(
             location_table,
             move_data,
         };
-        extractor.visit_body(body);
+        extractor.visit_body(&body);
 
         facts.var_dropped_at.extend(
             dropped_at.iter().map(|&(local, location)| (local, location_table.mid_index(location))),

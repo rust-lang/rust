@@ -22,7 +22,7 @@ use crate::channel;
 use crate::compile;
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, timeit};
-use crate::{Compiler, Mode, LLVM_TOOLS};
+use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
 use time::{self, Timespec};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
@@ -38,8 +38,6 @@ pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
         format!("{}-{}", component, builder.rustfmt_package_vers())
     } else if component == "llvm-tools" {
         format!("{}-{}", component, builder.llvm_tools_package_vers())
-    } else if component == "lldb" {
-        format!("{}-{}", component, builder.lldb_package_vers())
     } else {
         assert!(component.starts_with("rust"));
         format!("{}-{}", component, builder.rust_package_vers())
@@ -308,7 +306,12 @@ fn make_win_dist(
     }
 
     //Copy platform tools to platform-specific bin directory
-    let target_bin_dir = plat_root.join("lib").join("rustlib").join(target_triple).join("bin");
+    let target_bin_dir = plat_root
+        .join("lib")
+        .join("rustlib")
+        .join(target_triple)
+        .join("bin")
+        .join("self-contained");
     fs::create_dir_all(&target_bin_dir).expect("creating target_bin_dir failed");
     for src in target_tools {
         builder.copy_to_folder(&src, &target_bin_dir);
@@ -323,7 +326,12 @@ fn make_win_dist(
     );
 
     //Copy platform libs to platform-specific lib directory
-    let target_lib_dir = plat_root.join("lib").join("rustlib").join(target_triple).join("lib");
+    let target_lib_dir = plat_root
+        .join("lib")
+        .join("rustlib")
+        .join(target_triple)
+        .join("lib")
+        .join("self-contained");
     fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
     for src in target_libs {
         builder.copy_to_folder(&src, &target_lib_dir);
@@ -516,7 +524,7 @@ impl Step for Rustc {
             // components like the llvm tools and LLD. LLD is included below and
             // tools/LLDB come later, so let's just throw it in the rustc
             // component for now.
-            maybe_install_llvm_dylib(builder, host, image);
+            maybe_install_llvm_runtime(builder, host, image);
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
@@ -621,19 +629,21 @@ impl Step for DebuggerScripts {
             cp_debugger_script("natvis/libcore.natvis");
             cp_debugger_script("natvis/libstd.natvis");
         } else {
-            cp_debugger_script("debugger_pretty_printers_common.py");
+            cp_debugger_script("rust_types.py");
 
             // gdb debugger scripts
             builder.install(&builder.src.join("src/etc/rust-gdb"), &sysroot.join("bin"), 0o755);
             builder.install(&builder.src.join("src/etc/rust-gdbgui"), &sysroot.join("bin"), 0o755);
 
             cp_debugger_script("gdb_load_rust_pretty_printers.py");
-            cp_debugger_script("gdb_rust_pretty_printing.py");
+            cp_debugger_script("gdb_lookup.py");
+            cp_debugger_script("gdb_providers.py");
 
             // lldb debugger scripts
             builder.install(&builder.src.join("src/etc/rust-lldb"), &sysroot.join("bin"), 0o755);
 
-            cp_debugger_script("lldb_rust_formatters.py");
+            cp_debugger_script("lldb_lookup.py");
+            cp_debugger_script("lldb_providers.py");
         }
     }
 }
@@ -652,9 +662,13 @@ fn skip_host_target_lib(builder: &Builder<'_>, compiler: Compiler) -> bool {
 /// Copy stamped files into an image's `target/lib` directory.
 fn copy_target_libs(builder: &Builder<'_>, target: &str, image: &Path, stamp: &Path) {
     let dst = image.join("lib/rustlib").join(target).join("lib");
+    let self_contained_dst = dst.join("self-contained");
     t!(fs::create_dir_all(&dst));
-    for (path, host) in builder.read_stamp_file(stamp) {
-        if !host || builder.config.build == target {
+    t!(fs::create_dir_all(&self_contained_dst));
+    for (path, dependency_type) in builder.read_stamp_file(stamp) {
+        if dependency_type == DependencyType::TargetSelfContained {
+            builder.copy(&path, &self_contained_dst.join(path.file_name().unwrap()));
+        } else if dependency_type == DependencyType::Target || builder.config.build == target {
             builder.copy(&path, &dst.join(path.file_name().unwrap()));
         }
     }
@@ -1330,7 +1344,7 @@ pub struct Clippy {
 }
 
 impl Step for Clippy {
-    type Output = Option<PathBuf>;
+    type Output = PathBuf;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1348,7 +1362,7 @@ impl Step for Clippy {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1368,16 +1382,10 @@ impl Step for Clippy {
         // state for clippy isn't testing.
         let clippy = builder
             .ensure(tool::Clippy { compiler, target, extra_features: Vec::new() })
-            .or_else(|| {
-                missing_tool("clippy", builder.build.config.missing_tools);
-                None
-            })?;
+            .expect("clippy expected to build - essential tool");
         let cargoclippy = builder
             .ensure(tool::CargoClippy { compiler, target, extra_features: Vec::new() })
-            .or_else(|| {
-                missing_tool("cargo clippy", builder.build.config.missing_tools);
-                None
-            })?;
+            .expect("clippy expected to build - essential tool");
 
         builder.install(&clippy, &image.join("bin"), 0o755);
         builder.install(&cargoclippy, &image.join("bin"), 0o755);
@@ -1416,7 +1424,7 @@ impl Step for Clippy {
         builder.info(&format!("Dist clippy stage{} ({})", compiler.stage, target));
         let _time = timeit(builder);
         builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
+        distdir(builder).join(format!("{}-{}.tar.gz", name, target))
     }
 }
 
@@ -1651,7 +1659,6 @@ impl Step for Extended {
         let llvm_tools_installer = builder.ensure(LlvmTools { target });
         let clippy_installer = builder.ensure(Clippy { compiler, target });
         let miri_installer = builder.ensure(Miri { compiler, target });
-        let lldb_installer = builder.ensure(Lldb { target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis { compiler, target });
 
@@ -1683,11 +1690,10 @@ impl Step for Extended {
         tarballs.push(rustc_installer);
         tarballs.push(cargo_installer);
         tarballs.extend(rls_installer.clone());
-        tarballs.extend(clippy_installer.clone());
+        tarballs.push(clippy_installer);
         tarballs.extend(miri_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
         tarballs.extend(llvm_tools_installer);
-        tarballs.extend(lldb_installer);
         tarballs.push(analysis_installer);
         tarballs.push(std_installer);
         if builder.config.docs {
@@ -1761,9 +1767,6 @@ impl Step for Extended {
             if rls_installer.is_none() {
                 contents = filter(&contents, "rls");
             }
-            if clippy_installer.is_none() {
-                contents = filter(&contents, "clippy");
-            }
             if miri_installer.is_none() {
                 contents = filter(&contents, "miri");
             }
@@ -1805,12 +1808,10 @@ impl Step for Extended {
             prepare("rust-docs");
             prepare("rust-std");
             prepare("rust-analysis");
+            prepare("clippy");
 
             if rls_installer.is_some() {
                 prepare("rls");
-            }
-            if clippy_installer.is_some() {
-                prepare("clippy");
             }
             if miri_installer.is_some() {
                 prepare("miri");
@@ -1863,11 +1864,9 @@ impl Step for Extended {
             prepare("rust-analysis");
             prepare("rust-docs");
             prepare("rust-std");
+            prepare("clippy");
             if rls_installer.is_some() {
                 prepare("rls");
-            }
-            if clippy_installer.is_some() {
-                prepare("clippy");
             }
             if miri_installer.is_some() {
                 prepare("miri");
@@ -1989,25 +1988,23 @@ impl Step for Extended {
                         .arg(etc.join("msi/remove-duplicates.xsl")),
                 );
             }
-            if clippy_installer.is_some() {
-                builder.run(
-                    Command::new(&heat)
-                        .current_dir(&exe)
-                        .arg("dir")
-                        .arg("clippy")
-                        .args(&heat_flags)
-                        .arg("-cg")
-                        .arg("ClippyGroup")
-                        .arg("-dr")
-                        .arg("Clippy")
-                        .arg("-var")
-                        .arg("var.ClippyDir")
-                        .arg("-out")
-                        .arg(exe.join("ClippyGroup.wxs"))
-                        .arg("-t")
-                        .arg(etc.join("msi/remove-duplicates.xsl")),
-                );
-            }
+            builder.run(
+                Command::new(&heat)
+                    .current_dir(&exe)
+                    .arg("dir")
+                    .arg("clippy")
+                    .args(&heat_flags)
+                    .arg("-cg")
+                    .arg("ClippyGroup")
+                    .arg("-dr")
+                    .arg("Clippy")
+                    .arg("-var")
+                    .arg("var.ClippyDir")
+                    .arg("-out")
+                    .arg(exe.join("ClippyGroup.wxs"))
+                    .arg("-t")
+                    .arg(etc.join("msi/remove-duplicates.xsl")),
+            );
             if miri_installer.is_some() {
                 builder.run(
                     Command::new(&heat)
@@ -2073,6 +2070,7 @@ impl Step for Extended {
                     .arg("-dCargoDir=cargo")
                     .arg("-dStdDir=rust-std")
                     .arg("-dAnalysisDir=rust-analysis")
+                    .arg("-dClippyDir=clippy")
                     .arg("-arch")
                     .arg(&arch)
                     .arg("-out")
@@ -2082,9 +2080,6 @@ impl Step for Extended {
 
                 if rls_installer.is_some() {
                     cmd.arg("-dRlsDir=rls");
-                }
-                if clippy_installer.is_some() {
-                    cmd.arg("-dClippyDir=clippy");
                 }
                 if miri_installer.is_some() {
                     cmd.arg("-dMiriDir=miri");
@@ -2101,11 +2096,9 @@ impl Step for Extended {
             candle("DocsGroup.wxs".as_ref());
             candle("CargoGroup.wxs".as_ref());
             candle("StdGroup.wxs".as_ref());
+            candle("ClippyGroup.wxs".as_ref());
             if rls_installer.is_some() {
                 candle("RlsGroup.wxs".as_ref());
-            }
-            if clippy_installer.is_some() {
-                candle("ClippyGroup.wxs".as_ref());
             }
             if miri_installer.is_some() {
                 candle("MiriGroup.wxs".as_ref());
@@ -2138,13 +2131,11 @@ impl Step for Extended {
                 .arg("CargoGroup.wixobj")
                 .arg("StdGroup.wixobj")
                 .arg("AnalysisGroup.wixobj")
+                .arg("ClippyGroup.wixobj")
                 .current_dir(&exe);
 
             if rls_installer.is_some() {
                 cmd.arg("RlsGroup.wixobj");
-            }
-            if clippy_installer.is_some() {
-                cmd.arg("ClippyGroup.wixobj");
             }
             if miri_installer.is_some() {
                 cmd.arg("MiriGroup.wixobj");
@@ -2243,7 +2234,6 @@ impl Step for HashSign {
         cmd.arg(builder.package_vers(&builder.release_num("miri")));
         cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));
         cmd.arg(builder.llvm_tools_package_vers());
-        cmd.arg(builder.lldb_package_vers());
 
         builder.create_dir(&distdir(builder));
 
@@ -2254,27 +2244,18 @@ impl Step for HashSign {
     }
 }
 
-// Maybe add libLLVM.so to the lib-dir. It will only have been built if
-// LLVM tools are linked dynamically.
-//
-// We add this to both the libdir of the rustc binary itself (for it to load at
-// runtime) and also to the target directory so it can find it at link-time.
-//
-// Note: This function does no yet support Windows but we also don't support
-//       linking LLVM tools dynamically on Windows yet.
-pub fn maybe_install_llvm_dylib(builder: &Builder<'_>, target: Interned<String>, sysroot: &Path) {
+/// Maybe add libLLVM.so to the given destination lib-dir. It will only have
+/// been built if LLVM tools are linked dynamically.
+///
+/// Note: This function does not yet support Windows, but we also don't support
+///       linking LLVM tools dynamically on Windows yet.
+fn maybe_install_llvm(builder: &Builder<'_>, target: Interned<String>, dst_libdir: &Path) {
     let src_libdir = builder.llvm_out(target).join("lib");
-    let dst_libdir1 = sysroot.join("lib/rustlib").join(&*target).join("lib");
-    let dst_libdir2 =
-        sysroot.join(builder.sysroot_libdir_relative(Compiler { stage: 1, host: target }));
-    t!(fs::create_dir_all(&dst_libdir1));
-    t!(fs::create_dir_all(&dst_libdir2));
 
     if target.contains("apple-darwin") {
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
-            builder.install(&llvm_dylib_path, &dst_libdir1, 0o644);
-            builder.install(&llvm_dylib_path, &dst_libdir2, 0o644);
+            builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
         return;
     }
@@ -2288,9 +2269,21 @@ pub fn maybe_install_llvm_dylib(builder: &Builder<'_>, target: Interned<String>,
             panic!("dist: Error calling canonicalize path `{}`: {}", llvm_dylib_path.display(), e);
         });
 
-        builder.install(&llvm_dylib_path, &dst_libdir1, 0o644);
-        builder.install(&llvm_dylib_path, &dst_libdir2, 0o644);
+        builder.install(&llvm_dylib_path, dst_libdir, 0o644);
     }
+}
+
+/// Maybe add libLLVM.so to the target lib-dir for linking.
+pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: Interned<String>, sysroot: &Path) {
+    let dst_libdir = sysroot.join("lib/rustlib").join(&*target).join("lib");
+    maybe_install_llvm(builder, target, &dst_libdir);
+}
+
+/// Maybe add libLLVM.so to the runtime lib-dir for rustc itself.
+pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: Interned<String>, sysroot: &Path) {
+    let dst_libdir =
+        sysroot.join(builder.sysroot_libdir_relative(Compiler { stage: 1, host: target }));
+    maybe_install_llvm(builder, target, &dst_libdir);
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -2340,6 +2333,12 @@ impl Step for LlvmTools {
             builder.install(&exe, &dst_bindir, 0o755);
         }
 
+        // Copy libLLVM.so to the target lib dir as well, so the RPATH like
+        // `$ORIGIN/../lib` can find it. It may also be used as a dependency
+        // of `rustc-dev` to support the inherited `-lLLVM` when using the
+        // compiler libraries.
+        maybe_install_llvm_target(builder, target, &image);
+
         // Prepare the overlay
         let overlay = tmp.join("llvm-tools-overlay");
         drop(fs::remove_dir_all(&overlay));
@@ -2365,122 +2364,6 @@ impl Step for LlvmTools {
             .arg(format!("--package-name={}-{}", name, target))
             .arg("--legacy-manifest-dirs=rustlib,cargo")
             .arg("--component-name=llvm-tools-preview");
-
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
-    }
-}
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Lldb {
-    pub target: Interned<String>,
-}
-
-impl Step for Lldb {
-    type Output = Option<PathBuf>;
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/llvm-project/lldb").path("src/tools/lldb")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Lldb { target: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
-        let target = self.target;
-
-        if builder.config.dry_run {
-            return None;
-        }
-
-        let bindir = builder.llvm_out(target).join("bin");
-        let lldb_exe = bindir.join(exe("lldb", &target));
-        if !lldb_exe.exists() {
-            return None;
-        }
-
-        builder.info(&format!("Dist Lldb ({})", target));
-        let src = builder.src.join("src/llvm-project/lldb");
-        let name = pkgname(builder, "lldb");
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("lldb-image");
-        drop(fs::remove_dir_all(&image));
-
-        // Prepare the image directory
-        let root = image.join("lib/rustlib").join(&*target);
-        let dst = root.join("bin");
-        t!(fs::create_dir_all(&dst));
-        for program in &["lldb", "lldb-argdumper", "lldb-mi", "lldb-server"] {
-            let exe = bindir.join(exe(program, &target));
-            builder.install(&exe, &dst, 0o755);
-        }
-
-        // The libraries.
-        let libdir = builder.llvm_out(target).join("lib");
-        let dst = root.join("lib");
-        t!(fs::create_dir_all(&dst));
-        for entry in t!(fs::read_dir(&libdir)) {
-            let entry = entry.unwrap();
-            if let Ok(name) = entry.file_name().into_string() {
-                if name.starts_with("liblldb.") && !name.ends_with(".a") {
-                    if t!(entry.file_type()).is_symlink() {
-                        builder.copy_to_folder(&entry.path(), &dst);
-                    } else {
-                        builder.install(&entry.path(), &dst, 0o755);
-                    }
-                }
-            }
-        }
-
-        // The lldb scripts might be installed in lib/python$version
-        // or in lib64/python$version.  If lib64 exists, use it;
-        // otherwise lib.
-        let libdir = builder.llvm_out(target).join("lib64");
-        let (libdir, libdir_name) = if libdir.exists() {
-            (libdir, "lib64")
-        } else {
-            (builder.llvm_out(target).join("lib"), "lib")
-        };
-        for entry in t!(fs::read_dir(&libdir)) {
-            let entry = t!(entry);
-            if let Ok(name) = entry.file_name().into_string() {
-                if name.starts_with("python") {
-                    let dst = root.join(libdir_name).join(entry.file_name());
-                    t!(fs::create_dir_all(&dst));
-                    builder.cp_r(&entry.path(), &dst);
-                    break;
-                }
-            }
-        }
-
-        // Prepare the overlay
-        let overlay = tmp.join("lldb-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        builder.create_dir(&overlay);
-        builder.install(&src.join("LICENSE.TXT"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &builder.lldb_vers());
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=lldb-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=lldb-preview");
 
         builder.run(&mut cmd);
         Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))

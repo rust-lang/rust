@@ -2,13 +2,13 @@ error[E0451]: field `c` of union `m::U` is private
   --> $DIR/union-field-privacy-1.rs:12:20
    |
 LL |     let u = m::U { c: 0 };
-   |                    ^^^^ field `c` is private
+   |                    ^^^^ private field
 
 error[E0451]: field `c` of union `m::U` is private
   --> $DIR/union-field-privacy-1.rs:16:16
    |
 LL |     let m::U { c } = u;
-   |                ^ field `c` is private
+   |                ^ private field
 
 error: aborting due to 2 previous errors
 

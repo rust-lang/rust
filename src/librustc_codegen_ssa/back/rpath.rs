@@ -3,8 +3,8 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use rustc::middle::cstore::LibSource;
 use rustc_hir::def_id::CrateNum;
+use rustc_middle::middle::cstore::LibSource;
 
 pub struct RPathConfig<'a> {
     pub used_crates: &'a [(CrateNum, LibSource)],
@@ -81,9 +81,7 @@ fn get_rpaths(config: &mut RPathConfig<'_>, libs: &[PathBuf]) -> Vec<String> {
     rpaths.extend_from_slice(&fallback_rpaths);
 
     // Remove duplicates
-    let rpaths = minimize_rpaths(&rpaths);
-
-    rpaths
+    minimize_rpaths(&rpaths)
 }
 
 fn get_rpaths_relative_to_output(config: &mut RPathConfig<'_>, libs: &[PathBuf]) -> Vec<String> {

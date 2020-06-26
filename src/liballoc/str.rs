@@ -499,7 +499,7 @@ impl str {
     ///
     /// ```should_panic
     /// // this will panic at runtime
-    /// "0123456789abcdef".repeat(usize::max_value());
+    /// "0123456789abcdef".repeat(usize::MAX);
     /// ```
     #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {
@@ -583,5 +583,5 @@ impl str {
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 #[inline]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
-    Box::from_raw(Box::into_raw(v) as *mut str)
+    unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
 }

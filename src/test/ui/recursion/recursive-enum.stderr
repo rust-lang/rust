@@ -6,7 +6,10 @@ LL | enum List<T> { Cons(T, List<T>), Nil }
    | |
    | recursive type has infinite size
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `List` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `List` representable
+   |
+LL | enum List<T> { Cons(T, Box<List<T>>), Nil }
+   |                        ^^^^       ^
 
 error: aborting due to previous error
 

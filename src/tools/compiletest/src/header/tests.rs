@@ -27,6 +27,12 @@ fn test_parse_normalization_string() {
     let first = parse_normalization_string(&mut s);
     assert_eq!(first, Some("something (32 bits)".to_owned()));
     assert_eq!(s, " -> \"something ($WORD bits).");
+
+    // Nothing to normalize (No quotes, 16-bit)
+    let mut s = "normalize-stderr-16bit: something (16 bits) -> something ($WORD bits).";
+    let first = parse_normalization_string(&mut s);
+    assert_eq!(first, None);
+    assert_eq!(s, r#"normalize-stderr-16bit: something (16 bits) -> something ($WORD bits)."#);
 }
 
 fn config() -> Config {
@@ -122,9 +128,8 @@ fn llvm_version() {
     config.llvm_version = Some("9.3.1-rust-1.43.0-dev".to_owned());
     assert!(!parse_rs(&config, "// min-llvm-version 9.2").ignore);
 
-    // FIXME.
-    // config.llvm_version = Some("10.0.0-rust".to_owned());
-    // assert!(!parse_rs(&config, "// min-llvm-version 9.0").ignore);
+    config.llvm_version = Some("10.0.0-rust".to_owned());
+    assert!(!parse_rs(&config, "// min-llvm-version 9.0").ignore);
 }
 
 #[test]
@@ -195,4 +200,23 @@ fn debugger() {
 
     config.debugger = Some(Debugger::Lldb);
     assert!(parse_rs(&config, "// ignore-lldb").ignore);
+}
+
+#[test]
+fn sanitizers() {
+    let mut config = config();
+
+    // Target that supports all sanitizers:
+    config.target = "x86_64-unknown-linux-gnu".to_owned();
+    assert!(!parse_rs(&config, "// needs-sanitizer-address").ignore);
+    assert!(!parse_rs(&config, "// needs-sanitizer-leak").ignore);
+    assert!(!parse_rs(&config, "// needs-sanitizer-memory").ignore);
+    assert!(!parse_rs(&config, "// needs-sanitizer-thread").ignore);
+
+    // Target that doesn't support sanitizers:
+    config.target = "wasm32-unknown-emscripten".to_owned();
+    assert!(parse_rs(&config, "// needs-sanitizer-address").ignore);
+    assert!(parse_rs(&config, "// needs-sanitizer-leak").ignore);
+    assert!(parse_rs(&config, "// needs-sanitizer-memory").ignore);
+    assert!(parse_rs(&config, "// needs-sanitizer-thread").ignore);
 }

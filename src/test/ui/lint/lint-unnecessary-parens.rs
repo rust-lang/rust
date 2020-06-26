@@ -48,11 +48,11 @@ fn main() {
     if (true) {} //~ ERROR unnecessary parentheses around `if` condition
     while (true) {} //~ ERROR unnecessary parentheses around `while` condition
     //~^ WARN denote infinite loops with
-    match (true) { //~ ERROR unnecessary parentheses around `match` head expression
+    match (true) { //~ ERROR unnecessary parentheses around `match` scrutinee expression
         _ => {}
     }
-    if let 1 = (1) {} //~ ERROR unnecessary parentheses around `let` head expression
-    while let 1 = (2) {} //~ ERROR unnecessary parentheses around `let` head expression
+    if let 1 = (1) {} //~ ERROR unnecessary parentheses around `let` scrutinee expression
+    while let 1 = (2) {} //~ ERROR unnecessary parentheses around `let` scrutinee expression
     let v = X { y: false };
     // struct lits needs parens, so these shouldn't warn.
     if (v == X { y: true }) {}

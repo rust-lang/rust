@@ -1,8 +1,8 @@
+// ignore-tidy-filelength
+
 use core::cell::Cell;
 use core::convert::TryFrom;
 use core::iter::*;
-use core::usize;
-use core::{i16, i8, isize};
 
 #[test]
 fn test_lt() {
@@ -76,7 +76,6 @@ fn test_cmp_by() {
 #[test]
 fn test_partial_cmp_by() {
     use core::cmp::Ordering;
-    use core::f64;
 
     let f = |x: i32, y: i32| (x * x).partial_cmp(&y);
     let xs = || [1, 2, 3, 4].iter().copied();
@@ -208,48 +207,62 @@ fn test_iterator_chain_find() {
     assert_eq!(iter.next(), None);
 }
 
+struct Toggle {
+    is_empty: bool,
+}
+
+impl Iterator for Toggle {
+    type Item = ();
+
+    // alternates between `None` and `Some(())`
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.is_empty {
+            self.is_empty = false;
+            None
+        } else {
+            self.is_empty = true;
+            Some(())
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.is_empty { (0, Some(0)) } else { (1, Some(1)) }
+    }
+}
+
+impl DoubleEndedIterator for Toggle {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.next()
+    }
+}
+
 #[test]
 fn test_iterator_chain_size_hint() {
-    struct Iter {
-        is_empty: bool,
-    }
-
-    impl Iterator for Iter {
-        type Item = ();
-
-        // alternates between `None` and `Some(())`
-        fn next(&mut self) -> Option<Self::Item> {
-            if self.is_empty {
-                self.is_empty = false;
-                None
-            } else {
-                self.is_empty = true;
-                Some(())
-            }
-        }
-
-        fn size_hint(&self) -> (usize, Option<usize>) {
-            if self.is_empty { (0, Some(0)) } else { (1, Some(1)) }
-        }
-    }
-
-    impl DoubleEndedIterator for Iter {
-        fn next_back(&mut self) -> Option<Self::Item> {
-            self.next()
-        }
-    }
-
     // this chains an iterator of length 0 with an iterator of length 1,
     // so after calling `.next()` once, the iterator is empty and the
     // state is `ChainState::Back`. `.size_hint()` should now disregard
     // the size hint of the left iterator
-    let mut iter = Iter { is_empty: true }.chain(once(()));
+    let mut iter = Toggle { is_empty: true }.chain(once(()));
     assert_eq!(iter.next(), Some(()));
     assert_eq!(iter.size_hint(), (0, Some(0)));
 
-    let mut iter = once(()).chain(Iter { is_empty: true });
+    let mut iter = once(()).chain(Toggle { is_empty: true });
     assert_eq!(iter.next_back(), Some(()));
     assert_eq!(iter.size_hint(), (0, Some(0)));
+}
+
+#[test]
+fn test_iterator_chain_unfused() {
+    // Chain shouldn't be fused in its second iterator, depending on direction
+    let mut iter = NonFused::new(empty()).chain(Toggle { is_empty: true });
+    iter.next().unwrap_none();
+    iter.next().unwrap();
+    iter.next().unwrap_none();
+
+    let mut iter = Toggle { is_empty: true }.chain(NonFused::new(empty()));
+    iter.next_back().unwrap_none();
+    iter.next_back().unwrap();
+    iter.next_back().unwrap_none();
 }
 
 #[test]
@@ -798,6 +811,30 @@ fn test_iterator_peekable_rfold() {
         i + 1
     });
     assert_eq!(i, xs.len());
+}
+
+#[test]
+fn test_iterator_peekable_next_if_eq() {
+    // first, try on references
+    let xs = vec!["Heart", "of", "Gold"];
+    let mut it = xs.into_iter().peekable();
+    // try before `peek()`
+    assert_eq!(it.next_if_eq(&"trillian"), None);
+    assert_eq!(it.next_if_eq(&"Heart"), Some("Heart"));
+    // try after peek()
+    assert_eq!(it.peek(), Some(&"of"));
+    assert_eq!(it.next_if_eq(&"of"), Some("of"));
+    assert_eq!(it.next_if_eq(&"zaphod"), None);
+    // make sure `next()` still behaves
+    assert_eq!(it.next(), Some("Gold"));
+
+    // make sure comparison works for owned values
+    let xs = vec![String::from("Ludicrous"), "speed".into()];
+    let mut it = xs.into_iter().peekable();
+    // make sure basic functionality works
+    assert_eq!(it.next_if_eq("Ludicrous"), Some("Ludicrous".into()));
+    assert_eq!(it.next_if_eq("speed"), Some("speed".into()));
+    assert_eq!(it.next_if_eq(""), None);
 }
 
 /// This is an iterator that follows the Iterator contract,
@@ -1920,6 +1957,21 @@ fn test_range() {
 }
 
 #[test]
+fn test_char_range() {
+    use std::char;
+    // Miri is too slow
+    let from = if cfg!(miri) { char::from_u32(0xD800 - 10).unwrap() } else { '\0' };
+    let to = if cfg!(miri) { char::from_u32(0xDFFF + 10).unwrap() } else { char::MAX };
+    assert!((from..=to).eq((from as u32..=to as u32).filter_map(char::from_u32)));
+    assert!((from..=to).rev().eq((from as u32..=to as u32).filter_map(char::from_u32).rev()));
+
+    assert_eq!(('\u{D7FF}'..='\u{E000}').count(), 2);
+    assert_eq!(('\u{D7FF}'..='\u{E000}').size_hint(), (2, Some(2)));
+    assert_eq!(('\u{D7FF}'..'\u{E000}').count(), 1);
+    assert_eq!(('\u{D7FF}'..'\u{E000}').size_hint(), (1, Some(1)));
+}
+
+#[test]
 fn test_range_exhaustion() {
     let mut r = 10..10;
     assert!(r.is_empty());
@@ -2127,6 +2179,24 @@ fn test_range_inclusive_nth_back() {
 }
 
 #[test]
+fn test_range_len() {
+    assert_eq!((0..10_u8).len(), 10);
+    assert_eq!((9..10_u8).len(), 1);
+    assert_eq!((10..10_u8).len(), 0);
+    assert_eq!((11..10_u8).len(), 0);
+    assert_eq!((100..10_u8).len(), 0);
+}
+
+#[test]
+fn test_range_inclusive_len() {
+    assert_eq!((0..=10_u8).len(), 11);
+    assert_eq!((9..=10_u8).len(), 2);
+    assert_eq!((10..=10_u8).len(), 1);
+    assert_eq!((11..=10_u8).len(), 0);
+    assert_eq!((100..=10_u8).len(), 0);
+}
+
+#[test]
 fn test_range_step() {
     #![allow(deprecated)]
 
@@ -2249,62 +2319,58 @@ fn test_range_inclusive_folds() {
 
 #[test]
 fn test_range_size_hint() {
-    use core::usize::MAX as UMAX;
     assert_eq!((0..0usize).size_hint(), (0, Some(0)));
     assert_eq!((0..100usize).size_hint(), (100, Some(100)));
-    assert_eq!((0..UMAX).size_hint(), (UMAX, Some(UMAX)));
+    assert_eq!((0..usize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
 
-    let umax = u128::try_from(UMAX).unwrap();
+    let umax = u128::try_from(usize::MAX).unwrap();
     assert_eq!((0..0u128).size_hint(), (0, Some(0)));
     assert_eq!((0..100u128).size_hint(), (100, Some(100)));
-    assert_eq!((0..umax).size_hint(), (UMAX, Some(UMAX)));
-    assert_eq!((0..umax + 1).size_hint(), (UMAX, None));
+    assert_eq!((0..umax).size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((0..umax + 1).size_hint(), (usize::MAX, None));
 
-    use core::isize::{MAX as IMAX, MIN as IMIN};
     assert_eq!((0..0isize).size_hint(), (0, Some(0)));
     assert_eq!((-100..100isize).size_hint(), (200, Some(200)));
-    assert_eq!((IMIN..IMAX).size_hint(), (UMAX, Some(UMAX)));
+    assert_eq!((isize::MIN..isize::MAX).size_hint(), (usize::MAX, Some(usize::MAX)));
 
-    let imin = i128::try_from(IMIN).unwrap();
-    let imax = i128::try_from(IMAX).unwrap();
+    let imin = i128::try_from(isize::MIN).unwrap();
+    let imax = i128::try_from(isize::MAX).unwrap();
     assert_eq!((0..0i128).size_hint(), (0, Some(0)));
     assert_eq!((-100..100i128).size_hint(), (200, Some(200)));
-    assert_eq!((imin..imax).size_hint(), (UMAX, Some(UMAX)));
-    assert_eq!((imin..imax + 1).size_hint(), (UMAX, None));
+    assert_eq!((imin..imax).size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((imin..imax + 1).size_hint(), (usize::MAX, None));
 }
 
 #[test]
 fn test_range_inclusive_size_hint() {
-    use core::usize::MAX as UMAX;
     assert_eq!((1..=0usize).size_hint(), (0, Some(0)));
     assert_eq!((0..=0usize).size_hint(), (1, Some(1)));
     assert_eq!((0..=100usize).size_hint(), (101, Some(101)));
-    assert_eq!((0..=UMAX - 1).size_hint(), (UMAX, Some(UMAX)));
-    assert_eq!((0..=UMAX).size_hint(), (UMAX, None));
+    assert_eq!((0..=usize::MAX - 1).size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((0..=usize::MAX).size_hint(), (usize::MAX, None));
 
-    let umax = u128::try_from(UMAX).unwrap();
+    let umax = u128::try_from(usize::MAX).unwrap();
     assert_eq!((1..=0u128).size_hint(), (0, Some(0)));
     assert_eq!((0..=0u128).size_hint(), (1, Some(1)));
     assert_eq!((0..=100u128).size_hint(), (101, Some(101)));
-    assert_eq!((0..=umax - 1).size_hint(), (UMAX, Some(UMAX)));
-    assert_eq!((0..=umax).size_hint(), (UMAX, None));
-    assert_eq!((0..=umax + 1).size_hint(), (UMAX, None));
+    assert_eq!((0..=umax - 1).size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((0..=umax).size_hint(), (usize::MAX, None));
+    assert_eq!((0..=umax + 1).size_hint(), (usize::MAX, None));
 
-    use core::isize::{MAX as IMAX, MIN as IMIN};
     assert_eq!((0..=-1isize).size_hint(), (0, Some(0)));
     assert_eq!((0..=0isize).size_hint(), (1, Some(1)));
     assert_eq!((-100..=100isize).size_hint(), (201, Some(201)));
-    assert_eq!((IMIN..=IMAX - 1).size_hint(), (UMAX, Some(UMAX)));
-    assert_eq!((IMIN..=IMAX).size_hint(), (UMAX, None));
+    assert_eq!((isize::MIN..=isize::MAX - 1).size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((isize::MIN..=isize::MAX).size_hint(), (usize::MAX, None));
 
-    let imin = i128::try_from(IMIN).unwrap();
-    let imax = i128::try_from(IMAX).unwrap();
+    let imin = i128::try_from(isize::MIN).unwrap();
+    let imax = i128::try_from(isize::MAX).unwrap();
     assert_eq!((0..=-1i128).size_hint(), (0, Some(0)));
     assert_eq!((0..=0i128).size_hint(), (1, Some(1)));
     assert_eq!((-100..=100i128).size_hint(), (201, Some(201)));
-    assert_eq!((imin..=imax - 1).size_hint(), (UMAX, Some(UMAX)));
-    assert_eq!((imin..=imax).size_hint(), (UMAX, None));
-    assert_eq!((imin..=imax + 1).size_hint(), (UMAX, None));
+    assert_eq!((imin..=imax - 1).size_hint(), (usize::MAX, Some(usize::MAX)));
+    assert_eq!((imin..=imax).size_hint(), (usize::MAX, None));
+    assert_eq!((imin..=imax + 1).size_hint(), (usize::MAX, None));
 }
 
 #[test]
@@ -2500,42 +2566,91 @@ fn test_chain_fold() {
 }
 
 #[test]
-fn test_step_replace_unsigned() {
-    let mut x = 4u32;
-    let y = x.replace_zero();
-    assert_eq!(x, 0);
-    assert_eq!(y, 4);
+fn test_steps_between() {
+    assert_eq!(Step::steps_between(&20_u8, &200_u8), Some(180_usize));
+    assert_eq!(Step::steps_between(&-20_i8, &80_i8), Some(100_usize));
+    assert_eq!(Step::steps_between(&-120_i8, &80_i8), Some(200_usize));
+    assert_eq!(Step::steps_between(&20_u32, &4_000_100_u32), Some(4_000_080_usize));
+    assert_eq!(Step::steps_between(&-20_i32, &80_i32), Some(100_usize));
+    assert_eq!(Step::steps_between(&-2_000_030_i32, &2_000_050_i32), Some(4_000_080_usize));
 
-    x = 5;
-    let y = x.replace_one();
-    assert_eq!(x, 1);
-    assert_eq!(y, 5);
+    // Skip u64/i64 to avoid differences with 32-bit vs 64-bit platforms
+
+    assert_eq!(Step::steps_between(&20_u128, &200_u128), Some(180_usize));
+    assert_eq!(Step::steps_between(&-20_i128, &80_i128), Some(100_usize));
+    if cfg!(target_pointer_width = "64") {
+        assert_eq!(Step::steps_between(&10_u128, &0x1_0000_0000_0000_0009_u128), Some(usize::MAX));
+    }
+    assert_eq!(Step::steps_between(&10_u128, &0x1_0000_0000_0000_000a_u128), None);
+    assert_eq!(Step::steps_between(&10_i128, &0x1_0000_0000_0000_000a_i128), None);
+    assert_eq!(
+        Step::steps_between(&-0x1_0000_0000_0000_0000_i128, &0x1_0000_0000_0000_0000_i128,),
+        None,
+    );
 }
 
 #[test]
-fn test_step_replace_signed() {
-    let mut x = 4i32;
-    let y = x.replace_zero();
-    assert_eq!(x, 0);
-    assert_eq!(y, 4);
+fn test_step_forward() {
+    assert_eq!(Step::forward_checked(55_u8, 200_usize), Some(255_u8));
+    assert_eq!(Step::forward_checked(252_u8, 200_usize), None);
+    assert_eq!(Step::forward_checked(0_u8, 256_usize), None);
+    assert_eq!(Step::forward_checked(-110_i8, 200_usize), Some(90_i8));
+    assert_eq!(Step::forward_checked(-110_i8, 248_usize), None);
+    assert_eq!(Step::forward_checked(-126_i8, 256_usize), None);
 
-    x = 5;
-    let y = x.replace_one();
-    assert_eq!(x, 1);
-    assert_eq!(y, 5);
+    assert_eq!(Step::forward_checked(35_u16, 100_usize), Some(135_u16));
+    assert_eq!(Step::forward_checked(35_u16, 65500_usize), Some(u16::MAX));
+    assert_eq!(Step::forward_checked(36_u16, 65500_usize), None);
+    assert_eq!(Step::forward_checked(-110_i16, 200_usize), Some(90_i16));
+    assert_eq!(Step::forward_checked(-20_030_i16, 50_050_usize), Some(30_020_i16));
+    assert_eq!(Step::forward_checked(-10_i16, 40_000_usize), None);
+    assert_eq!(Step::forward_checked(-10_i16, 70_000_usize), None);
+
+    assert_eq!(Step::forward_checked(10_u128, 70_000_usize), Some(70_010_u128));
+    assert_eq!(Step::forward_checked(10_i128, 70_030_usize), Some(70_040_i128));
+    assert_eq!(
+        Step::forward_checked(0xffff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_u128, 0xff_usize),
+        Some(u128::MAX),
+    );
+    assert_eq!(
+        Step::forward_checked(0xffff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_u128, 0x100_usize),
+        None
+    );
+    assert_eq!(
+        Step::forward_checked(0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128, 0xff_usize),
+        Some(i128::MAX),
+    );
+    assert_eq!(
+        Step::forward_checked(0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128, 0x100_usize),
+        None
+    );
 }
 
 #[test]
-fn test_step_replace_no_between() {
-    let mut x = 4u128;
-    let y = x.replace_zero();
-    assert_eq!(x, 0);
-    assert_eq!(y, 4);
+fn test_step_backward() {
+    assert_eq!(Step::backward_checked(255_u8, 200_usize), Some(55_u8));
+    assert_eq!(Step::backward_checked(100_u8, 200_usize), None);
+    assert_eq!(Step::backward_checked(255_u8, 256_usize), None);
+    assert_eq!(Step::backward_checked(90_i8, 200_usize), Some(-110_i8));
+    assert_eq!(Step::backward_checked(110_i8, 248_usize), None);
+    assert_eq!(Step::backward_checked(127_i8, 256_usize), None);
 
-    x = 5;
-    let y = x.replace_one();
-    assert_eq!(x, 1);
-    assert_eq!(y, 5);
+    assert_eq!(Step::backward_checked(135_u16, 100_usize), Some(35_u16));
+    assert_eq!(Step::backward_checked(u16::MAX, 65500_usize), Some(35_u16));
+    assert_eq!(Step::backward_checked(10_u16, 11_usize), None);
+    assert_eq!(Step::backward_checked(90_i16, 200_usize), Some(-110_i16));
+    assert_eq!(Step::backward_checked(30_020_i16, 50_050_usize), Some(-20_030_i16));
+    assert_eq!(Step::backward_checked(-10_i16, 40_000_usize), None);
+    assert_eq!(Step::backward_checked(-10_i16, 70_000_usize), None);
+
+    assert_eq!(Step::backward_checked(70_010_u128, 70_000_usize), Some(10_u128));
+    assert_eq!(Step::backward_checked(70_020_i128, 70_030_usize), Some(-10_i128));
+    assert_eq!(Step::backward_checked(10_u128, 7_usize), Some(3_u128));
+    assert_eq!(Step::backward_checked(10_u128, 11_usize), None);
+    assert_eq!(
+        Step::backward_checked(-0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128, 0x100_usize),
+        Some(i128::MIN)
+    );
 }
 
 #[test]
@@ -2898,7 +3013,7 @@ fn test_is_sorted() {
     assert!(![1, 3, 2].iter().is_sorted());
     assert!([0].iter().is_sorted());
     assert!(std::iter::empty::<i32>().is_sorted());
-    assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted());
+    assert!(![0.0, 1.0, f32::NAN].iter().is_sorted());
     assert!([-2, -1, 0, 3].iter().is_sorted());
     assert!(![-2i32, -1, 0, 3].iter().is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].iter().is_sorted());
@@ -2939,4 +3054,74 @@ fn test_partition() {
     check(xs, |&x| x % 5 == 0, 2); // multiple of 5
     check(xs, |&x| x < 3, 3); // small
     check(xs, |&x| x > 6, 3); // large
+}
+
+/// An iterator that panics whenever `next` or next_back` is called
+/// after `None` has already been returned. This does not violate
+/// `Iterator`'s contract. Used to test that iterator adaptors don't
+/// poll their inner iterators after exhausting them.
+struct NonFused<I> {
+    iter: I,
+    done: bool,
+}
+
+impl<I> NonFused<I> {
+    fn new(iter: I) -> Self {
+        Self { iter, done: false }
+    }
+}
+
+impl<I> Iterator for NonFused<I>
+where
+    I: Iterator,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        assert!(!self.done, "this iterator has already returned None");
+        self.iter.next().or_else(|| {
+            self.done = true;
+            None
+        })
+    }
+}
+
+impl<I> DoubleEndedIterator for NonFused<I>
+where
+    I: DoubleEndedIterator,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        assert!(!self.done, "this iterator has already returned None");
+        self.iter.next_back().or_else(|| {
+            self.done = true;
+            None
+        })
+    }
+}
+
+#[test]
+fn test_peekable_non_fused() {
+    let mut iter = NonFused::new(empty::<i32>()).peekable();
+
+    assert_eq!(iter.peek(), None);
+    assert_eq!(iter.next_back(), None);
+}
+
+#[test]
+fn test_flatten_non_fused_outer() {
+    let mut iter = NonFused::new(once(0..2)).flatten();
+
+    assert_eq!(iter.next_back(), Some(1));
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_flatten_non_fused_inner() {
+    let mut iter = once(0..1).chain(once(1..3)).flat_map(NonFused::new);
+
+    assert_eq!(iter.next_back(), Some(2));
+    assert_eq!(iter.next(), Some(0));
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), None);
 }

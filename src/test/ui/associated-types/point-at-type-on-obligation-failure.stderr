@@ -1,13 +1,8 @@
 error[E0271]: type mismatch resolving `<Foo2 as Bar2>::Ok == ()`
-  --> $DIR/point-at-type-on-obligation-failure.rs:13:5
+  --> $DIR/point-at-type-on-obligation-failure.rs:13:15
    |
-LL |     type Ok;
-   |          -- associated type defined here
-...
-LL | impl Bar for Foo {
-   | ---------------- in this `impl` item
 LL |     type Ok = ();
-   |     ^^^^^^^^^^^^^ expected `u32`, found `()`
+   |               ^^ expected `u32`, found `()`
 
 error: aborting due to previous error
 

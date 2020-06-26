@@ -1,7 +1,7 @@
 use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::dropck_outlives::{trivial_dropck_outlives, DropckOutlivesResult};
 use crate::traits::query::Fallible;
-use rustc::ty::{ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, HashStable, TypeFoldable, Lift)]
 pub struct DropckOutlives<'tcx> {

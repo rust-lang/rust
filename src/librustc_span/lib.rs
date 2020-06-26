@@ -6,9 +6,17 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(crate_visibility_modifier)]
+#![feature(const_if_match)]
+#![feature(const_fn)]
+#![feature(const_panic)]
+#![feature(negative_impls)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![feature(specialization)]
+#![feature(min_specialization)]
+
+// FIXME(#56935): Work around ICEs during cross-compilation.
+#[allow(unused)]
+extern crate rustc_macros;
 
 use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;
@@ -17,6 +25,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 mod caching_source_map_view;
 pub mod source_map;
 pub use self::caching_source_map_view::CachingSourceMapView;
+use source_map::SourceMap;
 
 pub mod edition;
 use edition::Edition;
@@ -24,7 +33,7 @@ pub mod hygiene;
 use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, MacroKind, SyntaxContext};
 pub mod def_id;
-use def_id::DefId;
+use def_id::{CrateNum, DefId, LOCAL_CRATE};
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
@@ -43,9 +52,14 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::ops::{Add, Sub};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+
+use md5::Md5;
+use sha1::Digest;
+use sha1::Sha1;
 
 #[cfg(test)]
 mod tests;
@@ -54,6 +68,7 @@ pub struct Globals {
     symbol_interner: Lock<symbol::Interner>,
     span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
+    source_map: Lock<Option<Lrc<SourceMap>>>,
 }
 
 impl Globals {
@@ -62,27 +77,68 @@ impl Globals {
             symbol_interner: Lock::new(symbol::Interner::fresh()),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
+            source_map: Lock::new(None),
         }
     }
 }
 
 scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 
+// FIXME: Perhaps this should not implement Rustc{Decodable, Encodable}
+//
+// FIXME: We should use this enum or something like it to get rid of the
+// use of magic `/rust/1.x/...` paths across the board.
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
+#[derive(HashStable_Generic)]
+pub enum RealFileName {
+    Named(PathBuf),
+    /// For de-virtualized paths (namely paths into libstd that have been mapped
+    /// to the appropriate spot on the local host's file system),
+    Devirtualized {
+        /// `local_path` is the (host-dependent) local path to the file.
+        local_path: PathBuf,
+        /// `virtual_name` is the stable path rustc will store internally within
+        /// build artifacts.
+        virtual_name: PathBuf,
+    },
+}
+
+impl RealFileName {
+    /// Returns the path suitable for reading from the file system on the local host.
+    /// Avoid embedding this in build artifacts; see `stable_name` for that.
+    pub fn local_path(&self) -> &Path {
+        match self {
+            RealFileName::Named(p)
+            | RealFileName::Devirtualized { local_path: p, virtual_name: _ } => &p,
+        }
+    }
+
+    /// Returns the path suitable for reading from the file system on the local host.
+    /// Avoid embedding this in build artifacts; see `stable_name` for that.
+    pub fn into_local_path(self) -> PathBuf {
+        match self {
+            RealFileName::Named(p)
+            | RealFileName::Devirtualized { local_path: p, virtual_name: _ } => p,
+        }
+    }
+
+    /// Returns the path suitable for embedding into build artifacts. Note that
+    /// a virtualized path will not correspond to a valid file system path; see
+    /// `local_path` for something that is more likely to return paths into the
+    /// local host file system.
+    pub fn stable_name(&self) -> &Path {
+        match self {
+            RealFileName::Named(p)
+            | RealFileName::Devirtualized { local_path: _, virtual_name: p } => &p,
+        }
+    }
+}
+
 /// Differentiates between real files and common virtual files.
-#[derive(
-    Debug,
-    Eq,
-    PartialEq,
-    Clone,
-    Ord,
-    PartialOrd,
-    Hash,
-    RustcDecodable,
-    RustcEncodable,
-    HashStable_Generic
-)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
+#[derive(HashStable_Generic)]
 pub enum FileName {
-    Real(PathBuf),
+    Real(RealFileName),
     /// Call to `quote!`.
     QuoteExpansion(u64),
     /// Command line.
@@ -98,13 +154,21 @@ pub enum FileName {
     /// Custom sources for explicit parser calls from plugins and drivers.
     Custom(String),
     DocTest(PathBuf, isize),
+    /// Post-substitution inline assembly from LLVM
+    InlineAsm(u64),
 }
 
 impl std::fmt::Display for FileName {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FileName::*;
         match *self {
-            Real(ref path) => write!(fmt, "{}", path.display()),
+            Real(RealFileName::Named(ref path)) => write!(fmt, "{}", path.display()),
+            // FIXME: might be nice to display both compoments of Devirtualized.
+            // But for now (to backport fix for issue #70924), best to not
+            // perturb diagnostics so its obvious test suite still works.
+            Real(RealFileName::Devirtualized { ref local_path, virtual_name: _ }) => {
+                write!(fmt, "{}", local_path.display())
+            }
             QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
             Anon(_) => write!(fmt, "<anon>"),
@@ -113,6 +177,7 @@ impl std::fmt::Display for FileName {
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{}>", s),
             DocTest(ref path, _) => write!(fmt, "{}", path.display()),
+            InlineAsm(_) => write!(fmt, "<inline asm>"),
         }
     }
 }
@@ -120,7 +185,7 @@ impl std::fmt::Display for FileName {
 impl From<PathBuf> for FileName {
     fn from(p: PathBuf) -> Self {
         assert!(!p.to_string_lossy().ends_with('>'));
-        FileName::Real(p)
+        FileName::Real(RealFileName::Named(p))
     }
 }
 
@@ -136,7 +201,8 @@ impl FileName {
             | CliCrateAttr(_)
             | Custom(_)
             | QuoteExpansion(_)
-            | DocTest(_, _) => false,
+            | DocTest(_, _)
+            | InlineAsm(_) => false,
         }
     }
 
@@ -178,6 +244,12 @@ impl FileName {
 
     pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName {
         FileName::DocTest(path, line)
+    }
+
+    pub fn inline_asm_source_code(src: &str) -> FileName {
+        let mut hasher = StableHasher::new();
+        src.hash(&mut hasher);
+        FileName::InlineAsm(hasher.finish())
     }
 }
 
@@ -548,9 +620,9 @@ impl Span {
     }
 
     #[inline]
-    pub fn modernize_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
+    pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         let mut span = self.data();
-        let mark = span.ctxt.modernize_and_adjust(expn_id);
+        let mark = span.ctxt.normalize_to_macros_2_0_and_adjust(expn_id);
         *self = Span::new(span.lo, span.hi, span.ctxt);
         mark
     }
@@ -576,15 +648,15 @@ impl Span {
     }
 
     #[inline]
-    pub fn modern(self) -> Span {
+    pub fn normalize_to_macros_2_0(self) -> Span {
         let span = self.data();
-        span.with_ctxt(span.ctxt.modern())
+        span.with_ctxt(span.ctxt.normalize_to_macros_2_0())
     }
 
     #[inline]
-    pub fn modern_and_legacy(self) -> Span {
+    pub fn normalize_to_macro_rules(self) -> Span {
         let span = self.data();
-        span.with_ctxt(span.ctxt.modern_and_legacy())
+        span.with_ctxt(span.ctxt.normalize_to_macro_rules())
     }
 }
 
@@ -628,12 +700,52 @@ impl rustc_serialize::UseSpecializedDecodable for Span {
     }
 }
 
+/// Calls the provided closure, using the provided `SourceMap` to format
+/// any spans that are debug-printed during the closure'e exectuino.
+///
+/// Normally, the global `TyCtxt` is used to retrieve the `SourceMap`
+/// (see `rustc_interface::callbacks::span_debug1). However, some parts
+/// of the compiler (e.g. `rustc_parse`) may debug-print `Span`s before
+/// a `TyCtxt` is available. In this case, we fall back to
+/// the `SourceMap` provided to this function. If that is not available,
+/// we fall back to printing the raw `Span` field values
+pub fn with_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) -> T {
+    GLOBALS.with(|globals| {
+        *globals.source_map.borrow_mut() = Some(source_map);
+    });
+    struct ClearSourceMap;
+    impl Drop for ClearSourceMap {
+        fn drop(&mut self) {
+            GLOBALS.with(|globals| {
+                globals.source_map.borrow_mut().take();
+            });
+        }
+    }
+
+    let _guard = ClearSourceMap;
+    f()
+}
+
+pub fn debug_with_source_map(
+    span: Span,
+    f: &mut fmt::Formatter<'_>,
+    source_map: &SourceMap,
+) -> fmt::Result {
+    write!(f, "{} ({:?})", source_map.span_to_string(span), span.ctxt())
+}
+
 pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    f.debug_struct("Span")
-        .field("lo", &span.lo())
-        .field("hi", &span.hi())
-        .field("ctxt", &span.ctxt())
-        .finish()
+    GLOBALS.with(|globals| {
+        if let Some(source_map) = &*globals.source_map.borrow() {
+            debug_with_source_map(span, f, source_map)
+        } else {
+            f.debug_struct("Span")
+                .field("lo", &span.lo())
+                .field("hi", &span.hi())
+                .field("ctxt", &span.ctxt())
+                .finish()
+        }
+    })
 }
 
 impl fmt::Debug for Span {
@@ -658,7 +770,8 @@ impl MultiSpan {
         MultiSpan { primary_spans: vec![primary_span], span_labels: vec![] }
     }
 
-    pub fn from_spans(vec: Vec<Span>) -> MultiSpan {
+    pub fn from_spans(mut vec: Vec<Span>) -> MultiSpan {
+        vec.sort();
         MultiSpan { primary_spans: vec, span_labels: vec![] }
     }
 
@@ -836,30 +949,42 @@ pub struct NormalizedPos {
     pub diff: u32,
 }
 
-/// The state of the lazy external source loading mechanism of a `SourceFile`.
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum ExternalSource {
+    /// No external source has to be loaded, since the `SourceFile` represents a local crate.
+    Unneeded,
+    Foreign {
+        kind: ExternalSourceKind,
+        /// This SourceFile's byte-offset within the source_map of its original crate
+        original_start_pos: BytePos,
+        /// The end of this SourceFile within the source_map of its original crate
+        original_end_pos: BytePos,
+    },
+}
+
+/// The state of the lazy external source loading mechanism of a `SourceFile`.
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum ExternalSourceKind {
     /// The external source has been loaded already.
-    Present(String),
+    Present(Lrc<String>),
     /// No attempt has been made to load the external source.
     AbsentOk,
     /// A failed attempt has been made to load the external source.
     AbsentErr,
-    /// No external source has to be loaded, since the `SourceFile` represents a local crate.
     Unneeded,
 }
 
 impl ExternalSource {
     pub fn is_absent(&self) -> bool {
-        match *self {
-            ExternalSource::Present(_) => false,
+        match self {
+            ExternalSource::Foreign { kind: ExternalSourceKind::Present(_), .. } => false,
             _ => true,
         }
     }
 
-    pub fn get_source(&self) -> Option<&str> {
-        match *self {
-            ExternalSource::Present(ref src) => Some(src),
+    pub fn get_source(&self) -> Option<&Lrc<String>> {
+        match self {
+            ExternalSource::Foreign { kind: ExternalSourceKind::Present(ref src), .. } => Some(src),
             _ => None,
         }
     }
@@ -867,6 +992,70 @@ impl ExternalSource {
 
 #[derive(Debug)]
 pub struct OffsetOverflowError;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub enum SourceFileHashAlgorithm {
+    Md5,
+    Sha1,
+}
+
+impl FromStr for SourceFileHashAlgorithm {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<SourceFileHashAlgorithm, ()> {
+        match s {
+            "md5" => Ok(SourceFileHashAlgorithm::Md5),
+            "sha1" => Ok(SourceFileHashAlgorithm::Sha1),
+            _ => Err(()),
+        }
+    }
+}
+
+rustc_data_structures::impl_stable_hash_via_hash!(SourceFileHashAlgorithm);
+
+/// The hash of the on-disk source file used for debug info.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
+pub struct SourceFileHash {
+    pub kind: SourceFileHashAlgorithm,
+    value: [u8; 20],
+}
+
+impl SourceFileHash {
+    pub fn new(kind: SourceFileHashAlgorithm, src: &str) -> SourceFileHash {
+        let mut hash = SourceFileHash { kind, value: Default::default() };
+        let len = hash.hash_len();
+        let value = &mut hash.value[..len];
+        let data = src.as_bytes();
+        match kind {
+            SourceFileHashAlgorithm::Md5 => {
+                value.copy_from_slice(&Md5::digest(data));
+            }
+            SourceFileHashAlgorithm::Sha1 => {
+                value.copy_from_slice(&Sha1::digest(data));
+            }
+        }
+        hash
+    }
+
+    /// Check if the stored hash matches the hash of the string.
+    pub fn matches(&self, src: &str) -> bool {
+        Self::new(self.kind, src) == *self
+    }
+
+    /// The bytes of the hash.
+    pub fn hash_bytes(&self) -> &[u8] {
+        let len = self.hash_len();
+        &self.value[..len]
+    }
+
+    fn hash_len(&self) -> usize {
+        match self.kind {
+            SourceFileHashAlgorithm::Md5 => 16,
+            SourceFileHashAlgorithm::Sha1 => 20,
+        }
+    }
+}
 
 /// A single source in the `SourceMap`.
 #[derive(Clone)]
@@ -880,12 +1069,10 @@ pub struct SourceFile {
     /// The unmapped path of the file that the source came from.
     /// Set to `None` if the `SourceFile` was imported from an external crate.
     pub unmapped_path: Option<FileName>,
-    /// Indicates which crate this `SourceFile` was imported from.
-    pub crate_of_origin: u32,
     /// The complete source code.
     pub src: Option<Lrc<String>>,
     /// The source code's hash.
-    pub src_hash: u128,
+    pub src_hash: SourceFileHash,
     /// The external source code (used for external crates, which will have a `None`
     /// value as `self.src`.
     pub external_src: Lock<ExternalSource>,
@@ -903,6 +1090,8 @@ pub struct SourceFile {
     pub normalized_pos: Vec<NormalizedPos>,
     /// A hash of the filename, used for speeding up hashing in incremental compilation.
     pub name_hash: u128,
+    /// Indicates which crate this `SourceFile` was imported from.
+    pub cnum: CrateNum,
 }
 
 impl Encodable for SourceFile {
@@ -969,7 +1158,8 @@ impl Encodable for SourceFile {
             s.emit_struct_field("multibyte_chars", 6, |s| self.multibyte_chars.encode(s))?;
             s.emit_struct_field("non_narrow_chars", 7, |s| self.non_narrow_chars.encode(s))?;
             s.emit_struct_field("name_hash", 8, |s| self.name_hash.encode(s))?;
-            s.emit_struct_field("normalized_pos", 9, |s| self.normalized_pos.encode(s))
+            s.emit_struct_field("normalized_pos", 9, |s| self.normalized_pos.encode(s))?;
+            s.emit_struct_field("cnum", 10, |s| self.cnum.encode(s))
         })
     }
 }
@@ -980,7 +1170,8 @@ impl Decodable for SourceFile {
             let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
-            let src_hash: u128 = d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
+            let src_hash: SourceFileHash =
+                d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
             let start_pos: BytePos =
                 d.read_struct_field("start_pos", 3, |d| Decodable::decode(d))?;
             let end_pos: BytePos = d.read_struct_field("end_pos", 4, |d| Decodable::decode(d))?;
@@ -1019,24 +1210,24 @@ impl Decodable for SourceFile {
             let name_hash: u128 = d.read_struct_field("name_hash", 8, |d| Decodable::decode(d))?;
             let normalized_pos: Vec<NormalizedPos> =
                 d.read_struct_field("normalized_pos", 9, |d| Decodable::decode(d))?;
+            let cnum: CrateNum = d.read_struct_field("cnum", 10, |d| Decodable::decode(d))?;
             Ok(SourceFile {
                 name,
                 name_was_remapped,
                 unmapped_path: None,
-                // `crate_of_origin` has to be set by the importer.
-                // This value matches up with `rustc_hir::def_id::INVALID_CRATE`.
-                // That constant is not available here, unfortunately.
-                crate_of_origin: std::u32::MAX - 1,
                 start_pos,
                 end_pos,
                 src: None,
                 src_hash,
-                external_src: Lock::new(ExternalSource::AbsentOk),
+                // Unused - the metadata decoder will construct
+                // a new SourceFile, filling in `external_src` properly
+                external_src: Lock::new(ExternalSource::Unneeded),
                 lines,
                 multibyte_chars,
                 non_narrow_chars,
                 normalized_pos,
                 name_hash,
+                cnum,
             })
         })
     }
@@ -1055,21 +1246,19 @@ impl SourceFile {
         unmapped_path: FileName,
         mut src: String,
         start_pos: BytePos,
+        hash_kind: SourceFileHashAlgorithm,
     ) -> Self {
+        // Compute the file hash before any normalization.
+        let src_hash = SourceFileHash::new(hash_kind, &src);
         let normalized_pos = normalize_src(&mut src, start_pos);
 
-        let src_hash = {
-            let mut hasher: StableHasher = StableHasher::new();
-            hasher.write(src.as_bytes());
-            hasher.finish::<u128>()
-        };
         let name_hash = {
             let mut hasher: StableHasher = StableHasher::new();
             name.hash(&mut hasher);
             hasher.finish::<u128>()
         };
         let end_pos = start_pos.to_usize() + src.len();
-        assert!(end_pos <= u32::max_value() as usize);
+        assert!(end_pos <= u32::MAX as usize);
 
         let (lines, multibyte_chars, non_narrow_chars) =
             analyze_source_file::analyze_source_file(&src[..], start_pos);
@@ -1078,7 +1267,6 @@ impl SourceFile {
             name,
             name_was_remapped,
             unmapped_path: Some(unmapped_path),
-            crate_of_origin: 0,
             src: Some(Lrc::new(src)),
             src_hash,
             external_src: Lock::new(ExternalSource::Unneeded),
@@ -1089,6 +1277,7 @@ impl SourceFile {
             non_narrow_chars,
             normalized_pos,
             name_hash,
+            cnum: LOCAL_CRATE,
         }
     }
 
@@ -1106,21 +1295,26 @@ impl SourceFile {
     where
         F: FnOnce() -> Option<String>,
     {
-        if *self.external_src.borrow() == ExternalSource::AbsentOk {
+        if matches!(
+            *self.external_src.borrow(),
+            ExternalSource::Foreign { kind: ExternalSourceKind::AbsentOk, .. }
+        ) {
             let src = get_src();
             let mut external_src = self.external_src.borrow_mut();
             // Check that no-one else have provided the source while we were getting it
-            if *external_src == ExternalSource::AbsentOk {
-                if let Some(src) = src {
-                    let mut hasher: StableHasher = StableHasher::new();
-                    hasher.write(src.as_bytes());
-
-                    if hasher.finish::<u128>() == self.src_hash {
-                        *external_src = ExternalSource::Present(src);
+            if let ExternalSource::Foreign {
+                kind: src_kind @ ExternalSourceKind::AbsentOk, ..
+            } = &mut *external_src
+            {
+                if let Some(mut src) = src {
+                    // The src_hash needs to be computed on the pre-normalized src.
+                    if self.src_hash.matches(&src) {
+                        normalize_src(&mut src, BytePos::from_usize(0));
+                        *src_kind = ExternalSourceKind::Present(Lrc::new(src));
                         return true;
                     }
                 } else {
-                    *external_src = ExternalSource::AbsentErr;
+                    *src_kind = ExternalSourceKind::AbsentErr;
                 }
 
                 false
@@ -1531,7 +1725,7 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
-/// instead of implementing everything in librustc.
+/// instead of implementing everything in librustc_middle.
 pub trait HashStableContext {
     fn hash_spans(&self) -> bool;
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);

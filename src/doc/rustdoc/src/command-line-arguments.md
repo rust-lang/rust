@@ -390,3 +390,15 @@ the same CSS rules as the official `light` theme.
 `--check-theme` is a separate mode in `rustdoc`. When `rustdoc` sees the
 `--check-theme` flag, it discards all other flags and only performs the CSS rule
 comparison operation.
+
+### `--crate-version`: control the crate version
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --crate-version 1.3.37
+```
+
+When `rustdoc` receives this flag, it will print an extra "Version (version)" into the sidebar of
+the crate root's docs. You can use this flag to differentiate between different versions of your
+library's documentation.

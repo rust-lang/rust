@@ -24,6 +24,6 @@ warning: erroneous constant used
 LL |     println!("{}", FOO);
    |                    ^^^ referenced constant has errors
 
-error: aborting due to previous error
+error: aborting due to previous error; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

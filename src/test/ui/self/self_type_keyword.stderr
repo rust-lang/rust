@@ -66,7 +66,7 @@ error[E0531]: cannot find unit struct, unit variant or constant `Self` in this s
 LL |         mut Self => (),
    |             ^^^^ not found in this scope
    |
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this unit struct
    |
 LL | use foo::Self;
    |

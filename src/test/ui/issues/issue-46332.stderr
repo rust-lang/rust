@@ -2,7 +2,7 @@ error[E0422]: cannot find struct, variant or union type `TyUInt` in this scope
   --> $DIR/issue-46332.rs:9:5
    |
 LL | struct TyUint {}
-   | ---------------- similarly named struct `TyUint` defined here
+   | ------------- similarly named struct `TyUint` defined here
 ...
 LL |     TyUInt {};
    |     ^^^^^^ help: a struct with a similar name exists (notice the capitalization): `TyUint`

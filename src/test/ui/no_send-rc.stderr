@@ -2,7 +2,7 @@ error[E0277]: `std::rc::Rc<{integer}>` cannot be sent between threads safely
   --> $DIR/no_send-rc.rs:7:9
    |
 LL | fn bar<T: Send>(_: T) {}
-   |    ---    ---- required by this bound in `bar`
+   |           ---- required by this bound in `bar`
 ...
 LL |     bar(x);
    |         ^ `std::rc::Rc<{integer}>` cannot be sent between threads safely

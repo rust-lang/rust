@@ -10,7 +10,7 @@ pub trait Trait {
 
     fn associated_size(&self) -> usize {
         [0u8; mem::size_of::<Self::Associated>()];
-        //~^ ERROR: array lengths can't depend on generic parameters
+        //~^ ERROR constant expression depends on a generic parameter
         0
     }
 }

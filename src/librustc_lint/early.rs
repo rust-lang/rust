@@ -18,8 +18,9 @@ use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast::ast;
 use rustc_ast::visit as ast_visit;
-use rustc_session::lint::{LintBuffer, LintPass};
+use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use log::debug;
@@ -37,13 +38,7 @@ struct EarlyContextAndPass<'a, T: EarlyLintPass> {
 impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
-            let rustc_session::lint::BufferedEarlyLint {
-                span,
-                msg,
-                node_id: _,
-                lint_id,
-                diagnostic,
-            } = early_lint;
+            let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
             self.context.lookup_with_diagnostics(
                 lint_id.lint,
                 Some(span),
@@ -60,7 +55,8 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     where
         F: FnOnce(&mut Self),
     {
-        let push = self.context.builder.push(attrs, &self.context.lint_store);
+        let is_crate_node = id == ast::CRATE_NODE_ID;
+        let push = self.context.builder.push(attrs, &self.context.lint_store, is_crate_node);
         self.check_id(id);
         self.enter_attrs(attrs);
         f(self);
@@ -108,6 +104,11 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         self.check_id(p.id);
         ast_visit::walk_pat(self, p);
         run_early_pass!(self, check_pat_post, p);
+    }
+
+    fn visit_anon_const(&mut self, c: &'a ast::AnonConst) {
+        run_early_pass!(self, check_anon_const, c);
+        ast_visit::walk_anon_const(self, c);
     }
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
@@ -160,7 +161,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_ty(self, t);
     }
 
-    fn visit_ident(&mut self, ident: ast::Ident) {
+    fn visit_ident(&mut self, ident: Ident) {
         run_early_pass!(self, check_ident, ident);
     }
 
@@ -326,11 +327,9 @@ pub fn check_ast_crate<T: EarlyLintPass>(
     lint_buffer: Option<LintBuffer>,
     builtin_lints: T,
 ) {
-    let mut passes: Vec<_> = if pre_expansion {
-        lint_store.pre_expansion_passes.iter().map(|p| (p)()).collect()
-    } else {
-        lint_store.early_passes.iter().map(|p| (p)()).collect()
-    };
+    let passes =
+        if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
+    let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
     let mut buffered = lint_buffer.unwrap_or_default();
 
     if !sess.opts.debugging_opts.no_interleave_lints {

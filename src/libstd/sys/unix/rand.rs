@@ -12,6 +12,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 
 #[cfg(all(
     unix,
+    not(target_os = "macos"),
     not(target_os = "ios"),
     not(target_os = "openbsd"),
     not(target_os = "freebsd"),
@@ -87,6 +88,42 @@ mod imp {
         // getrandom failed because it is permanently or temporarily (because
         // of missing entropy) unavailable. Open /dev/urandom, read from it,
         // and close it again.
+        let mut file = File::open("/dev/urandom").expect("failed to open /dev/urandom");
+        file.read_exact(v).expect("failed to read /dev/urandom")
+    }
+}
+
+#[cfg(target_os = "macos")]
+mod imp {
+    use crate::fs::File;
+    use crate::io::Read;
+    use crate::sys::os::errno;
+    use libc::{c_int, c_void, size_t};
+
+    fn getentropy_fill_bytes(v: &mut [u8]) -> bool {
+        weak!(fn getentropy(*mut c_void, size_t) -> c_int);
+
+        getentropy
+            .get()
+            .map(|f| {
+                // getentropy(2) permits a maximum buffer size of 256 bytes
+                for s in v.chunks_mut(256) {
+                    let ret = unsafe { f(s.as_mut_ptr() as *mut c_void, s.len()) };
+                    if ret == -1 {
+                        panic!("unexpected getentropy error: {}", errno());
+                    }
+                }
+                true
+            })
+            .unwrap_or(false)
+    }
+
+    pub fn fill_bytes(v: &mut [u8]) {
+        if getentropy_fill_bytes(v) {
+            return;
+        }
+
+        // for older macos which doesn't support getentropy
         let mut file = File::open("/dev/urandom").expect("failed to open /dev/urandom");
         file.read_exact(v).expect("failed to read /dev/urandom")
     }

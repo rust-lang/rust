@@ -22,5 +22,5 @@ LL | fn pleaselintme() { }
    |
    = note: `-D please-lint` implied by `-D lint-me`
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 

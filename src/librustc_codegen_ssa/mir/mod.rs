@@ -1,8 +1,10 @@
 use crate::base;
 use crate::traits::*;
-use rustc::mir;
-use rustc::ty::layout::{FnAbiExt, HasTyCtxt, TyLayout};
-use rustc::ty::{self, Instance, Ty, TypeFoldable};
+use rustc_errors::ErrorReported;
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_target::abi::call::{FnAbi, PassMode};
 
 use std::iter;
@@ -13,7 +15,7 @@ use rustc_index::vec::IndexVec;
 use self::analyze::CleanupKind;
 use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
 use self::place::PlaceRef;
-use rustc::mir::traversal;
+use rustc_middle::mir::traversal;
 
 use self::operand::{OperandRef, OperandValue};
 
@@ -21,7 +23,7 @@ use self::operand::{OperandRef, OperandValue};
 pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: mir::ReadOnlyBodyAndCache<'tcx, 'tcx>,
+    mir: &'tcx mir::Body<'tcx>,
 
     debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
 
@@ -86,13 +88,18 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: Copy + TypeFoldable<'tcx>,
     {
-        self.cx.tcx().subst_and_normalize_erasing_regions(
-            self.instance.substs,
-            ty::ParamEnv::reveal_all(),
-            value,
-        )
+        debug!("monomorphize: self.instance={:?}", self.instance);
+        if let Some(substs) = self.instance.substs_for_mir_body() {
+            self.cx.tcx().subst_and_normalize_erasing_regions(
+                substs,
+                ty::ParamEnv::reveal_all(),
+                &value,
+            )
+        } else {
+            self.cx.tcx().normalize_erasing_regions(ty::ParamEnv::reveal_all(), *value)
+        }
     }
 }
 
@@ -109,7 +116,7 @@ enum LocalRef<'tcx, V> {
 impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
     fn new_operand<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        layout: TyLayout<'tcx>,
+        layout: TyAndLayout<'tcx>,
     ) -> LocalRef<'tcx, V> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
@@ -150,7 +157,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
     // Allocate a `Block` for every basic block, except
     // the start block, if nothing loops back to it.
-    let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
+    let reentrant_start_block = !mir.predecessors()[mir::START_BLOCK].is_empty();
     let block_bxs: IndexVec<mir::BasicBlock, Bx::BasicBlock> = mir
         .basic_blocks()
         .indices()
@@ -164,7 +171,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         .collect();
 
     let (landing_pads, funclets) = create_funclets(&mir, &mut bx, &cleanup_kinds, &block_bxs);
-    let mir_body: &mir::Body<'_> = *mir;
     let mut fx = FunctionCx {
         instance,
         mir,
@@ -185,6 +191,18 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info();
 
+    for const_ in &mir.required_consts {
+        if let Err(err) = fx.eval_mir_constant(const_) {
+            match err {
+                // errored or at least linted
+                ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {}
+                ErrorHandled::TooGeneric => {
+                    span_bug!(const_.span, "codgen encountered polymorphic constant: {:?}", err)
+                }
+            }
+        }
+    }
+
     let memory_locals = analyze::non_ssa_locals(&fx);
 
     // Allocate variable and temp allocas
@@ -192,7 +210,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let args = arg_local_refs(&mut bx, &mut fx, &memory_locals);
 
         let mut allocate_local = |local| {
-            let decl = &mir_body.local_decls[local];
+            let decl = &mir.local_decls[local];
             let layout = bx.layout_of(fx.monomorphize(&decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
@@ -218,7 +236,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let retptr = allocate_local(mir::RETURN_PLACE);
         iter::once(retptr)
             .chain(args.into_iter())
-            .chain(mir_body.vars_and_temps_iter().map(allocate_local))
+            .chain(mir.vars_and_temps_iter().map(allocate_local))
             .collect()
     };
 
@@ -230,8 +248,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         bx.br(fx.blocks[mir::START_BLOCK]);
     }
 
-    let rpo = traversal::reverse_postorder(&mir_body);
-    let mut visited = BitSet::new_empty(mir_body.basic_blocks().len());
+    let rpo = traversal::reverse_postorder(&mir);
+    let mut visited = BitSet::new_empty(mir.basic_blocks().len());
 
     // Codegen the body of each block using reverse postorder
     for (bb, _) in rpo {
@@ -241,7 +259,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Remove blocks that haven't been visited, or have no
     // predecessors.
-    for bb in mir_body.basic_blocks().indices() {
+    for bb in mir.basic_blocks().indices() {
         // Unreachable block
         if !visited.contains(bb.index()) {
             debug!("codegen_mir: block {:?} was not visited", bb);

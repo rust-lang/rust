@@ -2,7 +2,7 @@
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
-use arena::DroplessArena;
+use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_macros::{symbols, HashStable_Generic};
@@ -120,6 +120,7 @@ symbols! {
         abi_unadjusted,
         abi_vectorcall,
         abi_x86_interrupt,
+        abi_avr_interrupt,
         abort,
         aborts,
         address,
@@ -144,8 +145,10 @@ symbols! {
         any,
         arbitrary_enum_discriminant,
         arbitrary_self_types,
+        Arc,
         Arguments,
         ArgumentV1,
+        arith_offset,
         arm_target_feature,
         asm,
         assert,
@@ -156,9 +159,11 @@ symbols! {
         assume_init,
         async_await,
         async_closure,
+        atomics,
         attr,
         attributes,
         attr_literals,
+        att_syntax,
         augmented_assignments,
         automatically_derived,
         avx512_target_feature,
@@ -182,6 +187,7 @@ symbols! {
         caller_location,
         cdylib,
         cfg,
+        cfg_accessible,
         cfg_attr,
         cfg_attr_multi,
         cfg_doctest,
@@ -190,6 +196,7 @@ symbols! {
         cfg_target_has_atomic,
         cfg_target_thread_local,
         cfg_target_vendor,
+        cfg_version,
         char,
         clippy,
         clone,
@@ -221,6 +228,7 @@ symbols! {
         const_loop,
         const_mut_refs,
         const_panic,
+        const_precise_live_drops,
         const_raw_ptr_deref,
         const_raw_ptr_to_usize_cast,
         const_transmute,
@@ -233,6 +241,7 @@ symbols! {
         copy_closures,
         core,
         core_intrinsics,
+        count_code_region,
         crate_id,
         crate_in_paths,
         crate_local,
@@ -252,6 +261,7 @@ symbols! {
         debug_trait,
         declare_lint_pass,
         decl_macro,
+        debug,
         Debug,
         Decodable,
         Default,
@@ -317,6 +327,8 @@ symbols! {
         f32,
         f64,
         feature,
+        ffi_const,
+        ffi_pure,
         ffi_returns_twice,
         field,
         field_init_shorthand,
@@ -335,6 +347,7 @@ symbols! {
         from_method,
         from_ok,
         from_usize,
+        from_trait,
         fundamental,
         future,
         Future,
@@ -345,6 +358,7 @@ symbols! {
         generators,
         generic_associated_types,
         generic_param_attrs,
+        get_context,
         global_allocator,
         global_asm,
         globs,
@@ -371,6 +385,8 @@ symbols! {
         if_let,
         if_while_or_patterns,
         ignore,
+        inlateout,
+        inout,
         impl_header_lifetime_elision,
         impl_lint_pass,
         impl_trait_in_bindings,
@@ -406,6 +422,7 @@ symbols! {
         label_break_value,
         lang,
         lang_items,
+        lateout,
         let_chains,
         lhs,
         lib,
@@ -422,6 +439,7 @@ symbols! {
         LintPass,
         lint_reasons,
         literal,
+        llvm_asm,
         local_inner_macros,
         log_syntax,
         loop_break_value,
@@ -453,6 +471,7 @@ symbols! {
         min_align_of,
         min_const_fn,
         min_const_unsafe_fn,
+        min_specialization,
         mips_target_feature,
         mmx_target_feature,
         module,
@@ -470,6 +489,7 @@ symbols! {
         needs_drop,
         needs_panic_runtime,
         negate_unsigned,
+        negative_impls,
         never,
         never_type,
         never_type_fallback,
@@ -487,18 +507,22 @@ symbols! {
         no_link,
         no_main,
         no_mangle,
+        nomem,
         non_ascii_idents,
         None,
         non_exhaustive,
         non_modrs_mods,
-        no_sanitize,
+        noreturn,
         no_niche,
+        no_sanitize,
+        nostack,
         no_stack_check,
         no_start,
         no_std,
         not,
         note,
         object_safe_for_dispatch,
+        offset,
         Ok,
         omit_gdb_pretty_printer_section,
         on,
@@ -511,11 +535,13 @@ symbols! {
         option,
         Option,
         option_env,
+        options,
         opt_out_copy,
         or,
         or_patterns,
         Ord,
         Ordering,
+        out,
         Output,
         overlapping_marker_traits,
         packed,
@@ -541,13 +567,14 @@ symbols! {
         plugin,
         plugin_registrar,
         plugins,
+        poll,
         Poll,
-        poll_with_tls_context,
         powerpc_target_feature,
         precise_pointer_size_matching,
         pref_align_of,
         prelude,
         prelude_import,
+        preserves_flags,
         primitive,
         proc_dash_macro: "proc-macro",
         proc_macro,
@@ -561,9 +588,13 @@ symbols! {
         proc_macro_mod,
         proc_macro_non_items,
         proc_macro_path_invoc,
+        profiler_builtins,
         profiler_runtime,
+        ptr_guaranteed_eq,
+        ptr_guaranteed_ne,
         ptr_offset_from,
         pub_restricted,
+        pure,
         pushpop_unsafe,
         quad_precision_float,
         question_mark,
@@ -577,6 +608,8 @@ symbols! {
         raw_dylib,
         raw_identifiers,
         raw_ref_op,
+        Rc,
+        readonly,
         Ready,
         reason,
         recursion_limit,
@@ -598,6 +631,7 @@ symbols! {
         Result,
         Return,
         rhs,
+        riscv_target_feature,
         rlib,
         rotate_left,
         rotate_right,
@@ -647,6 +681,7 @@ symbols! {
         rustc_partition_reused,
         rustc_peek,
         rustc_peek_definite_init,
+        rustc_peek_liveness,
         rustc_peek_maybe_init,
         rustc_peek_maybe_uninit,
         rustc_peek_indirectly_mutable,
@@ -654,6 +689,8 @@ symbols! {
         rustc_proc_macro_decls,
         rustc_promotable,
         rustc_regions,
+        rustc_unsafe_specialization_marker,
+        rustc_specialization_trait,
         rustc_stable,
         rustc_std_internal_symbol,
         rustc_symbol_name,
@@ -710,12 +747,15 @@ symbols! {
         sty,
         sub_with_overflow,
         suggestion,
+        sym,
         sync_trait,
         target_feature,
+        target_feature_11,
         target_has_atomic,
         target_has_atomic_load_store,
         target_thread_local,
         task,
+        _task_context,
         tbm_target_feature,
         termination_trait,
         termination_trait_test,
@@ -776,6 +816,7 @@ symbols! {
         unmarked_api,
         unreachable_code,
         unrestricted_attribute_tokens,
+        unsafe_block_in_unsafe_fn,
         unsafe_no_drop_flag,
         unsized_locals,
         unsized_tuple_coercion,
@@ -793,6 +834,7 @@ symbols! {
         var,
         vec,
         Vec,
+        version,
         vis,
         visible_private_types,
         volatile,
@@ -853,12 +895,12 @@ impl Ident {
     }
 
     /// "Normalize" ident for use in comparisons using "item hygiene".
-    /// Identifiers with same string value become same if they came from the same "modern" macro
+    /// Identifiers with same string value become same if they came from the same macro 2.0 macro
     /// (e.g., `macro` item, but not `macro_rules` item) and stay different if they came from
-    /// different "modern" macros.
+    /// different macro 2.0 macros.
     /// Technically, this operation strips all non-opaque marks from ident's syntactic context.
-    pub fn modern(self) -> Ident {
-        Ident::new(self.name, self.span.modern())
+    pub fn normalize_to_macros_2_0(self) -> Ident {
+        Ident::new(self.name, self.span.normalize_to_macros_2_0())
     }
 
     /// "Normalize" ident for use in comparisons using "local variable hygiene".
@@ -866,8 +908,8 @@ impl Ident {
     /// macro (e.g., `macro` or `macro_rules!` items) and stay different if they came from different
     /// non-transparent macros.
     /// Technically, this operation strips all transparent marks from ident's syntactic context.
-    pub fn modern_and_legacy(self) -> Ident {
-        Ident::new(self.name, self.span.modern_and_legacy())
+    pub fn normalize_to_macro_rules(self) -> Ident {
+        Ident::new(self.name, self.span.normalize_to_macro_rules())
     }
 
     /// Convert the name to a `SymbolStr`. This is a slowish operation because
@@ -979,6 +1021,31 @@ impl fmt::Display for IdentPrinter {
     }
 }
 
+/// An newtype around `Ident` that calls [Ident::normalize_to_macro_rules] on
+/// construction.
+// FIXME(matthewj, petrochenkov) Use this more often, add a similar
+// `ModernIdent` struct and use that as well.
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub struct MacroRulesNormalizedIdent(Ident);
+
+impl MacroRulesNormalizedIdent {
+    pub fn new(ident: Ident) -> Self {
+        Self(ident.normalize_to_macro_rules())
+    }
+}
+
+impl fmt::Debug for MacroRulesNormalizedIdent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl fmt::Display for MacroRulesNormalizedIdent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
 /// An interned string.
 ///
 /// Internally, a `Symbol` is implemented as an index, and all operations
@@ -997,7 +1064,7 @@ rustc_index::newtype_index! {
 
 impl Symbol {
     const fn new(n: u32) -> Self {
-        Symbol(SymbolIndex::from_u32_const(n))
+        Symbol(SymbolIndex::from_u32(n))
     }
 
     /// Maps a string to its interned representation.
@@ -1118,12 +1185,20 @@ impl Interner {
 }
 
 // This module has a very short name because it's used a lot.
+/// This module contains all the defined keyword `Symbol`s.
+///
+/// Given that `kw` is imported, use them like `kw::keyword_name`.
+/// For example `kw::Loop` or `kw::Break`.
 pub mod kw {
     use super::Symbol;
     keywords!();
 }
 
 // This module has a very short name because it's used a lot.
+/// This module contains all the defined non-keyword `Symbol`s.
+///
+/// Given that `sym` is imported, use them like `sym::symbol_name`.
+/// For example `sym::rustfmt` or `sym::u8`.
 #[allow(rustc::default_hash_types)]
 pub mod sym {
     use super::Symbol;
@@ -1138,8 +1213,8 @@ pub mod sym {
     // have a static symbol and therefore are fast.
     pub fn integer<N: TryInto<usize> + Copy + ToString>(n: N) -> Symbol {
         if let Result::Ok(idx) = n.try_into() {
-            if let Option::Some(&sym) = digits_array.get(idx) {
-                return sym;
+            if let Option::Some(&sym_) = digits_array.get(idx) {
+                return sym_;
             }
         }
         Symbol::intern(&n.to_string())

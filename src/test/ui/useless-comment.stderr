@@ -2,7 +2,7 @@ error: unused doc comment
   --> $DIR/useless-comment.rs:9:1
    |
 LL | /// foo
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for macros
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for macro invocations
    |
 note: the lint level is defined here
   --> $DIR/useless-comment.rs:3:9
@@ -15,7 +15,7 @@ error: unused doc comment
   --> $DIR/useless-comment.rs:32:5
    |
 LL |     /// bar
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for macros
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ rustdoc does not generate documentation for macro invocations
    |
    = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 

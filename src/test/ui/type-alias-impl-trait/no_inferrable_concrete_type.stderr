@@ -1,8 +1,8 @@
 error: could not find defining uses
-  --> $DIR/no_inferrable_concrete_type.rs:6:1
+  --> $DIR/no_inferrable_concrete_type.rs:6:12
    |
 LL | type Foo = impl Copy;
-   | ^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^
 
 error: aborting due to previous error
 

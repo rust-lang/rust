@@ -125,9 +125,9 @@ impl<'dom, Node: Idx> Iterator for Iter<'dom, Node> {
             } else {
                 self.node = Some(dom);
             }
-            return Some(node);
+            Some(node)
         } else {
-            return None;
+            None
         }
     }
 }

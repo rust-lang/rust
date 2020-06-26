@@ -1,6 +1,6 @@
 // compile-flags: -Z trace-macros
 
-#![recursion_limit="4"]
+#![recursion_limit = "4"]
 
 macro_rules! my_faulty_macro {
     () => {
@@ -13,7 +13,7 @@ macro_rules! pat_macro {
         pat_macro!(A{a:a, b:0, c:_, ..});
     };
     ($a:pat) => {
-        $a
+        $a //~ ERROR expected expression
     };
 }
 
@@ -24,9 +24,7 @@ macro_rules! my_recursive_macro {
 }
 
 macro_rules! my_macro {
-    () => {
-
-    };
+    () => {};
 }
 
 fn main() {
@@ -39,7 +37,7 @@ fn main() {
 }
 
 #[my_macro]
-fn use_bang_macro_as_attr(){}
+fn use_bang_macro_as_attr() {}
 
-#[derive(Debug)]
-fn use_derive_macro_as_attr(){}
+#[derive(Debug)] //~ ERROR `derive` may only be applied to structs
+fn use_derive_macro_as_attr() {}

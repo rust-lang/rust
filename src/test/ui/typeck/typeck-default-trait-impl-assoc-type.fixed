@@ -7,7 +7,7 @@ trait Trait {
     type AssocType;
     fn dummy(&self) { }
 }
-fn bar<T:Trait+Send>() where <T as Trait>::AssocType: std::marker::Send  {
+fn bar<T:Trait+Send>() where <T as Trait>::AssocType: std::marker::Send {
     is_send::<T::AssocType>(); //~ ERROR E0277
 }
 

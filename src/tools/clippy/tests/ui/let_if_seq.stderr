@@ -1,0 +1,50 @@
+error: `if _ { .. } else { .. }` is an expression
+  --> $DIR/let_if_seq.rs:63:5
+   |
+LL | /     let mut foo = 0;
+LL | |     if f() {
+LL | |         foo = 42;
+LL | |     }
+   | |_____^ help: it is more idiomatic to write: `let <mut> foo = if f() { 42 } else { 0 };`
+   |
+   = note: `-D clippy::useless-let-if-seq` implied by `-D warnings`
+   = note: you might not need `mut` at all
+
+error: `if _ { .. } else { .. }` is an expression
+  --> $DIR/let_if_seq.rs:68:5
+   |
+LL | /     let mut bar = 0;
+LL | |     if f() {
+LL | |         f();
+LL | |         bar = 42;
+LL | |     } else {
+LL | |         f();
+LL | |     }
+   | |_____^ help: it is more idiomatic to write: `let <mut> bar = if f() { ..; 42 } else { ..; 0 };`
+   |
+   = note: you might not need `mut` at all
+
+error: `if _ { .. } else { .. }` is an expression
+  --> $DIR/let_if_seq.rs:76:5
+   |
+LL | /     let quz;
+LL | |     if f() {
+LL | |         quz = 42;
+LL | |     } else {
+LL | |         quz = 0;
+LL | |     }
+   | |_____^ help: it is more idiomatic to write: `let quz = if f() { 42 } else { 0 };`
+
+error: `if _ { .. } else { .. }` is an expression
+  --> $DIR/let_if_seq.rs:105:5
+   |
+LL | /     let mut baz = 0;
+LL | |     if f() {
+LL | |         baz = 42;
+LL | |     }
+   | |_____^ help: it is more idiomatic to write: `let <mut> baz = if f() { 42 } else { 0 };`
+   |
+   = note: you might not need `mut` at all
+
+error: aborting due to 4 previous errors
+

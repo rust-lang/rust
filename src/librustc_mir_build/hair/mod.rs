@@ -5,16 +5,18 @@
 //! structures.
 
 use self::cx::Cx;
-use rustc::infer::canonical::Canonical;
-use rustc::middle::region;
-use rustc::mir::{BinOp, BorrowKind, Field, UnOp};
-use rustc::ty::adjustment::PointerCast;
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{AdtDef, Const, Ty, UpvarSubsts, UserType};
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::infer::canonical::Canonical;
+use rustc_middle::middle::region;
+use rustc_middle::mir::{BinOp, BorrowKind, Field, UnOp};
+use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::{AdtDef, Const, Ty, UpvarSubsts, UserType};
 use rustc_span::Span;
+use rustc_target::abi::VariantIdx;
+use rustc_target::asm::InlineAsmRegOrRegClass;
 
 crate mod constant;
 crate mod cx;
@@ -144,6 +146,9 @@ crate enum ExprKind<'tcx> {
         // Whether this is from a call in HIR, rather than from an overloaded
         // operator. True for overloaded function call.
         from_hir_call: bool,
+        /// This `Span` is the span of the function, without the dot and receiver
+        /// (e.g. `foo(a, b)` in `x.foo(a, b)`
+        fn_span: Span,
     },
     Deref {
         arg: ExprRef<'tcx>,
@@ -229,7 +234,7 @@ crate enum ExprKind<'tcx> {
     },
     Repeat {
         value: ExprRef<'tcx>,
-        count: u64,
+        count: &'tcx Const<'tcx>,
     },
     Array {
         fields: Vec<ExprRef<'tcx>>,
@@ -278,7 +283,15 @@ crate enum ExprKind<'tcx> {
         def_id: DefId,
     },
     InlineAsm {
-        asm: &'tcx hir::InlineAsmInner,
+        template: &'tcx [InlineAsmTemplatePiece],
+        operands: Vec<InlineAsmOperand<'tcx>>,
+        options: InlineAsmOptions,
+        line_spans: &'tcx [Span],
+    },
+    /// An expression taking a reference to a thread local.
+    ThreadLocalRef(DefId),
+    LlvmInlineAsm {
+        asm: &'tcx hir::LlvmInlineAsmInner,
         outputs: Vec<ExprRef<'tcx>>,
         inputs: Vec<ExprRef<'tcx>>,
     },
@@ -333,6 +346,39 @@ impl<'tcx> ExprRef<'tcx> {
             ExprRef::Mirror(expr) => expr.span,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+crate enum InlineAsmOperand<'tcx> {
+    In {
+        reg: InlineAsmRegOrRegClass,
+        expr: ExprRef<'tcx>,
+    },
+    Out {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: Option<ExprRef<'tcx>>,
+    },
+    InOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        expr: ExprRef<'tcx>,
+    },
+    SplitInOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        in_expr: ExprRef<'tcx>,
+        out_expr: Option<ExprRef<'tcx>>,
+    },
+    Const {
+        expr: ExprRef<'tcx>,
+    },
+    SymFn {
+        expr: ExprRef<'tcx>,
+    },
+    SymStatic {
+        def_id: DefId,
+    },
 }
 
 ///////////////////////////////////////////////////////////////////////////

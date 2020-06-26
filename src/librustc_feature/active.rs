@@ -173,6 +173,8 @@ declare_features! (
     // no-tracking-issue-end
 
     /// Allows using `#[structural_match]` which indicates that a type is structurally matchable.
+    /// FIXME: Subsumed by trait `StructuralPartialEq`, cannot move to removed until a library
+    /// feature with the same name exists.
     (active, structural_match, "1.8.0", Some(31434), None),
 
     /// Allows using the `may_dangle` attribute (RFC 1327).
@@ -236,6 +238,7 @@ declare_features! (
     (active, movbe_target_feature, "1.34.0", Some(44839), None),
     (active, rtm_target_feature, "1.35.0", Some(44839), None),
     (active, f16c_target_feature, "1.36.0", Some(44839), None),
+    (active, riscv_target_feature, "1.45.0", Some(44839), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates (target features)
@@ -300,6 +303,11 @@ declare_features! (
 
     /// Allows specialization of implementations (RFC 1210).
     (active, specialization, "1.7.0", Some(31844), None),
+
+    /// A minimal, sound subset of specialization intended to be used by the
+    /// standard library until the soundness issues with specialization
+    /// are fixed.
+    (active, min_specialization, "1.7.0", Some(31844), None),
 
     /// Allows using `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
@@ -393,9 +401,6 @@ declare_features! (
     /// Allows dereferencing raw pointers during const eval.
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
 
-    /// Allows comparing raw pointers during const eval.
-    (active, const_compare_raw_pointers, "1.27.0", Some(53020), None),
-
     /// Allows `#[doc(alias = "...")]`.
     (active, doc_alias, "1.27.0", Some(50146), None),
 
@@ -423,8 +428,7 @@ declare_features! (
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (active, marker_trait_attr, "1.30.0", Some(29864), None),
 
-    /// Allows macro invocations on modules expressions and statements and
-    /// procedural macros to expand to non-items.
+    /// Allows macro attributes on expressions, statements and non-inline modules.
     (active, proc_macro_hygiene, "1.30.0", Some(54727), None),
 
     /// Allows unsized rvalues at arguments and parameters.
@@ -549,6 +553,30 @@ declare_features! (
     // Allows limiting the evaluation steps of const expressions
     (active, const_eval_limit, "1.43.0", Some(67217), None),
 
+    /// Allow negative trait implementations.
+    (active, negative_impls, "1.44.0", Some(68318), None),
+
+    /// Allows the use of `#[target_feature]` on safe functions.
+    (active, target_feature_11, "1.45.0", Some(69098), None),
+
+    /// Allow conditional compilation depending on rust version
+    (active, cfg_version, "1.45.0", Some(64796), None),
+
+    /// Allows the use of `#[ffi_pure]` on foreign functions.
+    (active, ffi_pure, "1.45.0", Some(58329), None),
+
+    /// Allows the use of `#[ffi_const]` on foreign functions.
+    (active, ffi_const, "1.45.0", Some(58328), None),
+
+    /// No longer treat an unsafe function as an unsafe block.
+    (active, unsafe_block_in_unsafe_fn, "1.45.0", Some(71668), None),
+
+    /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
+    (active, abi_avr_interrupt, "1.45.0", Some(69664), None),
+
+    /// Be more precise when looking for live drops in a const context.
+    (active, const_precise_live_drops, "1.46.0", Some(73255), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -565,4 +593,5 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::raw_dylib,
     sym::const_trait_impl,
     sym::const_trait_bound_opt_out,
+    sym::specialization,
 ];

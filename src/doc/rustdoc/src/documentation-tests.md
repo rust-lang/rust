@@ -352,9 +352,9 @@ are added.
 /// ```
 ```
 
-`edition2018` tells `rustdoc` that the code sample should be compiled the 2018
-edition of Rust. Similarly, you can specify `edition2015` to compile the code
-with the 2015 edition.
+`edition2018` tells `rustdoc` that the code sample should be compiled using
+the 2018 edition of Rust. Similarly, you can specify `edition2015` to compile
+the code with the 2015 edition.
 
 ## Syntax reference
 
@@ -416,7 +416,7 @@ without including it in your main documentation. For example, you could write th
 `lib.rs` to test your README as part of your doctests:
 
 ```rust,ignore
-#![feature(extern_doc)]
+#![feature(external_doc)]
 
 #[doc(include="../README.md")]
 #[cfg(doctest)]

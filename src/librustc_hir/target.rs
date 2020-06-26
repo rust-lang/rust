@@ -105,10 +105,10 @@ impl Target {
     pub fn from_trait_item(trait_item: &TraitItem<'_>) -> Target {
         match trait_item.kind {
             TraitItemKind::Const(..) => Target::AssocConst,
-            TraitItemKind::Fn(_, hir::TraitMethod::Required(_)) => {
+            TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
                 Target::Method(MethodKind::Trait { body: false })
             }
-            TraitItemKind::Fn(_, hir::TraitMethod::Provided(_)) => {
+            TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => {
                 Target::Method(MethodKind::Trait { body: true })
             }
             TraitItemKind::Type(..) => Target::AssocTy,

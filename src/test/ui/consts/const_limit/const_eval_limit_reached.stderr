@@ -1,16 +1,20 @@
-warning: Constant evaluating a complex constant, this might take some time
-  --> $DIR/const_eval_limit_reached.rs:17:1
+error: any use of this value will cause an error
+  --> $DIR/const_eval_limit_reached.rs:8:5
    |
-LL | / const fn limit() -> usize {
-LL | |     let x = 42;
-LL | |
-LL | |     x * 42
-LL | | }
-   | |_^
+LL |  / const X: usize = {
+LL |  |     let mut x = 0;
+LL |  |     while x != 1000 {
+   |  |_____^
+LL | ||
+LL | ||         x += 1;
+LL | ||     }
+   | ||_____^ exceeded interpreter step limit (see `#[const_eval_limit]`)
+LL |  |
+LL |  |     x
+LL |  | };
+   |  |__-
+   |
+   = note: `#[deny(const_err)]` on by default
 
-warning: Constant evaluating a complex constant, this might take some time
-  --> $DIR/const_eval_limit_reached.rs:10:1
-   |
-LL | const CONSTANT: usize = limit();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to previous error
 

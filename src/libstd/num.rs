@@ -52,52 +52,43 @@ where
 #[cfg(test)]
 mod tests {
     use crate::ops::Mul;
-    use crate::u16;
-    use crate::u32;
-    use crate::u64;
-    use crate::u8;
-    use crate::usize;
 
     #[test]
     fn test_saturating_add_uint() {
-        use crate::usize::MAX;
         assert_eq!(3_usize.saturating_add(5_usize), 8_usize);
-        assert_eq!(3_usize.saturating_add(MAX - 1), MAX);
-        assert_eq!(MAX.saturating_add(MAX), MAX);
-        assert_eq!((MAX - 2).saturating_add(1), MAX - 1);
+        assert_eq!(3_usize.saturating_add(usize::MAX - 1), usize::MAX);
+        assert_eq!(usize::MAX.saturating_add(usize::MAX), usize::MAX);
+        assert_eq!((usize::MAX - 2).saturating_add(1), usize::MAX - 1);
     }
 
     #[test]
     fn test_saturating_sub_uint() {
-        use crate::usize::MAX;
         assert_eq!(5_usize.saturating_sub(3_usize), 2_usize);
         assert_eq!(3_usize.saturating_sub(5_usize), 0_usize);
         assert_eq!(0_usize.saturating_sub(1_usize), 0_usize);
-        assert_eq!((MAX - 1).saturating_sub(MAX), 0);
+        assert_eq!((usize::MAX - 1).saturating_sub(usize::MAX), 0);
     }
 
     #[test]
     fn test_saturating_add_int() {
-        use crate::isize::{MAX, MIN};
         assert_eq!(3i32.saturating_add(5), 8);
-        assert_eq!(3isize.saturating_add(MAX - 1), MAX);
-        assert_eq!(MAX.saturating_add(MAX), MAX);
-        assert_eq!((MAX - 2).saturating_add(1), MAX - 1);
+        assert_eq!(3isize.saturating_add(isize::MAX - 1), isize::MAX);
+        assert_eq!(isize::MAX.saturating_add(isize::MAX), isize::MAX);
+        assert_eq!((isize::MAX - 2).saturating_add(1), isize::MAX - 1);
         assert_eq!(3i32.saturating_add(-5), -2);
-        assert_eq!(MIN.saturating_add(-1), MIN);
-        assert_eq!((-2isize).saturating_add(-MAX), MIN);
+        assert_eq!(isize::MIN.saturating_add(-1), isize::MIN);
+        assert_eq!((-2isize).saturating_add(-isize::MAX), isize::MIN);
     }
 
     #[test]
     fn test_saturating_sub_int() {
-        use crate::isize::{MAX, MIN};
         assert_eq!(3i32.saturating_sub(5), -2);
-        assert_eq!(MIN.saturating_sub(1), MIN);
-        assert_eq!((-2isize).saturating_sub(MAX), MIN);
+        assert_eq!(isize::MIN.saturating_sub(1), isize::MIN);
+        assert_eq!((-2isize).saturating_sub(isize::MAX), isize::MIN);
         assert_eq!(3i32.saturating_sub(-5), 8);
-        assert_eq!(3isize.saturating_sub(-(MAX - 1)), MAX);
-        assert_eq!(MAX.saturating_sub(-MAX), MAX);
-        assert_eq!((MAX - 2).saturating_sub(-1), MAX - 1);
+        assert_eq!(3isize.saturating_sub(-(isize::MAX - 1)), isize::MAX);
+        assert_eq!(isize::MAX.saturating_sub(-isize::MAX), isize::MAX);
+        assert_eq!((isize::MAX - 2).saturating_sub(-1), isize::MAX - 1);
     }
 
     #[test]

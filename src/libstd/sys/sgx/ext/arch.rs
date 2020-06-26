@@ -31,7 +31,7 @@ pub fn egetkey(request: &Align512<[u8; 512]>) -> Result<Align16<[u8; 16]>, u32> 
         let mut out = MaybeUninit::uninit();
         let error;
 
-        asm!(
+        llvm_asm!(
             "enclu"
             : "={eax}"(error)
             : "{eax}"(ENCLU_EGETKEY),
@@ -60,7 +60,7 @@ pub fn ereport(
     unsafe {
         let mut report = MaybeUninit::uninit();
 
-        asm!(
+        llvm_asm!(
             "enclu"
             : /* no output registers */
             : "{eax}"(ENCLU_EREPORT),

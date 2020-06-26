@@ -87,7 +87,7 @@ Feedback on the design and usage is always appreciated!
 
 The `Generator` trait in `std::ops` currently looks like:
 
-```
+```rust
 # #![feature(arbitrary_self_types, generator_trait)]
 # use std::ops::GeneratorState;
 # use std::pin::Pin;
@@ -107,7 +107,7 @@ point for executing the `Generator` itself.
 
 The return value of `resume`, `GeneratorState`, looks like:
 
-```
+```rust
 pub enum GeneratorState<Y, R> {
     Yielded(Y),
     Complete(R),

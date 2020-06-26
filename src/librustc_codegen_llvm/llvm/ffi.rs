@@ -45,6 +45,8 @@ pub enum CallConv {
     X86_64_Win64 = 79,
     X86_VectorCall = 80,
     X86_Intr = 83,
+    AvrNonBlockingInterrupt = 84,
+    AvrInterrupt = 85,
     AmdGpuKernel = 91,
 }
 
@@ -71,6 +73,14 @@ pub enum Visibility {
     Default = 0,
     Hidden = 1,
     Protected = 2,
+}
+
+/// LLVMUnnamedAddr
+#[repr(C)]
+pub enum UnnamedAddr {
+    No,
+    Local,
+    Global,
 }
 
 /// LLVMDLLStorageClass
@@ -116,6 +126,8 @@ pub enum Attribute {
     NonLazyBind = 23,
     OptimizeNone = 24,
     ReturnsTwice = 25,
+    ReadNone = 26,
+    InaccessibleMemOnly = 27,
 }
 
 /// LLVMIntPredicate
@@ -381,10 +393,10 @@ pub enum AsmDialect {
 }
 
 impl AsmDialect {
-    pub fn from_generic(asm: rustc_ast::ast::AsmDialect) -> Self {
+    pub fn from_generic(asm: rustc_ast::ast::LlvmAsmDialect) -> Self {
         match asm {
-            rustc_ast::ast::AsmDialect::Att => AsmDialect::Att,
-            rustc_ast::ast::AsmDialect::Intel => AsmDialect::Intel,
+            rustc_ast::ast::LlvmAsmDialect::Att => AsmDialect::Att,
+            rustc_ast::ast::LlvmAsmDialect::Intel => AsmDialect::Intel,
         }
     }
 }
@@ -427,18 +439,18 @@ pub enum OptStage {
 /// LLVMRustSanitizerOptions
 #[repr(C)]
 pub struct SanitizerOptions {
-    pub sanitize_memory: bool,
-    pub sanitize_thread: bool,
     pub sanitize_address: bool,
-    pub sanitize_recover: bool,
+    pub sanitize_address_recover: bool,
+    pub sanitize_memory: bool,
+    pub sanitize_memory_recover: bool,
     pub sanitize_memory_track_origins: c_int,
+    pub sanitize_thread: bool,
 }
 
 /// LLVMRelocMode
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum RelocMode {
-    Default,
+pub enum RelocModel {
     Static,
     PIC,
     DynamicNoPic,
@@ -451,9 +463,7 @@ pub enum RelocMode {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum CodeModel {
-    // FIXME: figure out if this variant is needed at all.
-    #[allow(dead_code)]
-    Other,
+    Tiny,
     Small,
     Kernel,
     Medium,
@@ -480,6 +490,17 @@ pub enum DiagnosticKind {
     OptimizationFailure,
     PGOProfile,
     Linker,
+}
+
+/// LLVMRustDiagnosticLevel
+#[derive(Copy, Clone)]
+#[repr(C)]
+#[allow(dead_code)] // Variants constructed by C++.
+pub enum DiagnosticLevel {
+    Error,
+    Warning,
+    Note,
+    Remark,
 }
 
 /// LLVMRustArchiveKind
@@ -536,6 +557,15 @@ pub enum ThreadLocalMode {
     LocalDynamic,
     InitialExec,
     LocalExec,
+}
+
+/// LLVMRustChecksumKind
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum ChecksumKind {
+    None,
+    MD5,
+    SHA1,
 }
 
 extern "C" {
@@ -694,8 +724,8 @@ pub mod debuginfo {
     }
 
     impl DebugEmissionKind {
-        pub fn from_generic(kind: rustc::session::config::DebugInfo) -> Self {
-            use rustc::session::config::DebugInfo;
+        pub fn from_generic(kind: rustc_session::config::DebugInfo) -> Self {
+            use rustc_session::config::DebugInfo;
             match kind {
                 DebugInfo::None => DebugEmissionKind::NoDebug,
                 DebugInfo::Limited => DebugEmissionKind::LineTablesOnly,
@@ -727,11 +757,11 @@ extern "C" {
     pub fn LLVMCloneModule(M: &Module) -> &Module;
 
     /// Data layout. See Module::getDataLayout.
-    pub fn LLVMGetDataLayout(M: &Module) -> *const c_char;
+    pub fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
     /// See Module::setModuleInlineAsm.
-    pub fn LLVMSetModuleInlineAsm(M: &Module, Asm: *const c_char);
+    pub fn LLVMSetModuleInlineAsm2(M: &Module, Asm: *const c_char, AsmLen: size_t);
     pub fn LLVMRustAppendModuleInlineAsm(M: &Module, Asm: *const c_char, AsmLen: size_t);
 
     /// See llvm::LLVMTypeKind::getTypeID.
@@ -1331,6 +1361,7 @@ extern "C" {
 
     // Miscellaneous instructions
     pub fn LLVMBuildPhi(B: &Builder<'a>, Ty: &'a Type, Name: *const c_char) -> &'a Value;
+    pub fn LLVMRustGetInstrprofIncrementIntrinsic(M: &Module) -> &'a Value;
     pub fn LLVMRustBuildCall(
         B: &Builder<'a>,
         Fn: &'a Value,
@@ -1632,11 +1663,13 @@ extern "C" {
         FilenameLen: size_t,
         Directory: *const c_char,
         DirectoryLen: size_t,
+        CSKind: ChecksumKind,
+        Checksum: *const c_char,
+        ChecksumLen: size_t,
     ) -> &'a DIFile;
 
     pub fn LLVMRustDIBuilderCreateSubroutineType(
         Builder: &DIBuilder<'a>,
-        File: &'a DIFile,
         ParameterTypes: &'a DIArray,
     ) -> &'a DICompositeType;
 
@@ -1663,7 +1696,6 @@ extern "C" {
         Name: *const c_char,
         NameLen: size_t,
         SizeInBits: u64,
-        AlignInBits: u32,
         Encoding: c_uint,
     ) -> &'a DIBasicType;
 
@@ -1853,7 +1885,7 @@ extern "C" {
         UniqueIdLen: size_t,
     ) -> &'a DIDerivedType;
 
-    pub fn LLVMSetUnnamedAddr(GlobalVar: &Value, UnnamedAddr: Bool);
+    pub fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
 
     pub fn LLVMRustDIBuilderCreateTemplateTypeParameter(
         Builder: &DIBuilder<'a>,
@@ -1861,9 +1893,6 @@ extern "C" {
         Name: *const c_char,
         NameLen: size_t,
         Ty: &'a DIType,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        ColumnNo: c_uint,
     ) -> &'a DITemplateTypeParameter;
 
     pub fn LLVMRustDIBuilderCreateNameSpace(
@@ -1926,10 +1955,9 @@ extern "C" {
         Features: *const c_char,
         Abi: *const c_char,
         Model: CodeModel,
-        Reloc: RelocMode,
+        Reloc: RelocModel,
         Level: CodeGenOptLevel,
         UseSoftFP: bool,
-        PositionIndependentExecutable: bool,
         FunctionSections: bool,
         DataSections: bool,
         TrapUnreachable: bool,
@@ -1937,6 +1965,7 @@ extern "C" {
         AsmComments: bool,
         EmitStackSizeSection: bool,
         RelaxELFRelocations: bool,
+        UseInitArray: bool,
     ) -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
     pub fn LLVMRustAddBuilderLibraryInfo(
@@ -1980,6 +2009,7 @@ extern "C" {
         SLPVectorize: bool,
         LoopVectorize: bool,
         DisableSimplifyLibCalls: bool,
+        EmitLifetimeMarkers: bool,
         SanitizerOptions: Option<&SanitizerOptions>,
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
@@ -2039,6 +2069,7 @@ extern "C" {
 
     pub fn LLVMRustUnpackInlineAsmDiagnostic(
         DI: &'a DiagnosticInfo,
+        level_out: &mut DiagnosticLevel,
         cookie_out: &mut c_uint,
         message_out: &mut Option<&'a Twine>,
         instruction_out: &mut Option<&'a Value>,
@@ -2055,7 +2086,15 @@ extern "C" {
     );
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustWriteSMDiagnosticToString(d: &SMDiagnostic, s: &RustString);
+    pub fn LLVMRustUnpackSMDiagnostic(
+        d: &SMDiagnostic,
+        message_out: &RustString,
+        buffer_out: &RustString,
+        level_out: &mut DiagnosticLevel,
+        loc_out: &mut c_uint,
+        ranges_out: *mut c_uint,
+        num_ranges: &mut usize,
+    ) -> bool;
 
     pub fn LLVMRustWriteArchive(
         Dst: *const c_char,
@@ -2118,6 +2157,11 @@ extern "C" {
         len: usize,
         Identifier: *const c_char,
     ) -> Option<&Module>;
+    pub fn LLVMRustGetBitcodeSliceFromObjectData(
+        Data: *const u8,
+        len: usize,
+        out_len: &mut usize,
+    ) -> *const u8;
     pub fn LLVMRustThinLTOGetDICompileUnit(
         M: &Module,
         CU1: &mut *mut c_void,

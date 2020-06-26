@@ -37,7 +37,9 @@ use crate::{Build, GitRepo};
 // try to infer the archiver path from the C compiler path.
 // In the future this logic should be replaced by calling into the `cc` crate.
 fn cc2ar(cc: &Path, target: &str) -> Option<PathBuf> {
-    if let Some(ar) = env::var_os("AR") {
+    if let Some(ar) = env::var_os(format!("AR_{}", target.replace("-", "_"))) {
+        Some(PathBuf::from(ar))
+    } else if let Some(ar) = env::var_os("AR") {
         Some(PathBuf::from(ar))
     } else if target.contains("msvc") {
         None

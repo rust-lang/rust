@@ -1,0 +1,62 @@
+// run-rustfix
+
+#![warn(clippy::mismatched_target_os)]
+#![allow(unused)]
+
+#[cfg(target_os = "linux")]
+fn linux() {}
+
+#[cfg(target_os = "freebsd")]
+fn freebsd() {}
+
+#[cfg(target_os = "dragonfly")]
+fn dragonfly() {}
+
+#[cfg(target_os = "openbsd")]
+fn openbsd() {}
+
+#[cfg(target_os = "netbsd")]
+fn netbsd() {}
+
+#[cfg(target_os = "macos")]
+fn macos() {}
+
+#[cfg(target_os = "ios")]
+fn ios() {}
+
+#[cfg(target_os = "android")]
+fn android() {}
+
+#[cfg(target_os = "emscripten")]
+fn emscripten() {}
+
+#[cfg(target_os = "fuchsia")]
+fn fuchsia() {}
+
+#[cfg(target_os = "haiku")]
+fn haiku() {}
+
+#[cfg(target_os = "illumos")]
+fn illumos() {}
+
+#[cfg(target_os = "l4re")]
+fn l4re() {}
+
+#[cfg(target_os = "redox")]
+fn redox() {}
+
+#[cfg(target_os = "solaris")]
+fn solaris() {}
+
+#[cfg(target_os = "vxworks")]
+fn vxworks() {}
+
+// list with conditions
+#[cfg(all(not(any(target_os = "solaris", target_os = "linux")), target_os = "freebsd"))]
+fn list() {}
+
+// correct use, should be ignored
+#[cfg(target_os = "freebsd")]
+fn correct() {}
+
+fn main() {}

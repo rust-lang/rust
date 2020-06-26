@@ -253,6 +253,7 @@ impl<T: 'static> LocalKey<T> {
     /// This function will still `panic!()` if the key is uninitialized and the
     /// key's initializer panics.
     #[stable(feature = "thread_local_try_with", since = "1.26.0")]
+    #[inline]
     pub fn try_with<F, R>(&'static self, f: F) -> Result<R, AccessError>
     where
         F: FnOnce(&T) -> R,
@@ -300,7 +301,7 @@ mod lazy {
             // value (an aliasing violation). To avoid setting the "I'm running a
             // destructor" flag we just use `mem::replace` which should sequence the
             // operations a little differently and make this safe to call.
-            mem::replace(&mut *ptr, Some(value));
+            let _ = mem::replace(&mut *ptr, Some(value));
 
             // After storing `Some` we want to get a reference to the contents of
             // what we just stored. While we could use `unwrap` here and it should

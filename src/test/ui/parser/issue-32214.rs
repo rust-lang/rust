@@ -1,6 +1,6 @@
 trait Trait<T> { type Item; }
 
 pub fn test<W, I: Trait<Item=(), W> >() {}
-//~^ ERROR associated type bindings must be declared after generic parameters
+//~^ ERROR generic arguments must come before the first constraint
 
 fn main() { }

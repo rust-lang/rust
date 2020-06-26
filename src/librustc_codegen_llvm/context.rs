@@ -1,35 +1,31 @@
 use crate::attributes;
+use crate::callee::get_fn;
 use crate::debuginfo;
 use crate::llvm;
 use crate::llvm_util;
-use crate::value::Value;
-use rustc::dep_graph::DepGraphSafe;
-
 use crate::type_::Type;
-use rustc_codegen_ssa::traits::*;
+use crate::value::Value;
 
-use crate::callee::get_fn;
-use rustc::bug;
-use rustc::mir::mono::CodegenUnit;
-use rustc::session::config::{self, CFGuard, DebugInfo};
-use rustc::session::Session;
-use rustc::ty::layout::{
-    HasParamEnv, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx,
-};
-use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc_codegen_ssa::base::wants_msvc_seh;
+use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_target::spec::{HasTargetSpec, Target};
-
+use rustc_middle::bug;
+use rustc_middle::mir::mono::CodegenUnit;
+use rustc_middle::ty::layout::{HasParamEnv, LayoutError, TyAndLayout};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_session::config::{CFGuard, CrateType, DebugInfo};
+use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::{HasDataLayout, LayoutOf, PointeeInfo, Size, TargetDataLayout, VariantIdx};
+use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
+
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
 use std::str;
-use std::sync::Arc;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
@@ -42,7 +38,7 @@ pub struct CodegenCx<'ll, 'tcx> {
 
     pub llmod: &'ll llvm::Module,
     pub llcx: &'ll llvm::Context,
-    pub codegen_unit: Arc<CodegenUnit<'tcx>>,
+    pub codegen_unit: &'tcx CodegenUnit<'tcx>,
 
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
@@ -53,12 +49,13 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub const_cstr_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
-    /// Key is a Value holding a *T,
-    /// Val is a Value holding a *[T].
+    ///
+    /// Key is a Value holding a `*T`,
+    /// Val is a Value holding a `*[T]`.
     ///
     /// Needed because LLVM loses pointer->pointee association
     /// when we ptrcast, and we have to ptrcast during codegen
-    /// of a [T] const because we form a slice, a (*T,usize) pair, not
+    /// of a `[T]` const because we form a slice, a `(*T,usize)` pair, not
     /// a pointer to an LLVM array type. Similar for trait objects.
     pub const_unsized: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 
@@ -91,46 +88,13 @@ pub struct CodegenCx<'ll, 'tcx> {
     local_gen_sym_counter: Cell<usize>,
 }
 
-impl<'ll, 'tcx> DepGraphSafe for CodegenCx<'ll, 'tcx> {}
-
-pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
-    let reloc_model_arg = match sess.opts.cg.relocation_model {
-        Some(ref s) => &s[..],
-        None => &sess.target.target.options.relocation_model[..],
-    };
-
-    match crate::back::write::RELOC_MODEL_ARGS.iter().find(|&&arg| arg.0 == reloc_model_arg) {
-        Some(x) => x.1,
-        _ => {
-            sess.err(&format!("{:?} is not a valid relocation mode", reloc_model_arg));
-            sess.abort_if_errors();
-            bug!();
-        }
+fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
+    match tls_model {
+        TlsModel::GeneralDynamic => llvm::ThreadLocalMode::GeneralDynamic,
+        TlsModel::LocalDynamic => llvm::ThreadLocalMode::LocalDynamic,
+        TlsModel::InitialExec => llvm::ThreadLocalMode::InitialExec,
+        TlsModel::LocalExec => llvm::ThreadLocalMode::LocalExec,
     }
-}
-
-fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
-    let tls_model_arg = match sess.opts.debugging_opts.tls_model {
-        Some(ref s) => &s[..],
-        None => &sess.target.target.options.tls_model[..],
-    };
-
-    match crate::back::write::TLS_MODEL_ARGS.iter().find(|&&arg| arg.0 == tls_model_arg) {
-        Some(x) => x.1,
-        _ => {
-            sess.err(&format!("{:?} is not a valid TLS model", tls_model_arg));
-            sess.abort_if_errors();
-            bug!();
-        }
-    }
-}
-
-fn is_any_library(sess: &Session) -> bool {
-    sess.crate_types.borrow().iter().any(|ty| *ty != config::CrateType::Executable)
-}
-
-pub fn is_pie_binary(sess: &Session) -> bool {
-    !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
 fn strip_function_ptr_alignment(data_layout: String) -> String {
@@ -163,11 +127,11 @@ pub unsafe fn create_module(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.target.options.is_builtin {
-        let tm = crate::back::write::create_informational_target_machine(&tcx.sess, false);
+        let tm = crate::back::write::create_informational_target_machine(tcx.sess);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
 
-        let llvm_data_layout = llvm::LLVMGetDataLayout(llmod);
+        let llvm_data_layout = llvm::LLVMGetDataLayoutStr(llmod);
         let llvm_data_layout = str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
             .expect("got a non-UTF8 data-layout from LLVM");
 
@@ -206,12 +170,13 @@ pub unsafe fn create_module(
     let llvm_target = SmallCStr::new(&sess.target.target.llvm_target);
     llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
 
-    if get_reloc_model(sess) == llvm::RelocMode::PIC {
+    if sess.relocation_model() == RelocModel::Pic {
         llvm::LLVMRustSetModulePICLevel(llmod);
-    }
-
-    if is_pie_binary(sess) {
-        llvm::LLVMRustSetModulePIELevel(llmod);
+        // PIE is potentially more effective than PIC, but can only be used in executables.
+        // If all our outputs are executables, then we can relax PIC to PIE.
+        if sess.crate_types().iter().all(|ty| *ty == CrateType::Executable) {
+            llvm::LLVMRustSetModulePIELevel(llmod);
+        }
     }
 
     // If skipping the PLT is enabled, we need to add some module metadata
@@ -237,7 +202,7 @@ pub unsafe fn create_module(
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'tcx>,
-        codegen_unit: Arc<CodegenUnit<'tcx>>,
+        codegen_unit: &'tcx CodegenUnit<'tcx>,
         llvm_module: &'ll crate::ModuleLlvm,
     ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
@@ -287,7 +252,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let check_overflow = tcx.sess.overflow_checks();
 
-        let tls_model = get_tls_model(&tcx.sess);
+        let tls_model = to_llvm_tls_model(tcx.sess.tls_model());
 
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
@@ -382,6 +347,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     def_id,
                     tcx.intern_substs(&[]),
                 )
+                .unwrap()
                 .unwrap(),
             ),
             _ => {
@@ -407,8 +373,8 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.check_overflow
     }
 
-    fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>> {
-        &self.codegen_unit
+    fn codegen_unit(&self) -> &'tcx CodegenUnit<'tcx> {
+        self.codegen_unit
     }
 
     fn used_statics(&self) -> &RefCell<Vec<&'ll Value>> {
@@ -459,7 +425,7 @@ impl CodegenCx<'b, 'tcx> {
             self.type_variadic_func(&[], ret)
         };
         let f = self.declare_cfn(name, fn_ty);
-        llvm::SetUnnamedAddr(f, false);
+        llvm::SetUnnamedAddress(f, llvm::UnnamedAddr::No);
         self.intrinsics.borrow_mut().insert(name, f);
         f
     }
@@ -783,6 +749,8 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, i8p) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, i8p) -> void);
 
+        ifn!("llvm.instrprof.increment", fn(i8p, t_i64, t_i32, t_i32) -> void);
+
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);
         ifn!("llvm.localescape", fn(...) -> void);
@@ -801,7 +769,7 @@ impl CodegenCx<'b, 'tcx> {
             ifn!("llvm.dbg.declare", fn(self.type_metadata(), self.type_metadata()) -> void);
             ifn!("llvm.dbg.value", fn(self.type_metadata(), t_i64, self.type_metadata()) -> void);
         }
-        return None;
+        None
     }
 }
 
@@ -821,8 +789,8 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     }
 }
 
-impl ty::layout::HasDataLayout for CodegenCx<'ll, 'tcx> {
-    fn data_layout(&self) -> &ty::layout::TargetDataLayout {
+impl HasDataLayout for CodegenCx<'ll, 'tcx> {
+    fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
@@ -841,13 +809,13 @@ impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
 
 impl LayoutOf for CodegenCx<'ll, 'tcx> {
     type Ty = Ty<'tcx>;
-    type TyLayout = TyLayout<'tcx>;
+    type TyAndLayout = TyAndLayout<'tcx>;
 
-    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         self.spanned_layout_of(ty, DUMMY_SP)
     }
 
-    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyLayout {
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyAndLayout {
         self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap_or_else(|e| {
             if let LayoutError::SizeOverflow(_) = e {
                 self.sess().span_fatal(span, &e.to_string())

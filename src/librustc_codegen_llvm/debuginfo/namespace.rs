@@ -1,13 +1,13 @@
 // Namespace Handling.
 
 use super::utils::{debug_context, DIB};
-use rustc::ty::{self, Instance};
+use rustc_middle::ty::{self, Instance};
 
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
-use rustc::hir::map::DefPathData;
 use rustc_hir::def_id::DefId;
+use rustc_hir::definitions::DefPathData;
 
 pub fn mangled_name_of_instance<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,

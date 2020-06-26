@@ -9,12 +9,12 @@ fn main() {
     macro_rules! overflow_test {
         ($t:ident) => (
             let r = panic::catch_unwind(|| {
-                ($t::max_value()).next_power_of_two()
+                ($t::MAX).next_power_of_two()
             });
             assert!(r.is_err());
 
             let r = panic::catch_unwind(|| {
-                (($t::max_value() >> 1) + 2).next_power_of_two()
+                (($t::MAX >> 1) + 2).next_power_of_two()
             });
             assert!(r.is_err());
         )

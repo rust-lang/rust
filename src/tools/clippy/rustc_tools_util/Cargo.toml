@@ -1,0 +1,16 @@
+[package]
+name = "rustc_tools_util"
+version = "0.2.0"
+authors = ["Matthias Krüger <matthias.krueger@famsik.de>"]
+description = "small helper to generate version information for git packages"
+repository = "https://github.com/rust-lang/rust-clippy"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["rustc", "tool", "git", "version", "hash"]
+categories = ["development-tools"]
+edition = "2018"
+
+[dependencies]
+
+[features]
+deny-warnings = []

@@ -1,8 +1,8 @@
 error[E0624]: associated function `foo` is private
-  --> $DIR/issue-53498.rs:16:5
+  --> $DIR/issue-53498.rs:16:27
    |
 LL |     test::Foo::<test::B>::foo();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           ^^^ private associated function
 
 error: aborting due to previous error
 

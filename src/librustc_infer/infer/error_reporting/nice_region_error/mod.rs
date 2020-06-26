@@ -1,15 +1,13 @@
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError::*;
 use crate::infer::InferCtxt;
-use rustc::ty::{self, TyCtxt};
-use rustc::util::common::ErrorReported;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{DiagnosticBuilder, ErrorReported};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::source_map::Span;
 
 mod different_lifetimes;
 mod find_anon_type;
 mod named_anon_conflict;
-mod outlives_closure;
 mod placeholder_error;
 mod static_impl_trait;
 mod trait_impl_difference;
@@ -17,12 +15,7 @@ mod util;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     pub fn try_report_nice_region_error(&self, error: &RegionResolutionError<'tcx>) -> bool {
-        if let Some(tables) = self.in_progress_tables {
-            let tables = tables.borrow();
-            NiceRegionError::new(self, error.clone(), Some(&tables)).try_report().is_some()
-        } else {
-            NiceRegionError::new(self, error.clone(), None).try_report().is_some()
-        }
+        NiceRegionError::new(self, error.clone()).try_report().is_some()
     }
 }
 
@@ -30,16 +23,11 @@ pub struct NiceRegionError<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     error: Option<RegionResolutionError<'tcx>>,
     regions: Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)>,
-    tables: Option<&'cx ty::TypeckTables<'tcx>>,
 }
 
 impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
-    pub fn new(
-        infcx: &'cx InferCtxt<'cx, 'tcx>,
-        error: RegionResolutionError<'tcx>,
-        tables: Option<&'cx ty::TypeckTables<'tcx>>,
-    ) -> Self {
-        Self { infcx, error: Some(error), regions: None, tables }
+    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>, error: RegionResolutionError<'tcx>) -> Self {
+        Self { infcx, error: Some(error), regions: None }
     }
 
     pub fn new_from_span(
@@ -47,9 +35,8 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
         span: Span,
         sub: ty::Region<'tcx>,
         sup: ty::Region<'tcx>,
-        tables: Option<&'cx ty::TypeckTables<'tcx>>,
     ) -> Self {
-        Self { infcx, error: None, regions: Some((span, sub, sup)), tables }
+        Self { infcx, error: None, regions: Some((span, sub, sup)) }
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -68,10 +55,9 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
                 diag.emit();
                 ErrorReported
             })
-            .or_else(|| self.try_report_anon_anon_conflict())
-            .or_else(|| self.try_report_outlives_closure())
-            .or_else(|| self.try_report_static_impl_trait())
             .or_else(|| self.try_report_impl_not_conforming_to_trait())
+            .or_else(|| self.try_report_anon_anon_conflict())
+            .or_else(|| self.try_report_static_impl_trait())
     }
 
     pub fn regions(&self) -> Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)> {

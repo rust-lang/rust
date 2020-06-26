@@ -78,7 +78,6 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
     ("edition-guide", "src/doc/edition-guide"),
     ("rls", "src/tools/rls"),
     ("rustfmt", "src/tools/rustfmt"),
-    ("clippy-driver", "src/tools/clippy"),
 ];
 
 // These tools are permitted to not build on the beta/stable channels.
@@ -89,16 +88,16 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
 static NIGHTLY_TOOLS: &[(&str, &str)] = &[
     ("miri", "src/tools/miri"),
     ("embedded-book", "src/doc/embedded-book"),
-    ("rustc-guide", "src/doc/rustc-guide"),
+    // ("rustc-dev-guide", "src/doc/rustc-dev-guide"),
 ];
 
 fn print_error(tool: &str, submodule: &str) {
-    eprintln!("");
+    eprintln!();
     eprintln!("We detected that this PR updated '{}', but its tests failed.", tool);
-    eprintln!("");
+    eprintln!();
     eprintln!("If you do intend to update '{}', please check the error messages above and", tool);
     eprintln!("commit another update.");
-    eprintln!("");
+    eprintln!();
     eprintln!("If you do NOT intend to update '{}', please ensure you did not accidentally", tool);
     eprintln!("change the submodule at '{}'. You may ask your reviewer for the", submodule);
     eprintln!("proper steps.");
@@ -273,6 +272,18 @@ impl Builder<'_> {
     /// `rust.save-toolstates` in `config.toml`. If unspecified, nothing will be
     /// done. The file is updated immediately after this function completes.
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
+        // If we're in a dry run setting we don't want to save toolstates as
+        // that means if we e.g. panic down the line it'll look like we tested
+        // everything (but we actually haven't).
+        if self.config.dry_run {
+            return;
+        }
+        // Toolstate isn't tracked for clippy, but since most tools do, we avoid
+        // checking in all the places we could save toolstate and just do so
+        // here.
+        if tool == "clippy-driver" {
+            return;
+        }
         if let Some(ref path) = self.config.save_toolstates {
             if let Some(parent) = path.parent() {
                 // Ensure the parent directory always exists

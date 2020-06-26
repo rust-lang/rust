@@ -23,11 +23,7 @@ fn max_len() -> usize {
     // intentionally showing odd behavior by rejecting any read with a size
     // larger than or equal to INT_MAX. To handle both of these the read
     // size is capped on both platforms.
-    if cfg!(target_os = "macos") {
-        <c_int>::max_value() as usize - 1
-    } else {
-        <ssize_t>::max_value() as usize
-    }
+    if cfg!(target_os = "macos") { <c_int>::MAX as usize - 1 } else { <ssize_t>::MAX as usize }
 }
 
 impl FileDesc {
@@ -58,10 +54,15 @@ impl FileDesc {
             libc::readv(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::max_value() as usize) as c_int,
+                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
             )
         })?;
         Ok(ret as usize)
+    }
+
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        true
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -110,10 +111,15 @@ impl FileDesc {
             libc::writev(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::max_value() as usize) as c_int,
+                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
             )
         })?;
         Ok(ret as usize)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        true
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
@@ -153,6 +159,7 @@ impl FileDesc {
     #[cfg(not(any(
         target_env = "newlib",
         target_os = "solaris",
+        target_os = "illumos",
         target_os = "emscripten",
         target_os = "fuchsia",
         target_os = "l4re",
@@ -169,6 +176,7 @@ impl FileDesc {
     #[cfg(any(
         target_env = "newlib",
         target_os = "solaris",
+        target_os = "illumos",
         target_os = "emscripten",
         target_os = "fuchsia",
         target_os = "l4re",

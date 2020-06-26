@@ -1,6 +1,7 @@
 //! Tests the interaction of associated type defaults and specialization.
 
 #![feature(associated_type_defaults, specialization)]
+//~^ WARN the feature `specialization` is incomplete
 
 trait Tr {
     type Ty = u8;

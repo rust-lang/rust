@@ -2,8 +2,6 @@ use super::*;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics;
 
-// ignore-tidy-undocumented-unsafe
-
 #[lang = "mut_ptr"]
 impl<T: ?Sized> *mut T {
     /// Returns `true` if the pointer is null.
@@ -146,8 +144,10 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
-    pub unsafe fn offset(self, count: isize) -> *mut T
+    pub const unsafe fn offset(self, count: isize) -> *mut T
     where
         T: Sized,
     {
@@ -203,11 +203,14 @@ impl<T: ?Sized> *mut T {
     /// assert_eq!(&data, &[0, 2, 0, 4, 0]);
     /// ```
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
-    pub fn wrapping_offset(self, count: isize) -> *mut T
+    pub const fn wrapping_offset(self, count: isize) -> *mut T
     where
         T: Sized,
     {
+        // SAFETY: the `arith_offset` intrinsic has no prerequisites to be called.
         unsafe { intrinsics::arith_offset(self, count) as *mut T }
     }
 
@@ -268,6 +271,72 @@ impl<T: ?Sized> *mut T {
     #[inline]
     pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         if self.is_null() { None } else { Some(&mut *self) }
+    }
+
+    /// Returns whether two pointers are guaranteed to be equal.
+    ///
+    /// At runtime this function behaves like `self == other`.
+    /// However, in some contexts (e.g., compile-time evaluation),
+    /// it is not always possible to determine equality of two pointers, so this function may
+    /// spuriously return `false` for pointers that later actually turn out to be equal.
+    /// But when it returns `true`, the pointers are guaranteed to be equal.
+    ///
+    /// This function is the mirror of [`guaranteed_ne`], but not its inverse. There are pointer
+    /// comparisons for which both functions return `false`.
+    ///
+    /// [`guaranteed_ne`]: #method.guaranteed_ne
+    ///
+    /// The return value may change depending on the compiler version and unsafe code may not
+    /// rely on the result of this function for soundness. It is suggested to only use this function
+    /// for performance optimizations where spurious `false` return values by this function do not
+    /// affect the outcome, but just the performance.
+    /// The consequences of using this method to make runtime and compile-time code behave
+    /// differently have not been explored. This method should not be used to introduce such
+    /// differences, and it should also not be stabilized before we have a better understanding
+    /// of this issue.
+    /// ```
+    #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[inline]
+    #[cfg(not(bootstrap))]
+    pub const fn guaranteed_eq(self, other: *mut T) -> bool
+    where
+        T: Sized,
+    {
+        intrinsics::ptr_guaranteed_eq(self as *const _, other as *const _)
+    }
+
+    /// Returns whether two pointers are guaranteed to be inequal.
+    ///
+    /// At runtime this function behaves like `self != other`.
+    /// However, in some contexts (e.g., compile-time evaluation),
+    /// it is not always possible to determine the inequality of two pointers, so this function may
+    /// spuriously return `false` for pointers that later actually turn out to be inequal.
+    /// But when it returns `true`, the pointers are guaranteed to be inequal.
+    ///
+    /// This function is the mirror of [`guaranteed_eq`], but not its inverse. There are pointer
+    /// comparisons for which both functions return `false`.
+    ///
+    /// [`guaranteed_eq`]: #method.guaranteed_eq
+    ///
+    /// The return value may change depending on the compiler version and unsafe code may not
+    /// rely on the result of this function for soundness. It is suggested to only use this function
+    /// for performance optimizations where spurious `false` return values by this function do not
+    /// affect the outcome, but just the performance.
+    /// The consequences of using this method to make runtime and compile-time code behave
+    /// differently have not been explored. This method should not be used to introduce such
+    /// differences, and it should also not be stabilized before we have a better understanding
+    /// of this issue.
+    /// ```
+    #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[inline]
+    #[cfg(not(bootstrap))]
+    pub const unsafe fn guaranteed_ne(self, other: *mut T) -> bool
+    where
+        T: Sized,
+    {
+        intrinsics::ptr_guaranteed_ne(self as *const _, other as *const _)
     }
 
     /// Calculates the distance between two pointers. The returned value is in
@@ -377,11 +446,18 @@ impl<T: ?Sized> *mut T {
     /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
     /// ```
     #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
+    #[rustc_deprecated(
+        since = "1.46.0",
+        reason = "Pointer distances across allocation \
+        boundaries are not typically meaningful. \
+        Use integer subtraction if you really need this."
+    )]
     #[inline]
     pub fn wrapping_offset_from(self, origin: *const T) -> isize
     where
         T: Sized,
     {
+        #[allow(deprecated_in_future, deprecated)]
         (self as *const T).wrapping_offset_from(origin)
     }
 
@@ -437,8 +513,10 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
-    pub unsafe fn add(self, count: usize) -> Self
+    pub const unsafe fn add(self, count: usize) -> Self
     where
         T: Sized,
     {
@@ -498,8 +576,10 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
-    pub unsafe fn sub(self, count: usize) -> Self
+    pub const unsafe fn sub(self, count: usize) -> Self
     where
         T: Sized,
     {
@@ -553,8 +633,10 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
-    pub fn wrapping_add(self, count: usize) -> Self
+    pub const fn wrapping_add(self, count: usize) -> Self
     where
         T: Sized,
     {
@@ -608,8 +690,10 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
-    pub fn wrapping_sub(self, count: usize) -> Self
+    pub const fn wrapping_sub(self, count: usize) -> Self
     where
         T: Sized,
     {
@@ -847,8 +931,8 @@ impl<T: ?Sized> *mut T {
     /// `align`.
     ///
     /// If it is not possible to align the pointer, the implementation returns
-    /// `usize::max_value()`. It is permissible for the implementation to *always*
-    /// return `usize::max_value()`. Only your algorithm's performance can depend
+    /// `usize::MAX`. It is permissible for the implementation to *always*
+    /// return `usize::MAX`. Only your algorithm's performance can depend
     /// on getting a usable offset here, not its correctness.
     ///
     /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
@@ -890,7 +974,37 @@ impl<T: ?Sized> *mut T {
         if !align.is_power_of_two() {
             panic!("align_offset: align is not a power-of-two");
         }
+        // SAFETY: `align` has been checked to be a power of 2 above
         unsafe { align_offset(self, align) }
+    }
+}
+
+#[lang = "mut_slice_ptr"]
+impl<T> *mut [T] {
+    /// Returns the length of a raw slice.
+    ///
+    /// The returned value is the number of **elements**, not the number of bytes.
+    ///
+    /// This function is safe, even when the raw slice cannot be cast to a slice
+    /// reference because the pointer is null or unaligned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_len)]
+    ///
+    /// use std::ptr;
+    ///
+    /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
+    /// assert_eq!(slice.len(), 3);
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_ptr_len", issue = "71146")]
+    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    pub const fn len(self) -> usize {
+        // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
+        // Only `std` can make this guarantee.
+        unsafe { Repr { rust_mut: self }.raw }.len
     }
 }
 

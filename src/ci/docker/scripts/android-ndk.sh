@@ -13,7 +13,7 @@ download_ndk() {
 
 make_standalone_toolchain() {
     # See https://developer.android.com/ndk/guides/standalone_toolchain.htm
-    python2.7 /android/ndk/ndk/build/tools/make_standalone_toolchain.py \
+    python3 /android/ndk/ndk/build/tools/make_standalone_toolchain.py \
         --install-dir /android/ndk/$1-$2 \
         --arch $1 \
         --api $2

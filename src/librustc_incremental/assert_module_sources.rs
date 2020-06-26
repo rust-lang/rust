@@ -21,10 +21,10 @@
 //! allows for doing a more fine-grained check to see if pre- or post-lto data
 //! was re-used.
 
-use rustc::mir::mono::CodegenUnitNameBuilder;
-use rustc::ty::TyCtxt;
 use rustc_ast::ast;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_middle::mir::mono::CodegenUnitNameBuilder;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::*;
 use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeSet;
@@ -147,7 +147,7 @@ impl AssertModuleSource<'tcx> {
         );
     }
 
-    fn field(&self, attr: &ast::Attribute, name: Symbol) -> ast::Name {
+    fn field(&self, attr: &ast::Attribute, name: Symbol) -> Symbol {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(name) {
                 if let Some(value) = item.value_str() {
@@ -175,6 +175,6 @@ impl AssertModuleSource<'tcx> {
             return true;
         }
         debug!("check_config: no match found");
-        return false;
+        false
     }
 }

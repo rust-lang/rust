@@ -22,7 +22,7 @@ fn main() {
 }
 
 // Here we check that local debuginfo is mapped correctly.
-// CHECK: !DIFile(filename: "/the/src/remap_path_prefix/main.rs", directory: "/the/cwd/")
+// CHECK: !DIFile(filename: "/the/src/remap_path_prefix/main.rs", directory: "/the/cwd/"
 
 // And here that debuginfo from other crates are expanded to absolute paths.
-// CHECK: !DIFile(filename: "/the/aux-src/remap_path_prefix_aux.rs", directory: "")
+// CHECK: !DIFile(filename: "/the/aux-src/remap_path_prefix_aux.rs", directory: ""

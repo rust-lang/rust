@@ -1,5 +1,7 @@
-use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Place, Statement, StatementKind, TerminatorKind};
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::{
+    Local, Location, Place, Statement, StatementKind, Terminator, TerminatorKind,
+};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -32,7 +34,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 never_initialized_mut_locals: &mut never_initialized_mut_locals,
                 mbcx: self,
             };
-            visitor.visit_body(visitor.mbcx.body);
+            visitor.visit_body(&visitor.mbcx.body);
         }
 
         // Take the union of the existed `used_mut` set with those variables we've found were
@@ -51,7 +53,7 @@ struct GatherUsedMutsVisitor<'visit, 'cx, 'tcx> {
 }
 
 impl GatherUsedMutsVisitor<'_, '_, '_> {
-    fn remove_never_initialized_mut_locals(&mut self, into: &Place<'_>) {
+    fn remove_never_initialized_mut_locals(&mut self, into: Place<'_>) {
         // Remove any locals that we found were initialized from the
         // `never_initialized_mut_locals` set. At the end, the only remaining locals will
         // be those that were never initialized - we will consider those as being used as
@@ -62,31 +64,32 @@ impl GatherUsedMutsVisitor<'_, '_, '_> {
 }
 
 impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tcx> {
-    fn visit_terminator_kind(&mut self, kind: &TerminatorKind<'tcx>, _location: Location) {
-        debug!("visit_terminator_kind: kind={:?}", kind);
-        match &kind {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        debug!("visit_terminator: terminator={:?}", terminator);
+        match &terminator.kind {
             TerminatorKind::Call { destination: Some((into, _)), .. } => {
-                self.remove_never_initialized_mut_locals(&into);
+                self.remove_never_initialized_mut_locals(*into);
             }
-            TerminatorKind::DropAndReplace { location, .. } => {
-                self.remove_never_initialized_mut_locals(&location);
+            TerminatorKind::DropAndReplace { place, .. } => {
+                self.remove_never_initialized_mut_locals(*place);
             }
             _ => {}
         }
+
+        self.super_terminator(terminator, location);
     }
 
-    fn visit_statement(&mut self, statement: &Statement<'tcx>, _location: Location) {
-        match &statement.kind {
-            StatementKind::Assign(box (into, _)) => {
-                debug!(
-                    "visit_statement: statement={:?} local={:?} \
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+        if let StatementKind::Assign(box (into, _)) = &statement.kind {
+            debug!(
+                "visit_statement: statement={:?} local={:?} \
                     never_initialized_mut_locals={:?}",
-                    statement, into.local, self.never_initialized_mut_locals
-                );
-                self.remove_never_initialized_mut_locals(into);
-            }
-            _ => {}
+                statement, into.local, self.never_initialized_mut_locals
+            );
+            self.remove_never_initialized_mut_locals(*into);
         }
+
+        self.super_statement(statement, location);
     }
 
     fn visit_local(&mut self, local: &Local, place_context: PlaceContext, location: Location) {

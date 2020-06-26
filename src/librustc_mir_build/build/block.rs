@@ -2,14 +2,16 @@ use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc::mir::*;
 use rustc_hir as hir;
+use rustc_middle::mir::*;
+use rustc_session::lint::builtin::UNSAFE_OP_IN_UNSAFE_FN;
+use rustc_session::lint::Level;
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn ast_block(
         &mut self,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         block: BasicBlock,
         ast_block: &'tcx hir::Block<'tcx>,
         source_info: SourceInfo,
@@ -29,7 +31,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // This is a `break`-able block
                     let exit_block = this.cfg.start_new_block();
                     let block_exit =
-                        this.in_breakable_scope(None, exit_block, destination.clone(), |this| {
+                        this.in_breakable_scope(None, exit_block, destination, |this| {
                             this.ast_block_stmts(destination, block, span, stmts, expr, safety_mode)
                         });
                     this.cfg.goto(unpack!(block_exit), source_info, exit_block);
@@ -43,7 +45,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn ast_block_stmts(
         &mut self,
-        destination: &Place<'tcx>,
+        destination: Place<'tcx>,
         mut block: BasicBlock,
         span: Span,
         stmts: Vec<StmtRef<'tcx>>,
@@ -145,7 +147,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }));
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);
-                        this.visit_bindings(
+                        this.visit_primary_bindings(
                             &pattern,
                             UserTypeProjections::none(),
                             &mut |this, _, _, _, node, span, _, _| {
@@ -173,7 +175,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Some(expr) = expr {
             let tail_result_is_ignored =
                 destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
-            this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored });
+            let span = match expr {
+                ExprRef::Hair(expr) => expr.span,
+                ExprRef::Mirror(ref expr) => expr.span,
+            };
+            this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored, span });
 
             unpack!(block = this.into(destination, block, expr));
             let popped = this.block_context.pop();
@@ -187,7 +193,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if destination_ty.is_unit() {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
-                this.cfg.push_assign_unit(block, source_info, destination);
+                this.cfg.push_assign_unit(block, source_info, destination, this.hir.tcx());
             }
         }
         // Finally, we pop all the let scopes before exiting out from the scope of block
@@ -211,6 +217,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 assert_eq!(self.push_unsafe_count, 0);
                 match self.unpushed_unsafe {
                     Safety::Safe => {}
+                    // no longer treat `unsafe fn`s as `unsafe` contexts (see RFC #2585)
+                    Safety::FnUnsafe
+                        if self.hir.tcx().lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, hir_id).0
+                            != Level::Allow => {}
                     _ => return,
                 }
                 self.unpushed_unsafe = Safety::ExplicitUnsafe(hir_id);
@@ -225,7 +235,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .push_unsafe_count
                     .checked_sub(1)
                     .unwrap_or_else(|| span_bug!(span, "unsafe count underflow"));
-                if self.push_unsafe_count == 0 { Some(self.unpushed_unsafe) } else { None }
+                if self.push_unsafe_count == 0 {
+                    Some(self.unpushed_unsafe)
+                } else {
+                    None
+                }
             }
         };
 

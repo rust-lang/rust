@@ -1,5 +1,3 @@
-// ignore-tidy-undocumented-unsafe
-
 use crate::cmp;
 
 use super::super::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedLen};
@@ -176,9 +174,11 @@ where
         if self.index < self.len {
             let i = self.index;
             self.index += 1;
+            // SAFETY: `i` is smaller than `self.len`, thus smaller than `self.a.len()` and `self.b.len()`
             unsafe { Some((self.a.get_unchecked(i), self.b.get_unchecked(i))) }
         } else if A::may_have_side_effect() && self.index < self.a.len() {
             // match the base implementation's potential side effects
+            // SAFETY: we just checked that `self.index` < `self.a.len()`
             unsafe {
                 self.a.get_unchecked(self.index);
             }
@@ -203,11 +203,15 @@ where
             let i = self.index;
             self.index += 1;
             if A::may_have_side_effect() {
+                // SAFETY: the usage of `cmp::min` to calculate `delta`
+                // ensures that `end` is smaller than or equal to `self.len`,
+                // so `i` is also smaller than `self.len`.
                 unsafe {
                     self.a.get_unchecked(i);
                 }
             }
             if B::may_have_side_effect() {
+                // SAFETY: same as above.
                 unsafe {
                     self.b.get_unchecked(i);
                 }
@@ -243,6 +247,8 @@ where
         if self.index < self.len {
             self.len -= 1;
             let i = self.len;
+            // SAFETY: `i` is smaller than the previous value of `self.len`,
+            // which is also smaller than or equal to `self.a.len()` and `self.b.len()`
             unsafe { Some((self.a.get_unchecked(i), self.b.get_unchecked(i))) }
         } else {
             None

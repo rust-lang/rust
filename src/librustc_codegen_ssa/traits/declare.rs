@@ -1,7 +1,7 @@
 use super::BackendTypes;
-use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::{Instance, Ty};
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::mono::{Linkage, Visibility};
+use rustc_middle::ty::{Instance, Ty};
 use rustc_target::abi::call::FnAbi;
 
 pub trait DeclareMethods<'tcx>: BackendTypes {
@@ -31,7 +31,7 @@ pub trait DeclareMethods<'tcx>: BackendTypes {
     /// Use this function when you intend to define a global. This function will
     /// return `None` if the name already has a definition associated with it. In that
     /// case an error should be reported to the user, because it usually happens due
-    /// to user’s fault (e.g., misuse of #[no_mangle] or #[export_name] attributes).
+    /// to user’s fault (e.g., misuse of `#[no_mangle]` or `#[export_name]` attributes).
     fn define_global(&self, name: &str, ty: Self::Type) -> Option<Self::Value>;
 
     /// Declare a private global

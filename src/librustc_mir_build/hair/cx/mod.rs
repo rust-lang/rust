@@ -5,12 +5,6 @@
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::*;
 
-use rustc::middle::region;
-use rustc::mir::interpret::{LitToConstError, LitToConstInput};
-use rustc::ty::layout::VariantIdx;
-use rustc::ty::subst::Subst;
-use rustc::ty::subst::{GenericArg, InternalSubsts};
-use rustc::ty::{self, Ty, TyCtxt};
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_hir as hir;
@@ -18,7 +12,13 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::middle::region;
+use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
+use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::infer::InferCtxtExt;
 
 #[derive(Clone)]
@@ -82,11 +82,11 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             infcx,
             root_lint_level: src_id,
             param_env: tcx.param_env(src_def_id),
-            identity_substs: InternalSubsts::identity_for_item(tcx, src_def_id),
+            identity_substs: InternalSubsts::identity_for_item(tcx, src_def_id.to_def_id()),
             region_scope_tree: tcx.region_scope_tree(src_def_id),
             tables,
             constness,
-            body_owner: src_def_id,
+            body_owner: src_def_id.to_def_id(),
             body_owner_kind,
             check_overflow,
             control_flow_destroyed: Vec::new(),
@@ -176,7 +176,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             .tcx
             .associated_items(trait_def_id)
             .filter_by_name_unhygienic(method_name)
-            .find(|item| item.kind == ty::AssocKind::Method)
+            .find(|item| item.kind == ty::AssocKind::Fn)
             .expect("trait method not found");
 
         let method_ty = self.tcx.type_of(item.def_id);

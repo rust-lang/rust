@@ -20,9 +20,9 @@ use crate::mem::ManuallyDrop;
 /// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
-/// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
+/// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior! ⚠️
 /// // The equivalent code with `MaybeUninit<&i32>`:
-/// let x: &i32 = unsafe { MaybeUninit::zeroed().assume_init() }; // undefined behavior!
+/// let x: &i32 = unsafe { MaybeUninit::zeroed().assume_init() }; // undefined behavior! ⚠️
 /// ```
 ///
 /// This is exploited by the compiler for various optimizations, such as eliding
@@ -35,9 +35,9 @@ use crate::mem::ManuallyDrop;
 /// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
-/// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior!
+/// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior! ⚠️
 /// // The equivalent code with `MaybeUninit<bool>`:
-/// let b: bool = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior!
+/// let b: bool = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior! ⚠️
 /// ```
 ///
 /// Moreover, uninitialized memory is special in that the compiler knows that
@@ -49,9 +49,9 @@ use crate::mem::ManuallyDrop;
 /// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
-/// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior!
+/// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior! ⚠️
 /// // The equivalent code with `MaybeUninit<i32>`:
-/// let x: i32 = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior!
+/// let x: i32 = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior! ⚠️
 /// ```
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
 /// until they are, it is advisable to avoid them.)
@@ -214,7 +214,6 @@ use crate::mem::ManuallyDrop;
 /// remain `#[repr(transparent)]`. That said, `MaybeUninit<T>` will *always* guarantee that it has
 /// the same size, alignment, and ABI as `T`; it's just that the way `MaybeUninit` implements that
 /// guarantee may evolve.
-#[allow(missing_debug_implementations)]
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for generators.
 #[lang = "maybe_uninit"]
@@ -348,7 +347,7 @@ impl<T> MaybeUninit<T> {
     /// let x = MaybeUninit::<(u8, NotZero)>::zeroed();
     /// let x = unsafe { x.assume_init() };
     /// // Inside a pair, we create a `NotZero` that does not have a valid discriminant.
-    /// // This is undefined behavior.
+    /// // This is undefined behavior. ⚠️
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline]
@@ -400,7 +399,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// let x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_vec = unsafe { &*x.as_ptr() };
-    /// // We have created a reference to an uninitialized vector! This is undefined behavior.
+    /// // We have created a reference to an uninitialized vector! This is undefined behavior. ⚠️
     /// ```
     ///
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
@@ -437,7 +436,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mut x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_vec = unsafe { &mut *x.as_mut_ptr() };
-    /// // We have created a reference to an uninitialized vector! This is undefined behavior.
+    /// // We have created a reference to an uninitialized vector! This is undefined behavior. ⚠️
     /// ```
     ///
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
@@ -489,15 +488,12 @@ impl<T> MaybeUninit<T> {
     ///
     /// let x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_init = unsafe { x.assume_init() };
-    /// // `x` had not been initialized yet, so this last line caused undefined behavior.
+    /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline(always)]
     #[rustc_diagnostic_item = "assume_init"]
     pub unsafe fn assume_init(self) -> T {
-        #[cfg(bootstrap)]
-        intrinsics::panic_if_uninhabited::<T>();
-        #[cfg(not(bootstrap))]
         intrinsics::assert_inhabited::<T>();
         ManuallyDrop::into_inner(self.value)
     }
@@ -556,15 +552,12 @@ impl<T> MaybeUninit<T> {
     /// x.write(Some(vec![0,1,2]));
     /// let x1 = unsafe { x.read() };
     /// let x2 = unsafe { x.read() };
-    /// // We now created two copies of the same vector, leading to a double-free when
+    /// // We now created two copies of the same vector, leading to a double-free ⚠️ when
     /// // they both get dropped!
     /// ```
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
     pub unsafe fn read(&self) -> T {
-        #[cfg(bootstrap)]
-        intrinsics::panic_if_uninhabited::<T>();
-        #[cfg(not(bootstrap))]
         intrinsics::assert_inhabited::<T>();
         self.as_ptr().read()
     }
@@ -609,7 +602,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// let x = MaybeUninit::<Vec<u32>>::uninit();
     /// let x_vec: &Vec<u32> = unsafe { x.get_ref() };
-    /// // We have created a reference to an uninitialized vector! This is undefined behavior.
+    /// // We have created a reference to an uninitialized vector! This is undefined behavior. ⚠️
     /// ```
     ///
     /// ```rust,no_run
@@ -627,9 +620,6 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
-        #[cfg(bootstrap)]
-        intrinsics::panic_if_uninhabited::<T>();
-        #[cfg(not(bootstrap))]
         intrinsics::assert_inhabited::<T>();
         &*self.value
     }
@@ -695,7 +685,7 @@ impl<T> MaybeUninit<T> {
     /// unsafe {
     ///     *b.get_mut() = true;
     ///     // We have created a (mutable) reference to an uninitialized `bool`!
-    ///     // This is undefined behavior.
+    ///     // This is undefined behavior. ⚠️
     /// }
     /// ```
     ///
@@ -748,9 +738,6 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_mut(&mut self) -> &mut T {
-        #[cfg(bootstrap)]
-        intrinsics::panic_if_uninhabited::<T>();
-        #[cfg(not(bootstrap))]
         intrinsics::assert_inhabited::<T>();
         &mut *self.value
     }

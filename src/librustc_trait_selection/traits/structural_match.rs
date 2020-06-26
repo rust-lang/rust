@@ -1,22 +1,30 @@
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::ObligationCause;
-use crate::traits::{self, ConstPatternStructural, TraitEngine};
+use crate::traits::{self, TraitEngine};
 
-use rustc::ty::{self, AdtDef, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_hir::lang_items::{StructuralPeqTraitLangItem, StructuralTeqTraitLangItem};
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::Span;
 
 #[derive(Debug)]
 pub enum NonStructuralMatchTy<'tcx> {
     Adt(&'tcx AdtDef),
     Param,
+    Dynamic,
+    Foreign,
+    Opaque,
+    Generator,
+    Projection,
+    Closure,
 }
 
 /// This method traverses the structure of `ty`, trying to find an
-/// instance of an ADT (i.e. struct or enum) that was declared without
-/// the `#[structural_match]` attribute, or a generic type parameter
-/// (which cannot be determined to be `structural_match`).
+/// instance of an ADT (i.e. struct or enum) that doesn't implement
+/// the structural-match traits, or a generic type parameter
+/// (which cannot be determined to be structural-match).
 ///
 /// The "structure of a type" includes all components that would be
 /// considered when doing a pattern match on a constant of that
@@ -30,8 +38,8 @@ pub enum NonStructuralMatchTy<'tcx> {
 ///    instantiated generic like `PhantomData<T>`.
 ///
 /// The reason we do this search is Rust currently require all ADTs
-/// reachable from a constant's type to be annotated with
-/// `#[structural_match]`, an attribute which essentially says that
+/// reachable from a constant's type to implement the
+/// structural-match traits, which essentially say that
 /// the implementation of `PartialEq::eq` behaves *equivalently* to a
 /// comparison against the unfolded structure.
 ///
@@ -39,14 +47,14 @@ pub enum NonStructuralMatchTy<'tcx> {
 /// that arose when the requirement was not enforced completely, see
 /// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
 pub fn search_for_structural_match_violation<'tcx>(
-    id: hir::HirId,
+    _id: hir::HirId,
     span: Span,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<NonStructuralMatchTy<'tcx>> {
     // FIXME: we should instead pass in an `infcx` from the outside.
     tcx.infer_ctxt().enter(|infcx| {
-        let mut search = Search { id, span, infcx, found: None, seen: FxHashSet::default() };
+        let mut search = Search { infcx, span, found: None, seen: FxHashSet::default() };
         ty.visit_with(&mut search);
         search.found
     })
@@ -59,27 +67,26 @@ pub fn search_for_structural_match_violation<'tcx>(
 ///
 /// Note that this does *not* recursively check if the substructure of `adt_ty`
 /// implements the traits.
-pub fn type_marked_structural(
-    id: hir::HirId,
-    span: Span,
+fn type_marked_structural(
     infcx: &InferCtxt<'_, 'tcx>,
     adt_ty: Ty<'tcx>,
+    cause: ObligationCause<'tcx>,
 ) -> bool {
     let mut fulfillment_cx = traits::FulfillmentContext::new();
-    let cause = ObligationCause::new(span, id, ConstPatternStructural);
     // require `#[derive(PartialEq)]`
-    let structural_peq_def_id = infcx.tcx.lang_items().structural_peq_trait().unwrap();
+    let structural_peq_def_id =
+        infcx.tcx.require_lang_item(StructuralPeqTraitLangItem, Some(cause.span));
     fulfillment_cx.register_bound(
         infcx,
         ty::ParamEnv::empty(),
         adt_ty,
         structural_peq_def_id,
-        cause,
+        cause.clone(),
     );
     // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
     // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
-    let cause = ObligationCause::new(span, id, ConstPatternStructural);
-    let structural_teq_def_id = infcx.tcx.lang_items().structural_teq_trait().unwrap();
+    let structural_teq_def_id =
+        infcx.tcx.require_lang_item(StructuralTeqTraitLangItem, Some(cause.span));
     fulfillment_cx.register_bound(
         infcx,
         ty::ParamEnv::empty(),
@@ -104,7 +111,6 @@ pub fn type_marked_structural(
 /// find instances of ADTs (specifically structs or enums) that do not implement
 /// the structural-match traits (`StructuralPartialEq` and `StructuralEq`).
 struct Search<'a, 'tcx> {
-    id: hir::HirId,
     span: Span,
 
     infcx: InferCtxt<'a, 'tcx>,
@@ -123,7 +129,7 @@ impl Search<'a, 'tcx> {
     }
 
     fn type_marked_structural(&self, adt_ty: Ty<'tcx>) -> bool {
-        type_marked_structural(self.id, self.span, &self.infcx, adt_ty)
+        adt_ty.is_structural_eq_shallow(self.tcx())
     }
 }
 
@@ -135,6 +141,30 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             ty::Adt(adt_def, substs) => (adt_def, substs),
             ty::Param(_) => {
                 self.found = Some(NonStructuralMatchTy::Param);
+                return true; // Stop visiting.
+            }
+            ty::Dynamic(..) => {
+                self.found = Some(NonStructuralMatchTy::Dynamic);
+                return true; // Stop visiting.
+            }
+            ty::Foreign(_) => {
+                self.found = Some(NonStructuralMatchTy::Foreign);
+                return true; // Stop visiting.
+            }
+            ty::Opaque(..) => {
+                self.found = Some(NonStructuralMatchTy::Opaque);
+                return true; // Stop visiting.
+            }
+            ty::Projection(..) => {
+                self.found = Some(NonStructuralMatchTy::Projection);
+                return true; // Stop visiting.
+            }
+            ty::Generator(..) | ty::GeneratorWitness(..) => {
+                self.found = Some(NonStructuralMatchTy::Generator);
+                return true; // Stop visiting.
+            }
+            ty::Closure(..) => {
+                self.found = Some(NonStructuralMatchTy::Closure);
                 return true; // Stop visiting.
             }
             ty::RawPtr(..) => {
@@ -153,14 +183,14 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 // structural equality on `T` does not recur into the raw
                 // pointer. Therefore, one can still use `C` in a pattern.
 
-                // (But still tell caller to continue search.)
+                // (But still tell the caller to continue search.)
                 return false;
             }
             ty::FnDef(..) | ty::FnPtr(..) => {
-                // types of formals and return in `fn(_) -> _` are also irrelevant;
+                // Types of formals and return in `fn(_) -> _` are also irrelevant;
                 // so we do not recur into them via `super_visit_with`
                 //
-                // (But still tell caller to continue search.)
+                // (But still tell the caller to continue search.)
                 return false;
             }
             ty::Array(_, n)
@@ -168,17 +198,40 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             {
                 // rust-lang/rust#62336: ignore type of contents
                 // for empty array.
+                //
+                // (But still tell the caller to continue search.)
                 return false;
             }
-            _ => {
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => {
+                // These primitive types are always structural match.
+                //
+                // `Never` is kind of special here, but as it is not inhabitable, this should be fine.
+                //
+                // (But still tell the caller to continue search.)
+                return false;
+            }
+
+            ty::Array(..) | ty::Slice(_) | ty::Ref(..) | ty::Tuple(..) => {
+                // First check all contained types and then tell the caller to continue searching.
                 ty.super_visit_with(self);
+                return false;
+            }
+            ty::Infer(_) | ty::Placeholder(_) | ty::Bound(..) => {
+                bug!("unexpected type during structural-match checking: {:?}", ty);
+            }
+            ty::Error(_) => {
+                self.tcx().sess.delay_span_bug(self.span, "ty::Error in structural-match check");
+                // We still want to check other types after encountering an error,
+                // as this may still emit relevant errors.
+                //
+                // So we continue searching here.
                 return false;
             }
         };
 
         if !self.seen.insert(adt_def.did) {
             debug!("Search already seen adt_def: {:?}", adt_def);
-            // let caller continue its search
+            // Let caller continue its search.
             return false;
         }
 
@@ -202,7 +255,10 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
         // fields of ADT.
         let tcx = self.tcx();
         for field_ty in adt_def.all_fields().map(|field| field.ty(tcx, substs)) {
-            if field_ty.visit_with(self) {
+            let ty = self.tcx().normalize_erasing_regions(ty::ParamEnv::empty(), field_ty);
+            debug!("structural-match ADT: field_ty={:?}, ty={:?}", field_ty, ty);
+
+            if ty.visit_with(self) {
                 // found an ADT without structural-match; halt visiting!
                 assert!(self.found.is_some());
                 return true;
@@ -213,4 +269,13 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
         // want our caller to continue its own search.
         false
     }
+}
+
+pub fn provide(providers: &mut Providers<'_>) {
+    providers.has_structural_eq_impls = |tcx, ty| {
+        tcx.infer_ctxt().enter(|infcx| {
+            let cause = ObligationCause::dummy();
+            type_marked_structural(&infcx, ty, cause)
+        })
+    };
 }

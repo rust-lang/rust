@@ -65,23 +65,24 @@
 //! [`write_volatile`]: ./fn.write_volatile.html
 //! [`NonNull::dangling`]: ./struct.NonNull.html#method.dangling
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{self, is_aligned_and_not_null, is_nonoverlapping};
+use crate::intrinsics::{self, abort, is_aligned_and_not_null, is_nonoverlapping};
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use crate::intrinsics::copy_nonoverlapping;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use crate::intrinsics::copy;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use crate::intrinsics::write_bytes;
 
 mod non_null;
@@ -109,11 +110,17 @@ mod mut_ptr;
 ///   as the compiler doesn't need to prove that it's sound to elide the
 ///   copy.
 ///
+/// * It can be used to drop [pinned] data when `T` is not `repr(packed)`
+///   (pinned data must not be moved before it is dropped).
+///
 /// Unaligned values cannot be dropped in place, they must be copied to an aligned
-/// location first using [`ptr::read_unaligned`].
+/// location first using [`ptr::read_unaligned`]. For packed structs, this move is
+/// done automatically by the compiler. This means the fields of packed structs
+/// are not dropped in-place.
 ///
 /// [`ptr::read`]: ../ptr/fn.read.html
 /// [`ptr::read_unaligned`]: ../ptr/fn.read_unaligned.html
+/// [pinned]: ../pin/index.html
 ///
 /// # Safety
 ///
@@ -245,14 +252,17 @@ pub(crate) struct FatPtr<T> {
 ///
 /// // create a slice pointer when starting out with a pointer to the first element
 /// let x = [5, 6, 7];
-/// let ptr = x.as_ptr();
-/// let slice = ptr::slice_from_raw_parts(ptr, 3);
+/// let raw_pointer = x.as_ptr();
+/// let slice = ptr::slice_from_raw_parts(raw_pointer, 3);
 /// assert_eq!(unsafe { &*slice }[2], 7);
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
+    // SAFETY: Accessing the value from the `Repr` union is safe since *const [T]
+    // and FatPtr have the same memory layouts. Only std can make this
+    // guarantee.
     unsafe { Repr { raw: FatPtr { data, len } }.rust }
 }
 
@@ -266,10 +276,28 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 ///
 /// [`slice_from_raw_parts`]: fn.slice_from_raw_parts.html
 /// [`from_raw_parts_mut`]: ../../std/slice/fn.from_raw_parts_mut.html
+///
+/// # Examples
+///
+/// ```rust
+/// use std::ptr;
+///
+/// let x = &mut [5, 6, 7];
+/// let raw_pointer = x.as_mut_ptr();
+/// let slice = ptr::slice_from_raw_parts_mut(raw_pointer, 3);
+///
+/// unsafe {
+///     (*slice)[2] = 99; // assign a value at an index in the slice
+/// };
+///
+/// assert_eq!(unsafe { &*slice }[2], 99);
+/// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
+    // SAFETY: Accessing the value from the `Repr` union is safe since *mut [T]
+    // and FatPtr have the same memory layouts
     unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
 }
 
@@ -392,9 +420,14 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
 pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
-    debug_assert!(is_aligned_and_not_null(x), "attempt to swap unaligned or null pointer");
-    debug_assert!(is_aligned_and_not_null(y), "attempt to swap unaligned or null pointer");
-    debug_assert!(is_nonoverlapping(x, y, count), "attempt to swap overlapping memory");
+    if cfg!(debug_assertions)
+        && !(is_aligned_and_not_null(x)
+            && is_aligned_and_not_null(y)
+            && is_nonoverlapping(x, y, count))
+    {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
 
     let x = x as *mut u8;
     let y = y as *mut u8;
@@ -810,9 +843,10 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
-    // FIXME: the debug assertion here causes codegen test failures on some architectures.
-    // See <https://github.com/rust-lang/rust/pull/69208#issuecomment-591326757>.
-    // debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
+    if cfg!(debug_assertions) && !is_aligned_and_not_null(dst) {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
     intrinsics::move_val_init(&mut *dst, src)
 }
 
@@ -977,7 +1011,10 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
-    debug_assert!(is_aligned_and_not_null(src), "attempt to read from unaligned or null pointer");
+    if cfg!(debug_assertions) && !is_aligned_and_not_null(src) {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
     intrinsics::volatile_load(src)
 }
 
@@ -1046,7 +1083,10 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
-    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
+    if cfg!(debug_assertions) && !is_aligned_and_not_null(dst) {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
     intrinsics::volatile_store(dst, src);
 }
 
@@ -1102,7 +1142,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
                 //
                 // Note, that we use wrapping operations here intentionally – the original formula
                 // uses e.g., subtraction `mod n`. It is entirely fine to do them `mod
-                // usize::max_value()` instead, because we take the result `mod n` at the end
+                // usize::MAX` instead, because we take the result `mod n` at the end
                 // anyway.
                 inverse = inverse.wrapping_mul(2usize.wrapping_sub(x.wrapping_mul(inverse)));
                 if going_mod >= m {
@@ -1167,7 +1207,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     }
 
     // Cannot be aligned at all.
-    usize::max_value()
+    usize::MAX
 }
 
 /// Compares raw pointers for equality.
@@ -1319,14 +1359,24 @@ macro_rules! fnptr_impls_safety_abi {
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Pointer::fmt(&(*self as *const ()), f)
+                // HACK: The intermediate cast as usize is required for AVR
+                // so that the address space of the source function pointer
+                // is preserved in the final function pointer.
+                //
+                // https://github.com/avr-rust/rust/issues/143
+                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
             }
         }
 
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Pointer::fmt(&(*self as *const ()), f)
+                // HACK: The intermediate cast as usize is required for AVR
+                // so that the address space of the source function pointer
+                // is preserved in the final function pointer.
+                //
+                // https://github.com/avr-rust/rust/issues/143
+                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
             }
         }
     }
@@ -1363,3 +1413,70 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I }
 fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J }
 fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K }
 fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
+
+/// Create a `const` raw pointer to a place, without creating an intermediate reference.
+///
+/// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
+/// and points to initialized data. For cases where those requirements do not hold,
+/// raw pointers should be used instead. However, `&expr as *const _` creates a reference
+/// before casting it to a raw pointer, and that reference is subject to the same rules
+/// as all other references. This macro can create a raw pointer *without* creating
+/// a reference first.
+///
+/// # Example
+///
+/// ```
+/// #![feature(raw_ref_macros)]
+/// use std::ptr;
+///
+/// #[repr(packed)]
+/// struct Packed {
+///     f1: u8,
+///     f2: u16,
+/// }
+///
+/// let packed = Packed { f1: 1, f2: 2 };
+/// // `&packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
+/// let raw_f2 = ptr::raw_const!(packed.f2);
+/// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
+/// ```
+#[unstable(feature = "raw_ref_macros", issue = "73394")]
+#[rustc_macro_transparency = "semitransparent"]
+#[allow_internal_unstable(raw_ref_op)]
+pub macro raw_const($e:expr) {
+    &raw const $e
+}
+
+/// Create a `mut` raw pointer to a place, without creating an intermediate reference.
+///
+/// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
+/// and points to initialized data. For cases where those requirements do not hold,
+/// raw pointers should be used instead. However, `&mut expr as *mut _` creates a reference
+/// before casting it to a raw pointer, and that reference is subject to the same rules
+/// as all other references. This macro can create a raw pointer *without* creating
+/// a reference first.
+///
+/// # Example
+///
+/// ```
+/// #![feature(raw_ref_macros)]
+/// use std::ptr;
+///
+/// #[repr(packed)]
+/// struct Packed {
+///     f1: u8,
+///     f2: u16,
+/// }
+///
+/// let mut packed = Packed { f1: 1, f2: 2 };
+/// // `&mut packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
+/// let raw_f2 = ptr::raw_mut!(packed.f2);
+/// unsafe { raw_f2.write_unaligned(42); }
+/// assert_eq!({packed.f2}, 42); // `{...}` forces copying the field instead of creating a reference.
+/// ```
+#[unstable(feature = "raw_ref_macros", issue = "73394")]
+#[rustc_macro_transparency = "semitransparent"]
+#[allow_internal_unstable(raw_ref_op)]
+pub macro raw_mut($e:expr) {
+    &raw mut $e
+}

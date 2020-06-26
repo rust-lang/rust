@@ -1,7 +1,6 @@
 mod _common;
 
 use _common::validate;
-use std::u64;
 
 fn main() {
     for exp in 19..64 {

@@ -39,6 +39,7 @@ LL | |     // Not OK -- The forwarding impl for `Foo` requires that `Bar` also
 ...  |
 LL | |     foo_hrtb_bar_not(&mut t);
    | |     ------------------------ recursive call site
+LL | |
 LL | | }
    | |_^ cannot return without recursing
    |
@@ -51,7 +52,7 @@ LL |     foo_hrtb_bar_not(&mut t);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function cannot return without recursing
-  --> $DIR/hrtb-perfect-forwarding.rs:49:1
+  --> $DIR/hrtb-perfect-forwarding.rs:50:1
    |
 LL | / fn foo_hrtb_bar_hrtb<T>(mut t: T)
 LL | |     where T : for<'a> Foo<&'a isize> + for<'b> Bar<&'b isize>

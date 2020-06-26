@@ -1,9 +1,7 @@
 use super::*;
 
-use ::test;
-
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_push_back_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::with_capacity(101);
     b.iter(|| {
@@ -16,7 +14,7 @@ fn bench_push_back_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_push_front_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::with_capacity(101);
     b.iter(|| {
@@ -29,7 +27,7 @@ fn bench_push_front_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_pop_back_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::<i32>::with_capacity(101);
 
@@ -43,7 +41,7 @@ fn bench_pop_back_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_pop_front_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::<i32>::with_capacity(101);
 
@@ -128,6 +126,87 @@ fn test_insert() {
             }
         }
     }
+}
+
+#[test]
+fn make_contiguous_big_tail() {
+    let mut tester = VecDeque::with_capacity(15);
+
+    for i in 0..3 {
+        tester.push_back(i);
+    }
+
+    for i in 3..10 {
+        tester.push_front(i);
+    }
+
+    // 012......9876543
+    assert_eq!(tester.capacity(), 15);
+    assert_eq!((&[9, 8, 7, 6, 5, 4, 3] as &[_], &[0, 1, 2] as &[_]), tester.as_slices());
+
+    let expected_start = tester.head;
+    tester.make_contiguous();
+    assert_eq!(tester.tail, expected_start);
+    assert_eq!((&[9, 8, 7, 6, 5, 4, 3, 0, 1, 2] as &[_], &[] as &[_]), tester.as_slices());
+}
+
+#[test]
+fn make_contiguous_big_head() {
+    let mut tester = VecDeque::with_capacity(15);
+
+    for i in 0..8 {
+        tester.push_back(i);
+    }
+
+    for i in 8..10 {
+        tester.push_front(i);
+    }
+
+    // 01234567......98
+    let expected_start = 0;
+    tester.make_contiguous();
+    assert_eq!(tester.tail, expected_start);
+    assert_eq!((&[9, 8, 0, 1, 2, 3, 4, 5, 6, 7] as &[_], &[] as &[_]), tester.as_slices());
+}
+
+#[test]
+fn make_contiguous_small_free() {
+    let mut tester = VecDeque::with_capacity(15);
+
+    for i in 'A' as u8..'I' as u8 {
+        tester.push_back(i as char);
+    }
+
+    for i in 'I' as u8..'N' as u8 {
+        tester.push_front(i as char);
+    }
+
+    // ABCDEFGH...MLKJI
+    let expected_start = 0;
+    tester.make_contiguous();
+    assert_eq!(tester.tail, expected_start);
+    assert_eq!(
+        (&['M', 'L', 'K', 'J', 'I', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as &[_], &[] as &[_]),
+        tester.as_slices()
+    );
+
+    tester.clear();
+    for i in 'I' as u8..'N' as u8 {
+        tester.push_back(i as char);
+    }
+
+    for i in 'A' as u8..'I' as u8 {
+        tester.push_front(i as char);
+    }
+
+    // IJKLM...HGFEDCBA
+    let expected_start = 0;
+    tester.make_contiguous();
+    assert_eq!(tester.tail, expected_start);
+    assert_eq!(
+        (&['H', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'I', 'J', 'K', 'L', 'M'] as &[_], &[] as &[_]),
+        tester.as_slices()
+    );
 }
 
 #[test]
@@ -305,10 +384,8 @@ fn test_vec_from_vecdeque() {
         assert!(vec.into_iter().eq(vd));
     }
 
-    #[cfg(not(miri))] // Miri is too slow
-    let max_pwr = 7;
-    #[cfg(miri)]
-    let max_pwr = 5;
+    // Miri is too slow
+    let max_pwr = if cfg!(miri) { 5 } else { 7 };
 
     for cap_pwr in 0..max_pwr {
         // Make capacity as a (2^x)-1, so that the ring size is 2^x

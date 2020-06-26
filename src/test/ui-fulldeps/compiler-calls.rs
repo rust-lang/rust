@@ -3,6 +3,7 @@
 
 // ignore-cross-compile
 // ignore-stage1
+// ignore-remote
 
 #![feature(rustc_private)]
 

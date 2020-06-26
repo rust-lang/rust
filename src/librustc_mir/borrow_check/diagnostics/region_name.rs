@@ -1,11 +1,11 @@
 use std::fmt::{self, Display};
 
-use rustc::ty::print::RegionHighlightMode;
-use rustc::ty::subst::{GenericArgKind, SubstsRef};
-use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_middle::ty::print::RegionHighlightMode;
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::kw;
 use rustc_span::{symbol::Symbol, Span, DUMMY_SP};
 
@@ -148,7 +148,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///
     /// This function would create a label like this:
     ///
-    /// ```
+    /// ```text
     ///  | fn foo(x: &u32) { .. }
     ///           ------- fully elaborated type of `x` is `&'1 u32`
     /// ```
@@ -237,15 +237,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 }
 
                 ty::BoundRegion::BrEnv => {
-                    let mir_hir_id = self
-                        .infcx
-                        .tcx
-                        .hir()
-                        .as_local_hir_id(self.mir_def_id)
-                        .expect("non-local mir");
+                    let mir_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id);
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
-                    if let DefiningTy::Closure(def_id, substs) = def_ty {
+                    if let DefiningTy::Closure(_, substs) = def_ty {
                         let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
                             tcx.hir().expect_expr(mir_hir_id).kind
                         {
@@ -255,7 +250,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         };
                         let region_name = self.synthesize_region_name();
 
-                        let closure_kind_ty = substs.as_closure().kind_ty(def_id, tcx);
+                        let closure_kind_ty = substs.as_closure().kind_ty();
                         let note = match closure_kind_ty.to_opt_closure_kind() {
                             Some(ty::ClosureKind::Fn) => {
                                 "closure implements `Fn`, so references to captured variables \
@@ -288,12 +283,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             },
 
             ty::ReLateBound(..)
-            | ty::ReScope(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
             | ty::ReEmpty(_)
-            | ty::ReErased
-            | ty::ReClosureBound(..) => None,
+            | ty::ReErased => None,
         }
     }
 
@@ -301,7 +294,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// elaborated type, returning something like `'1`. Result looks
     /// like:
     ///
-    /// ```
+    /// ```text
     ///  | fn foo(x: &u32) { .. }
     ///           ------- fully elaborated type of `x` is `&'1 u32`
     /// ```
@@ -329,7 +322,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         argument_ty: Ty<'tcx>,
         argument_index: usize,
     ) -> Option<RegionName> {
-        let mir_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id)?;
+        let mir_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id);
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
         let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
         match argument_hir_ty.kind {
@@ -348,7 +341,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// that has no type annotation.
     /// For example, we might produce an annotation like this:
     ///
-    /// ```
+    /// ```text
     ///  |     foo(|a, b| b)
     ///  |          -  -
     ///  |          |  |
@@ -397,7 +390,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// that contains the anonymous reference we want to give a name
     /// to. For example, we might produce an annotation like this:
     ///
-    /// ```
+    /// ```text
     ///  | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item = &T>> {
     ///  |                - let's call the lifetime of this reference `'1`
     /// ```
@@ -500,7 +493,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             }
         }
 
-        return None;
+        None
     }
 
     /// We've found an enum/struct/union type with the substitutions
@@ -578,9 +571,12 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     // to search anything here.
                 }
 
-                (GenericArgKind::Lifetime(_), _)
-                | (GenericArgKind::Type(_), _)
-                | (GenericArgKind::Const(_), _) => {
+                (
+                    GenericArgKind::Lifetime(_)
+                    | GenericArgKind::Type(_)
+                    | GenericArgKind::Const(_),
+                    _,
+                ) => {
                     // I *think* that HIR lowering should ensure this
                     // doesn't happen, even in erroneous
                     // programs. Else we should use delay-span-bug.
@@ -601,7 +597,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// fully elaborated type, returning something like `'1`. Result
     /// looks like:
     ///
-    /// ```
+    /// ```text
     ///  | let x = Some(&22);
     ///        - fully elaborated type of `x` is `Option<&'1 u32>`
     /// ```
@@ -637,7 +633,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
         let type_name = self.infcx.extract_type_name(&return_ty, Some(highlight)).0;
 
-        let mir_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id).expect("non-local mir");
+        let mir_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id);
 
         let (return_span, mir_description) = match tcx.hir().get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
@@ -651,7 +647,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 if gen_move.is_some() { " of generator" } else { " of closure" },
             ),
             hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Method(method_sig, _),
+                kind: hir::ImplItemKind::Fn(method_sig, _),
                 ..
             }) => (method_sig.decl.output.span(), ""),
             _ => (self.body.span, ""),
@@ -689,7 +685,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
         let type_name = self.infcx.extract_type_name(&yield_ty, Some(highlight)).0;
 
-        let mir_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id).expect("non-local mir");
+        let mir_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id);
 
         let yield_span = match tcx.hir().get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {

@@ -1,11 +1,10 @@
 error[E0425]: cannot find function `g` in this scope
   --> $DIR/issue-31845.rs:7:12
    |
-LL | /         fn h() {
-LL | |            g();
-   | |            ^ help: a function with a similar name exists: `h`
-LL | |         }
-   | |_________- similarly named function `h` defined here
+LL |         fn h() {
+   |         ------ similarly named function `h` defined here
+LL |            g();
+   |            ^ help: a function with a similar name exists: `h`
 
 error: aborting due to previous error
 

@@ -2,8 +2,8 @@
 
 use rustc_ast::ast::{self, ItemKind, MetaItem};
 use rustc_ast::ptr::P;
-use rustc_expand::base::{Annotatable, ExtCtxt, MultiItemModifier};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 macro path_local($x:ident) {
@@ -48,13 +48,13 @@ impl MultiItemModifier for BuiltinDerive {
         span: Span,
         meta_item: &MetaItem,
         item: Annotatable,
-    ) -> Vec<Annotatable> {
+    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         // FIXME: Built-in derives often forget to give spans contexts,
         // so we are doing it here in a centralized way.
         let span = ecx.with_def_site_ctxt(span);
         let mut items = Vec::new();
         (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a));
-        items
+        ExpandResult::Ready(items)
     }
 }
 
@@ -154,7 +154,7 @@ fn inject_impl_of_structural_trait(
 
     let newitem = cx.item(
         span,
-        ast::Ident::invalid(),
+        Ident::invalid(),
         attrs,
         ItemKind::Impl {
             unsafety: ast::Unsafe::No,

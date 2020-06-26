@@ -2,9 +2,13 @@ error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:2:11
    |
 LL | fn f() -> &isize {
-   |           ^ help: consider giving it a 'static lifetime: `&'static`
+   |           ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime
+   |
+LL | fn f() -> &'static isize {
+   |           ^^^^^^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:7:33
@@ -34,25 +38,37 @@ error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:21:20
    |
 LL | fn i(_x: isize) -> &isize {
-   |                    ^ help: consider giving it an explicit bounded or 'static lifetime: `&'static`
+   |                    ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+help: consider using the `'static` lifetime
+   |
+LL | fn i(_x: isize) -> &'static isize {
+   |                    ^^^^^^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:34:24
    |
 LL | fn j(_x: StaticStr) -> &isize {
-   |                        ^ help: consider giving it an explicit bounded or 'static lifetime: `&'static`
+   |                        ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+help: consider using the `'static` lifetime
+   |
+LL | fn j(_x: StaticStr) -> &'static isize {
+   |                        ^^^^^^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:40:49
    |
 LL | fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &isize {
-   |                                                 ^ help: consider giving it an explicit bounded or 'static lifetime: `&'static`
+   |                                                 ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+help: consider using the `'a` lifetime
+   |
+LL | fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &'a isize {
+   |                                                 ^^^
 
 error: aborting due to 6 previous errors
 

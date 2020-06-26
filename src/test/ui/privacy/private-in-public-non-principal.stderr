@@ -1,5 +1,5 @@
 warning: private trait `PrivNonPrincipal` in public interface (error E0445)
-  --> $DIR/private-in-public-non-principal.rs:6:1
+  --> $DIR/private-in-public-non-principal.rs:7:1
    |
 LL | pub fn leak_dyn_nonprincipal() -> Box<dyn PubPrincipal + PrivNonPrincipal> { loop {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,17 +8,17 @@ LL | pub fn leak_dyn_nonprincipal() -> Box<dyn PubPrincipal + PrivNonPrincipal> 
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
-error: missing documentation for a method
-  --> $DIR/private-in-public-non-principal.rs:13:9
+error: missing documentation for an associated function
+  --> $DIR/private-in-public-non-principal.rs:14:9
    |
 LL |         pub fn check_doc_lint() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/private-in-public-non-principal.rs:10:8
+  --> $DIR/private-in-public-non-principal.rs:11:8
    |
 LL | #[deny(missing_docs)]
    |        ^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

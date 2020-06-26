@@ -7,7 +7,6 @@ fn main() {}
 type Two<T, U> = impl Debug;
 
 fn two<T: Debug>(t: T) -> Two<T, u32> {
-    //~^ ERROR defining opaque type use does not fully define opaque type
     (t, 4i8)
 }
 

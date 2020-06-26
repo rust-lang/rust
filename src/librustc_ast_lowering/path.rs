@@ -1,15 +1,15 @@
 use super::{AnonymousLifetimeMode, ImplTraitContext, LoweringContext, ParamMode};
 use super::{GenericArgsCtor, ParenthesizedGenericArgs};
 
-use rustc::lint::builtin::ELIDED_LIFETIMES_IN_PATHS;
-use rustc::span_bug;
 use rustc_ast::ast::{self, *};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
+use rustc_session::lint::builtin::ELIDED_LIFETIMES_IN_PATHS;
 use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use log::debug;
@@ -163,12 +163,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         // We should've returned in the for loop above.
-        span_bug!(
+
+        self.sess.diagnostic().span_bug(
             p.span,
-            "lower_qpath: no final extension segment in {}..{}",
-            proj_start,
-            p.segments.len()
-        )
+            &format!(
+                "lower_qpath: no final extension segment in {}..{}",
+                proj_start,
+                p.segments.len()
+            ),
+        );
     }
 
     crate fn lower_path_extra(
@@ -271,8 +274,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .next();
         if !generic_args.parenthesized && !has_lifetimes {
             generic_args.args = self
-                .elided_path_lifetimes(path_span, expected_lifetimes)
-                .map(|lt| GenericArg::Lifetime(lt))
+                .elided_path_lifetimes(
+                    first_generic_span.map(|s| s.shrink_to_lo()).unwrap_or(segment.ident.span),
+                    expected_lifetimes,
+                )
+                .map(GenericArg::Lifetime)
                 .chain(generic_args.args.into_iter())
                 .collect();
             if expected_lifetimes > 0 && param_mode == ParamMode::Explicit {
@@ -304,7 +310,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             E0726,
                             "implicit elided lifetime not allowed here"
                         );
-                        rustc::lint::add_elided_lifetime_in_path_suggestion(
+                        rustc_session::lint::add_elided_lifetime_in_path_suggestion(
                             &self.sess,
                             &mut err,
                             expected_lifetimes,
@@ -364,22 +370,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param_mode: ParamMode,
         mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> (GenericArgsCtor<'hir>, bool) {
-        let &AngleBracketedArgs { ref args, ref constraints, .. } = data;
-        let has_non_lt_args = args.iter().any(|arg| match arg {
-            ast::GenericArg::Lifetime(_) => false,
-            ast::GenericArg::Type(_) => true,
-            ast::GenericArg::Const(_) => true,
+        let has_non_lt_args = data.args.iter().any(|arg| match arg {
+            AngleBracketedArg::Arg(ast::GenericArg::Lifetime(_))
+            | AngleBracketedArg::Constraint(_) => false,
+            AngleBracketedArg::Arg(ast::GenericArg::Type(_) | ast::GenericArg::Const(_)) => true,
         });
-        (
-            GenericArgsCtor {
-                args: args.iter().map(|a| self.lower_generic_arg(a, itctx.reborrow())).collect(),
-                bindings: self.arena.alloc_from_iter(
-                    constraints.iter().map(|b| self.lower_assoc_ty_constraint(b, itctx.reborrow())),
-                ),
-                parenthesized: false,
-            },
-            !has_non_lt_args && param_mode == ParamMode::Optional,
-        )
+        let args = data
+            .args
+            .iter()
+            .filter_map(|arg| match arg {
+                AngleBracketedArg::Arg(arg) => Some(self.lower_generic_arg(arg, itctx.reborrow())),
+                AngleBracketedArg::Constraint(_) => None,
+            })
+            .collect();
+        let bindings = self.arena.alloc_from_iter(data.args.iter().filter_map(|arg| match arg {
+            AngleBracketedArg::Constraint(c) => {
+                Some(self.lower_assoc_ty_constraint(c, itctx.reborrow()))
+            }
+            AngleBracketedArg::Arg(_) => None,
+        }));
+        let ctor = GenericArgsCtor { args, bindings, parenthesized: false };
+        (ctor, !has_non_lt_args && param_mode == ParamMode::Optional)
     }
 
     fn lower_parenthesized_parameter_data(

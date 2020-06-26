@@ -140,8 +140,8 @@ macro_rules! test_impl_from {
     ($fn_name: ident, $Small: ty, $Large: ty) => {
         #[test]
         fn $fn_name() {
-            let small_max = <$Small>::max_value();
-            let small_min = <$Small>::min_value();
+            let small_max = <$Small>::MAX;
+            let small_min = <$Small>::MIN;
             let large_max: $Large = small_max.into();
             let large_min: $Large = small_min.into();
             assert_eq!(large_max as $Small, small_max);
@@ -205,8 +205,6 @@ test_impl_from! { test_u32f64, u32, f64 }
 // Float -> Float
 #[test]
 fn test_f32f64() {
-    use core::f32;
-
     let max: f64 = f32::MAX.into();
     assert_eq!(max as f32, f32::MAX);
     assert!(max.is_normal());
@@ -250,8 +248,8 @@ macro_rules! test_impl_try_from_always_ok {
     ($fn_name:ident, $source:ty, $target: ty) => {
         #[test]
         fn $fn_name() {
-            let max = <$source>::max_value();
-            let min = <$source>::min_value();
+            let max = <$source>::MAX;
+            let min = <$source>::MIN;
             let zero: $source = 0;
             assert_eq!(<$target as TryFrom<$source>>::try_from(max).unwrap(), max as $target);
             assert_eq!(<$target as TryFrom<$source>>::try_from(min).unwrap(), min as $target);
@@ -363,8 +361,8 @@ macro_rules! test_impl_try_from_signed_to_unsigned_upper_ok {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
         fn $fn_name() {
-            let max = <$source>::max_value();
-            let min = <$source>::min_value();
+            let max = <$source>::MAX;
+            let min = <$source>::MIN;
             let zero: $source = 0;
             let neg_one: $source = -1;
             assert_eq!(<$target as TryFrom<$source>>::try_from(max).unwrap(), max as $target);
@@ -428,8 +426,8 @@ macro_rules! test_impl_try_from_unsigned_to_signed_upper_err {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
         fn $fn_name() {
-            let max = <$source>::max_value();
-            let min = <$source>::min_value();
+            let max = <$source>::MAX;
+            let min = <$source>::MIN;
             let zero: $source = 0;
             assert!(<$target as TryFrom<$source>>::try_from(max).is_err());
             assert_eq!(<$target as TryFrom<$source>>::try_from(min).unwrap(), min as $target);
@@ -489,11 +487,11 @@ macro_rules! test_impl_try_from_same_sign_err {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
         fn $fn_name() {
-            let max = <$source>::max_value();
-            let min = <$source>::min_value();
+            let max = <$source>::MAX;
+            let min = <$source>::MIN;
             let zero: $source = 0;
-            let t_max = <$target>::max_value();
-            let t_min = <$target>::min_value();
+            let t_max = <$target>::MAX;
+            let t_min = <$target>::MIN;
             assert!(<$target as TryFrom<$source>>::try_from(max).is_err());
             if min != 0 {
                 assert!(<$target as TryFrom<$source>>::try_from(min).is_err());
@@ -578,11 +576,11 @@ macro_rules! test_impl_try_from_signed_to_unsigned_err {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
         fn $fn_name() {
-            let max = <$source>::max_value();
-            let min = <$source>::min_value();
+            let max = <$source>::MAX;
+            let min = <$source>::MIN;
             let zero: $source = 0;
-            let t_max = <$target>::max_value();
-            let t_min = <$target>::min_value();
+            let t_max = <$target>::MAX;
+            let t_min = <$target>::MIN;
             assert!(<$target as TryFrom<$source>>::try_from(max).is_err());
             assert!(<$target as TryFrom<$source>>::try_from(min).is_err());
             assert_eq!(<$target as TryFrom<$source>>::try_from(zero).unwrap(), zero as $target);
@@ -704,5 +702,5 @@ macro_rules! test_float {
     };
 }
 
-test_float!(f32, f32, ::core::f32::INFINITY, ::core::f32::NEG_INFINITY, ::core::f32::NAN);
-test_float!(f64, f64, ::core::f64::INFINITY, ::core::f64::NEG_INFINITY, ::core::f64::NAN);
+test_float!(f32, f32, f32::INFINITY, f32::NEG_INFINITY, f32::NAN);
+test_float!(f64, f64, f64::INFINITY, f64::NEG_INFINITY, f64::NAN);

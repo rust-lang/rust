@@ -1,6 +1,6 @@
-use rustc::ty::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 
@@ -16,7 +16,7 @@ crate fn collect(tcx: TyCtxt<'_>) -> Vec<String> {
         }
     }
 
-    return collector.args;
+    collector.args
 }
 
 struct Collector {

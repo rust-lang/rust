@@ -1,16 +1,17 @@
 //! The various pretty-printing routines.
 
-use rustc::hir::map as hir_map;
-use rustc::session::config::{Input, PpMode, PpSourceMode};
-use rustc::session::Session;
-use rustc::ty::{self, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::print as pprust_hir;
+use rustc_hir_pretty as pprust_hir;
+use rustc_middle::hir::map as hir_map;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
+use rustc_session::config::{Input, PpMode, PpSourceMode};
+use rustc_session::Session;
+use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
 use std::cell::Cell;
@@ -155,7 +156,7 @@ impl<'hir> pprust::PpAnn for NoAnn<'hir> {}
 impl<'hir> pprust_hir::PpAnn for NoAnn<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(tcx) = self.tcx {
-            pprust_hir::PpAnn::nested(&tcx.hir(), state, nested)
+            pprust_hir::PpAnn::nested(&(&tcx.hir() as &dyn hir::intravisit::Map<'_>), state, nested)
         }
     }
 }
@@ -177,9 +178,8 @@ impl<'hir> PrinterSupport for IdentifiedAnnotation<'hir> {
 
 impl<'hir> pprust::PpAnn for IdentifiedAnnotation<'hir> {
     fn pre(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
-        match node {
-            pprust::AnnNode::Expr(_) => s.popen(),
-            _ => {}
+        if let pprust::AnnNode::Expr(_) = node {
+            s.popen();
         }
     }
     fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
@@ -228,13 +228,12 @@ impl<'hir> HirPrinterSupport<'hir> for IdentifiedAnnotation<'hir> {
 impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
         if let Some(ref tcx) = self.tcx {
-            pprust_hir::PpAnn::nested(&tcx.hir(), state, nested)
+            pprust_hir::PpAnn::nested(&(&tcx.hir() as &dyn hir::intravisit::Map<'_>), state, nested)
         }
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
-        match node {
-            pprust_hir::AnnNode::Expr(_) => s.popen(),
-            _ => {}
+        if let pprust_hir::AnnNode::Expr(_) = node {
+            s.popen();
         }
     }
     fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
@@ -286,7 +285,7 @@ impl<'a> PrinterSupport for HygieneAnnotation<'a> {
 impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
         match node {
-            pprust::AnnNode::Ident(&ast::Ident { name, span }) => {
+            pprust::AnnNode::Ident(&Ident { name, span }) => {
                 s.s.space();
                 s.synth_comment(format!("{}{:?}", name.as_u32(), span.ctxt()))
             }
@@ -324,7 +323,7 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
     }
 
     fn node_path(&self, id: hir::HirId) -> Option<String> {
-        Some(self.tcx.def_path_str(self.tcx.hir().local_def_id(id)))
+        Some(self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()))
     }
 }
 
@@ -334,25 +333,22 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
         if let pprust_hir::Nested::Body(id) = nested {
             self.tables.set(self.tcx.body_tables(id));
         }
-        pprust_hir::PpAnn::nested(&self.tcx.hir(), state, nested);
+        let pp_ann = &(&self.tcx.hir() as &dyn hir::intravisit::Map<'_>);
+        pprust_hir::PpAnn::nested(pp_ann, state, nested);
         self.tables.set(old_tables);
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
-        match node {
-            pprust_hir::AnnNode::Expr(_) => s.popen(),
-            _ => {}
+        if let pprust_hir::AnnNode::Expr(_) = node {
+            s.popen();
         }
     }
     fn post(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
-        match node {
-            pprust_hir::AnnNode::Expr(expr) => {
-                s.s.space();
-                s.s.word("as");
-                s.s.space();
-                s.s.word(self.tables.get().expr_ty(expr).to_string());
-                s.pclose();
-            }
-            _ => {}
+        if let pprust_hir::AnnNode::Expr(expr) = node {
+            s.s.space();
+            s.s.word("as");
+            s.s.space();
+            s.s.word(self.tables.get().expr_ty(expr).to_string());
+            s.pclose();
         }
     }
 }
@@ -400,7 +396,7 @@ pub fn print_after_parsing(
                 annotation.pp_ann(),
                 false,
                 parse.edition,
-                parse.injected_crate_name.try_get().is_some(),
+                parse.injected_crate_name.get().is_some(),
             )
         })
     } else {
@@ -442,7 +438,7 @@ pub fn print_after_hir_lowering<'tcx>(
                     annotation.pp_ann(),
                     true,
                     parse.edition,
-                    parse.injected_crate_name.try_get().is_some(),
+                    parse.injected_crate_name.get().is_some(),
                 )
             })
         }

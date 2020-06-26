@@ -4,7 +4,7 @@ error[E0422]: cannot find struct, variant or union type `Drain` in this scope
 LL |     let _d = Drain {};
    |              ^^^^^ not found in this scope
    |
-help: possible candidates are found in other modules, you can import them into scope
+help: consider importing one of these items
    |
 LL | use crate::plumbing::Drain;
    |

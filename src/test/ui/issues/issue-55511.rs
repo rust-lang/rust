@@ -14,8 +14,6 @@ fn main() {
     //~^ ERROR `a` does not live long enough [E0597]
     match b {
         <() as Foo<'static>>::C => { }
-        //~^ WARN must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| WARN will become a hard error in a future release
         _ => { }
     }
 }

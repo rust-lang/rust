@@ -186,16 +186,16 @@
 // lldbg-check:[...]$5 = 5
 // lldbr-check:(isize) a = 5
 // lldb-command:print b
-// lldbg-check:[...]$6 = (6, 7)
-// lldbr-check:((u32, u32)) b = { = 6 = 7 }
+// lldbg-check:[...]$6 = { 0 = 6 1 = 7 }
+// lldbr-check:((u32, u32)) b = { 0 = 6 1 = 7 }
 // lldb-command:continue
 
 // lldb-command:print h
 // lldbg-check:[...]$7 = 8
 // lldbr-check:(i16) h = 8
 // lldb-command:print i
-// lldbg-check:[...]$8 = Struct { a: 9, b: 10 }
-// lldbr-check:(destructured_fn_argument::Struct) i = Struct { a: 9, b: 10 }
+// lldbg-check:[...]$8 = { a = 9 b = 10 }
+// lldbr-check:(destructured_fn_argument::Struct) i = { a = 9 b = 10 }
 // lldb-command:print j
 // lldbg-check:[...]$9 = 11
 // lldbr-check:(i16) j = 11
@@ -229,8 +229,8 @@
 // lldbg-check:[...]$16 = 20
 // lldbr-check:(i32) q = 20
 // lldb-command:print r
-// lldbg-check:[...]$17 = Struct { a: 21, b: 22 }
-// lldbr-check:(destructured_fn_argument::Struct) r = Struct { a: 21, b: 22 }
+// lldbg-check:[...]$17 = { a = 21 b = 22 }
+// lldbr-check:(destructured_fn_argument::Struct) r = { a = 21, b = 22 }
 // lldb-command:continue
 
 // lldb-command:print s
@@ -271,13 +271,13 @@
 // lldb-command:continue
 
 // lldb-command:print aa
-// lldbg-check:[...]$29 = (34, 35)
-// lldbr-check:((isize, isize)) aa = { = 34 = 35 }
+// lldbg-check:[...]$29 = { 0 = 34 1 = 35 }
+// lldbr-check:((isize, isize)) aa = { 0 = 34 1 = 35 }
 // lldb-command:continue
 
 // lldb-command:print bb
-// lldbg-check:[...]$30 = (36, 37)
-// lldbr-check:((isize, isize)) bb = { = 36 = 37 }
+// lldbg-check:[...]$30 = { 0 = 36 1 = 37 }
+// lldbr-check:((isize, isize)) bb = { 0 = 36 1 = 37 }
 // lldb-command:continue
 
 // lldb-command:print cc
@@ -286,21 +286,21 @@
 // lldb-command:continue
 
 // lldb-command:print dd
-// lldbg-check:[...]$32 = (40, 41, 42)
-// lldbr-check:((isize, isize, isize)) dd = { = 40 = 41 = 42 }
+// lldbg-check:[...]$32 = { 0 = 40 1 = 41 2 = 42 }
+// lldbr-check:((isize, isize, isize)) dd = { 0 = 40 1 = 41 2 = 42 }
 // lldb-command:continue
 
 // lldb-command:print *ee
-// lldbg-check:[...]$33 = (43, 44, 45)
-// lldbr-check:((isize, isize, isize)) *ee = { = 43 = 44 = 45 }
+// lldbg-check:[...]$33 = { 0 = 43 1 = 44 2 = 45 }
+// lldbr-check:((isize, isize, isize)) *ee = { 0 = 43 1 = 44 2 = 45 }
 // lldb-command:continue
 
 // lldb-command:print *ff
 // lldbg-check:[...]$34 = 46
 // lldbr-check:(isize) *ff = 46
 // lldb-command:print gg
-// lldbg-check:[...]$35 = (47, 48)
-// lldbr-check:((isize, isize)) gg = { = 47 = 48 }
+// lldbg-check:[...]$35 = { 0 = 47 1 = 48 }
+// lldbr-check:((isize, isize)) gg = { 0 = 47 1 = 48 }
 // lldb-command:continue
 
 // lldb-command:print *hh

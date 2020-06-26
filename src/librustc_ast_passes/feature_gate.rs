@@ -7,7 +7,7 @@ use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue, UnstableFeatures};
 use rustc_session::parse::{feature_err, feature_err_issue, ParseSess};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
 use log::debug;
@@ -119,6 +119,14 @@ impl<'a> PostExpansionVisitor<'a> {
                     abi_amdgpu_kernel,
                     span,
                     "amdgpu-kernel ABI is experimental and subject to change"
+                );
+            }
+            "avr-interrupt" | "avr-non-blocking-interrupt" => {
+                gate_feature_post!(
+                    &self,
+                    abi_avr_interrupt,
+                    span,
+                    "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change"
                 );
             }
             "efiapi" => {
@@ -252,12 +260,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
-    fn visit_name(&mut self, sp: Span, name: ast::Name) {
+    fn visit_name(&mut self, sp: Span, name: Symbol) {
         if !name.as_str().is_ascii() {
             gate_feature_post!(
                 &self,
                 non_ascii_idents,
-                self.parse_sess.source_map().def_span(sp),
+                self.parse_sess.source_map().guess_head_span(sp),
                 "non-ascii idents are not fully supported"
             );
         }
@@ -286,8 +294,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         start,
                         i.span,
                         "`#[start]` functions are experimental \
-                                       and their signature may change \
-                                       over time"
+                         and their signature may change \
+                         over time"
                     );
                 }
                 if attr::contains_name(&i.attrs[..], sym::main) {
@@ -296,8 +304,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         main,
                         i.span,
                         "declaration of a non-standard `#[main]` \
-                                        function may change over time, for now \
-                                        a top-level `fn main()` is required"
+                         function may change over time, for now \
+                         a top-level `fn main()` is required"
                     );
                 }
             }
@@ -341,7 +349,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if let ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
-                        optin_builtin_traits,
+                        negative_impls,
                         span.to(of_trait.as_ref().map(|t| t.path.span).unwrap_or(span)),
                         "negative trait bounds are not yet fully implemented; \
                          use marker types for now"
@@ -366,7 +374,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, trait_alias, i.span, "trait aliases are experimental");
             }
 
-            ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {
+            ast::ItemKind::MacroDef(ast::MacroDef { macro_rules: false, .. }) => {
                 let msg = "`macro` is experimental";
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
@@ -516,41 +524,36 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        match param.kind {
-            GenericParamKind::Const { .. } => gate_feature_post!(
+        if let GenericParamKind::Const { .. } = param.kind {
+            gate_feature_post!(
                 &self,
                 const_generics,
                 param.ident.span,
                 "const generics are unstable"
-            ),
-            _ => {}
+            )
         }
         visit::walk_generic_param(self, param)
     }
 
     fn visit_assoc_ty_constraint(&mut self, constraint: &'a AssocTyConstraint) {
-        match constraint.kind {
-            AssocTyConstraintKind::Bound { .. } => gate_feature_post!(
+        if let AssocTyConstraintKind::Bound { .. } = constraint.kind {
+            gate_feature_post!(
                 &self,
                 associated_type_bounds,
                 constraint.span,
                 "associated type bounds are unstable"
-            ),
-            _ => {}
+            )
         }
         visit::walk_assoc_ty_constraint(self, constraint)
     }
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
-        if let ast::Defaultness::Default(_) = i.kind.defaultness() {
-            gate_feature_post!(&self, specialization, i.span, "specialization is unstable");
-        }
-
-        match i.kind {
+        let is_fn = match i.kind {
             ast::AssocItemKind::Fn(_, ref sig, _, _) => {
                 if let (ast::Const::Yes(_), AssocCtxt::Trait) = (sig.header.constness, ctxt) {
                     gate_feature_post!(&self, const_fn, i.span, "const fn is unstable");
                 }
+                true
             }
             ast::AssocItemKind::TyAlias(_, ref generics, _, ref ty) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
@@ -565,8 +568,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     self.check_impl_trait(ty);
                 }
                 self.check_gat(generics, i.span);
+                false
             }
-            _ => {}
+            _ => false,
+        };
+        if let ast::Defaultness::Default(_) = i.kind.defaultness() {
+            // Limit `min_specialization` to only specializing functions.
+            gate_feature_fn!(
+                &self,
+                |x: &Features| x.specialization || (is_fn && x.min_specialization),
+                i.span,
+                sym::specialization,
+                "specialization is unstable"
+            );
         }
         visit::walk_assoc_item(self, i, ctxt)
     }

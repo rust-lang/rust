@@ -9,22 +9,23 @@ use crate::{BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet, Weak};
 use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
 
-use rustc::hir::exports::Export;
-use rustc::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
-use rustc::ty;
-use rustc::{bug, span_bug};
-use rustc_ast::ast::{Ident, Name, NodeId};
+use rustc_ast::ast::NodeId;
 use rustc_ast::unwrap_or;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast_lowering::Resolver as ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir::def::{self, PartialRes};
 use rustc_hir::def_id::DefId;
+use rustc_middle::hir::exports::Export;
+use rustc_middle::ty;
+use rustc_middle::{bug, span_bug};
+use rustc_session::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::DiagnosticMessageId;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
 
 use log::*;
@@ -57,7 +58,7 @@ pub enum ImportKind<'a> {
                                        // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
     },
     ExternCrate {
-        source: Option<Name>,
+        source: Option<Symbol>,
         target: Ident,
     },
     MacroUse,
@@ -416,7 +417,8 @@ impl<'a> Resolver<'a> {
                 None => return Err((Undetermined, Weak::Yes)),
             };
             let tmp_parent_scope;
-            let (mut adjusted_parent_scope, mut ident) = (parent_scope, ident.modern());
+            let (mut adjusted_parent_scope, mut ident) =
+                (parent_scope, ident.normalize_to_macros_2_0());
             match ident.span.glob_adjust(module.expansion, glob_import.span) {
                 Some(Some(def)) => {
                     tmp_parent_scope =
@@ -873,6 +875,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: &'b Import<'b>) -> Option<UnresolvedImportError> {
         let orig_vis = import.vis.replace(ty::Visibility::Invisible);
+        let orig_blacklisted_binding = match &import.kind {
+            ImportKind::Single { target_bindings, .. } => {
+                Some(mem::replace(&mut self.r.blacklisted_binding, target_bindings[TypeNS].get()))
+            }
+            _ => None,
+        };
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
         let path_res = self.r.resolve_path(
             &import.module_path,
@@ -883,6 +891,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             import.crate_lint(),
         );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
+        if let Some(orig_blacklisted_binding) = orig_blacklisted_binding {
+            self.r.blacklisted_binding = orig_blacklisted_binding;
+        }
         import.vis.set(orig_vis);
         if let PathResult::Failed { .. } | PathResult::NonModule(..) = path_res {
             // Consider erroneous imports used to avoid duplicate diagnostics.
@@ -1107,7 +1118,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                     match binding.kind {
                                         // Never suggest the name that has binding error
                                         // i.e., the name that cannot be previously resolved
-                                        NameBindingKind::Res(Res::Err, _) => return None,
+                                        NameBindingKind::Res(Res::Err, _) => None,
                                         _ => Some(&i.name),
                                     }
                                 }
@@ -1383,8 +1394,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             let is_good_import =
                 binding.is_import() && !binding.is_ambiguity() && !ident.span.from_expansion();
             if is_good_import || binding.is_macro_def() {
-                let res = binding.res();
-                if res != Res::Err {
+                let res = binding.res().map_id(|id| this.local_def_id(id));
+                if res != def::Res::Err {
                     reexports.push(Export { ident, res, span: binding.span, vis: binding.vis });
                 }
             }
@@ -1431,7 +1442,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     let enum_resolution = resolutions.get(&key).expect("resolution should exist");
                     let enum_span =
                         enum_resolution.borrow().binding.expect("binding should exist").span;
-                    let enum_def_span = this.session.source_map().def_span(enum_span);
+                    let enum_def_span = this.session.source_map().guess_head_span(enum_span);
                     let enum_def_snippet = this
                         .session
                         .source_map()
@@ -1457,7 +1468,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         if !reexports.is_empty() {
             if let Some(def_id) = module.def_id() {
-                self.r.export_map.insert(def_id, reexports);
+                // Call to `expect_local` should be fine because current
+                // code is only called for local modules.
+                self.r.export_map.insert(def_id.expect_local(), reexports);
             }
         }
     }

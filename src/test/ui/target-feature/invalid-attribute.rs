@@ -7,6 +7,7 @@
 // ignore-powerpc
 // ignore-powerpc64
 // ignore-powerpc64le
+// ignore-riscv64
 // ignore-s390x
 // ignore-sparc
 // ignore-sparc64
@@ -26,7 +27,7 @@ unsafe fn foo() {}
 
 #[target_feature(enable = "sse2")]
 //~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
-//~| NOTE can only be applied to `unsafe` functions
+//~| NOTE see issue #69098
 fn bar() {}
 //~^ NOTE not an `unsafe` function
 
@@ -65,9 +66,26 @@ trait Baz { }
 #[target_feature(enable = "sse2")]
 unsafe fn test() {}
 
+trait Quux {
+    fn foo();
+}
+
+impl Quux for Foo {
+    #[target_feature(enable = "sse2")]
+    //~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
+    //~| NOTE see issue #69098
+    fn foo() {}
+    //~^ NOTE not an `unsafe` function
+}
+
 fn main() {
     unsafe {
         foo();
         bar();
     }
+    #[target_feature(enable = "sse2")]
+    //~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
+    //~| NOTE see issue #69098
+    || {};
+    //~^ NOTE not an `unsafe` function
 }

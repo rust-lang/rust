@@ -46,13 +46,13 @@ pub struct ReentrantMutex {
 }
 
 impl ReentrantMutex {
-    pub unsafe fn uninitialized() -> ReentrantMutex {
+    pub const unsafe fn uninitialized() -> ReentrantMutex {
         ReentrantMutex { inner: ptr::null() }
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {
-        let _ = abi::recmutex_init(&mut self.inner as *mut *const c_void);
+    pub unsafe fn init(&self) {
+        let _ = abi::recmutex_init(&self.inner as *const *const c_void as *mut _);
     }
 
     #[inline]

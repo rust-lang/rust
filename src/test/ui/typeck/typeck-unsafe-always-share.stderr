@@ -2,7 +2,7 @@ error[E0277]: `std::cell::UnsafeCell<MySync<{integer}>>` cannot be shared betwee
   --> $DIR/typeck-unsafe-always-share.rs:19:10
    |
 LL | fn test<T: Sync>(s: T) {}
-   |    ----    ---- required by this bound in `test`
+   |            ---- required by this bound in `test`
 ...
 LL |     test(us);
    |          ^^ `std::cell::UnsafeCell<MySync<{integer}>>` cannot be shared between threads safely
@@ -13,7 +13,7 @@ error[E0277]: `std::cell::UnsafeCell<NoSync>` cannot be shared between threads s
   --> $DIR/typeck-unsafe-always-share.rs:23:10
    |
 LL | fn test<T: Sync>(s: T) {}
-   |    ----    ---- required by this bound in `test`
+   |            ---- required by this bound in `test`
 ...
 LL |     test(uns);
    |          ^^^ `std::cell::UnsafeCell<NoSync>` cannot be shared between threads safely
@@ -24,7 +24,7 @@ error[E0277]: `std::cell::UnsafeCell<NoSync>` cannot be shared between threads s
   --> $DIR/typeck-unsafe-always-share.rs:27:5
    |
 LL | fn test<T: Sync>(s: T) {}
-   |    ----    ---- required by this bound in `test`
+   |            ---- required by this bound in `test`
 ...
 LL |     test(ms);
    |     ^^^^ `std::cell::UnsafeCell<NoSync>` cannot be shared between threads safely
@@ -36,7 +36,7 @@ error[E0277]: `NoSync` cannot be shared between threads safely
   --> $DIR/typeck-unsafe-always-share.rs:30:10
    |
 LL | fn test<T: Sync>(s: T) {}
-   |    ----    ---- required by this bound in `test`
+   |            ---- required by this bound in `test`
 ...
 LL |     test(NoSync);
    |          ^^^^^^ `NoSync` cannot be shared between threads safely

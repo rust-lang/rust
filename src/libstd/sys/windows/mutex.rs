@@ -109,7 +109,7 @@ impl Mutex {
             0 => {}
             n => return n as *mut _,
         }
-        let mut re = box ReentrantMutex::uninitialized();
+        let re = box ReentrantMutex::uninitialized();
         re.init();
         let re = Box::into_raw(re);
         match self.lock.compare_and_swap(0, re as usize, Ordering::SeqCst) {
@@ -157,11 +157,11 @@ unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
-    pub fn uninitialized() -> ReentrantMutex {
+    pub const fn uninitialized() -> ReentrantMutex {
         ReentrantMutex { inner: UnsafeCell::new(MaybeUninit::uninit()) }
     }
 
-    pub unsafe fn init(&mut self) {
+    pub unsafe fn init(&self) {
         c::InitializeCriticalSection((&mut *self.inner.get()).as_mut_ptr());
     }
 

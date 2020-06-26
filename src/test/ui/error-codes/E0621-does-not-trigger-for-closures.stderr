@@ -1,30 +1,11 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:15:5
+error: lifetime may not live long enough
+  --> $DIR/E0621-does-not-trigger-for-closures.rs:13:45
    |
 LL |     invoke(&x, |a, b| if a > b { a } else { b });
-   |     ^^^^^^
-   |
-note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 15:16...
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:15:16
-   |
-LL |     invoke(&x, |a, b| if a > b { a } else { b });
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...so that reference does not outlive borrowed content
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:15:45
-   |
-LL |     invoke(&x, |a, b| if a > b { a } else { b });
-   |                                             ^
-note: but, the lifetime must be valid for the call at 15:5...
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:15:5
-   |
-LL |     invoke(&x, |a, b| if a > b { a } else { b });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...so type `&i32` of expression is valid during the expression
-  --> $DIR/E0621-does-not-trigger-for-closures.rs:15:5
-   |
-LL |     invoke(&x, |a, b| if a > b { a } else { b });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                    --                       ^ returning this value requires that `'1` must outlive `'2`
+   |                    ||
+   |                    |return type of closure is &'2 i32
+   |                    has type `&'1 i32`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

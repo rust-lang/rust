@@ -62,6 +62,8 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
         lang_items.slice_u8_alloc_impl(),
         lang_items.const_ptr_impl(),
         lang_items.mut_ptr_impl(),
+        lang_items.const_slice_ptr_impl(),
+        lang_items.mut_slice_ptr_impl(),
     ];
 
     for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
@@ -87,11 +89,10 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
             if cleaner.keep_item(for_) && trait_.def_id() == cx.tcx.lang_items().deref_trait() {
                 let target = items
                     .iter()
-                    .filter_map(|item| match item.inner {
+                    .find_map(|item| match item.inner {
                         TypedefItem(ref t, true) => Some(&t.type_),
                         _ => None,
                     })
-                    .next()
                     .expect("Deref impl without Target type");
 
                 if let Some(prim) = target.primitive_type() {
@@ -118,7 +119,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     for &trait_did in cx.tcx.all_traits(LOCAL_CRATE).iter() {
         for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
             let impl_did = cx.tcx.hir().local_def_id(impl_node);
-            inline::build_impl(cx, impl_did, None, &mut new_items);
+            inline::build_impl(cx, impl_did.to_def_id(), None, &mut new_items);
         }
     }
 

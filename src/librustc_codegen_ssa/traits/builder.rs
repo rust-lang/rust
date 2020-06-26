@@ -12,8 +12,9 @@ use crate::mir::operand::OperandRef;
 use crate::mir::place::PlaceRef;
 use crate::MemFlags;
 
-use rustc::ty::layout::{Align, HasParamEnv, Size};
-use rustc::ty::Ty;
+use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty::Ty;
+use rustc_target::abi::{Align, Size};
 use rustc_target::spec::HasTargetSpec;
 
 use std::iter::TrustedLen;
@@ -258,6 +259,14 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     /// Called for `StorageDead`
     fn lifetime_end(&mut self, ptr: Self::Value, size: Size);
+
+    fn instrprof_increment(
+        &mut self,
+        fn_name: Self::Value,
+        hash: Self::Value,
+        num_counters: Self::Value,
+        index: Self::Value,
+    ) -> Self::Value;
 
     fn call(
         &mut self,

@@ -85,8 +85,12 @@
 #![feature(const_panic)]
 #![feature(const_fn_union)]
 #![feature(const_generics)]
+#![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
+#![cfg_attr(not(bootstrap), feature(const_raw_ptr_comparison))]
 #![feature(const_result)]
+#![feature(const_slice_from_raw_parts)]
+#![feature(const_slice_ptr_len)]
 #![feature(const_type_name)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
@@ -98,11 +102,14 @@
 #![feature(is_sorted)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
+#![feature(llvm_asm)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]
 #![feature(optin_builtin_traits)]
+#![feature(or_patterns)]
 #![feature(prelude_import)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
@@ -132,7 +139,6 @@
 #![feature(f16c_target_feature)]
 #![feature(hexagon_target_feature)]
 #![feature(const_transmute)]
-#![feature(structural_match)]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
 #![feature(maybe_uninit_slice)]
@@ -140,7 +146,7 @@
 #![feature(associated_type_bounds)]
 #![feature(const_type_id)]
 #![feature(const_caller_location)]
-#![cfg_attr(not(bootstrap), feature(no_niche))] // rust-lang/rust#68303
+#![feature(no_niche)] // rust-lang/rust#68303
 
 #[prelude_import]
 #[allow(unused)]
@@ -272,6 +278,9 @@ pub mod primitive;
 // crate uses the this crate as its libcore.
 #[path = "../stdarch/crates/core_arch/src/mod.rs"]
 #[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
+// FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_decl is
+// merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
+#[cfg_attr(not(bootstrap), allow(clashing_extern_decl))]
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 

@@ -9,7 +9,7 @@ use foo::{self};
 use foo as self;
 //~^ ERROR expected identifier
 
-use foo::self;
+use foo::self; //~ ERROR is defined multiple times
 //~^ ERROR `self` imports are only allowed within a { } list
 
 use foo::A;

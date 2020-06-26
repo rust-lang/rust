@@ -86,11 +86,13 @@ pub struct Command {
     stderr: Option<Stdio>,
 }
 
-// Create a new type for argv, so that we can make it `Send`
+// Create a new type for argv, so that we can make it `Send` and `Sync`
 struct Argv(Vec<*const c_char>);
 
-// It is safe to make Argv Send, because it contains pointers to memory owned by `Command.args`
+// It is safe to make `Argv` `Send` and `Sync`, because it contains
+// pointers to memory owned by `Command.args`
 unsafe impl Send for Argv {}
+unsafe impl Sync for Argv {}
 
 // passed back to std::process with the pipes connected to the child, if any
 // were requested
@@ -426,6 +428,7 @@ mod tests {
     // ignored there.
     #[cfg_attr(target_arch = "arm", ignore)]
     #[cfg_attr(target_arch = "aarch64", ignore)]
+    #[cfg_attr(target_arch = "riscv64", ignore)]
     fn test_process_mask() {
         unsafe {
             // Test to make sure that a signal mask does not get inherited.

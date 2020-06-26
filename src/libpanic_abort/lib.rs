@@ -21,6 +21,7 @@
 use core::any::Any;
 
 #[rustc_std_internal_symbol]
+#[cfg_attr(not(bootstrap), allow(improper_ctypes_definitions))]
 pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Send + 'static) {
     unreachable!()
 }
@@ -105,15 +106,6 @@ pub mod personalities {
     ) -> u32 {
         1 // `ExceptionContinueSearch`
     }
-
-    // Similar to above, this corresponds to the `eh_unwind_resume` lang item
-    // that's only used on Windows currently.
-    //
-    // Note that we don't execute landing pads, so this is never called, so it's
-    // body is empty.
-    #[rustc_std_internal_symbol]
-    #[cfg(all(bootstrap, target_os = "windows", target_env = "gnu"))]
-    pub extern "C" fn rust_eh_unwind_resume() {}
 
     // These two are called by our startup objects on i686-pc-windows-gnu, but
     // they don't need to do anything so the bodies are nops.

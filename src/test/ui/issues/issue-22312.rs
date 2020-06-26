@@ -1,6 +1,6 @@
 use std::ops::Index;
 
-pub trait Array2D: Index<usize> {
+pub trait Array2D: Index<usize> + Sized {
     fn rows(&self) -> usize;
     fn columns(&self) -> usize;
     fn get<'a>(&'a self, y: usize, x: usize) -> Option<&'a <Self as Index<usize>>::Output> {

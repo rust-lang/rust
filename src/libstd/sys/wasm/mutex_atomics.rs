@@ -80,11 +80,11 @@ unsafe impl Sync for ReentrantMutex {}
 // released when this recursion counter reaches 0.
 
 impl ReentrantMutex {
-    pub unsafe fn uninitialized() -> ReentrantMutex {
+    pub const unsafe fn uninitialized() -> ReentrantMutex {
         ReentrantMutex { owner: AtomicU32::new(0), recursions: UnsafeCell::new(0) }
     }
 
-    pub unsafe fn init(&mut self) {
+    pub unsafe fn init(&self) {
         // nothing to do...
     }
 

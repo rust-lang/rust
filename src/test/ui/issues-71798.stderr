@@ -1,0 +1,20 @@
+error[E0425]: cannot find value `u` in this scope
+  --> $DIR/issues-71798.rs:6:24
+   |
+LL |     let _ = test_ref & u;
+   |                        ^ not found in this scope
+
+error[E0277]: the trait bound `u32: std::future::Future` is not satisfied
+  --> $DIR/issues-71798.rs:1:25
+   |
+LL | fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::future::Future` is not implemented for `u32`
+LL |     *x
+   |     -- this returned value is of type `u32`
+   |
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.
