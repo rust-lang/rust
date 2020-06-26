@@ -336,6 +336,14 @@
                     "default": null,
                     "description": "List of features to activate. Defaults to `rust-analyzer.cargo.features`."
                 },
+                "rust-analyzer.cargoRunner": {
+                    "type": [
+                        "null",
+                        "string"
+                    ],
+                    "default": null,
+                    "description": "Custom cargo runner extension ID."
+                },
                 "rust-analyzer.inlayHints.enable": {
                     "type": "boolean",
                     "default": true,

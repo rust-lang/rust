@@ -114,7 +114,7 @@ export async function activate(context: vscode.ExtensionContext) {
     ctx.registerCommand('applyActionGroup', commands.applyActionGroup);
     ctx.registerCommand('gotoLocation', commands.gotoLocation);
 
-    ctx.pushCleanup(activateTaskProvider(workspaceFolder));
+    ctx.pushCleanup(activateTaskProvider(workspaceFolder, ctx.config));
 
     activateInlayHints(ctx);
 

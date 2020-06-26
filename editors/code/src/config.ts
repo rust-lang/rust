@@ -110,6 +110,10 @@ export class Config {
         };
     }
 
+    get cargoRunner() {
+        return this.get<string | undefined>("cargoRunner");
+    }
+
     get debug() {
         // "/rustc/<id>" used by suggestions only.
         const { ["/rustc/<id>"]: _, ...sourceFileMap } = this.get<Record<string, string>>("debug.sourceFileMap");
