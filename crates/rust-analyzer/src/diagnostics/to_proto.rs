@@ -167,9 +167,9 @@ fn map_rust_child_diagnostic(
 
 #[derive(Debug)]
 pub(crate) struct MappedRustDiagnostic {
-    pub location: Location,
-    pub diagnostic: Diagnostic,
-    pub fixes: Vec<lsp_ext::CodeAction>,
+    pub(crate) location: Location,
+    pub(crate) diagnostic: Diagnostic,
+    pub(crate) fixes: Vec<lsp_ext::CodeAction>,
 }
 
 /// Converts a Rust root diagnostic to LSP form

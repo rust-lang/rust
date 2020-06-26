@@ -3,7 +3,6 @@ pub(crate) mod to_proto;
 
 use std::{collections::HashMap, mem, sync::Arc};
 
-use lsp_types::{Diagnostic, Range};
 use ra_ide::FileId;
 use rustc_hash::FxHashSet;
 
@@ -19,15 +18,15 @@ pub struct DiagnosticsConfig {
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
-    pub(crate) native: HashMap<FileId, Vec<Diagnostic>>,
-    pub(crate) check: HashMap<FileId, Vec<Diagnostic>>,
+    pub(crate) native: HashMap<FileId, Vec<lsp_types::Diagnostic>>,
+    pub(crate) check: HashMap<FileId, Vec<lsp_types::Diagnostic>>,
     pub(crate) check_fixes: CheckFixes,
     changes: FxHashSet<FileId>,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Fix {
-    pub(crate) range: Range,
+    pub(crate) range: lsp_types::Range,
     pub(crate) action: lsp_ext::CodeAction,
 }
 
@@ -40,7 +39,7 @@ impl DiagnosticCollection {
     pub(crate) fn add_check_diagnostic(
         &mut self,
         file_id: FileId,
-        diagnostic: Diagnostic,
+        diagnostic: lsp_types::Diagnostic,
         fixes: Vec<lsp_ext::CodeAction>,
     ) {
         let diagnostics = self.check.entry(file_id).or_default();
@@ -59,12 +58,19 @@ impl DiagnosticCollection {
         self.changes.insert(file_id);
     }
 
-    pub(crate) fn set_native_diagnostics(&mut self, file_id: FileId, diagnostics: Vec<Diagnostic>) {
+    pub(crate) fn set_native_diagnostics(
+        &mut self,
+        file_id: FileId,
+        diagnostics: Vec<lsp_types::Diagnostic>,
+    ) {
         self.native.insert(file_id, diagnostics);
         self.changes.insert(file_id);
     }
 
-    pub(crate) fn diagnostics_for(&self, file_id: FileId) -> impl Iterator<Item = &Diagnostic> {
+    pub(crate) fn diagnostics_for(
+        &self,
+        file_id: FileId,
+    ) -> impl Iterator<Item = &lsp_types::Diagnostic> {
         let native = self.native.get(&file_id).into_iter().flatten();
         let check = self.check.get(&file_id).into_iter().flatten();
         native.chain(check)
@@ -78,7 +84,7 @@ impl DiagnosticCollection {
     }
 }
 
-fn are_diagnostics_equal(left: &Diagnostic, right: &Diagnostic) -> bool {
+fn are_diagnostics_equal(left: &lsp_types::Diagnostic, right: &lsp_types::Diagnostic) -> bool {
     left.source == right.source
         && left.severity == right.severity
         && left.range == right.range
