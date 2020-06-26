@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![deny(warnings)]
 
 extern crate env_logger;
 extern crate rustc_ast;

@@ -262,7 +262,7 @@ pub struct ProcMacro<'hir> {
     pub whence: Span,
 }
 
-pub fn struct_type_from_def(vdata: &hir::VariantData) -> StructType {
+pub fn struct_type_from_def(vdata: &hir::VariantData<'_>) -> StructType {
     match *vdata {
         hir::VariantData::Struct(..) => Plain,
         hir::VariantData::Tuple(..) => Tuple,

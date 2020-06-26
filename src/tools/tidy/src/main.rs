@@ -4,8 +4,6 @@
 //! etc. This is run by default on `./x.py test` and as part of the auto
 //! builders. The tidy checks can be executed with `./x.py test tidy`.
 
-#![deny(warnings)]
-
 use tidy::*;
 
 use std::env;

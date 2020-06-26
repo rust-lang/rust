@@ -10,8 +10,6 @@
 //! themselves having support libraries. All data over the TCP sockets is in a
 //! basically custom format suiting our needs.
 
-#![deny(warnings)]
-
 #[cfg(not(windows))]
 use std::fs::Permissions;
 #[cfg(not(windows))]

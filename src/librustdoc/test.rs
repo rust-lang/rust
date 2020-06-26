@@ -166,7 +166,7 @@ pub fn run(options: Options) -> Result<(), String> {
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(krate: &::rustc_hir::Crate) -> TestOptions {
+fn scrape_test_config(krate: &::rustc_hir::Crate<'_>) -> TestOptions {
     use rustc_ast_pretty::pprust;
 
     let mut opts =
@@ -973,7 +973,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         intravisit::NestedVisitorMap::All(self.map)
     }
 
-    fn visit_item(&mut self, item: &'hir hir::Item) {
+    fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
         let name = if let hir::ItemKind::Impl { ref self_ty, .. } = item.kind {
             rustc_hir_pretty::id_to_string(&self.map, self_ty.hir_id)
         } else {
@@ -985,19 +985,19 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         });
     }
 
-    fn visit_trait_item(&mut self, item: &'hir hir::TraitItem) {
+    fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
         self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }
 
-    fn visit_impl_item(&mut self, item: &'hir hir::ImplItem) {
+    fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
         self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_impl_item(this, item);
         });
     }
 
-    fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {
         self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_foreign_item(this, item);
         });
@@ -1005,8 +1005,8 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
 
     fn visit_variant(
         &mut self,
-        v: &'hir hir::Variant,
-        g: &'hir hir::Generics,
+        v: &'hir hir::Variant<'_>,
+        g: &'hir hir::Generics<'_>,
         item_id: hir::HirId,
     ) {
         self.visit_testable(v.ident.to_string(), &v.attrs, v.id, v.span, |this| {
@@ -1014,13 +1014,13 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         });
     }
 
-    fn visit_struct_field(&mut self, f: &'hir hir::StructField) {
+    fn visit_struct_field(&mut self, f: &'hir hir::StructField<'_>) {
         self.visit_testable(f.ident.to_string(), &f.attrs, f.hir_id, f.span, |this| {
             intravisit::walk_struct_field(this, f);
         });
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef<'_>) {
         self.visit_testable(
             macro_def.ident.to_string(),
             &macro_def.attrs,

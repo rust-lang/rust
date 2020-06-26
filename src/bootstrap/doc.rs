@@ -435,7 +435,8 @@ impl Step for Std {
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
 
         let run_cargo_rustdoc_for = |package: &str| {
-            let mut cargo = builder.cargo(compiler, Mode::Std, target, "rustdoc");
+            let mut cargo =
+                builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustdoc");
             compile::std_cargo(builder, target, compiler.stage, &mut cargo);
 
             // Keep a whitelist so we do not build internal stdlib crates, these will be
@@ -534,7 +535,7 @@ impl Step for Rustc {
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
         // Build cargo command.
-        let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
+        let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
         cargo.env(
             "RUSTDOCFLAGS",
             "--document-private-items \
