@@ -170,14 +170,6 @@ impl GlobalState {
         }
     }
 
-    pub(crate) fn maybe_collect_garbage(&mut self) {
-        self.analysis_host.maybe_collect_garbage()
-    }
-
-    pub(crate) fn collect_garbage(&mut self) {
-        self.analysis_host.collect_garbage()
-    }
-
     pub(crate) fn send(&mut self, message: lsp_server::Message) {
         self.sender.send(message).unwrap()
     }
