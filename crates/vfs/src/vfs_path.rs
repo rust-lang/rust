@@ -22,15 +22,15 @@ impl VfsPath {
             VfsPathRepr::VirtualPath(_) => None,
         }
     }
-    pub fn join(&self, path: &str) -> VfsPath {
+    pub fn join(&self, path: &str) -> Option<VfsPath> {
         match &self.0 {
             VfsPathRepr::PathBuf(it) => {
                 let res = it.join(path).normalize();
-                VfsPath(VfsPathRepr::PathBuf(res))
+                Some(VfsPath(VfsPathRepr::PathBuf(res)))
             }
             VfsPathRepr::VirtualPath(it) => {
-                let res = it.join(path);
-                VfsPath(VfsPathRepr::VirtualPath(res))
+                let res = it.join(path)?;
+                Some(VfsPath(VfsPathRepr::VirtualPath(res)))
             }
         }
     }
@@ -101,13 +101,15 @@ impl VirtualPath {
         self.0 = self.0[..pos].to_string();
         true
     }
-    fn join(&self, mut path: &str) -> VirtualPath {
+    fn join(&self, mut path: &str) -> Option<VirtualPath> {
         let mut res = self.clone();
         while path.starts_with("../") {
-            assert!(res.pop());
+            if !res.pop() {
+                return None;
+            }
             path = &path["../".len()..]
         }
         res.0 = format!("{}/{}", res.0, path);
-        res
+        Some(res)
     }
 }

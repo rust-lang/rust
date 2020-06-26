@@ -18,7 +18,7 @@ impl FileSet {
     pub fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         let mut base = self.paths[&anchor].clone();
         base.pop();
-        let path = base.join(path);
+        let path = base.join(path)?;
         let res = self.files.get(&path).copied();
         res
     }
