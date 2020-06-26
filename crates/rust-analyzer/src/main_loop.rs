@@ -468,10 +468,6 @@ impl GlobalState {
     }
 }
 
-pub(crate) type ReqHandler = fn(&mut GlobalState, Response);
-pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
-const DO_NOTHING: ReqHandler = |_, _| ();
-
 #[derive(Eq, PartialEq)]
 enum Progress {
     Begin,
@@ -499,7 +495,7 @@ fn report_progress(
             let work_done_progress_create = global_state.req_queue.outgoing.register(
                 lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
                 lsp_types::WorkDoneProgressCreateParams { token: token.clone() },
-                DO_NOTHING,
+                |_, _| (),
             );
             global_state.send(work_done_progress_create.into());
 

@@ -3,7 +3,7 @@
 //!
 //! Each tick provides an immutable snapshot of the state as `WorldSnapshot`.
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
@@ -20,7 +20,7 @@ use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
     from_proto,
     line_endings::LineEndings,
-    main_loop::{ReqQueue, Task},
+    main_loop::Task,
     reload::SourceRootConfig,
     request_metrics::{LatestRequests, RequestMetrics},
     show_message,
@@ -47,6 +47,9 @@ pub(crate) struct Handle<H, C> {
     pub(crate) handle: H,
     pub(crate) receiver: C,
 }
+
+pub(crate) type ReqHandler = fn(&mut GlobalState, lsp_server::Response);
+pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 
 /// `GlobalState` is the primary mutable state of the language server
 ///
