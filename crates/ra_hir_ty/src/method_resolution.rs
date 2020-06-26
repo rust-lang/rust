@@ -281,6 +281,7 @@ pub fn iterate_method_candidates<T>(
         name,
         mode,
         &mut |ty, item| {
+            assert!(slot.is_none());
             slot = callback(ty, item);
             slot.is_some()
         },
@@ -288,7 +289,7 @@ pub fn iterate_method_candidates<T>(
     slot
 }
 
-pub fn iterate_method_candidates_impl(
+fn iterate_method_candidates_impl(
     ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,

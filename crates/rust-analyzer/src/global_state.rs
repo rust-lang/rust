@@ -195,11 +195,7 @@ impl Drop for GlobalState {
 
 impl GlobalStateSnapshot {
     pub(crate) fn url_to_file_id(&self, url: &Url) -> Result<FileId> {
-        let path = from_proto::abs_path(url)?;
-        let path = path.into();
-        let res =
-            self.vfs.read().0.file_id(&path).ok_or_else(|| format!("file not found: {}", path))?;
-        Ok(res)
+        url_to_file_id(&self.vfs.read().0, url)
     }
 
     pub(crate) fn file_id_to_url(&self, id: FileId) -> Url {
@@ -238,4 +234,10 @@ pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
     let path = vfs.file_path(id);
     let path = path.as_path().unwrap();
     url_from_abs_path(&path)
+}
+
+pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> Result<FileId> {
+    let path = from_proto::vfs_path(url)?;
+    let res = vfs.file_id(&path).ok_or_else(|| format!("file not found: {}", path))?;
+    Ok(res)
 }

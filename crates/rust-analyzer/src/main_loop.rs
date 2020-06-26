@@ -16,7 +16,7 @@ use crate::{
     config::Config,
     dispatch::{NotificationDispatcher, RequestDispatcher},
     from_proto,
-    global_state::{file_id_to_url, GlobalState, Status},
+    global_state::{file_id_to_url, url_to_file_id, GlobalState, Status},
     handlers, lsp_ext,
     lsp_utils::{apply_document_changes, is_canceled, notification_is, notification_new},
     Result,
@@ -200,18 +200,16 @@ impl GlobalState {
                         &workspace_root,
                     );
                     for diag in diagnostics {
-                        let path = from_proto::vfs_path(&diag.location.uri)?;
-                        let file_id = match self.vfs.read().0.file_id(&path) {
-                            Some(file) => FileId(file.0),
-                            None => {
-                                log::error!(
-                                    "File with cargo diagnostic not found in VFS: {}",
-                                    path
-                                );
-                                return Ok(());
+                        match url_to_file_id(&self.vfs.read().0, &diag.location.uri) {
+                            Ok(file_id) => self.diagnostics.add_check_diagnostic(
+                                file_id,
+                                diag.diagnostic,
+                                diag.fixes,
+                            ),
+                            Err(err) => {
+                                log::error!("File with cargo diagnostic not found in VFS: {}", err);
                             }
                         };
-                        self.diagnostics.add_check_diagnostic(file_id, diag.diagnostic, diag.fixes)
                     }
                 }
 
