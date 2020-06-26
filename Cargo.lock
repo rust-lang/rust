@@ -5405,15 +5405,15 @@ dependencies = [
 
 [[package]]
 name = "unicode-script"
-version = "0.4.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b2c5c29e805da6817f5af6a627d65adb045cebf05cccd5a3493d6109454391c"
+checksum = "58b33414ea8db4b7ea0343548dbdc31d27aef06beacf7044a87e564d9b0feb7d"
 
 [[package]]
 name = "unicode-security"
-version = "0.0.3"
+version = "0.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5f9011bbed9c13372bc8df618b55a38138445199caf3b61d432c6859c36dee0"
+checksum = "5d87c28edc5b263377e448d6cdcb935c06b95413d8013ba6fae470558ccab18f"
 dependencies = [
  "unicode-normalization",
  "unicode-script",
