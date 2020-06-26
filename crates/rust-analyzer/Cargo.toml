@@ -41,6 +41,7 @@ ra_text_edit = { path = "../ra_text_edit" }
 vfs = { path = "../vfs" }
 vfs-notify = { path = "../vfs-notify" }
 ra_cfg = { path = "../ra_cfg"}
+ra_toolchain = { path = "../ra_toolchain" }
 
 # This should only be used in CLI
 ra_db = { path = "../ra_db" }

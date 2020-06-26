@@ -1395,6 +1395,7 @@ dependencies = [
  "ra_project_model",
  "ra_syntax",
  "ra_text_edit",
+ "ra_toolchain",
  "ra_tt",
  "rand",
  "rustc-hash",
