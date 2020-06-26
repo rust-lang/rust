@@ -1577,48 +1577,13 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 /// know their corresponding parameters. We (ab)use this by
 /// calling `type_of(param_did)` for these arguments.
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, HashStable)]
 pub struct WithOptParam<T> {
     pub did: T,
     /// The `DefId` of the corresponding generic paramter in case `did` is
     /// a const argument.
-    ///
-    /// This must always be equal to `tcx.const_param_of(did)`.
     pub param_did: Option<DefId>,
-}
-
-// We manually implement most traits for `WithOptParam`
-// as the `param_did` is redundant.
-
-impl<T: PartialEq> PartialEq for WithOptParam<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.did == other.did
-    }
-}
-
-impl<T: Hash> Hash for WithOptParam<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.did.hash(state);
-    }
-}
-
-impl<CTX, T: HashStable<CTX>> HashStable<CTX> for WithOptParam<T> {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.did.hash_stable(hcx, hasher);
-    }
-}
-
-impl<T: Eq> Eq for WithOptParam<T> {}
-
-impl<T: PartialOrd> PartialOrd for WithOptParam<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.did.partial_cmp(&other.did)
-    }
-}
-
-impl<T: Ord> Ord for WithOptParam<T> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.did.cmp(&other.did)
-    }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
