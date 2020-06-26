@@ -1824,7 +1824,7 @@ fn lint_expect_fun_call(
             hir::ExprKind::Lit(_) => true,
             hir::ExprKind::Call(fun, _) => {
                 if let hir::ExprKind::Path(ref p) = fun.kind {
-                    match cx.tables().qpath_res(p, fun.hir_id) {
+                    match cx.qpath_res(p, fun.hir_id) {
                         hir::def::Res::Def(hir::def::DefKind::Fn | hir::def::DefKind::AssocFn, def_id) => matches!(
                             cx.tcx.fn_sig(def_id).output().skip_binder().kind,
                             ty::Ref(ty::ReStatic, ..)
@@ -1844,7 +1844,7 @@ fn lint_expect_fun_call(
                         ty::Ref(ty::ReStatic, ..)
                     )
                 }),
-            hir::ExprKind::Path(ref p) => match cx.tables().qpath_res(p, arg.hir_id) {
+            hir::ExprKind::Path(ref p) => match cx.qpath_res(p, arg.hir_id) {
                 hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _) => true,
                 _ => false,
             },
@@ -3317,7 +3317,7 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
                     if_chain! {
                         if args.len() == 1;
                         if let hir::ExprKind::Path(qpath) = &args[0].kind;
-                        if let hir::def::Res::Local(local_id) = cx.tables().qpath_res(qpath, args[0].hir_id);
+                        if let hir::def::Res::Local(local_id) = cx.qpath_res(qpath, args[0].hir_id);
                         if closure_body.params[0].pat.hir_id == local_id;
                         let adj = cx.tables().expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
                         if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
@@ -3334,7 +3334,7 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
                         if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner1) = inner.kind;
                         if let hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner2) = inner1.kind;
                         if let hir::ExprKind::Path(ref qpath) = inner2.kind;
-                        if let hir::def::Res::Local(local_id) = cx.tables().qpath_res(qpath, inner2.hir_id);
+                        if let hir::def::Res::Local(local_id) = cx.qpath_res(qpath, inner2.hir_id);
                         then {
                             closure_body.params[0].pat.hir_id == local_id
                         } else {

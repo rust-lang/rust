@@ -26,7 +26,7 @@ fn is_temporary(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     match &expr.kind {
         ExprKind::Struct(..) | ExprKind::Tup(..) => true,
         ExprKind::Path(qpath) => {
-            if let Res::Def(DefKind::Const, ..) = cx.tables().qpath_res(qpath, expr.hir_id) {
+            if let Res::Def(DefKind::Const, ..) = cx.qpath_res(qpath, expr.hir_id) {
                 true
             } else {
                 false

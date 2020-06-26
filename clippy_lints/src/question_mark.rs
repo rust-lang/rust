@@ -158,7 +158,7 @@ impl QuestionMark {
             ExprKind::Ret(Some(ref expr)) => Self::expression_returns_none(cx, expr),
             ExprKind::Path(ref qp) => {
                 if let Res::Def(DefKind::Ctor(def::CtorOf::Variant, def::CtorKind::Const), def_id) =
-                    cx.tables().qpath_res(qp, expression.hir_id)
+                    cx.qpath_res(qp, expression.hir_id)
                 {
                     return match_def_path(cx, def_id, &paths::OPTION_NONE);
                 }

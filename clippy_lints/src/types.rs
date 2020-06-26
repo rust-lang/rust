@@ -2490,7 +2490,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
 /// Looks for default-hasher-dependent constructors like `HashMap::new`.
 struct ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
-    body: &'a TypeckTables<'tcx>,
+    maybe_typeck_tables: Option<&'tcx TypeckTables<'tcx>>,
     target: &'b ImplicitHasherType<'tcx>,
     suggestions: BTreeMap<Span, String>,
 }
@@ -2499,7 +2499,7 @@ impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     fn new(cx: &'a LateContext<'a, 'tcx>, target: &'b ImplicitHasherType<'tcx>) -> Self {
         Self {
             cx,
-            body: cx.tables(),
+            maybe_typeck_tables: cx.maybe_typeck_tables(),
             target,
             suggestions: BTreeMap::new(),
         }
@@ -2510,10 +2510,9 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
     type Map = Map<'tcx>;
 
     fn visit_body(&mut self, body: &'tcx Body<'_>) {
-        let prev_body = self.body;
-        self.body = self.cx.tcx.body_tables(body.id());
+        let old_maybe_typeck_tables = self.maybe_typeck_tables.replace(self.cx.tcx.body_tables(body.id()));
         walk_body(self, body);
-        self.body = prev_body;
+        self.maybe_typeck_tables = old_maybe_typeck_tables;
     }
 
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
@@ -2522,7 +2521,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
             if let ExprKind::Path(QPath::TypeRelative(ref ty, ref method)) = fun.kind;
             if let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind;
             then {
-                if !TyS::same_type(self.target.ty(), self.body.expr_ty(e)) {
+                if !TyS::same_type(self.target.ty(), self.maybe_typeck_tables.unwrap().expr_ty(e)) {
                     return;
                 }
 
