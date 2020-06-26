@@ -574,7 +574,13 @@ impl ExprCollector<'_> {
             .filter_map(|mod_item| mod_item.downcast::<N>())
             .find(|tree_id| tree[*tree_id].ast_id().upcast() == id.value.upcast())
             .unwrap_or_else(|| {
-                panic!("couldn't find inner {} item for {:?}", type_name::<N>(), id)
+                panic!(
+                    "couldn't find inner {} item for {:?} (AST: `{}` - {:?})",
+                    type_name::<N>(),
+                    id,
+                    ast.syntax(),
+                    ast.syntax(),
+                )
             });
 
         ItemTreeId::new(id.file_id, item_tree_id)
