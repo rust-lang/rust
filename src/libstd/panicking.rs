@@ -170,7 +170,7 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 fn default_hook(info: &PanicInfo<'_>) {
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
-    let backtrace_env = if update_panic_count(0) >= 2 {
+    let backtrace_env = if panic_count::get() >= 2 {
         RustBacktrace::Print(backtrace_rs::PrintFmt::Full)
     } else {
         backtrace::rust_backtrace_env()
@@ -221,19 +221,65 @@ fn default_hook(info: &PanicInfo<'_>) {
 #[cfg(not(test))]
 #[doc(hidden)]
 #[unstable(feature = "update_panic_count", issue = "none")]
-pub fn update_panic_count(amt: isize) -> usize {
+pub mod panic_count {
     use crate::cell::Cell;
-    thread_local! { static PANIC_COUNT: Cell<usize> = Cell::new(0) }
+    use crate::sync::atomic::{AtomicUsize, Ordering};
 
-    PANIC_COUNT.with(|c| {
-        let next = (c.get() as isize + amt) as usize;
-        c.set(next);
-        next
-    })
+    // Panic count for the current thread.
+    thread_local! { static LOCAL_PANIC_COUNT: Cell<usize> = Cell::new(0) }
+
+    // Sum of panic counts from all threads. The purpose of this is to have
+    // a fast path in `is_zero` (which is used by `panicking`). Access to
+    // this variable can be always be done with relaxed ordering because
+    // it is always guaranteed that, if `GLOBAL_PANIC_COUNT` is zero,
+    // `LOCAL_PANIC_COUNT` will be zero.
+    static GLOBAL_PANIC_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+    pub fn increase() -> usize {
+        GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed);
+        LOCAL_PANIC_COUNT.with(|c| {
+            let next = c.get() + 1;
+            c.set(next);
+            next
+        })
+    }
+
+    pub fn decrease() -> usize {
+        GLOBAL_PANIC_COUNT.fetch_sub(1, Ordering::Relaxed);
+        LOCAL_PANIC_COUNT.with(|c| {
+            let next = c.get() - 1;
+            c.set(next);
+            next
+        })
+    }
+
+    pub fn get() -> usize {
+        LOCAL_PANIC_COUNT.with(|c| c.get())
+    }
+
+    #[inline]
+    pub fn is_zero() -> bool {
+        if GLOBAL_PANIC_COUNT.load(Ordering::Relaxed) == 0 {
+            // Fast path: if `GLOBAL_PANIC_COUNT` is zero, all threads
+            // (including the current one) will have `LOCAL_PANIC_COUNT`
+            // equal to zero, so TLS access can be avoided.
+            true
+        } else {
+            is_zero_slow_path()
+        }
+    }
+
+    // Slow path is in a separate function to reduce the amount of code
+    // inlined from `is_zero`.
+    #[inline(never)]
+    #[cold]
+    fn is_zero_slow_path() -> bool {
+        LOCAL_PANIC_COUNT.with(|c| c.get() == 0)
+    }
 }
 
 #[cfg(test)]
-pub use realstd::rt::update_panic_count;
+pub use realstd::rt::panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
@@ -283,7 +329,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     #[cold]
     unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send + 'static> {
         let obj = Box::from_raw(__rust_panic_cleanup(payload));
-        update_panic_count(-1);
+        panic_count::decrease();
         obj
     }
 
@@ -312,8 +358,9 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
 }
 
 /// Determines whether the current thread is unwinding because of panic.
+#[inline]
 pub fn panicking() -> bool {
-    update_panic_count(0) != 0
+    !panic_count::is_zero()
 }
 
 /// The entry point for panicking with a formatted message.
@@ -445,7 +492,7 @@ fn rust_panic_with_hook(
     message: Option<&fmt::Arguments<'_>>,
     location: &Location<'_>,
 ) -> ! {
-    let panics = update_panic_count(1);
+    let panics = panic_count::increase();
 
     // If this is the third nested call (e.g., panics == 2, this is 0-indexed),
     // the panic hook probably triggered the last panic, otherwise the
@@ -495,7 +542,7 @@ fn rust_panic_with_hook(
 /// This is the entry point for `resume_unwind`.
 /// It just forwards the payload to the panic runtime.
 pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
-    update_panic_count(1);
+    panic_count::increase();
 
     struct RewrapBox(Box<dyn Any + Send>);
 
