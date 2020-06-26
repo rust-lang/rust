@@ -213,7 +213,7 @@ impl GlobalStateSnapshot {
     pub(crate) fn anchored_path(&self, file_id: FileId, path: &str) -> Url {
         let mut base = self.vfs.read().0.file_path(file_id);
         base.pop();
-        let path = base.join(path);
+        let path = base.join(path).unwrap();
         let path = path.as_path().unwrap();
         url_from_abs_path(&path)
     }

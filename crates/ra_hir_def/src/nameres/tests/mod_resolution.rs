@@ -335,6 +335,22 @@ fn module_resolution_relative_path_2() {
 }
 
 #[test]
+fn module_resolution_relative_path_outside_root() {
+    let map = def_map(
+        r###"
+        //- /main.rs
+
+        #[path="../../../../../outside.rs"]
+        mod foo;
+        "###,
+    );
+
+    assert_snapshot!(map, @r###"
+        ⋮crate
+    "###);
+}
+
+#[test]
 fn module_resolution_explicit_path_mod_rs_2() {
     let map = def_map(
         r###"
