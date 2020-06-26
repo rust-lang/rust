@@ -116,6 +116,7 @@ mod handlers {
     mod change_visibility;
     mod early_return;
     mod extract_struct_from_enum_variant;
+    mod extract_variable;
     mod fill_match_arms;
     mod fix_visibility;
     mod flip_binexpr;
@@ -123,7 +124,6 @@ mod handlers {
     mod flip_trait_bound;
     mod inline_local_variable;
     mod introduce_named_lifetime;
-    mod introduce_variable;
     mod invert_if;
     mod merge_imports;
     mod merge_match_arms;
@@ -157,6 +157,7 @@ mod handlers {
             change_visibility::change_visibility,
             early_return::convert_to_guarded_return,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
+            extract_variable::extract_variable,
             fill_match_arms::fill_match_arms,
             fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
@@ -164,7 +165,6 @@ mod handlers {
             flip_trait_bound::flip_trait_bound,
             inline_local_variable::inline_local_variable,
             introduce_named_lifetime::introduce_named_lifetime,
-            introduce_variable::introduce_variable,
             invert_if::invert_if,
             merge_imports::merge_imports,
             merge_match_arms::merge_match_arms,

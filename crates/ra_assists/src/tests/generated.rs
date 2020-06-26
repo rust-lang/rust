@@ -353,6 +353,24 @@ enum A { One(One) }
 }
 
 #[test]
+fn doctest_extract_variable() {
+    check_doc_test(
+        "extract_variable",
+        r#####"
+fn main() {
+    <|>(1 + 2)<|> * 4;
+}
+"#####,
+        r#####"
+fn main() {
+    let $0var_name = (1 + 2);
+    var_name * 4;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_fill_match_arms() {
     check_doc_test(
         "fill_match_arms",
@@ -486,24 +504,6 @@ impl<'a> Cursor<'a> {
             Cursor::Replace(node) | Cursor::Before(node) => node,
         }
     }
-}
-"#####,
-    )
-}
-
-#[test]
-fn doctest_introduce_variable() {
-    check_doc_test(
-        "introduce_variable",
-        r#####"
-fn main() {
-    <|>(1 + 2)<|> * 4;
-}
-"#####,
-        r#####"
-fn main() {
-    let $0var_name = (1 + 2);
-    var_name * 4;
 }
 "#####,
     )
