@@ -156,6 +156,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         format!("variable moved due to use{}", move_spans.describe()),
                     );
                 }
+                if let UseSpans::PatUse(span) = move_spans {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_lo(),
+                        &format!(
+                            "borrow this field in the pattern to avoid moving {}",
+                            self.describe_place(moved_place.as_ref())
+                                .map(|n| format!("`{}`", n))
+                                .unwrap_or_else(|| "the value".to_string())
+                        ),
+                        "ref ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+
                 if Some(DesugaringKind::ForLoop) == move_span.desugaring_kind() {
                     let sess = self.infcx.tcx.sess;
                     if let Ok(snippet) = sess.source_map().span_to_snippet(move_span) {
@@ -198,11 +212,28 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 _ => true,
             };
 
-            if needs_note {
-                let mpi = self.move_data.moves[move_out_indices[0]].path;
-                let place = &self.move_data.move_paths[mpi].place;
+            let mpi = self.move_data.moves[move_out_indices[0]].path;
+            let place = &self.move_data.move_paths[mpi].place;
+            let ty = place.ty(self.body, self.infcx.tcx).ty;
 
-                let ty = place.ty(self.body, self.infcx.tcx).ty;
+            if is_loop_move {
+                if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind {
+                    // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
+                    err.span_suggestion_verbose(
+                        span.shrink_to_lo(),
+                        &format!(
+                            "consider creating a fresh reborrow of {} here",
+                            self.describe_place(moved_place)
+                                .map(|n| format!("`{}`", n))
+                                .unwrap_or_else(|| "the mutable reference".to_string()),
+                        ),
+                        "&mut *".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+
+            if needs_note {
                 let opt_name =
                     self.describe_place_with_options(place.as_ref(), IncludingDowncast(true));
                 let note_msg = match opt_name {
