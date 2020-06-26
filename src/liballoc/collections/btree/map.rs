@@ -1396,6 +1396,14 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
     fn last(mut self) -> Option<(&'a K, &'a V)> {
         self.next_back()
     }
+
+    fn min(mut self) -> Option<(&'a K, &'a V)> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<(&'a K, &'a V)> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1456,6 +1464,14 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
     }
 
     fn last(mut self) -> Option<(&'a K, &'a mut V)> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
         self.next_back()
     }
 }
@@ -1593,6 +1609,14 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     }
 
     fn last(mut self) -> Option<&'a K> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<&'a K> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<&'a K> {
         self.next_back()
     }
 }
@@ -1768,6 +1792,14 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
     fn last(mut self) -> Option<(&'a K, &'a V)> {
         self.next_back()
     }
+
+    fn min(mut self) -> Option<(&'a K, &'a V)> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<(&'a K, &'a V)> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
@@ -1851,6 +1883,14 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
     }
 
     fn last(mut self) -> Option<(&'a K, &'a mut V)> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
         self.next_back()
     }
 }
