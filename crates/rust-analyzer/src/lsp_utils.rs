@@ -2,7 +2,6 @@
 use std::{error::Error, ops::Range};
 
 use lsp_server::Notification;
-use lsp_types::request::Request;
 use ra_db::Canceled;
 use ra_ide::LineIndex;
 use serde::Serialize;
@@ -43,9 +42,9 @@ impl Progress {
 impl GlobalState {
     pub(crate) fn show_message(&mut self, typ: lsp_types::MessageType, message: String) {
         let message = message.into();
-        let params = lsp_types::ShowMessageParams { typ, message };
-        let not = notification_new::<lsp_types::notification::ShowMessage>(params);
-        self.send(not.into());
+        self.send_notification::<lsp_types::notification::ShowMessage>(
+            lsp_types::ShowMessageParams { typ, message },
+        )
     }
 
     pub(crate) fn report_progress(
@@ -61,12 +60,10 @@ impl GlobalState {
         let token = lsp_types::ProgressToken::String(format!("rustAnalyzer/{}", title));
         let work_done_progress = match state {
             Progress::Begin => {
-                let work_done_progress_create = self.req_queue.outgoing.register(
-                    lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
+                self.send_request::<lsp_types::request::WorkDoneProgressCreate>(
                     lsp_types::WorkDoneProgressCreateParams { token: token.clone() },
                     |_, _| (),
                 );
-                self.send(work_done_progress_create.into());
 
                 lsp_types::WorkDoneProgress::Begin(lsp_types::WorkDoneProgressBegin {
                     title: title.into(),
@@ -86,12 +83,10 @@ impl GlobalState {
                 lsp_types::WorkDoneProgress::End(lsp_types::WorkDoneProgressEnd { message })
             }
         };
-        let notification =
-            notification_new::<lsp_types::notification::Progress>(lsp_types::ProgressParams {
-                token,
-                value: lsp_types::ProgressParamsValue::WorkDone(work_done_progress),
-            });
-        self.send(notification.into());
+        self.send_notification::<lsp_types::notification::Progress>(lsp_types::ProgressParams {
+            token,
+            value: lsp_types::ProgressParamsValue::WorkDone(work_done_progress),
+        });
     }
 }
 
