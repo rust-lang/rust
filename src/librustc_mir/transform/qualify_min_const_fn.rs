@@ -315,7 +315,7 @@ fn check_place(
 }
 
 /// Returns `true` if the given feature gate is allowed within the function with the given `DefId`.
-fn feature_allowed(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: Symbol) -> bool {
+pub fn feature_allowed(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: Symbol) -> bool {
     // All features require that the corresponding gate be enabled,
     // even if the function has `#[allow_internal_unstable(the_gate)]`.
     if !tcx.features().enabled(feature_gate) {
@@ -377,8 +377,16 @@ fn check_terminator(
             fn_span: _,
         } => {
             let fn_ty = func.ty(body, tcx);
-            if let ty::FnDef(def_id, _) = fn_ty.kind {
-                if !crate::const_eval::is_min_const_fn(tcx, def_id) {
+            if let ty::FnDef(fn_def_id, _) = fn_ty.kind {
+                // Allow unstable const if we opt in by using #[allow_internal_unstable]
+                // on function or macro declaration.
+                if !crate::const_eval::is_min_const_fn(tcx, fn_def_id)
+                    && !crate::const_eval::is_unstable_const_fn(tcx, fn_def_id)
+                        .map(|feature| {
+                            span.allows_unstable(feature) || feature_allowed(tcx, def_id, feature)
+                        })
+                        .unwrap_or(false)
+                {
                     return Err((
                         span,
                         format!(
@@ -390,10 +398,10 @@ fn check_terminator(
                     ));
                 }
 
-                check_operand(tcx, func, span, def_id, body)?;
+                check_operand(tcx, func, span, fn_def_id, body)?;
 
                 for arg in args {
-                    check_operand(tcx, arg, span, def_id, body)?;
+                    check_operand(tcx, arg, span, fn_def_id, body)?;
                 }
                 Ok(())
             } else {
