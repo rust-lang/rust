@@ -913,10 +913,28 @@ mod match_keyword {}
 //
 /// Organize code into [modules].
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// Use `mod` to create new [modules] to encapsulate code, including other
+/// modules:
 ///
+/// ```
+/// mod foo {
+///     mod bar {
+///         type MyType = (u8, u8);
+///         fn baz() {}
+///     }
+/// }
+/// ```
+///
+/// Like [`struct`]s and [`enum`]s, a module and its content are private by
+/// default, unaccessible to code outside of the module.
+///
+/// To learn more about allowing access, see the documentation for the [`pub`]
+/// keyword.
+///
+/// [`enum`]: keyword.enum.html
+/// [`pub`]: keyword.pub.html
+/// [`struct`]: keyword.struct.html
 /// [modules]: ../reference/items/modules.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod mod_keyword {}
 
 #[doc(keyword = "move")]
@@ -965,11 +983,61 @@ mod move_keyword {}
 
 #[doc(keyword = "mut")]
 //
-/// A mutable binding, reference, or pointer.
+/// A mutable variable, reference, or pointer.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `mut` can be used in several situations. The first is mutable variables,
+/// which can be used anywhere you can bind a value to a variable name. Some
+/// examples:
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// ```rust
+/// // A mutable variable in the parameter list of a function.
+/// fn foo(mut x: u8, y: u8) -> u8 {
+///     x += y;
+///     x
+/// }
+///
+/// // Modifying a mutable variable.
+/// # #[allow(unused_assignments)]
+/// let mut a = 5;
+/// a = 6;
+///
+/// assert_eq!(foo(3, 4), 7);
+/// assert_eq!(a, 6);
+/// ```
+///
+/// The second is mutable references. They can be created from `mut` variables
+/// and must be unique: no other variables can have a mutable reference, nor a
+/// shared reference.
+///
+/// ```rust
+/// // Taking a mutable reference.
+/// fn push_two(v: &mut Vec<u8>) {
+///     v.push(2);
+/// }
+///
+/// // A mutable reference cannot be taken to a non-mutable variable.
+/// let mut v = vec![0, 1];
+/// // Passing a mutable reference.
+/// push_two(&mut v);
+///
+/// assert_eq!(v, vec![0, 1, 2]);
+/// ```
+///
+/// ```rust,compile_fail,E0502
+/// let mut v = vec![0, 1];
+/// let mut_ref_v = &mut v;
+/// ##[allow(unused)]
+/// let ref_v = &v;
+/// mut_ref_v.push(2);
+/// ```
+///
+/// Mutable raw pointers work much like mutable references, with the added
+/// possibility of not pointing to a valid object. The syntax is `*mut Type`.
+///
+/// More information on mutable references and pointers can be found in```
+/// [Reference].
+///
+/// [Reference]: ../reference/types/pointer.html#mutable-references-mut
 mod mut_keyword {}
 
 #[doc(keyword = "pub")]
@@ -1000,9 +1068,55 @@ mod ref_keyword {}
 //
 /// Return a value from a function.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// A `return` marks the end of an execution path in a function:
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// ```
+/// fn foo() -> i32 {
+///     return 3;
+/// }
+/// assert_eq!(foo(), 3);
+/// ```
+///
+/// `return` is not needed when the returned value is the last expression in the
+/// function. In this case the `;` is omitted:
+///
+/// ```
+/// fn foo() -> i32 {
+///     3
+/// }
+/// assert_eq!(foo(), 3);
+/// ```
+///
+/// `return` returns from the function immediately (an "early return"):
+///
+/// ```no_run
+/// use std::fs::File;
+/// use std::io::{Error, ErrorKind, Read, Result};
+///
+/// fn main() -> Result<()> {
+///     let mut file = match File::open("foo.txt") {
+///         Ok(f) => f,
+///         Err(e) => return Err(e),
+///     };
+///
+///     let mut contents = String::new();
+///     let size = match file.read_to_string(&mut contents) {
+///         Ok(s) => s,
+///         Err(e) => return Err(e),
+///     };
+///
+///     if contents.contains("impossible!") {
+///         return Err(Error::new(ErrorKind::Other, "oh no!"));
+///     }
+///
+///     if size > 9000 {
+///         return Err(Error::new(ErrorKind::Other, "over 9000!"));
+///     }
+///
+///     assert_eq!(contents, "Hello, world!");
+///     Ok(())
+/// }
+/// ```
 mod return_keyword {}
 
 #[doc(keyword = "self")]

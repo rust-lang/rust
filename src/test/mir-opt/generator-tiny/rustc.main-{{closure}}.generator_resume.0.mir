@@ -1,5 +1,18 @@
 // MIR for `main::{{closure}}#0` 0 generator_resume
-// generator_layout = GeneratorLayout { field_tys: [HasDrop], variant_fields: [[], [], [], [_0]], storage_conflicts: BitMatrix { num_rows: 1, num_columns: 1, words: [1], marker: PhantomData } }
+/* generator_layout = GeneratorLayout {
+    field_tys: {
+        _0: HasDrop,
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_0],
+    },
+    storage_conflicts: BitMatrix(1x1) {
+        (_0, _0),
+    },
+} */
 
 fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6 {u8, HasDrop, ()}]>, _2: u8) -> std::ops::GeneratorState<(), ()> {
     debug _x => _10;                     // in scope 0 at $DIR/generator-tiny.rs:19:17: 19:19

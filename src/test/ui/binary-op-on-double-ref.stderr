@@ -1,12 +1,15 @@
 error[E0369]: cannot mod `&&{integer}` by `{integer}`
-  --> $DIR/binary-op-on-double-ref.rs:4:11
+  --> $DIR/binary-op-on-double-ref.rs:5:11
    |
 LL |         x % 2 == 0
    |         - ^ - {integer}
    |         |
    |         &&{integer}
    |
-   = help: `%` can be used on '{integer}', you can dereference `x`: `*x`
+help: `%` can be used on `{integer}`, you can dereference `x`
+   |
+LL |         *x % 2 == 0
+   |         ^
 
 error: aborting due to previous error
 

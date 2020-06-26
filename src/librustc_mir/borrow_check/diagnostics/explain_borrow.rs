@@ -509,7 +509,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // Used in a closure.
                 (LaterUseKind::ClosureCapture, var_span)
             }
-            UseSpans::OtherUse(span) => {
+            UseSpans::PatUse(span) | UseSpans::OtherUse(span) => {
                 let block = &self.body.basic_blocks()[location.block];
 
                 let kind = if let Some(&Statement {

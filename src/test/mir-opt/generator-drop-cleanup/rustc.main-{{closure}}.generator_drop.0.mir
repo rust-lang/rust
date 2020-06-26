@@ -1,5 +1,18 @@
 // MIR for `main::{{closure}}#0` 0 generator_drop
-// generator_layout = GeneratorLayout { field_tys: [std::string::String], variant_fields: [[], [], [], [_0]], storage_conflicts: BitMatrix { num_rows: 1, num_columns: 1, words: [1], marker: PhantomData } }
+/* generator_layout = GeneratorLayout {
+    field_tys: {
+        _0: std::string::String,
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_0],
+    },
+    storage_conflicts: BitMatrix(1x1) {
+        (_0, _0),
+    },
+} */
 
 fn main::{{closure}}#0(_1: *mut [generator@$DIR/generator-drop-cleanup.rs:10:15: 13:6 {std::string::String, ()}]) -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
