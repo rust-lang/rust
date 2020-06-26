@@ -2152,3 +2152,48 @@ fn test() {
     "###
     );
 }
+
+#[test]
+fn generic_default_depending_on_other_type_arg() {
+    assert_snapshot!(
+        infer(r#"
+struct Thing<T = u128, F = fn() -> T> { t: T }
+
+fn test(t1: Thing<u32>, t2: Thing) {
+    t1;
+    t2;
+    Thing::<_> { t: 1u32 };
+}
+"#),
+        // FIXME: the {unknown} is a bug
+        @r###"
+    56..58 't1': Thing<u32, fn() -> u32>
+    72..74 't2': Thing<u128, fn() -> u128>
+    83..130 '{     ...2 }; }': ()
+    89..91 't1': Thing<u32, fn() -> u32>
+    97..99 't2': Thing<u128, fn() -> u128>
+    105..127 'Thing:...1u32 }': Thing<u32, fn() -> {unknown}>
+    121..125 '1u32': u32
+    "###
+    );
+}
+
+#[test]
+fn generic_default_depending_on_other_type_arg_forward() {
+    assert_snapshot!(
+        infer(r#"
+struct Thing<F = fn() -> T, T = u128> { t: T }
+
+fn test(t1: Thing) {
+    t1;
+}
+"#),
+        // the {unknown} here is intentional, as defaults are not allowed to
+        // refer to type parameters coming later
+        @r###"
+    56..58 't1': Thing<fn() -> {unknown}, u128>
+    67..78 '{     t1; }': ()
+    73..75 't1': Thing<fn() -> {unknown}, u128>
+    "###
+    );
+}

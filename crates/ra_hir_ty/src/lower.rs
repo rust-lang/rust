@@ -578,11 +578,13 @@ fn substs_from_path_segment(
     // (i.e. defaults aren't used).
     if !infer_args || had_explicit_args {
         if let Some(def_generic) = def_generic {
-            let default_substs = ctx.db.generic_defaults(def_generic);
-            assert_eq!(total_len, default_substs.len());
+            let defaults = ctx.db.generic_defaults(def_generic);
+            assert_eq!(total_len, defaults.len());
 
-            for default_ty in default_substs.iter().skip(substs.len()) {
-                substs.push(default_ty.clone());
+            for default_ty in defaults.iter().skip(substs.len()) {
+                // each default can depend on the previous parameters
+                let substs_so_far = Substs(substs.clone().into());
+                substs.push(default_ty.clone().subst(&substs_so_far));
             }
         }
     }
@@ -945,17 +947,42 @@ pub(crate) fn generic_predicates_query(
 }
 
 /// Resolve the default type params from generics
-pub(crate) fn generic_defaults_query(db: &dyn HirDatabase, def: GenericDefId) -> Substs {
+pub(crate) fn generic_defaults_query(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+) -> Arc<[Binders<Ty>]> {
     let resolver = def.resolver(db.upcast());
-    let ctx = TyLoweringContext::new(db, &resolver);
+    let ctx =
+        TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let generic_params = generics(db.upcast(), def);
 
     let defaults = generic_params
         .iter()
-        .map(|(_idx, p)| p.default.as_ref().map_or(Ty::Unknown, |t| Ty::from_hir(&ctx, t)))
+        .enumerate()
+        .map(|(idx, (_, p))| {
+            let mut ty = p.default.as_ref().map_or(Ty::Unknown, |t| Ty::from_hir(&ctx, t));
+
+            // Each default can only refer to previous parameters.
+            ty.walk_mut_binders(
+                &mut |ty, binders| match ty {
+                    Ty::Bound(BoundVar { debruijn, index }) if *debruijn == binders => {
+                        if *index >= idx {
+                            // type variable default referring to parameter coming
+                            // after it. This is forbidden (FIXME: report
+                            // diagnostic)
+                            *ty = Ty::Unknown;
+                        }
+                    }
+                    _ => {}
+                },
+                DebruijnIndex::INNERMOST,
+            );
+
+            Binders::new(idx, ty)
+        })
         .collect();
 
-    Substs(defaults)
+    defaults
 }
 
 fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
