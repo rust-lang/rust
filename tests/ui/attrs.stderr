@@ -1,5 +1,5 @@
 error: you have declared `#[inline(always)]` on `test_attr_lint`. This is usually a bad idea
-  --> $DIR/attrs.rs:3:1
+  --> $DIR/attrs.rs:9:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | #[inline(always)]
    = note: `-D clippy::inline-always` implied by `-D warnings`
 
 error: the since field must contain a semver-compliant version
-  --> $DIR/attrs.rs:23:14
+  --> $DIR/attrs.rs:29:14
    |
 LL | #[deprecated(since = "forever")]
    |              ^^^^^^^^^^^^^^^^^
@@ -15,10 +15,35 @@ LL | #[deprecated(since = "forever")]
    = note: `-D clippy::deprecated-semver` implied by `-D warnings`
 
 error: the since field must contain a semver-compliant version
-  --> $DIR/attrs.rs:26:14
+  --> $DIR/attrs.rs:32:14
    |
 LL | #[deprecated(since = "1")]
    |              ^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: restriction lints are not meant to be all enabled
+  --> $DIR/attrs.rs:4:9
+   |
+LL | #![warn(clippy::restriction)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::blanket_clippy_restriction_lints)]` on by default
+   = help: try enabling only the lints you really need
+
+error: restriction lints are not meant to be all enabled
+  --> $DIR/attrs.rs:5:9
+   |
+LL | #![deny(clippy::restriction)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try enabling only the lints you really need
+
+error: restriction lints are not meant to be all enabled
+  --> $DIR/attrs.rs:6:11
+   |
+LL | #![forbid(clippy::restriction)]
+   |           ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try enabling only the lints you really need
+
+error: aborting due to 6 previous errors
 

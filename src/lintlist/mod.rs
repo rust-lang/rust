@@ -81,6 +81,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "blacklisted_name",
     },
     Lint {
+        name: "blanket_clippy_restriction_lints",
+        group: "correctness",
+        desc: "enabling the complete restriction group",
+        deprecation: None,
+        module: "attrs",
+    },
+    Lint {
         name: "blocks_in_if_conditions",
         group: "style",
         desc: "useless or complex blocks that can be eliminated in conditions",
