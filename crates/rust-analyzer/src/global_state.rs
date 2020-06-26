@@ -13,7 +13,6 @@ use ra_db::{CrateId, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
 use stdx::format_to;
-use vfs::loader::Handle as _;
 
 use crate::{
     config::Config,
@@ -90,8 +89,8 @@ impl GlobalState {
     pub(crate) fn new(sender: Sender<lsp_server::Message>, config: Config) -> GlobalState {
         let loader = {
             let (sender, receiver) = unbounded::<vfs::loader::Message>();
-            let handle =
-                vfs_notify::NotifyHandle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+            let handle: vfs_notify::NotifyHandle =
+                vfs::loader::Handle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
             let handle = Box::new(handle) as Box<dyn vfs::loader::Handle>;
             Handle { handle, receiver }
         };
