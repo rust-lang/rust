@@ -3,7 +3,6 @@
 // run-pass
 
 #![feature(const_panic)]
-#![feature(const_loop)]
 #![feature(const_fn)]
 
 const X: u32 = 4;
