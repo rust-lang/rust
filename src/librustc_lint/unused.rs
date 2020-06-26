@@ -55,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             hir::ExprKind::Call(ref callee, _) => {
                 match callee.kind {
                     hir::ExprKind::Path(ref qpath) => {
-                        match cx.tables().qpath_res(qpath, callee.hir_id) {
+                        match cx.qpath_res(qpath, callee.hir_id) {
                             Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => Some(def_id),
                             // `Res::Local` if it was a closure, for which we
                             // do not currently support must-use linting

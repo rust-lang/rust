@@ -111,7 +111,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
             if let ExprKind::Call(ref fun, ref args) = expr.kind;
             if let ExprKind::Path(ref qpath) = fun.kind;
             if args.len() == 1;
-            if let Some(def_id) = cx.tables().qpath_res(qpath, fun.hir_id).opt_def_id();
+            if let Some(def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
             then {
                 if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
                    match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {

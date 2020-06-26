@@ -121,7 +121,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessConversion {
                 if_chain! {
                     if args.len() == 1;
                     if let ExprKind::Path(ref qpath) = path.kind;
-                    if let Some(def_id) = cx.tables().qpath_res(qpath, path.hir_id).opt_def_id();
+                    if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
                     let a = cx.tables().expr_ty(e);
                     let b = cx.tables().expr_ty(&args[0]);
 
