@@ -4,7 +4,6 @@ use std::{error::Error, ops::Range};
 use lsp_server::Notification;
 use ra_db::Canceled;
 use ra_ide::LineIndex;
-use serde::Serialize;
 
 use crate::{from_proto, global_state::GlobalState};
 
@@ -16,14 +15,6 @@ pub(crate) fn notification_is<N: lsp_types::notification::Notification>(
     notification: &Notification,
 ) -> bool {
     notification.method == N::METHOD
-}
-
-pub(crate) fn notification_new<N>(params: N::Params) -> Notification
-where
-    N: lsp_types::notification::Notification,
-    N::Params: Serialize,
-{
-    Notification::new(N::METHOD.to_string(), params)
 }
 
 #[derive(Debug, Eq, PartialEq)]
