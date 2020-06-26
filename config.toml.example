@@ -118,18 +118,24 @@
 # nightlies are already produced for. The current platform must be able to run
 # binaries of this build triple and the nightly will be used to bootstrap the
 # first compiler.
-#build = "x86_64-unknown-linux-gnu"    # defaults to your host platform
+#
+# Defaults to host platform
+#build = "x86_64-unknown-linux-gnu"
 
 # In addition to the build triple, other triples to produce full compiler
 # toolchains for. Each of these triples will be bootstrapped from the build
 # triple and then will continue to bootstrap themselves. This platform must
 # currently be able to run all of the triples provided here.
-#host = ["x86_64-unknown-linux-gnu"]   # defaults to just the build triple
+#
+# Defaults to just the build triple
+#host = ["x86_64-unknown-linux-gnu"]
 
 # In addition to all host triples, other triples to produce the standard library
 # for. Each host triple will be used to produce a copy of the standard library
 # for each target triple.
-#target = ["x86_64-unknown-linux-gnu"] # defaults to just the build triple
+#
+# Defaults to just the build triple
+#target = ["x86_64-unknown-linux-gnu"]
 
 # Use this directory to store build artifacts.
 # You can use "$ROOT" to indicate the root of the git repository.
@@ -174,7 +180,7 @@
 # Python interpreter to use for various tasks throughout the build, notably
 # rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
 #
-# Defaults to the Python interpreter used to execute x.py.
+# Defaults to the Python interpreter used to execute x.py
 #python = "python"
 
 # Force Cargo to check that Cargo.lock describes the precise dependency
@@ -313,11 +319,15 @@
 
 # Whether or not debug assertions are enabled for the compiler and standard
 # library.
-#debug-assertions = debug
+#
+# Defaults to rust.debug value
+#debug-assertions = false
 
 # Whether or not debug assertions are enabled for the standard library.
 # Overrides the `debug-assertions` option, if defined.
-#debug-assertions-std = debug-assertions
+#
+# Defaults to rust.debug-assertions value
+#debug-assertions-std = false
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
@@ -326,16 +336,24 @@
 # Can be overridden for specific subsets of Rust code (rustc, std or tools).
 # Debuginfo for tests run with compiletest is not controlled by this option
 # and needs to be enabled separately with `debuginfo-level-tests`.
-#debuginfo-level = if debug { 2 } else { 0 }
+#
+# Defaults to 2 if debug is true
+#debuginfo-level = 0
 
 # Debuginfo level for the compiler.
-#debuginfo-level-rustc = debuginfo-level
+#
+# Defaults to rust.debuginfo-level value
+#debuginfo-level-rustc = 0
 
 # Debuginfo level for the standard library.
-#debuginfo-level-std = debuginfo-level
+#
+# Defaults to rust.debuginfo-level value
+#debuginfo-level-std = 0
 
 # Debuginfo level for the tools.
-#debuginfo-level-tools = debuginfo-level
+#
+# Defaults to rust.debuginfo-level value
+#debuginfo-level-tools = 0
 
 # Debuginfo level for the test suites run with compiletest.
 # FIXME(#61117): Some tests fail when this option is enabled.
