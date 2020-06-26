@@ -253,7 +253,7 @@ const RISCV_WHITELIST: &[(&str, Option<Symbol>)] = &[
 const WASM_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("simd128", Some(sym::wasm_target_feature)),
     ("atomics", Some(sym::wasm_target_feature)),
-    ("nontrapping-fptoint", Some(sym::wasm_target_feature)), // TODO: Maybe None?
+    ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
 ];
 
 /// When rustdoc is running, provide a list of all known features so that all their respective

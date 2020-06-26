@@ -18,6 +18,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::sym;
 use rustc_target::abi::{self, Align, Size};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
@@ -478,7 +479,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let llptr = self.struct_gep(place.llval, i as u64);
                 let load = self.load(llptr, align);
                 scalar_load_metadata(self, load, scalar);
-                if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
+                if scalar.is_bool() {
+                    self.trunc(load, self.type_i1())
+                } else {
+                    load
+                }
             };
 
             OperandValue::Pair(
@@ -654,10 +659,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn fptoui_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
         if self.sess().target.target.arch == "wasm32"
-            && self
-                .sess()
-                .target_features
-                .contains(&rustc_span::symbol::Symbol::intern("nontrapping-fptoint"))
+            && self.sess().target_features.contains(&sym::wasm_nontrapping_fptoint)
         {
             let src_ty = self.cx.val_ty(val);
             let float_width = self.cx.float_width(src_ty);
@@ -679,10 +681,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn fptosi_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
         if self.sess().target.target.arch == "wasm32"
-            && self
-                .sess()
-                .target_features
-                .contains(&rustc_span::symbol::Symbol::intern("nontrapping-fptoint"))
+            && self.sess().target_features.contains(&sym::wasm_nontrapping_fptoint)
         {
             let src_ty = self.cx.val_ty(val);
             let float_width = self.cx.float_width(src_ty);

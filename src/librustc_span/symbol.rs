@@ -844,6 +844,7 @@ symbols! {
         warn,
         wasm_import_module,
         wasm_target_feature,
+        wasm_nontrapping_fptoint: "nontrapping-fptoint",
         while_let,
         windows,
         windows_subsystem,
