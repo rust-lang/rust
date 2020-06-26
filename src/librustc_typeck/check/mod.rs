@@ -1126,7 +1126,7 @@ fn typeck_tables_of_with_fallback<'tcx>(
 
     // Consistency check our TypeckTables instance can hold all ItemLocalIds
     // it will need to hold.
-    assert_eq!(tables.hir_owner, Some(id.owner));
+    assert_eq!(tables.hir_owner, id.owner);
 
     tables
 }

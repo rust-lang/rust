@@ -1039,22 +1039,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut suggested = false;
             if let (Some(ref param), Some(ref table)) = (param_type, self.in_progress_tables) {
                 let table_owner = table.borrow().hir_owner;
-                if let Some(table_owner) = table_owner {
-                    let generics = self.tcx.generics_of(table_owner.to_def_id());
-                    let type_param = generics.type_param(param, self.tcx);
-                    let hir = &self.tcx.hir();
-                    if let Some(def_id) = type_param.def_id.as_local() {
-                        let id = hir.as_local_hir_id(def_id);
-                        // Get the `hir::Param` to verify whether it already has any bounds.
-                        // We do this to avoid suggesting code that ends up as `T: FooBar`,
-                        // instead we suggest `T: Foo + Bar` in that case.
-                        match hir.get(id) {
-                            Node::GenericParam(ref param) => {
-                                let mut impl_trait = false;
-                                let has_bounds = if let hir::GenericParamKind::Type {
-                                    synthetic: Some(_),
-                                    ..
-                                } = &param.kind
+                let generics = self.tcx.generics_of(table_owner.to_def_id());
+                let type_param = generics.type_param(param, self.tcx);
+                let hir = &self.tcx.hir();
+                if let Some(def_id) = type_param.def_id.as_local() {
+                    let id = hir.as_local_hir_id(def_id);
+                    // Get the `hir::Param` to verify whether it already has any bounds.
+                    // We do this to avoid suggesting code that ends up as `T: FooBar`,
+                    // instead we suggest `T: Foo + Bar` in that case.
+                    match hir.get(id) {
+                        Node::GenericParam(ref param) => {
+                            let mut impl_trait = false;
+                            let has_bounds =
+                                if let hir::GenericParamKind::Type { synthetic: Some(_), .. } =
+                                    &param.kind
                                 {
                                     // We've found `fn foo(x: impl Trait)` instead of
                                     // `fn foo<T>(x: T)`. We want to suggest the correct
@@ -1065,64 +1063,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     param.bounds.get(0)
                                 };
-                                let sp = hir.span(id);
-                                let sp = if let Some(first_bound) = has_bounds {
-                                    // `sp` only covers `T`, change it so that it covers
-                                    // `T:` when appropriate
-                                    sp.until(first_bound.span())
-                                } else {
-                                    sp
-                                };
-                                let trait_def_ids: FxHashSet<DefId> = param
-                                    .bounds
-                                    .iter()
-                                    .filter_map(|bound| Some(bound.trait_ref()?.trait_def_id()?))
-                                    .collect();
-                                if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
-                                    err.span_suggestions(
-                                        sp,
-                                        &message(format!(
-                                            "restrict type parameter `{}` with",
-                                            param.name.ident(),
-                                        )),
-                                        candidates.iter().map(|t| {
-                                            format!(
-                                                "{}{} {}{}",
-                                                param.name.ident(),
-                                                if impl_trait { " +" } else { ":" },
-                                                self.tcx.def_path_str(t.def_id),
-                                                if has_bounds.is_some() { " + " } else { "" },
-                                            )
-                                        }),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                }
-                                suggested = true;
-                            }
-                            Node::Item(hir::Item {
-                                kind: hir::ItemKind::Trait(.., bounds, _),
-                                ident,
-                                ..
-                            }) => {
-                                let (sp, sep, article) = if bounds.is_empty() {
-                                    (ident.span.shrink_to_hi(), ":", "a")
-                                } else {
-                                    (bounds.last().unwrap().span().shrink_to_hi(), " +", "another")
-                                };
+                            let sp = hir.span(id);
+                            let sp = if let Some(first_bound) = has_bounds {
+                                // `sp` only covers `T`, change it so that it covers
+                                // `T:` when appropriate
+                                sp.until(first_bound.span())
+                            } else {
+                                sp
+                            };
+                            let trait_def_ids: FxHashSet<DefId> = param
+                                .bounds
+                                .iter()
+                                .filter_map(|bound| Some(bound.trait_ref()?.trait_def_id()?))
+                                .collect();
+                            if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
                                 err.span_suggestions(
                                     sp,
-                                    &message(format!("add {} supertrait for", article)),
+                                    &message(format!(
+                                        "restrict type parameter `{}` with",
+                                        param.name.ident(),
+                                    )),
                                     candidates.iter().map(|t| {
-                                        format!("{} {}", sep, self.tcx.def_path_str(t.def_id),)
+                                        format!(
+                                            "{}{} {}{}",
+                                            param.name.ident(),
+                                            if impl_trait { " +" } else { ":" },
+                                            self.tcx.def_path_str(t.def_id),
+                                            if has_bounds.is_some() { " + " } else { "" },
+                                        )
                                     }),
                                     Applicability::MaybeIncorrect,
                                 );
-                                suggested = true;
                             }
-                            _ => {}
+                            suggested = true;
                         }
+                        Node::Item(hir::Item {
+                            kind: hir::ItemKind::Trait(.., bounds, _),
+                            ident,
+                            ..
+                        }) => {
+                            let (sp, sep, article) = if bounds.is_empty() {
+                                (ident.span.shrink_to_hi(), ":", "a")
+                            } else {
+                                (bounds.last().unwrap().span().shrink_to_hi(), " +", "another")
+                            };
+                            err.span_suggestions(
+                                sp,
+                                &message(format!("add {} supertrait for", article)),
+                                candidates.iter().map(|t| {
+                                    format!("{} {}", sep, self.tcx.def_path_str(t.def_id),)
+                                }),
+                                Applicability::MaybeIncorrect,
+                            );
+                            suggested = true;
+                        }
+                        _ => {}
                     }
-                };
+                }
             }
 
             if !suggested {
