@@ -12,7 +12,6 @@ use parking_lot::RwLock;
 use ra_db::{CrateId, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
-use stdx::format_to;
 
 use crate::{
     config::Config,
@@ -82,7 +81,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) check_fixes: CheckFixes,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
-    workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
 }
 
 impl GlobalState {
@@ -232,26 +231,6 @@ impl GlobalStateSnapshot {
             }
             ProjectWorkspace::Json { .. } => None,
         })
-    }
-
-    pub(crate) fn status(&self) -> String {
-        let mut buf = String::new();
-        if self.workspaces.is_empty() {
-            buf.push_str("no workspaces\n")
-        } else {
-            buf.push_str("workspaces:\n");
-            for w in self.workspaces.iter() {
-                format_to!(buf, "{} packages loaded\n", w.n_packages());
-            }
-        }
-        buf.push_str("\nanalysis:\n");
-        buf.push_str(
-            &self
-                .analysis
-                .status()
-                .unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
-        );
-        buf
     }
 }
 

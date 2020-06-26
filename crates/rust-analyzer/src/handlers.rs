@@ -39,7 +39,20 @@ use crate::{
 
 pub(crate) fn handle_analyzer_status(snap: GlobalStateSnapshot, _: ()) -> Result<String> {
     let _p = profile("handle_analyzer_status");
-    let mut buf = snap.status();
+
+    let mut buf = String::new();
+    if snap.workspaces.is_empty() {
+        buf.push_str("no workspaces\n")
+    } else {
+        buf.push_str("workspaces:\n");
+        for w in snap.workspaces.iter() {
+            format_to!(buf, "{} packages loaded\n", w.n_packages());
+        }
+    }
+    buf.push_str("\nanalysis:\n");
+    buf.push_str(
+        &snap.analysis.status().unwrap_or_else(|_| "Analysis retrieval was cancelled".to_owned()),
+    );
     format_to!(buf, "\n\nrequests:\n");
     let requests = snap.latest_requests.read();
     for (is_last, r) in requests.iter() {
