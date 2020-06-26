@@ -41,7 +41,7 @@ impl<'a> FileSearch<'a> {
         make_target_lib_path(self.sysroot, self.triple)
     }
 
-    pub fn get_selfcontained_lib_path(&self) -> PathBuf {
+    pub fn get_self_contained_lib_path(&self) -> PathBuf {
         self.get_lib_path().join("self-contained")
     }
 
@@ -92,13 +92,13 @@ impl<'a> FileSearch<'a> {
     }
 
     // Returns a list of directories where target-specific tool binaries are located.
-    pub fn get_tools_search_paths(&self) -> Vec<PathBuf> {
+    pub fn get_tools_search_paths(&self, self_contained: bool) -> Vec<PathBuf> {
         let mut p = PathBuf::from(self.sysroot);
         p.push(find_libdir(self.sysroot).as_ref());
         p.push(RUST_LIB_DIR);
         p.push(&self.triple);
         p.push("bin");
-        vec![p.clone(), p.join("self-contained")]
+        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p.clone()] }
     }
 }
 
