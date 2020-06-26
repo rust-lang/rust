@@ -69,6 +69,13 @@ crate fn eval_nullary_intrinsic<'tcx>(
             ConstValue::from_machine_usize(n, &tcx)
         }
         sym::type_id => ConstValue::from_u64(tcx.type_id_hash(tp_ty)),
+        sym::variant_count => {
+            if let ty::Adt(ref adt, _) = tp_ty.kind {
+                ConstValue::from_machine_usize(adt.variants.len() as u64, &tcx)
+            } else {
+                ConstValue::from_machine_usize(0u64, &tcx)
+            }
+        }
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
 }
@@ -109,10 +116,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::needs_drop
             | sym::size_of
             | sym::type_id
-            | sym::type_name => {
+            | sym::type_name
+            | sym::variant_count => {
                 let gid = GlobalId { instance, promoted: None };
                 let ty = match intrinsic_name {
-                    sym::min_align_of | sym::pref_align_of | sym::size_of => self.tcx.types.usize,
+                    sym::min_align_of | sym::pref_align_of | sym::size_of | sym::variant_count => {
+                        self.tcx.types.usize
+                    }
                     sym::needs_drop => self.tcx.types.bool,
                     sym::type_id => self.tcx.types.u64,
                     sym::type_name => self.tcx.mk_static_str(),

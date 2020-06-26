@@ -832,6 +832,7 @@ symbols! {
         v1,
         val,
         var,
+        variant_count,
         vec,
         Vec,
         version,
