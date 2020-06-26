@@ -178,7 +178,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             let result = cx.enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
             });
-            debug!("{} resolved to {:?} in namespace {:?}", path_str, ns, result);
+            debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
             let result = match result {
                 Ok((_, Res::Err)) => Err(ErrorKind::ResolutionFailure),
                 _ => result.map_err(|_| ErrorKind::ResolutionFailure),
@@ -208,7 +208,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             "failed to resolve {} in namespace {:?} (got {:?})",
                             path_str, ns, other
                         );
-                        debug!("extra_fragment is {:?}", extra_fragment);
                         return Ok((res, extra_fragment.clone()));
                     }
                 };
@@ -768,7 +767,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             if let Res::PrimTy(_) = res {
                 item.attrs.links.push((ori_link, None, fragment));
             } else {
-                debug!("linked item {} resolved to {:?}", path_str, res);
+                debug!("intra-doc link to {} resolved to {:?}", path_str, res);
                 if let Some(local) = res.opt_def_id().and_then(|def_id| def_id.as_local()) {
                     use rustc_hir::def_id::LOCAL_CRATE;
 
