@@ -12,13 +12,13 @@ use parking_lot::RwLock;
 use ra_db::{CrateId, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     config::Config,
     diagnostics::{CheckFixes, DiagnosticCollection},
     from_proto,
     line_endings::LineEndings,
-    lsp_utils::notification_new,
     main_loop::Task,
     reload::SourceRootConfig,
     request_metrics::{LatestRequests, RequestMetrics},
@@ -26,7 +26,6 @@ use crate::{
     to_proto::url_from_abs_path,
     Result,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Eq, PartialEq)]
 pub(crate) enum Status {
@@ -190,7 +189,7 @@ impl GlobalState {
         &mut self,
         params: N::Params,
     ) {
-        let not = notification_new::<N>(params);
+        let not = lsp_server::Notification::new(N::METHOD.to_string(), params);
         self.send(not.into());
     }
 
