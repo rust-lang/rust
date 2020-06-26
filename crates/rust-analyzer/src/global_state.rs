@@ -21,7 +21,6 @@ use crate::{
     main_loop::Task,
     reload::SourceRootConfig,
     request_metrics::{LatestRequests, RequestMetrics},
-    show_message,
     thread_pool::TaskPool,
     to_proto::url_from_abs_path,
     Result,
@@ -181,9 +180,6 @@ impl GlobalState {
             self.latest_requests.write().record(metrics);
             self.send(response.into());
         }
-    }
-    pub(crate) fn show_message(&self, typ: lsp_types::MessageType, message: String) {
-        show_message(typ, message, &self.sender)
     }
 }
 

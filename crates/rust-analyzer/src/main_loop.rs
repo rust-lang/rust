@@ -18,7 +18,7 @@ use crate::{
     from_proto,
     global_state::{file_id_to_url, url_to_file_id, GlobalState, Status},
     handlers, lsp_ext,
-    lsp_utils::{apply_document_changes, is_canceled, notification_is, notification_new},
+    lsp_utils::{apply_document_changes, is_canceled, notification_is, notification_new, Progress},
     Result,
 };
 
@@ -181,18 +181,15 @@ impl GlobalState {
                         became_ready = true;
                         Progress::End
                     };
-                    report_progress(
-                        self,
+                    self.report_progress(
                         "roots scanned",
                         state,
                         Some(format!("{}/{}", n_done, n_total)),
-                        Some(percentage(n_done, n_total)),
+                        Some(Progress::percentage(n_done, n_total)),
                     )
                 }
             },
             Event::Flycheck(task) => match task {
-                flycheck::Message::ClearDiagnostics => self.diagnostics.clear_check(),
-
                 flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
                     let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                         &self.config.diagnostics,
@@ -215,14 +212,19 @@ impl GlobalState {
 
                 flycheck::Message::Progress(status) => {
                     let (state, message) = match status {
-                        flycheck::Progress::Being => (Progress::Begin, None),
+                        flycheck::Progress::DidStart => {
+                            self.diagnostics.clear_check();
+                            (Progress::Begin, None)
+                        }
                         flycheck::Progress::DidCheckCrate(target) => {
                             (Progress::Report, Some(target))
                         }
-                        flycheck::Progress::End => (Progress::End, None),
+                        flycheck::Progress::DidFinish | flycheck::Progress::DidCancel => {
+                            (Progress::End, None)
+                        }
                     };
 
-                    report_progress(self, "cargo check", state, message, None);
+                    self.report_progress("cargo check", state, message, None);
                 }
             },
         }
@@ -464,61 +466,4 @@ impl GlobalState {
             }
         });
     }
-}
-
-#[derive(Eq, PartialEq)]
-enum Progress {
-    Begin,
-    Report,
-    End,
-}
-
-fn percentage(done: usize, total: usize) -> f64 {
-    (done as f64 / total.max(1) as f64) * 100.0
-}
-
-fn report_progress(
-    global_state: &mut GlobalState,
-    title: &str,
-    state: Progress,
-    message: Option<String>,
-    percentage: Option<f64>,
-) {
-    if !global_state.config.client_caps.work_done_progress {
-        return;
-    }
-    let token = lsp_types::ProgressToken::String(format!("rustAnalyzer/{}", title));
-    let work_done_progress = match state {
-        Progress::Begin => {
-            let work_done_progress_create = global_state.req_queue.outgoing.register(
-                lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
-                lsp_types::WorkDoneProgressCreateParams { token: token.clone() },
-                |_, _| (),
-            );
-            global_state.send(work_done_progress_create.into());
-
-            lsp_types::WorkDoneProgress::Begin(lsp_types::WorkDoneProgressBegin {
-                title: title.into(),
-                cancellable: None,
-                message,
-                percentage,
-            })
-        }
-        Progress::Report => {
-            lsp_types::WorkDoneProgress::Report(lsp_types::WorkDoneProgressReport {
-                cancellable: None,
-                message,
-                percentage,
-            })
-        }
-        Progress::End => {
-            lsp_types::WorkDoneProgress::End(lsp_types::WorkDoneProgressEnd { message })
-        }
-    };
-    let notification =
-        notification_new::<lsp_types::notification::Progress>(lsp_types::ProgressParams {
-            token,
-            value: lsp_types::ProgressParamsValue::WorkDone(work_done_progress),
-        });
-    global_state.send(notification.into());
 }
