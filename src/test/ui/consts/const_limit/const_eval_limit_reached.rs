@@ -1,5 +1,4 @@
 #![feature(const_eval_limit)]
-#![feature(const_loop)]
 #![const_eval_limit = "500"]
 
 const X: usize = {

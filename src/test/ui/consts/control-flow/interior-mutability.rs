@@ -1,8 +1,6 @@
 // Ensure that *any* assignment to the return place of a value with interior mutability
 // disqualifies it from promotion.
 
-#![feature(const_loop)]
-
 use std::cell::Cell;
 
 const X: Option<Cell<i32>> = {
