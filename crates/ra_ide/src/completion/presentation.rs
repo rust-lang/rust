@@ -1516,4 +1516,54 @@ mod tests {
         "###
         );
     }
+
+    #[test]
+    fn no_keyword_autocompletion_on_line_comments() {
+        assert_debug_snapshot!(
+        do_completion(
+                r"
+                    fn test() {
+                        let x = 2; // A comment<|>
+                    }
+                    ",
+                CompletionKind::Keyword
+        ),
+            @r###"
+            []
+            "###
+        );
+    }
+
+    #[test]
+    fn no_keyword_autocompletion_on_multi_line_comments() {
+        assert_debug_snapshot!(
+        do_completion(
+                r"
+                    /*
+                    Some multi-line comment<|>
+                    */
+                    ",
+                CompletionKind::Keyword
+        ),
+            @r###"
+            []
+            "###
+        );
+    }
+
+    #[test]
+    fn no_keyword_autocompletion_on_doc_comments() {
+        assert_debug_snapshot!(
+        do_completion(
+                r"
+                    /// Some doc comment
+                    /// let test<|> = 1
+                    ",
+                CompletionKind::Keyword
+        ),
+            @r###"
+            []
+            "###
+        );
+    }
 }
