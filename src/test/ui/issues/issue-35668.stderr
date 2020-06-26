@@ -5,6 +5,11 @@ LL |     a.iter().map(|a| a*a)
    |                      -^- &T
    |                      |
    |                      &T
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn func<'a, T: std::ops::Mul<Output = &T>>(a: &'a [T]) -> impl Iterator<Item=&'a T> {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
