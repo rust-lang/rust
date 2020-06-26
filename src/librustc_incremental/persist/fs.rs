@@ -697,13 +697,13 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     let lock_file_to_session_dir: FxHashMap<String, Option<String>> = lock_files
         .into_iter()
         .map(|lock_file_name| {
-            assert!(lock_file_name.ends_with(LOCK_FILE_EXT));
-            let dir_prefix_end = lock_file_name.len() - LOCK_FILE_EXT.len();
-            let session_dir = {
-                let dir_prefix = &lock_file_name[0..dir_prefix_end];
-                session_directories.iter().find(|dir_name| dir_name.starts_with(dir_prefix))
-            };
-            (lock_file_name, session_dir.map(String::clone))
+            if let Some(dir_prefix) = lock_file_name.strip_prefix(LOCK_FILE_EXT) {
+                let dir =
+                    session_directories.iter().find(|dir_name| dir_name.starts_with(dir_prefix));
+                (lock_file_name, dir.map(String::clone))
+            } else {
+                panic!("{:?} does not end with {}", lock_file_name, LOCK_FILE_EXT);
+            }
         })
         .collect();
 

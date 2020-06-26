@@ -2415,8 +2415,8 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
                         span,
                         NEEDLESS_COLLECT_MSG,
                         |diag| {
-                            let (arg, pred) = if contains_arg.starts_with('&') {
-                                ("x", &contains_arg[1..])
+                            let (arg, pred) = if let Some(tail) = contains_arg.strip_suffix('&') {
+                                ("x", tail)
                             } else {
                                 ("&x", &*contains_arg)
                             };

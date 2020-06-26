@@ -209,10 +209,10 @@ fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
 
 fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
     let prefix = "feature_gate_";
-    if filen_underscore.starts_with(prefix) {
+    if let Some(gate) = filen_underscore.starts_with(prefix) {
         for (n, f) in features.iter_mut() {
             // Equivalent to filen_underscore == format!("feature_gate_{}", n)
-            if &filen_underscore[prefix.len()..] == n {
+            if gate == n {
                 f.has_gate_test = true;
                 return true;
             }

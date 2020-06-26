@@ -126,23 +126,28 @@ impl<'a> Line<'a> {
     }
 }
 
-// FIXME: There is a minor inconsistency here. For lines that start with ##, we
+// FIXME: There is a minor inconsistency here. For lines that start with "##", we
 // have no easy way of removing a potential single space after the hashes, which
-// is done in the single # case. This inconsistency seems okay, if non-ideal. In
+// is done in the single "#" case. This inconsistency seems okay, if non-ideal. In
 // order to fix it we'd have to iterate to find the first non-# character, and
 // then reallocate to remove it; which would make us return a String.
 fn map_line(s: &str) -> Line<'_> {
     let trimmed = s.trim();
-    if trimmed.starts_with("##") {
-        Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
-    } else if trimmed.starts_with("# ") {
-        // # text
-        Line::Hidden(&trimmed[2..])
-    } else if trimmed == "#" {
-        // We cannot handle '#text' because it could be #[attr].
-        Line::Hidden("")
-    } else {
-        Line::Shown(Cow::Borrowed(s))
+    match trimmed.strip_prefix("#") {
+        Some(tail) if tail.is_empty() => Line::Hidden(""),
+        Some(tail) => match tail.strip_prefix("#") {
+            // `##text` rendered as `#text`.
+            Some(_) => Line::Shown(tail.into()),
+            None => match tail.as_bytes() {
+                // `#` will be hid.
+                [] => Line::Hidden(""),
+                // `# text` will be hid.
+                [b' ' | b'\t', ..] => Line::Hidden(tail),
+                // `#text` cannot be hid as it could be ``#[attr]`
+                _ => Line::Shown(s.into()),
+            },
+        },
+        None => Line::Shown(s.into()),
     }
 }
 
@@ -752,12 +757,6 @@ impl LangString {
                     data.ignore = Ignore::All;
                     seen_rust_tags = !seen_other_tags;
                 }
-                x if x.starts_with("ignore-") => {
-                    if enable_per_target_ignores {
-                        ignores.push(x.trim_start_matches("ignore-").to_owned());
-                        seen_rust_tags = !seen_other_tags;
-                    }
-                }
                 "allow_fail" => {
                     data.allow_fail = true;
                     seen_rust_tags = !seen_other_tags;
@@ -775,63 +774,72 @@ impl LangString {
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
                 }
-                x if x.starts_with("edition") => {
-                    data.edition = x[7..].parse::<Edition>().ok();
-                }
-                x if allow_error_code_check && x.starts_with('E') && x.len() == 5 => {
-                    if x[1..].parse::<u32>().is_ok() {
-                        data.error_codes.push(x.to_owned());
-                        seen_rust_tags = !seen_other_tags || seen_rust_tags;
-                    } else {
-                        seen_other_tags = true;
-                    }
-                }
-                x if extra.is_some() => {
-                    let s = x.to_lowercase();
-                    match if s == "compile-fail" || s == "compile_fail" || s == "compilefail" {
-                        Some((
-                            "compile_fail",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or won't fail if it compiles successfully",
-                        ))
-                    } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
-                        Some((
-                            "should_panic",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or won't fail if it doesn't panic when running",
-                        ))
-                    } else if s == "no-run" || s == "no_run" || s == "norun" {
-                        Some((
-                            "no_run",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or will be run (which you might not want)",
-                        ))
-                    } else if s == "allow-fail" || s == "allow_fail" || s == "allowfail" {
-                        Some((
-                            "allow_fail",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or will be run (which you might not want)",
-                        ))
-                    } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
-                        Some((
-                            "test_harness",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or the code will be wrapped inside a main function",
-                        ))
-                    } else {
-                        None
-                    } {
-                        Some((flag, help)) => {
-                            if let Some(ref extra) = extra {
-                                extra.error_invalid_codeblock_attr(
-                                    &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
-                                    help,
-                                );
+                x => {
+                    if let Some(target) = x.strip_prefix("ignore-") {
+                        if enable_per_target_ignores {
+                            ignores.push(target.to_owned());
+                        }
+                    } else if let Some(edition) = x.strip_prefix("edition") {
+                        data.edition = edition.parse::<Edition>().ok();
+                    } else if allow_error_code_check {
+                        if let Some(code) = x.strip_prefix('E') {
+                            match code.parse::<u32>().ok() {
+                                Some(n) if code.len() == 4 => {
+                                    data.error_codes.push(x.to_owned());
+                                    seen_rust_tags = !seen_other_tags || seen_rust_tags;
+                                }
+                                _ => {
+                                    seen_other_tags = true;
+                                }
                             }
                         }
-                        None => {}
                     }
-                    seen_other_tags = true;
+                    if let Some(extra) = extra {
+                        let s = x.to_lowercase();
+                        let sugg = if s == "compile-fail"
+                            || s == "compile_fail"
+                            || s == "compilefail"
+                        {
+                            Some((
+                                "compile_fail",
+                                "the code block will either not be tested if not marked as a rust one \
+                                 or won't fail if it compiles successfully",
+                            ))
+                        } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
+                            Some((
+                                "should_panic",
+                                "the code block will either not be tested if not marked as a rust one \
+                                 or won't fail if it doesn't panic when running",
+                            ))
+                        } else if s == "no-run" || s == "no_run" || s == "norun" {
+                            Some((
+                                "no_run",
+                                "the code block will either not be tested if not marked as a rust one \
+                                 or will be run (which you might not want)",
+                            ))
+                        } else if s == "allow-fail" || s == "allow_fail" || s == "allowfail" {
+                            Some((
+                                "allow_fail",
+                                "the code block will either not be tested if not marked as a rust one \
+                                 or will be run (which you might not want)",
+                            ))
+                        } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
+                            Some((
+                                "test_harness",
+                                "the code block will either not be tested if not marked as a rust one \
+                                 or the code will be wrapped inside a main function",
+                            ))
+                        } else {
+                            None
+                        };
+                        if let Some((flag, help)) = sugg {
+                            extra.error_invalid_codeblock_attr(
+                                &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
+                                help,
+                            );
+                        }
+                        seen_other_tags = true;
+                    }
                 }
                 _ => seen_other_tags = true,
             }

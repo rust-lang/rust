@@ -632,9 +632,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         } else {
                             "'_".to_string()
                         };
-                        let suggestion = if snippet.ends_with(';') {
+                        let suggestion = if let Some(sugg) = snippet.strip_suffix(';') {
                             // `type X = impl Trait;`
-                            format!("{} + {};", &snippet[..snippet.len() - 1], suggestable_fr_name)
+                            format!("{} + {};", sugg, suggestable_fr_name)
                         } else {
                             format!("{} + {}", snippet, suggestable_fr_name)
                         };

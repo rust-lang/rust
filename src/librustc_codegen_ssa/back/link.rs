@@ -1898,10 +1898,9 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
     // Converts a library file-stem into a cc -l argument
     fn unlib<'a>(config: &config::Config, stem: &'a str) -> &'a str {
-        if stem.starts_with("lib") && !config.target.options.is_like_windows {
-            &stem[3..]
-        } else {
-            stem
+        match (config.target.options.is_like_windows, stem.strip_prefix("lib")) {
+            (false, Some(tail)) => tail,
+            _ => tail,
         }
     }
 

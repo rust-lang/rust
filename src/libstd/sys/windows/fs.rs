@@ -523,8 +523,10 @@ impl File {
             let mut subst = slice::from_raw_parts(subst_ptr, subst_len as usize);
             // Absolute paths start with an NT internal namespace prefix `\??\`
             // We should not let it leak through.
-            if !relative && subst.starts_with(&[92u16, 63u16, 63u16, 92u16]) {
-                subst = &subst[4..];
+            if !relative {
+                if let [92u16, 63u16, 63u16, 92u16, tail @ ..] = subst {
+                    subst = tail;
+                }
             }
             Ok(PathBuf::from(OsString::from_wide(subst)))
         }

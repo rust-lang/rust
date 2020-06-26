@@ -666,7 +666,10 @@ fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn
         return;
     }
 
-    let comment = if testfile.to_string_lossy().ends_with(".rs") { "//" } else { "#" };
+    let comment = match testfile.extension() {
+        Some(ext) if "rs" == ext => "//",
+        _ => "#",
+    };
 
     let mut rdr = BufReader::new(rdr);
     let mut ln = String::new();
@@ -683,23 +686,25 @@ fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
-        } else if ln.starts_with(comment) && ln[comment.len()..].trim_start().starts_with('[') {
-            // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find(']') {
-                let open_brace = ln.find('[').unwrap();
-                let lncfg = &ln[open_brace + 1..close_brace];
-                let matches = match cfg {
-                    Some(s) => s == &lncfg[..],
-                    None => false,
-                };
-                if matches {
-                    it(ln[(close_brace + 1)..].trim_start());
+        } else if let Some(tail) = ln.strip_prefix(comment) {
+            let tail = tail.trim_start();
+            if let Some(a) = tail.strip_prefix('[') {
+                // A comment like `//[foo]` is specific to revision `foo`
+                let mut v = tail.split(']');
+                match (v.next(), v.next()) {
+                    (Some(lncfg), Some(after)) => {
+                        if cfg.map(|s| s == lncfg).unwrap_or(false) {
+                            it(after.trim_start());
+                        }
+                    }
+                    _ => panic!(
+                        "malformed condition directive: expected `{}[foo]`, found `{}`",
+                        comment, ln
+                    ),
                 }
-            } else {
-                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
+            } else if ln.starts_with(comment) {
+                it(tail);
             }
-        } else if ln.starts_with(comment) {
-            it(ln[comment.len()..].trim_start());
         }
     }
     return;

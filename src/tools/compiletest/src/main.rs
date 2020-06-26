@@ -966,11 +966,8 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
                 }
             }
 
-            if full_version_line.starts_with("lldb version ") {
-                let vers = full_version_line[13..]
-                    .chars()
-                    .take_while(|c| c.is_digit(10))
-                    .collect::<String>();
+            if let Some(ver) = full_version_line.strip_prefix("lldb version ") {
+                let vers = ver.chars().take_while(|c| c.is_digit(10)).collect::<String>();
                 if !vers.is_empty() {
                     return (Some(vers + "00"), full_version_line.contains("rust-enabled"));
                 }

@@ -479,17 +479,16 @@ pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
             s
         }
         _ => {
-            let mut s = n.to_string();
+            let s = n.to_string();
+            let mut rs = &s[..];
             // array lengths are obviously usize
-            if s.ends_with("_usize") {
-                let n = s.len() - "_usize".len();
-                s.truncate(n);
-                if s.ends_with(": ") {
-                    let n = s.len() - ": ".len();
-                    s.truncate(n);
+            if let Some(head) = s.strip_suffix("_usize") {
+                rs = head;
+                if let Some(hhead) = head.strip_suffix(": ") {
+                    rs = hhead;
                 }
             }
-            s
+            rs.to_owned()
         }
     }
 }

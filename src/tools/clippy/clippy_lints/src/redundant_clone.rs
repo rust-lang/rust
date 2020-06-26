@@ -236,9 +236,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
 
                         let mut call_snip = &snip[dot + 1..];
                         // Machine applicable when `call_snip` looks like `foobar()`
-                        if call_snip.ends_with("()") {
-                            call_snip = call_snip[..call_snip.len()-2].trim();
-                            if call_snip.as_bytes().iter().all(|b| b.is_ascii_alphabetic() || *b == b'_') {
+                        if let Some(stripped_snip) = call_snip.strip_suffix("()").map(str::trim) {
+                            if stripped_snip.as_bytes().iter().all(|b| b.is_ascii_alphabetic() || *b == b'_') {
                                 app = Applicability::MachineApplicable;
                             }
                         }

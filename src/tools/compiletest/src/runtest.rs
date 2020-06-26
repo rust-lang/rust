@@ -1192,8 +1192,7 @@ impl<'test> TestCx<'test> {
         for line in reader.lines() {
             match line {
                 Ok(line) => {
-                    let line =
-                        if line.starts_with("//") { line[2..].trim_start() } else { line.as_str() };
+                    let line = line.strip_prefix("//").unwrap_or(&*line).trim_start();
 
                     if line.contains("#break") {
                         breakpoint_lines.push(counter);
@@ -2528,7 +2527,7 @@ impl<'test> TestCx<'test> {
 
         // [MONO_ITEM] name [@@ (cgu)+]
         fn str_to_mono_item(s: &str, cgu_has_crate_disambiguator: bool) -> MonoItem {
-            let s = if s.starts_with(PREFIX) { (&s[PREFIX.len()..]).trim() } else { s.trim() };
+            let s = s.strip_prefix(PREFIX).unwrap_or(s).trim();
 
             let full_string = format!("{}{}", PREFIX, s);
 
@@ -3130,12 +3129,10 @@ impl<'test> TestCx<'test> {
             let _ = std::fs::remove_dir_all(&test_dir);
         }
         for l in test_file_contents.lines() {
-            if l.starts_with("// EMIT_MIR ") {
-                let test_name = l.trim_start_matches("// EMIT_MIR ");
+            if let Some(testname) = l.strip_prefix("// EMIT_MIR ") {
                 let expected_file = test_dir.join(test_name);
 
-                let dumped_string = if test_name.ends_with(".diff") {
-                    let test_name = test_name.trim_end_matches(".diff");
+                let dumped_string = if let Some(test_name) = test_name.strip_suffix(".diff") {
                     let before = format!("{}.before.mir", test_name);
                     let after = format!("{}.after.mir", test_name);
                     let before = self.get_mir_dump_dir().join(before);

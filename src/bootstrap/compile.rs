@@ -963,10 +963,11 @@ pub fn run_cargo(
         .collect::<Vec<_>>();
     for (prefix, extension, expected_len) in toplevel {
         let candidates = contents.iter().filter(|&&(_, ref filename, ref meta)| {
-            filename.starts_with(&prefix[..])
-                && filename[prefix.len()..].starts_with('-')
-                && filename.ends_with(&extension[..])
-                && meta.len() == expected_len
+            meta.len() == expected_len
+                && filename
+                    .strip_prefix(&prefix[..])
+                    .map(|s| s.starts_with('-') && s.ends_with(&extension[..]))
+                    .unwrap_or(false)
         });
         let max = candidates
             .max_by_key(|&&(_, _, ref metadata)| FileTime::from_last_modification_time(metadata));

@@ -29,27 +29,30 @@ pub struct Comment {
 }
 
 pub fn is_line_doc_comment(s: &str) -> bool {
-    let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/')
-        || s.starts_with("//!");
-    debug!("is {:?} a doc comment? {}", s, res);
-    res
+    let yes = match s.as_bytes() {
+        [b'/', b'/', b'/'] => true,
+        [b'/', b'/', b'/', c, ..] => c != b'/',
+        [b'/', b'/', b'!', ..] => true,
+        _ => false,
+    };
+    debug!("is {:?} a line doc comment? {}", s, yes);
 }
 
 pub fn is_block_doc_comment(s: &str) -> bool {
-    // Prevent `/**/` from being parsed as a doc comment
-    let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*')
-        || s.starts_with("/*!"))
-        && s.len() >= 5;
-    debug!("is {:?} a doc comment? {}", s, res);
+    // Previously, `/**/` was incorrectly regarded as a doc comment because it
+    // starts with `/**` and ends with `*/`. However, this caused an ICE
+    // because some code assumed that the length of a doc comment is at least 5.
+    let yes = match s.as_bytes() {
+        [b'/', b'*', b'*', c, _, ..] => c != b'*',
+        [b'/', b'/', b'!', _, _, ..] => true,
+        _ => false,
+    };
+    debug!("is {:?} a block doc comment? {}", s, yes);
     res
 }
 
-// FIXME(#64197): Try to privatize this again.
 pub fn is_doc_comment(s: &str) -> bool {
-    (s.starts_with("///") && is_line_doc_comment(s))
-        || s.starts_with("//!")
-        || (s.starts_with("/**") && is_block_doc_comment(s))
-        || s.starts_with("/*!")
+    is_line_doc_comment(s) || is_block_doc_comment(s)
 }
 
 pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
@@ -127,8 +130,8 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
     const ONELINERS: &[&str] = &["///!", "///", "//!", "//"];
 
     for prefix in ONELINERS {
-        if comment.starts_with(*prefix) {
-            return (&comment[prefix.len()..]).to_string();
+        if let Some(tail) = comment.strip_prefix(*prefix) {
+            return tail.to_owned();
         }
     }
 

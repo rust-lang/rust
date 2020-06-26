@@ -98,12 +98,11 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         })
     };
 
-    let (n_tps, inputs, output, unsafety) = if name.starts_with("atomic_") {
-        let split: Vec<&str> = name.split('_').collect();
-        assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
-
+    let (n_tps, inputs, output, unsafety) = if let Some(tail) = name.strip_prefix("atomic_") {
         //We only care about the operation here
-        let (n_tps, inputs, output) = match split[1] {
+        // Safe to unwrap as `str::split` always returns at least one item.
+        let op = tail.split('_').next().unwrap();
+        let (n_tps, inputs, output) = match op {
             "cxchg" | "cxchgweak" => (
                 1,
                 vec![tcx.mk_mut_ptr(param(0)), param(0), param(0)],
@@ -128,6 +127,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 return;
             }
         };
+
         (n_tps, inputs, output, hir::Unsafety::Unsafe)
     } else if &name[..] == "abort" {
         (0, Vec::new(), tcx.types.never, hir::Unsafety::Normal)
@@ -426,27 +426,30 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         | "simd_reduce_max"
         | "simd_reduce_min_nanless"
         | "simd_reduce_max_nanless" => (2, vec![param(0)], param(1)),
-        name if name.starts_with("simd_shuffle") => match name["simd_shuffle".len()..].parse() {
-            Ok(n) => {
-                let params = vec![param(0), param(0), tcx.mk_array(tcx.types.u32, n)];
-                (2, params, param(1))
-            }
-            Err(_) => {
-                struct_span_err!(
-                    tcx.sess,
-                    it.span,
-                    E0439,
-                    "invalid `simd_shuffle`, needs length: `{}`",
-                    name
-                )
-                .emit();
+        name => {
+            if let Some(length) = name.strip_prefix("simd_shuffle") {
+                match length.parse::<u64>() {
+                    Ok(n) => {
+                        let params = vec![param(0), param(0), tcx.mk_array(tcx.types.u32, n)];
+                        (2, params, param(1))
+                    }
+                    Err(_) => {
+                        struct_span_err!(
+                            tcx.sess,
+                            it.span,
+                            E0439,
+                            "invalid `simd_shuffle`, needs length: `{}`",
+                            name
+                        )
+                        .emit();
+                        return;
+                    }
+                }
+            } else {
+                let msg = format!("unrecognized platform-specific intrinsic function: `{}`", name);
+                tcx.sess.struct_span_err(it.span, &msg).emit();
                 return;
             }
-        },
-        _ => {
-            let msg = format!("unrecognized platform-specific intrinsic function: `{}`", name);
-            tcx.sess.struct_span_err(it.span, &msg).emit();
-            return;
         }
     };
 

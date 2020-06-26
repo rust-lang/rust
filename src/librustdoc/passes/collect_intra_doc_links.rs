@@ -487,7 +487,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         }
 
         let cx = self.cx;
-        let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
+        let dox = item.collapsed_doc_value().unwrap_or_else(String::new);
 
         look_for_tests(&cx, &dox, &item, true);
 
@@ -541,38 +541,30 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
             let link = ori_link.replace("`", "");
             let parts = link.split('#').collect::<Vec<_>>();
-            let (link, extra_fragment) = if parts.len() > 2 {
-                build_diagnostic(
-                    cx,
-                    &item,
-                    &link,
-                    &dox,
-                    link_range,
-                    "has an issue with the link anchor.",
-                    "only one `#` is allowed in a link",
-                    None,
-                );
-                continue;
-            } else if parts.len() == 2 {
-                if parts[0].trim().is_empty() {
-                    // This is an anchor to an element of the current page, nothing to do in here!
+            let (link, extra_fragment) = match parts {
+                [] => unreachable!("`str::split` always returns a non-empty list"),
+                [a] => (a.to_owned(), None),
+                [a, b] if a.trim().is_empty() => continue,
+                [a, b] => (a.to_owned(), b.to_owned()),
+                [_, _, _, ..] => {
+                    build_diagnostic(
+                        cx,
+                        &item,
+                        &link,
+                        &dox,
+                        link_range,
+                        "has an issue with the link anchor.",
+                        "only one `#` is allowed in a link",
+                        None,
+                    );
                     continue;
                 }
-                (parts[0].to_owned(), Some(parts[1].to_owned()))
-            } else {
-                (parts[0].to_owned(), None)
             };
             let resolved_self;
             let mut path_str;
             let (res, fragment) = {
-                let mut kind = None;
-                path_str = if let Some(prefix) = ["struct@", "enum@", "type@", "trait@", "union@"]
-                    .iter()
-                    .find(|p| link.starts_with(**p))
-                {
-                    kind = Some(TypeNS);
-                    link.trim_start_matches(prefix)
-                } else if let Some(prefix) = [
+                static TYPES: &[&str] = ["struct@", "enum@", "type@", "trait@", "union@"];
+                static TY_KINDS: &[&str] = [
                     "const@",
                     "static@",
                     "value@",
@@ -581,28 +573,33 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     "fn@",
                     "module@",
                     "method@",
-                ]
-                .iter()
-                .find(|p| link.starts_with(**p))
-                {
-                    kind = Some(ValueNS);
-                    link.trim_start_matches(prefix)
-                } else if link.ends_with("()") {
-                    kind = Some(ValueNS);
-                    link.trim_end_matches("()")
-                } else if link.starts_with("macro@") {
-                    kind = Some(MacroNS);
-                    link.trim_start_matches("macro@")
-                } else if link.starts_with("derive@") {
-                    kind = Some(MacroNS);
-                    link.trim_start_matches("derive@")
-                } else if link.ends_with('!') {
-                    kind = Some(MacroNS);
-                    link.trim_end_matches('!')
-                } else {
-                    &link[..]
-                }
-                .trim();
+                ];
+                let mut kind = None;
+                let mut path_str =
+                    if let Some(tail) = TYPES.iter().filter_map(|&p| link.strip_prefix(p)).next() {
+                        kind = Some(TypeNS);
+                        tail
+                    } else if let Some(tail) =
+                        TY_KINDS.iter().filter_map(|&p| link.strip_prefix(p)).next()
+                    {
+                        kind = Some(ValueNS);
+                        tail
+                    } else if let Some(head) = link.strip_suffix("()") {
+                        kind = Some(ValueNS);
+                        head
+                    } else if let Some(tail) = link.strip_prefix("macro@") {
+                        kind = Some(MacroNS);
+                        tail
+                    } else if let Some(tail) = link.strip_prefix("derive@") {
+                        kind = Some(MacroNS);
+                        tail
+                    } else if let Some(head) = link.strip_suffix('!') {
+                        kind = Some(MacroNS);
+                        head
+                    } else {
+                        &link[..]
+                    }
+                    .trim();
 
                 if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ch == ':' || ch == '_')) {
                     continue;
@@ -622,10 +619,11 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 let base_node =
                     if item.is_mod() && item.attrs.inner_docs { None } else { parent_node };
 
+                let resolved_self;
                 // replace `Self` with suitable item's parent name
-                if path_str.starts_with("Self::") {
+                if let Some(item) = path_str.strip_prefix("Self::") {
                     if let Some(ref name) = parent_name {
-                        resolved_self = format!("{}::{}", name, &path_str[6..]);
+                        resolved_self = format!("{}::{}", name, item);
                         path_str = &resolved_self;
                     }
                 }
