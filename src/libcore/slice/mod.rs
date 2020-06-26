@@ -2349,7 +2349,7 @@ impl<T> [T] {
             ops::Bound::Excluded(&n) => n,
             ops::Bound::Unbounded => self.len(),
         };
-        assert!(src_start <= src_end, "src end is before src start");
+        assert!(src_start <= src_end, "src start is before src end");
         assert!(src_end <= self.len(), "src is out of bounds");
         let count = src_end - src_start;
         assert!(dest <= self.len() - count, "dest is out of bounds");
