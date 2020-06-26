@@ -1291,10 +1291,20 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next()
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
     fn last(mut self) -> Option<&'a T> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<&'a T> {
         self.next_back()
     }
 }
@@ -1321,6 +1331,7 @@ impl<T> Iterator for IntoIter<T> {
     fn next(&mut self) -> Option<T> {
         self.iter.next().map(|(k, _)| k)
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
@@ -1357,6 +1368,14 @@ impl<'a, T> Iterator for Range<'a, T> {
     }
 
     fn last(mut self) -> Option<&'a T> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<&'a T> {
         self.next_back()
     }
 }
@@ -1429,6 +1448,10 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
         };
         (self_len.saturating_sub(other_len), Some(self_len))
     }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1459,6 +1482,10 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
         // and T is an empty type, the storage overhead of sets limits
         // the number of elements to less than half the range of usize.
         (0, Some(a_len + b_len))
+    }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
     }
 }
 
@@ -1516,6 +1543,10 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
             IntersectionInner::Answer(Some(_)) => (1, Some(1)),
         }
     }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1540,6 +1571,10 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
         let (a_len, b_len) = self.0.lens();
         // No checked_add - see SymmetricDifference::size_hint.
         (max(a_len, b_len), Some(a_len + b_len))
+    }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
     }
 }
 
