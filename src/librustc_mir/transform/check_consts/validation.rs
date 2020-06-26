@@ -550,9 +550,9 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 } else if let Some(feature) = is_unstable_const_fn(self.tcx, def_id) {
                     // Exempt unstable const fns inside of macros or functions with
                     // `#[allow_internal_unstable]`.
-                    use crate::transform::qualify_min_const_fn::feature_allowed;
+                    use crate::transform::qualify_min_const_fn::lib_feature_allowed;
                     if !self.span.allows_unstable(feature)
-                        && !feature_allowed(self.tcx, self.def_id, feature)
+                        && !lib_feature_allowed(self.tcx, self.def_id, feature)
                     {
                         self.check_op(ops::FnCallUnstable(def_id, feature));
                     }
