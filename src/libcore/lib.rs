@@ -124,6 +124,7 @@
 #![feature(unsized_locals)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
+#![feature(variant_count)]
 #![feature(doc_alias)]
 #![feature(mmx_target_feature)]
 #![feature(tbm_target_feature)]

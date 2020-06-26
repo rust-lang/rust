@@ -206,7 +206,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
             "size_of" | "pref_align_of" | "min_align_of" | "needs_drop" | "type_id"
-            | "type_name" => {
+            | "type_name" | "variant_count" => {
                 let value = self
                     .tcx
                     .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
