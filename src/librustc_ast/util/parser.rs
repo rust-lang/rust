@@ -5,7 +5,7 @@ use rustc_span::symbol::kw;
 /// Associative operator with precedence.
 ///
 /// This is the enum which specifies operator precedence and fixity to the parser.
-#[derive(PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum AssocOp {
     /// `+`
     Add,
