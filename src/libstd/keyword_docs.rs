@@ -1400,10 +1400,26 @@ mod struct_keyword {}
 //
 /// The parent of the current [module].
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// ```rust
+/// # #![allow(dead_code)]
+/// # fn main() {}
+/// mod a {
+///     pub fn foo() {}
+/// }
+/// mod b {
+///     pub fn foo() {
+///         super::a::foo(); // call a's foo function
+///     }
+/// }
+/// ```
+///
+/// It is also possible to use `super` multiple times: `super::super::foo`,
+/// going up the ancestor chain.
+///
+/// See the [Reference] for more information.
 ///
 /// [module]: ../reference/items/modules.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// [Reference]: ../reference/paths.html#super
 mod super_keyword {}
 
 #[doc(keyword = "trait")]
