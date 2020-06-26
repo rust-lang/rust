@@ -7,7 +7,7 @@ use std::{sync::Arc, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use lsp_types::{request::Request as _, Url};
+use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_db::{CrateId, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
@@ -173,11 +173,7 @@ impl GlobalState {
         params: R::Params,
         handler: ReqHandler,
     ) {
-        let request = self.req_queue.outgoing.register(
-            lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
-            params,
-            handler,
-        );
+        let request = self.req_queue.outgoing.register(R::METHOD.to_string(), params, handler);
         self.send(request.into());
     }
     pub(crate) fn complete_request(&mut self, response: lsp_server::Response) {
