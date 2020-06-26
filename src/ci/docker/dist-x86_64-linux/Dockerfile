@@ -1,51 +1,44 @@
-FROM centos:5
+FROM centos:6
 
 WORKDIR /build
 
-# Centos 5 is EOL and is no longer available from the usual mirrors, so switch
-# to http://vault.centos.org/
-RUN sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
-RUN sed -i 's/mirrorlist/#mirrorlist/' /etc/yum.repos.d/*.repo
-RUN sed -i 's|#\(baseurl.*\)mirror.centos.org/centos/$releasever|\1vault.centos.org/5.11|' /etc/yum.repos.d/*.repo
+# Centos 6 is near EOL and will no longer be available from the usual mirrors,
+# so we'll need to switch to http://vault.centos.org/
+# RUN sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
+# RUN sed -i 's/mirrorlist/#mirrorlist/' /etc/yum.repos.d/*.repo
+# RUN sed -i 's|#\(baseurl.*\)mirror.centos.org/centos/$releasever|\1vault.centos.org/6.10|' /etc/yum.repos.d/*.repo
 
+RUN yum install -y epel-release
 RUN yum upgrade -y && yum install -y \
-      curl \
+      autoconf \
       bzip2 \
+      curl \
+      file \
       gcc \
       gcc-c++ \
+      gettext \
+      git \
+      glibc-devel.i686 \
+      glibc-devel.x86_64 \
+      libstdc++-devel.i686 \
+      libstdc++-devel.x86_64 \
       make \
-      glibc-devel \
+      openssl-devel.i686 \
+      openssl-devel.x86_64 \
       perl \
-      zlib-devel \
-      file \
-      xz \
-      which \
       pkgconfig \
+      python34 \
       wget \
-      autoconf \
-      gettext
+      which \
+      xz \
+      zlib-devel.i686 \
+      zlib-devel.x86_64
 
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib
 ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
 WORKDIR /tmp
 COPY dist-x86_64-linux/shared.sh /tmp/
-
-# We need a build of openssl which supports SNI to download artifacts from
-# static.rust-lang.org. This'll be used to link into libcurl below (and used
-# later as well), so build a copy of OpenSSL with dynamic libraries into our
-# generic root.
-COPY dist-x86_64-linux/build-openssl.sh /tmp/
-RUN ./build-openssl.sh
-
-# The `curl` binary on CentOS doesn't support SNI which is needed for fetching
-# some https urls we have, so install a new version of libcurl + curl which is
-# using the openssl we just built previously.
-#
-# Note that we also disable a bunch of optional features of curl that we don't
-# really need.
-COPY dist-x86_64-linux/build-curl.sh /tmp/
-RUN ./build-curl.sh
 
 # binutils < 2.22 has a bug where the 32-bit executables it generates
 # immediately segfault in Rust, so we need to install our own binutils.
@@ -54,39 +47,25 @@ RUN ./build-curl.sh
 COPY dist-x86_64-linux/build-binutils.sh /tmp/
 RUN ./build-binutils.sh
 
-# libssh2 (a dependency of Cargo) requires cmake 2.8.11 or higher but CentOS
-# only has 2.6.4, so build our own
-COPY dist-x86_64-linux/build-cmake.sh /tmp/
-RUN ./build-cmake.sh
-
-# Build a version of gcc capable of building LLVM 6
+# Need a newer version of gcc than centos has to compile LLVM nowadays
 COPY dist-x86_64-linux/build-gcc.sh /tmp/
 RUN ./build-gcc.sh
 
-# CentOS 5.5 has Python 2.4 by default, but LLVM needs 2.7+
-COPY dist-x86_64-linux/build-python.sh /tmp/
-RUN ./build-python.sh
+# LLVM needs cmake 3.4.3 or higher, and is planning to raise to 3.13.4.
+# CentOS 6 only has cmake-2.8.12, or cmake3-3.6.1 in EPEL, so build our own.
+COPY dist-x86_64-linux/build-cmake.sh /tmp/
+RUN ./build-cmake.sh
 
-# Now build LLVM+Clang 7, afterwards configuring further compilations to use the
+# Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
-COPY dist-x86_64-linux/build-clang.sh dist-x86_64-linux/llvm-project-centos.patch /tmp/
+COPY dist-x86_64-linux/build-clang.sh /tmp/
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
-
-# Apparently CentOS 5.5 desn't have `git` in yum, but we're gonna need it for
-# cloning, so download and build it here.
-COPY dist-x86_64-linux/build-git.sh /tmp/
-RUN ./build-git.sh
 
 # for sanitizers, we need kernel headers files newer than the ones CentOS ships
 # with so we install newer ones here
 COPY dist-x86_64-linux/build-headers.sh /tmp/
 RUN ./build-headers.sh
-
-# OpenSSL requires a more recent version of perl
-# with so we install newer ones here
-COPY dist-x86_64-linux/build-perl.sh /tmp/
-RUN ./build-perl.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -103,7 +82,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
       --set rust.jemalloc
-ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
+ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This is the only builder which will create source tarballs

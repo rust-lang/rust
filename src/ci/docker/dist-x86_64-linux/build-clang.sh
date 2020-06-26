@@ -12,9 +12,6 @@ cd llvm-project
 curl -L https://github.com/llvm/llvm-project/archive/$LLVM.tar.gz | \
   tar xzf - --strip-components=1
 
-yum install -y patch
-patch -Np1 < ../llvm-project-centos.patch
-
 mkdir clang-build
 cd clang-build
 
@@ -35,6 +32,7 @@ INC="$INC:/usr/include"
 
 hide_output \
     cmake ../llvm \
+      -DPYTHON_EXECUTABLE=/usr/bin/python3 \
       -DCMAKE_C_COMPILER=/rustroot/bin/gcc \
       -DCMAKE_CXX_COMPILER=/rustroot/bin/g++ \
       -DCMAKE_BUILD_TYPE=Release \
