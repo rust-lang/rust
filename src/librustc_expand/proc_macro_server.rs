@@ -1,7 +1,7 @@
 use crate::base::ExtCtxt;
 
 use rustc_ast::ast;
-use rustc_ast::token;
+use rustc_ast::token::{self, FlattenGroup};
 use rustc_ast::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
 use rustc_ast::util::comments;
 use rustc_ast_pretty::pprust;
@@ -60,7 +60,12 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
         let Token { kind, span } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
-                return TokenTree::Group(Group { delimiter, stream: tts, span });
+                return TokenTree::Group(Group {
+                    delimiter,
+                    stream: tts,
+                    span,
+                    flatten: FlattenGroup::No,
+                });
             }
             tokenstream::TokenTree::Token(token) => token,
         };
@@ -167,6 +172,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                     delimiter: Delimiter::Bracket,
                     stream,
                     span: DelimSpan::from_single(span),
+                    flatten: FlattenGroup::No,
                 }));
                 if style == ast::AttrStyle::Inner {
                     stack.push(tt!(Punct::new('!', false)));
@@ -174,12 +180,13 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                 tt!(Punct::new('#', false))
             }
 
-            Interpolated(nt) => {
+            Interpolated(nt, flatten) => {
                 let stream = nt_to_tokenstream(&nt, sess, span);
                 TokenTree::Group(Group {
                     delimiter: Delimiter::None,
                     stream,
                     span: DelimSpan::from_single(span),
+                    flatten,
                 })
             }
 
@@ -195,7 +202,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
 
         let (ch, joint, span) = match self {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),
-            TokenTree::Group(Group { delimiter, stream, span }) => {
+            TokenTree::Group(Group { delimiter, stream, span, .. }) => {
                 return tokenstream::TokenTree::Delimited(span, delimiter.to_internal(), stream)
                     .into();
             }
@@ -283,6 +290,10 @@ pub struct Group {
     delimiter: Delimiter,
     stream: TokenStream,
     span: DelimSpan,
+    /// A hack used to pass AST fragments to attribute and derive macros
+    /// as a single nonterminal token instead of a token stream.
+    /// FIXME: It needs to be removed, but there are some compatibility issues (see #73345).
+    flatten: FlattenGroup,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -437,14 +448,12 @@ impl server::TokenStreamIter for Rustc<'_> {
                 let next = iter.cursor.next_with_joint()?;
                 Some(TokenTree::from_internal((next, self.sess, &mut iter.stack)))
             })?;
-            // HACK: The condition "dummy span + group with empty delimiter" represents an AST
-            // fragment approximately converted into a token stream. This may happen, for
-            // example, with inputs to proc macro attributes, including derives. Such "groups"
-            // need to flattened during iteration over stream's token trees.
-            // Eventually this needs to be removed in favor of keeping original token trees
-            // and not doing the roundtrip through AST.
+            // A hack used to pass AST fragments to attribute and derive macros
+            // as a single nonterminal token instead of a token stream.
+            // Such token needs to be "unwrapped" and not represented as a delimited group.
+            // FIXME: It needs to be removed, but there are some compatibility issues (see #73345).
             if let TokenTree::Group(ref group) = tree {
-                if group.delimiter == Delimiter::None && group.span.entire().is_dummy() {
+                if matches!(group.flatten, FlattenGroup::Yes) {
                     iter.cursor.append(group.stream.clone());
                     continue;
                 }
@@ -456,7 +465,12 @@ impl server::TokenStreamIter for Rustc<'_> {
 
 impl server::Group for Rustc<'_> {
     fn new(&mut self, delimiter: Delimiter, stream: Self::TokenStream) -> Self::Group {
-        Group { delimiter, stream, span: DelimSpan::from_single(server::Span::call_site(self)) }
+        Group {
+            delimiter,
+            stream,
+            span: DelimSpan::from_single(server::Span::call_site(self)),
+            flatten: FlattenGroup::No,
+        }
     }
     fn delimiter(&mut self, group: &Self::Group) -> Delimiter {
         group.delimiter

@@ -54,7 +54,7 @@ enum BlockMode {
 #[macro_export]
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
-        if let token::Interpolated(nt) = &$p.token.kind {
+        if let token::Interpolated(nt, _) = &$p.token.kind {
             if let token::$constructor(x) = &**nt {
                 let $x = x.clone();
                 $p.bump();
@@ -69,7 +69,7 @@ macro_rules! maybe_whole {
 macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery && $self.look_ahead(1, |t| t == &token::ModSep) {
-            if let token::Interpolated(nt) = &$self.token.kind {
+            if let token::Interpolated(nt, _) = &$self.token.kind {
                 if let token::NtTy(ty) = &**nt {
                     let ty = ty.clone();
                     $self.bump();
@@ -922,7 +922,7 @@ impl<'a> Parser<'a> {
                 if self.eat(&token::Eq) {
                     let eq_span = self.prev_token.span;
                     let mut is_interpolated_expr = false;
-                    if let token::Interpolated(nt) = &self.token.kind {
+                    if let token::Interpolated(nt, _) = &self.token.kind {
                         if let token::NtExpr(..) = **nt {
                             is_interpolated_expr = true;
                         }

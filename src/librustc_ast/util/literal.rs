@@ -205,7 +205,7 @@ impl Lit {
                 token::Lit::new(token::Bool, name, None)
             }
             token::Literal(lit) => lit,
-            token::Interpolated(ref nt) => {
+            token::Interpolated(ref nt, _) => {
                 if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt {
                     if let ast::ExprKind::Lit(lit) = &expr.kind {
                         return Ok(lit.clone());
