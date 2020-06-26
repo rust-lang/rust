@@ -316,7 +316,6 @@ impl<T: ?Sized> *const T {
     /// differently have not been explored. This method should not be used to introduce such
     /// differences, and it should also not be stabilized before we have a better understanding
     /// of this issue.
-    /// ```
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
@@ -349,7 +348,6 @@ impl<T: ?Sized> *const T {
     /// differently have not been explored. This method should not be used to introduce such
     /// differences, and it should also not be stabilized before we have a better understanding
     /// of this issue.
-    /// ```
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
