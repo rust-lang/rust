@@ -166,6 +166,17 @@ That said, adding an innocent-looking `pub use` is a very simple way to break en
 Note: if you enjoyed this abstract hand-waving about boundaries, you might appreciate
 https://www.tedinski.com/2018/02/06/system-boundaries.html
 
+## Minimal Tests
+
+Most tests in rust-analyzer start with a snippet of Rust code.
+This snippets should be minimal -- if you copy-paste a snippet of real code into the tests, make sure to remove everything which could be removed.
+There are many benefits to this:
+
+* less to read or to scroll past
+* easier to understand what exactly is tested
+* less stuff printed during printf-debugging
+* less time to run test
+
 ## Order of Imports
 
 We separate import groups with blank lines
