@@ -532,7 +532,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
             ty::ConstKind::Error(_) => throw_inval!(TypeckError(ErrorReported)),
             ty::ConstKind::Unevaluated(def, substs, promoted) => {
-                let instance = self.resolve(def, substs)?;
+                let instance = self.resolve_const_arg(def, substs)?;
                 // We use `const_eval` here and `const_eval_raw` elsewhere in mir interpretation.
                 // The reason we use `const_eval_raw` everywhere else is to prevent cycles during
                 // validation, because validation automatically reads through any references, thus

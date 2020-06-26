@@ -1751,7 +1751,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
 
     let mut label = false;
     if let Some((hir_id, visitor)) = get_owner_return_paths(tcx, def_id) {
-        let tables = tcx.typeck_tables_of(tcx.hir().local_def_id(hir_id));
+        let tables = tcx.typeck_tables_of(ty::WithOptParam::dummy(tcx.hir().local_def_id(hir_id)));
         if visitor
             .returns
             .iter()
@@ -1854,8 +1854,9 @@ fn binding_opaque_type_cycle_error(
                 ..
             }) => {
                 let hir_id = tcx.hir().as_local_hir_id(def_id);
-                let tables =
-                    tcx.typeck_tables_of(tcx.hir().local_def_id(tcx.hir().get_parent_item(hir_id)));
+                let tables = tcx.typeck_tables_of(ty::WithOptParam::dummy(
+                    tcx.hir().local_def_id(tcx.hir().get_parent_item(hir_id)),
+                ));
                 if let Some(ty) = tables.node_type_opt(expr.hir_id) {
                     err.span_label(
                         expr.span,

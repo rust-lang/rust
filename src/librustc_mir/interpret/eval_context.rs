@@ -454,7 +454,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
-        self.resolve_const_arg(self.tcx.with_opt_param(def_id), substs)
+        self.resolve_const_arg(ty::WithOptParam::dummy(def_id), substs)
     }
 
     pub(super) fn resolve_const_arg(

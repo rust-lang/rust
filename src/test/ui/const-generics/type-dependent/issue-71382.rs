@@ -1,7 +1,5 @@
-// run-pass
 #![feature(const_generics)]
-#![allow(incomplete_features)]
-#![feature(const_compare_raw_pointers)]
+//~^ WARN the feature `const_generics` is incomplete
 
 struct Test;
 
@@ -15,6 +13,7 @@ impl Test {
     }
 
     fn test<const FN: fn() -> u8>(&self) -> u8 {
+        //~^ ERROR using function pointers as const generic parameters is forbidden
         FN()
     }
 }

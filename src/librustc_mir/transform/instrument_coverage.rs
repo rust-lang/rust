@@ -25,7 +25,7 @@ pub struct InstrumentCoverage;
 /// constructing the arguments for `llvm.instrprof.increment`.
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     providers.coverage_data = |tcx, def_id| {
-        let mir_body = tcx.optimized_mir(def_id);
+        let mir_body = tcx.optimized_mir(ty::WithOptParam::dummy(def_id));
         // FIXME(richkadel): The current implementation assumes the MIR for the given DefId
         // represents a single function. Validate and/or correct if inlining and/or monomorphization
         // invalidates these assumptions.
