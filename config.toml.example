@@ -378,7 +378,7 @@
 # nightly features
 #channel = "dev"
 
-# The root location of the MUSL installation directory.
+# The root location of the musl installation directory.
 #musl-root = "..."
 
 # By default the `rustc` executable is built with `-Wl,-rpath` flags on Unix
@@ -521,11 +521,14 @@
 # only use static libraries. If unset, the target's default linkage is used.
 #crt-static = false
 
-# The root location of the MUSL installation directory. The library directory
+# The root location of the musl installation directory. The library directory
 # will also need to contain libunwind.a for an unwinding implementation. Note
-# that this option only makes sense for MUSL targets that produce statically
+# that this option only makes sense for musl targets that produce statically
 # linked binaries
 #musl-root = "..."
+
+# The full path to the musl libdir.
+#musl-libdir = musl-root/lib
 
 # The root location of the `wasm32-wasi` sysroot.
 #wasi-root = "..."
