@@ -1780,7 +1780,7 @@ impl<'a> Parser<'a> {
 
     fn is_named_param(&self) -> bool {
         let offset = match self.token.kind {
-            token::Interpolated(ref nt) => match **nt {
+            token::Interpolated(ref nt, _) => match **nt {
                 token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
                 _ => 0,
             },

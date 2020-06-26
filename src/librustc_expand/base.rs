@@ -4,7 +4,7 @@ use crate::module::DirectoryOwnership;
 use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token;
+use rustc_ast::token::{self, FlattenGroup};
 use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
@@ -142,7 +142,7 @@ impl Annotatable {
             | Annotatable::StructField(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
         };
-        TokenTree::token(token::Interpolated(Lrc::new(nt)), DUMMY_SP).into()
+        TokenTree::token(token::Interpolated(Lrc::new(nt), FlattenGroup::Yes), DUMMY_SP).into()
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
@@ -374,7 +374,7 @@ where
         impl MutVisitor for AvoidInterpolatedIdents {
             fn visit_tt(&mut self, tt: &mut tokenstream::TokenTree) {
                 if let tokenstream::TokenTree::Token(token) = tt {
-                    if let token::Interpolated(nt) = &token.kind {
+                    if let token::Interpolated(nt, _) = &token.kind {
                         if let token::NtIdent(ident, is_raw) = **nt {
                             *tt = tokenstream::TokenTree::token(
                                 token::Ident(ident.name, is_raw),
