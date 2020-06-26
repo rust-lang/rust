@@ -165,19 +165,6 @@ impl NonConstOp for LiveDrop {
 }
 
 #[derive(Debug)]
-pub struct Loop;
-impl NonConstOp for Loop {
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_loop)
-    }
-
-    fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {
-        // This should be caught by the HIR const-checker.
-        ccx.tcx.sess.delay_span_bug(span, "complex control flow is forbidden in a const context");
-    }
-}
-
-#[derive(Debug)]
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
     fn emit_error(&self, ccx: &ConstCx<'_, '_>, span: Span) {

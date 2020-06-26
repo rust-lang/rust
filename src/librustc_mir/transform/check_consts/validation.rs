@@ -207,12 +207,6 @@ impl Validator<'mir, 'tcx> {
             }
         }
 
-        if body.is_cfg_cyclic() {
-            // We can't provide a good span for the error here, but this should be caught by the
-            // HIR const-checker anyways.
-            self.check_op_spanned(ops::Loop, body.span);
-        }
-
         self.visit_body(&body);
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
