@@ -75,7 +75,7 @@ pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
         | "saturating_sub" | "rotate_left" | "rotate_right" | "ctpop" | "ctlz" | "cttz"
         | "bswap" | "bitreverse" | "discriminant_value" | "type_id" | "likely" | "unlikely"
         | "ptr_guaranteed_eq" | "ptr_guaranteed_ne" | "minnumf32" | "minnumf64" | "maxnumf32"
-        | "maxnumf64" | "type_name" => hir::Unsafety::Normal,
+        | "maxnumf64" | "type_name" | "variant_count" => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }
 }
@@ -137,7 +137,9 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         let unsafety = intrinsic_operation_unsafety(&name[..]);
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), tcx.mk_unit()),
-            "size_of" | "pref_align_of" | "min_align_of" => (1, Vec::new(), tcx.types.usize),
+            "size_of" | "pref_align_of" | "min_align_of" | "variant_count" => {
+                (1, Vec::new(), tcx.types.usize)
+            }
             "size_of_val" | "min_align_of_val" => {
                 (1, vec![tcx.mk_imm_ptr(param(0))], tcx.types.usize)
             }

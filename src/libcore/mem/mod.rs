@@ -999,3 +999,33 @@ impl<T> fmt::Debug for Discriminant<T> {
 pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
     Discriminant(intrinsics::discriminant_value(v))
 }
+
+/// Returns the number of variants in the enum type `T`.
+///
+/// If `T` is not an enum, calling this function will not result in undefined behavior, but the
+/// return value is unspecified. Equally, if `T` is an enum with more variants than `usize::MAX`
+/// the return value is unspecified. Uninhabited variants will be counted.
+///
+/// # Examples
+///
+/// ```
+/// # #![feature(never_type)]
+/// # #![feature(variant_count)]
+///
+/// use std::mem;
+///
+/// enum Void {}
+/// enum Foo { A(&'static str), B(i32), C(i32) }
+///
+/// assert_eq!(mem::variant_count::<Void>(), 0);
+/// assert_eq!(mem::variant_count::<Foo>(), 3);
+///
+/// assert_eq!(mem::variant_count::<Option<!>>(), 2);
+/// assert_eq!(mem::variant_count::<Result<!, !>>(), 2);
+/// ```
+#[inline(always)]
+#[unstable(feature = "variant_count", issue = "73662")]
+#[rustc_const_unstable(feature = "variant_count", issue = "73662")]
+pub const fn variant_count<T>() -> usize {
+    intrinsics::variant_count::<T>()
+}
