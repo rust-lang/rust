@@ -468,7 +468,7 @@ impl clean::Path {
 
 pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let cache = cache();
-    if !did.is_local() && !cache.access_levels.is_public(did) {
+    if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
         return None;
     }
 
