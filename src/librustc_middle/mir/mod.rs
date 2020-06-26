@@ -2,8 +2,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
-// ignore-tidy-filelength
-
 use crate::mir::interpret::{GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
