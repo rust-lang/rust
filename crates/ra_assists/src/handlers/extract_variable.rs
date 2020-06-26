@@ -11,7 +11,7 @@ use test_utils::mark;
 
 use crate::{AssistContext, AssistId, Assists};
 
-// Assist: introduce_variable
+// Assist: extract_variable
 //
 // Extracts subexpression into a variable.
 //
@@ -27,13 +27,13 @@ use crate::{AssistContext, AssistId, Assists};
 //     var_name * 4;
 // }
 // ```
-pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     if ctx.frange.range.is_empty() {
         return None;
     }
     let node = ctx.covering_element();
     if node.kind() == COMMENT {
-        mark::hit!(introduce_var_in_comment_is_not_applicable);
+        mark::hit!(extract_var_in_comment_is_not_applicable);
         return None;
     }
     let expr = node.ancestors().find_map(valid_target_expr)?;
@@ -43,7 +43,7 @@ pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Opti
         return None;
     }
     let target = expr.syntax().text_range();
-    acc.add(AssistId("introduce_variable"), "Extract into variable", target, move |edit| {
+    acc.add(AssistId("extract_variable"), "Extract into variable", target, move |edit| {
         let field_shorthand = match expr.syntax().parent().and_then(ast::RecordField::cast) {
             Some(field) => field.name_ref(),
             None => None,
@@ -74,7 +74,7 @@ pub(crate) fn introduce_variable(acc: &mut Assists, ctx: &AssistContext) -> Opti
             false
         };
         if is_full_stmt {
-            mark::hit!(test_introduce_var_expr_stmt);
+            mark::hit!(test_extract_var_expr_stmt);
             if full_stmt.unwrap().semicolon_token().is_none() {
                 buf.push_str(";");
             }
@@ -133,7 +133,7 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
     }
 }
 
-/// Returns the syntax node which will follow the freshly introduced var
+/// Returns the syntax node which will follow the freshly extractd var
 /// and a boolean indicating whether we have to wrap it within a { } block
 /// to produce correct code.
 /// It can be a statement, the last in a block expression or a wanna be block
@@ -142,7 +142,7 @@ fn anchor_stmt(expr: ast::Expr) -> Option<(SyntaxNode, bool)> {
     expr.syntax().ancestors().find_map(|node| {
         if let Some(expr) = node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.expr()) {
             if expr.syntax() == &node {
-                mark::hit!(test_introduce_var_last_expr);
+                mark::hit!(test_extract_var_last_expr);
                 return Some((node, false));
             }
         }
@@ -170,9 +170,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_introduce_var_simple() {
+    fn test_extract_var_simple() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             r#"
 fn foo() {
     foo(<|>1 + 1<|>);
@@ -186,16 +186,16 @@ fn foo() {
     }
 
     #[test]
-    fn introduce_var_in_comment_is_not_applicable() {
-        mark::check!(introduce_var_in_comment_is_not_applicable);
-        check_assist_not_applicable(introduce_variable, "fn main() { 1 + /* <|>comment<|> */ 1; }");
+    fn extract_var_in_comment_is_not_applicable() {
+        mark::check!(extract_var_in_comment_is_not_applicable);
+        check_assist_not_applicable(extract_variable, "fn main() { 1 + /* <|>comment<|> */ 1; }");
     }
 
     #[test]
-    fn test_introduce_var_expr_stmt() {
-        mark::check!(test_introduce_var_expr_stmt);
+    fn test_extract_var_expr_stmt() {
+        mark::check!(test_extract_var_expr_stmt);
         check_assist(
-            introduce_variable,
+            extract_variable,
             r#"
 fn foo() {
     <|>1 + 1<|>;
@@ -206,7 +206,7 @@ fn foo() {
 }"#,
         );
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn foo() {
     <|>{ let x = 0; x }<|>
@@ -221,9 +221,9 @@ fn foo() {
     }
 
     #[test]
-    fn test_introduce_var_part_of_expr_stmt() {
+    fn test_extract_var_part_of_expr_stmt() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn foo() {
     <|>1<|> + 1;
@@ -237,10 +237,10 @@ fn foo() {
     }
 
     #[test]
-    fn test_introduce_var_last_expr() {
-        mark::check!(test_introduce_var_last_expr);
+    fn test_extract_var_last_expr() {
+        mark::check!(test_extract_var_last_expr);
         check_assist(
-            introduce_variable,
+            extract_variable,
             r#"
 fn foo() {
     bar(<|>1 + 1<|>)
@@ -254,7 +254,7 @@ fn foo() {
 "#,
         );
         check_assist(
-            introduce_variable,
+            extract_variable,
             r#"
 fn foo() {
     <|>bar(1 + 1)<|>
@@ -270,9 +270,9 @@ fn foo() {
     }
 
     #[test]
-    fn test_introduce_var_in_match_arm_no_block() {
+    fn test_extract_var_in_match_arm_no_block() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn main() {
     let x = true;
@@ -295,9 +295,9 @@ fn main() {
     }
 
     #[test]
-    fn test_introduce_var_in_match_arm_with_block() {
+    fn test_extract_var_in_match_arm_with_block() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn main() {
     let x = true;
@@ -327,9 +327,9 @@ fn main() {
     }
 
     #[test]
-    fn test_introduce_var_in_closure_no_block() {
+    fn test_extract_var_in_closure_no_block() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn main() {
     let lambda = |x: u32| <|>x * 2<|>;
@@ -344,9 +344,9 @@ fn main() {
     }
 
     #[test]
-    fn test_introduce_var_in_closure_with_block() {
+    fn test_extract_var_in_closure_with_block() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn main() {
     let lambda = |x: u32| { <|>x * 2<|> };
@@ -361,9 +361,9 @@ fn main() {
     }
 
     #[test]
-    fn test_introduce_var_path_simple() {
+    fn test_extract_var_path_simple() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn main() {
     let o = <|>Some(true)<|>;
@@ -379,9 +379,9 @@ fn main() {
     }
 
     #[test]
-    fn test_introduce_var_path_method() {
+    fn test_extract_var_path_method() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn main() {
     let v = <|>bar.foo()<|>;
@@ -397,9 +397,9 @@ fn main() {
     }
 
     #[test]
-    fn test_introduce_var_return() {
+    fn test_extract_var_return() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn foo() -> u32 {
     <|>return 2 + 2<|>;
@@ -415,9 +415,9 @@ fn foo() -> u32 {
     }
 
     #[test]
-    fn test_introduce_var_does_not_add_extra_whitespace() {
+    fn test_extract_var_does_not_add_extra_whitespace() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn foo() -> u32 {
 
@@ -436,7 +436,7 @@ fn foo() -> u32 {
         );
 
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn foo() -> u32 {
 
@@ -453,7 +453,7 @@ fn foo() -> u32 {
         );
 
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn foo() -> u32 {
     let foo = 1;
@@ -479,9 +479,9 @@ fn foo() -> u32 {
     }
 
     #[test]
-    fn test_introduce_var_break() {
+    fn test_extract_var_break() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn main() {
     let result = loop {
@@ -501,9 +501,9 @@ fn main() {
     }
 
     #[test]
-    fn test_introduce_var_for_cast() {
+    fn test_extract_var_for_cast() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             "
 fn main() {
     let v = <|>0f32 as u32<|>;
@@ -519,9 +519,9 @@ fn main() {
     }
 
     #[test]
-    fn introduce_var_field_shorthand() {
+    fn extract_var_field_shorthand() {
         check_assist(
-            introduce_variable,
+            extract_variable,
             r#"
 struct S {
     foo: i32
@@ -545,22 +545,22 @@ fn main() {
     }
 
     #[test]
-    fn test_introduce_var_for_return_not_applicable() {
-        check_assist_not_applicable(introduce_variable, "fn foo() { <|>return<|>; } ");
+    fn test_extract_var_for_return_not_applicable() {
+        check_assist_not_applicable(extract_variable, "fn foo() { <|>return<|>; } ");
     }
 
     #[test]
-    fn test_introduce_var_for_break_not_applicable() {
-        check_assist_not_applicable(introduce_variable, "fn main() { loop { <|>break<|>; }; }");
+    fn test_extract_var_for_break_not_applicable() {
+        check_assist_not_applicable(extract_variable, "fn main() { loop { <|>break<|>; }; }");
     }
 
     // FIXME: This is not quite correct, but good enough(tm) for the sorting heuristic
     #[test]
-    fn introduce_var_target() {
-        check_assist_target(introduce_variable, "fn foo() -> u32 { <|>return 2 + 2<|>; }", "2 + 2");
+    fn extract_var_target() {
+        check_assist_target(extract_variable, "fn foo() -> u32 { <|>return 2 + 2<|>; }", "2 + 2");
 
         check_assist_target(
-            introduce_variable,
+            extract_variable,
             "
 fn main() {
     let x = true;
