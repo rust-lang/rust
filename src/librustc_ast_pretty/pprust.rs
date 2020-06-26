@@ -2578,7 +2578,7 @@ impl<'a> State<'a> {
                         s.print_type(default)
                     }
                 }
-                ast::GenericParamKind::Const { ref ty } => {
+                ast::GenericParamKind::Const { ref ty, kw_span: _ } => {
                     s.word_space("const");
                     s.print_ident(param.ident);
                     s.s.space();

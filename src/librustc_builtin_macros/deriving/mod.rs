@@ -123,7 +123,7 @@ fn inject_impl_of_structural_trait(
                 *default = None;
                 ast::GenericArg::Type(cx.ty_ident(span, param.ident))
             }
-            ast::GenericParamKind::Const { ty: _ } => {
+            ast::GenericParamKind::Const { ty: _, kw_span: _ } => {
                 ast::GenericArg::Const(cx.const_ident(span, param.ident))
             }
         })

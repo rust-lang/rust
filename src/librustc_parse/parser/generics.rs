@@ -47,21 +47,21 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_const_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, GenericParam> {
-        let lo = self.token.span;
+        let const_span = self.token.span;
 
         self.expect_keyword(kw::Const)?;
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
-        self.sess.gated_spans.gate(sym::const_generics, lo.to(self.prev_token.span));
+        self.sess.gated_spans.gate(sym::const_generics, const_span.to(self.prev_token.span));
 
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs.into(),
             bounds: Vec::new(),
-            kind: GenericParamKind::Const { ty },
+            kind: GenericParamKind::Const { ty, kw_span: const_span },
             is_placeholder: false,
         })
     }
