@@ -652,22 +652,23 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         debug!("generalize: consts c={:?}", c);
         match c.val {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
-                let mut inner = self.infcx.inner.borrow_mut();
-                let variable_table = &mut inner.const_unification_table();
-                let var_value = variable_table.probe_value(vid);
+                let var_value =
+                    self.infcx.inner.borrow_mut().const_unification_table().probe_value(vid);
                 match var_value.val {
-                    ConstVariableValue::Known { value: u } => {
-                        drop(inner);
-                        self.relate(&u, &u)
-                    }
+                    ConstVariableValue::Known { value: u } => self.relate(&u, &u),
                     ConstVariableValue::Unknown { universe } => {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
                         } else {
-                            let new_var_id = variable_table.new_key(ConstVarValue {
-                                origin: var_value.origin,
-                                val: ConstVariableValue::Unknown { universe: self.for_universe },
-                            });
+                            let new_var_id =
+                                self.infcx.inner.borrow_mut().const_unification_table().new_key(
+                                    ConstVarValue {
+                                        origin: var_value.origin,
+                                        val: ConstVariableValue::Unknown {
+                                            universe: self.for_universe,
+                                        },
+                                    },
+                                );
                             Ok(self.tcx().mk_const_var(new_var_id, c.ty))
                         }
                     }
