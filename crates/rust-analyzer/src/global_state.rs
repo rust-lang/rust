@@ -7,7 +7,7 @@ use std::{sync::Arc, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use lsp_types::Url;
+use lsp_types::{request::Request as _, Url};
 use parking_lot::RwLock;
 use ra_db::{CrateId, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
@@ -18,6 +18,7 @@ use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
     from_proto,
     line_endings::LineEndings,
+    lsp_utils::notification_new,
     main_loop::Task,
     reload::SourceRootConfig,
     request_metrics::{LatestRequests, RequestMetrics},
@@ -57,6 +58,7 @@ pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 /// Note that this struct has more than on impl in various modules!
 pub(crate) struct GlobalState {
     sender: Sender<lsp_server::Message>,
+    req_queue: ReqQueue,
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
     pub(crate) flycheck: Option<Handle<FlycheckHandle, Receiver<flycheck::Message>>>,
@@ -66,7 +68,6 @@ pub(crate) struct GlobalState {
     pub(crate) mem_docs: FxHashSet<VfsPath>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) status: Status,
-    pub(crate) req_queue: ReqQueue,
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_client: ProcMacroClient,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
@@ -102,16 +103,16 @@ impl GlobalState {
         let analysis_host = AnalysisHost::new(config.lru_capacity);
         GlobalState {
             sender,
+            req_queue: ReqQueue::default(),
             task_pool,
             loader,
+            flycheck: None,
             config,
             analysis_host,
-            flycheck: None,
             diagnostics: Default::default(),
             mem_docs: FxHashSet::default(),
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
             status: Status::default(),
-            req_queue: ReqQueue::default(),
             source_root_config: SourceRootConfig::default(),
             proc_macro_client: ProcMacroClient::dummy(),
             workspaces: Arc::new(Vec::new()),
@@ -168,8 +169,39 @@ impl GlobalState {
         }
     }
 
-    pub(crate) fn send(&mut self, message: lsp_server::Message) {
-        self.sender.send(message).unwrap()
+    pub(crate) fn send_request<R: lsp_types::request::Request>(
+        &mut self,
+        params: R::Params,
+        handler: ReqHandler,
+    ) {
+        let request = self.req_queue.outgoing.register(
+            lsp_types::request::WorkDoneProgressCreate::METHOD.to_string(),
+            params,
+            handler,
+        );
+        self.send(request.into());
+    }
+    pub(crate) fn complete_request(&mut self, response: lsp_server::Response) {
+        let handler = self.req_queue.outgoing.complete(response.id.clone());
+        handler(self, response)
+    }
+
+    pub(crate) fn send_notification<N: lsp_types::notification::Notification>(
+        &mut self,
+        params: N::Params,
+    ) {
+        let not = notification_new::<N>(params);
+        self.send(not.into());
+    }
+
+    pub(crate) fn register_request(
+        &mut self,
+        request: &lsp_server::Request,
+        request_received: Instant,
+    ) {
+        self.req_queue
+            .incoming
+            .register(request.id.clone(), (request.method.clone(), request_received));
     }
     pub(crate) fn respond(&mut self, response: lsp_server::Response) {
         if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone()) {
@@ -180,6 +212,15 @@ impl GlobalState {
             self.latest_requests.write().record(metrics);
             self.send(response.into());
         }
+    }
+    pub(crate) fn cancel(&mut self, request_id: lsp_server::RequestId) {
+        if let Some(response) = self.req_queue.incoming.cancel(request_id) {
+            self.send(response.into());
+        }
+    }
+
+    fn send(&mut self, message: lsp_server::Message) {
+        self.sender.send(message).unwrap()
     }
 }
 

@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use crossbeam_channel::unbounded;
 use flycheck::FlycheckHandle;
-use lsp_types::request::Request;
 use ra_db::{CrateGraph, SourceRoot, VfsPath};
 use ra_ide::AnalysisChange;
 use ra_project_model::{PackageRoot, ProcMacroClient, ProjectWorkspace};
@@ -78,13 +77,10 @@ impl GlobalState {
                 method: "workspace/didChangeWatchedFiles".to_string(),
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
-            let params = lsp_types::RegistrationParams { registrations: vec![registration] };
-            let request = self.req_queue.outgoing.register(
-                lsp_types::request::RegisterCapability::METHOD.to_string(),
-                params,
+            self.send_request::<lsp_types::request::RegisterCapability>(
+                lsp_types::RegistrationParams { registrations: vec![registration] },
                 |_, _| (),
             );
-            self.send(request.into());
         }
 
         let mut change = AnalysisChange::new();

@@ -7,7 +7,7 @@ use std::{
 
 use crossbeam_channel::{never, select, Receiver};
 use lsp_server::{Connection, Notification, Request, Response};
-use lsp_types::{notification::Notification as _, request::Request as _};
+use lsp_types::notification::Notification as _;
 use ra_db::VfsPath;
 use ra_ide::{Canceled, FileId};
 use ra_prof::profile;
@@ -18,7 +18,7 @@ use crate::{
     from_proto,
     global_state::{file_id_to_url, url_to_file_id, GlobalState, Status},
     handlers, lsp_ext,
-    lsp_utils::{apply_document_changes, is_canceled, notification_is, notification_new, Progress},
+    lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
     Result,
 };
 
@@ -143,10 +143,7 @@ impl GlobalState {
                 lsp_server::Message::Notification(not) => {
                     self.on_notification(not)?;
                 }
-                lsp_server::Message::Response(resp) => {
-                    let handler = self.req_queue.outgoing.complete(resp.id.clone());
-                    handler(self, resp)
-                }
+                lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
             Event::Task(task) => {
                 match task {
@@ -250,10 +247,9 @@ impl GlobalState {
             for file_id in diagnostic_changes {
                 let url = file_id_to_url(&self.vfs.read().0, file_id);
                 let diagnostics = self.diagnostics.diagnostics_for(file_id).cloned().collect();
-                let params =
-                    lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None };
-                let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
-                self.send(not.into());
+                self.send_notification::<lsp_types::notification::PublishDiagnostics>(
+                    lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None },
+                );
             }
         }
 
@@ -271,7 +267,7 @@ impl GlobalState {
     }
 
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
-        self.req_queue.incoming.register(req.id.clone(), (req.method.clone(), request_received));
+        self.register_request(&req, request_received);
 
         RequestDispatcher { req: Some(req), global_state: self }
             .on_sync::<lsp_ext::CollectGarbage>(|s, ()| Ok(s.analysis_host.collect_garbage()))?
@@ -335,9 +331,7 @@ impl GlobalState {
                     lsp_types::NumberOrString::Number(id) => id.into(),
                     lsp_types::NumberOrString::String(id) => id.into(),
                 };
-                if let Some(response) = this.req_queue.incoming.cancel(id) {
-                    this.send(response.into());
-                }
+                this.cancel(id);
                 Ok(())
             })?
             .on::<lsp_types::notification::DidOpenTextDocument>(|this, params| {
@@ -372,13 +366,13 @@ impl GlobalState {
                         this.loader.handle.invalidate(path.to_path_buf());
                     }
                 }
-                let params = lsp_types::PublishDiagnosticsParams {
-                    uri: params.text_document.uri,
-                    diagnostics: Vec::new(),
-                    version: None,
-                };
-                let not = notification_new::<lsp_types::notification::PublishDiagnostics>(params);
-                this.send(not.into());
+                this.send_notification::<lsp_types::notification::PublishDiagnostics>(
+                    lsp_types::PublishDiagnosticsParams {
+                        uri: params.text_document.uri,
+                        diagnostics: Vec::new(),
+                        version: None,
+                    },
+                );
                 Ok(())
             })?
             .on::<lsp_types::notification::DidSaveTextDocument>(|this, _params| {
@@ -390,8 +384,7 @@ impl GlobalState {
             .on::<lsp_types::notification::DidChangeConfiguration>(|this, _params| {
                 // As stated in https://github.com/microsoft/language-server-protocol/issues/676,
                 // this notification's parameters should be ignored and the actual config queried separately.
-                let request = this.req_queue.outgoing.register(
-                    lsp_types::request::WorkspaceConfiguration::METHOD.to_string(),
+                this.send_request::<lsp_types::request::WorkspaceConfiguration>(
                     lsp_types::ConfigurationParams {
                         items: vec![lsp_types::ConfigurationItem {
                             scope_uri: None,
@@ -419,7 +412,6 @@ impl GlobalState {
                         }
                     },
                 );
-                this.send(request.into());
 
                 return Ok(());
             })?
