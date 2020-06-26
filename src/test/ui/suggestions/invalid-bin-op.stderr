@@ -1,0 +1,13 @@
+error[E0369]: binary operation `==` cannot be applied to type `S<T>`
+  --> $DIR/invalid-bin-op.rs:2:15
+   |
+LL |     let _ = s == t;
+   |             - ^^ - S<T>
+   |             |
+   |             S<T>
+   |
+   = note: the trait `std::cmp::PartialEq` is not implemented for `S<T>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0369`.
