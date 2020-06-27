@@ -77,6 +77,7 @@ impl HighlightTag {
             HighlightTag::EnumVariant => "enum_variant",
             HighlightTag::EscapeSequence => "escape_sequence",
             HighlightTag::Field => "field",
+            HighlightTag::FormatSpecifier => "format_specifier",
             HighlightTag::Function => "function",
             HighlightTag::Generic => "generic",
             HighlightTag::Keyword => "keyword",
@@ -84,6 +85,7 @@ impl HighlightTag {
             HighlightTag::Macro => "macro",
             HighlightTag::Module => "module",
             HighlightTag::NumericLiteral => "numeric_literal",
+            HighlightTag::Operator => "operator",
             HighlightTag::SelfKeyword => "self_keyword",
             HighlightTag::SelfType => "self_type",
             HighlightTag::Static => "static",
@@ -95,8 +97,6 @@ impl HighlightTag {
             HighlightTag::Union => "union",
             HighlightTag::Local => "variable",
             HighlightTag::UnresolvedReference => "unresolved_reference",
-            HighlightTag::FormatSpecifier => "format_specifier",
-            HighlightTag::Operator => "operator",
         }
     }
 }

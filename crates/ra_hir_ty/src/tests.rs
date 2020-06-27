@@ -580,7 +580,6 @@ fn missing_unsafe() {
 fn missing_unsafe_diagnostic_with_unsafe_method_call() {
     let diagnostics = TestDB::with_files(
         r"
-//- /lib.rs
 struct HasUnsafe;
 
 impl HasUnsafe {
@@ -606,7 +605,6 @@ fn missing_unsafe() {
 fn no_missing_unsafe_diagnostic_with_raw_ptr_in_unsafe_block() {
     let diagnostics = TestDB::with_files(
         r"
-//- /lib.rs
 fn nothing_to_see_move_along() {
     let x = &5 as *const usize;
     unsafe {
@@ -625,7 +623,6 @@ fn nothing_to_see_move_along() {
 fn missing_unsafe_diagnostic_with_raw_ptr_outside_unsafe_block() {
     let diagnostics = TestDB::with_files(
         r"
-//- /lib.rs
 fn nothing_to_see_move_along() {
     let x = &5 as *const usize;
     unsafe {
@@ -645,7 +642,6 @@ fn nothing_to_see_move_along() {
 fn no_missing_unsafe_diagnostic_with_unsafe_call_in_unsafe_block() {
     let diagnostics = TestDB::with_files(
         r"
-//- /lib.rs
 unsafe fn unsafe_fn() {
     let x = &5 as *const usize;
     let y = *x;
@@ -668,7 +664,6 @@ fn nothing_to_see_move_along() {
 fn no_missing_unsafe_diagnostic_with_unsafe_method_call_in_unsafe_block() {
     let diagnostics = TestDB::with_files(
         r"
-//- /lib.rs
 struct HasUnsafe;
 
 impl HasUnsafe {

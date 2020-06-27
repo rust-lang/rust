@@ -27,9 +27,9 @@ use hir_ty::{
     display::{HirDisplayError, HirFormatter},
     expr::ExprValidator,
     method_resolution,
-    method_resolution, ApplicationTy, Canonical, InEnvironment, Substs, TraitEnvironment, Ty,
-    TyDefId, TypeCtor,
     unsafe_validation::UnsafeValidator,
+    ApplicationTy, Canonical, GenericPredicate, InEnvironment, Substs, TraitEnvironment, Ty,
+    TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, CrateName, Edition, FileId};
 use ra_prof::profile;
@@ -669,6 +669,10 @@ impl Function {
 
     pub fn params(self, db: &dyn HirDatabase) -> Vec<TypeRef> {
         db.function_data(self.id).params.clone()
+    }
+
+    pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).is_unsafe
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {

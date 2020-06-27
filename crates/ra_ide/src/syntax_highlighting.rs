@@ -605,7 +605,13 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
         Definition::Field(_) => HighlightTag::Field,
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
-            hir::ModuleDef::Function(_) => HighlightTag::Function,
+            hir::ModuleDef::Function(func) => {
+                let mut h = HighlightTag::Function.into();
+                if func.is_unsafe(db) {
+                    h |= HighlightModifier::Unsafe;
+                }
+                return h;
+            }
             hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
             hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Enum,
             hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Union,

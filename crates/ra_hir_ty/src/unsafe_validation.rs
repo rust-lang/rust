@@ -3,19 +3,16 @@
 
 use std::sync::Arc;
 
-use hir_def::{DefWithBodyId, FunctionId};
+use hir_def::{
+    body::Body,
+    expr::{Expr, ExprId, UnaryOp},
+    DefWithBodyId, FunctionId,
+};
 use hir_expand::diagnostics::DiagnosticSink;
 
 use crate::{
     db::HirDatabase, diagnostics::MissingUnsafe, lower::CallableDef, ApplicationTy,
     InferenceResult, Ty, TypeCtor,
-};
-
-use rustc_hash::FxHashSet;
-
-use hir_def::{
-    body::Body,
-    expr::{Expr, ExprId, UnaryOp},
 };
 
 pub struct UnsafeValidator<'a, 'b: 'a> {
@@ -75,13 +72,9 @@ pub fn unsafe_expressions(
     def: DefWithBodyId,
 ) -> Vec<UnsafeExpr> {
     let mut unsafe_exprs = vec![];
-    let mut unsafe_block_exprs = FxHashSet::default();
     let body = db.body(def);
     for (id, expr) in body.exprs.iter() {
         match expr {
-            Expr::Unsafe { .. } => {
-                unsafe_block_exprs.insert(id);
-            }
             Expr::Call { callee, .. } => {
                 let ty = &infer[*callee];
                 if let &Ty::Apply(ApplicationTy {
