@@ -1033,14 +1033,16 @@ impl Metadata {
     /// [`is_dir`], and will be false for symlink metadata
     /// obtained from [`symlink_metadata`].
     ///
-    /// This property means it is often more useful to use `!file_type.is_dir()`
-    /// than `file_type.is_file()` when your goal is to read bytes from a
-    /// source: the former includes symlink and pipes when the latter does not,
-    /// meaning you will break workflows like `diff <( prog_a ) <( prog_b )` on
-    /// a Unix-like system for example.
+    /// When the goal is simply to read from (or write to) the source, the most
+    /// reliable way to test the source can be read (or written to) is to open
+    /// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
+    /// a Unix-like system for example. See [`File::open`] or
+    /// [`OpenOptions::open`] for more information.
     ///
     /// [`is_dir`]: struct.Metadata.html#method.is_dir
     /// [`symlink_metadata`]: fn.symlink_metadata.html
+    /// [`File::open`]: struct.File.html#method.open
+    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
     ///
     /// # Examples
     ///
@@ -1313,14 +1315,16 @@ impl FileType {
     /// [`is_dir`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
     ///
-    /// This property means it is often more useful to use `!file_type.is_dir()`
-    /// than `file_type.is_file()` when your goal is to read bytes from a
-    /// source: the former includes symlink and pipes when the latter does not,
-    /// meaning you will break workflows like `diff <( prog_a ) <( prog_b )` on
-    /// a Unix-like system for example.
+    /// When the goal is simply to read from (or write to) the source, the most
+    /// reliable way to test the source can be read (or written to) is to open
+    /// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
+    /// a Unix-like system for example. See [`File::open`] or
+    /// [`OpenOptions::open`] for more information.
     ///
     /// [`is_dir`]: struct.FileType.html#method.is_dir
     /// [`is_symlink`]: struct.FileType.html#method.is_symlink
+    /// [`File::open`]: struct.File.html#method.open
+    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
     ///
     /// # Examples
     ///

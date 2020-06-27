@@ -2506,7 +2506,7 @@ impl Path {
     /// check errors, call [`fs::metadata`] and handle its Result. Then call
     /// [`fs::Metadata::is_file`] if it was Ok.
     ///
-    /// Note that the explanation about using `!is_dir` instead of `is_file`
+    /// Note that the explanation about using `open` instead of `is_file`
     /// that is present in the [`fs::Metadata`] documentation also applies here.
     ///
     /// [`fs::metadata`]: ../../std/fs/fn.metadata.html
