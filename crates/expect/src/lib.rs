@@ -78,7 +78,8 @@ impl Expect {
             line_start += line.len();
         }
         let (literal_start, line_indent) = target_line.unwrap();
-        let literal_length = file[literal_start..].find("]]").expect("Couldn't find matching `]]` for `expect![[`.");
+        let literal_length =
+            file[literal_start..].find("]]").expect("Couldn't find matching `]]` for `expect![[`.");
         let literal_range = literal_start..literal_start + literal_length;
         Location { line_indent, literal_range }
     }
@@ -237,34 +238,6 @@ fn workspace_root() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_expect_macro() {
-        let empty = expect![[]];
-        expect![[r#"
-            Expect {
-                file: "crates/expect/src/lib.rs",
-                line: 241,
-                column: 21,
-                data: "",
-            }
-        "#]]
-        .assert_debug_eq(&empty);
-
-        let expect = expect![["
-            hello
-            world
-        "]];
-        expect![[r#"
-            Expect {
-                file: "crates/expect/src/lib.rs",
-                line: 252,
-                column: 22,
-                data: "\n            hello\n            world\n        ",
-            }
-        "#]]
-        .assert_debug_eq(&expect);
-    }
 
     #[test]
     fn test_format_patch() {
