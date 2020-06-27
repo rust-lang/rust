@@ -1,6 +1,8 @@
 //! Lexer analyzes raw input string and produces lexemes (tokens).
 //! It is just a bridge to `rustc_lexer`.
 
+use rustc_lexer::{LiteralKind as LK, RawStrError};
+
 use std::convert::TryInto;
 
 use crate::{
@@ -180,8 +182,6 @@ fn rustc_token_kind_to_syntax_kind(
     return (syntax_kind, None);
 
     fn match_literal_kind(kind: &rustc_lexer::LiteralKind) -> (SyntaxKind, Option<&'static str>) {
-        use rustc_lexer::{LexRawStrError, LiteralKind as LK};
-
         #[rustfmt::skip]
         let syntax_kind = match *kind {
             LK::Int { empty_int: false, .. } => INT_NUMBER,
@@ -215,27 +215,27 @@ fn rustc_token_kind_to_syntax_kind(
                 return (BYTE_STRING, Some("Missing trailing `\"` symbol to terminate the byte string literal"))
             }
 
-            LK::RawStr(str) => match str.validate() {
-                Ok(_) => RAW_STRING,
-                Err(LexRawStrError::InvalidStarter) => return (RAW_STRING, Some("Missing `\"` symbol after `#` symbols to begin the raw string literal")),
-                Err(LexRawStrError::NoTerminator { expected, found, .. }) => if expected == found {
+            LK::RawStr { err, .. } => match err {
+                None => RAW_STRING,
+                Some(RawStrError::InvalidStarter { .. }) => return (RAW_STRING, Some("Missing `\"` symbol after `#` symbols to begin the raw string literal")),
+                Some(RawStrError::NoTerminator { expected, found, .. }) => if expected == found {
                     return (RAW_STRING, Some("Missing trailing `\"` to terminate the raw string literal"))
                 } else {
                     return (RAW_STRING, Some("Missing trailing `\"` with `#` symbols to terminate the raw string literal"))
 
                 },
-                Err(LexRawStrError::TooManyDelimiters { .. }) => return (RAW_STRING, Some("Too many `#` symbols: raw strings may be delimited by up to 65535 `#` symbols")),
+                Some(RawStrError::TooManyDelimiters { .. }) => return (RAW_STRING, Some("Too many `#` symbols: raw strings may be delimited by up to 65535 `#` symbols")),
             },
-            LK::RawByteStr(str) => match str.validate() {
-                Ok(_) => RAW_BYTE_STRING,
-                Err(LexRawStrError::InvalidStarter) => return (RAW_BYTE_STRING, Some("Missing `\"` symbol after `#` symbols to begin the raw byte string literal")),
-                Err(LexRawStrError::NoTerminator { expected, found, .. }) => if expected == found {
+            LK::RawByteStr { err, .. } => match err {
+                None => RAW_BYTE_STRING,
+                Some(RawStrError::InvalidStarter { .. }) => return (RAW_BYTE_STRING, Some("Missing `\"` symbol after `#` symbols to begin the raw byte string literal")),
+                Some(RawStrError::NoTerminator { expected, found, .. }) => if expected == found {
                     return (RAW_BYTE_STRING, Some("Missing trailing `\"` to terminate the raw byte string literal"))
                 } else {
                     return (RAW_BYTE_STRING, Some("Missing trailing `\"` with `#` symbols to terminate the raw byte string literal"))
 
                 },
-                Err(LexRawStrError::TooManyDelimiters { .. }) => return (RAW_BYTE_STRING, Some("Too many `#` symbols: raw byte strings may be delimited by up to 65535 `#` symbols")),
+                Some(RawStrError::TooManyDelimiters { .. }) => return (RAW_BYTE_STRING, Some("Too many `#` symbols: raw byte strings may be delimited by up to 65535 `#` symbols")),
             },
         };
 
