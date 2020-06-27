@@ -132,7 +132,7 @@ pub trait FileExt {
     /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
     ///
-    /// [`File::write`]: ../../../../std/fs/struct.File.html#write.v
+    /// [`File::write`]: ../../../../std/fs/struct.File.html#method.write
     ///
     /// # Examples
     ///
