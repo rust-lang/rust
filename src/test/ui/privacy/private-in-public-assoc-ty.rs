@@ -29,7 +29,11 @@ mod m {
         //~| WARN this was previously accepted
         type Alias1: PrivTr;
         type Alias2: PubTrAux1<Priv> = u8;
+        //~^ WARN private type `m::Priv` in public interface
+        //~| WARN this was previously accepted
         type Alias3: PubTrAux2<A = Priv> = u8;
+        //~^ WARN private type `m::Priv` in public interface
+        //~| WARN this was previously accepted
 
         type Alias4 = Priv;
         //~^ ERROR private type `Priv` in public interface

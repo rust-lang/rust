@@ -7,8 +7,8 @@ trait Foo {
 }
 
 impl<'a> Foo for &'a i32 {
-    //~^ ERROR cannot infer
     type Value = &'a i32;
+    //~^ ERROR lifetime bound not satisfied
 }
 
 impl<'a> Foo for i32 {

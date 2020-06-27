@@ -11,7 +11,7 @@ error[E0277]: the trait bound `str: Clone` is not satisfied
   --> $DIR/deafult-associated-type-bound-1.rs:18:5
    |
 LL |     type U: Clone;
-   |     -------------- required by `X::U`
+   |             ----- required by this bound in `X::U`
 ...
 LL |     default type U = str;
    |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `str`

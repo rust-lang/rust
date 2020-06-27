@@ -12,13 +12,13 @@ impl<'a> Foo<'a> for &'a i16 {
 }
 
 impl<'a> Foo<'static> for &'a i32 {
-    //~^ ERROR cannot infer
     type Value = &'a i32;
+    //~^ ERROR lifetime bound not satisfied
 }
 
 impl<'a,'b> Foo<'b> for &'a i64 {
-    //~^ ERROR cannot infer
     type Value = &'a i32;
+    //~^ ERROR lifetime bound not satisfied
 }
 
 fn main() { }

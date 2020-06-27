@@ -13,8 +13,9 @@ error[E0277]: `bool` is not an iterator
 LL |     for _ in false {}
    |              ^^^^^ `bool` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `bool`
-   = note: required by `into_iter`
+   = help: the trait `std::iter::Iterator` is not implemented for `bool`
+   = note: required because of the requirements on the impl of `std::iter::IntoIterator` for `bool`
+   = note: required by `std::iter::IntoIterator::into_iter`
 
 error[E0277]: `()` is not an iterator
   --> $DIR/issue-28098.rs:9:28

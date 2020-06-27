@@ -41,7 +41,7 @@ LL |     let res: i32 = try { 5 };
    |
    = note: required by `from_ok`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0271, E0277.
 For more information about an error, try `rustc --explain E0271`.

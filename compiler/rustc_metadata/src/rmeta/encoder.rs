@@ -1266,7 +1266,10 @@ impl EncodeContext<'a, 'tcx> {
             hir::ItemKind::ForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
             hir::ItemKind::TyAlias(..) => EntryKind::Type,
-            hir::ItemKind::OpaqueTy(..) => EntryKind::OpaqueTy,
+            hir::ItemKind::OpaqueTy(..) => {
+                self.encode_explicit_item_bounds(def_id);
+                EntryKind::OpaqueTy
+            }
             hir::ItemKind::Enum(..) => EntryKind::Enum(self.tcx.adt_def(def_id).repr),
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let adt_def = self.tcx.adt_def(def_id);

@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/question-mark-type-infer.rs:12:21
    |
 LL |     l.iter().map(f).collect()?
@@ -12,4 +12,4 @@ LL |     l.iter().map(f).collect::<B>()?
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

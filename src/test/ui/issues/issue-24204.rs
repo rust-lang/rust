@@ -12,6 +12,6 @@ trait Trait: Sized {
 }
 
 fn test<T: Trait<B=i32>>(b: i32) -> T where T::A: MultiDispatch<i32> { T::new(b) }
-//~^ ERROR type mismatch resolving
+//~^ ERROR mismatched types
 
 fn main() {}

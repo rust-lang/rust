@@ -5,6 +5,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::util;
 use rustc_middle::ty;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -1170,20 +1171,13 @@ fn compare_type_predicate_entailment<'tcx>(
 /// For default associated types the normalization is not possible (the value
 /// from the impl could be overridden). We also can't normalize generic
 /// associated types (yet) because they contain bound parameters.
-fn check_type_bounds<'tcx>(
+pub fn check_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ty: &ty::AssocItem,
     impl_ty: &ty::AssocItem,
     impl_ty_span: Span,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorReported> {
-    let have_gats = tcx.features().generic_associated_types;
-    if impl_ty.defaultness.is_final() && !have_gats {
-        // For "final", non-generic associate type implementations, we
-        // don't need this as described above.
-        return Ok(());
-    }
-
     // Given
     //
     // impl<A, B> Foo<u32> for (A, B) {
@@ -1237,10 +1231,20 @@ fn check_type_bounds<'tcx>(
             ObligationCauseCode::ItemObligation(trait_ty.def_id),
         );
 
-        let predicates = tcx.item_bounds(trait_ty.def_id);
-        debug!("check_type_bounds: item_bounds={:?}", predicates);
+        let obligations = tcx
+            .explicit_item_bounds(trait_ty.def_id)
+            .iter()
+            .map(|&(bound, span)| {
+                let concrete_ty_bound =
+                    traits::subst_assoc_item_bound(tcx, bound, impl_ty_value, rebased_substs);
+                debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
-        for predicate in predicates {
+                traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)
+            })
+            .collect();
+        debug!("check_type_bounds: item_bounds={:?}", obligations);
+
+        for obligation in util::elaborate_obligations(tcx, obligations) {
             let concrete_ty_predicate = predicate.subst(tcx, rebased_substs);
             debug!("compare_projection_bounds: concrete predicate = {:?}", concrete_ty_predicate);
 
@@ -1252,12 +1256,7 @@ fn check_type_bounds<'tcx>(
             );
             debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
 
-            inh.register_predicates(obligations);
-            inh.register_predicate(traits::Obligation::new(
-                cause.clone(),
-                param_env,
-                normalized_predicate,
-            ));
+            inh.register_predicate(obligation);
         }
 
         // Check that all obligations are satisfied by the implementation's

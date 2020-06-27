@@ -711,8 +711,10 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
-            if let hir::ItemKind::Fn(..) = it.kind {
-                tcx.ensure().fn_sig(def_id);
+            match it.kind {
+                hir::ItemKind::Fn(..) => tcx.ensure().fn_sig(def_id),
+                hir::ItemKind::OpaqueTy(..) => tcx.ensure().item_bounds(def_id),
+                _ => (),
             }
         }
     }
@@ -733,15 +735,25 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
             tcx.ensure().type_of(def_id);
         }
 
-        hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(_, Some(_)) => {
+        hir::TraitItemKind::Const(..) => {
             tcx.ensure().type_of(def_id);
-            // Account for `const C: _;` and `type T = _;`.
+            // Account for `const C: _;`.
+            let mut visitor = PlaceholderHirTyCollector::default();
+            visitor.visit_trait_item(trait_item);
+            placeholder_type_error(tcx, None, &[], visitor.0, false);
+        }
+
+        hir::TraitItemKind::Type(_, Some(_)) => {
+            tcx.ensure().item_bounds(def_id);
+            tcx.ensure().type_of(def_id);
+            // Account for `type T = _;`.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
             placeholder_type_error(tcx, None, &[], visitor.0, false);
         }
 
         hir::TraitItemKind::Type(_, None) => {
+            tcx.ensure().item_bounds(def_id);
             // #74612: Visit and try to find bad placeholders
             // even if there is no concrete type.
             let mut visitor = PlaceholderHirTyCollector::default();

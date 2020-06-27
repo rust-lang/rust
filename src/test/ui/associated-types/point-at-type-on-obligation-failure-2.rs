@@ -5,7 +5,9 @@ trait Foo {
 }
 
 impl Foo for () {
-    type Assoc = bool; //~ ERROR the trait bound `bool: Bar` is not satisfied
+    // Doesn't error because we abort compilation after the errors below.
+    // See point-at-type-on-obligation-failure-3.rs
+    type Assoc = bool;
 }
 
 trait Baz where Self::Assoc: Bar {
