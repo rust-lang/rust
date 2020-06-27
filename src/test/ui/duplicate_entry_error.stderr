@@ -9,7 +9,7 @@ LL | | }
    |
    = note: the lang item is first defined in crate `std` (which `duplicate_entry_error` depends on)
    = note: first definition in `std` loaded from SYSROOT/libstd-*.rlib
-   = note: second definition in `duplicate_entry_error` loaded from the local crate
+   = note: second definition in the local crate (`duplicate_entry_error`)
 
 error: aborting due to previous error
 

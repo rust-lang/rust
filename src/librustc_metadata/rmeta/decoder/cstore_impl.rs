@@ -27,7 +27,6 @@ use rustc_span::symbol::{Ident, Symbol};
 use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
 use std::any::Any;
-use std::path::PathBuf;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
@@ -240,6 +239,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         syms
     }
+
+    crate_extern_paths => { cdata.source().paths().cloned().collect() }
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -513,9 +514,5 @@ impl CrateStore for CStore {
 
     fn allocator_kind(&self) -> Option<AllocatorKind> {
         self.allocator_kind()
-    }
-
-    fn crate_extern_paths(&self, cnum: CrateNum) -> Vec<PathBuf> {
-        self.get_crate_data(cnum).source().paths().cloned().collect()
     }
 }

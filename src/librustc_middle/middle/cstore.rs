@@ -203,7 +203,6 @@ pub trait CrateStore {
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
     fn allocator_kind(&self) -> Option<AllocatorKind>;
-    fn crate_extern_paths(&self, cnum: CrateNum) -> Vec<PathBuf>;
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;

@@ -8,7 +8,7 @@ LL | | }
    |
    = note: the lang item is first defined in crate `std` (which `panic_handler_std` depends on)
    = note: first definition in `std` loaded from SYSROOT/libstd-*.rlib
-   = note: second definition in `panic_handler_std` loaded from the local crate
+   = note: second definition in the local crate (`panic_handler_std`)
 
 error: argument should be `&PanicInfo`
   --> $DIR/panic-handler-std.rs:8:16

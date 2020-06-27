@@ -62,7 +62,6 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
-use std::path::PathBuf;
 use std::sync::Arc;
 
 type InternedSet<'tcx, T> = ShardedHashMap<Interned<'tcx, T>, ()>;
@@ -1251,14 +1250,6 @@ impl<'tcx> TyCtxt<'tcx> {
     /// is marked as a private dependency
     pub fn is_private_dep(self, cnum: CrateNum) -> bool {
         if cnum == LOCAL_CRATE { false } else { self.cstore.crate_is_private_dep_untracked(cnum) }
-    }
-
-    pub fn crate_extern_paths(&self, cnum: CrateNum) -> Vec<PathBuf> {
-        if cnum == LOCAL_CRATE {
-            self.sess.local_crate_source_file.iter().cloned().collect()
-        } else {
-            self.cstore.crate_extern_paths(cnum)
-        }
     }
 
     #[inline]

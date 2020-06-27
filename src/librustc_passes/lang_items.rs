@@ -147,8 +147,9 @@ impl LanguageItemCollector<'tcx> {
                         }
                     }
                     let mut note_def = |which, def_id: DefId| {
-                        let location = if def_id.is_local() {
-                            "the local crate".to_string()
+                        let crate_name = self.tcx.crate_name(def_id.krate);
+                        let note = if def_id.is_local() {
+                            format!("{} definition in the local crate (`{}`)", which, crate_name)
                         } else {
                             let paths: Vec<_> = self
                                 .tcx
@@ -156,14 +157,14 @@ impl LanguageItemCollector<'tcx> {
                                 .iter()
                                 .map(|p| p.display().to_string())
                                 .collect();
-                            paths.join(", ")
+                            format!(
+                                "{} definition in `{}` loaded from {}",
+                                which,
+                                crate_name,
+                                paths.join(", ")
+                            )
                         };
-                        err.note(&format!(
-                            "{} definition in `{}` loaded from {}",
-                            which,
-                            self.tcx.crate_name(def_id.krate),
-                            location
-                        ));
+                        err.note(&note);
                     };
                     note_def("first", original_def_id);
                     note_def("second", item_def_id);
