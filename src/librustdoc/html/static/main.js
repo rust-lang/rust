@@ -306,14 +306,6 @@ function defocusSearchBar() {
     function expandSection(id) {
         var elem = document.getElementById(id);
         if (elem && isHidden(elem)) {
-            if (elem.tagName === "CODE" && elem.parentNode.tagName === "H4") {
-                // We are in a trait implementation, what we want is the parent.
-                elem = elem.parentNode;
-                if (elem.id !== null && elem.id.length > 0) {
-                    // Change the id to the parent which is "more clear" and better for users.
-                    window.location.hash = elem.id;
-                }
-            }
             var h3 = elem.parentNode.previousElementSibling;
             if (h3 && h3.tagName !== "H3") {
                 h3 = h3.previousElementSibling; // skip div.docblock
@@ -2561,6 +2553,13 @@ function defocusSearchBar() {
 
         onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
         onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
+        var pageId = getPageId();
+
+        autoCollapse(pageId, getCurrentValue("rustdoc-collapse") === "true");
+
+        if (pageId !== null) {
+            expandSection(pageId);
+        }
     }());
 
     function createToggleWrapper(tog) {
@@ -2695,12 +2694,6 @@ function defocusSearchBar() {
     window.onresize = function() {
         hideSidebar();
     };
-
-    autoCollapse(pageId, getCurrentValue("rustdoc-collapse") === "true");
-
-    if (pageId !== null) {
-        expandSection(pageId);
-    }
 
     if (main) {
         onEachLazy(main.getElementsByClassName("loading-content"), function(e) {
