@@ -295,8 +295,6 @@ static mut global_mut: TypeForStaticMut = TypeForStaticMut { a: 0 };
 #[repr(packed)]
 struct Packed {
     a: u16,
-    b: u8,
-    c: u32,
 }
 
 trait DoTheAutoref {
@@ -313,11 +311,11 @@ struct HasAligned {
 }
 
 impl DoTheAutoref for NeedsAlign {
-    fn calls_autored(&self) {}
+    fn calls_autoref(&self) {}
 }
 
 fn main() {
-    let x = &5 as *const usize;
+    let x = &5 as *const _ as *const usize;
     let u = Union { b: 0 };
     unsafe {
         unsafe_fn();
@@ -327,13 +325,11 @@ fn main() {
             Union { a } => (),
         }
         HasUnsafeFn.unsafe_method();
-        let y = *(x);
+        let _y = *(x);
         let z = -x;
         let a = global_mut.a;
-        let packed = Packed { a: 0, b: 0, c: 0 };
-        let a = &packed.a;
-        let b = &packed.b;
-        let c = &packed.c;
+        let packed = Packed { a: 0 };
+        let _a = &packed.a;
         let h = HasAligned{ a: NeedsAlign { a: 1 } };
         h.a.calls_autoref();
     }

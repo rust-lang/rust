@@ -565,7 +565,7 @@ fn highlight_element(
                 _ => h,
             }
         }
-        T![&] => {
+        REF_EXPR => {
             let ref_expr = element.into_node().and_then(ast::RefExpr::cast)?;
             let expr = ref_expr.expr()?;
             let field_expr = match expr {
@@ -582,7 +582,7 @@ fn highlight_element(
             // FIXME This needs layout computation to be correct. It will highlight
             // more than it should with the current implementation.
 
-            Highlight::new(HighlightTag::Operator) | HighlightModifier::Unsafe
+            HighlightTag::Operator | HighlightModifier::Unsafe
         }
         p if p.is_punct() => match p {
             T![::] | T![->] | T![=>] | T![&] | T![..] | T![=] | T![@] => {

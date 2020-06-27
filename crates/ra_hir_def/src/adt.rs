@@ -12,10 +12,11 @@ use ra_syntax::ast::{self, NameOwner, VisibilityOwner};
 use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 
 use crate::{
-    attr::AttrInput,
+    attr::{Attr, AttrInput},
     body::{CfgExpander, LowerCtx},
     db::DefDatabase,
     item_tree::{AttrOwner, Field, Fields, ItemTree, ModItem},
+    path::{ModPath, PathKind},
     src::HasChildSource,
     src::HasSource,
     trace::Trace,
@@ -69,8 +70,12 @@ pub enum ReprKind {
 
 fn repr_from_value(item_tree: &ItemTree, of: AttrOwner) -> Option<ReprKind> {
     item_tree.attrs(of).iter().find_map(|a| {
-        if a.path.segments[0].to_string() == "repr" {
-            if let Some(AttrInput::TokenTree(subtree)) = &a.input {
+        if let Attr {
+            path: ModPath { kind: PathKind::Plain, segments },
+            input: Some(AttrInput::TokenTree(subtree)),
+        } = a
+        {
+            if segments.len() == 1 && segments[0].to_string() == "repr" {
                 parse_repr_tt(subtree)
             } else {
                 None
