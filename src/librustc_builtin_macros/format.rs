@@ -507,8 +507,8 @@ impl<'a, 'b> Context<'a, 'b> {
                             .features
                             .map_or(false, |features| features.format_args_capture);
 
-                        // For the moment capturing variables from format strings expanded from
-                        // literals is disabled (see RFC #2795)
+                        // For the moment capturing variables from format strings expanded from macros is
+                        // disabled (see RFC #2795)
                         let can_capture = capture_feature_enabled && self.is_literal;
 
                         if can_capture {
@@ -541,15 +541,11 @@ impl<'a, 'b> Context<'a, 'b> {
                                      when the format string is expanded from a macro",
                                 );
                             } else if self.ecx.parse_sess().unstable_features.is_nightly_build() {
-                                err.note(&format!(
-                                    "did you intend to capture a variable `{}` from \
-                                     the surrounding scope?",
+                                err.help(&format!(
+                                    "if you intended to capture `{}` from the surrounding scope, add \
+                                     `#![feature(format_args_capture)]` to the crate attributes",
                                     name
                                 ));
-                                err.help(
-                                    "add `#![feature(format_args_capture)]` to the crate \
-                                     attributes to enable",
-                                );
                             }
 
                             err.emit();

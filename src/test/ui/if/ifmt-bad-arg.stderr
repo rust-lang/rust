@@ -64,8 +64,7 @@ error: there is no argument named `foo`
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
    |                 ^^^^^
    |
-   = note: did you intend to capture a variable `foo` from the surrounding scope?
-   = help: add `#![feature(format_args_capture)]` to the crate attributes to enable
+   = help: if you intended to capture `foo` from the surrounding scope, add `#![feature(format_args_capture)]` to the crate attributes
 
 error: there is no argument named `bar`
   --> $DIR/ifmt-bad-arg.rs:27:26
@@ -73,8 +72,7 @@ error: there is no argument named `bar`
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
    |                          ^^^^^
    |
-   = note: did you intend to capture a variable `bar` from the surrounding scope?
-   = help: add `#![feature(format_args_capture)]` to the crate attributes to enable
+   = help: if you intended to capture `bar` from the surrounding scope, add `#![feature(format_args_capture)]` to the crate attributes
 
 error: there is no argument named `foo`
   --> $DIR/ifmt-bad-arg.rs:31:14
@@ -82,8 +80,7 @@ error: there is no argument named `foo`
 LL |     format!("{foo}");
    |              ^^^^^
    |
-   = note: did you intend to capture a variable `foo` from the surrounding scope?
-   = help: add `#![feature(format_args_capture)]` to the crate attributes to enable
+   = help: if you intended to capture `foo` from the surrounding scope, add `#![feature(format_args_capture)]` to the crate attributes
 
 error: multiple unused formatting arguments
   --> $DIR/ifmt-bad-arg.rs:32:17
@@ -165,8 +162,7 @@ error: there is no argument named `valueb`
 LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
    |                       ^^^^^^^^
    |
-   = note: did you intend to capture a variable `valueb` from the surrounding scope?
-   = help: add `#![feature(format_args_capture)]` to the crate attributes to enable
+   = help: if you intended to capture `valueb` from the surrounding scope, add `#![feature(format_args_capture)]` to the crate attributes
 
 error: named argument never used
   --> $DIR/ifmt-bad-arg.rs:45:51
@@ -218,8 +214,7 @@ error: there is no argument named `foo`
 LL |         {foo}
    |         ^^^^^
    |
-   = note: did you intend to capture a variable `foo` from the surrounding scope?
-   = help: add `#![feature(format_args_capture)]` to the crate attributes to enable
+   = help: if you intended to capture `foo` from the surrounding scope, add `#![feature(format_args_capture)]` to the crate attributes
 
 error: invalid format string: expected `'}'`, found `'t'`
   --> $DIR/ifmt-bad-arg.rs:75:1
