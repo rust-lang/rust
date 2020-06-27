@@ -952,7 +952,13 @@ fn get_details_from_idx<'tcx>(
         e: &Expr<'_>,
         starts: &[Start<'tcx>],
     ) -> Option<StartKind<'tcx>> {
-        starts.iter().find(|var| same_var(cx, e, var.id)).map(|v| v.kind)
+        starts.iter().find_map(|start| {
+            if same_var(cx, e, start.id) {
+                Some(start.kind)
+            } else {
+                None
+            }
+        })
     }
 
     fn get_offset<'tcx>(
@@ -1059,8 +1065,8 @@ fn build_manual_memcpy_suggestion<'tcx>(
     start: &Expr<'_>,
     end: &Expr<'_>,
     limits: ast::RangeLimits,
-    dst: IndexExpr<'_>,
-    src: IndexExpr<'_>,
+    dst: &IndexExpr<'_>,
+    src: &IndexExpr<'_>,
 ) -> String {
     fn print_offset(offset: MinifyingSugg<'static>) -> MinifyingSugg<'static> {
         if offset.as_str() == "0" {
@@ -1211,7 +1217,7 @@ fn detect_manual_memcpy<'tcx>(
                         }
                     })
                 })
-                .map(|o| o.map(|(dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, dst, src)))
+                .map(|o| o.map(|(dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, &dst, &src)))
                 .collect::<Option<Vec<_>>>()
                 .filter(|v| !v.is_empty())
                 .map(|v| v.join("\n    "));
@@ -2319,10 +2325,13 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
     }
 
     fn into_results(self) -> impl Iterator<Item = HirId> {
-        self.states
-            .into_iter()
-            .filter(|(_, state)| *state == IncrementVisitorVarState::IncrOnce)
-            .map(|(id, _)| id)
+        self.states.into_iter().filter_map(|(id, state)| {
+            if state == IncrementVisitorVarState::IncrOnce {
+                Some(id)
+            } else {
+                None
+            }
+        })
     }
 }
 
