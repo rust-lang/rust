@@ -82,7 +82,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "blanket_clippy_restriction_lints",
-        group: "correctness",
+        group: "style",
         desc: "enabling the complete restriction group",
         deprecation: None,
         module: "attrs",

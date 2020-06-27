@@ -1443,6 +1443,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::style", Some("clippy_style"), vec![
         LintId::of(&assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
         LintId::of(&assign_ops::ASSIGN_OP_PATTERN),
+        LintId::of(&attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
         LintId::of(&attrs::UNKNOWN_CLIPPY_LINTS),
         LintId::of(&bit_mask::VERBOSE_BIT_MASK),
         LintId::of(&blacklisted_name::BLACKLISTED_NAME),
@@ -1616,7 +1617,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::correctness", Some("clippy_correctness"), vec![
         LintId::of(&approx_const::APPROX_CONSTANT),
         LintId::of(&atomic_ordering::INVALID_ATOMIC_ORDERING),
-        LintId::of(&attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
         LintId::of(&attrs::DEPRECATED_SEMVER),
         LintId::of(&attrs::MISMATCHED_TARGET_OS),
         LintId::of(&attrs::USELESS_ATTRIBUTE),

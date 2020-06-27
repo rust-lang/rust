@@ -26,7 +26,7 @@ error: restriction lints are not meant to be all enabled
 LL | #![warn(clippy::restriction)]
    |         ^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[deny(clippy::blanket_clippy_restriction_lints)]` on by default
+   = note: `-D clippy::blanket-clippy-restriction-lints` implied by `-D warnings`
    = help: try enabling only the lints you really need
 
 error: restriction lints are not meant to be all enabled
