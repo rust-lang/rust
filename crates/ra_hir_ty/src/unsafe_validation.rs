@@ -60,12 +60,6 @@ pub struct UnsafeExpr {
     pub inside_unsafe_block: bool,
 }
 
-impl UnsafeExpr {
-    fn new(expr: ExprId) -> Self {
-        Self { expr, inside_unsafe_block: false }
-    }
-}
-
 pub fn unsafe_expressions(
     db: &dyn HirDatabase,
     infer: &InferenceResult,
@@ -73,59 +67,55 @@ pub fn unsafe_expressions(
 ) -> Vec<UnsafeExpr> {
     let mut unsafe_exprs = vec![];
     let body = db.body(def);
-    for (id, expr) in body.exprs.iter() {
-        match expr {
-            Expr::Call { callee, .. } => {
-                let ty = &infer[*callee];
-                if let &Ty::Apply(ApplicationTy {
-                    ctor: TypeCtor::FnDef(CallableDef::FunctionId(func)),
-                    ..
-                }) = ty
-                {
-                    if db.function_data(func).is_unsafe {
-                        unsafe_exprs.push(UnsafeExpr::new(id));
-                    }
-                }
-            }
-            Expr::MethodCall { .. } => {
-                if infer
-                    .method_resolution(id)
-                    .map(|func| db.function_data(func).is_unsafe)
-                    .unwrap_or(false)
-                {
-                    unsafe_exprs.push(UnsafeExpr::new(id));
-                }
-            }
-            Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-                if let Ty::Apply(ApplicationTy { ctor: TypeCtor::RawPtr(..), .. }) = &infer[*expr] {
-                    unsafe_exprs.push(UnsafeExpr::new(id));
-                }
-            }
-            _ => {}
-        }
-    }
-
-    for unsafe_expr in &mut unsafe_exprs {
-        unsafe_expr.inside_unsafe_block =
-            is_in_unsafe(&body, body.body_expr, unsafe_expr.expr, false);
-    }
+    walk_unsafe(&mut unsafe_exprs, db, infer, &body, body.body_expr, false);
 
     unsafe_exprs
 }
 
-fn is_in_unsafe(body: &Body, current: ExprId, needle: ExprId, within_unsafe: bool) -> bool {
-    if current == needle {
-        return within_unsafe;
-    }
-
+fn walk_unsafe(
+    unsafe_exprs: &mut Vec<UnsafeExpr>,
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
+    body: &Body,
+    current: ExprId,
+    inside_unsafe_block: bool,
+) {
     let expr = &body.exprs[current];
-    if let &Expr::Unsafe { body: child } = expr {
-        return is_in_unsafe(body, child, needle, true);
+    match expr {
+        Expr::Call { callee, .. } => {
+            let ty = &infer[*callee];
+            if let &Ty::Apply(ApplicationTy {
+                ctor: TypeCtor::FnDef(CallableDef::FunctionId(func)),
+                ..
+            }) = ty
+            {
+                if db.function_data(func).is_unsafe {
+                    unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
+                }
+            }
+        }
+        Expr::MethodCall { .. } => {
+            if infer
+                .method_resolution(current)
+                .map(|func| db.function_data(func).is_unsafe)
+                .unwrap_or(false)
+            {
+                unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
+            }
+        }
+        Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
+            if let Ty::Apply(ApplicationTy { ctor: TypeCtor::RawPtr(..), .. }) = &infer[*expr] {
+                unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
+            }
+        }
+        _ => {}
     }
 
-    let mut found = false;
+    if let &Expr::Unsafe { body: child } = expr {
+        return walk_unsafe(unsafe_exprs, db, infer, body, child, true);
+    }
+
     expr.walk_child_exprs(|child| {
-        found = found || is_in_unsafe(body, child, needle, within_unsafe);
+        walk_unsafe(unsafe_exprs, db, infer, body, child, inside_unsafe_block);
     });
-    found
 }
