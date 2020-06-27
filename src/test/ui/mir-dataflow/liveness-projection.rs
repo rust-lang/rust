@@ -21,7 +21,7 @@ fn foo() {
     {
         let mut x = 42;
 
-        // Derefs are treated like a read of a local even if they are on the RHS of an assignment.
+        // Derefs are treated like a read of a local even if they are on the LHS of an assignment.
         let p = &mut x;
         unsafe { rustc_peek(&p); }
         *p = 24;
