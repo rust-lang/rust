@@ -1,1 +1,1 @@
-thread 'main' panicked at 'index out of bounds: the len is 0 but the index is 0', $DIR/transmute_fat2.rs:12:5
+thread 'main' panicked at 'index out of bounds: the len is 0 but the index is 0', $DIR/transmute_fat2.rs:11:5

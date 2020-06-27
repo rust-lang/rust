@@ -1,1 +1,1 @@
-thread 'main' panicked at 'attempt to shift right with overflow', $DIR/overflowing-rsh-2.rs:6:14
+thread 'main' panicked at 'attempt to shift right with overflow', $DIR/overflowing-rsh-2.rs:5:14
