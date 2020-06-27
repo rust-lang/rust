@@ -479,11 +479,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let llptr = self.struct_gep(place.llval, i as u64);
                 let load = self.load(llptr, align);
                 scalar_load_metadata(self, load, scalar);
-                if scalar.is_bool() {
-                    self.trunc(load, self.type_i1())
-                } else {
-                    load
-                }
+                if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
             };
 
             OperandValue::Pair(
@@ -658,6 +654,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn fptoui_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
+        // WebAssembly has saturating floating point to integer casts if the
+        // `nontrapping-fptoint` target feature is activated. We'll use those if
+        // they are available.
         if self.sess().target.target.arch == "wasm32"
             && self.sess().target_features.contains(&sym::wasm_nontrapping_fptoint)
         {
@@ -680,6 +679,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn fptosi_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
+        // WebAssembly has saturating floating point to integer casts if the
+        // `nontrapping-fptoint` target feature is activated. We'll use those if
+        // they are available.
         if self.sess().target.target.arch == "wasm32"
             && self.sess().target_features.contains(&sym::wasm_nontrapping_fptoint)
         {
