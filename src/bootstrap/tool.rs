@@ -12,7 +12,7 @@ use crate::channel;
 use crate::channel::GitInfo;
 use crate::compile;
 use crate::toolstate::ToolState;
-use crate::util::{add_dylib_path, exe, CiEnv};
+use crate::util::{add_dylib_path, exe};
 use crate::Compiler;
 use crate::Mode;
 
@@ -236,7 +236,6 @@ pub fn prepare_tool_cargo(
             || path.ends_with("rls")
             || path.ends_with("clippy")
             || path.ends_with("miri")
-            || path.ends_with("rustbook")
             || path.ends_with("rustfmt")
         {
             cargo.env("LIBZ_SYS_STATIC", "1");
@@ -270,20 +269,6 @@ pub fn prepare_tool_cargo(
         cargo.arg("--features").arg(&features.join(", "));
     }
     cargo
-}
-
-fn rustbook_features() -> Vec<String> {
-    let mut features = Vec::new();
-
-    // Due to CI budged and risk of spurious failures we want to limit jobs running this check.
-    // At same time local builds should run it regardless of the platform.
-    // `CiEnv::None` means it's local build and `CHECK_LINKS` is defined in x86_64-gnu-tools to
-    // explicitly enable it on single job
-    if CiEnv::current() == CiEnv::None || env::var("CHECK_LINKS").is_ok() {
-        features.push("linkcheck".to_string());
-    }
-
-    features
 }
 
 macro_rules! bootstrap_tool {
@@ -368,7 +353,7 @@ macro_rules! bootstrap_tool {
 }
 
 bootstrap_tool!(
-    Rustbook, "src/tools/rustbook", "rustbook", features = rustbook_features();
+    Rustbook, "src/tools/rustbook", "rustbook";
     UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen";
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";

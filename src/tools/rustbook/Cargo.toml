@@ -5,24 +5,10 @@ version = "0.1.0"
 license = "MIT OR Apache-2.0"
 edition = "2018"
 
-[features]
-linkcheck = ["mdbook-linkcheck", "codespan-reporting", "codespan"]
-
 [dependencies]
 clap = "2.25.0"
-failure = "0.1"
-mdbook-linkcheck = { version = "0.5.0", optional = true }
-# Keep in sync with mdbook-linkcheck.
-codespan = { version = "0.5", optional = true }
-codespan-reporting = { version = "0.5", optional = true }
-
-
-# A noop dependency that changes in the Rust repository, it's a bit of a hack.
-# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
-# for more information.
-rustc-workspace-hack = "1.0.0"
 
 [dependencies.mdbook]
-version = "0.3.7"
+version = "0.4.0"
 default-features = false
 features = ["search"]
