@@ -18,15 +18,6 @@ pub(crate) enum ImportType {
     Named,
 }
 
-impl ImportType {
-    fn is_named(&self) -> bool {
-        match self {
-            ImportType::Glob => false,
-            ImportType::Named => true,
-        }
-    }
-}
-
 #[derive(Debug, Default)]
 pub struct PerNsGlobImports {
     types: FxHashSet<(LocalModuleId, Name)>,
@@ -200,7 +191,7 @@ impl ItemScope {
                     }
                     (Some(_), Some(_))
                         if $glob_imports.$field.contains(&$lookup)
-                            && $def_import_type.is_named() =>
+                            && matches!($def_import_type, ImportType::Named) =>
                     {
                         mark::hit!(import_shadowed);
                         $glob_imports.$field.remove(&$lookup);
