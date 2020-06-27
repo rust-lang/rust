@@ -1,0 +1,14 @@
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/issue-71381.rs:13:61
+   |
+LL |     pub fn call_me<Args: Sized, const IDX: usize, const FN: unsafe extern "C" fn(Args)>(&self) {
+   |                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/issue-71381.rs:21:19
+   |
+LL |         const FN: unsafe extern "C" fn(Args),
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
