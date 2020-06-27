@@ -191,6 +191,7 @@ pub mod known {
         stringify,
         concat,
         include,
+        include_str,
         format_args,
         format_args_nl,
         env,
