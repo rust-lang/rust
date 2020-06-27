@@ -75,7 +75,7 @@ pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
         | "saturating_sub" | "rotate_left" | "rotate_right" | "ctpop" | "ctlz" | "cttz"
         | "bswap" | "bitreverse" | "discriminant_value" | "type_id" | "likely" | "unlikely"
         | "ptr_guaranteed_eq" | "ptr_guaranteed_ne" | "minnumf32" | "minnumf64" | "maxnumf32"
-        | "maxnumf64" | "type_name" | "variant_count" => hir::Unsafety::Normal,
+        | "rustc_peek" | "maxnumf64" | "type_name" | "variant_count" => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }
 }
