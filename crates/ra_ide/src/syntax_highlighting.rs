@@ -743,6 +743,26 @@ fn is_child_of_impl(element: &SyntaxElement) -> bool {
     }
 }
 
+fn is_method_call_unsafe(
+    sema: &Semantics<RootDatabase>,
+    method_call_expr: ast::MethodCallExpr,
+) -> Option<()> {
+    let expr = method_call_expr.expr()?;
+    let field_expr =
+        if let ast::Expr::FieldExpr(field_expr) = expr { field_expr } else { return None };
+    let ty = sema.type_of_expr(&field_expr.expr()?)?;
+    if !ty.is_packed(sema.db) {
+        return None;
+    }
+
+    let func = sema.resolve_method_call(&method_call_expr)?;
+    if func.self_param(sema.db)?.is_ref {
+        Some(())
+    } else {
+        None
+    }
+}
+
 fn highlight_name(
     sema: &Semantics<RootDatabase>,
     db: &RootDatabase,
@@ -769,28 +789,13 @@ fn highlight_name(
                 if func.is_unsafe(db) {
                     h |= HighlightModifier::Unsafe;
                 } else {
-                    (|| {
-                        let method_call_expr =
-                            name_ref?.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
-                        let expr = method_call_expr.expr()?;
-                        let field_expr = if let ast::Expr::FieldExpr(field_expr) = expr {
-                            Some(field_expr)
-                        } else {
-                            None
-                        }?;
-                        let ty = sema.type_of_expr(&field_expr.expr()?)?;
-                        if !ty.is_packed(db) {
-                            return None;
-                        }
-
-                        let func = sema.resolve_method_call(&method_call_expr)?;
-                        if func.self_param(db)?.is_ref {
-                            Some(HighlightModifier::Unsafe)
-                        } else {
-                            None
-                        }
-                    })()
-                    .map(|modifier| h |= modifier);
+                    let is_unsafe = name_ref
+                        .and_then(|name_ref| name_ref.syntax().parent())
+                        .and_then(ast::MethodCallExpr::cast)
+                        .and_then(|method_call_expr| is_method_call_unsafe(sema, method_call_expr));
+                    if is_unsafe.is_some() {
+                        h |= HighlightModifier::Unsafe;
+                    }
                 }
                 return h;
             }
@@ -865,26 +870,11 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
     match parent.kind() {
         METHOD_CALL_EXPR => {
             let mut h = Highlight::new(HighlightTag::Function);
-            let modifier: Option<HighlightModifier> = (|| {
-                let method_call_expr = ast::MethodCallExpr::cast(parent)?;
-                let expr = method_call_expr.expr()?;
-                let field_expr = if let ast::Expr::FieldExpr(field_expr) = expr {
-                    field_expr
-                } else {
-                    return None;
-                };
+            let is_unsafe = ast::MethodCallExpr::cast(parent)
+                .and_then(|method_call_expr| is_method_call_unsafe(sema, method_call_expr));
 
-                let expr = field_expr.expr()?;
-                let ty = sema.type_of_expr(&expr)?;
-                if ty.is_packed(sema.db) {
-                    Some(HighlightModifier::Unsafe)
-                } else {
-                    None
-                }
-            })();
-
-            if let Some(modifier) = modifier {
-                h |= modifier;
+            if is_unsafe.is_some() {
+                h |= HighlightModifier::Unsafe;
             }
 
             h
