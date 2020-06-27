@@ -388,6 +388,7 @@ pub struct PhantomData<T: ?Sized>;
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
 pub trait FnOnce<Args> {
+    #[lang = "fn_once_output"]
     type Output;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;

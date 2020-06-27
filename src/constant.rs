@@ -219,7 +219,7 @@ fn data_id_for_static(
     let is_mutable = if tcx.is_mutable_static(def_id) {
         true
     } else {
-        !ty.is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
+        !ty.is_freeze(tcx.at(DUMMY_SP), ParamEnv::reveal_all())
     };
     let align = tcx
         .layout_of(ParamEnv::reveal_all().and(ty))

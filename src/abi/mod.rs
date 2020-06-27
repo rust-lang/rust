@@ -377,9 +377,8 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
                     let local_decl = &fx.mir.local_decls[local];
                     //                       v this ! is important
                     let internally_mutable = !val.layout().ty.is_freeze(
-                        fx.tcx,
+                        fx.tcx.at(local_decl.source_info.span),
                         ParamEnv::reveal_all(),
-                        local_decl.source_info.span,
                     );
                     if local_decl.mutability == mir::Mutability::Not && !internally_mutable {
                         // We wont mutate this argument, so it is fine to borrow the backing storage

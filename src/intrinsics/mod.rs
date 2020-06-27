@@ -816,6 +816,16 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, val);
         };
 
+        ptr_guaranteed_eq, (c a, c b) {
+            let val = crate::num::trans_ptr_binop(fx, BinOp::Eq, a, b);
+            ret.write_cvalue(fx, val);
+        };
+
+        ptr_guaranteed_ne, (c a, c b) {
+            let val = crate::num::trans_ptr_binop(fx, BinOp::Ne, a, b);
+            ret.write_cvalue(fx, val);
+        };
+
         caller_location, () {
             let caller_location = fx.get_caller_location(span);
             ret.write_cvalue(fx, caller_location);
