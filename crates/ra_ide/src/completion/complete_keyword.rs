@@ -11,14 +11,14 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
     let source_range = ctx.source_range();
     match (ctx.use_item_syntax.as_ref(), ctx.path_prefix.as_ref()) {
         (Some(_), None) => {
-            CompletionItem::new(CompletionKind::Keyword, source_range, "crate")
+            CompletionItem::new(CompletionKind::Keyword, source_range, "crate::")
                 .kind(CompletionItemKind::Keyword)
                 .insert_text("crate::")
                 .add_to(acc);
             CompletionItem::new(CompletionKind::Keyword, source_range, "self")
                 .kind(CompletionItemKind::Keyword)
                 .add_to(acc);
-            CompletionItem::new(CompletionKind::Keyword, source_range, "super")
+            CompletionItem::new(CompletionKind::Keyword, source_range, "super::")
                 .kind(CompletionItemKind::Keyword)
                 .insert_text("super::")
                 .add_to(acc);
@@ -27,7 +27,7 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
             CompletionItem::new(CompletionKind::Keyword, source_range, "self")
                 .kind(CompletionItemKind::Keyword)
                 .add_to(acc);
-            CompletionItem::new(CompletionKind::Keyword, source_range, "super")
+            CompletionItem::new(CompletionKind::Keyword, source_range, "super::")
                 .kind(CompletionItemKind::Keyword)
                 .insert_text("super::")
                 .add_to(acc);
@@ -182,9 +182,9 @@ mod tests {
         assert_snapshot!(
             get_keyword_completions(r"use <|>"),
             @r###"
-            kw crate
+            kw crate::
             kw self
-            kw super
+            kw super::
         "###
         );
 
@@ -192,7 +192,7 @@ mod tests {
             get_keyword_completions(r"use a::<|>"),
             @r###"
             kw self
-            kw super
+            kw super::
         "###
         );
 
@@ -200,7 +200,7 @@ mod tests {
             get_keyword_completions(r"use a::{b, <|>}"),
             @r###"
             kw self
-            kw super
+            kw super::
         "###
         );
     }
