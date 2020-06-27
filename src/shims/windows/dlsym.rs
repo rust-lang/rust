@@ -2,11 +2,16 @@ use rustc_middle::mir;
 
 use crate::*;
 use helpers::check_arg_count;
+use shims::windows::sync::EvalContextExt as _;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dlsym {
     AcquireSRWLockExclusive,
+    ReleaseSRWLockExclusive,
+    TryAcquireSRWLockExclusive,
     AcquireSRWLockShared,
+    ReleaseSRWLockShared,
+    TryAcquireSRWLockShared,
 }
 
 impl Dlsym {
@@ -15,7 +20,11 @@ impl Dlsym {
     pub fn from_str(name: &str) -> InterpResult<'static, Option<Dlsym>> {
         Ok(match name {
             "AcquireSRWLockExclusive" => Some(Dlsym::AcquireSRWLockExclusive),
+            "ReleaseSRWLockExclusive" => Some(Dlsym::ReleaseSRWLockExclusive),
+            "TryAcquireSRWLockExclusive" => Some(Dlsym::TryAcquireSRWLockExclusive),
             "AcquireSRWLockShared" => Some(Dlsym::AcquireSRWLockShared),
+            "ReleaseSRWLockShared" => Some(Dlsym::ReleaseSRWLockShared),
+            "TryAcquireSRWLockShared" => Some(Dlsym::TryAcquireSRWLockShared),
             "SetThreadStackGuarantee" => None,
             "GetSystemTimePreciseAsFileTime" => None,
             _ => throw_unsup_format!("unsupported Windows dlsym: {}", name),
@@ -38,13 +47,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match dlsym {
             Dlsym::AcquireSRWLockExclusive => {
                 let &[ptr] = check_arg_count(args)?;
-                let lock = this.deref_operand(ptr)?; // points to ptr-sized data
-                throw_unsup_format!("AcquireSRWLockExclusive is not actually implemented");
+                this.AcquireSRWLockExclusive(ptr)?;
+            }
+            Dlsym::ReleaseSRWLockExclusive => {
+                let &[ptr] = check_arg_count(args)?;
+                this.ReleaseSRWLockExclusive(ptr)?;
+            }
+            Dlsym::TryAcquireSRWLockExclusive => {
+                let &[ptr] = check_arg_count(args)?;
+                let ret = this.TryAcquireSRWLockExclusive(ptr)?;
+                this.write_scalar(Scalar::from_u8(ret), dest)?;
             }
             Dlsym::AcquireSRWLockShared => {
                 let &[ptr] = check_arg_count(args)?;
-                let lock = this.deref_operand(ptr)?; // points to ptr-sized data
-                throw_unsup_format!("AcquireSRWLockExclusive is not actually implemented");
+                this.AcquireSRWLockShared(ptr)?;
+            }
+            Dlsym::ReleaseSRWLockShared => {
+                let &[ptr] = check_arg_count(args)?;
+                this.ReleaseSRWLockShared(ptr)?;
+            }
+            Dlsym::TryAcquireSRWLockShared => {
+                let &[ptr] = check_arg_count(args)?;
+                let ret = this.TryAcquireSRWLockShared(ptr)?;
+                this.write_scalar(Scalar::from_u8(ret), dest)?;
             }
         }
 

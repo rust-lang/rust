@@ -21,6 +21,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // HANDLE = isize
         // DWORD = ULONG = u32
         // BOOL = i32
+        // BOOLEAN = u8
         match link_name {
             // Environment related shims
             "GetEnvironmentVariableW" => {
@@ -301,7 +302,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 #[allow(non_snake_case)]
                 let &[_lpCriticalSection] = check_arg_count(args)?;
                 assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows not supported");
-                // There is only one thread, so this always succeeds and returns TRUE
+                // There is only one thread, so this always succeeds and returns TRUE.
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
 
