@@ -108,12 +108,16 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
     if (runnable.args.executableArgs.length > 0) {
         args.push('--', ...runnable.args.executableArgs);
     }
+    const env: { [key: string]: string } = { "RUST_BACKTRACE": "short" };
+    if (runnable.args.expectTest) {
+        env["UPDATE_EXPECT"] = "1";
+    }
     const definition: tasks.CargoTaskDefinition = {
         type: tasks.TASK_TYPE,
         command: args[0], // run, test, etc...
         args: args.slice(1),
         cwd: runnable.args.workspaceRoot,
-        env: Object.assign({}, process.env as { [key: string]: string }, { "RUST_BACKTRACE": "short" }),
+        env: Object.assign({}, process.env as { [key: string]: string }, env),
     };
 
     const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()

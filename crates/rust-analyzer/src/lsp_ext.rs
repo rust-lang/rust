@@ -161,6 +161,8 @@ pub struct CargoRunnable {
     pub cargo_args: Vec<String>,
     // stuff after --
     pub executable_args: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expect_test: Option<bool>,
 }
 
 pub enum InlayHints {}
