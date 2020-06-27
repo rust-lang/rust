@@ -17,7 +17,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     par_iter(&hir_map.krate().modules).for_each(|(module_id, _)| {
         let local_def_id = hir_map.local_def_id(*module_id);
         hir_map.visit_item_likes_in_module(
-            local_def_id.to_def_id(),
+            local_def_id,
             &mut OuterVisitor { hir_map, errors: &errors },
         );
     });
