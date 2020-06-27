@@ -1429,7 +1429,10 @@ impl DirEntry {
     /// Returns the metadata for the file that this entry points at.
     ///
     /// This function will not traverse symlinks if this entry points at a
-    /// symlink.
+    /// symlink. To traverse symlinks use [`fs::metadata`] or [`fs::File::metadata`].
+    ///
+    /// [`fs::metadata`]: fn.metadata.html
+    /// [`fs::File::metadata`]: struct.File.html#method.metadata
     ///
     /// # Platform-specific behavior
     ///
