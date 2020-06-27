@@ -188,8 +188,8 @@ impl Patchwork {
             .fold((0usize, 0usize), |(x1, y1), (x2, y2)| (x1 + x2, y1 + y2));
 
         for pos in &mut [&mut range.start, &mut range.end] {
+            **pos -= delete;
             **pos += insert;
-            **pos -= delete
         }
 
         self.text.replace_range(range, &patch);
