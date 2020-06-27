@@ -60,6 +60,9 @@ fn main() -> Result<()> {
         args::Command::Diagnostics { path, load_output_dirs, with_proc_macro, all } => {
             cli::diagnostics(path.as_ref(), load_output_dirs, with_proc_macro, all)?
         }
+        args::Command::Ssr { rules } => {
+            cli::apply_ssr_rules(rules)?;
+        }
         args::Command::Version => println!("rust-analyzer {}", env!("REV")),
     }
     Ok(())

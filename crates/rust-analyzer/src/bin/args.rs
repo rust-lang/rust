@@ -5,6 +5,7 @@
 
 use anyhow::{bail, Result};
 use pico_args::Arguments;
+use ra_ssr::SsrRule;
 use rust_analyzer::cli::{BenchWhat, Position, Verbosity};
 
 use std::{fmt::Write, path::PathBuf};
@@ -44,6 +45,9 @@ pub(crate) enum Command {
         /// Include files which are not modules. In rust-analyzer
         /// this would include the parser test files.
         all: bool,
+    },
+    Ssr {
+        rules: Vec<SsrRule>,
     },
     ProcMacro,
     RunServer,
@@ -270,6 +274,32 @@ ARGS:
                 Command::Diagnostics { path, load_output_dirs, with_proc_macro, all }
             }
             "proc-macro" => Command::ProcMacro,
+            "ssr" => {
+                if matches.contains(["-h", "--help"]) {
+                    eprintln!(
+                        "\
+rust-analyzer ssr
+
+USAGE:
+    rust-analyzer ssr [FLAGS] [RULE...]
+
+EXAMPLE:
+    rust-analyzer ssr '$a.foo($b) ==> bar($a, $b)'
+
+FLAGS:
+    -h, --help          Prints help information
+
+ARGS:
+    <RULE>              A structured search replace rule"
+                    );
+                    return Ok(Err(HelpPrinted));
+                }
+                let mut rules = Vec::new();
+                while let Some(rule) = matches.free_from_str()? {
+                    rules.push(rule);
+                }
+                Command::Ssr { rules }
+            }
             _ => {
                 print_subcommands();
                 return Ok(Err(HelpPrinted));
@@ -297,6 +327,7 @@ SUBCOMMANDS:
     diagnostics
     proc-macro
     parse
+    ssr
     symbols"
     )
 }
