@@ -78,7 +78,7 @@ impl Expect {
             line_start += line.len();
         }
         let (literal_start, line_indent) = target_line.unwrap();
-        let literal_length = file[literal_start..].find("]]").unwrap();
+        let literal_length = file[literal_start..].find("]]").expect("Couldn't find matching `]]` for `expect![[`.");
         let literal_range = literal_start..literal_start + literal_length;
         Location { line_indent, literal_range }
     }
