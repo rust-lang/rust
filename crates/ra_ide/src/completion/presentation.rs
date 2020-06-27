@@ -191,7 +191,7 @@ impl Completions {
         func: hir::Function,
         local_name: Option<String>,
     ) {
-        let has_self_param = func.has_self_param(ctx.db);
+        let has_self_param = func.self_param(ctx.db).is_some();
 
         let name = local_name.unwrap_or_else(|| func.name(ctx.db).to_string());
         let ast_node = func.source(ctx.db).value;

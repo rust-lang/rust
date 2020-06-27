@@ -301,16 +301,7 @@ trait DoTheAutoref {
     fn calls_autoref(&self);
 }
 
-struct NeedsAlign {
-    a: u16
-}
-
-#[repr(packed)]
-struct HasAligned {
-    a: NeedsAlign
-}
-
-impl DoTheAutoref for NeedsAlign {
+impl DoTheAutoref for u16 {
     fn calls_autoref(&self) {}
 }
 
@@ -318,6 +309,7 @@ fn main() {
     let x = &5 as *const _ as *const usize;
     let u = Union { b: 0 };
     unsafe {
+        // unsafe fn and method calls
         unsafe_fn();
         let b = u.b;
         match u {
@@ -325,13 +317,22 @@ fn main() {
             Union { a } => (),
         }
         HasUnsafeFn.unsafe_method();
-        let _y = *(x);
-        let z = -x;
+
+        // unsafe deref
+        let y = *x;
+
+        // unsafe access to a static mut
         let a = global_mut.a;
+
+        // unsafe ref of packed fields
         let packed = Packed { a: 0 };
-        let _a = &packed.a;
-        let h = HasAligned{ a: NeedsAlign { a: 1 } };
-        h.a.calls_autoref();
+        let a = &packed.a;
+        let ref a = packed.a;
+        let Packed { ref a } = packed;
+        let Packed { a: ref _a } = packed;
+
+        // unsafe auto ref of packed field
+        packed.a.calls_autoref();
     }
 }
 "#

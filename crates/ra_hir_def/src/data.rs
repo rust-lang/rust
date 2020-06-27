@@ -10,7 +10,7 @@ use crate::{
     attr::Attrs,
     body::Expander,
     db::DefDatabase,
-    item_tree::{AssocItem, ItemTreeId, ModItem},
+    item_tree::{AssocItem, ItemTreeId, ModItem, SelfParam},
     type_ref::{TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
@@ -25,7 +25,7 @@ pub struct FunctionData {
     pub attrs: Attrs,
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
-    pub has_self_param: bool,
+    pub self_param: Option<SelfParam>,
     pub is_unsafe: bool,
     pub is_varargs: bool,
     pub visibility: RawVisibility,
@@ -42,7 +42,7 @@ impl FunctionData {
             params: func.params.to_vec(),
             ret_type: func.ret_type.clone(),
             attrs: item_tree.attrs(ModItem::from(loc.id.value).into()).clone(),
-            has_self_param: func.has_self_param,
+            self_param: func.self_param,
             is_unsafe: func.is_unsafe,
             is_varargs: func.is_varargs,
             visibility: item_tree[func.visibility].clone(),

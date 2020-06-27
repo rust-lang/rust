@@ -497,9 +497,9 @@ fn highlight_element(
             match name_kind {
                 Some(NameClass::ExternCrate(_)) => HighlightTag::Module.into(),
                 Some(NameClass::Definition(def)) => {
-                    highlight_name(db, def, false) | HighlightModifier::Definition
+                    highlight_name(sema, db, def, None, false) | HighlightModifier::Definition
                 }
-                Some(NameClass::ConstReference(def)) => highlight_name(db, def, false),
+                Some(NameClass::ConstReference(def)) => highlight_name(sema, db, def, None, false),
                 Some(NameClass::FieldShorthand { field, .. }) => {
                     let mut h = HighlightTag::Field.into();
                     if let Definition::Field(field) = field {
@@ -532,7 +532,7 @@ fn highlight_element(
                                 binding_hash = Some(calc_binding_hash(&name, *shadow_count))
                             }
                         };
-                        highlight_name(db, def, possibly_unsafe)
+                        highlight_name(sema, db, def, Some(name_ref), possibly_unsafe)
                     }
                     NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
                 },
@@ -565,8 +565,8 @@ fn highlight_element(
                 _ => h,
             }
         }
-        REF_EXPR => {
-            let ref_expr = element.into_node().and_then(ast::RefExpr::cast)?;
+        T![&] => {
+            let ref_expr = element.parent().and_then(ast::RefExpr::cast)?;
             let expr = ref_expr.expr()?;
             let field_expr = match expr {
                 ast::Expr::FieldExpr(fe) => fe,
@@ -668,6 +668,52 @@ fn highlight_element(
                         HighlightTag::SelfKeyword.into()
                     }
                 }
+                T![ref] => {
+                    let modifier: Option<HighlightModifier> = (|| {
+                        let bind_pat = element.parent().and_then(ast::BindPat::cast)?;
+                        let parent = bind_pat.syntax().parent()?;
+
+                        let ty = if let Some(pat_list) =
+                            ast::RecordFieldPatList::cast(parent.clone())
+                        {
+                            let record_pat =
+                                pat_list.syntax().parent().and_then(ast::RecordPat::cast)?;
+                            sema.type_of_pat(&ast::Pat::RecordPat(record_pat))
+                        } else if let Some(let_stmt) = ast::LetStmt::cast(parent.clone()) {
+                            let field_expr =
+                                if let ast::Expr::FieldExpr(field_expr) = let_stmt.initializer()? {
+                                    field_expr
+                                } else {
+                                    return None;
+                                };
+
+                            sema.type_of_expr(&field_expr.expr()?)
+                        } else if let Some(record_field_pat) = ast::RecordFieldPat::cast(parent) {
+                            let record_pat = record_field_pat
+                                .syntax()
+                                .parent()
+                                .and_then(ast::RecordFieldPatList::cast)?
+                                .syntax()
+                                .parent()
+                                .and_then(ast::RecordPat::cast)?;
+                            sema.type_of_pat(&ast::Pat::RecordPat(record_pat))
+                        } else {
+                            None
+                        }?;
+
+                        if !ty.is_packed(db) {
+                            return None;
+                        }
+
+                        Some(HighlightModifier::Unsafe)
+                    })();
+
+                    if let Some(modifier) = modifier {
+                        h | modifier
+                    } else {
+                        h
+                    }
+                }
                 _ => h,
             }
         }
@@ -697,7 +743,13 @@ fn is_child_of_impl(element: &SyntaxElement) -> bool {
     }
 }
 
-fn highlight_name(db: &RootDatabase, def: Definition, possibly_unsafe: bool) -> Highlight {
+fn highlight_name(
+    sema: &Semantics<RootDatabase>,
+    db: &RootDatabase,
+    def: Definition,
+    name_ref: Option<ast::NameRef>,
+    possibly_unsafe: bool,
+) -> Highlight {
     match def {
         Definition::Macro(_) => HighlightTag::Macro,
         Definition::Field(field) => {
@@ -716,6 +768,29 @@ fn highlight_name(db: &RootDatabase, def: Definition, possibly_unsafe: bool) -> 
                 let mut h = HighlightTag::Function.into();
                 if func.is_unsafe(db) {
                     h |= HighlightModifier::Unsafe;
+                } else {
+                    (|| {
+                        let method_call_expr =
+                            name_ref?.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
+                        let expr = method_call_expr.expr()?;
+                        let field_expr = if let ast::Expr::FieldExpr(field_expr) = expr {
+                            Some(field_expr)
+                        } else {
+                            None
+                        }?;
+                        let ty = sema.type_of_expr(&field_expr.expr()?)?;
+                        if !ty.is_packed(db) {
+                            return None;
+                        }
+
+                        let func = sema.resolve_method_call(&method_call_expr)?;
+                        if func.self_param(db)?.is_ref {
+                            Some(HighlightModifier::Unsafe)
+                        } else {
+                            None
+                        }
+                    })()
+                    .map(|modifier| h |= modifier);
                 }
                 return h;
             }
@@ -787,8 +862,33 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
         _ => return default.into(),
     };
 
-    let tag = match parent.kind() {
-        METHOD_CALL_EXPR => HighlightTag::Function,
+    match parent.kind() {
+        METHOD_CALL_EXPR => {
+            let mut h = Highlight::new(HighlightTag::Function);
+            let modifier: Option<HighlightModifier> = (|| {
+                let method_call_expr = ast::MethodCallExpr::cast(parent)?;
+                let expr = method_call_expr.expr()?;
+                let field_expr = if let ast::Expr::FieldExpr(field_expr) = expr {
+                    field_expr
+                } else {
+                    return None;
+                };
+
+                let expr = field_expr.expr()?;
+                let ty = sema.type_of_expr(&expr)?;
+                if ty.is_packed(sema.db) {
+                    Some(HighlightModifier::Unsafe)
+                } else {
+                    None
+                }
+            })();
+
+            if let Some(modifier) = modifier {
+                h |= modifier;
+            }
+
+            h
+        }
         FIELD_EXPR => {
             let h = HighlightTag::Field;
             let is_union = ast::FieldExpr::cast(parent)
@@ -801,7 +901,7 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
                     })
                 })
                 .unwrap_or(false);
-            return if is_union { h | HighlightModifier::Unsafe } else { h.into() };
+            if is_union { h | HighlightModifier::Unsafe } else { h.into() }
         }
         PATH_SEGMENT => {
             let path = match parent.parent().and_then(ast::Path::cast) {
@@ -826,18 +926,15 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
             };
 
             match parent.kind() {
-                CALL_EXPR => HighlightTag::Function,
-                _ => {
-                    if name.text().chars().next().unwrap_or_default().is_uppercase() {
-                        HighlightTag::Struct
-                    } else {
-                        HighlightTag::Constant
-                    }
+                CALL_EXPR => HighlightTag::Function.into(),
+                _ => if name.text().chars().next().unwrap_or_default().is_uppercase() {
+                    HighlightTag::Struct.into()
+                } else {
+                    HighlightTag::Constant
                 }
+                .into(),
             }
         }
-        _ => default,
-    };
-
-    tag.into()
+        _ => default.into(),
+    }
 }
