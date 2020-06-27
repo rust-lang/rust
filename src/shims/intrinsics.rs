@@ -6,6 +6,7 @@ use rustc_middle::{mir, ty};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_apfloat::{Float, Round};
 use rustc_target::abi::{Align, Integer, LayoutOf};
+use rustc_span::symbol::sym;
 
 use crate::*;
 use helpers::check_arg_count;
@@ -20,17 +21,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        if this.emulate_intrinsic(instance, args, ret)? {
+        let intrinsic_name = this.tcx.item_name(instance.def_id());
+        // We want to overwrite some of the intrinsic implementations that CTFE uses.
+        let prefer_miri_intrinsic = match intrinsic_name {
+            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => true,
+            _ => false,
+        };
+
+        if !prefer_miri_intrinsic && this.emulate_intrinsic(instance, args, ret)? {
             return Ok(());
         }
-        let substs = instance.substs;
-
-        // All these intrinsics take raw pointers, so if we access memory directly
-        // (as opposed to through a place), we have to remember to erase any tag
-        // that might still hang around!
-        let intrinsic_name = &*this.tcx.item_name(instance.def_id()).as_str();
 
         // First handle intrinsics without return place.
+        let intrinsic_name = &*intrinsic_name.as_str();
         let (dest, ret) = match ret {
             None => match intrinsic_name {
                 "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
@@ -42,13 +45,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Then handle terminating intrinsics.
         match intrinsic_name {
+            // Miri overwriting CTFE intrinsics.
+            "ptr_guaranteed_eq" => {
+                let &[left, right] = check_arg_count(args)?;
+                let left = this.read_immediate(left)?;
+                let right = this.read_immediate(right)?;
+                this.binop_ignore_overflow(mir::BinOp::Eq, left, right, dest)?;
+            }
+            "ptr_guaranteed_ne" => {
+                let &[left, right] = check_arg_count(args)?;
+                let left = this.read_immediate(left)?;
+                let right = this.read_immediate(right)?;
+                this.binop_ignore_overflow(mir::BinOp::Ne, left, right, dest)?;
+            }
+
             // Raw memory accesses
             #[rustfmt::skip]
             | "copy"
             | "copy_nonoverlapping"
             => {
                 let &[src, dest, count] = check_arg_count(args)?;
-                let elem_ty = substs.type_at(0);
+                let elem_ty = instance.substs.type_at(0);
                 let elem_layout = this.layout_of(elem_ty)?;
                 let count = this.read_scalar(count)?.to_machine_usize(this)?;
                 let elem_align = elem_layout.align.abi;
@@ -89,7 +106,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             "write_bytes" => {
                 let &[ptr, val_byte, count] = check_arg_count(args)?;
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let ty_layout = this.layout_of(ty)?;
                 let val_byte = this.read_scalar(val_byte)?.to_u8()?;
                 let ptr = this.read_scalar(ptr)?.not_undef()?;
@@ -455,7 +472,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "assert_zero_valid" |
             "assert_uninit_valid" => {
                 let &[] = check_arg_count(args)?;
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let layout = this.layout_of(ty)?;
                 // Abort here because the caller might not be panic safe.
                 if layout.abi.is_uninhabited() {
