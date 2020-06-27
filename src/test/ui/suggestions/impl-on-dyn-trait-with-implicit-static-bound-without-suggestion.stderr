@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-without-suggestion.rs:11:9
+   |
+LL |     val.use_self()
+   |         ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected reference `&(dyn ObjectTrait + 'static)`
+              found reference `&(dyn ObjectTrait + 'a)`
+note: the lifetime `'a` as defined on the function body at 10:11...
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-without-suggestion.rs:10:11
+   |
+LL | fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |           ^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
