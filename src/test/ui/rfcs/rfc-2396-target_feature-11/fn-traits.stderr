@@ -48,6 +48,7 @@ LL |     call(foo_unsafe);
    |
    = help: the trait `std::ops::Fn<()>` is not implemented for `unsafe fn() {foo_unsafe}`
    = note: wrap the `unsafe fn() {foo_unsafe}` in a closure with no arguments: `|| { /* code */ }
+   = note: `unsafe fn() {foo_unsafe}` has `#[target_feature]` and is unsafe to call
 
 error[E0277]: expected a `std::ops::FnMut<()>` closure, found `unsafe fn() {foo_unsafe}`
   --> $DIR/fn-traits.rs:30:14
@@ -60,6 +61,7 @@ LL |     call_mut(foo_unsafe);
    |
    = help: the trait `std::ops::FnMut<()>` is not implemented for `unsafe fn() {foo_unsafe}`
    = note: wrap the `unsafe fn() {foo_unsafe}` in a closure with no arguments: `|| { /* code */ }
+   = note: `unsafe fn() {foo_unsafe}` has `#[target_feature]` and is unsafe to call
 
 error[E0277]: expected a `std::ops::FnOnce<()>` closure, found `unsafe fn() {foo_unsafe}`
   --> $DIR/fn-traits.rs:32:15
@@ -72,6 +74,7 @@ LL |     call_once(foo_unsafe);
    |
    = help: the trait `std::ops::FnOnce<()>` is not implemented for `unsafe fn() {foo_unsafe}`
    = note: wrap the `unsafe fn() {foo_unsafe}` in a closure with no arguments: `|| { /* code */ }
+   = note: `unsafe fn() {foo_unsafe}` has `#[target_feature]` and is unsafe to call
 
 error: aborting due to 6 previous errors
 

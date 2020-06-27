@@ -292,11 +292,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             self.tcx.lang_items().fn_once_trait(),
                         ]
                         .contains(&Some(trait_ref.def_id()));
-                        let is_safe_target_feature_fn =
+                        let is_target_feature_fn =
                             if let ty::FnDef(def_id, _) = trait_ref.skip_binder().self_ty().kind {
-                                trait_ref.skip_binder().self_ty().fn_sig(self.tcx).unsafety()
-                                    == hir::Unsafety::Normal
-                                    && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                                !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                             } else {
                                 false
                             };
@@ -441,7 +439,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             );
                         }
 
-                        if is_fn_trait && is_safe_target_feature_fn {
+                        if is_fn_trait && is_target_feature_fn {
                             err.note(&format!(
                                 "`{}` has `#[target_feature]` and is unsafe to call",
                                 trait_ref.skip_binder().self_ty(),
