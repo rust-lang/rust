@@ -209,6 +209,11 @@ fn assert_ssr_transform(rule: &str, input: &str, result: &str) {
     assert_ssr_transforms(&[rule], input, result);
 }
 
+fn normalize_code(code: &str) -> String {
+    let (db, file_id) = single_file(code);
+    db.file_text(file_id).to_string()
+}
+
 fn assert_ssr_transforms(rules: &[&str], input: &str, result: &str) {
     let (db, file_id) = single_file(input);
     let mut match_finder = MatchFinder::new(&db);
@@ -217,8 +222,13 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, result: &str) {
         match_finder.add_rule(rule);
     }
     if let Some(edits) = match_finder.edits_for_file(file_id) {
-        let mut after = input.to_string();
+        // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
+        // stuff.
+        let mut after = db.file_text(file_id).to_string();
         edits.apply(&mut after);
+        // Likewise, we need to make sure that whatever transformations fixture parsing applies,
+        // also get appplied to our expected result.
+        let result = normalize_code(result);
         assert_eq!(after, result);
     } else {
         panic!("No edits were made");
