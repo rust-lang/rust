@@ -12,19 +12,11 @@ use std::path::{Path, PathBuf};
 mod cargo;
 
 fn host_lib() -> PathBuf {
-    if let Some(path) = option_env!("HOST_LIBS") {
-        PathBuf::from(path)
-    } else {
-        cargo::CARGO_TARGET_DIR.join(env!("PROFILE"))
-    }
+    option_env!("HOST_LIBS").map_or(cargo::CARGO_TARGET_DIR.join(env!("PROFILE")), PathBuf::from)
 }
 
 fn clippy_driver_path() -> PathBuf {
-    if let Some(path) = option_env!("CLIPPY_DRIVER_PATH") {
-        PathBuf::from(path)
-    } else {
-        cargo::TARGET_LIB.join("clippy-driver")
-    }
+    option_env!("CLIPPY_DRIVER_PATH").map_or(cargo::TARGET_LIB.join("clippy-driver"), PathBuf::from)
 }
 
 // When we'll want to use `extern crate ..` for a dependency that is used
