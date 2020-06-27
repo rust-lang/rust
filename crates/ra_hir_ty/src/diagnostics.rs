@@ -169,3 +169,31 @@ impl AstDiagnostic for BreakOutsideOfLoop {
         ast::Expr::cast(node).unwrap()
     }
 }
+
+#[derive(Debug)]
+pub struct MissingUnsafe {
+    pub file: HirFileId,
+    pub expr: AstPtr<ast::Expr>,
+}
+
+impl Diagnostic for MissingUnsafe {
+    fn message(&self) -> String {
+        format!("This operation is unsafe and requires an unsafe function or block")
+    }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.expr.clone().into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+impl AstDiagnostic for MissingUnsafe {
+    type AST = ast::Expr;
+
+    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
+        let root = db.parse_or_expand(self.source().file_id).unwrap();
+        let node = self.source().value.to_node(&root);
+        ast::Expr::cast(node).unwrap()
+    }
+}

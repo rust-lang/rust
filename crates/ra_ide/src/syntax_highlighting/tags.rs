@@ -25,7 +25,6 @@ pub enum HighlightTag {
     EnumVariant,
     EscapeSequence,
     Field,
-    FormatSpecifier,
     Function,
     Generic,
     Keyword,
@@ -33,7 +32,6 @@ pub enum HighlightTag {
     Macro,
     Module,
     NumericLiteral,
-    Operator,
     SelfKeyword,
     SelfType,
     Static,
@@ -45,6 +43,8 @@ pub enum HighlightTag {
     Union,
     Local,
     UnresolvedReference,
+    FormatSpecifier,
+    Operator,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

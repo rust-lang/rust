@@ -37,6 +37,7 @@ pub(crate) mod utils;
 pub mod db;
 pub mod diagnostics;
 pub mod expr;
+pub mod unsafe_validation;
 
 #[cfg(test)]
 mod tests;

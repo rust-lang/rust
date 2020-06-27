@@ -539,6 +539,155 @@ fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
 }
 
 #[test]
+fn missing_unsafe_diagnostic_with_raw_ptr() {
+    let diagnostics = TestDB::with_files(
+        r"
+//- /lib.rs
+fn missing_unsafe() {
+    let x = &5 as *const usize;
+    let y = *x;
+}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r#""*x": This operation is unsafe and requires an unsafe function or block"#);
+}
+
+#[test]
+fn missing_unsafe_diagnostic_with_unsafe_call() {
+    let diagnostics = TestDB::with_files(
+        r"
+//- /lib.rs
+unsafe fn unsafe_fn() {
+    let x = &5 as *const usize;
+    let y = *x;
+}
+
+fn missing_unsafe() {
+    unsafe_fn();
+}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r#""unsafe_fn()": This operation is unsafe and requires an unsafe function or block"#);
+}
+
+#[test]
+fn missing_unsafe_diagnostic_with_unsafe_method_call() {
+    let diagnostics = TestDB::with_files(
+        r"
+struct HasUnsafe;
+
+impl HasUnsafe {
+    unsafe fn unsafe_fn(&self) {
+        let x = &5 as *const usize;
+        let y = *x;
+    }
+}
+
+fn missing_unsafe() {
+    HasUnsafe.unsafe_fn();
+}
+
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r#""HasUnsafe.unsafe_fn()": This operation is unsafe and requires an unsafe function or block"#);
+}
+
+#[test]
+fn no_missing_unsafe_diagnostic_with_raw_ptr_in_unsafe_block() {
+    let diagnostics = TestDB::with_files(
+        r"
+fn nothing_to_see_move_along() {
+    let x = &5 as *const usize;
+    unsafe {
+        let y = *x;
+    }
+}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @"");
+}
+
+#[test]
+fn missing_unsafe_diagnostic_with_raw_ptr_outside_unsafe_block() {
+    let diagnostics = TestDB::with_files(
+        r"
+fn nothing_to_see_move_along() {
+    let x = &5 as *const usize;
+    unsafe {
+        let y = *x;
+    }
+    let z = *x;
+}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r#""*x": This operation is unsafe and requires an unsafe function or block"#);
+}
+
+#[test]
+fn no_missing_unsafe_diagnostic_with_unsafe_call_in_unsafe_block() {
+    let diagnostics = TestDB::with_files(
+        r"
+unsafe fn unsafe_fn() {
+    let x = &5 as *const usize;
+    let y = *x;
+}
+
+fn nothing_to_see_move_along() {
+    unsafe {
+        unsafe_fn();
+    }
+}
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @"");
+}
+
+#[test]
+fn no_missing_unsafe_diagnostic_with_unsafe_method_call_in_unsafe_block() {
+    let diagnostics = TestDB::with_files(
+        r"
+struct HasUnsafe;
+
+impl HasUnsafe {
+    unsafe fn unsafe_fn() {
+        let x = &5 as *const usize;
+        let y = *x;
+    }
+}
+
+fn nothing_to_see_move_along() {
+    unsafe {
+        HasUnsafe.unsafe_fn();
+    }
+}
+
+",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @"");
+}
+
+#[test]
 fn break_outside_of_loop() {
     let diagnostics = TestDB::with_files(
         r"

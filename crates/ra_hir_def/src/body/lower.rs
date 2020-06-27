@@ -176,6 +176,7 @@ impl ExprCollector<'_> {
         if !self.expander.is_cfg_enabled(&expr) {
             return self.missing_expr();
         }
+
         match expr {
             ast::Expr::IfExpr(e) => {
                 let then_branch = self.collect_block_opt(e.then_branch());
@@ -218,8 +219,12 @@ impl ExprCollector<'_> {
                     let body = self.collect_block_opt(e.block_expr());
                     self.alloc_expr(Expr::TryBlock { body }, syntax_ptr)
                 }
+                ast::Effect::Unsafe(_) => {
+                    let body = self.collect_block_opt(e.block_expr());
+                    self.alloc_expr(Expr::Unsafe { body }, syntax_ptr)
+                }
                 // FIXME: we need to record these effects somewhere...
-                ast::Effect::Async(_) | ast::Effect::Label(_) | ast::Effect::Unsafe(_) => {
+                ast::Effect::Async(_) | ast::Effect::Label(_) => {
                     self.collect_block_opt(e.block_expr())
                 }
             },
@@ -445,7 +450,6 @@ impl ExprCollector<'_> {
                     Mutability::from_mutable(e.mut_token().is_some())
                 };
                 let rawness = Rawness::from_raw(raw_tok);
-
                 self.alloc_expr(Expr::Ref { expr, rawness, mutability }, syntax_ptr)
             }
             ast::Expr::PrefixExpr(e) => {

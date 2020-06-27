@@ -7,6 +7,5 @@ crates/*/target
 *.log
 *.iml
 .vscode/settings.json
-*.html
 generated_assists.adoc
 generated_features.adoc
