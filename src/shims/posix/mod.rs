@@ -1,4 +1,5 @@
 pub mod foreign_items;
+pub mod dlsym;
 
 mod fs;
 mod sync;
