@@ -518,9 +518,6 @@ declare_features! (
     /// Allows using the `#[register_tool]` attribute.
     (active, register_tool, "1.41.0", Some(66079), None),
 
-    /// Allows the use of `if` and `match` in constants.
-    (active, const_if_match, "1.41.0", Some(49146), None),
-
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
 
@@ -529,9 +526,6 @@ declare_features! (
 
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
-
-    /// Allows the use of `loop` and `while` in constants.
-    (active, const_loop, "1.41.0", Some(52000), None),
 
     /// Allows bindings in the subpattern of a binding pattern.
     /// For example, you can write `x @ Some(y)`.

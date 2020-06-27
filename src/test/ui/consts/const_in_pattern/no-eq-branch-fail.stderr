@@ -1,11 +1,11 @@
 error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/no-eq-branch-fail.rs:22:9
+  --> $DIR/no-eq-branch-fail.rs:21:9
    |
 LL |         BAR_BAZ => panic!(),
    |         ^^^^^^^
 
 error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/no-eq-branch-fail.rs:22:9
+  --> $DIR/no-eq-branch-fail.rs:21:9
    |
 LL |         BAR_BAZ => panic!(),
    |         ^^^^^^^

@@ -2,8 +2,6 @@
 
 // check-pass
 
-#![feature(const_if_match)]
-
 enum E {
     A,
     B,

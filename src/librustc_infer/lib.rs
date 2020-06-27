@@ -17,7 +17,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
-#![feature(const_if_match)]
+#![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_panic)]
 #![feature(extend_one)]
 #![feature(never_type)]

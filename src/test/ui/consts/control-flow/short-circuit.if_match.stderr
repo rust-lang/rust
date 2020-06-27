@@ -1,8 +1,0 @@
-error: fatal error triggered by #[rustc_error]
-  --> $DIR/short-circuit.rs:14:1
-   |
-LL | fn main() {}
-   | ^^^^^^^^^^^^
-
-error: aborting due to previous error
-

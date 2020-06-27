@@ -1,7 +1,5 @@
 // revisions: stock precise
 
-#![feature(const_if_match)]
-#![feature(const_loop)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 
 // `x` is *not* always moved into the final value and may be dropped inside the initializer.

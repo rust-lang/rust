@@ -87,7 +87,7 @@
 #![feature(const_generic_impls_guard)]
 #![feature(const_generics)]
 #![feature(const_in_array_repeat_expressions)]
-#![feature(const_if_match)]
+#![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(cow_is_borrowed)]
 #![feature(dispatch_from_dyn)]
 #![feature(core_intrinsics)]
