@@ -9,6 +9,8 @@ fn main() {
     {
         // Build the unwinding from libunwind C/C++ source code.
         llvm_libunwind::compile();
+    } else if target.contains("x86_64-fortanix-unknown-sgx") {
+        llvm_libunwind::compile();
     } else if target.contains("linux") {
         if target.contains("musl") {
             // linking for musl is handled in lib.rs
@@ -55,6 +57,7 @@ mod llvm_libunwind {
 
     /// Compile the libunwind C/C++ source code.
     pub fn compile() {
+        let target = env::var("TARGET").expect("TARGET was not set");
         let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
         let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
         let target_endian_little = env::var("CARGO_CFG_TARGET_ENDIAN").unwrap() != "big";
@@ -75,6 +78,35 @@ mod llvm_libunwind {
             cfg.flag("/EHsc");
             cfg.define("_CRT_SECURE_NO_WARNINGS", None);
             cfg.define("_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS", None);
+        } else if target.contains("x86_64-fortanix-unknown-sgx") {
+            cfg.cpp(false);
+
+            cfg.static_flag(true);
+            cfg.opt_level(3);
+
+            cfg.flag("-nostdinc++");
+            cfg.flag("-fno-exceptions");
+            cfg.flag("-fno-rtti");
+            cfg.flag("-fstrict-aliasing");
+            cfg.flag("-funwind-tables");
+            cfg.flag("-fvisibility=hidden");
+            cfg.flag("-fno-stack-protector");
+            cfg.flag("-ffreestanding");
+            cfg.flag("-fexceptions");
+
+            // easiest way to undefine since no API available in cc::Build to undefine
+            cfg.flag("-U_FORTIFY_SOURCE");
+            cfg.define("_FORTIFY_SOURCE", "0");
+
+            cfg.flag_if_supported("-fvisibility-global-new-delete-hidden");
+
+            cfg.define("_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS", None);
+            cfg.define("RUST_SGX", "1");
+            cfg.define("__NO_STRING_INLINES", None);
+            cfg.define("__NO_MATH_INLINES", None);
+            cfg.define("_LIBUNWIND_IS_BAREMETAL", None);
+            cfg.define("__LIBUNWIND_IS_NATIVE_ONLY", None);
+            cfg.define("NDEBUG", None);
         } else {
             cfg.flag("-std=c99");
             cfg.flag("-std=c++11");
@@ -101,6 +133,10 @@ mod llvm_libunwind {
 
         if target_vendor == "apple" {
             unwind_sources.push("Unwind_AppleExtras.cpp");
+        }
+
+        if target.contains("x86_64-fortanix-unknown-sgx") {
+            unwind_sources.push("UnwindRustSgx.c");
         }
 
         let root = Path::new("../llvm-project/libunwind");

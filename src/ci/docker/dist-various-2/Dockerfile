@@ -71,9 +71,7 @@ RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc
 COPY dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 COPY dist-various-2/x86_64-fortanix-unknown-sgx-clang-wrap.sh /usr/bin/x86_64-fortanix-unknown-sgx-clang-11
 RUN ln -s /usr/bin/x86_64-fortanix-unknown-sgx-clang-11 /usr/bin/x86_64-fortanix-unknown-sgx-clang++-11
-# We pass the commit id of the port of LLVM's libunwind to the build script.
-# Any update to the commit id here, should cause the container image to be re-built from this point on.
-RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh "800f95131fe6acd20b96b6f4723ca3c820f3d379"
+RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 
 COPY dist-various-2/build-wasi-toolchain.sh /tmp/
 RUN /tmp/build-wasi-toolchain.sh
@@ -104,8 +102,6 @@ ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx
 ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
 ENV TARGETS=$TARGETS,armv7-unknown-linux-gnueabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabi
-
-ENV X86_FORTANIX_SGX_LIBS="/x86_64-fortanix-unknown-sgx/lib/"
 
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
 # we need asm in the search path for gcc-7 (for gnux32) but not in the search path of the

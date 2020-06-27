@@ -1217,11 +1217,66 @@ mod self_keyword {}
 /// The implementing type within a [`trait`] or [`impl`] block, or the current type within a type
 /// definition.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// Within a type definition:
+///
+/// ```
+/// # #![allow(dead_code)]
+/// struct Node {
+///     elem: i32,
+///     // `Self` is a `Node` here.
+///     next: Option<Box<Self>>,
+/// }
+/// ```
+///
+/// In an [`impl`] block:
+///
+/// ```
+/// struct Foo(i32);
+///
+/// impl Foo {
+///     fn new() -> Self {
+///         Self(0)
+///     }
+/// }
+///
+/// assert_eq!(Foo::new().0, Foo(0).0);
+/// ```
+///
+/// Generic parameters are implicit with `Self`:
+///
+/// ```
+/// # #![allow(dead_code)]
+/// struct Wrap<T> {
+///     elem: T,
+/// }
+///
+/// impl<T> Wrap<T> {
+///     fn new(elem: T) -> Self {
+///         Self { elem }
+///     }
+/// }
+/// ```
+///
+/// In a [`trait`] definition and related [`impl`] block:
+///
+/// ```
+/// trait Example {
+///     fn example() -> Self;
+/// }
+///
+/// struct Foo(i32);
+///
+/// impl Example for Foo {
+///     fn example() -> Self {
+///         Self(42)
+///     }
+/// }
+///
+/// assert_eq!(Foo::example().0, Foo(42).0);
+/// ```
 ///
 /// [`impl`]: keyword.impl.html
 /// [`trait`]: keyword.trait.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod self_upper_keyword {}
 
 #[doc(keyword = "static")]
@@ -1345,10 +1400,26 @@ mod struct_keyword {}
 //
 /// The parent of the current [module].
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// ```rust
+/// # #![allow(dead_code)]
+/// # fn main() {}
+/// mod a {
+///     pub fn foo() {}
+/// }
+/// mod b {
+///     pub fn foo() {
+///         super::a::foo(); // call a's foo function
+///     }
+/// }
+/// ```
+///
+/// It is also possible to use `super` multiple times: `super::super::foo`,
+/// going up the ancestor chain.
+///
+/// See the [Reference] for more information.
 ///
 /// [module]: ../reference/items/modules.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// [Reference]: ../reference/paths.html#super
 mod super_keyword {}
 
 #[doc(keyword = "trait")]

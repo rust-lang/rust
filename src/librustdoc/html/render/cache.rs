@@ -91,6 +91,10 @@ crate struct Cache {
     /// The version of the crate being documented, if given from the `--crate-version` flag.
     pub crate_version: Option<String>,
 
+    /// Whether to document private items.
+    /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
+    pub document_private: bool,
+
     // Private fields only used when initially crawling a crate to build a cache
     stack: Vec<String>,
     parent_stack: Vec<DefId>,
@@ -126,6 +130,7 @@ crate struct Cache {
 impl Cache {
     pub fn from_krate(
         renderinfo: RenderInfo,
+        document_private: bool,
         extern_html_root_urls: &BTreeMap<String, String>,
         dst: &Path,
         mut krate: clean::Crate,
@@ -160,6 +165,7 @@ impl Cache {
             stripped_mod: false,
             access_levels,
             crate_version: krate.version.take(),
+            document_private,
             orphan_impl_items: Vec::new(),
             orphan_trait_impls: Vec::new(),
             traits: krate.external_traits.replace(Default::default()),

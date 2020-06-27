@@ -11,7 +11,7 @@ IMAGE_BASE:
     .long 1                    /* type = NT_VERSION */
 0:  .asciz "toolchain-version" /* name */
 1:  .align 4
-2:  .long 0                    /* desc - toolchain version number, 32-bit LE */
+2:  .long 1                    /* desc - toolchain version number, 32-bit LE */
 3:  .align 4
 
 .section .rodata
@@ -60,10 +60,14 @@ IMAGE_BASE:
     globvar TEXT_BASE 8
     /*  The size in bytes of enclacve text section */
     globvar TEXT_SIZE 8
-    /*  The base address (relative to enclave start) of the enclave EH_FRM_HDR section */
-    globvar EH_FRM_HDR_BASE 8
-    /*  The size in bytes of enclacve EH_FRM_HDR section */
-    globvar EH_FRM_HDR_SIZE 8
+    /*  The base address (relative to enclave start) of the enclave .eh_frame_hdr section */
+    globvar EH_FRM_HDR_OFFSET 8
+    /*  The size in bytes of enclave .eh_frame_hdr section */
+    globvar EH_FRM_HDR_LEN 8
+    /*  The base address (relative to enclave start) of the enclave .eh_frame section */
+    globvar EH_FRM_OFFSET 8
+    /*  The size in bytes of enclacve .eh_frame section */
+    globvar EH_FRM_LEN 8
 
 .org .Lxsave_clear+512
 .Lxsave_header:

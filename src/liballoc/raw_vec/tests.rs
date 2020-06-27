@@ -12,7 +12,6 @@ fn allocator_param() {
     //
     // Instead, this just checks that the `RawVec` methods do at
     // least go through the Allocator API when it reserves
-
     // storage.
 
     // A dumb allocator that consumes a fixed amount of fuel

@@ -62,6 +62,8 @@ pub struct DocContext<'tcx> {
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
     pub auto_traits: Vec<DefId>,
+    /// The options given to rustdoc that could be relevant to a pass.
+    pub render_options: RenderOptions,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -281,8 +283,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         describe_lints,
         lint_cap,
         mut default_passes,
-        mut document_private,
-        document_hidden,
         mut manual_passes,
         display_warnings,
         render_options,
@@ -448,6 +448,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                         .cloned()
                         .filter(|trait_def_id| tcx.trait_is_auto(*trait_def_id))
                         .collect(),
+                    render_options,
                 };
                 debug!("crate: {:?}", tcx.hir().krate());
 
@@ -524,7 +525,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     }
 
                     if attr.is_word() && name == sym::document_private_items {
-                        document_private = true;
+                        ctxt.render_options.document_private = true;
                     }
                 }
 
@@ -544,9 +545,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 for p in passes {
                     let run = match p.condition {
                         Always => true,
-                        WhenDocumentPrivate => document_private,
-                        WhenNotDocumentPrivate => !document_private,
-                        WhenNotDocumentHidden => !document_hidden,
+                        WhenDocumentPrivate => ctxt.render_options.document_private,
+                        WhenNotDocumentPrivate => !ctxt.render_options.document_private,
+                        WhenNotDocumentHidden => !ctxt.render_options.document_hidden,
                     };
                     if run {
                         debug!("running pass {}", p.pass.name);
@@ -556,7 +557,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
                 ctxt.sess().abort_if_errors();
 
-                (krate, ctxt.renderinfo.into_inner(), render_options)
+                (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
             })
         })
     })

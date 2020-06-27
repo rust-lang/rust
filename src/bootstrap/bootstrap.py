@@ -184,6 +184,7 @@ def default_build_triple():
     ostype = require(["uname", "-s"], exit=required)
     cputype = require(['uname', '-m'], exit=required)
 
+    # If we do not have `uname`, assume Windows.
     if ostype is None or cputype is None:
         return 'x86_64-pc-windows-msvc'
 
@@ -236,6 +237,11 @@ def default_build_triple():
         if ostype.endswith('WOW64'):
             cputype = 'x86_64'
         ostype = 'pc-windows-gnu'
+    elif sys.platform == 'win32':
+        # Some Windows platforms might have a `uname` command that returns a
+        # non-standard string (e.g. gnuwin32 tools returns `windows32`). In
+        # these cases, fall back to using sys.platform.
+        return 'x86_64-pc-windows-msvc'
     else:
         err = "unknown OS type: {}".format(ostype)
         sys.exit(err)
