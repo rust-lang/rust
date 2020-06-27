@@ -46,22 +46,23 @@ fn get_path_for_executable(executable_name: &'static str) -> PathBuf {
         path.push(".cargo");
         path.push("bin");
         path.push(executable_name);
-        if path.is_file() {
+        if let Some(path) = probe(path) {
             return path;
         }
     }
+
     executable_name.into()
 }
 
 fn lookup_in_path(exec: &str) -> bool {
     let paths = env::var_os("PATH").unwrap_or_default();
-    let mut candidates = env::split_paths(&paths).flat_map(|path| {
-        let candidate = path.join(&exec);
-        let with_exe = match env::consts::EXE_EXTENSION {
-            "" => None,
-            it => Some(candidate.with_extension(it)),
-        };
-        iter::once(candidate).chain(with_exe)
-    });
-    candidates.any(|it| it.is_file())
+    env::split_paths(&paths).map(|path| path.join(exec)).find_map(probe).is_some()
+}
+
+fn probe(path: PathBuf) -> Option<PathBuf> {
+    let with_extension = match env::consts::EXE_EXTENSION {
+        "" => None,
+        it => Some(path.with_extension(it)),
+    };
+    iter::once(path).chain(with_extension).find(|it| it.is_file())
 }
