@@ -106,7 +106,7 @@ impl Runtime {
         rt.help_printed = true;
 
         let help = if print_help { HELP } else { "" };
-        panic!(
+        println!(
             "\n
 error: expect test failed{}
   --> {}:{}:{}
@@ -122,7 +122,9 @@ Actual:
 ----
 ",
             updated, expect.file, expect.line, expect.column, help, expected, actual
-        )
+        );
+        // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
+        std::panic::resume_unwind(Box::new(()));
     }
 }
 
