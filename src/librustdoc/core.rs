@@ -193,8 +193,15 @@ pub fn new_handler(
                 Lrc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
             });
             Box::new(
-                JsonEmitter::stderr(None, source_map, pretty, json_rendered, false)
-                    .ui_testing(debugging_opts.ui_testing),
+                JsonEmitter::stderr(
+                    None,
+                    source_map,
+                    pretty,
+                    json_rendered,
+                    debugging_opts.terminal_width,
+                    false,
+                )
+                .ui_testing(debugging_opts.ui_testing),
             )
         }
     };
