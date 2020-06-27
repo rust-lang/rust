@@ -55,7 +55,7 @@ struct OnlySelfBounds(bool);
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
 
-fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: DefId) {
+fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut CollectItemTypesVisitor { tcx }.as_deep_visitor(),
