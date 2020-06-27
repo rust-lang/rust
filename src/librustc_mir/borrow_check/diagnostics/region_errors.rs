@@ -579,11 +579,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let (Some(f), Some(ty::RegionKind::ReStatic)) =
             (self.to_error_region(fr), self.to_error_region(outlived_fr))
         {
-            if let Some((ty::TyS { kind: ty::Opaque(did, substs), .. }, _)) = self
+            if let Some((&ty::TyS { kind: ty::Opaque(did, substs), .. }, _)) = self
                 .infcx
                 .tcx
                 .is_suitable_region(f)
-                .map(|r| r.def_id.expect_local())
+                .map(|r| r.def_id)
                 .map(|id| self.infcx.tcx.return_type_impl_trait(id))
                 .unwrap_or(None)
             {
@@ -592,7 +592,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 //
                 // eg. check for `impl Trait + 'static` instead of `impl Trait`.
                 let has_static_predicate = {
-                    let predicates_of = self.infcx.tcx.predicates_of(*did);
+                    let predicates_of = self.infcx.tcx.predicates_of(did);
                     let bounds = predicates_of.instantiate(self.infcx.tcx, substs);
 
                     let mut found = false;
@@ -625,7 +625,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     diag.help(&format!("consider replacing `{}` with `{}`", fr_name, static_str));
                 } else {
                     // Otherwise, we should suggest adding a constraint on the return type.
-                    let span = self.infcx.tcx.def_span(*did);
+                    let span = self.infcx.tcx.def_span(did);
                     if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
                         let suggestable_fr_name = if fr_name.was_named() {
                             fr_name.to_string()
