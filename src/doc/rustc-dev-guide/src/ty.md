@@ -63,10 +63,10 @@ Here is a summary:
 HIR is built, some basic type inference and type checking is done. During the type inference, we
 figure out what the `ty::Ty` of everything is and we also check if the type of something is
 ambiguous. The `ty::Ty` then, is used for type checking while making sure everything has the
-expected type. The [`astconv` module][astconv], is where the code responsible for converting a
+expected type. The [`astconv` module][astconv] is where the code responsible for converting a
 `rustc_hir::Ty` into a `ty::Ty` is located. This occurs during the type-checking phase,
 but also in other parts of the compiler that want to ask questions like "what argument types does
-this function expect"?.
+this function expect?"
 
 [astconv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/astconv/index.html
 
@@ -79,13 +79,13 @@ They are syntactically two strings: `"u32"` at line N column 20 and `"u32"` at l
 don’t know that they are the same yet. So, in the HIR we treat them as if they are different. Later,
 we determine that they semantically are the same type and that’s the `ty::Ty` we use.
 
-Consider another example: `fn foo<T>(x: T) -> u32` and suppose that someone invokes `foo::<u32>(0)`.
+Consider another example: `fn foo<T>(x: T) -> u32`. Suppose that someone invokes `foo::<u32>(0)`.
 This means that `T` and `u32` (in this invocation) actually turns out to be the same type, so we
 would eventually end up with the same `ty::Ty` in the end, but we have distinct `rustc_hir::Ty`.
 (This is a bit over-simplified, though, since during type checking, we would check the function
 generically and would still have a `T` distinct from `u32`. Later, when doing code generation,
 we would always be handling "monomorphized" (fully substituted) versions of each function,
-and hence we would know what `T` represents (and specifically that it is `u32`).
+and hence we would know what `T` represents (and specifically that it is `u32`).)
 
 Here is one more example:
 
@@ -107,13 +107,15 @@ or `fn(i32) -> i32` (with type aliases fully expanded).
 
 ## `ty::Ty` implementation
 
-[`rustc::ty::Ty`][ty_ty] is actually a type alias to [`&TyS`][tys] (more about that later). `TyS`
-(Type Structure) is where the main functionality is located. You can ignore `TyS` struct in general;
-you will basically never access it explicitly. We always pass it by reference using the `Ty` alias.
+[`rustc::ty::Ty`][ty_ty] is actually a type alias to [`&TyS`][tys].
+This type, which is short for "Type Structure", is where the main functionality is located.
+You can ignore `TyS` struct in general; you will basically never access it explicitly.
+We always pass it by reference using the `Ty` alias.
 The only exception is to define inherent methods on types. In particular, `TyS` has a [`kind`][kind]
 field of type [`TyKind`][tykind], which represents the key type information. `TyKind` is a big enum
-which represents different kinds of types (e.g. primitives, references, abstract data types,
-generics, lifetimes, etc). `TyS` also has 2 more fields, `flags` and `outer_exclusive_binder`. They
+with variants to represent many different Rust types
+(e.g. primitives, references, abstract data types, generics, lifetimes, etc).
+`TyS` also has 2 more fields, `flags` and `outer_exclusive_binder`. They
 are convenient hacks for efficiency and summarize information about the type that we may want to
 know, but they don’t come into the picture as much here. Finally, `ty::TyS`s
 are [interned](./memory.md), so that the `ty::Ty` can be a thin pointer-like
@@ -137,14 +139,15 @@ These methods all return a `Ty<'tcx>` – note that the lifetime you get back is
 arena that this `tcx` has access to. Types are always canonicalized and interned (so we never
 allocate exactly the same type twice).
 
-> NB. Because types are interned, it is possible to compare them for equality efficiently using `==`
+> N.B.
+> Because types are interned, it is possible to compare them for equality efficiently using `==`
 > – however, this is almost never what you want to do unless you happen to be hashing and looking
 > for duplicates. This is because often in Rust there are multiple ways to represent the same type,
 > particularly once inference is involved. If you are going to be testing for type equality, you
 > probably need to start looking into the inference code to do it right.
 
-You can also find various common types in the `tcx` itself by accessing `tcx.types.bool`,
-`tcx.types.char`, etc (see [`CommonTypes`] for more).
+You can also find various common types in the `tcx` itself by accessing its fields:
+`tcx.types.bool`, `tcx.types.char`, etc. (See [`CommonTypes`] for more.)
 
 [`CommonTypes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.CommonTypes.html
 
@@ -172,35 +175,27 @@ types in the compiler.
 There are a lot of related types, and we’ll cover them in time (e.g regions/lifetimes,
 “substitutions”, etc).
 
-There are a bunch of variants on the `TyKind` enum, which you can see by looking at the rustdocs.
-Here is a sampling:
+There are many variants on the `TyKind` enum, which you can see by looking at its
+[documentation][tykind]. Here is a sampling:
 
-[**Algebraic Data Types (ADTs)**][kindadt] An [*algebraic Data Type*][wikiadt] is a  `struct`,
-`enum` or `union`.  Under the hood, `struct`, `enum` and `union` are actually implemented
-the same way: they are all [`ty::TyKind::Adt`][kindadt].  It’s basically a user defined type.
-We will talk more about these later.
-
-[**Foreign**][kindforeign] Corresponds to `extern type T`.
-
-[**Str**][kindstr] Is the type str. When the user writes `&str`, `Str` is the how we represent the
-`str` part of that type.
-
-[**Slice**][kindslice] Corresponds to `[T]`.
-
-[**Array**][kindarray] Corresponds to `[T; n]`.
-
-[**RawPtr**][kindrawptr] Corresponds to `*mut T` or `*const T`
-
-[**Ref**][kindref] `Ref` stands for safe references, `&'a mut T` or `&'a T`. `Ref` has some
-associated parts, like `Ty<'tcx>` which is the type that the reference references, `Region<'tcx>` is
-the lifetime or region of the reference and `Mutability` if the reference is mutable or not.
-
-[**Param**][kindparam] Represents a type parameter (e.g. the `T` in `Vec<T>`).
-
-[**Error**][kinderr] Represents a type error somewhere so that we can print better diagnostics. We
-will discuss this more later.
-
-[**And Many More**...][kindvars]
+- [**Algebraic Data Types (ADTs)**][kindadt] An [*algebraic data type*][wikiadt] is a  `struct`,
+  `enum` or `union`.  Under the hood, `struct`, `enum` and `union` are actually implemented
+  the same way: they are all [`ty::TyKind::Adt`][kindadt].  It’s basically a user defined type.
+  We will talk more about these later.
+- [**Foreign**][kindforeign] Corresponds to `extern type T`.
+- [**Str**][kindstr] Is the type str. When the user writes `&str`, `Str` is the how we represent the
+  `str` part of that type.
+- [**Slice**][kindslice] Corresponds to `[T]`.
+- [**Array**][kindarray] Corresponds to `[T; n]`.
+- [**RawPtr**][kindrawptr] Corresponds to `*mut T` or `*const T`.
+- [**Ref**][kindref] `Ref` stands for safe references, `&'a mut T` or `&'a T`. `Ref` has some
+  associated parts, like `Ty<'tcx>` which is the type that the reference references. 
+  `Region<'tcx>` is the lifetime or region of the reference and `Mutability` if the reference
+  is mutable or not.
+- [**Param**][kindparam] Represents a type parameter (e.g. the `T` in `Vec<T>`).
+- [**Error**][kinderr] Represents a type error somewhere so that we can print better diagnostics. We
+  will discuss this more later.
+- [**And many more**...][kindvars]
 
 [wikiadt]: https://en.wikipedia.org/wiki/Algebraic_data_type
 [kindadt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Adt
@@ -249,8 +244,8 @@ There are two parts:
 
 - The [`AdtDef`][adtdef] references the struct/enum/union but without the values for its type
   parameters. In our example, this is the `MyStruct` part *without* the argument `u32`.
-    - Note that in the HIR, structs, enums and unions are represented differently, but in `ty::Ty`,
-      they are all represented using `TyKind::Adt`.
+  (Note that in the HIR, structs, enums and unions are represented differently, but in `ty::Ty`,
+  they are all represented using `TyKind::Adt`.)
 - The [`SubstsRef`][substsref] is an interned list of values that are to be substituted for the
   generic parameters.  In our example of `MyStruct<u32>`, we would end up with a list like `[u32]`.
   We’ll dig more into generics and substitutions in a little bit.
@@ -268,8 +263,8 @@ is only referenced).
 
 `AdtDef` is more or less a wrapper around `DefId` with lots of useful helper methods. There is
 essentially a one-to-one relationship between `AdtDef` and `DefId`. You can get the `AdtDef` for a
-`DefId` with the [`tcx.adt_def(def_id)` query][adtdefq].  The `AdtDef`s are all interned (as you can
-see `'tcx` lifetime on it).
+`DefId` with the [`tcx.adt_def(def_id)` query][adtdefq]. `AdtDef`s are all interned, as shown
+by the `'tcx` lifetime.
 
 [adtdefq]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.adt_def
 
