@@ -28,6 +28,7 @@ ra_cfg = { path = "../ra_cfg" }
 ra_fmt = { path = "../ra_fmt" }
 ra_prof = { path = "../ra_prof" }
 test_utils = { path = "../test_utils" }
+expect = { path = "../expect" }
 ra_assists = { path = "../ra_assists" }
 ra_ssr = { path = "../ra_ssr" }
 

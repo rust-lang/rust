@@ -103,6 +103,7 @@ pub(crate) fn reference_definition(
 
 #[cfg(test)]
 mod tests {
+    use expect::{expect, Expect};
     use test_utils::assert_eq_text;
 
     use crate::mock_analysis::analysis_and_position;
@@ -142,16 +143,40 @@ mod tests {
         nav.assert_match(expected);
     }
 
+    fn check(ra_fixture: &str, expect: Expect) {
+        let (analysis, pos) = analysis_and_position(ra_fixture);
+
+        let mut navs = analysis.goto_definition(pos).unwrap().unwrap().info;
+        if navs.len() == 0 {
+            panic!("unresolved reference")
+        }
+        assert_eq!(navs.len(), 1);
+
+        let nav = navs.pop().unwrap();
+        let file_text = analysis.file_text(nav.file_id()).unwrap();
+
+        let mut actual = nav.debug_render();
+        actual += "\n";
+        actual += &file_text[nav.full_range()].to_string();
+        if let Some(focus) = nav.focus_range() {
+            actual += "|";
+            actual += &file_text[focus];
+            actual += "\n";
+        }
+        expect.assert_eq(&actual);
+    }
+
     #[test]
     fn goto_def_in_items() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo;
-            enum E { X(Foo<|>) }
-            ",
-            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
-            "struct Foo;|Foo",
+        check(
+            r#"
+struct Foo;
+enum E { X(Foo<|>) }
+"#,
+            expect![[r#"
+                Foo STRUCT_DEF FileId(1) 0..11 7..10
+                struct Foo;|Foo
+            "#]],
         );
     }
 

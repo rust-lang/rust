@@ -1130,6 +1130,7 @@ name = "ra_ide"
 version = "0.1.0"
 dependencies = [
  "either",
+ "expect",
  "indexmap",
  "insta",
  "itertools",
