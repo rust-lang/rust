@@ -108,11 +108,10 @@ fn walk_unsafe(
                 unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
             }
         }
+        Expr::Unsafe { body: child } => {
+            return walk_unsafe(unsafe_exprs, db, infer, body, *child, true);
+        }
         _ => {}
-    }
-
-    if let &Expr::Unsafe { body: child } = expr {
-        return walk_unsafe(unsafe_exprs, db, infer, body, child, true);
     }
 
     expr.walk_child_exprs(|child| {
