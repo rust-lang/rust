@@ -1,8 +1,6 @@
 // run-pass
 // gate-test-const_precise_live_drops
 
-#![feature(const_if_match)]
-#![feature(const_loop)]
 #![feature(const_precise_live_drops)]
 
 const _: Vec<i32> = {

@@ -1,6 +1,6 @@
 #![feature(bool_to_option)]
 #![feature(const_fn)]
-#![feature(const_if_match)]
+#![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_panic)]
 #![feature(core_intrinsics)]
 #![feature(hash_raw_entry)]

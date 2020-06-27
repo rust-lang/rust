@@ -2,7 +2,6 @@
 
 // run-pass
 
-#![feature(const_if_match)]
 #![feature(const_panic)]
 
 const X: i32 = {

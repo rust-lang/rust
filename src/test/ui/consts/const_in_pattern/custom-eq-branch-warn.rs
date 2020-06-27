@@ -1,6 +1,5 @@
 // check-pass
 
-#![feature(const_if_match)]
 #![warn(indirect_structural_match)]
 //~^ NOTE lint level is defined here
 

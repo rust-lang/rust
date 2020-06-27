@@ -1,10 +1,14 @@
+// Don't allow unstable features in stable functions without `allow_internal_unstable`.
+
+#![stable(feature = "rust1", since = "1.0.0")]
+
 #![feature(staged_api)]
-#![feature(const_if_match)]
+#![feature(const_transmute, const_fn)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
-const fn foo() -> i32 {
-    if true { 4 } else { 5 } //~ loops and conditional expressions are not stable in const fn
+pub const fn foo() -> i32 {
+    unsafe { std::mem::transmute(4u32) } //~ ERROR is not stable as `const fn`
 }
 
 fn main() {}

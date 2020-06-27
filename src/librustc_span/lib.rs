@@ -6,7 +6,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(crate_visibility_modifier)]
-#![feature(const_if_match)]
+#![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(negative_impls)]

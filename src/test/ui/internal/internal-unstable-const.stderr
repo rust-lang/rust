@@ -1,8 +1,8 @@
-error[E0723]: loops and conditional expressions are not stable in const fn
-  --> $DIR/internal-unstable-const.rs:7:5
+error[E0723]: can only call other `const fn` within a `const fn`, but `const std::intrinsics::transmute::<u32, i32>` is not stable as `const fn`
+  --> $DIR/internal-unstable-const.rs:11:14
    |
-LL |     if true { 4 } else { 5 }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     unsafe { std::mem::transmute(4u32) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable

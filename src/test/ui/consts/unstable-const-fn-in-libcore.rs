@@ -4,7 +4,6 @@
 // gate was not enabled in libcore.
 
 #![stable(feature = "core", since = "1.6.0")]
-#![feature(const_if_match)]
 #![feature(rustc_const_unstable)]
 #![feature(staged_api)]
 

@@ -1,34 +1,9 @@
-error[E0658]: `while` is not allowed in a `const`
-  --> $DIR/infinite_loop.rs:6:9
-   |
-LL | /         while n != 0 {
-LL | |
-LL | |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
-LL | |
-LL | |
-LL | |         }
-   | |_________^
-   |
-   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
-   = help: add `#![feature(const_loop)]` to the crate attributes to enable
-   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
-
-error[E0658]: `if` is not allowed in a `const`
-  --> $DIR/infinite_loop.rs:8:17
-   |
-LL |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
-   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
-
 error[E0080]: evaluation of constant value failed
-  --> $DIR/infinite_loop.rs:8:17
+  --> $DIR/infinite_loop.rs:7:17
    |
 LL |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exceeded interpreter step limit (see `#[const_eval_limit]`)
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0080, E0658.
-For more information about an error, try `rustc --explain E0080`.
+For more information about this error, try `rustc --explain E0080`.
