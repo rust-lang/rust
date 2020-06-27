@@ -3013,7 +3013,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3040,7 +3040,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3066,7 +3066,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3096,7 +3096,7 @@ impl str {
     ///
     /// [`None`]: option/enum.Option.html#variant.None
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3145,7 +3145,7 @@ impl str {
     ///
     /// [`None`]: option/enum.Option.html#variant.None
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3191,7 +3191,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3313,7 +3313,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3353,7 +3353,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3407,7 +3407,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// Equivalent to [`split`], except that the trailing substring
     /// is skipped if empty.
@@ -3454,7 +3454,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// Equivalent to [`split`], except that the trailing substring is
     /// skipped if empty.
@@ -3503,7 +3503,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3556,7 +3556,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3604,7 +3604,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3643,7 +3643,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3687,7 +3687,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3732,7 +3732,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3953,7 +3953,7 @@ impl str {
     /// or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -4001,7 +4001,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4046,7 +4046,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -4074,7 +4074,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -4101,7 +4101,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4150,7 +4150,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4187,7 +4187,7 @@ impl str {
     /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
-    /// [pattern]: str/pattern/index.html
+    /// [pattern]: ../str/pattern/index.html
     ///
     /// # Text directionality
     ///
