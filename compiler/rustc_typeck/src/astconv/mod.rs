@@ -35,6 +35,7 @@ use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use smallvec::SmallVec;
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::iter;
 use std::slice;
@@ -1192,7 +1193,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             )
             .collect::<SmallVec<[_; 8]>>();
         v.sort_by(|a, b| a.stable_cmp(tcx, b));
-        v.dedup();
+        v.dedup_by(|a, b| a.stable_cmp(tcx, b) == Ordering::Equal);
         let existential_predicates = ty::Binder::bind(tcx.mk_existential_predicates(v.into_iter()));
 
         // Use explicitly-specified region bound.

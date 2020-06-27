@@ -598,20 +598,11 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
     ) -> RelateResult<'tcx, Self> {
         let tcx = relation.tcx();
 
-        // FIXME: this is wasteful, but want to do a perf run to see how slow it is.
-        // We need to perform this deduplication as we sometimes generate duplicate projections
-        // in `a`.
-        let mut a_v: Vec<_> = a.into_iter().collect();
-        let mut b_v: Vec<_> = b.into_iter().collect();
-        a_v.sort_by(|a, b| a.stable_cmp(tcx, b));
-        a_v.dedup();
-        b_v.sort_by(|a, b| a.stable_cmp(tcx, b));
-        b_v.dedup();
-        if a_v.len() != b_v.len() {
+        if a.len() != b.len() {
             return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
         }
 
-        let v = a_v.into_iter().zip(b_v.into_iter()).map(|(ep_a, ep_b)| {
+        let v = a.into_iter().zip(b.into_iter()).map(|(ep_a, ep_b)| {
             use crate::ty::ExistentialPredicate::*;
             match (ep_a, ep_b) {
                 (Trait(a), Trait(b)) => Ok(Trait(relation.relate(a, b)?)),
