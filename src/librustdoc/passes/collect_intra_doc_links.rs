@@ -602,6 +602,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     kind = Some(ValueNS);
                     disambiguator = Some(&prefix[..prefix.len() - 1]);
                     link.trim_start_matches(prefix)
+                } else if link.ends_with("!()") {
+                    kind = Some(MacroNS);
+                    link.trim_end_matches("!()")
                 } else if link.ends_with("()") {
                     kind = Some(ValueNS);
                     disambiguator = Some("fn");
