@@ -91,8 +91,8 @@ pub enum ThreadState {
     /// responsibility of the synchronization primitives to track threads that
     /// are blocked by them.
     BlockedOnSync,
-    /// The thread has terminated its execution (we do not delete terminated
-    /// threads).
+    /// The thread has terminated its execution. We do not delete terminated
+    /// threads (FIXME: why?).
     Terminated,
 }
 
