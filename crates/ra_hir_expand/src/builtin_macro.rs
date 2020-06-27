@@ -99,6 +99,7 @@ register_builtin! {
     EAGER:
     (concat, Concat) => concat_expand,
     (include, Include) => include_expand,
+    (include_bytes, IncludeBytes) => include_bytes_expand,
     (include_str, IncludeStr) => include_str_expand,
     (env, Env) => env_expand,
     (option_env, OptionEnv) => option_env_expand
@@ -335,6 +336,24 @@ fn include_expand(
         .0;
 
     Ok((res, FragmentKind::Items))
+}
+
+fn include_bytes_expand(
+    _db: &dyn AstDatabase,
+    _arg_id: EagerMacroId,
+    tt: &tt::Subtree,
+) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
+    let _path = parse_string(tt)?;
+
+    // FIXME: actually read the file here if the user asked for macro expansion
+    let res = tt::Subtree {
+        delimiter: None,
+        token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+            text: r#"b"""#.into(),
+            id: tt::TokenId::unspecified(),
+        }))],
+    };
+    Ok((res, FragmentKind::Expr))
 }
 
 fn include_str_expand(
@@ -610,5 +629,21 @@ mod tests {
             expanded,
             r#"std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(arg1(a,b,c)),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(arg2),std::fmt::Display::fmt),])"#
         );
+    }
+
+    #[test]
+    fn test_include_bytes_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+            #[rustc_builtin_macro]
+            macro_rules! include_bytes {
+                ($file:expr) => {{ /* compiler built-in */ }};
+                ($file:expr,) => {{ /* compiler built-in */ }};
+            }
+            include_bytes("foo");
+            "#,
+        );
+
+        assert_eq!(expanded, r#"b"""#);
     }
 }
