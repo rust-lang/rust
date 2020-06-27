@@ -276,3 +276,93 @@ fn glob_shadowed_def() {
     "###
     );
 }
+
+#[test]
+fn glob_shadowed_def_reversed() {
+    let map = def_map(
+        r###"
+        //- /lib.rs
+        mod foo;
+        mod bar;
+
+        use bar::baz;
+        use foo::*;
+
+        use baz::Bar;
+
+        //- /foo.rs
+        pub mod baz {
+            pub struct Foo;
+        }
+
+        //- /bar.rs
+        pub mod baz {
+            pub struct Bar;
+        }
+        "###,
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮Bar: t v
+        ⋮bar: t
+        ⋮baz: t
+        ⋮foo: t
+        ⋮
+        ⋮crate::bar
+        ⋮baz: t
+        ⋮
+        ⋮crate::bar::baz
+        ⋮Bar: t v
+        ⋮
+        ⋮crate::foo
+        ⋮baz: t
+        ⋮
+        ⋮crate::foo::baz
+        ⋮Foo: t v
+    "###
+    );
+}
+
+#[test]
+fn glob_shadowed_def_dependencies() {
+    let map = def_map(
+        r###"
+        //- /lib.rs
+        mod a { pub mod foo { pub struct X; } }
+        mod b { pub use super::a::foo; }
+        mod c { pub mod foo { pub struct Y; } }
+        mod d {
+            use super::c::foo;
+            use super::b::*;
+            use foo::Y;
+        }
+        "###,
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮a: t
+        ⋮b: t
+        ⋮c: t
+        ⋮d: t
+        ⋮
+        ⋮crate::d
+        ⋮Y: t v
+        ⋮foo: t
+        ⋮
+        ⋮crate::c
+        ⋮foo: t
+        ⋮
+        ⋮crate::c::foo
+        ⋮Y: t v
+        ⋮
+        ⋮crate::b
+        ⋮foo: t
+        ⋮
+        ⋮crate::a
+        ⋮foo: t
+        ⋮
+        ⋮crate::a::foo
+        ⋮X: t v
+    "###
+    );
+}

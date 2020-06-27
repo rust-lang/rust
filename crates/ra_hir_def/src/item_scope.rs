@@ -4,13 +4,26 @@
 use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use ra_db::CrateId;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::mark;
 
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, HasModule, ImplId,
-    Lookup, MacroDefId, ModuleDefId, TraitId,
+    LocalModuleId, Lookup, MacroDefId, ModuleDefId, TraitId,
 };
+
+#[derive(Copy, Clone)]
+pub(crate) enum ImportType {
+    Glob,
+    Named,
+}
+
+#[derive(Debug, Default)]
+pub struct PerNsGlobImports {
+    types: FxHashSet<(LocalModuleId, Name)>,
+    values: FxHashSet<(LocalModuleId, Name)>,
+    macros: FxHashSet<(LocalModuleId, Name)>,
+}
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
@@ -127,16 +140,62 @@ impl ItemScope {
         let mut changed = false;
         let existing = self.visible.entry(name).or_default();
 
+        if existing.types.is_none() && def.types.is_some() {
+            existing.types = def.types;
+            changed = true;
+        }
+
+        if existing.values.is_none() && def.values.is_some() {
+            existing.values = def.values;
+            changed = true;
+        }
+
+        if existing.macros.is_none() && def.macros.is_some() {
+            existing.macros = def.macros;
+            changed = true;
+        }
+
+        changed
+    }
+
+    pub(crate) fn push_res_with_import(
+        &mut self,
+        glob_imports: &mut PerNsGlobImports,
+        lookup: (LocalModuleId, Name),
+        def: PerNs,
+        def_import_type: ImportType,
+    ) -> bool {
+        let mut changed = false;
+        let existing = self.visible.entry(lookup.1.clone()).or_default();
+
         macro_rules! check_changed {
-            ($changed:ident, $existing:expr, $def:expr) => {
-                match ($existing, $def) {
+            (
+                $changed:ident,
+                ( $existing:ident / $def:ident ) . $field:ident,
+                $glob_imports:ident [ $lookup:ident ],
+                $def_import_type:ident
+            ) => {
+                match ($existing.$field, $def.$field) {
                     (None, Some(_)) => {
-                        $existing = $def;
+                        match $def_import_type {
+                            ImportType::Glob => {
+                                $glob_imports.$field.insert($lookup.clone());
+                            }
+                            ImportType::Named => {
+                                $glob_imports.$field.remove(&$lookup);
+                            }
+                        }
+
+                        $existing.$field = $def.$field;
                         $changed = true;
                     }
-                    (Some(e), Some(d)) if e.0 != d.0 => {
+                    (Some(_), Some(_))
+                        if $glob_imports.$field.contains(&$lookup)
+                            && matches!($def_import_type, ImportType::Named) =>
+                    {
                         mark::hit!(import_shadowed);
-                        $existing = $def;
+                        $glob_imports.$field.remove(&$lookup);
+                        $existing.$field = $def.$field;
                         $changed = true;
                     }
                     _ => {}
@@ -144,9 +203,9 @@ impl ItemScope {
             };
         }
 
-        check_changed!(changed, existing.types, def.types);
-        check_changed!(changed, existing.values, def.values);
-        check_changed!(changed, existing.macros, def.macros);
+        check_changed!(changed, (existing / def).types, glob_imports[lookup], def_import_type);
+        check_changed!(changed, (existing / def).values, glob_imports[lookup], def_import_type);
+        check_changed!(changed, (existing / def).macros, glob_imports[lookup], def_import_type);
 
         changed
     }
