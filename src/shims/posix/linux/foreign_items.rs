@@ -1,6 +1,10 @@
-use crate::*;
-use helpers::check_arg_count;
 use rustc_middle::mir;
+
+use crate::*;
+use crate::helpers::check_arg_count;
+use shims::posix::fs::EvalContextExt as _;
+use shims::posix::sync::EvalContextExt as _;
+use shims::posix::thread::EvalContextExt as _;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {

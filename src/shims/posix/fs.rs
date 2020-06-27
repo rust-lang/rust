@@ -10,13 +10,13 @@ use log::trace;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::abi::{Align, LayoutOf, Size};
 
-use crate::stacked_borrows::Tag;
 use crate::*;
+use stacked_borrows::Tag;
 use helpers::{check_arg_count, immty_from_int_checked, immty_from_uint_checked};
 use shims::time::system_time_to_duration;
 
 #[derive(Debug)]
-pub struct FileHandle {
+struct FileHandle {
     file: File,
     writable: bool,
 }

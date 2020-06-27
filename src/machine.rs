@@ -241,8 +241,8 @@ pub struct Evaluator<'mir, 'tcx> {
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
 
-    pub(crate) file_handler: FileHandler,
-    pub(crate) dir_handler: DirHandler,
+    pub(crate) file_handler: shims::posix::FileHandler,
+    pub(crate) dir_handler: shims::posix::DirHandler,
 
     /// The temporary used for storing the argument of
     /// the call to `miri_start_panic` (the panic payload) when unwinding.

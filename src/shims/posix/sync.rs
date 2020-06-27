@@ -5,10 +5,10 @@ use std::ops::Not;
 use rustc_middle::ty::{layout::TyAndLayout, TyKind, TypeAndMut};
 use rustc_target::abi::{LayoutOf, Size};
 
-use crate::stacked_borrows::Tag;
-use crate::thread::Time;
-
 use crate::*;
+use stacked_borrows::Tag;
+use thread::Time;
+
 
 fn assert_ptr_target_min_size<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
@@ -522,6 +522,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         mutex_set_kind(this, mutex_op, ScalarMaybeUninit::Uninit)?;
         mutex_set_id(this, mutex_op, ScalarMaybeUninit::Uninit)?;
+        // FIXME: delete interpreter state associated with this mutex.
 
         Ok(0)
     }
@@ -640,6 +641,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         rwlock_set_id(this, rwlock_op, ScalarMaybeUninit::Uninit)?;
+        // FIXME: delete interpreter state associated with this rwlock.
 
         Ok(0)
     }
@@ -833,6 +835,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         cond_set_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
         cond_set_clock_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
+        // FIXME: delete interpreter state associated with this condvar.
 
         Ok(0)
     }
