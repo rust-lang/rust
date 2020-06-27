@@ -1436,8 +1436,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Given a `DefId` for an `fn`, return all the `dyn` and `impl` traits in its return type.
-    pub fn return_type_impl_or_dyn_traits(&self, scope_def_id: DefId) -> Vec<&'tcx hir::Ty<'tcx>> {
-        let hir_id = self.hir().as_local_hir_id(scope_def_id.expect_local());
+    pub fn return_type_impl_or_dyn_traits(
+        &self,
+        scope_def_id: LocalDefId,
+    ) -> Vec<&'tcx hir::Ty<'tcx>> {
+        let hir_id = self.hir().as_local_hir_id(scope_def_id);
         let hir_output = match self.hir().get(hir_id) {
             Node::Item(hir::Item {
                 kind:
@@ -1480,9 +1483,9 @@ impl<'tcx> TyCtxt<'tcx> {
         v.0
     }
 
-    pub fn return_type_impl_trait(&self, scope_def_id: DefId) -> Option<(Ty<'tcx>, Span)> {
+    pub fn return_type_impl_trait(&self, scope_def_id: LocalDefId) -> Option<(Ty<'tcx>, Span)> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
-        let hir_id = self.hir().as_local_hir_id(scope_def_id.expect_local());
+        let hir_id = self.hir().as_local_hir_id(scope_def_id);
         match self.hir().get(hir_id) {
             Node::Item(item) => {
                 match item.kind {

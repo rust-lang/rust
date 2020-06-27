@@ -583,7 +583,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 .infcx
                 .tcx
                 .is_suitable_region(f)
-                .map(|r| r.def_id)
+                .map(|r| r.def_id.expect_local())
                 .map(|id| self.infcx.tcx.return_type_impl_trait(id))
                 .unwrap_or(None)
             {
