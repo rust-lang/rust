@@ -1,19 +1,16 @@
 //! Runs completion for testing purposes.
 
+use hir::Semantics;
+use ra_syntax::{AstNode, NodeOrToken, SyntaxElement};
+
 use crate::{
     completion::{completion_item::CompletionKind, CompletionConfig},
     mock_analysis::analysis_and_position,
     CompletionItem,
 };
-use hir::Semantics;
-use ra_syntax::{AstNode, NodeOrToken, SyntaxElement};
 
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
     do_completion_with_options(code, kind, &CompletionConfig::default())
-}
-
-pub(crate) fn completion_list(code: &str, kind: CompletionKind) -> String {
-    completion_list_with_options(code, kind, &CompletionConfig::default())
 }
 
 pub(crate) fn do_completion_with_options(
@@ -29,13 +26,8 @@ pub(crate) fn do_completion_with_options(
     kind_completions
 }
 
-fn get_all_completion_items(code: &str, options: &CompletionConfig) -> Vec<CompletionItem> {
-    let (analysis, position) = if code.contains("//-") {
-        analysis_and_position(code)
-    } else {
-        analysis_and_position(code)
-    };
-    analysis.completions(options, position).unwrap().unwrap().into()
+pub(crate) fn completion_list(code: &str, kind: CompletionKind) -> String {
+    completion_list_with_options(code, kind, &CompletionConfig::default())
 }
 
 pub(crate) fn completion_list_with_options(
@@ -64,4 +56,9 @@ pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -
             assert!(check(NodeOrToken::Token(token)));
         })
         .unwrap();
+}
+
+fn get_all_completion_items(code: &str, options: &CompletionConfig) -> Vec<CompletionItem> {
+    let (analysis, position) = analysis_and_position(code);
+    analysis.completions(options, position).unwrap().unwrap().into()
 }
