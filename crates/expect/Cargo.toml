@@ -6,4 +6,5 @@ edition = "2018"
 
 [dependencies]
 once_cell = "1"
+difference = "2"
 stdx = { path = "../stdx" }

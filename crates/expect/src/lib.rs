@@ -107,22 +107,30 @@ impl Runtime {
         rt.help_printed = true;
 
         let help = if print_help { HELP } else { "" };
+
+        let diff = difference::Changeset::new(actual, expected, "\n");
+
         println!(
             "\n
-error: expect test failed{}
-  --> {}:{}:{}
+\x1b[1m\x1b[91merror\x1b[97m: expect test failed\x1b[0m{}
+   \x1b[1m\x1b[34m-->\x1b[0m {}:{}:{}
 {}
-Expect:
+\x1b[1mExpect\x1b[0m:
 ----
 {}
 ----
 
-Actual:
+\x1b[1mActual\x1b[0m:
+----
+{}
+----
+
+\x1b[1mDiff\x1b[0m:
 ----
 {}
 ----
 ",
-            updated, expect.file, expect.line, expect.column, help, expected, actual
+            updated, expect.file, expect.line, expect.column, help, expected, actual, diff
         );
         // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
         std::panic::resume_unwind(Box::new(()));
