@@ -51,6 +51,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
         constants_cx: &mut cx.constants_cx,
         vtables: &mut cx.vtables,
         source_info_set: indexmap::IndexSet::new(),
+        next_ssa_var: 0,
     };
 
     let arg_uninhabited = fx.mir.args_iter().any(|arg| fx.layout_of(fx.monomorphize(&fx.mir.local_decls[arg].ty)).abi.is_uninhabited());

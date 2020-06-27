@@ -4,6 +4,7 @@ mod unwind;
 
 use crate::prelude::*;
 
+use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::ValueLocRange;
@@ -376,8 +377,8 @@ fn place_location<'tcx>(
     assert!(place.projection.is_empty()); // FIXME implement them
 
     match local_map[&place.local].inner() {
-        CPlaceInner::Var(local) => {
-            let value_label = cranelift_codegen::ir::ValueLabel::from_u32(local.as_u32());
+        CPlaceInner::Var(_local, var) => {
+            let value_label = cranelift_codegen::ir::ValueLabel::new(var.index());
             if let Some(value_loc_ranges) = value_labels_ranges.get(&value_label) {
                 let loc_list = LocationList(
                     value_loc_ranges

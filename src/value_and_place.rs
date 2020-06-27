@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
 
 fn codegen_field<'tcx>(
@@ -256,7 +257,7 @@ pub(crate) struct CPlace<'tcx> {
 
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum CPlaceInner {
-    Var(Local),
+    Var(Local, Variable),
     Addr(Pointer, Option<Value>),
 }
 
@@ -301,10 +302,12 @@ impl<'tcx> CPlace<'tcx> {
         local: Local,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
+        let var = Variable::with_u32(fx.next_ssa_var);
+        fx.next_ssa_var += 1;
         fx.bcx
-            .declare_var(mir_var(local), fx.clif_type(layout.ty).unwrap());
+            .declare_var(var, fx.clif_type(layout.ty).unwrap());
         CPlace {
-            inner: CPlaceInner::Var(local),
+            inner: CPlaceInner::Var(local, var),
             layout,
         }
     }
@@ -326,9 +329,9 @@ impl<'tcx> CPlace<'tcx> {
     pub(crate) fn to_cvalue(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> CValue<'tcx> {
         let layout = self.layout();
         match self.inner {
-            CPlaceInner::Var(var) => {
-                let val = fx.bcx.use_var(mir_var(var));
-                fx.bcx.set_val_label(val, cranelift_codegen::ir::ValueLabel::from_u32(var.as_u32()));
+            CPlaceInner::Var(_local, var) => {
+                let val = fx.bcx.use_var(var);
+                fx.bcx.set_val_label(val, cranelift_codegen::ir::ValueLabel::new(var.index()));
                 CValue::by_val(val, layout)
             }
             CPlaceInner::Addr(ptr, extra) => {
@@ -351,7 +354,7 @@ impl<'tcx> CPlace<'tcx> {
     pub(crate) fn to_ptr_maybe_unsized(self) -> (Pointer, Option<Value>) {
         match self.inner {
             CPlaceInner::Addr(ptr, extra) => (ptr, extra),
-            CPlaceInner::Var(_) => bug!("Expected CPlace::Addr, found {:?}", self),
+            CPlaceInner::Var(_, _) => bug!("Expected CPlace::Addr, found {:?}", self),
         }
     }
 
@@ -442,7 +445,7 @@ impl<'tcx> CPlace<'tcx> {
 
         let dst_layout = self.layout();
         let to_ptr = match self.inner {
-            CPlaceInner::Var(var) => {
+            CPlaceInner::Var(_local, var) => {
                 let data = CValue(from.0, dst_layout).load_scalar(fx);
                 let src_ty = fx.bcx.func.dfg.value_type(data);
                 let dst_ty = fx.clif_type(self.layout().ty).unwrap();
@@ -459,8 +462,8 @@ impl<'tcx> CPlace<'tcx> {
                     }
                     _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty, dst_ty),
                 };
-                fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::from_u32(var.as_u32()));
-                fx.bcx.def_var(mir_var(var), data);
+                fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                fx.bcx.def_var(var, data);
                 return;
             }
             CPlaceInner::Addr(ptr, None) => {

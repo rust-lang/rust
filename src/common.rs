@@ -6,10 +6,6 @@ use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
 
 use crate::prelude::*;
 
-pub(crate) fn mir_var(loc: Local) -> Variable {
-    Variable::with_u32(loc.index() as u32)
-}
-
 pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
     match tcx.data_layout.pointer_size.bits() {
         16 => types::I16,
@@ -258,6 +254,9 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub(crate) vtables: &'clif mut FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
 
     pub(crate) source_info_set: indexmap::IndexSet<SourceInfo>,
+
+    /// This should only be accessed by `CPlace::new_var`.
+    pub(crate) next_ssa_var: u32,
 }
 
 impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {

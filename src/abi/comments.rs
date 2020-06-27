@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use rustc_middle::mir;
 
+use cranelift_codegen::entity::EntityRef;
+
 use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
@@ -72,9 +74,9 @@ pub(super) fn add_local_place_comments<'tcx>(
     } = layout;
 
     let (kind, extra) = match *place.inner() {
-        CPlaceInner::Var(var) => {
-            assert_eq!(local, var);
-            ("ssa", std::borrow::Cow::Borrowed(""))
+        CPlaceInner::Var(place_local, var) => {
+            assert_eq!(local, place_local);
+            ("ssa", Cow::Owned(format!(",var={}", var.index())))
         }
         CPlaceInner::Addr(ptr, meta) => {
             let meta = if let Some(meta) = meta {
