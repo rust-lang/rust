@@ -99,6 +99,7 @@ register_builtin! {
     EAGER:
     (concat, Concat) => concat_expand,
     (include, Include) => include_expand,
+    (include_str, IncludeStr) => include_str_expand,
     (env, Env) => env_expand,
     (option_env, OptionEnv) => option_env_expand
 }
@@ -292,11 +293,16 @@ fn concat_expand(
     Ok((quote!(#text), FragmentKind::Expr))
 }
 
-fn relative_file(db: &dyn AstDatabase, call_id: MacroCallId, path: &str) -> Option<FileId> {
+fn relative_file(
+    db: &dyn AstDatabase,
+    call_id: MacroCallId,
+    path: &str,
+    allow_recursion: bool,
+) -> Option<FileId> {
     let call_site = call_id.as_file().original_file(db);
     let res = db.resolve_path(call_site, path)?;
     // Prevent include itself
-    if res == call_site {
+    if res == call_site && !allow_recursion {
         None
     } else {
         Some(res)
@@ -319,8 +325,8 @@ fn include_expand(
     tt: &tt::Subtree,
 ) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
     let path = parse_string(tt)?;
-    let file_id =
-        relative_file(db, arg_id.into(), &path).ok_or_else(|| mbe::ExpandError::ConversionError)?;
+    let file_id = relative_file(db, arg_id.into(), &path, false)
+        .ok_or_else(|| mbe::ExpandError::ConversionError)?;
 
     // FIXME:
     // Handle include as expression
@@ -329,6 +335,30 @@ fn include_expand(
         .0;
 
     Ok((res, FragmentKind::Items))
+}
+
+fn include_str_expand(
+    db: &dyn AstDatabase,
+    arg_id: EagerMacroId,
+    tt: &tt::Subtree,
+) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
+    let path = parse_string(tt)?;
+
+    // FIXME: we're not able to read excluded files (which is most of them because
+    // it's unusual to `include_str!` a Rust file), but we can return an empty string.
+    // Ideally, we'd be able to offer a precise expansion if the user asks for macro
+    // expansion.
+    let file_id = match relative_file(db, arg_id.into(), &path, true) {
+        Some(file_id) => file_id,
+        None => {
+            return Ok((quote!(""), FragmentKind::Expr));
+        }
+    };
+
+    let text = db.file_text(file_id);
+    let text = &*text;
+
+    Ok((quote!(#text), FragmentKind::Expr))
 }
 
 fn get_env_inner(db: &dyn AstDatabase, arg_id: EagerMacroId, key: &str) -> Option<String> {

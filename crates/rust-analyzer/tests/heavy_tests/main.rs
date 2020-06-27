@@ -494,6 +494,7 @@ fn main() {
 }
 //- /src/main.rs
 #[rustc_builtin_macro] macro_rules! include {}
+#[rustc_builtin_macro] macro_rules! include_str {}
 #[rustc_builtin_macro] macro_rules! concat {}
 #[rustc_builtin_macro] macro_rules! env {}
 
@@ -512,6 +513,7 @@ fn main() {
     let va = A;
     let vb = B;
     let should_be_str = message();
+    let another_str = include_str!("main.rs");
 }
 "###,
     )
@@ -523,36 +525,19 @@ fn main() {
     let res = server.send_request::<HoverRequest>(HoverParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/main.rs"),
-            Position::new(18, 10),
+            Position::new(19, 10),
         ),
         work_done_progress_params: Default::default(),
     });
     assert!(res.to_string().contains("&str"));
-    server.request::<GotoTypeDefinition>(
-        GotoDefinitionParams {
-            text_document_position_params: TextDocumentPositionParams::new(
-                server.doc_id("src/main.rs"),
-                Position::new(16, 9),
-            ),
-            work_done_progress_params: Default::default(),
-            partial_result_params: Default::default(),
-        },
-        json!([{
-            "originSelectionRange": {
-                "end": { "character": 10, "line": 16 },
-                "start": { "character": 8, "line": 16 }
-            },
-            "targetRange": {
-                "end": { "character": 9, "line": 7 },
-                "start": { "character": 0, "line": 6 }
-            },
-            "targetSelectionRange": {
-                "end": { "character": 8, "line": 7 },
-                "start": { "character": 7, "line": 7 }
-            },
-            "targetUri": "file:///[..]src/main.rs"
-        }]),
-    );
+    let res = server.send_request::<HoverRequest>(HoverParams {
+        text_document_position_params: TextDocumentPositionParams::new(
+            server.doc_id("src/main.rs"),
+            Position::new(20, 10),
+        ),
+        work_done_progress_params: Default::default(),
+    });
+    assert!(res.to_string().contains("&str"));
     server.request::<GotoTypeDefinition>(
         GotoDefinitionParams {
             text_document_position_params: TextDocumentPositionParams::new(
@@ -568,12 +553,37 @@ fn main() {
                 "start": { "character": 8, "line": 17 }
             },
             "targetRange": {
-                "end": { "character": 9, "line": 11 },
-                "start": { "character": 0, "line":10 }
+                "end": { "character": 9, "line": 8 },
+                "start": { "character": 0, "line": 7 }
             },
             "targetSelectionRange": {
-                "end": { "character": 8, "line": 11 },
-                "start": { "character": 7, "line": 11 }
+                "end": { "character": 8, "line": 8 },
+                "start": { "character": 7, "line": 8 }
+            },
+            "targetUri": "file:///[..]src/main.rs"
+        }]),
+    );
+    server.request::<GotoTypeDefinition>(
+        GotoDefinitionParams {
+            text_document_position_params: TextDocumentPositionParams::new(
+                server.doc_id("src/main.rs"),
+                Position::new(18, 9),
+            ),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([{
+            "originSelectionRange": {
+                "end": { "character": 10, "line": 18 },
+                "start": { "character": 8, "line": 18 }
+            },
+            "targetRange": {
+                "end": { "character": 9, "line": 12 },
+                "start": { "character": 0, "line":11 }
+            },
+            "targetSelectionRange": {
+                "end": { "character": 8, "line": 12 },
+                "start": { "character": 7, "line": 12 }
             },
             "targetUri": "file:///[..]src/main.rs"
         }]),
