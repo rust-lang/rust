@@ -4,10 +4,12 @@ use std::{
     collections::HashMap,
     env, fmt, fs,
     ops::Range,
+    panic,
     path::{Path, PathBuf},
     sync::Mutex,
 };
 
+use difference::Changeset;
 use once_cell::sync::Lazy;
 use stdx::{lines_with_ends, trim_indent};
 
@@ -108,7 +110,7 @@ impl Runtime {
 
         let help = if print_help { HELP } else { "" };
 
-        let diff = difference::Changeset::new(actual, expected, "\n");
+        let diff = Changeset::new(actual, expected, "\n");
 
         println!(
             "\n
@@ -133,7 +135,7 @@ impl Runtime {
             updated, expect.file, expect.line, expect.column, help, expected, actual, diff
         );
         // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
-        std::panic::resume_unwind(Box::new(()));
+        panic::resume_unwind(Box::new(()));
     }
 }
 
