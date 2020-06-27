@@ -1,6 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::{ast, attr};
-use rustc_expand::base::{ExtCtxt, Resolver};
+use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::ExpansionConfig;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
@@ -10,7 +10,7 @@ use rustc_span::DUMMY_SP;
 
 pub fn inject(
     mut krate: ast::Crate,
-    resolver: &mut dyn Resolver,
+    resolver: &mut dyn ResolverExpand,
     sess: &ParseSess,
     alt_std_name: Option<Symbol>,
 ) -> (ast::Crate, Option<Symbol>) {
