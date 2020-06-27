@@ -48,6 +48,9 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn adt_datum(&self, struct_id: AdtId) -> Arc<StructDatum> {
         self.db.struct_datum(self.krate, struct_id)
     }
+    fn adt_repr(&self, _struct_id: AdtId) -> rust_ir::AdtRepr {
+        unreachable!()
+    }
     fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
         self.db.impl_datum(self.krate, impl_id)
     }
@@ -128,8 +131,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         well_known_trait: rust_ir::WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<Interner>> {
         let lang_attr = lang_attr_from_well_known_trait(well_known_trait);
-        let lang_items = self.db.crate_lang_items(self.krate);
-        let trait_ = match lang_items.target(lang_attr) {
+        let trait_ = match self.db.lang_item(self.krate, lang_attr.into()) {
             Some(LangItemTarget::TraitId(trait_)) => trait_,
             _ => return None,
         };
@@ -185,6 +187,39 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn is_object_safe(&self, _trait_id: chalk_ir::TraitId<Interner>) -> bool {
         // FIXME: implement actual object safety
         true
+    }
+
+    fn closure_kind(
+        &self,
+        _closure_id: chalk_ir::ClosureId<Interner>,
+        _substs: &chalk_ir::Substitution<Interner>,
+    ) -> rust_ir::ClosureKind {
+        // FIXME: implement closure support
+        unimplemented!()
+    }
+    fn closure_inputs_and_output(
+        &self,
+        _closure_id: chalk_ir::ClosureId<Interner>,
+        _substs: &chalk_ir::Substitution<Interner>,
+    ) -> chalk_ir::Binders<rust_ir::FnDefInputsAndOutputDatum<Interner>> {
+        // FIXME: implement closure support
+        unimplemented!()
+    }
+    fn closure_upvars(
+        &self,
+        _closure_id: chalk_ir::ClosureId<Interner>,
+        _substs: &chalk_ir::Substitution<Interner>,
+    ) -> chalk_ir::Binders<chalk_ir::Ty<Interner>> {
+        // FIXME: implement closure support
+        unimplemented!()
+    }
+    fn closure_fn_substitution(
+        &self,
+        _closure_id: chalk_ir::ClosureId<Interner>,
+        _substs: &chalk_ir::Substitution<Interner>,
+    ) -> chalk_ir::Substitution<Interner> {
+        // FIXME: implement closure support
+        unimplemented!()
     }
 }
 
@@ -250,7 +285,7 @@ pub(crate) fn trait_datum_query(
         upstream: trait_.lookup(db.upcast()).container.module(db.upcast()).krate != krate,
         non_enumerable: true,
         coinductive: false, // only relevant for Chalk testing
-        // FIXME set these flags correctly
+        // FIXME: set these flags correctly
         marker: false,
         fundamental: false,
     };
@@ -272,20 +307,28 @@ pub(crate) fn trait_datum_query(
 
 fn well_known_trait_from_lang_attr(name: &str) -> Option<WellKnownTrait> {
     Some(match name {
-        "sized" => WellKnownTrait::SizedTrait,
-        "copy" => WellKnownTrait::CopyTrait,
-        "clone" => WellKnownTrait::CloneTrait,
-        "drop" => WellKnownTrait::DropTrait,
+        "sized" => WellKnownTrait::Sized,
+        "copy" => WellKnownTrait::Copy,
+        "clone" => WellKnownTrait::Clone,
+        "drop" => WellKnownTrait::Drop,
+        "fn_once" => WellKnownTrait::FnOnce,
+        "fn_mut" => WellKnownTrait::FnMut,
+        "fn" => WellKnownTrait::Fn,
+        "unsize" => WellKnownTrait::Unsize,
         _ => return None,
     })
 }
 
 fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
     match attr {
-        WellKnownTrait::SizedTrait => "sized",
-        WellKnownTrait::CopyTrait => "copy",
-        WellKnownTrait::CloneTrait => "clone",
-        WellKnownTrait::DropTrait => "drop",
+        WellKnownTrait::Sized => "sized",
+        WellKnownTrait::Copy => "copy",
+        WellKnownTrait::Clone => "clone",
+        WellKnownTrait::Drop => "drop",
+        WellKnownTrait::FnOnce => "fn_once",
+        WellKnownTrait::FnMut => "fn_mut",
+        WellKnownTrait::Fn => "fn",
+        WellKnownTrait::Unsize => "unsize",
     }
 }
 
@@ -309,8 +352,9 @@ pub(crate) fn struct_datum_query(
         .unwrap_or_else(Vec::new);
     let flags = rust_ir::AdtFlags {
         upstream,
-        // FIXME set fundamental flag correctly
+        // FIXME set fundamental and phantom_data flags correctly
         fundamental: false,
+        phantom_data: false,
     };
     let struct_datum_bound = rust_ir::AdtDatumBound {
         fields: Vec::new(), // FIXME add fields (only relevant for auto traits)
@@ -448,11 +492,23 @@ pub(crate) fn fn_def_datum_query(
     let where_clauses = convert_where_clauses(db, callable_def.into(), &bound_vars);
     let bound = rust_ir::FnDefDatumBound {
         // Note: Chalk doesn't actually use this information yet as far as I am aware, but we provide it anyway
-        argument_types: sig.value.params().iter().map(|ty| ty.clone().to_chalk(db)).collect(),
-        return_type: sig.value.ret().clone().to_chalk(db),
+        inputs_and_output: make_binders(
+            rust_ir::FnDefInputsAndOutputDatum {
+                argument_types: sig
+                    .value
+                    .params()
+                    .iter()
+                    .map(|ty| ty.clone().to_chalk(db))
+                    .collect(),
+                return_type: sig.value.ret().clone().to_chalk(db),
+            }
+            .shifted_in(&Interner),
+            0,
+        ),
         where_clauses,
     };
-    let datum = FnDefDatum { id: fn_def_id, binders: make_binders(bound, sig.num_binders) };
+    let datum =
+        FnDefDatum { id: fn_def_id, binders: make_binders(bound, sig.num_binders), abi: () };
     Arc::new(datum)
 }
 

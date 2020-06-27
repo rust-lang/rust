@@ -42,6 +42,7 @@ impl chalk_ir::interner::Interner for Interner {
     type DefId = InternId;
     type InternedAdtId = crate::TypeCtorId;
     type Identifier = TypeAliasId;
+    type FnAbi = ();
 
     fn debug_adt_id(type_kind_id: AdtId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_struct_id(type_kind_id, fmt)))

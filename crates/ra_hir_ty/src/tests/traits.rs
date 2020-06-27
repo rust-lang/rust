@@ -1753,11 +1753,11 @@ fn test() {
     384..500 '{     ...(f); }': ()
     394..397 'bar': Bar<fn(u8) -> u32>
     423..426 'bar': Bar<fn(u8) -> u32>
-    423..432 'bar.foo()': {unknown}
+    423..432 'bar.foo()': (u8, u32)
     443..446 'opt': Opt<u8>
     465..466 'f': fn(u8) -> u32
     487..490 'opt': Opt<u8>
-    487..497 'opt.map(f)': Opt<FnOnce::Output<fn(u8) -> u32, (u8,)>>
+    487..497 'opt.map(f)': Opt<u32>
     495..496 'f': fn(u8) -> u32
     "###
     );
@@ -1830,9 +1830,9 @@ fn test() {
     634..643 'Lazy::new': fn new<Foo, fn() -> Foo>(fn() -> Foo) -> Lazy<Foo, fn() -> Foo>
     634..660 'Lazy::...n_ptr)': Lazy<Foo, fn() -> Foo>
     644..659 'make_foo_fn_ptr': fn() -> Foo
-    670..672 'r2': {unknown}
+    670..672 'r2': usize
     675..680 'lazy2': Lazy<Foo, fn() -> Foo>
-    675..686 'lazy2.foo()': {unknown}
+    675..686 'lazy2.foo()': usize
     549..551 '{}': ()
     "###
     );
