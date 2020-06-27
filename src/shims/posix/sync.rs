@@ -5,10 +5,10 @@ use std::ops::Not;
 use rustc_middle::ty::{layout::TyAndLayout, TyKind, TypeAndMut};
 use rustc_target::abi::{LayoutOf, Size};
 
-use crate::stacked_borrows::Tag;
-use crate::thread::Time;
-
 use crate::*;
+use stacked_borrows::Tag;
+use thread::Time;
+
 
 fn assert_ptr_target_min_size<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,

@@ -34,6 +34,8 @@ mod stacked_borrows;
 mod sync;
 mod thread;
 
+// Establish a "crate-wide prelude": we often import `crate::*`.
+
 // Make all those symbols available in the same place as our own.
 pub use rustc_mir::interpret::*;
 // Resolve ambiguity.
@@ -42,13 +44,10 @@ pub use rustc_mir::interpret::{self, AllocMap, PlaceTy};
 pub use crate::shims::dlsym::{Dlsym, EvalContextExt as _};
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::EvalContextExt as _;
-pub use crate::shims::fs::{DirHandler, EvalContextExt as _, FileHandler};
 pub use crate::shims::intrinsics::EvalContextExt as _;
 pub use crate::shims::os_str::EvalContextExt as _;
-pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
-pub use crate::shims::posix_sync::{EvalContextExt as _};
-pub use crate::shims::thread::EvalContextExt as _;
 pub use crate::shims::time::EvalContextExt as _;
+pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::tls::{EvalContextExt as _, TlsData};
 pub use crate::shims::EvalContextExt as _;
 

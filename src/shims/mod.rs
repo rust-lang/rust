@@ -1,14 +1,17 @@
+
+pub mod foreign_items;
+pub mod intrinsics;
+pub mod posix;
+pub mod windows;
+
 pub mod dlsym;
 pub mod env;
-pub mod foreign_items;
-pub mod fs;
-pub mod intrinsics;
 pub mod os_str;
 pub mod panic;
-pub mod sync;
-pub mod thread;
 pub mod time;
 pub mod tls;
+
+// End module management, begin local code
 
 use std::convert::TryFrom;
 
