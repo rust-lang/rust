@@ -1,6 +1,6 @@
 # `rustc_attrs`
 
-This feature has no tracking issue, and is therefore likely internal to
+This feature has no tracking issue, and is therefore internal to
 the compiler, not being intended for general use.
 
 ------------------------
