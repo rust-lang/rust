@@ -61,6 +61,7 @@ promoted constants <div id="pc"/>        |  Constants extracted from a function 
 provider <div id="provider"/>            |  The function that executes a query. ([see more](../query.html))
 quantified <div id="quantified"/>        |  In math or logic, existential and universal quantification are used to ask questions like "is there any type T for which is true?" or "is this true for all types T?"; see [the background chapter for more](./background.html#quantified).
 query <div id="query"/>                  |  Perhaps some sub-computation during compilation. ([see more](../query.html))
+recovery <div id="recovery"/>            |  Recovery refers to handling invalid syntax during parsing (e.g. a missing comma) and continuing to parse the AST. This avoid showing spurious errors to the user (e.g. showing 'missing field' errors when the struct definition contains errors).
 region <div id="region"/>                |  Another term for "lifetime" often used in the literature and in the borrow checker.
 rib <div id="rib"/>                      |  A data structure in the name resolver that keeps track of a single scope for names. ([see more](../name-resolution.html))
 sess <div id="sess"/>                    |  The compiler session, which stores global data used throughout compilation
