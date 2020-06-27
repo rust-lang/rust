@@ -19,7 +19,7 @@ use ra_ide_db::{
 use ra_syntax::{
     ast, ast::Path, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, TokenAtOffset,
 };
-use ra_tt::{Ident, Leaf, Literal, Punct, TokenTree};
+use ra_tt::{Ident, Leaf, Literal, TokenTree};
 use url::Url;
 
 use crate::{
@@ -410,6 +410,8 @@ fn map_links<'e>(
         }
         Event::Text(s) if in_link => {
             link_text = s.clone();
+            // TODO: This can unintentionally strip words from path-based links.
+            // See std::box::Box -> std::box link as an example.
             Event::Text(CowStr::Boxed(strip_prefixes_suffixes(&s).into()))
         }
         Event::Code(s) if in_link => {
@@ -603,29 +605,33 @@ fn try_resolve_path(db: &RootDatabase, definition: &Definition, link: &str) -> O
 }
 
 /// Try to get the root URL of the documentation of a crate.
-// FIXME: Special case standard, core, alloc libraries
 fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
     // Look for #![doc(html_root_url = "...")]
     let attrs = db.attrs(AttrDef::from(krate.root_module(db)?).into());
     let doc_attr_q = attrs.by_key("doc");
+
+    // TODO: Tests for this parsing
     let doc_url = if doc_attr_q.exists() {
-        doc_attr_q.tt_values().filter_map(|tt| match tt.token_trees.as_slice() {
-            &[
-                TokenTree::Leaf(Leaf::Ident(Ident{text: ref ident_text, ..})),
-                TokenTree::Leaf(Leaf::Punct(Punct{r#char: '=', ..})),
-                TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))
-            ] if ident_text == "html_root_url" => Some(text.to_string()),
-            _ => {
-                None
+        doc_attr_q.tt_values().map(|tt| {
+            let name = tt.token_trees.iter()
+                .skip_while(|tt| !matches!(tt, TokenTree::Leaf(Leaf::Ident(Ident{text: ref ident, ..})) if ident == "html_root_url"))
+                .skip(2)
+                .next();
+
+            match name {
+                Some(TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))) => Some(text),
+                _ => None
             }
-        }).next()
+        }).flat_map(|t| t).next().map(|s| s.to_string())
     } else {
         // Fallback to docs.rs
         // FIXME: Specify an exact version here (from Cargo.lock)
         Some(format!("https://docs.rs/{}/*", krate.display_name(db)?))
     };
 
-    doc_url.map(|s| s.trim_matches('"').to_owned() + "/").and_then(|s| Url::parse(&s).ok())
+    doc_url
+        .map(|s| s.trim_matches('"').trim_end_matches("/").to_owned() + "/")
+        .and_then(|s| Url::parse(&s).ok())
 }
 
 /// Get the filename and extension generated for a symbol by rustdoc.
