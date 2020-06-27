@@ -292,7 +292,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
         if let Some((s1, s2)) = tooltip {
             s.push_str(&highlight::render_with_highlighting(
-                &text,
+                text,
                 Some(&format!(
                     "rust-example-rendered{}",
                     if ignore != Ignore::None {
@@ -313,7 +313,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             Some(Event::Html(s.into()))
         } else {
             s.push_str(&highlight::render_with_highlighting(
-                &text,
+                text,
                 Some(&format!(
                     "rust-example-rendered{}",
                     if ignore != Ignore::None {
