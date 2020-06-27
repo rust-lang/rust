@@ -68,20 +68,59 @@ something like this:
 You can see the exact dependencies by reading the `Cargo.toml` for the various
 crates, just like a normal Rust crate.
 
-You may ask why the compiler is broken into so many crates. There are two major reasons:
+One final thing: [`src/llvm-project`] is a submodule for our fork of LLVM.
 
-1. Organization. The compiler is a _huge_ codebase; it would be an impossibly large crate.
+Most of this book is about the compiler, so we won't have any further
+explanation of these crates here.
+
+[`src/llvm-project`]: https://github.com/rust-lang/rust/tree/master/src
+
+### Big picture
+
+The dependency structure is influenced strongly by two main factors:
+
+1. Organization. The compiler is a _huge_ codebase; it would be an impossibly
+   large crate. In part, the dependency structure reflects the code structure
+   of the compiler.
 2. Compile time. By breaking the compiler into multiple crates, we can take
    better advantage of incremental/parallel compilation using cargo. In
    particular, we try to have as few dependencies between crates as possible so
    that we dont' have to rebuild as many crates if you change one.
 
-Most of this book is about the compiler, so we won't have any further
-explanation of these crates here.
+At the very bottom of the dependency tree are a handful of crates that are used
+by the whole compiler (e.g. [`rustc_span`]). The very early parts of the
+compilation process (e.g. parsing and the AST) depend on only these.
 
-One final thing: [`src/llvm-project`] is a submodule for our fork of LLVM.
+Pretty soon after the AST is constructed, the compiler's [query system][query]
+gets set up.  The query system is set up in a clever way using function
+pointers. This allows us to break dependencies between crates, allowing more
+parallel compilation.
 
-[`src/llvm-project`]: https://github.com/rust-lang/rust/tree/master/src
+However, since the query system is defined in [`rustc_middle`], nearly all
+subsequent parts of the compiler depend on this crate. It is a really large
+crate, leading to long compile times. Some efforts have been made to move stuff
+out of it with limited success. Another unfortunate sideffect is that sometimes
+related functionality gets scattered across different crates. For example,
+linting functionality is scattered across earlier parts of the crate,
+[`rustc_lint`], [`rustc_middle`], and other places.
+
+More generally, in an ideal world, it seems like there would be fewer, more
+cohesive crates, with incremental and parallel compilation making sure compile
+times stay reasonable. However, our incremental and parallel compilation haven't
+gotten good enough for that yet, so breaking things into separate crates has
+been our solution so far.
+
+At the top of the dependency tree are the [`rustc_interface`] and
+[`rustc_driver`] crates. [`rustc_interface`] is an unstable wrapper around the
+query system that helps to drive the various stages of compilation. Other
+consumers of the compiler may use this interface in different ways (e.g.
+rustdoc or maybe eventually rust-analyzer). The [`rustc_driver`] crate first
+parses command line arguments and then uses [`rustc_interface`] to drive the
+compilation to completion.
+
+[query]: ./query.md
+
+[orgch]: ./overview.md
 
 ## rustdoc
 
