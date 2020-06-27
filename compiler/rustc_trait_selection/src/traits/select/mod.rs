@@ -906,10 +906,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     trait_ref, result,
                 );
                 // This may overwrite the cache with the same value
-                // FIXME: Due to #50507 this overwrites the different values
-                // This should be changed to use HashMapExt::insert_same
-                // when that is fixed
-                self.tcx().evaluation_cache.insert(param_env.and(trait_ref), dep_node, result);
+                self.tcx().evaluation_cache.insert_same(param_env.and(trait_ref), dep_node, result);
                 return;
             }
         }

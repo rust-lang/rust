@@ -423,8 +423,8 @@ pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
 
 pub trait HashMapExt<K, V> {
-    /// Same as HashMap::insert, but it may panic if there's already an
-    /// entry for `key` with a value not equal to `value`
+    /// Same as [HashMap::insert], but it may panic if there's already an
+    /// entry for `key` with a value not equal to `value`.
     fn insert_same(&mut self, key: K, value: V);
 }
 
