@@ -104,6 +104,8 @@ related functionality gets scattered across different crates. For example,
 linting functionality is scattered across earlier parts of the crate,
 [`rustc_lint`], [`rustc_middle`], and other places.
 
+[`rustc_lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/index.html
+
 More generally, in an ideal world, it seems like there would be fewer, more
 cohesive crates, with incremental and parallel compilation making sure compile
 times stay reasonable. However, our incremental and parallel compilation haven't
