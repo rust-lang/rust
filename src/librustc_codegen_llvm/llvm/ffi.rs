@@ -233,6 +233,8 @@ pub enum TypeKind {
     Metadata = 14,
     X86_MMX = 15,
     Token = 16,
+    ScalableVector = 17,
+    BFloat = 18,
 }
 
 impl TypeKind {
@@ -255,6 +257,8 @@ impl TypeKind {
             TypeKind::Metadata => rustc_codegen_ssa::common::TypeKind::Metadata,
             TypeKind::X86_MMX => rustc_codegen_ssa::common::TypeKind::X86_MMX,
             TypeKind::Token => rustc_codegen_ssa::common::TypeKind::Token,
+            TypeKind::ScalableVector => rustc_codegen_ssa::common::TypeKind::ScalableVector,
+            TypeKind::BFloat => rustc_codegen_ssa::common::TypeKind::BFloat,
         }
     }
 }
@@ -2141,10 +2145,18 @@ extern "C" {
         PreservedSymbols: *const *const c_char,
         PreservedSymbolsLen: c_uint,
     ) -> Option<&'static mut ThinLTOData>;
-    pub fn LLVMRustPrepareThinLTORename(Data: &ThinLTOData, Module: &Module) -> bool;
+    pub fn LLVMRustPrepareThinLTORename(
+        Data: &ThinLTOData,
+        Module: &Module,
+        Target: &TargetMachine,
+    ) -> bool;
     pub fn LLVMRustPrepareThinLTOResolveWeak(Data: &ThinLTOData, Module: &Module) -> bool;
     pub fn LLVMRustPrepareThinLTOInternalize(Data: &ThinLTOData, Module: &Module) -> bool;
-    pub fn LLVMRustPrepareThinLTOImport(Data: &ThinLTOData, Module: &Module) -> bool;
+    pub fn LLVMRustPrepareThinLTOImport(
+        Data: &ThinLTOData,
+        Module: &Module,
+        Target: &TargetMachine,
+    ) -> bool;
     pub fn LLVMRustGetThinLTOModuleImports(
         Data: *const ThinLTOData,
         ModuleNameCallback: ThinLTOModuleNameCallback,
