@@ -258,6 +258,7 @@ fn should_show_param_name_hint(
     if param_name.is_empty()
         || Some(param_name) == fn_signature.name.as_ref().map(|s| s.trim_start_matches('_'))
         || is_argument_similar_to_param_name(sema, argument, param_name)
+        || param_name.starts_with("ra_fixture")
     {
         return false;
     }
@@ -270,7 +271,7 @@ fn should_show_param_name_hint(
 
     // avoid displaying hints for common functions like map, filter, etc.
     // or other obvious words used in std
-    parameters_len != 1 || !is_obvious_param(param_name)
+    !(parameters_len == 1 && is_obvious_param(param_name))
 }
 
 fn is_argument_similar_to_param_name(
