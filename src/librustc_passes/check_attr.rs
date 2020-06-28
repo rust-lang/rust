@@ -12,7 +12,7 @@ use rustc_ast::ast::{Attribute, NestedMetaItem};
 use rustc_ast::attr;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{self, HirId, Item, ItemKind, TraitItem};
 use rustc_hir::{MethodKind, Target};
@@ -464,7 +464,7 @@ fn is_c_like_enum(item: &Item<'_>) -> bool {
     }
 }
 
-fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: DefId) {
+fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir()
         .visit_item_likes_in_module(module_def_id, &mut CheckAttrVisitor { tcx }.as_deep_visitor());
 }

@@ -28,30 +28,27 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         br: &ty::BoundRegion,
     ) -> Option<(&hir::Ty<'tcx>, &hir::FnDecl<'tcx>)> {
         if let Some(anon_reg) = self.tcx().is_suitable_region(region) {
-            let def_id = anon_reg.def_id;
-            if let Some(def_id) = def_id.as_local() {
-                let hir_id = self.tcx().hir().as_local_hir_id(def_id);
-                let fndecl = match self.tcx().hir().get(hir_id) {
-                    Node::Item(&hir::Item { kind: hir::ItemKind::Fn(ref m, ..), .. })
-                    | Node::TraitItem(&hir::TraitItem {
-                        kind: hir::TraitItemKind::Fn(ref m, ..),
-                        ..
-                    })
-                    | Node::ImplItem(&hir::ImplItem {
-                        kind: hir::ImplItemKind::Fn(ref m, ..),
-                        ..
-                    }) => &m.decl,
-                    _ => return None,
-                };
+            let hir_id = self.tcx().hir().as_local_hir_id(anon_reg.def_id);
+            let fndecl = match self.tcx().hir().get(hir_id) {
+                Node::Item(&hir::Item { kind: hir::ItemKind::Fn(ref m, ..), .. })
+                | Node::TraitItem(&hir::TraitItem {
+                    kind: hir::TraitItemKind::Fn(ref m, ..),
+                    ..
+                })
+                | Node::ImplItem(&hir::ImplItem {
+                    kind: hir::ImplItemKind::Fn(ref m, ..), ..
+                }) => &m.decl,
+                _ => return None,
+            };
 
-                return fndecl
-                    .inputs
-                    .iter()
-                    .find_map(|arg| self.find_component_for_bound_region(arg, br))
-                    .map(|ty| (ty, &**fndecl));
-            }
+            fndecl
+                .inputs
+                .iter()
+                .find_map(|arg| self.find_component_for_bound_region(arg, br))
+                .map(|ty| (ty, &**fndecl))
+        } else {
+            None
         }
-        None
     }
 
     // This method creates a FindNestedTypeVisitor which returns the type corresponding

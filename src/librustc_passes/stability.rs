@@ -7,7 +7,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Generics, HirId, Item, StructField, Variant};
 use rustc_middle::hir::map::Map;
@@ -472,7 +472,7 @@ fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
 
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors.
-fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: DefId) {
+fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut Checker { tcx }.as_deep_visitor());
 }
 

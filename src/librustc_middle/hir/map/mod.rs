@@ -451,11 +451,11 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn visit_item_likes_in_module<V>(&self, module: DefId, visitor: &mut V)
+    pub fn visit_item_likes_in_module<V>(&self, module: LocalDefId, visitor: &mut V)
     where
         V: ItemLikeVisitor<'hir>,
     {
-        let module = self.tcx.hir_module_items(module.expect_local());
+        let module = self.tcx.hir_module_items(module);
 
         for id in &module.items {
             visitor.visit_item(self.expect_item(*id));
