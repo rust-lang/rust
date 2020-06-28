@@ -570,7 +570,7 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 /// Necessary because we can't write the following bound:
 /// `F: for<'b, 'tcx> where 'tcx FnOnce(InferCtxt<'b, 'tcx>)`.
 pub struct InferCtxtBuilder<'tcx> {
-    global_tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
 }
 
@@ -580,7 +580,7 @@ pub trait TyCtxtInferExt<'tcx> {
 
 impl TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
-        InferCtxtBuilder { global_tcx: self, fresh_tables: None }
+        InferCtxtBuilder { tcx: self, fresh_tables: None }
     }
 }
 
@@ -616,24 +616,22 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>) -> R) -> R {
-        let InferCtxtBuilder { global_tcx, ref fresh_tables } = *self;
+        let InferCtxtBuilder { tcx, ref fresh_tables } = *self;
         let in_progress_tables = fresh_tables.as_ref();
-        global_tcx.enter_local(|tcx| {
-            f(InferCtxt {
-                tcx,
-                in_progress_tables,
-                inner: RefCell::new(InferCtxtInner::new()),
-                lexical_region_resolutions: RefCell::new(None),
-                selection_cache: Default::default(),
-                evaluation_cache: Default::default(),
-                reported_trait_errors: Default::default(),
-                reported_closure_mismatch: Default::default(),
-                tainted_by_errors_flag: Cell::new(false),
-                err_count_on_creation: tcx.sess.err_count(),
-                in_snapshot: Cell::new(false),
-                skip_leak_check: Cell::new(false),
-                universe: Cell::new(ty::UniverseIndex::ROOT),
-            })
+        f(InferCtxt {
+            tcx,
+            in_progress_tables,
+            inner: RefCell::new(InferCtxtInner::new()),
+            lexical_region_resolutions: RefCell::new(None),
+            selection_cache: Default::default(),
+            evaluation_cache: Default::default(),
+            reported_trait_errors: Default::default(),
+            reported_closure_mismatch: Default::default(),
+            tainted_by_errors_flag: Cell::new(false),
+            err_count_on_creation: tcx.sess.err_count(),
+            in_snapshot: Cell::new(false),
+            skip_leak_check: Cell::new(false),
+            universe: Cell::new(ty::UniverseIndex::ROOT),
         })
     }
 }
