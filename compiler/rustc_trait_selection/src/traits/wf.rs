@@ -327,17 +327,31 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// Pushes the obligations required for `trait_ref::Item` to be WF
     /// into `self.out`.
     fn compute_projection(&mut self, data: ty::ProjectionTy<'tcx>) {
-        // A projection is well-formed if (a) the trait ref itself is
-        // WF and (b) the trait-ref holds.  (It may also be
-        // normalizable and be WF that way.)
-        let trait_ref = data.trait_ref(self.infcx.tcx);
-        self.compute_trait_ref(&trait_ref, Elaborate::None);
+        // A projection is well-formed if
+        // (a) its predicates hold
+        // (b) its substs are wf
+        let obligations = self.nominal_obligations(data.item_def_id, data.substs);
+        self.out.extend(obligations);
 
-        if !data.has_escaping_bound_vars() {
-            let predicate = trait_ref.without_const().to_predicate(self.infcx.tcx);
-            let cause = self.cause(traits::ProjectionWf(data));
-            self.out.push(traits::Obligation::new(cause, self.param_env, predicate));
-        }
+        let tcx = self.tcx();
+        let cause = self.cause(traits::MiscObligation);
+        let param_env = self.param_env;
+
+        self.out.extend(
+            data.substs
+                .iter()
+                .filter(|arg| {
+                    matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
+                })
+                .filter(|arg| !arg.has_escaping_bound_vars())
+                .map(|arg| {
+                    traits::Obligation::new(
+                        cause.clone(),
+                        param_env,
+                        ty::PredicateKind::WellFormed(arg).to_predicate(tcx),
+                    )
+                }),
+        );
     }
 
     fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
