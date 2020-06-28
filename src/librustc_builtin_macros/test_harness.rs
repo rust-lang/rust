@@ -6,7 +6,7 @@ use rustc_ast::attr;
 use rustc_ast::entry::{self, EntryPointType};
 use rustc_ast::mut_visit::{ExpectOne, *};
 use rustc_ast::ptr::P;
-use rustc_expand::base::{ExtCtxt, Resolver};
+use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
@@ -37,7 +37,7 @@ struct TestCtxt<'a> {
 // existing main functions, and synthesizing a main test harness
 pub fn inject(
     sess: &ParseSess,
-    resolver: &mut dyn Resolver,
+    resolver: &mut dyn ResolverExpand,
     should_test: bool,
     krate: &mut ast::Crate,
     span_diagnostic: &rustc_errors::Handler,
@@ -192,7 +192,7 @@ impl MutVisitor for EntryPointCleaner {
 /// Crawl over the crate, inserting test reexports and the test main function
 fn generate_test_harness(
     sess: &ParseSess,
-    resolver: &mut dyn Resolver,
+    resolver: &mut dyn ResolverExpand,
     reexport_test_harness_main: Option<Symbol>,
     krate: &mut ast::Crate,
     features: &Features,

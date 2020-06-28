@@ -889,7 +889,7 @@ pub enum InvocationRes {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-pub trait Resolver {
+pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;
 
     fn resolve_dollar_crates(&mut self);
@@ -946,7 +946,7 @@ pub struct ExtCtxt<'a> {
     pub ecfg: expand::ExpansionConfig<'a>,
     pub reduced_recursion_limit: Option<Limit>,
     pub root_path: PathBuf,
-    pub resolver: &'a mut dyn Resolver,
+    pub resolver: &'a mut dyn ResolverExpand,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
     /// Called directly after having parsed an external `mod foo;` in expansion.
@@ -957,7 +957,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn new(
         parse_sess: &'a ParseSess,
         ecfg: expand::ExpansionConfig<'a>,
-        resolver: &'a mut dyn Resolver,
+        resolver: &'a mut dyn ResolverExpand,
         extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {

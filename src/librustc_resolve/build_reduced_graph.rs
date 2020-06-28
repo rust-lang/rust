@@ -19,7 +19,7 @@ use rustc_ast::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, 
 use rustc_ast::ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast_lowering::Resolver as ResolverAstLowering;
+use rustc_ast_lowering::ResolverAstLowering;
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};

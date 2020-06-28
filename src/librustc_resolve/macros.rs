@@ -7,12 +7,11 @@ use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::ast::{self, NodeId};
-use rustc_ast_lowering::Resolver as ResolverAstLowering;
+use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, StabilityLevel};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_expand::base::SyntaxExtension;
-use rustc_expand::base::{self, Indeterminate, InvocationRes};
+use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand, SyntaxExtension};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use rustc_feature::is_builtin_attr_name;
@@ -141,7 +140,7 @@ crate fn registered_attrs_and_tools(
     (registered_attrs, registered_tools)
 }
 
-impl<'a> base::Resolver for Resolver<'a> {
+impl<'a> ResolverExpand for Resolver<'a> {
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
     }

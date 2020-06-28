@@ -91,7 +91,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
     sess: &'a Session,
 
-    resolver: &'a mut dyn Resolver,
+    resolver: &'a mut dyn ResolverAstLowering,
 
     /// HACK(Centril): there is a cyclic dependency between the parser and lowering
     /// if we don't have this function pointer. To avoid that dependency so that
@@ -172,7 +172,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     allow_gen_future: Option<Lrc<[Symbol]>>,
 }
 
-pub trait Resolver {
+pub trait ResolverAstLowering {
     fn def_key(&mut self, id: DefId) -> DefKey;
 
     fn item_generics_num_lifetimes(&self, def: DefId, sess: &Session) -> usize;
@@ -299,7 +299,7 @@ impl<'a> ImplTraitContext<'_, 'a> {
 pub fn lower_crate<'a, 'hir>(
     sess: &'a Session,
     krate: &'a Crate,
-    resolver: &'a mut dyn Resolver,
+    resolver: &'a mut dyn ResolverAstLowering,
     nt_to_tokenstream: NtToTokenstream,
     arena: &'hir Arena<'hir>,
 ) -> hir::Crate<'hir> {
