@@ -392,9 +392,9 @@ impl Step for ErrorIndex {
     fn make_run(run: RunConfig<'_>) {
         // Compile the error-index in the same stage as rustdoc to avoid
         // recompiling rustdoc twice if we can.
-        let stage = if run.builder.top_stage >= 2 { run.builder.top_stage } else { 0 };
-        run.builder
-            .ensure(ErrorIndex { compiler: run.builder.compiler(stage, run.builder.config.build) });
+        let host = run.builder.config.build;
+        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
+        run.builder.ensure(ErrorIndex { compiler });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {

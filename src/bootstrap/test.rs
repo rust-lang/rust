@@ -1454,8 +1454,11 @@ impl Step for ErrorIndex {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder
-            .ensure(ErrorIndex { compiler: run.builder.compiler(run.builder.top_stage, run.host) });
+        // error_index_generator depends on librustdoc. Use the compiler that
+        // is normally used to build rustdoc for other tests (like compiletest
+        // tests in src/test/rustdoc) so that it shares the same artifacts.
+        let compiler = run.builder.compiler_for(run.builder.top_stage, run.host, run.host);
+        run.builder.ensure(ErrorIndex { compiler });
     }
 
     /// Runs the error index generator tool to execute the tests located in the error
@@ -1467,22 +1470,23 @@ impl Step for ErrorIndex {
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
 
-        builder.ensure(compile::Std { compiler, target: compiler.host });
-
         let dir = testdir(builder, compiler.host);
         t!(fs::create_dir_all(&dir));
         let output = dir.join("error-index.md");
 
-        let mut tool = tool::ErrorIndex::command(
-            builder,
-            builder.compiler(compiler.stage, builder.config.build),
-        );
-        tool.arg("markdown").arg(&output).env("CFG_BUILD", &builder.config.build);
+        let mut tool = tool::ErrorIndex::command(builder, compiler);
+        tool.arg("markdown").arg(&output);
 
-        builder.info(&format!("Testing error-index stage{}", compiler.stage));
+        // Use the rustdoc that was built by self.compiler. This copy of
+        // rustdoc is shared with other tests (like compiletest tests in
+        // src/test/rustdoc). This helps avoid building rustdoc multiple
+        // times.
+        let rustdoc_compiler = builder.compiler(builder.top_stage, builder.config.build);
+        builder.info(&format!("Testing error-index stage{}", rustdoc_compiler.stage));
         let _time = util::timeit(&builder);
         builder.run_quiet(&mut tool);
-        markdown_test(builder, compiler, &output);
+        builder.ensure(compile::Std { compiler: rustdoc_compiler, target: rustdoc_compiler.host });
+        markdown_test(builder, rustdoc_compiler, &output);
     }
 }
 
@@ -1797,9 +1801,13 @@ impl Step for CrateRustdoc {
 
     fn run(self, builder: &Builder<'_>) {
         let test_kind = self.test_kind;
+        let target = self.host;
 
-        let compiler = builder.compiler(builder.top_stage, self.host);
-        let target = compiler.host;
+        // Use the previous stage compiler to reuse the artifacts that are
+        // created when running compiletest for src/test/rustdoc. If this used
+        // `compiler`, then it would cause rustdoc to be built *again*, which
+        // isn't really necessary.
+        let compiler = builder.compiler_for(builder.top_stage, target, target);
         builder.ensure(compile::Rustc { compiler, target });
 
         let mut cargo = tool::prepare_tool_cargo(
@@ -1824,6 +1832,32 @@ impl Step for CrateRustdoc {
         if self.host.contains("musl") {
             cargo.arg("'-Ctarget-feature=-crt-static'");
         }
+
+        // This is needed for running doctests on librustdoc. This is a bit of
+        // an unfortunate interaction with how bootstrap works and how cargo
+        // sets up the dylib path, and the fact that the doctest (in
+        // html/markdown.rs) links to rustc-private libs. For stage1, the
+        // compiler host dylibs (in stage1/lib) are not the same as the target
+        // dylibs (in stage1/lib/rustlib/...). This is different from a normal
+        // rust distribution where they are the same.
+        //
+        // On the cargo side, normal tests use `target_process` which handles
+        // setting up the dylib for a *target* (stage1/lib/rustlib/... in this
+        // case). However, for doctests it uses `rustdoc_process` which only
+        // sets up the dylib path for the *host* (stage1/lib), which is the
+        // wrong directory.
+        //
+        // It should be considered to just stop running doctests on
+        // librustdoc. There is only one test, and it doesn't look too
+        // important. There might be other ways to avoid this, but it seems
+        // pretty convoluted.
+        //
+        // See also https://github.com/rust-lang/rust/issues/13983 where the
+        // host vs target dylibs for rustdoc are consistently tricky to deal
+        // with.
+        let mut dylib_path = dylib_path();
+        dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
+        cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
         if !builder.config.verbose_tests {
             cargo.arg("--quiet");
