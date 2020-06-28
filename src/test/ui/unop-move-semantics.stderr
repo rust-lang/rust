@@ -4,11 +4,16 @@ error[E0382]: borrow of moved value: `x`
 LL | fn move_then_borrow<T: Not<Output=T> + Clone>(x: T) {
    |                                               - move occurs because `x` has type `T`, which does not implement the `Copy` trait
 LL |     !x;
-   |      - value moved here
+   |     -- `x` moved due to usage in operator
 LL | 
 LL |     x.clone();
    |     ^ value borrowed here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+   |
+LL |     fn not(self) -> Self::Output;
+   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn move_then_borrow<T: Not<Output=T> + Clone + Copy>(x: T) {

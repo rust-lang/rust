@@ -9,7 +9,7 @@
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
@@ -62,7 +62,7 @@ impl NonConstExpr {
     }
 }
 
-fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: DefId) {
+fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let mut vis = CheckConstVisitor::new(tcx);
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut vis.as_deep_visitor());
 }

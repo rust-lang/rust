@@ -14,7 +14,7 @@ use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
@@ -374,6 +374,13 @@ impl<'hir> Map<'hir> {
         })
     }
 
+    pub fn body_param_names(&self, id: BodyId) -> impl Iterator<Item = Ident> + 'hir {
+        self.body(id).params.iter().map(|arg| match arg.pat.kind {
+            PatKind::Binding(_, _, ident, _) => ident,
+            _ => Ident::new(kw::Invalid, rustc_span::DUMMY_SP),
+        })
+    }
+
     /// Returns the `BodyOwnerKind` of this `LocalDefId`.
     ///
     /// Panics if `LocalDefId` does not have an associated body.
@@ -451,11 +458,11 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn visit_item_likes_in_module<V>(&self, module: DefId, visitor: &mut V)
+    pub fn visit_item_likes_in_module<V>(&self, module: LocalDefId, visitor: &mut V)
     where
         V: ItemLikeVisitor<'hir>,
     {
-        let module = self.tcx.hir_module_items(module.expect_local());
+        let module = self.tcx.hir_module_items(module);
 
         for id in &module.items {
             visitor.visit_item(self.expect_item(*id));

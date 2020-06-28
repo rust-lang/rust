@@ -1061,8 +1061,15 @@ fn default_emitter(
             }
         }
         (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
-            JsonEmitter::stderr(Some(registry), source_map, pretty, json_rendered, macro_backtrace)
-                .ui_testing(sopts.debugging_opts.ui_testing),
+            JsonEmitter::stderr(
+                Some(registry),
+                source_map,
+                pretty,
+                json_rendered,
+                sopts.debugging_opts.terminal_width,
+                macro_backtrace,
+            )
+            .ui_testing(sopts.debugging_opts.ui_testing),
         ),
         (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
             JsonEmitter::new(
@@ -1071,6 +1078,7 @@ fn default_emitter(
                 source_map,
                 pretty,
                 json_rendered,
+                sopts.debugging_opts.terminal_width,
                 macro_backtrace,
             )
             .ui_testing(sopts.debugging_opts.ui_testing),
@@ -1416,7 +1424,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
             Box::new(EmitterWriter::stderr(color_config, None, short, false, None, false))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => {
-            Box::new(JsonEmitter::basic(pretty, json_rendered, false))
+            Box::new(JsonEmitter::basic(pretty, json_rendered, None, false))
         }
     };
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
@@ -1431,7 +1439,7 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
             Box::new(EmitterWriter::stderr(color_config, None, short, false, None, false))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => {
-            Box::new(JsonEmitter::basic(pretty, json_rendered, false))
+            Box::new(JsonEmitter::basic(pretty, json_rendered, None, false))
         }
     };
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);

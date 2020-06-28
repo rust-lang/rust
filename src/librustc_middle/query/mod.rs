@@ -15,11 +15,11 @@ use rustc_query_system::query::QueryDescription;
 use rustc_span::symbol::Symbol;
 use std::borrow::Cow;
 
-fn describe_as_module(def_id: DefId, tcx: TyCtxt<'_>) -> String {
+fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
     if def_id.is_top_level_module() {
         "top-level module".to_string()
     } else {
-        format!("module `{}`", tcx.def_path_str(def_id))
+        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
     }
 }
 
@@ -473,49 +473,49 @@ rustc_queries! {
 
     Other {
         query lint_mod(key: LocalDefId) -> () {
-            desc { |tcx| "linting {}", describe_as_module(key.to_def_id(), tcx) }
+            desc { |tcx| "linting {}", describe_as_module(key, tcx) }
         }
 
         /// Checks the attributes in the module.
-        query check_mod_attrs(key: DefId) -> () {
+        query check_mod_attrs(key: LocalDefId) -> () {
             desc { |tcx| "checking attributes in {}", describe_as_module(key, tcx) }
         }
 
-        query check_mod_unstable_api_usage(key: DefId) -> () {
+        query check_mod_unstable_api_usage(key: LocalDefId) -> () {
             desc { |tcx| "checking for unstable API usage in {}", describe_as_module(key, tcx) }
         }
 
         /// Checks the const bodies in the module for illegal operations (e.g. `if` or `loop`).
-        query check_mod_const_bodies(key: DefId) -> () {
+        query check_mod_const_bodies(key: LocalDefId) -> () {
             desc { |tcx| "checking consts in {}", describe_as_module(key, tcx) }
         }
 
         /// Checks the loops in the module.
-        query check_mod_loops(key: DefId) -> () {
+        query check_mod_loops(key: LocalDefId) -> () {
             desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
         }
 
-        query check_mod_item_types(key: DefId) -> () {
+        query check_mod_item_types(key: LocalDefId) -> () {
             desc { |tcx| "checking item types in {}", describe_as_module(key, tcx) }
         }
 
         query check_mod_privacy(key: LocalDefId) -> () {
-            desc { |tcx| "checking privacy in {}", describe_as_module(key.to_def_id(), tcx) }
+            desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
         }
 
-        query check_mod_intrinsics(key: DefId) -> () {
+        query check_mod_intrinsics(key: LocalDefId) -> () {
             desc { |tcx| "checking intrinsics in {}", describe_as_module(key, tcx) }
         }
 
-        query check_mod_liveness(key: DefId) -> () {
+        query check_mod_liveness(key: LocalDefId) -> () {
             desc { |tcx| "checking liveness of variables in {}", describe_as_module(key, tcx) }
         }
 
-        query check_mod_impl_wf(key: DefId) -> () {
+        query check_mod_impl_wf(key: LocalDefId) -> () {
             desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
         }
 
-        query collect_mod_item_types(key: DefId) -> () {
+        query collect_mod_item_types(key: LocalDefId) -> () {
             desc { |tcx| "collecting item types in {}", describe_as_module(key, tcx) }
         }
 
@@ -729,7 +729,7 @@ rustc_queries! {
     }
 
     Other {
-        query fn_arg_names(def_id: DefId) -> &'tcx [Symbol] {
+        query fn_arg_names(def_id: DefId) -> &'tcx [rustc_span::symbol::Ident] {
             desc { |tcx| "looking up function parameter names for `{}`", tcx.def_path_str(def_id) }
         }
         /// Gets the rendered value of the specified constant or associated constant.

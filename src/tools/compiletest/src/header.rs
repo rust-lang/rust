@@ -263,7 +263,7 @@ impl EarlyProps {
         }
 
         fn version_to_int(version: &str) -> u32 {
-            let version_without_suffix = version.split('-').next().unwrap();
+            let version_without_suffix = version.trim_end_matches("git").split('-').next().unwrap();
             let components: Vec<u32> = version_without_suffix
                 .split('.')
                 .map(|s| s.parse().expect("Malformed version component"))

@@ -4,10 +4,15 @@ error[E0382]: use of moved value: `lhs`
 LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs + rhs;
-   |     --- value moved here
+   |     --------- `lhs` moved due to usage in operator
 LL |     drop(lhs);
    |          ^^^ value used here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+   |
+LL |     fn add(self, rhs: Rhs) -> Self::Output;
+   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn add<A: Add<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -35,10 +40,15 @@ error[E0382]: use of moved value: `lhs`
 LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs - rhs;
-   |     --- value moved here
+   |     --------- `lhs` moved due to usage in operator
 LL |     drop(lhs);
    |          ^^^ value used here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+   |
+LL |     fn sub(self, rhs: Rhs) -> Self::Output;
+   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn sub<A: Sub<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -66,10 +76,15 @@ error[E0382]: use of moved value: `lhs`
 LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs * rhs;
-   |     --- value moved here
+   |     --------- `lhs` moved due to usage in operator
 LL |     drop(lhs);
    |          ^^^ value used here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+   |
+LL |     fn mul(self, rhs: Rhs) -> Self::Output;
+   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn mul<A: Mul<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -97,10 +112,15 @@ error[E0382]: use of moved value: `lhs`
 LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs / rhs;
-   |     --- value moved here
+   |     --------- `lhs` moved due to usage in operator
 LL |     drop(lhs);
    |          ^^^ value used here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+   |
+LL |     fn div(self, rhs: Rhs) -> Self::Output;
+   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn div<A: Div<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -128,10 +148,15 @@ error[E0382]: use of moved value: `lhs`
 LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs % rhs;
-   |     --- value moved here
+   |     --------- `lhs` moved due to usage in operator
 LL |     drop(lhs);
    |          ^^^ value used here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+   |
+LL |     fn rem(self, rhs: Rhs) -> Self::Output;
+   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn rem<A: Rem<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -159,10 +184,15 @@ error[E0382]: use of moved value: `lhs`
 LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs & rhs;
-   |     --- value moved here
+   |     --------- `lhs` moved due to usage in operator
 LL |     drop(lhs);
    |          ^^^ value used here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+   |
+LL |     fn bitand(self, rhs: Rhs) -> Self::Output;
+   |               ^^^^
 help: consider further restricting this bound
    |
 LL | fn bitand<A: BitAnd<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -190,10 +220,15 @@ error[E0382]: use of moved value: `lhs`
 LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                     --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs | rhs;
-   |     --- value moved here
+   |     --------- `lhs` moved due to usage in operator
 LL |     drop(lhs);
    |          ^^^ value used here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+   |
+LL |     fn bitor(self, rhs: Rhs) -> Self::Output;
+   |              ^^^^
 help: consider further restricting this bound
    |
 LL | fn bitor<A: BitOr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -221,10 +256,15 @@ error[E0382]: use of moved value: `lhs`
 LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs ^ rhs;
-   |     --- value moved here
+   |     --------- `lhs` moved due to usage in operator
 LL |     drop(lhs);
    |          ^^^ value used here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+   |
+LL |     fn bitxor(self, rhs: Rhs) -> Self::Output;
+   |               ^^^^
 help: consider further restricting this bound
    |
 LL | fn bitxor<A: BitXor<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -252,10 +292,15 @@ error[E0382]: use of moved value: `lhs`
 LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs << rhs;
-   |     --- value moved here
+   |     ---------- `lhs` moved due to usage in operator
 LL |     drop(lhs);
    |          ^^^ value used here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+   |
+LL |     fn shl(self, rhs: Rhs) -> Self::Output;
+   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn shl<A: Shl<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -283,10 +328,15 @@ error[E0382]: use of moved value: `lhs`
 LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                 --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
 LL |     lhs >> rhs;
-   |     --- value moved here
+   |     ---------- `lhs` moved due to usage in operator
 LL |     drop(lhs);
    |          ^^^ value used here after move
    |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/libcore/ops/bit.rs:LL:COL
+   |
+LL |     fn shr(self, rhs: Rhs) -> Self::Output;
+   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn shr<A: Shr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
