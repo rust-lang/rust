@@ -12,8 +12,8 @@ LL | |     fn malloc2(len: i32, foo: i32) -> *const u8;
 note: the lint level is defined here
   --> $DIR/issue-5791.rs:3:9
    |
-LL | #![warn(clashing_extern_decl)]
-   |         ^^^^^^^^^^^^^^^^^^^^
+LL | #![warn(clashing_extern_declarations)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected `unsafe extern "C" fn(i32) -> *const u8`
               found `unsafe extern "C" fn(i32, i32) -> *const u8`
 

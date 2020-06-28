@@ -2055,12 +2055,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
 }
 
 declare_lint! {
-    pub CLASHING_EXTERN_DECL,
+    pub CLASHING_EXTERN_DECLARATIONS,
     Warn,
     "detects when an extern fn has been declared with the same name but different types"
 }
 
-pub struct ClashingExternDecl {
+pub struct ClashingExternDeclarations {
     seen_decls: FxHashMap<Symbol, HirId>,
 }
 
@@ -2083,9 +2083,9 @@ impl SymbolName {
     }
 }
 
-impl ClashingExternDecl {
+impl ClashingExternDeclarations {
     crate fn new() -> Self {
-        ClashingExternDecl { seen_decls: FxHashMap::default() }
+        ClashingExternDeclarations { seen_decls: FxHashMap::default() }
     }
     /// Insert a new foreign item into the seen set. If a symbol with the same name already exists
     /// for the item, return its HirId without updating the set.
@@ -2211,18 +2211,18 @@ impl ClashingExternDecl {
     }
 }
 
-impl_lint_pass!(ClashingExternDecl => [CLASHING_EXTERN_DECL]);
+impl_lint_pass!(ClashingExternDeclarations => [CLASHING_EXTERN_DECLARATIONS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ClashingExternDecl {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ClashingExternDeclarations {
     fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, this_fi: &hir::ForeignItem<'_>) {
-        trace!("ClashingExternDecl: check_foreign_item: {:?}", this_fi);
+        trace!("ClashingExternDeclarations: check_foreign_item: {:?}", this_fi);
         if let ForeignItemKind::Fn(..) = this_fi.kind {
             let tcx = *&cx.tcx;
             if let Some(existing_hid) = self.insert(tcx, this_fi) {
                 let existing_decl_ty = tcx.type_of(tcx.hir().local_def_id(existing_hid));
                 let this_decl_ty = tcx.type_of(tcx.hir().local_def_id(this_fi.hir_id));
                 debug!(
-                    "ClashingExternDecl: Comparing existing {:?}: {:?} to this {:?}: {:?}",
+                    "ClashingExternDeclarations: Comparing existing {:?}: {:?} to this {:?}: {:?}",
                     existing_hid, existing_decl_ty, this_fi.hir_id, this_decl_ty
                 );
                 // Check that the declarations match.
@@ -2239,7 +2239,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ClashingExternDecl {
                         };
                     // Finally, emit the diagnostic.
                     tcx.struct_span_lint_hir(
-                        CLASHING_EXTERN_DECL,
+                        CLASHING_EXTERN_DECLARATIONS,
                         this_fi.hir_id,
                         get_relevant_span(this_fi),
                         |lint| {

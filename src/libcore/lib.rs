@@ -279,9 +279,9 @@ pub mod primitive;
 // crate uses the this crate as its libcore.
 #[path = "../stdarch/crates/core_arch/src/mod.rs"]
 #[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
-// FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_decl is
+// FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
 // merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
-#[cfg_attr(not(bootstrap), allow(clashing_extern_decl))]
+#[cfg_attr(not(bootstrap), allow(clashing_extern_declarations))]
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 

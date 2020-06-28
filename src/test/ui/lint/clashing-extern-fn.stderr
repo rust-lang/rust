@@ -10,8 +10,8 @@ LL |         fn clash(x: u64);
 note: the lint level is defined here
   --> $DIR/clashing-extern-fn.rs:4:9
    |
-LL | #![warn(clashing_extern_decl)]
-   |         ^^^^^^^^^^^^^^^^^^^^
+LL | #![warn(clashing_extern_declarations)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected `unsafe extern "C" fn(u8)`
               found `unsafe extern "C" fn(u64)`
 
@@ -94,25 +94,25 @@ LL |         fn variadic_decl(x: u8);
               found `unsafe extern "C" fn(u8)`
 
 warning: `weigh_banana` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:137:22
+  --> $DIR/clashing-extern-fn.rs:154:13
    |
-LL |         extern "C" { fn weigh_banana(count: *const Banana) -> u64; }
-   |                      --------------------------------------------- `weigh_banana` previously declared here
+LL |             fn weigh_banana(count: *const Banana) -> u64;
+   |             --------------------------------------------- `weigh_banana` previously declared here
 ...
-LL |         extern "C" { fn weigh_banana(count: *const Banana) -> u64; }
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+LL |             fn weigh_banana(count: *const Banana) -> u64;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
    = note: expected `unsafe extern "C" fn(*const banana::one::Banana) -> u64`
               found `unsafe extern "C" fn(*const banana::three::Banana) -> u64`
 
 warning: `draw_point` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:157:22
+  --> $DIR/clashing-extern-fn.rs:183:13
    |
-LL |         extern "C" { fn draw_point(p: Point); }
-   |                      ------------------------ `draw_point` previously declared here
+LL |             fn draw_point(p: Point);
+   |             ------------------------ `draw_point` previously declared here
 ...
-LL |         extern "C" { fn draw_point(p: Point); }
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+LL |             fn draw_point(p: Point);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
    = note: expected `unsafe extern "C" fn(sameish_members::a::Point)`
               found `unsafe extern "C" fn(sameish_members::b::Point)`
