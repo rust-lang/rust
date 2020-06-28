@@ -98,6 +98,8 @@ pub enum TypeKind {
     Metadata,
     X86_MMX,
     Token,
+    ScalableVector,
+    BFloat,
 }
 
 // FIXME(mw): Anything that is produced via DepGraph::with_task() must implement

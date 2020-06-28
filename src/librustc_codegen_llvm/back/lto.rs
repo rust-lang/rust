@@ -797,6 +797,7 @@ pub unsafe fn optimize_thin_module(
         kind: ModuleKind::Regular,
     };
     {
+        let target = &*module.module_llvm.tm;
         let llmod = module.module_llvm.llmod();
         save_temp_bitcode(&cgcx, &module, "thin-lto-input");
 
@@ -833,7 +834,7 @@ pub unsafe fn optimize_thin_module(
         {
             let _timer =
                 cgcx.prof.generic_activity_with_arg("LLVM_thin_lto_rename", thin_module.name());
-            if !llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod) {
+            if !llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod, target) {
                 let msg = "failed to prepare thin LTO module";
                 return Err(write::llvm_err(&diag_handler, msg));
             }
@@ -865,7 +866,7 @@ pub unsafe fn optimize_thin_module(
         {
             let _timer =
                 cgcx.prof.generic_activity_with_arg("LLVM_thin_lto_import", thin_module.name());
-            if !llvm::LLVMRustPrepareThinLTOImport(thin_module.shared.data.0, llmod) {
+            if !llvm::LLVMRustPrepareThinLTOImport(thin_module.shared.data.0, llmod, target) {
                 let msg = "failed to prepare thin LTO module";
                 return Err(write::llvm_err(&diag_handler, msg));
             }

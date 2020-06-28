@@ -1,5 +1,4 @@
 #include "rustllvm.h"
-#include "llvm/IR/CallSite.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
@@ -214,50 +213,50 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
 
 extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned Index,
                                              LLVMRustAttribute RustAttr) {
-  CallSite Call = CallSite(unwrap<Instruction>(Instr));
+  CallBase *Call = unwrap<CallBase>(Instr);
   Attribute Attr = Attribute::get(Call->getContext(), fromRust(RustAttr));
-  Call.addAttribute(Index, Attr);
+  Call->addAttribute(Index, Attr);
 }
 
 extern "C" void LLVMRustAddAlignmentCallSiteAttr(LLVMValueRef Instr,
                                                  unsigned Index,
                                                  uint32_t Bytes) {
-  CallSite Call = CallSite(unwrap<Instruction>(Instr));
+  CallBase *Call = unwrap<CallBase>(Instr);
   AttrBuilder B;
   B.addAlignmentAttr(Bytes);
-  Call.setAttributes(Call.getAttributes().addAttributes(
+  Call->setAttributes(Call->getAttributes().addAttributes(
       Call->getContext(), Index, B));
 }
 
 extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
                                                        unsigned Index,
                                                        uint64_t Bytes) {
-  CallSite Call = CallSite(unwrap<Instruction>(Instr));
+  CallBase *Call = unwrap<CallBase>(Instr);
   AttrBuilder B;
   B.addDereferenceableAttr(Bytes);
-  Call.setAttributes(Call.getAttributes().addAttributes(
+  Call->setAttributes(Call->getAttributes().addAttributes(
       Call->getContext(), Index, B));
 }
 
 extern "C" void LLVMRustAddDereferenceableOrNullCallSiteAttr(LLVMValueRef Instr,
                                                              unsigned Index,
                                                              uint64_t Bytes) {
-  CallSite Call = CallSite(unwrap<Instruction>(Instr));
+  CallBase *Call = unwrap<CallBase>(Instr);
   AttrBuilder B;
   B.addDereferenceableOrNullAttr(Bytes);
-  Call.setAttributes(Call.getAttributes().addAttributes(
+  Call->setAttributes(Call->getAttributes().addAttributes(
       Call->getContext(), Index, B));
 }
 
 extern "C" void LLVMRustAddByValCallSiteAttr(LLVMValueRef Instr, unsigned Index,
                                              LLVMTypeRef Ty) {
-  CallSite Call = CallSite(unwrap<Instruction>(Instr));
+  CallBase *Call = unwrap<CallBase>(Instr);
 #if LLVM_VERSION_GE(9, 0)
   Attribute Attr = Attribute::getWithByValType(Call->getContext(), unwrap(Ty));
 #else
   Attribute Attr = Attribute::get(Call->getContext(), Attribute::ByVal);
 #endif
-  Call.addAttribute(Index, Attr);
+  Call->addAttribute(Index, Attr);
 }
 
 extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
@@ -336,20 +335,24 @@ extern "C" void LLVMRustSetHasUnsafeAlgebra(LLVMValueRef V) {
 extern "C" LLVMValueRef
 LLVMRustBuildAtomicLoad(LLVMBuilderRef B, LLVMValueRef Source, const char *Name,
                         LLVMAtomicOrdering Order) {
-  LoadInst *LI = new LoadInst(unwrap(Source));
+  Value *Ptr = unwrap(Source);
+  Type *Ty = Ptr->getType()->getPointerElementType();
+  LoadInst *LI = unwrap(B)->CreateLoad(Ty, Ptr, Name);
   LI->setAtomic(fromRust(Order));
-  return wrap(unwrap(B)->Insert(LI, Name));
+  return wrap(LI);
 }
 
 extern "C" LLVMValueRef LLVMRustBuildAtomicStore(LLVMBuilderRef B,
                                                  LLVMValueRef V,
                                                  LLVMValueRef Target,
                                                  LLVMAtomicOrdering Order) {
-  StoreInst *SI = new StoreInst(unwrap(V), unwrap(Target));
+  StoreInst *SI = unwrap(B)->CreateStore(unwrap(V), unwrap(Target));
   SI->setAtomic(fromRust(Order));
-  return wrap(unwrap(B)->Insert(SI));
+  return wrap(SI);
 }
 
+// FIXME: Use the C-API LLVMBuildAtomicCmpXchg and LLVMSetWeak
+// once we raise our minimum support to LLVM 10.
 extern "C" LLVMValueRef
 LLVMRustBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Target,
                            LLVMValueRef Old, LLVMValueRef Source,
@@ -965,8 +968,14 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
     const char *Name, size_t NameLen, LLVMMetadataRef Ty) {
+#if LLVM_VERSION_GE(11, 0)
+  bool IsDefault = false; // FIXME: should we ever set this true?
+  return wrap(Builder->createTemplateTypeParameter(
+      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty), IsDefault));
+#else
   return wrap(Builder->createTemplateTypeParameter(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty)));
+#endif
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateNameSpace(
@@ -1227,12 +1236,23 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMArrayTypeKind;
   case Type::PointerTyID:
     return LLVMPointerTypeKind;
+#if LLVM_VERSION_GE(11, 0)
+  case Type::FixedVectorTyID:
+    return LLVMVectorTypeKind;
+#else
   case Type::VectorTyID:
     return LLVMVectorTypeKind;
+#endif
   case Type::X86_MMXTyID:
     return LLVMX86_MMXTypeKind;
   case Type::TokenTyID:
     return LLVMTokenTypeKind;
+#if LLVM_VERSION_GE(11, 0)
+  case Type::ScalableVectorTyID:
+    return LLVMScalableVectorTypeKind;
+  case Type::BFloatTyID:
+    return LLVMBFloatTypeKind;
+#endif
   }
   report_fatal_error("Unhandled TypeID.");
 }
@@ -1359,10 +1379,12 @@ extern "C" void LLVMRustFreeOperandBundleDef(OperandBundleDef *Bundle) {
 extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMValueRef Fn,
                                           LLVMValueRef *Args, unsigned NumArgs,
                                           OperandBundleDef *Bundle) {
+  Value *Callee = unwrap(Fn);
+  FunctionType *FTy = cast<FunctionType>(Callee->getType()->getPointerElementType());
   unsigned Len = Bundle ? 1 : 0;
   ArrayRef<OperandBundleDef> Bundles = makeArrayRef(Bundle, Len);
   return wrap(unwrap(B)->CreateCall(
-      unwrap(Fn), makeArrayRef(unwrap(Args), NumArgs), Bundles));
+      FTy, Callee, makeArrayRef(unwrap(Args), NumArgs), Bundles));
 }
 
 extern "C" LLVMValueRef LLVMRustGetInstrprofIncrementIntrinsic(LLVMModuleRef M) {
@@ -1422,9 +1444,11 @@ LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMValueRef Fn, LLVMValueRef *Args,
                     unsigned NumArgs, LLVMBasicBlockRef Then,
                     LLVMBasicBlockRef Catch, OperandBundleDef *Bundle,
                     const char *Name) {
+  Value *Callee = unwrap(Fn);
+  FunctionType *FTy = cast<FunctionType>(Callee->getType()->getPointerElementType());
   unsigned Len = Bundle ? 1 : 0;
   ArrayRef<OperandBundleDef> Bundles = makeArrayRef(Bundle, Len);
-  return wrap(unwrap(B)->CreateInvoke(unwrap(Fn), unwrap(Then), unwrap(Catch),
+  return wrap(unwrap(B)->CreateInvoke(FTy, Callee, unwrap(Then), unwrap(Catch),
                                       makeArrayRef(unwrap(Args), NumArgs),
                                       Bundles, Name));
 }
