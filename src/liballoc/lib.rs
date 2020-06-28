@@ -109,6 +109,7 @@
 #![feature(pattern)]
 #![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
+#![feature(raw_ref_op)]
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]
 #![feature(min_specialization)]
