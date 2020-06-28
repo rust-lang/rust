@@ -1479,17 +1479,28 @@ mod true_keyword {}
 /// assert_eq!(m, k);
 /// ```
 ///
-/// In traits, using `type` allows the usage of an associated type without
-/// knowing about it when declaring the [`trait`]:
+/// In traits, `type` is used to declare an [associated type]:
 ///
 /// ```rust
 /// trait Iterator {
+///     // associated type declaration
 ///     type Item;
 ///     fn next(&mut self) -> Option<Self::Item>;
+/// }
+///
+/// struct Once<T>(Option<T>);
+///
+/// impl<T> Iterator for Once<T> {
+///     // associated type definition
+///     type Item = T;
+///     fn next(&mut self) -> Option<Self::Item> {
+///         self.0.take()
+///     }
 /// }
 /// ```
 ///
 /// [`trait`]: keyword.trait.html
+/// [associated type]: ../reference/items/associated-items.html#associated-types
 mod type_keyword {}
 
 #[doc(keyword = "unsafe")]
