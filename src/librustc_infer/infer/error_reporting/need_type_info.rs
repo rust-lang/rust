@@ -468,7 +468,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let msg = if let Some(simple_ident) = pattern.simple_ident() {
                 match pattern.span.desugaring_kind() {
                     None => format!("consider giving `{}` {}", simple_ident, suffix),
-                    Some(DesugaringKind::ForLoop) => {
+                    Some(DesugaringKind::ForLoop(_)) => {
                         "the element type for this iterator is not specified".to_string()
                     }
                     _ => format!("this needs {}", suffix),

@@ -9,7 +9,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
+use rustc_span::source_map::{respan, DesugaringKind, ForLoopLoc, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_target::asm;
 use std::collections::hash_map::Entry;
@@ -1361,9 +1361,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::Expr<'hir> {
+        let orig_head_span = head.span;
         // expand <head>
         let mut head = self.lower_expr_mut(head);
-        let desugared_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
+        let desugared_span = self.mark_span_with_reason(
+            DesugaringKind::ForLoop(ForLoopLoc::Head),
+            orig_head_span,
+            None,
+        );
         head.span = desugared_span;
 
         let iter = Ident::with_dummy_span(sym::iter);
@@ -1458,10 +1463,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);
 
+        let into_iter_span = self.mark_span_with_reason(
+            DesugaringKind::ForLoop(ForLoopLoc::IntoIter),
+            orig_head_span,
+            None,
+        );
+
         // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
         let into_iter_expr = {
             let into_iter_path = &[sym::iter, sym::IntoIterator, sym::into_iter];
-            self.expr_call_std_path(desugared_span, into_iter_path, arena_vec![self; head])
+            self.expr_call_std_path(into_iter_span, into_iter_path, arena_vec![self; head])
         };
 
         let match_expr = self.arena.alloc(self.expr_match(

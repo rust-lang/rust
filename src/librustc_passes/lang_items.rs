@@ -102,7 +102,8 @@ impl LanguageItemCollector<'tcx> {
         // Check for duplicates.
         if let Some(original_def_id) = self.items.items[item_index] {
             if original_def_id != item_def_id {
-                let name = LangItem::from_u32(item_index as u32).unwrap().name();
+                let lang_item = LangItem::from_u32(item_index as u32).unwrap();
+                let name = lang_item.name();
                 let mut err = match self.tcx.hir().span_if_local(item_def_id) {
                     Some(span) => struct_span_err!(
                         self.tcx.sess,
@@ -152,6 +153,9 @@ impl LanguageItemCollector<'tcx> {
 
         // Matched.
         self.items.items[item_index] = Some(item_def_id);
+        if let Some(group) = LangItem::from_u32(item_index as u32).unwrap().group() {
+            self.items.groups[group as usize].push(item_def_id);
+        }
     }
 }
 
