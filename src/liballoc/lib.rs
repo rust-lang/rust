@@ -100,6 +100,7 @@
 #![feature(fundamental)]
 #![feature(internal_uninit_const)]
 #![feature(lang_items)]
+#![feature(layout_for_ptr)]
 #![feature(libc)]
 #![feature(negative_impls)]
 #![feature(new_uninit)]
