@@ -346,10 +346,7 @@ impl Query {
 }
 
 fn is_type(kind: SyntaxKind) -> bool {
-    match kind {
-        STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => true,
-        _ => false,
-    }
+    matches!(kind, STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF)
 }
 
 /// The actual data that is stored in the index. It should be as compact as

@@ -137,10 +137,7 @@ impl ModuleOrigin {
     }
 
     pub fn is_inline(&self) -> bool {
-        match self {
-            ModuleOrigin::Inline { .. } => true,
-            ModuleOrigin::CrateRoot { .. } | ModuleOrigin::File { .. } => false,
-        }
+        matches!(self, ModuleOrigin::Inline { .. })
     }
 
     /// Returns a node which defines this module.

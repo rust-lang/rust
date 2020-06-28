@@ -399,10 +399,7 @@ impl ast::BlockExpr {
             Some(it) => it,
             None => return true,
         };
-        match parent.kind() {
-            FN_DEF | IF_EXPR | WHILE_EXPR | LOOP_EXPR | EFFECT_EXPR => false,
-            _ => true,
-        }
+        !matches!(parent.kind(), FN_DEF | IF_EXPR | WHILE_EXPR | LOOP_EXPR | EFFECT_EXPR)
     }
 }
 

@@ -41,10 +41,7 @@ fn path(p: &mut Parser, mode: Mode) {
     path_segment(p, mode, true);
     let mut qual = path.complete(p, PATH);
     loop {
-        let use_tree = match p.nth(2) {
-            T![*] | T!['{'] => true,
-            _ => false,
-        };
+        let use_tree = matches!(p.nth(2), T![*] | T!['{']);
         if p.at(T![::]) && !use_tree {
             let path = qual.precede(p);
             p.bump(T![::]);

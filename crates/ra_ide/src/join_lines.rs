@@ -165,10 +165,7 @@ fn join_single_use_tree(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Opti
 }
 
 fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
-    match (left, right) {
-        (T![,], T![')']) | (T![,], T![']']) => true,
-        _ => false,
-    }
+    matches!((left, right), (T![,], T![')']) | (T![,], T![']']))
 }
 
 #[cfg(test)]

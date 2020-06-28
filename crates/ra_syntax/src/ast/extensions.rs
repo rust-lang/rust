@@ -459,16 +459,16 @@ impl ast::RangePat {
 
 impl ast::TokenTree {
     pub fn left_delimiter_token(&self) -> Option<SyntaxToken> {
-        self.syntax().first_child_or_token()?.into_token().filter(|it| match it.kind() {
-            T!['{'] | T!['('] | T!['['] => true,
-            _ => false,
-        })
+        self.syntax()
+            .first_child_or_token()?
+            .into_token()
+            .filter(|it| matches!(it.kind(), T!['{'] | T!['('] | T!['[']))
     }
 
     pub fn right_delimiter_token(&self) -> Option<SyntaxToken> {
-        self.syntax().last_child_or_token()?.into_token().filter(|it| match it.kind() {
-            T!['}'] | T![')'] | T![']'] => true,
-            _ => false,
-        })
+        self.syntax()
+            .last_child_or_token()?
+            .into_token()
+            .filter(|it| matches!(it.kind(), T!['}'] | T![')'] | T![']']))
     }
 }

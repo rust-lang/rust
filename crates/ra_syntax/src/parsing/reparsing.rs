@@ -120,10 +120,7 @@ fn get_text_after_edit(element: SyntaxElement, edit: &Indel) -> String {
 }
 
 fn is_contextual_kw(text: &str) -> bool {
-    match text {
-        "auto" | "default" | "union" => true,
-        _ => false,
-    }
+    matches!(text, "auto" | "default" | "union")
 }
 
 fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(SyntaxNode, Reparser)> {

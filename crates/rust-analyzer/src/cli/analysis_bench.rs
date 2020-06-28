@@ -78,10 +78,7 @@ pub fn analysis_bench(
             }
         }
         BenchWhat::Complete(pos) | BenchWhat::GotoDef(pos) => {
-            let is_completion = match what {
-                BenchWhat::Complete(..) => true,
-                _ => false,
-            };
+            let is_completion = matches!(what, BenchWhat::Complete(..));
 
             let offset = host
                 .analysis()

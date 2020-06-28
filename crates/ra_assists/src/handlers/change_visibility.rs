@@ -30,9 +30,8 @@ pub(crate) fn change_visibility(acc: &mut Assists, ctx: &AssistContext) -> Optio
 }
 
 fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let item_keyword = ctx.token_at_offset().find(|leaf| match leaf.kind() {
-        T![const] | T![fn] | T![mod] | T![struct] | T![enum] | T![trait] => true,
-        _ => false,
+    let item_keyword = ctx.token_at_offset().find(|leaf| {
+        matches!(leaf.kind(), T![const] | T![fn] | T![mod] | T![struct] | T![enum] | T![trait])
     });
 
     let (offset, target) = if let Some(keyword) = item_keyword {
@@ -73,11 +72,7 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
 fn vis_offset(node: &SyntaxNode) -> TextSize {
     node.children_with_tokens()
-        .skip_while(|it| match it.kind() {
-            WHITESPACE | COMMENT | ATTR => true,
-            _ => false,
-        })
-        .next()
+        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
         .map(|it| it.text_range().start())
         .unwrap_or_else(|| node.text_range().start())
 }

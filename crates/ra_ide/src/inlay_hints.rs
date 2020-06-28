@@ -312,10 +312,8 @@ fn get_string_representation(expr: &ast::Expr) -> Option<String> {
 }
 
 fn is_obvious_param(param_name: &str) -> bool {
-    let is_obvious_param_name = match param_name {
-        "predicate" | "value" | "pat" | "rhs" | "other" => true,
-        _ => false,
-    };
+    let is_obvious_param_name =
+        matches!(param_name, "predicate" | "value" | "pat" | "rhs" | "other");
     param_name.len() == 1 || is_obvious_param_name
 }
 
