@@ -1,11 +1,11 @@
 warning: `clash` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:15:9
+  --> $DIR/clashing-extern-fn.rs:14:13
    |
-LL |     fn clash(x: u8);
-   |     ---------------- `clash` previously declared here
+LL |             fn clash(x: u8);
+   |             ---------------- `clash` previously declared here
 ...
-LL |         fn clash(x: u64);
-   |         ^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+LL |             fn clash(x: u64);
+   |             ^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
 note: the lint level is defined here
   --> $DIR/clashing-extern-fn.rs:4:9
@@ -15,20 +15,8 @@ LL | #![warn(clashing_extern_declarations)]
    = note: expected `unsafe extern "C" fn(u8)`
               found `unsafe extern "C" fn(u64)`
 
-warning: `extern_fn` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:39:9
-   |
-LL |     fn extern_fn(x: u64);
-   |     --------------------- `extern_fn` previously declared here
-...
-LL |         fn extern_fn(x: u32);
-   |         ^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
-   |
-   = note: expected `unsafe extern "C" fn(u64)`
-              found `unsafe extern "C" fn(u32)`
-
 warning: `extern_link_name` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:64:9
+  --> $DIR/clashing-extern-fn.rs:52:9
    |
 LL | /     #[link_name = "extern_link_name"]
 LL | |     fn some_new_name(x: i16);
@@ -41,7 +29,7 @@ LL |           fn extern_link_name(x: u32);
               found `unsafe extern "C" fn(u32)`
 
 warning: `some_other_extern_link_name` redeclares `some_other_new_name` with a different signature
-  --> $DIR/clashing-extern-fn.rs:67:9
+  --> $DIR/clashing-extern-fn.rs:55:9
    |
 LL |       fn some_other_new_name(x: i16);
    |       ------------------------------- `some_other_new_name` previously declared here
@@ -55,7 +43,7 @@ LL | |         fn some_other_extern_link_name(x: u32);
               found `unsafe extern "C" fn(u32)`
 
 warning: `other_both_names_different` redeclares `link_name_same` with a different signature
-  --> $DIR/clashing-extern-fn.rs:71:9
+  --> $DIR/clashing-extern-fn.rs:59:9
    |
 LL | /     #[link_name = "link_name_same"]
 LL | |     fn both_names_different(x: i16);
@@ -70,7 +58,7 @@ LL | |         fn other_both_names_different(x: u32);
               found `unsafe extern "C" fn(u32)`
 
 warning: `different_mod` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:84:9
+  --> $DIR/clashing-extern-fn.rs:72:9
    |
 LL |         fn different_mod(x: u8);
    |         ------------------------ `different_mod` previously declared here
@@ -82,7 +70,7 @@ LL |         fn different_mod(x: u64);
               found `unsafe extern "C" fn(u64)`
 
 warning: `variadic_decl` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:94:9
+  --> $DIR/clashing-extern-fn.rs:82:9
    |
 LL |     fn variadic_decl(x: u8, ...);
    |     ----------------------------- `variadic_decl` previously declared here
@@ -94,7 +82,7 @@ LL |         fn variadic_decl(x: u8);
               found `unsafe extern "C" fn(u8)`
 
 warning: `weigh_banana` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:154:13
+  --> $DIR/clashing-extern-fn.rs:142:13
    |
 LL |             fn weigh_banana(count: *const Banana) -> u64;
    |             --------------------------------------------- `weigh_banana` previously declared here
@@ -106,7 +94,7 @@ LL |             fn weigh_banana(count: *const Banana) -> u64;
               found `unsafe extern "C" fn(*const banana::three::Banana) -> u64`
 
 warning: `draw_point` redeclared with a different signature
-  --> $DIR/clashing-extern-fn.rs:183:13
+  --> $DIR/clashing-extern-fn.rs:171:13
    |
 LL |             fn draw_point(p: Point);
    |             ------------------------ `draw_point` previously declared here
@@ -117,5 +105,5 @@ LL |             fn draw_point(p: Point);
    = note: expected `unsafe extern "C" fn(sameish_members::a::Point)`
               found `unsafe extern "C" fn(sameish_members::b::Point)`
 
-warning: 9 warnings emitted
+warning: 8 warnings emitted
 
