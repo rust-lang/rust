@@ -9,7 +9,7 @@
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_infer::infer::InferOk;
+use rustc_infer::infer::{self, InferOk};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::ty::{ToPolyTraitRef, ToPredicate, WithConstness};
@@ -342,20 +342,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> ImplSourceObjectData<'tcx, PredicateObligation<'tcx>> {
         debug!("confirm_object_candidate({:?})", obligation);
 
-        // FIXME(nmatsakis) skipping binder here seems wrong -- we should
-        // probably flatten the binder from the obligation and the binder
-        // from the object. Have to try to make a broken test case that
-        // results.
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let poly_trait_ref = match self_ty.kind() {
-            ty::Dynamic(data, ..) => data
-                .principal()
-                .unwrap_or_else(|| {
-                    span_bug!(obligation.cause.span, "object candidate with no principal")
-                })
-                .with_self_ty(self.tcx(), self_ty),
+        let self_ty = self.infcx.replace_bound_vars_with_placeholders(&obligation.self_ty());
+        let data = match self_ty.kind() {
+            ty::Dynamic(data, ..) => data,
             _ => span_bug!(obligation.cause.span, "object candidate with non-object"),
         };
+
+        let poly_trait_ref = data
+            .principal()
+            .unwrap_or_else(|| {
+                span_bug!(obligation.cause.span, "object candidate with no principal")
+            })
+            .with_self_ty(self.tcx(), self_ty);
 
         let mut upcast_trait_ref = None;
         let mut nested = vec![];
@@ -388,6 +386,46 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             vtable_base = nonmatching.map(|t| super::util::count_own_vtable_entries(tcx, t)).sum();
         }
 
+        for bound in data.skip_binder() {
+            match bound {
+                ty::ExistentialPredicate::Projection(projection) => {
+                    // This maybe belongs in wf, but that can't (doesn't) handle
+                    // higher-ranked things.
+                    // Prevent, e.g., `dyn Iterator<Item = str>`.
+                    // FIXME(generic_associated_types): We need some way to
+                    // ensure that for `dyn for<'a> X<Item<'a> = &'a ()>` the
+                    // bound holds for all `'a`.
+                    let (infer_projection, _) = self.infcx.replace_bound_vars_with_fresh_vars(
+                        obligation.cause.span,
+                        infer::HigherRankedType,
+                        &ty::Binder::bind(projection),
+                    );
+                    let substs: Vec<_> =
+                        iter::once(self_ty.into()).chain(infer_projection.substs).collect();
+                    let bounds =
+                        self.tcx().item_bounds(projection.item_def_id).iter().map(|bound| {
+                            // In the example above, `bound` is `<Self as Iterator>::Item: Sized`
+                            // `subst_bound` is `str: Sized`.
+                            let subst_bound = util::subst_assoc_item_bound(
+                                self.tcx(),
+                                bound,
+                                infer_projection.ty,
+                                &substs,
+                            );
+                            Obligation::new(
+                                obligation.cause.clone(),
+                                obligation.param_env.clone(),
+                                subst_bound,
+                            )
+                        });
+                    debug!("confirm_object_candidate: adding bounds: {:?}", bounds);
+                    nested.extend(bounds);
+                }
+                ty::ExistentialPredicate::Trait(_) | ty::ExistentialPredicate::AutoTrait(_) => {}
+            }
+        }
+
+        debug!("confirm_object_candidate: nested: {:?}", nested);
         ImplSourceObjectData { upcast_trait_ref: upcast_trait_ref.unwrap(), vtable_base, nested }
     }
 
