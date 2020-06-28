@@ -333,31 +333,31 @@ pub trait Hasher {
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i16(&mut self, i: i16) {
-        self.write(&i.to_ne_bytes())
+        self.write_u16(i as u16)
     }
     /// Writes a single `i32` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i32(&mut self, i: i32) {
-        self.write(&i.to_ne_bytes())
+        self.write_u32(i as u32)
     }
     /// Writes a single `i64` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i64(&mut self, i: i64) {
-        self.write(&i.to_ne_bytes())
+        self.write_u64(i as u64)
     }
     /// Writes a single `i128` into this hasher.
     #[inline]
     #[stable(feature = "i128", since = "1.26.0")]
     fn write_i128(&mut self, i: i128) {
-        self.write(&i.to_ne_bytes())
+        self.write_u128(i as u128)
     }
     /// Writes a single `isize` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_isize(&mut self, i: isize) {
-        self.write(&i.to_ne_bytes())
+        self.write_usize(i as usize)
     }
 }
 
