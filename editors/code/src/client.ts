@@ -66,7 +66,7 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                         return Promise.resolve(null);
                     });
             },
-            // Using custom handling of CodeActions where each code action is resloved lazily
+            // Using custom handling of CodeActions where each code action is resolved lazily
             // That's why we are not waiting for any command or edits
             async provideCodeActions(document: vscode.TextDocument, range: vscode.Range, context: vscode.CodeActionContext, token: vscode.CancellationToken, _next: lc.ProvideCodeActionsSignature) {
                 const params: lc.CodeActionParams = {
@@ -87,7 +87,8 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                             continue;
                         }
                         assert(isCodeActionWithoutEditsAndCommands(item), "We don't expect edits or commands here");
-                        const action = new vscode.CodeAction(item.title);
+                        const kind = client.protocol2CodeConverter.asCodeActionKind((item as any).kind);
+                        const action = new vscode.CodeAction(item.title, kind);
                         const group = (item as any).group;
                         const id = (item as any).id;
                         const resolveParams: ra.ResolveCodeActionParams = {
@@ -116,6 +117,7 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
                             result[index] = items[0];
                         } else {
                             const action = new vscode.CodeAction(group);
+                            action.kind = items[0].kind;
                             action.command = {
                                 command: "rust-analyzer.applyActionGroup",
                                 title: "",
