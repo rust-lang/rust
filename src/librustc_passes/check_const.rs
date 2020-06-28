@@ -70,7 +70,7 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
 struct CheckConstVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     const_kind: Option<hir::ConstContext>,
-    def_id: Option<DefId>,
+    def_id: Option<LocalDefId>,
 }
 
 impl<'tcx> CheckConstVisitor<'tcx> {
@@ -94,7 +94,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
             // If `def_id` is `None`, we don't need to consider stability attributes.
             let def_id = match def_id {
-                Some(x) => x,
+                Some(x) => x.to_def_id(),
                 None => return true,
             };
 
@@ -164,7 +164,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
     fn recurse_into(
         &mut self,
         kind: Option<hir::ConstContext>,
-        def_id: Option<DefId>,
+        def_id: Option<LocalDefId>,
         f: impl FnOnce(&mut Self),
     ) {
         let parent_def_id = self.def_id;
@@ -192,7 +192,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
     fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let owner = self.tcx.hir().body_owner_def_id(body.id());
         let kind = self.tcx.hir().body_const_context(owner);
-        self.recurse_into(kind, Some(owner.to_def_id()), |this| intravisit::walk_body(this, body));
+        self.recurse_into(kind, Some(owner), |this| intravisit::walk_body(this, body));
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
