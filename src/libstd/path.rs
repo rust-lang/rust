@@ -2503,11 +2503,20 @@ impl Path {
     /// # See Also
     ///
     /// This is a convenience function that coerces errors to false. If you want to
-    /// check errors, call [fs::metadata] and handle its Result. Then call
-    /// [fs::Metadata::is_file] if it was Ok.
+    /// check errors, call [`fs::metadata`] and handle its Result. Then call
+    /// [`fs::Metadata::is_file`] if it was Ok.
     ///
-    /// [fs::metadata]: ../../std/fs/fn.metadata.html
-    /// [fs::Metadata::is_file]: ../../std/fs/struct.Metadata.html#method.is_file
+    /// When the goal is simply to read from (or write to) the source, the most
+    /// reliable way to test the source can be read (or written to) is to open
+    /// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
+    /// a Unix-like system for example. See [`File::open`] or
+    /// [`OpenOptions::open`] for more information.
+    ///
+    /// [`fs::metadata`]: ../../std/fs/fn.metadata.html
+    /// [`fs::Metadata`]: ../../std/fs/struct.Metadata.html
+    /// [`fs::Metadata::is_file`]: ../../std/fs/struct.Metadata.html#method.is_file
+    /// [`File::open`]: ../../std/fs/struct.File.html#method.open
+    /// [`OpenOptions::open`]: ../../std/fs/struct.OpenOptions.html#method.open
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_file(&self) -> bool {
         fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)
