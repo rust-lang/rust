@@ -245,7 +245,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{self, PhantomData, Unpin, Unsize};
-use core::mem::{self, align_of, align_of_val_raw, forget, size_of_val};
+use core::mem::{self, align_of_val_raw, forget, size_of_val};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -1704,9 +1704,18 @@ impl<T> Weak<T> {
     /// [`null`]: ../../std/ptr/fn.null.html
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
-        let offset = data_offset_sized::<T>();
-        let ptr = self.ptr.cast::<u8>().as_ptr().wrapping_offset(offset);
-        ptr as *const T
+        let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);
+        let fake_ptr = ptr as *mut T;
+
+        // SAFETY: we must offset the pointer manually, and said pointer may be
+        // a dangling weak (usize::MAX). data_offset is safe to call, because we
+        // know a pointer to unsized T must be derived from a real unsized T,
+        // because dangling weaks are only created for sized T. wrapping_offset
+        // is used so that we can use the same code path for dangling weak refs.
+        unsafe {
+            let offset = data_offset(&raw const (*ptr).value);
+            set_data_ptr(fake_ptr, (ptr as *mut u8).wrapping_offset(offset))
+        }
     }
 
     /// Consumes the `Weak<T>` and turns it into a raw pointer.
@@ -2115,13 +2124,6 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Note: This is a detail of the current implementation of the compiler,
     // and is not a guaranteed language detail. Do not rely on it outside of std.
     unsafe { data_offset_align(align_of_val_raw(ptr)) }
-}
-
-/// Computes the offset of the data field within `RcBox`.
-///
-/// Unlike [`data_offset`], this doesn't need the pointer, but it works only on `T: Sized`.
-fn data_offset_sized<T>() -> isize {
-    data_offset_align(align_of::<T>())
 }
 
 #[inline]
