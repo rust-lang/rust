@@ -873,8 +873,8 @@ impl<'tcx> CommonConsts<'tcx> {
 // conflict.
 #[derive(Debug)]
 pub struct FreeRegionInfo {
-    // def id corresponding to FreeRegion
-    pub def_id: DefId,
+    // `LocalDefId` corresponding to FreeRegion
+    pub def_id: LocalDefId,
     // the bound region corresponding to FreeRegion
     pub boundregion: ty::BoundRegion,
     // checks if bound region is in Impl Item
@@ -1412,14 +1412,17 @@ impl<'tcx> TyCtxt<'tcx> {
     // Returns the `DefId` and the `BoundRegion` corresponding to the given region.
     pub fn is_suitable_region(&self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
         let (suitable_region_binding_scope, bound_region) = match *region {
-            ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
-            ty::ReEarlyBound(ref ebr) => {
-                (self.parent(ebr.def_id).unwrap(), ty::BoundRegion::BrNamed(ebr.def_id, ebr.name))
+            ty::ReFree(ref free_region) => {
+                (free_region.scope.expect_local(), free_region.bound_region)
             }
+            ty::ReEarlyBound(ref ebr) => (
+                self.parent(ebr.def_id).unwrap().expect_local(),
+                ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
+            ),
             _ => return None, // not a free region
         };
 
-        let hir_id = self.hir().as_local_hir_id(suitable_region_binding_scope.expect_local());
+        let hir_id = self.hir().as_local_hir_id(suitable_region_binding_scope);
         let is_impl_item = match self.hir().find(hir_id) {
             Some(Node::Item(..) | Node::TraitItem(..)) => false,
             Some(Node::ImplItem(..)) => {
@@ -1436,8 +1439,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Given a `DefId` for an `fn`, return all the `dyn` and `impl` traits in its return type.
-    pub fn return_type_impl_or_dyn_traits(&self, scope_def_id: DefId) -> Vec<&'tcx hir::Ty<'tcx>> {
-        let hir_id = self.hir().as_local_hir_id(scope_def_id.expect_local());
+    pub fn return_type_impl_or_dyn_traits(
+        &self,
+        scope_def_id: LocalDefId,
+    ) -> Vec<&'tcx hir::Ty<'tcx>> {
+        let hir_id = self.hir().as_local_hir_id(scope_def_id);
         let hir_output = match self.hir().get(hir_id) {
             Node::Item(hir::Item {
                 kind:
@@ -1480,9 +1486,9 @@ impl<'tcx> TyCtxt<'tcx> {
         v.0
     }
 
-    pub fn return_type_impl_trait(&self, scope_def_id: DefId) -> Option<(Ty<'tcx>, Span)> {
+    pub fn return_type_impl_trait(&self, scope_def_id: LocalDefId) -> Option<(Ty<'tcx>, Span)> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
-        let hir_id = self.hir().as_local_hir_id(scope_def_id.expect_local());
+        let hir_id = self.hir().as_local_hir_id(scope_def_id);
         match self.hir().get(hir_id) {
             Node::Item(item) => {
                 match item.kind {
@@ -1512,8 +1518,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     // Checks if the bound region is in Impl Item.
-    pub fn is_bound_region_in_impl_item(&self, suitable_region_binding_scope: DefId) -> bool {
-        let container_id = self.associated_item(suitable_region_binding_scope).container.id();
+    pub fn is_bound_region_in_impl_item(&self, suitable_region_binding_scope: LocalDefId) -> bool {
+        let container_id =
+            self.associated_item(suitable_region_binding_scope.to_def_id()).container.id();
         if self.impl_trait_ref(container_id).is_some() {
             // For now, we do not try to target impls of traits. This is
             // because this message is going to suggest that the user

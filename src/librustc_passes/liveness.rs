@@ -89,7 +89,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, Node};
 use rustc_middle::hir::map::Map;
@@ -172,7 +172,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     }
 }
 
-fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: DefId) {
+fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut IrMaps::new(tcx, module_def_id).as_deep_visitor(),
@@ -248,7 +248,7 @@ enum VarKind {
 
 struct IrMaps<'tcx> {
     tcx: TyCtxt<'tcx>,
-    body_owner: DefId,
+    body_owner: LocalDefId,
     num_live_nodes: usize,
     num_vars: usize,
     live_node_map: HirIdMap<LiveNode>,
@@ -259,7 +259,7 @@ struct IrMaps<'tcx> {
 }
 
 impl IrMaps<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, body_owner: DefId) -> IrMaps<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, body_owner: LocalDefId) -> IrMaps<'tcx> {
         IrMaps {
             tcx,
             body_owner,
@@ -349,7 +349,7 @@ fn visit_fn<'tcx>(
 
     // swap in a new set of IR maps for this function body:
     let def_id = ir.tcx.hir().local_def_id(id);
-    let mut fn_maps = IrMaps::new(ir.tcx, def_id.to_def_id());
+    let mut fn_maps = IrMaps::new(ir.tcx, def_id);
 
     // Don't run unused pass for #[derive()]
     if let FnKind::Method(..) = fk {
@@ -484,7 +484,7 @@ fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
             }
             ir.set_captures(expr.hir_id, call_caps);
             let old_body_owner = ir.body_owner;
-            ir.body_owner = closure_def_id.to_def_id();
+            ir.body_owner = closure_def_id;
             intravisit::walk_expr(ir, expr);
             ir.body_owner = old_body_owner;
         }
@@ -937,7 +937,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             for (&var_hir_id, upvar) in upvars.iter().rev() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_hir_id },
-                    closure_expr_id: self.ir.body_owner.expect_local(),
+                    closure_expr_id: self.ir.body_owner,
                 };
                 match self.tables.upvar_capture(upvar_id) {
                     ty::UpvarCapture::ByRef(_) => {
@@ -1614,7 +1614,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
             let var = self.variable(var_hir_id, upvar.span);
             let upvar_id = ty::UpvarId {
                 var_path: ty::UpvarPath { hir_id: var_hir_id },
-                closure_expr_id: self.ir.body_owner.expect_local(),
+                closure_expr_id: self.ir.body_owner,
             };
             match self.tables.upvar_capture(upvar_id) {
                 ty::UpvarCapture::ByValue => {}
