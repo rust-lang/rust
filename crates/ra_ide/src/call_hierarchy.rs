@@ -355,4 +355,41 @@ fn caller3() {
             &["caller3 FN_DEF FileId(1) 66..83 69..76 : [52..59]"],
         );
     }
+
+    #[test]
+    fn test_call_hierarchy_issue_5103() {
+        check_hierarchy(
+            r#"
+fn a() {
+    b()
+}
+
+fn b() {}
+
+fn main() {
+    a<|>()
+}
+"#,
+            "a FN_DEF FileId(1) 0..18 3..4",
+            &["main FN_DEF FileId(1) 31..52 34..38 : [47..48]"],
+            &["b FN_DEF FileId(1) 20..29 23..24 : [13..14]"],
+        );
+
+        check_hierarchy(
+            r#"
+fn a() {
+    b<|>()
+}
+
+fn b() {}
+
+fn main() {
+    a()
+}
+"#,
+            "b FN_DEF FileId(1) 20..29 23..24",
+            &["a FN_DEF FileId(1) 0..18 3..4 : [13..14]"],
+            &[],
+        );
+    }
 }
