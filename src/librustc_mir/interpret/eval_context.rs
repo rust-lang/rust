@@ -132,6 +132,10 @@ pub enum LocalValue<Tag = ()> {
 }
 
 impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
+    /// Read the local's value or error if the local is not yet live or not live anymore.
+    ///
+    /// Note: This may only be invoked from the `Machine::access_local` hook and not from
+    /// anywhere else. You may be invalidating machine invariants if you do!
     pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
         match self.value {
             LocalValue::Dead => throw_ub!(DeadLocal),
@@ -144,6 +148,9 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
 
     /// Overwrite the local.  If the local can be overwritten in place, return a reference
     /// to do so; otherwise return the `MemPlace` to consult instead.
+    ///
+    /// Note: This may only be invoked from the `Machine::access_local_mut` hook and not from
+    /// anywhere else. You may be invalidating machine invariants if you do!
     pub fn access_mut(
         &mut self,
     ) -> InterpResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
