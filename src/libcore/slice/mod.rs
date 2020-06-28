@@ -2665,7 +2665,7 @@ impl<T> [T] {
     }
 
     /// Returns the index of the partition point according to the given predicate
-    // (the index of the first element of the second partition).
+    /// (the index of the first element of the second partition).
     ///
     /// The slice is assumed to be partitioned according to the given predicate.
     /// This means that all elements for which the predicate returns true are at the start of the slice
