@@ -2688,7 +2688,7 @@ impl<T> [T] {
     /// assert!(v[..i].iter().all(|&x| x < 5));
     /// assert!(v[i..].iter().all(|&x| !(x < 5)));
     /// ```
-    #[unstable(feature = "partition_point", reason = "new API", issue = "99999")]
+    #[unstable(feature = "partition_point", reason = "new API", issue = "73831")]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
     where
         P: FnMut(&T) -> bool,
