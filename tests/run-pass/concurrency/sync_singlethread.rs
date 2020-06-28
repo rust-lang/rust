@@ -6,10 +6,7 @@ use std::hint;
 
 fn main() {
     test_mutex_stdlib();
-    #[cfg(not(target_os = "windows"))] // TODO: implement RwLock on Windows
-    {
-        test_rwlock_stdlib();
-    }
+    test_rwlock_stdlib();
     test_spin_loop_hint();
     test_thread_yield_now();
 }
@@ -24,7 +21,6 @@ fn test_mutex_stdlib() {
     drop(m);
 }
 
-#[cfg(not(target_os = "windows"))]
 fn test_rwlock_stdlib() {
     use std::sync::RwLock;
     let rw = RwLock::new(0);

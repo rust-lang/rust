@@ -1,34 +1,24 @@
 use rustc_middle::mir;
 
 use crate::*;
-use helpers::check_arg_count;
+use shims::posix::dlsym as posix;
+use shims::windows::dlsym as windows;
 
 #[derive(Debug, Copy, Clone)]
+#[allow(non_camel_case_types)]
 pub enum Dlsym {
-    GetEntropy,
+    Posix(posix::Dlsym),
+    Windows(windows::Dlsym),
 }
 
 impl Dlsym {
     // Returns an error for unsupported symbols, and None if this symbol
     // should become a NULL pointer (pretend it does not exist).
     pub fn from_str(name: &[u8], target_os: &str) -> InterpResult<'static, Option<Dlsym>> {
-        use self::Dlsym::*;
-        let name = String::from_utf8_lossy(name);
+        let name = &*String::from_utf8_lossy(name);
         Ok(match target_os {
-            "linux" => match &*name {
-                "__pthread_get_minstack" => None,
-                _ => throw_unsup_format!("unsupported Linux dlsym: {}", name),
-            }
-            "macos" => match &*name {
-                "getentropy" => Some(GetEntropy),
-                _ => throw_unsup_format!("unsupported macOS dlsym: {}", name),
-            }
-            "windows" => match &*name {
-                "SetThreadStackGuarantee" => None,
-                "AcquireSRWLockExclusive" => None,
-                "GetSystemTimePreciseAsFileTime" => None,
-                _ => throw_unsup_format!("unsupported Windows dlsym: {}", name),
-            }
+            "linux" | "macos" => posix::Dlsym::from_str(name, target_os)?.map(Dlsym::Posix),
+            "windows" => windows::Dlsym::from_str(name)?.map(Dlsym::Windows),
             os => bug!("dlsym not implemented for target_os {}", os),
         })
     }
@@ -42,23 +32,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx> {
-        use self::Dlsym::*;
-
         let this = self.eval_context_mut();
-        let (dest, ret) = ret.expect("we don't support any diverging dlsym");
-
         match dlsym {
-            GetEntropy => {
-                let &[ptr, len] = check_arg_count(args)?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
-                let len = this.read_scalar(len)?.to_machine_usize(this)?;
-                this.gen_random(ptr, len)?;
-                this.write_null(dest)?;
-            }
+            Dlsym::Posix(dlsym) => posix::EvalContextExt::call_dlsym(this, dlsym, args, ret),
+            Dlsym::Windows(dlsym) => windows::EvalContextExt::call_dlsym(this, dlsym, args, ret),
         }
-
-        this.dump_place(*dest);
-        this.go_to_block(ret);
-        Ok(())
     }
 }

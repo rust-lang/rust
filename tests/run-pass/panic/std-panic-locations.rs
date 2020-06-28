@@ -1,4 +1,3 @@
-// ignore-windows: Unwind panicking does not currently work on Windows
 #![feature(option_expect_none, option_unwrap_none)]
 //! Test that panic locations for `#[track_caller]` functions in std have the correct
 //! location reported.

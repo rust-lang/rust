@@ -1,1 +1,1 @@
-thread 'main' panicked at 'panicking from libcore', $DIR/panic3.rs:3:5
+thread 'main' panicked at 'panicking from libcore', $DIR/panic3.rs:2:5

@@ -230,7 +230,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn schedule_windows_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread();
-        assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows not supported");
+        assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows is not supported");
         // Windows has a special magic linker section that is run on certain events.
         // Instead of searching for that section and supporting arbitrary hooks in there
         // (that would be basically https://github.com/rust-lang/miri/issues/450),

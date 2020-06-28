@@ -1,4 +1,3 @@
-// ignore-windows: Unwind panicking does not currently work on Windows
 fn main() {
     #[cfg(target_pointer_width="64")]
     let bad = unsafe {

@@ -1,1 +1,1 @@
-thread 'main' panicked at 'panicking from libstd', $DIR/panic1.rs:3:5
+thread 'main' panicked at 'panicking from libstd', $DIR/panic1.rs:2:5

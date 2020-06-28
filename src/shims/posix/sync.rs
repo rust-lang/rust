@@ -1,57 +1,10 @@
 use std::convert::TryInto;
 use std::time::{Duration, SystemTime};
-use std::ops::Not;
-
-use rustc_middle::ty::{layout::TyAndLayout, TyKind, TypeAndMut};
-use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
 use stacked_borrows::Tag;
 use thread::Time;
 
-
-fn assert_ptr_target_min_size<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
-    operand: OpTy<'tcx, Tag>,
-    min_size: u64,
-) -> InterpResult<'tcx, ()> {
-    let target_ty = match operand.layout.ty.kind {
-        TyKind::RawPtr(TypeAndMut { ty, mutbl: _ }) => ty,
-        _ => panic!("Argument to pthread function was not a raw pointer"),
-    };
-    let target_layout = ecx.layout_of(target_ty)?;
-    assert!(target_layout.size.bytes() >= min_size);
-    Ok(())
-}
-
-fn get_at_offset<'mir, 'tcx: 'mir>(
-    ecx: &MiriEvalContext<'mir, 'tcx>,
-    op: OpTy<'tcx, Tag>,
-    offset: u64,
-    layout: TyAndLayout<'tcx>,
-    min_size: u64,
-) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    // Ensure that the following read at an offset to the attr pointer is within bounds
-    assert_ptr_target_min_size(ecx, op, min_size)?;
-    let op_place = ecx.deref_operand(op)?;
-    let value_place = op_place.offset(Size::from_bytes(offset), MemPlaceMeta::None, layout, ecx)?;
-    ecx.read_scalar(value_place.into())
-}
-
-fn set_at_offset<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    op: OpTy<'tcx, Tag>,
-    offset: u64,
-    value: impl Into<ScalarMaybeUninit<Tag>>,
-    layout: TyAndLayout<'tcx>,
-    min_size: u64,
-) -> InterpResult<'tcx, ()> {
-    // Ensure that the following write at an offset to the attr pointer is within bounds
-    assert_ptr_target_min_size(ecx, op, min_size)?;
-    let op_place = ecx.deref_operand(op)?;
-    let value_place = op_place.offset(Size::from_bytes(offset), MemPlaceMeta::None, layout, ecx)?;
-    ecx.write_scalar(value.into(), value_place.into())
-}
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
 
@@ -65,8 +18,6 @@ fn set_at_offset<'mir, 'tcx: 'mir>(
 /// setting this bit flag to the `PTHREAD_MUTEX_NORMAL` mutexes. See the comment
 /// in `pthread_mutexattr_settype` function.
 const PTHREAD_MUTEX_NORMAL_FLAG: i32 = 0x8000000;
-
-const PTHREAD_MUTEXATTR_T_MIN_SIZE: u64 = 4;
 
 fn is_mutex_kind_default<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
@@ -88,7 +39,7 @@ fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     attr_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    get_at_offset(ecx, attr_op, 0, ecx.machine.layouts.i32, PTHREAD_MUTEXATTR_T_MIN_SIZE)
+    ecx.read_scalar_at_offset(attr_op, 0, ecx.machine.layouts.i32)
 }
 
 fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
@@ -96,7 +47,7 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
     attr_op: OpTy<'tcx, Tag>,
     kind: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    set_at_offset(ecx, attr_op, 0, kind, ecx.machine.layouts.i32, PTHREAD_MUTEXATTR_T_MIN_SIZE)
+    ecx.write_scalar_at_offset(attr_op, 0, kind, ecx.machine.layouts.i32)
 }
 
 // pthread_mutex_t is between 24 and 48 bytes, depending on the platform.
@@ -108,14 +59,12 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
 // bytes 12-15 or 16-19 (depending on platform): mutex kind, as an i32
 // (the kind has to be at its offset for compatibility with static initializer macros)
 
-const PTHREAD_MUTEX_T_MIN_SIZE: u64 = 24;
-
 fn mutex_get_kind<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    get_at_offset(ecx, mutex_op, offset, ecx.machine.layouts.i32, PTHREAD_MUTEX_T_MIN_SIZE)
+    ecx.read_scalar_at_offset(mutex_op, offset, ecx.machine.layouts.i32)
 }
 
 fn mutex_set_kind<'mir, 'tcx: 'mir>(
@@ -124,14 +73,14 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
     kind: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    set_at_offset(ecx, mutex_op, offset, kind, ecx.machine.layouts.i32, PTHREAD_MUTEX_T_MIN_SIZE)
+    ecx.write_scalar_at_offset(mutex_op, offset, kind, ecx.machine.layouts.i32)
 }
 
 fn mutex_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    get_at_offset(ecx, mutex_op, 4, ecx.machine.layouts.u32, PTHREAD_MUTEX_T_MIN_SIZE)
+    ecx.read_scalar_at_offset(mutex_op, 4, ecx.machine.layouts.u32)
 }
 
 fn mutex_set_id<'mir, 'tcx: 'mir>(
@@ -139,7 +88,7 @@ fn mutex_set_id<'mir, 'tcx: 'mir>(
     mutex_op: OpTy<'tcx, Tag>,
     id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    set_at_offset(ecx, mutex_op, 4, id, ecx.machine.layouts.u32, PTHREAD_MUTEX_T_MIN_SIZE)
+    ecx.write_scalar_at_offset(mutex_op, 4, id, ecx.machine.layouts.u32)
 }
 
 fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
@@ -165,13 +114,11 @@ fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
 // (need to avoid this because it is set by static initializer macros)
 // bytes 4-7: rwlock id as u32 or 0 if id is not assigned yet.
 
-const PTHREAD_RWLOCK_T_MIN_SIZE: u64 = 32;
-
 fn rwlock_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    get_at_offset(ecx, rwlock_op, 4, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
+    ecx.read_scalar_at_offset(rwlock_op, 4, ecx.machine.layouts.u32)
 }
 
 fn rwlock_set_id<'mir, 'tcx: 'mir>(
@@ -179,7 +126,7 @@ fn rwlock_set_id<'mir, 'tcx: 'mir>(
     rwlock_op: OpTy<'tcx, Tag>,
     id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    set_at_offset(ecx, rwlock_op, 4, id, ecx.machine.layouts.u32, PTHREAD_RWLOCK_T_MIN_SIZE)
+    ecx.write_scalar_at_offset(rwlock_op, 4, id, ecx.machine.layouts.u32)
 }
 
 fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
@@ -204,13 +151,11 @@ fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
 // store an i32 in the first four bytes equal to the corresponding libc clock id constant
 // (e.g. CLOCK_REALTIME).
 
-const PTHREAD_CONDATTR_T_MIN_SIZE: u64 = 4;
-
 fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     attr_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    get_at_offset(ecx, attr_op, 0, ecx.machine.layouts.i32, PTHREAD_CONDATTR_T_MIN_SIZE)
+    ecx.read_scalar_at_offset(attr_op, 0, ecx.machine.layouts.i32)
 }
 
 fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
@@ -218,7 +163,7 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
     attr_op: OpTy<'tcx, Tag>,
     clock_id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    set_at_offset(ecx, attr_op, 0, clock_id, ecx.machine.layouts.i32, PTHREAD_CONDATTR_T_MIN_SIZE)
+    ecx.write_scalar_at_offset(attr_op, 0, clock_id, ecx.machine.layouts.i32)
 }
 
 // pthread_cond_t
@@ -230,13 +175,11 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
 // bytes 4-7: the conditional variable id as u32 or 0 if id is not assigned yet.
 // bytes 8-11: the clock id constant as i32
 
-const PTHREAD_COND_T_MIN_SIZE: u64 = 12;
-
 fn cond_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     cond_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    get_at_offset(ecx, cond_op, 4, ecx.machine.layouts.u32, PTHREAD_COND_T_MIN_SIZE)
+    ecx.read_scalar_at_offset(cond_op, 4, ecx.machine.layouts.u32)
 }
 
 fn cond_set_id<'mir, 'tcx: 'mir>(
@@ -244,7 +187,7 @@ fn cond_set_id<'mir, 'tcx: 'mir>(
     cond_op: OpTy<'tcx, Tag>,
     id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    set_at_offset(ecx, cond_op, 4, id, ecx.machine.layouts.u32, PTHREAD_COND_T_MIN_SIZE)
+    ecx.write_scalar_at_offset(cond_op, 4, id, ecx.machine.layouts.u32)
 }
 
 fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
@@ -267,7 +210,7 @@ fn cond_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     cond_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    get_at_offset(ecx, cond_op, 8, ecx.machine.layouts.i32, PTHREAD_COND_T_MIN_SIZE)
+    ecx.read_scalar_at_offset(cond_op, 8, ecx.machine.layouts.i32)
 }
 
 fn cond_set_clock_id<'mir, 'tcx: 'mir>(
@@ -275,7 +218,7 @@ fn cond_set_clock_id<'mir, 'tcx: 'mir>(
     cond_op: OpTy<'tcx, Tag>,
     clock_id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    set_at_offset(ecx, cond_op, 8, clock_id, ecx.machine.layouts.i32, PTHREAD_COND_T_MIN_SIZE)
+    ecx.write_scalar_at_offset(cond_op, 8, clock_id, ecx.machine.layouts.i32)
 }
 
 /// Try to reacquire the mutex associated with the condition variable after we
@@ -604,27 +547,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let active_thread = this.get_active_thread();
 
         if this.rwlock_reader_unlock(id, active_thread) {
-            // The thread was a reader.
-            if this.rwlock_is_locked(id).not() {
-                // No more readers owning the lock. Give it to a writer if there
-                // is any.
-                this.rwlock_dequeue_and_lock_writer(id);
-            }
             Ok(0)
-        } else if Some(active_thread) == this.rwlock_writer_unlock(id) {
-            // The thread was a writer.
-            //
-            // We are prioritizing writers here against the readers. As a
-            // result, not only readers can starve writers, but also writers can
-            // starve readers.
-            if this.rwlock_dequeue_and_lock_writer(id) {
-                // Someone got the write lock, nice.
-            } else {
-                // Give the lock to all readers.
-                while this.rwlock_dequeue_and_lock_reader(id) {
-                    // Rinse and repeat.
-                }
-            }
+        } else if this.rwlock_writer_unlock(id, active_thread) {
             Ok(0)
         } else {
             throw_ub_format!("unlocked an rwlock that was not locked by the active thread");

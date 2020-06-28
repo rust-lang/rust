@@ -3,7 +3,7 @@
 
 use std::thread;
 
-// error-pattern: Miri does not support threading
+// error-pattern: Miri does not support concurrency on Windows
 
 fn main() {
     thread::spawn(|| {});

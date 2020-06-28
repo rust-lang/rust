@@ -1,5 +1,4 @@
 // error-pattern: the evaluated program aborted
-// ignore-windows (panics dont work on Windows)
 
 struct Foo;
 impl Drop for Foo {
