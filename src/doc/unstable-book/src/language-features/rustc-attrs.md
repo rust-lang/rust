@@ -3,6 +3,9 @@
 This feature has no tracking issue, and is therefore internal to
 the compiler, not being intended for general use.
 
+Note: `rustc_attrs` enables many rustc-internal attributes and this page
+only discuss a few of them.
+
 ------------------------
 
 The `rustc_attrs` feature allows debugging rustc type layouts by using
