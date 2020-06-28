@@ -620,17 +620,11 @@ pub enum GenericPredicate {
 
 impl GenericPredicate {
     pub fn is_error(&self) -> bool {
-        match self {
-            GenericPredicate::Error => true,
-            _ => false,
-        }
+        matches!(self, GenericPredicate::Error)
     }
 
     pub fn is_implemented(&self) -> bool {
-        match self {
-            GenericPredicate::Implemented(_) => true,
-            _ => false,
-        }
+        matches!(self, GenericPredicate::Implemented(_))
     }
 
     pub fn trait_ref(&self, db: &dyn HirDatabase) -> Option<TraitRef> {

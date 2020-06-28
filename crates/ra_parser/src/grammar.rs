@@ -73,10 +73,7 @@ pub(crate) mod fragments {
     // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
     pub(crate) fn meta_item(p: &mut Parser) {
         fn is_delimiter(p: &mut Parser) -> bool {
-            match p.current() {
-                T!['{'] | T!['('] | T!['['] => true,
-                _ => false,
-            }
+            matches!(p.current(), T!['{'] | T!['('] | T!['['])
         }
 
         if is_delimiter(p) {

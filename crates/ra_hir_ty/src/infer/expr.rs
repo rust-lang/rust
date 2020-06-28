@@ -785,11 +785,7 @@ impl<'a> InferenceContext<'a> {
         for &check_closures in &[false, true] {
             let param_iter = param_tys.iter().cloned().chain(repeat(Ty::Unknown));
             for (&arg, param_ty) in args.iter().zip(param_iter) {
-                let is_closure = match &self.body[arg] {
-                    Expr::Lambda { .. } => true,
-                    _ => false,
-                };
-
+                let is_closure = matches!(&self.body[arg], Expr::Lambda { .. });
                 if is_closure != check_closures {
                     continue;
                 }

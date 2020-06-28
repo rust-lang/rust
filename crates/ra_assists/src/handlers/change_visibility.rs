@@ -1,15 +1,12 @@
 use ra_syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode,
-    SyntaxKind::{
-        ATTR, COMMENT, CONST_DEF, ENUM_DEF, FN_DEF, MODULE, STRUCT_DEF, TRAIT_DEF, VISIBILITY,
-        WHITESPACE,
-    },
-    SyntaxNode, TextSize, T,
+    SyntaxKind::{CONST_DEF, ENUM_DEF, FN_DEF, MODULE, STRUCT_DEF, TRAIT_DEF, VISIBILITY},
+    T,
 };
 use test_utils::mark;
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{utils::vis_offset, AssistContext, AssistId, Assists};
 
 // Assist: change_visibility
 //
@@ -30,9 +27,8 @@ pub(crate) fn change_visibility(acc: &mut Assists, ctx: &AssistContext) -> Optio
 }
 
 fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let item_keyword = ctx.token_at_offset().find(|leaf| match leaf.kind() {
-        T![const] | T![fn] | T![mod] | T![struct] | T![enum] | T![trait] => true,
-        _ => false,
+    let item_keyword = ctx.token_at_offset().find(|leaf| {
+        matches!(leaf.kind(), T![const] | T![fn] | T![mod] | T![struct] | T![enum] | T![trait])
     });
 
     let (offset, target) = if let Some(keyword) = item_keyword {
@@ -69,17 +65,6 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     acc.add(AssistId("change_visibility"), "Change visibility to pub(crate)", target, |edit| {
         edit.insert(offset, "pub(crate) ");
     })
-}
-
-fn vis_offset(node: &SyntaxNode) -> TextSize {
-    node.children_with_tokens()
-        .skip_while(|it| match it.kind() {
-            WHITESPACE | COMMENT | ATTR => true,
-            _ => false,
-        })
-        .next()
-        .map(|it| it.text_range().start())
-        .unwrap_or_else(|| node.text_range().start())
 }
 
 fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {

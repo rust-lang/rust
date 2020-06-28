@@ -20,9 +20,6 @@ impl From<SyntaxKind> for u16 {
 
 impl SyntaxKind {
     pub fn is_trivia(self) -> bool {
-        match self {
-            SyntaxKind::WHITESPACE | SyntaxKind::COMMENT => true,
-            _ => false,
-        }
+        matches!(self, SyntaxKind::WHITESPACE | SyntaxKind::COMMENT)
     }
 }

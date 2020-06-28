@@ -28,16 +28,10 @@ pub enum Verbosity {
 
 impl Verbosity {
     pub fn is_verbose(self) -> bool {
-        match self {
-            Verbosity::Verbose | Verbosity::Spammy => true,
-            _ => false,
-        }
+        matches!(self, Verbosity::Verbose | Verbosity::Spammy)
     }
     pub fn is_spammy(self) -> bool {
-        match self {
-            Verbosity::Spammy => true,
-            _ => false,
-        }
+        matches!(self, Verbosity::Spammy)
     }
 }
 

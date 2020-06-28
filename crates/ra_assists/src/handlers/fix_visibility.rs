@@ -1,12 +1,8 @@
 use hir::{db::HirDatabase, HasSource, HasVisibility, PathResolution};
 use ra_db::FileId;
-use ra_syntax::{
-    ast, AstNode,
-    SyntaxKind::{ATTR, COMMENT, WHITESPACE},
-    SyntaxNode, TextRange, TextSize,
-};
+use ra_syntax::{ast, AstNode, TextRange, TextSize};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{utils::vis_offset, AssistContext, AssistId, Assists};
 
 // FIXME: this really should be a fix for diagnostic, rather than an assist.
 
@@ -175,17 +171,6 @@ fn target_data_for_def(
     };
 
     Some((offset, target, target_file, target_name))
-}
-
-fn vis_offset(node: &SyntaxNode) -> TextSize {
-    node.children_with_tokens()
-        .skip_while(|it| match it.kind() {
-            WHITESPACE | COMMENT | ATTR => true,
-            _ => false,
-        })
-        .next()
-        .map(|it| it.text_range().start())
-        .unwrap_or_else(|| node.text_range().start())
 }
 
 #[cfg(test)]

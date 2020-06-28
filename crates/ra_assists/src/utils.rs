@@ -7,7 +7,9 @@ use hir::{Adt, Crate, Enum, ScopeDef, Semantics, Trait, Type};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, make, NameOwner},
-    AstNode, SyntaxNode, T,
+    AstNode,
+    SyntaxKind::*,
+    SyntaxNode, TextSize, T,
 };
 use rustc_hash::FxHashSet;
 
@@ -118,6 +120,13 @@ pub(crate) fn resolve_target_trait(
         Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def),
         _ => None,
     }
+}
+
+pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
+    node.children_with_tokens()
+        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+        .map(|it| it.text_range().start())
+        .unwrap_or_else(|| node.text_range().start())
 }
 
 pub(crate) fn invert_boolean_expression(expr: ast::Expr) -> ast::Expr {

@@ -137,10 +137,7 @@ fn eat_fragment_kind<'a>(
 }
 
 fn is_boolean_literal(lit: &tt::Literal) -> bool {
-    match lit.text.as_str() {
-        "true" | "false" => true,
-        _ => false,
-    }
+    matches!(lit.text.as_str(), "true" | "false")
 }
 
 fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), ExpandError> {

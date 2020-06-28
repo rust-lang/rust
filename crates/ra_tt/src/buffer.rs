@@ -105,10 +105,7 @@ impl<'a> Eq for Cursor<'a> {}
 impl<'a> Cursor<'a> {
     /// Check whether it is eof
     pub fn eof(self) -> bool {
-        match self.buffer.entry(&self.ptr) {
-            None | Some(Entry::End(None)) => true,
-            _ => false,
-        }
+        matches!(self.buffer.entry(&self.ptr), None | Some(Entry::End(None)))
     }
 
     /// If the cursor is pointing at the end of a subtree, returns
