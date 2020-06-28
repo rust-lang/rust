@@ -1142,7 +1142,6 @@ pub fn promote_candidates<'tcx>(
             0,
             vec![],
             body.span,
-            vec![],
             body.generator_kind,
         );
         promoted.ignore_interior_mut_in_const_validation = true;

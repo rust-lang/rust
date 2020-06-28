@@ -2,8 +2,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
-// ignore-tidy-filelength
-
 use crate::mir::interpret::{GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
@@ -148,14 +146,6 @@ pub struct Body<'tcx> {
     /// Debug information pertaining to user variables, including captures.
     pub var_debug_info: Vec<VarDebugInfo<'tcx>>,
 
-    /// Mark this MIR of a const context other than const functions as having converted a `&&` or
-    /// `||` expression into `&` or `|` respectively. This is problematic because if we ever stop
-    /// this conversion from happening and use short circuiting, we will cause the following code
-    /// to change the value of `x`: `let mut x = 42; false && { x = 55; true };`
-    ///
-    /// List of places where control flow was destroyed. Used for error reporting.
-    pub control_flow_destroyed: Vec<(Span, String)>,
-
     /// A span representing this MIR, for error reporting.
     pub span: Span,
 
@@ -185,7 +175,6 @@ impl<'tcx> Body<'tcx> {
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
-        control_flow_destroyed: Vec<(Span, String)>,
         generator_kind: Option<GeneratorKind>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
@@ -212,7 +201,6 @@ impl<'tcx> Body<'tcx> {
             span,
             required_consts: Vec::new(),
             ignore_interior_mut_in_const_validation: false,
-            control_flow_destroyed,
             predecessor_cache: PredecessorCache::new(),
         }
     }
@@ -236,7 +224,6 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             span: DUMMY_SP,
             required_consts: Vec::new(),
-            control_flow_destroyed: Vec::new(),
             generator_kind: None,
             var_debug_info: Vec::new(),
             ignore_interior_mut_in_const_validation: false,

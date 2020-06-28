@@ -1,7 +1,5 @@
 // run-rustfix
 
-#![feature(const_if_match)]
-#![feature(const_loop)]
 #![warn(clippy::all)]
 #![warn(clippy::redundant_pattern_matching)]
 #![allow(clippy::unit_arg, unused_must_use, clippy::needless_bool, deprecated)]

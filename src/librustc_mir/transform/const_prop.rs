@@ -134,7 +134,6 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             body.arg_count,
             Default::default(),
             tcx.def_span(source.def_id()),
-            Default::default(),
             body.generator_kind,
         );
 

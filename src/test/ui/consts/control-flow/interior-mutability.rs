@@ -1,9 +1,6 @@
 // Ensure that *any* assignment to the return place of a value with interior mutability
 // disqualifies it from promotion.
 
-#![feature(const_if_match)]
-#![feature(const_loop)]
-
 use std::cell::Cell;
 
 const X: Option<Cell<i32>> = {
@@ -38,7 +35,6 @@ const Z: Option<Cell<i32>> = {
     }
     z
 };
-
 
 fn main() {
     let x: &'static _ = &X; //~ ERROR temporary value dropped while borrowed

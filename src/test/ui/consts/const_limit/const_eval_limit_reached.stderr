@@ -1,5 +1,5 @@
 error: any use of this value will cause an error
-  --> $DIR/const_eval_limit_reached.rs:8:5
+  --> $DIR/const_eval_limit_reached.rs:6:5
    |
 LL |  / const X: usize = {
 LL |  |     let mut x = 0;

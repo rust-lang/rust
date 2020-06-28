@@ -12,15 +12,6 @@ error[E0744]: `.await` is not allowed in a `const`
 LL |     [1; ().await];
    |         ^^^^^^^^
 
-error[E0658]: `loop` is not allowed in a `const`
-  --> $DIR/issue-70594.rs:4:9
-   |
-LL |     [1; ().await];
-   |         ^^^^^^^^
-   |
-   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
-   = help: add `#![feature(const_loop)]` to the crate attributes to enable
-
 error[E0744]: `.await` is not allowed in a `const`
   --> $DIR/issue-70594.rs:4:9
    |
@@ -36,7 +27,7 @@ LL |     [1; ().await];
    = help: the trait `std::future::Future` is not implemented for `()`
    = note: required by `std::future::Future::poll`
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0277, E0658, E0728, E0744.
+Some errors have detailed explanations: E0277, E0728, E0744.
 For more information about an error, try `rustc --explain E0277`.
