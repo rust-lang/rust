@@ -92,7 +92,27 @@ impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
 where
     T: GenKill<Local>,
 {
+    fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
+        let mir::Place { projection, local } = *place;
+
+        // We purposefully do not call `super_place` here to avoid calling `visit_local` for this
+        // place with one of the `Projection` variants of `PlaceContext`.
+        self.visit_projection(local, projection, context, location);
+
+        match DefUse::for_place(context) {
+            // Treat derefs as a use of the base local. `*p = 4` is not a def of `p` but a use.
+            Some(_) if place.is_indirect() => self.0.gen(local),
+
+            Some(DefUse::Def) if projection.is_empty() => self.0.kill(local),
+            Some(DefUse::Use) => self.0.gen(local),
+            _ => {}
+        }
+    }
+
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+        // Because we do not call `super_place` above, `visit_local` is only called for locals that
+        // do not appear as part of  a `Place` in the MIR. This handles cases like the implicit use
+        // of the return place in a `Return` terminator or the index in an `Index` projection.
         match DefUse::for_place(context) {
             Some(DefUse::Def) => self.0.kill(local),
             Some(DefUse::Use) => self.0.gen(local),
@@ -126,7 +146,6 @@ impl DefUse {
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Borrow
                 | MutatingUseContext::Drop
-                | MutatingUseContext::Projection
                 | MutatingUseContext::Retag,
             )
             | PlaceContext::NonMutatingUse(
@@ -134,11 +153,15 @@ impl DefUse {
                 | NonMutatingUseContext::Copy
                 | NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::Move
-                | NonMutatingUseContext::Projection
                 | NonMutatingUseContext::ShallowBorrow
                 | NonMutatingUseContext::SharedBorrow
                 | NonMutatingUseContext::UniqueBorrow,
             ) => Some(DefUse::Use),
+
+            PlaceContext::MutatingUse(MutatingUseContext::Projection)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => {
+                unreachable!("A projection could be a def or a use and must be handled separately")
+            }
         }
     }
 }
