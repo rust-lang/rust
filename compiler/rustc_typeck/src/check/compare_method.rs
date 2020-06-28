@@ -1269,7 +1269,11 @@ pub fn check_type_bounds<'tcx>(
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
         let fcx = FnCtxt::new(&inh, param_env, impl_ty_hir_id);
-        fcx.regionck_item(impl_ty_hir_id, impl_ty_span, &[]);
+        let implied_bounds = match impl_ty.container {
+            ty::TraitContainer(_) => vec![],
+            ty::ImplContainer(def_id) => fcx.impl_implied_bounds(def_id, impl_ty_span),
+        };
+        fcx.regionck_item(impl_ty_hir_id, impl_ty_span, &implied_bounds);
 
         Ok(())
     })

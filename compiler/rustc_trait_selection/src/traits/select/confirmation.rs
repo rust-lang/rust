@@ -69,8 +69,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ProjectionCandidate => {
-                self.confirm_projection_candidate(obligation);
-                Ok(ImplSource::Param(Vec::new()))
+                let obligations = self.confirm_projection_candidate(obligation);
+                Ok(ImplSource::Param(obligations))
             }
 
             ClosureCandidate => {
@@ -116,10 +116,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn confirm_projection_candidate(&mut self, obligation: &TraitObligation<'tcx>) {
+    fn confirm_projection_candidate(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+    ) -> Vec<PredicateObligation<'tcx>> {
         self.infcx.commit_unconditionally(|_| {
-            let result = self.match_projection_obligation_against_definition_bounds(obligation);
-            assert!(result);
+            let candidate = self
+                .match_projection_obligation_against_definition_bounds(obligation)
+                .unwrap_or_else(|| bug!("Can't find selected projection candidate"));
+            let mut obligations = self
+                .infcx
+                .at(&obligation.cause, obligation.param_env)
+                .sup(obligation.predicate.to_poly_trait_ref(), candidate)
+                .map(|InferOk { obligations, .. }| obligations)
+                .unwrap_or_else(|_| {
+                    bug!(
+                        "Projection bound `{:?}` was applicable to `{:?}` but now is not",
+                        candidate,
+                        obligation
+                    );
+                });
+            // Require that the projection is well-formed.
+            let self_ty = obligation.predicate.skip_binder().self_ty();
+            obligations.push(Obligation::new(
+                obligation.cause.clone(),
+                obligation.param_env,
+                ty::PredicateKind::WellFormed(self_ty.into()).to_predicate(self.tcx()),
+            ));
+            obligations
         })
     }
 

@@ -1159,7 +1159,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> bool {
+    ) -> Option<ty::PolyTraitRef<'tcx>> {
         let poly_trait_predicate = self.infcx().resolve_vars_if_possible(&obligation.predicate);
         let (placeholder_trait_predicate, _) =
             self.infcx().replace_bound_vars_with_placeholders(&poly_trait_predicate);
@@ -1170,9 +1170,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         let tcx = self.infcx.tcx;
-        let predicates = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
-            ty::Projection(ref data) => tcx.item_bounds(data.item_def_id).subst(tcx, data.substs),
-            ty::Opaque(def_id, substs) => tcx.item_bounds(def_id).subst(tcx, substs),
+        let (def_id, substs) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
+            ty::Projection(ref data) => (data.item_def_id, data.substs),
+            ty::Opaque(def_id, substs) => (def_id, substs),
             _ => {
                 span_bug!(
                     obligation.cause.span,
@@ -1182,12 +1182,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
             }
         };
+        let bounds = tcx.item_bounds(def_id).subst(tcx, substs);
 
-        let matching_bound = predicates.iter().find_map(|bound| {
+        let matching_bound = bounds.iter().find_map(|bound| {
             if let ty::PredicateAtom::Trait(pred, _) = bound.skip_binders() {
                 let bound = ty::Binder::bind(pred.trait_ref);
                 if self.infcx.probe(|_| {
                     self.match_projection(obligation, bound, placeholder_trait_predicate.trait_ref)
+                        .is_ok()
                 }) {
                     return Some(bound);
                 }
@@ -1200,17 +1202,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
              matching_bound={:?}",
             matching_bound
         );
-        match matching_bound {
-            None => false,
-            Some(bound) => {
-                // Repeat the successful match, if any, this time outside of a probe.
-                let result =
-                    self.match_projection(obligation, bound, placeholder_trait_predicate.trait_ref);
-
-                assert!(result);
-                true
-            }
-        }
+        matching_bound
     }
 
     fn match_projection(
@@ -1218,12 +1210,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         trait_bound: ty::PolyTraitRef<'tcx>,
         placeholder_trait_ref: ty::TraitRef<'tcx>,
-    ) -> bool {
+    ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
         debug_assert!(!placeholder_trait_ref.has_escaping_bound_vars());
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(ty::Binder::dummy(placeholder_trait_ref), trait_bound)
-            .is_ok()
+            .map(|InferOk { obligations, .. }| obligations)
+            .map_err(|_| ())
     }
 
     fn evaluate_where_clause<'o>(

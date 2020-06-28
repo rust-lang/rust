@@ -1425,7 +1425,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect()
     }
 
-    fn impl_implied_bounds(&self, impl_def_id: DefId, span: Span) -> Vec<Ty<'tcx>> {
+    pub(super) fn impl_implied_bounds(&self, impl_def_id: DefId, span: Span) -> Vec<Ty<'tcx>> {
         match self.tcx.impl_trait_ref(impl_def_id) {
             Some(ref trait_ref) => {
                 // Trait impl: take implied bounds from all types that

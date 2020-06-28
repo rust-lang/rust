@@ -323,9 +323,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => return,
         }
 
-        let result = self
-            .infcx
-            .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
+        let result = self.infcx.probe(|_| {
+            self.match_projection_obligation_against_definition_bounds(obligation).is_some()
+        });
 
         if result {
             candidates.vec.push(ProjectionCandidate);

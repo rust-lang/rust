@@ -18,4 +18,5 @@ trait Valid {}
 
 fn main() {
     Iterate::iterate(0);
+    //~^ ERROR overflow evaluating the requirement `{integer}: Check`
 }
