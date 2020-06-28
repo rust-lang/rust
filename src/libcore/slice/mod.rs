@@ -2710,7 +2710,8 @@ impl<T> [T] {
                 right = mid;
             }
         }
-        return left;
+
+        left
     }
 }
 
