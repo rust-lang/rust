@@ -5,7 +5,7 @@ use hir::{Adt, ModuleDef, PathResolution, Semantics, Struct};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{algo, ast, match_ast, AstNode, SyntaxKind, SyntaxKind::*, SyntaxNode};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: reorder_fields
 //
@@ -42,11 +42,17 @@ fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     }
 
     let target = record.syntax().text_range();
-    acc.add(AssistId("reorder_fields"), "Reorder record fields", target, |edit| {
-        for (old, new) in fields.iter().zip(&sorted_fields) {
-            algo::diff(old, new).into_text_edit(edit.text_edit_builder());
-        }
-    })
+    acc.add(
+        AssistId("reorder_fields"),
+        AssistKind::RefactorRewrite,
+        "Reorder record fields",
+        target,
+        |edit| {
+            for (old, new) in fields.iter().zip(&sorted_fields) {
+                algo::diff(old, new).into_text_edit(edit.text_edit_builder());
+            }
+        },
+    )
 }
 
 fn get_fields_kind(node: &SyntaxNode) -> Vec<SyntaxKind> {

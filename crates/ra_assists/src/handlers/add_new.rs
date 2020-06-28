@@ -7,7 +7,7 @@ use ra_syntax::{
 };
 use stdx::{format_to, SepBy};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: add_new
 //
@@ -42,50 +42,56 @@ pub(crate) fn add_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let impl_def = find_struct_impl(&ctx, &strukt)?;
 
     let target = strukt.syntax().text_range();
-    acc.add(AssistId("add_new"), "Add default constructor", target, |builder| {
-        let mut buf = String::with_capacity(512);
+    acc.add(
+        AssistId("add_new"),
+        AssistKind::Refactor,
+        "Add default constructor",
+        target,
+        |builder| {
+            let mut buf = String::with_capacity(512);
 
-        if impl_def.is_some() {
-            buf.push('\n');
-        }
-
-        let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
-
-        let params = field_list
-            .fields()
-            .filter_map(|f| {
-                Some(format!("{}: {}", f.name()?.syntax(), f.ascribed_type()?.syntax()))
-            })
-            .sep_by(", ");
-        let fields = field_list.fields().filter_map(|f| f.name()).sep_by(", ");
-
-        format_to!(buf, "    {}fn new({}) -> Self {{ Self {{ {} }} }}", vis, params, fields);
-
-        let start_offset = impl_def
-            .and_then(|impl_def| {
+            if impl_def.is_some() {
                 buf.push('\n');
-                let start = impl_def
-                    .syntax()
-                    .descendants_with_tokens()
-                    .find(|t| t.kind() == T!['{'])?
-                    .text_range()
-                    .end();
-
-                Some(start)
-            })
-            .unwrap_or_else(|| {
-                buf = generate_impl_text(&strukt, &buf);
-                strukt.syntax().text_range().end()
-            });
-
-        match ctx.config.snippet_cap {
-            None => builder.insert(start_offset, buf),
-            Some(cap) => {
-                buf = buf.replace("fn new", "fn $0new");
-                builder.insert_snippet(cap, start_offset, buf);
             }
-        }
-    })
+
+            let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
+
+            let params = field_list
+                .fields()
+                .filter_map(|f| {
+                    Some(format!("{}: {}", f.name()?.syntax(), f.ascribed_type()?.syntax()))
+                })
+                .sep_by(", ");
+            let fields = field_list.fields().filter_map(|f| f.name()).sep_by(", ");
+
+            format_to!(buf, "    {}fn new({}) -> Self {{ Self {{ {} }} }}", vis, params, fields);
+
+            let start_offset = impl_def
+                .and_then(|impl_def| {
+                    buf.push('\n');
+                    let start = impl_def
+                        .syntax()
+                        .descendants_with_tokens()
+                        .find(|t| t.kind() == T!['{'])?
+                        .text_range()
+                        .end();
+
+                    Some(start)
+                })
+                .unwrap_or_else(|| {
+                    buf = generate_impl_text(&strukt, &buf);
+                    strukt.syntax().text_range().end()
+                });
+
+            match ctx.config.snippet_cap {
+                None => builder.insert(start_offset, buf),
+                Some(cap) => {
+                    buf = buf.replace("fn new", "fn $0new");
+                    builder.insert_snippet(cap, start_offset, buf);
+                }
+            }
+        },
+    )
 }
 
 // Generates the surrounding `impl Type { <code> }` including type and lifetime

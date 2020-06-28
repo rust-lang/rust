@@ -8,7 +8,7 @@ use ra_syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    AssistId,
+    AssistId, AssistKind,
 };
 
 // Assist: merge_imports
@@ -56,9 +56,15 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
     };
 
     let target = tree.syntax().text_range();
-    acc.add(AssistId("merge_imports"), "Merge imports", target, |builder| {
-        builder.rewrite(rewriter);
-    })
+    acc.add(
+        AssistId("merge_imports"),
+        AssistKind::RefactorRewrite,
+        "Merge imports",
+        target,
+        |builder| {
+            builder.rewrite(rewriter);
+        },
+    )
 }
 
 fn next_prev() -> impl Iterator<Item = Direction> {

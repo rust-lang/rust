@@ -4,9 +4,9 @@ use std::path::{self, Path};
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
 use ra_ide::{
-    Assist, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold, FoldKind,
-    FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange, Indel,
-    InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess,
+    Assist, AssistKind, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold,
+    FoldKind, FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange,
+    Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess,
     ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
@@ -627,6 +627,20 @@ pub(crate) fn call_hierarchy_item(
     Ok(lsp_types::CallHierarchyItem { name, kind, tags: None, detail, uri, range, selection_range })
 }
 
+pub(crate) fn code_action_kind(kind: AssistKind) -> String {
+    match kind {
+        AssistKind::None => lsp_types::code_action_kind::EMPTY,
+        AssistKind::QuickFix => lsp_types::code_action_kind::QUICKFIX,
+        AssistKind::Refactor => lsp_types::code_action_kind::REFACTOR,
+        AssistKind::RefactorExtract => lsp_types::code_action_kind::REFACTOR_EXTRACT,
+        AssistKind::RefactorInline => lsp_types::code_action_kind::REFACTOR_INLINE,
+        AssistKind::RefactorRewrite => lsp_types::code_action_kind::REFACTOR_REWRITE,
+        AssistKind::Source => lsp_types::code_action_kind::SOURCE,
+        AssistKind::OrganizeImports => lsp_types::code_action_kind::SOURCE_ORGANIZE_IMPORTS,
+    }
+    .to_string()
+}
+
 pub(crate) fn unresolved_code_action(
     snap: &GlobalStateSnapshot,
     assist: Assist,
@@ -636,7 +650,7 @@ pub(crate) fn unresolved_code_action(
         title: assist.label,
         id: Some(format!("{}:{}", assist.id.0.to_owned(), index.to_string())),
         group: assist.group.filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
-        kind: Some(String::new()),
+        kind: Some(code_action_kind(assist.kind)),
         edit: None,
         command: None,
     };

@@ -37,6 +37,7 @@ pub struct GroupLabel(pub String);
 #[derive(Debug, Clone)]
 pub struct Assist {
     pub id: AssistId,
+    pub kind: AssistKind,
     /// Short description of the assist, as shown in the UI.
     pub label: String,
     pub group: Option<GroupLabel>,
@@ -49,6 +50,18 @@ pub struct Assist {
 pub struct ResolvedAssist {
     pub assist: Assist,
     pub source_change: SourceChange,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum AssistKind {
+    None,
+    QuickFix,
+    Refactor,
+    RefactorExtract,
+    RefactorInline,
+    RefactorRewrite,
+    Source,
+    OrganizeImports,
 }
 
 impl Assist {
@@ -86,13 +99,14 @@ impl Assist {
 
     pub(crate) fn new(
         id: AssistId,
+        kind: AssistKind,
         label: String,
         group: Option<GroupLabel>,
         target: TextRange,
     ) -> Assist {
         // FIXME: make fields private, so that this invariant can't be broken
         assert!(label.starts_with(|c: char| c.is_uppercase()));
-        Assist { id, label, group, target }
+        Assist { id, kind, label, group, target }
     }
 }
 

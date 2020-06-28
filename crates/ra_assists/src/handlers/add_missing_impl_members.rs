@@ -12,7 +12,7 @@ use crate::{
     assist_context::{AssistContext, Assists},
     ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
     utils::{get_missing_assoc_items, render_snippet, resolve_target_trait, Cursor},
-    AssistId,
+    AssistId, AssistKind,
 };
 
 #[derive(PartialEq)]
@@ -147,7 +147,7 @@ fn add_missing_impl_members_inner(
     }
 
     let target = impl_def.syntax().text_range();
-    acc.add(AssistId(assist_id), label, target, |builder| {
+    acc.add(AssistId(assist_id), AssistKind::QuickFix, label, target, |builder| {
         let n_existing_items = impl_item_list.assoc_items().count();
         let source_scope = ctx.sema.scope_for_def(trait_);
         let target_scope = ctx.sema.scope(impl_item_list.syntax());

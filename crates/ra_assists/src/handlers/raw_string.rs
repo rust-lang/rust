@@ -5,7 +5,7 @@ use ra_syntax::{
     TextSize,
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: make_raw_string
 //
@@ -26,14 +26,23 @@ pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let token = ctx.find_token_at_offset(STRING).and_then(ast::String::cast)?;
     let value = token.value()?;
     let target = token.syntax().text_range();
-    acc.add(AssistId("make_raw_string"), "Rewrite as raw string", target, |edit| {
-        let max_hash_streak = count_hashes(&value);
-        let mut hashes = String::with_capacity(max_hash_streak + 1);
-        for _ in 0..hashes.capacity() {
-            hashes.push('#');
-        }
-        edit.replace(token.syntax().text_range(), format!("r{}\"{}\"{}", hashes, value, hashes));
-    })
+    acc.add(
+        AssistId("make_raw_string"),
+        AssistKind::RefactorRewrite,
+        "Rewrite as raw string",
+        target,
+        |edit| {
+            let max_hash_streak = count_hashes(&value);
+            let mut hashes = String::with_capacity(max_hash_streak + 1);
+            for _ in 0..hashes.capacity() {
+                hashes.push('#');
+            }
+            edit.replace(
+                token.syntax().text_range(),
+                format!("r{}\"{}\"{}", hashes, value, hashes),
+            );
+        },
+    )
 }
 
 // Assist: make_usual_string
@@ -55,11 +64,17 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Optio
     let token = ctx.find_token_at_offset(RAW_STRING).and_then(ast::RawString::cast)?;
     let value = token.value()?;
     let target = token.syntax().text_range();
-    acc.add(AssistId("make_usual_string"), "Rewrite as regular string", target, |edit| {
-        // parse inside string to escape `"`
-        let escaped = value.escape_default().to_string();
-        edit.replace(token.syntax().text_range(), format!("\"{}\"", escaped));
-    })
+    acc.add(
+        AssistId("make_usual_string"),
+        AssistKind::RefactorRewrite,
+        "Rewrite as regular string",
+        target,
+        |edit| {
+            // parse inside string to escape `"`
+            let escaped = value.escape_default().to_string();
+            edit.replace(token.syntax().text_range(), format!("\"{}\"", escaped));
+        },
+    )
 }
 
 // Assist: add_hash
@@ -80,7 +95,7 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Optio
 pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     let target = token.text_range();
-    acc.add(AssistId("add_hash"), "Add # to raw string", target, |edit| {
+    acc.add(AssistId("add_hash"), AssistKind::Refactor, "Add # to raw string", target, |edit| {
         edit.insert(token.text_range().start() + TextSize::of('r'), "#");
         edit.insert(token.text_range().end(), "#");
     })
@@ -109,18 +124,24 @@ pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
         return None;
     }
     let target = token.text_range();
-    acc.add(AssistId("remove_hash"), "Remove hash from raw string", target, |edit| {
-        let result = &text[2..text.len() - 1];
-        let result = if result.starts_with('\"') {
-            // FIXME: this logic is wrong, not only the last has has to handled specially
-            // no more hash, escape
-            let internal_str = &result[1..result.len() - 1];
-            format!("\"{}\"", internal_str.escape_default().to_string())
-        } else {
-            result.to_owned()
-        };
-        edit.replace(token.text_range(), format!("r{}", result));
-    })
+    acc.add(
+        AssistId("remove_hash"),
+        AssistKind::RefactorRewrite,
+        "Remove hash from raw string",
+        target,
+        |edit| {
+            let result = &text[2..text.len() - 1];
+            let result = if result.starts_with('\"') {
+                // FIXME: this logic is wrong, not only the last has has to handled specially
+                // no more hash, escape
+                let internal_str = &result[1..result.len() - 1];
+                format!("\"{}\"", internal_str.escape_default().to_string())
+            } else {
+                result.to_owned()
+            };
+            edit.replace(token.text_range(), format!("r{}", result));
+        },
+    )
 }
 
 fn count_hashes(s: &str) -> usize {

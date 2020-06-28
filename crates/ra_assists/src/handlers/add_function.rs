@@ -13,7 +13,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     assist_config::SnippetCap,
     utils::{render_snippet, Cursor},
-    AssistContext, AssistId, Assists,
+    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: add_function
@@ -62,15 +62,21 @@ pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
 
     let target = call.syntax().text_range();
-    acc.add(AssistId("add_function"), "Add function", target, |builder| {
-        let function_template = function_builder.render();
-        builder.edit_file(function_template.file);
-        let new_fn = function_template.to_string(ctx.config.snippet_cap);
-        match ctx.config.snippet_cap {
-            Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
-            None => builder.insert(function_template.insert_offset, new_fn),
-        }
-    })
+    acc.add(
+        AssistId("add_function"),
+        AssistKind::RefactorExtract,
+        "Add function",
+        target,
+        |builder| {
+            let function_template = function_builder.render();
+            builder.edit_file(function_template.file);
+            let new_fn = function_template.to_string(ctx.config.snippet_cap);
+            match ctx.config.snippet_cap {
+                Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
+                None => builder.insert(function_template.insert_offset, new_fn),
+            }
+        },
+    )
 }
 
 struct FunctionTemplate {

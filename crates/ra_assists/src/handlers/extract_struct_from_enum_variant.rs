@@ -10,7 +10,8 @@ use ra_syntax::{
 use rustc_hash::FxHashSet;
 
 use crate::{
-    assist_context::AssistBuilder, utils::insert_use_statement, AssistContext, AssistId, Assists,
+    assist_context::AssistBuilder, utils::insert_use_statement, AssistContext, AssistId,
+    AssistKind, Assists,
 };
 
 // Assist: extract_struct_from_enum_variant
@@ -49,6 +50,7 @@ pub(crate) fn extract_struct_from_enum_variant(
     let target = variant.syntax().text_range();
     acc.add(
         AssistId("extract_struct_from_enum_variant"),
+        AssistKind::RefactorRewrite,
         "Extract struct from enum variant",
         target,
         |builder| {

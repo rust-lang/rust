@@ -3,7 +3,7 @@ use ra_syntax::{
     TextSize, T,
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: remove_dbg
 //
@@ -38,7 +38,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     };
 
     let target = macro_call.syntax().text_range();
-    acc.add(AssistId("remove_dbg"), "Remove dbg!()", target, |builder| {
+    acc.add(AssistId("remove_dbg"), AssistKind::Refactor, "Remove dbg!()", target, |builder| {
         builder.replace(macro_range, macro_content);
     })
 }

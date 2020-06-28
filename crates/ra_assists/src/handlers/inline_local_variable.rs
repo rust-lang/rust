@@ -7,7 +7,7 @@ use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    AssistId,
+    AssistId, AssistKind,
 };
 
 // Assist: inline_local_variable
@@ -110,13 +110,20 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
     let init_in_paren = format!("({})", &init_str);
 
     let target = bind_pat.syntax().text_range();
-    acc.add(AssistId("inline_local_variable"), "Inline variable", target, move |builder| {
-        builder.delete(delete_range);
-        for (desc, should_wrap) in refs.iter().zip(wrap_in_parens) {
-            let replacement = if should_wrap { init_in_paren.clone() } else { init_str.clone() };
-            builder.replace(desc.file_range.range, replacement)
-        }
-    })
+    acc.add(
+        AssistId("inline_local_variable"),
+        AssistKind::RefactorInline,
+        "Inline variable",
+        target,
+        move |builder| {
+            builder.delete(delete_range);
+            for (desc, should_wrap) in refs.iter().zip(wrap_in_parens) {
+                let replacement =
+                    if should_wrap { init_in_paren.clone() } else { init_str.clone() };
+                builder.replace(desc.file_range.range, replacement)
+            }
+        },
+    )
 }
 
 #[cfg(test)]

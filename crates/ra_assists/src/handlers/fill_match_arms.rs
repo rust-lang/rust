@@ -8,7 +8,7 @@ use test_utils::mark;
 
 use crate::{
     utils::{render_snippet, Cursor, FamousDefs},
-    AssistContext, AssistId, Assists,
+    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: fill_match_arms
@@ -103,24 +103,30 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
     }
 
     let target = match_expr.syntax().text_range();
-    acc.add(AssistId("fill_match_arms"), "Fill match arms", target, |builder| {
-        let new_arm_list = match_arm_list.remove_placeholder();
-        let n_old_arms = new_arm_list.arms().count();
-        let new_arm_list = new_arm_list.append_arms(missing_arms);
-        let first_new_arm = new_arm_list.arms().nth(n_old_arms);
-        let old_range = match_arm_list.syntax().text_range();
-        match (first_new_arm, ctx.config.snippet_cap) {
-            (Some(first_new_arm), Some(cap)) => {
-                let snippet = render_snippet(
-                    cap,
-                    new_arm_list.syntax(),
-                    Cursor::Before(first_new_arm.syntax()),
-                );
-                builder.replace_snippet(cap, old_range, snippet);
+    acc.add(
+        AssistId("fill_match_arms"),
+        AssistKind::RefactorRewrite,
+        "Fill match arms",
+        target,
+        |builder| {
+            let new_arm_list = match_arm_list.remove_placeholder();
+            let n_old_arms = new_arm_list.arms().count();
+            let new_arm_list = new_arm_list.append_arms(missing_arms);
+            let first_new_arm = new_arm_list.arms().nth(n_old_arms);
+            let old_range = match_arm_list.syntax().text_range();
+            match (first_new_arm, ctx.config.snippet_cap) {
+                (Some(first_new_arm), Some(cap)) => {
+                    let snippet = render_snippet(
+                        cap,
+                        new_arm_list.syntax(),
+                        Cursor::Before(first_new_arm.syntax()),
+                    );
+                    builder.replace_snippet(cap, old_range, snippet);
+                }
+                _ => builder.replace(old_range, new_arm_list.to_string()),
             }
-            _ => builder.replace(old_range, new_arm_list.to_string()),
-        }
-    })
+        },
+    )
 }
 
 fn is_variant_missing(existing_arms: &mut Vec<MatchArm>, var: &Pat) -> bool {

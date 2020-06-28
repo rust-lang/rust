@@ -9,7 +9,7 @@ use ra_syntax::{
     AstNode, T,
 };
 
-use crate::{utils::TryEnum, AssistContext, AssistId, Assists};
+use crate::{utils::TryEnum, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: replace_let_with_if_let
 //
@@ -44,24 +44,32 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
     let happy_variant = TryEnum::from_ty(&ctx.sema, &ty).map(|it| it.happy_case());
 
     let target = let_kw.text_range();
-    acc.add(AssistId("replace_let_with_if_let"), "Replace with if-let", target, |edit| {
-        let with_placeholder: ast::Pat = match happy_variant {
-            None => make::placeholder_pat().into(),
-            Some(var_name) => make::tuple_struct_pat(
-                make::path_unqualified(make::path_segment(make::name_ref(var_name))),
-                once(make::placeholder_pat().into()),
-            )
-            .into(),
-        };
-        let block = make::block_expr(None, None).indent(IndentLevel::from_node(let_stmt.syntax()));
-        let if_ = make::expr_if(make::condition(init, Some(with_placeholder)), block);
-        let stmt = make::expr_stmt(if_);
+    acc.add(
+        AssistId("replace_let_with_if_let"),
+        AssistKind::RefactorRewrite,
+        "Replace with if-let",
+        target,
+        |edit| {
+            let with_placeholder: ast::Pat = match happy_variant {
+                None => make::placeholder_pat().into(),
+                Some(var_name) => make::tuple_struct_pat(
+                    make::path_unqualified(make::path_segment(make::name_ref(var_name))),
+                    once(make::placeholder_pat().into()),
+                )
+                .into(),
+            };
+            let block =
+                make::block_expr(None, None).indent(IndentLevel::from_node(let_stmt.syntax()));
+            let if_ = make::expr_if(make::condition(init, Some(with_placeholder)), block);
+            let stmt = make::expr_stmt(if_);
 
-        let placeholder = stmt.syntax().descendants().find_map(ast::PlaceholderPat::cast).unwrap();
-        let stmt = stmt.replace_descendant(placeholder.into(), original_pat);
+            let placeholder =
+                stmt.syntax().descendants().find_map(ast::PlaceholderPat::cast).unwrap();
+            let stmt = stmt.replace_descendant(placeholder.into(), original_pat);
 
-        edit.replace_ast(ast::Stmt::from(let_stmt), ast::Stmt::from(stmt));
-    })
+            edit.replace_ast(ast::Stmt::from(let_stmt), ast::Stmt::from(stmt));
+        },
+    )
 }
 
 #[cfg(test)]

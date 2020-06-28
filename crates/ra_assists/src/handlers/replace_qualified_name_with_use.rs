@@ -3,7 +3,7 @@ use ra_syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SmolStr, SyntaxNo
 
 use crate::{
     utils::{find_insert_use_container, insert_use_statement},
-    AssistContext, AssistId, Assists,
+    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: replace_qualified_name_with_use
@@ -38,6 +38,7 @@ pub(crate) fn replace_qualified_name_with_use(
     let target = path.syntax().text_range();
     acc.add(
         AssistId("replace_qualified_name_with_use"),
+        AssistKind::RefactorRewrite,
         "Replace qualified path with use",
         target,
         |builder| {

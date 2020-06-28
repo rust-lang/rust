@@ -4,7 +4,7 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashSet;
 
-use crate::{assist_context::AssistBuilder, AssistContext, AssistId, Assists};
+use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, Assists};
 
 static ASSIST_NAME: &str = "introduce_named_lifetime";
 static ASSIST_LABEL: &str = "Introduce named lifetime";
@@ -83,7 +83,7 @@ fn generate_fn_def_assist(
             _ => return None,
         }
     };
-    acc.add(AssistId(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |builder| {
+    acc.add(AssistId(ASSIST_NAME), AssistKind::Refactor, ASSIST_LABEL, lifetime_loc, |builder| {
         add_lifetime_param(fn_def, builder, end_of_fn_ident, new_lifetime_param);
         builder.replace(lifetime_loc, format!("'{}", new_lifetime_param));
         loc_needing_lifetime.map(|loc| builder.insert(loc, format!("'{} ", new_lifetime_param)));
@@ -98,7 +98,7 @@ fn generate_impl_def_assist(
 ) -> Option<()> {
     let new_lifetime_param = generate_unique_lifetime_param_name(&impl_def.type_param_list())?;
     let end_of_impl_kw = impl_def.impl_token()?.text_range().end();
-    acc.add(AssistId(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |builder| {
+    acc.add(AssistId(ASSIST_NAME), AssistKind::Refactor, ASSIST_LABEL, lifetime_loc, |builder| {
         add_lifetime_param(impl_def, builder, end_of_impl_kw, new_lifetime_param);
         builder.replace(lifetime_loc, format!("'{}", new_lifetime_param));
     })

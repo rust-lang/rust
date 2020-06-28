@@ -2,7 +2,7 @@ use hir::{db::HirDatabase, HasSource, HasVisibility, PathResolution};
 use ra_db::FileId;
 use ra_syntax::{ast, AstNode, TextRange, TextSize};
 
-use crate::{utils::vis_offset, AssistContext, AssistId, Assists};
+use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
 
 // FIXME: this really should be a fix for diagnostic, rather than an assist.
 
@@ -58,7 +58,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> O
         Some(name) => format!("Change visibility of {} to {}", name, missing_visibility),
     };
 
-    acc.add(AssistId("fix_visibility"), assist_label, target, |builder| {
+    acc.add(AssistId("fix_visibility"), AssistKind::QuickFix, assist_label, target, |builder| {
         builder.edit_file(target_file);
         match ctx.config.snippet_cap {
             Some(cap) => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
@@ -101,7 +101,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
     let assist_label =
         format!("Change visibility of {}.{} to {}", parent_name, target_name, missing_visibility);
 
-    acc.add(AssistId("fix_visibility"), assist_label, target, |builder| {
+    acc.add(AssistId("fix_visibility"), AssistKind::QuickFix, assist_label, target, |builder| {
         builder.edit_file(target_file);
         match ctx.config.snippet_cap {
             Some(cap) => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),

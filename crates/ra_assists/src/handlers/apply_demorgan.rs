@@ -1,6 +1,6 @@
 use ra_syntax::ast::{self, AstNode};
 
-use crate::{utils::invert_boolean_expression, AssistContext, AssistId, Assists};
+use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: apply_demorgan
 //
@@ -39,11 +39,17 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let rhs_range = rhs.syntax().text_range();
     let not_rhs = invert_boolean_expression(rhs);
 
-    acc.add(AssistId("apply_demorgan"), "Apply De Morgan's law", op_range, |edit| {
-        edit.replace(op_range, opposite_op);
-        edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
-        edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));
-    })
+    acc.add(
+        AssistId("apply_demorgan"),
+        AssistKind::RefactorRewrite,
+        "Apply De Morgan's law",
+        op_range,
+        |edit| {
+            edit.replace(op_range, opposite_op);
+            edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
+            edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));
+        },
+    )
 }
 
 // Return the opposite text for a given logical operator, if it makes sense
