@@ -1,11 +1,8 @@
 use ra_syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode,
-    SyntaxKind::{
-        ATTR, COMMENT, CONST_DEF, ENUM_DEF, FN_DEF, MODULE, STRUCT_DEF, TRAIT_DEF, VISIBILITY,
-        WHITESPACE,
-    },
-    SyntaxNode, TextSize, T,
+    SyntaxKind::{CONST_DEF, ENUM_DEF, FN_DEF, MODULE, STRUCT_DEF, TRAIT_DEF, VISIBILITY},
+    T,
 };
 use test_utils::mark;
 
