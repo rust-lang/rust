@@ -1161,7 +1161,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
     ) -> Option<ty::PolyTraitRef<'tcx>> {
         let poly_trait_predicate = self.infcx().resolve_vars_if_possible(&obligation.predicate);
-        let (placeholder_trait_predicate, _) =
+        let placeholder_trait_predicate =
             self.infcx().replace_bound_vars_with_placeholders(&poly_trait_predicate);
         debug!(
             "match_projection_obligation_against_definition_bounds: \
@@ -1640,7 +1640,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let ty: ty::Binder<Ty<'tcx>> = ty::Binder::bind(ty); // <----/
 
                 self.infcx.commit_unconditionally(|_| {
-                    let (placeholder_ty, _) = self.infcx.replace_bound_vars_with_placeholders(&ty);
+                    let placeholder_ty = self.infcx.replace_bound_vars_with_placeholders(&ty);
                     let Normalized { value: normalized_ty, mut obligations } =
                         ensure_sufficient_stack(|| {
                             project::normalize_with_depth(
@@ -1708,7 +1708,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(());
         }
 
-        let (placeholder_obligation, _) =
+        let placeholder_obligation =
             self.infcx().replace_bound_vars_with_placeholders(&obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 

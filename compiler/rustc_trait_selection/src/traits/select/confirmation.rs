@@ -253,7 +253,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let trait_obligations: Vec<PredicateObligation<'_>> =
                 self.infcx.commit_unconditionally(|_| {
                     let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-                    let (trait_ref, _) =
+                    let trait_ref =
                         self.infcx.replace_bound_vars_with_placeholders(&poly_trait_ref);
                     let cause = obligation.derived_cause(ImplDerivedObligation);
                     self.impl_or_trait_obligations(
@@ -437,7 +437,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("confirm_trait_alias_candidate({:?}, {:?})", obligation, alias_def_id);
 
         self.infcx.commit_unconditionally(|_| {
-            let (predicate, _) =
+            let predicate =
                 self.infcx().replace_bound_vars_with_placeholders(&obligation.predicate);
             let trait_ref = predicate.trait_ref;
             let trait_def_id = trait_ref.def_id;

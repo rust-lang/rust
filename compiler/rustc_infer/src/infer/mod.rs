@@ -351,11 +351,6 @@ pub struct InferCtxt<'a, 'tcx> {
     universe: Cell<ty::UniverseIndex>,
 }
 
-/// A map returned by `replace_bound_vars_with_placeholders()`
-/// indicating the placeholder region that each late-bound region was
-/// replaced with.
-pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
-
 /// See the `error_reporting` module for more details.
 #[derive(Clone, Debug, PartialEq, Eq, TypeFoldable)]
 pub enum ValuePairs<'tcx> {
@@ -992,7 +987,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         Some(self.commit_if_ok(|_snapshot| {
-            let (ty::SubtypePredicate { a_is_expected, a, b }, _) =
+            let ty::SubtypePredicate { a_is_expected, a, b } =
                 self.replace_bound_vars_with_placeholders(&predicate);
 
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
@@ -1007,7 +1002,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
     ) -> UnitResult<'tcx> {
         self.commit_if_ok(|_snapshot| {
-            let (ty::OutlivesPredicate(r_a, r_b), _) =
+            let ty::OutlivesPredicate(r_a, r_b) =
                 self.replace_bound_vars_with_placeholders(&predicate);
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
                 RelateRegionParamBound(cause.span)
