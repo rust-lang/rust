@@ -27,6 +27,7 @@ use crate::task::{Context, Poll};
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[lang = "future_trait"]
+#[rustc_on_unimplemented(label = "`{Self}` is not a future", message = "`{Self}` is not a future")]
 pub trait Future {
     /// The type of value produced on completion.
     #[stable(feature = "futures_api", since = "1.36.0")]

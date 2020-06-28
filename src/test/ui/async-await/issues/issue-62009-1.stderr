@@ -27,12 +27,13 @@ LL | fn main() {
 LL |     (|_| 2333).await;
    |     ^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
-error[E0277]: the trait bound `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]: std::future::Future` is not satisfied
+error[E0277]: `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]` is not a future
   --> $DIR/issue-62009-1.rs:12:5
    |
 LL |     (|_| 2333).await;
-   |     ^^^^^^^^^^^^^^^^ the trait `std::future::Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
+   |     ^^^^^^^^^^^^^^^^ `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]` is not a future
    |
+   = help: the trait `std::future::Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
    = note: required by `std::future::Future::poll`
 
 error: aborting due to 4 previous errors
