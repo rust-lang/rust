@@ -100,8 +100,7 @@ struct FlycheckActor {
     /// doesn't provide a way to read sub-process output without blocking, so we
     /// have to wrap sub-processes output handling in a thread and pass messages
     /// back over a channel.
-    // XXX: drop order is significant
-    check_process: Option<(Receiver<cargo_metadata::Message>, jod_thread::JoinHandle)>,
+    check_process: Option<CargoHandle>,
 }
 
 enum Event {
@@ -118,7 +117,7 @@ impl FlycheckActor {
         FlycheckActor { sender, config, workspace_root, check_process: None }
     }
     fn next_event(&self, inbox: &Receiver<Restart>) -> Option<Event> {
-        let check_chan = self.check_process.as_ref().map(|(chan, _thread)| chan);
+        let check_chan = self.check_process.as_ref().map(|cargo| &cargo.receiver);
         select! {
             recv(inbox) -> msg => msg.ok().map(Event::Restart),
             recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
@@ -166,7 +165,7 @@ impl FlycheckActor {
             self.send(Message::Progress(Progress::DidCancel));
         }
     }
-    fn start_check_process(&self) -> (Receiver<cargo_metadata::Message>, jod_thread::JoinHandle) {
+    fn start_check_process(&self) -> CargoHandle {
         let mut cmd = match &self.config {
             FlycheckConfig::CargoCommand {
                 command,
@@ -199,32 +198,7 @@ impl FlycheckActor {
         };
         cmd.current_dir(&self.workspace_root);
 
-        let (message_send, message_recv) = unbounded();
-        let thread = jod_thread::spawn(move || {
-            // If we trigger an error here, we will do so in the loop instead,
-            // which will break out of the loop, and continue the shutdown
-            let res = run_cargo(cmd, &mut |message| {
-                // Skip certain kinds of messages to only spend time on what's useful
-                match &message {
-                    cargo_metadata::Message::CompilerArtifact(artifact) if artifact.fresh => {
-                        return true
-                    }
-                    cargo_metadata::Message::BuildScriptExecuted(_)
-                    | cargo_metadata::Message::Unknown => return true,
-                    _ => {}
-                }
-
-                // if the send channel was closed, we want to shutdown
-                message_send.send(message).is_ok()
-            });
-
-            if let Err(err) = res {
-                // FIXME: make the `message_send` to be `Sender<Result<CheckEvent, CargoError>>`
-                // to display user-caused misconfiguration errors instead of just logging them here
-                log::error!("Cargo watcher failed {:?}", err);
-            }
-        });
-        (message_recv, thread)
+        CargoHandle::spawn(cmd)
     }
 
     fn send(&self, check_task: Message) {
@@ -232,57 +206,90 @@ impl FlycheckActor {
     }
 }
 
-fn run_cargo(
-    mut command: Command,
-    on_message: &mut dyn FnMut(cargo_metadata::Message) -> bool,
-) -> io::Result<()> {
-    let child =
-        command.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null()).spawn()?;
-    let mut child = ChildKiller(child);
+struct CargoHandle {
+    receiver: Receiver<cargo_metadata::Message>,
+    #[allow(unused)]
+    thread: jod_thread::JoinHandle,
+}
 
-    // We manually read a line at a time, instead of using serde's
-    // stream deserializers, because the deserializer cannot recover
-    // from an error, resulting in it getting stuck, because we try to
-    // be resillient against failures.
-    //
-    // Because cargo only outputs one JSON object per line, we can
-    // simply skip a line if it doesn't parse, which just ignores any
-    // erroneus output.
-    let stdout = BufReader::new(child.stdout.take().unwrap());
-    let mut read_at_least_one_message = false;
-    for message in cargo_metadata::Message::parse_stream(stdout) {
-        let message = match message {
-            Ok(message) => message,
-            Err(err) => {
-                log::error!("Invalid json from cargo check, ignoring ({})", err);
-                continue;
+impl CargoHandle {
+    fn spawn(command: Command) -> CargoHandle {
+        let (sender, receiver) = unbounded();
+        let actor = CargoActor::new(command, sender);
+        let thread = jod_thread::spawn(move || {
+            let _ = actor.run();
+        });
+        CargoHandle { receiver, thread }
+    }
+}
+
+struct CargoActor {
+    command: Command,
+    sender: Sender<cargo_metadata::Message>,
+}
+
+impl CargoActor {
+    fn new(command: Command, sender: Sender<cargo_metadata::Message>) -> CargoActor {
+        CargoActor { command, sender }
+    }
+    fn run(mut self) -> io::Result<()> {
+        let child = self
+            .command
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .stdin(Stdio::null())
+            .spawn()?;
+        let mut child = ChildKiller(child);
+
+        // We manually read a line at a time, instead of using serde's
+        // stream deserializers, because the deserializer cannot recover
+        // from an error, resulting in it getting stuck, because we try to
+        // be resillient against failures.
+        //
+        // Because cargo only outputs one JSON object per line, we can
+        // simply skip a line if it doesn't parse, which just ignores any
+        // erroneus output.
+        let stdout = BufReader::new(child.stdout.take().unwrap());
+        let mut read_at_least_one_message = false;
+        for message in cargo_metadata::Message::parse_stream(stdout) {
+            let message = match message {
+                Ok(message) => message,
+                Err(err) => {
+                    log::error!("Invalid json from cargo check, ignoring ({})", err);
+                    continue;
+                }
+            };
+
+            read_at_least_one_message = true;
+
+            // Skip certain kinds of messages to only spend time on what's useful
+            match &message {
+                cargo_metadata::Message::CompilerArtifact(artifact) if artifact.fresh => continue,
+                cargo_metadata::Message::BuildScriptExecuted(_)
+                | cargo_metadata::Message::Unknown => continue,
+                _ => {
+                    // if the send channel was closed, we want to shutdown
+                    if self.sender.send(message).is_err() {
+                        break;
+                    }
+                }
             }
-        };
-
-        read_at_least_one_message = true;
-
-        if !on_message(message) {
-            break;
         }
+
+        // It is okay to ignore the result, as it only errors if the process is already dead
+        let _ = child.kill();
+
+        let exit_status = child.wait()?;
+        if !exit_status.success() && !read_at_least_one_message {
+            // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
+            // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
+
+            // FIXME: make the `message_send` to be `Sender<Result<CheckEvent, CargoError>>`
+            // to display user-caused misconfiguration errors instead of just logging them here
+            log::error!("Cargo watcher failed,the command produced no valid metadata (exit code: {:?}): {:?}", exit_status, self.command);
+        }
+        Ok(())
     }
-
-    // It is okay to ignore the result, as it only errors if the process is already dead
-    let _ = child.kill();
-
-    let exit_status = child.wait()?;
-    if !exit_status.success() && !read_at_least_one_message {
-        // FIXME: Read the stderr to display the reason, see `read2()` reference in PR comment:
-        // https://github.com/rust-analyzer/rust-analyzer/pull/3632#discussion_r395605298
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!(
-                "the command produced no valid metadata (exit code: {:?}): {:?}",
-                exit_status, command
-            ),
-        ));
-    }
-
-    Ok(())
 }
 
 struct ChildKiller(process::Child);
