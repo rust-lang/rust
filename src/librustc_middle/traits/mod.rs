@@ -299,6 +299,8 @@ pub enum ObligationCauseCode<'tcx> {
     /// Method receiver
     MethodReceiver,
 
+    UnifyReceiver(Rc<ty::AssocItem>),
+
     /// `return` with no expression
     ReturnNoExpression,
 
