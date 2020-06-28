@@ -1,6 +1,5 @@
 use std::convert::TryInto;
 use std::time::{Duration, SystemTime};
-use std::ops::Not;
 
 use crate::*;
 use stacked_borrows::Tag;
@@ -548,27 +547,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let active_thread = this.get_active_thread();
 
         if this.rwlock_reader_unlock(id, active_thread) {
-            // The thread was a reader.
-            if this.rwlock_is_locked(id).not() {
-                // No more readers owning the lock. Give it to a writer if there
-                // is any.
-                this.rwlock_dequeue_and_lock_writer(id);
-            }
             Ok(0)
-        } else if Some(active_thread) == this.rwlock_writer_unlock(id) {
-            // The thread was a writer.
-            //
-            // We are prioritizing writers here against the readers. As a
-            // result, not only readers can starve writers, but also writers can
-            // starve readers.
-            if this.rwlock_dequeue_and_lock_writer(id) {
-                // Someone got the write lock, nice.
-            } else {
-                // Give the lock to all readers.
-                while this.rwlock_dequeue_and_lock_reader(id) {
-                    // Rinse and repeat.
-                }
-            }
+        } else if this.rwlock_writer_unlock(id, active_thread) {
             Ok(0)
         } else {
             throw_ub_format!("unlocked an rwlock that was not locked by the active thread");

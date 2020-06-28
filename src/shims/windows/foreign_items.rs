@@ -257,7 +257,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Better error for attempts to create a thread
             "CreateThread" => {
-                throw_unsup_format!("Miri does not support threading");
+                throw_unsup_format!("Miri does not support concurrency on Windows");
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
@@ -292,7 +292,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 #[allow(non_snake_case)]
                 let &[_lpCriticalSection] = check_arg_count(args)?;
-                assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows not supported");
+                assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows is not supported");
                 // Nothing to do, not even a return value.
                 // (Windows locks are reentrant, and we have only 1 thread,
                 // so not doing any futher checks here is at least not incorrect.)
@@ -301,7 +301,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 #[allow(non_snake_case)]
                 let &[_lpCriticalSection] = check_arg_count(args)?;
-                assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows not supported");
+                assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows is not supported");
                 // There is only one thread, so this always succeeds and returns TRUE.
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
