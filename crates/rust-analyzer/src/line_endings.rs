@@ -46,19 +46,7 @@ impl LineEndings {
         return (src, LineEndings::Dos);
 
         fn find_crlf(src: &[u8]) -> Option<usize> {
-            let mut search_idx = 0;
-            while let Some(idx) = find_cr(&src[search_idx..]) {
-                if src[search_idx..].get(idx + 1) != Some(&b'\n') {
-                    search_idx += idx + 1;
-                    continue;
-                }
-                return Some(search_idx + idx);
-            }
-            None
-        }
-
-        fn find_cr(src: &[u8]) -> Option<usize> {
-            src.iter().enumerate().find_map(|(idx, &b)| if b == b'\r' { Some(idx) } else { None })
+            src.iter().zip(src.iter().skip(1)).position(|it| it == (&b'\r', &b'\n'))
         }
     }
 }
