@@ -1560,28 +1560,6 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-impl<'tcx> GlobalCtxt<'tcx> {
-    /// Calls the closure with a local `TyCtxt` using the given arena.
-    /// `interners` is a slot passed so we can create a CtxtInterners
-    /// with the same lifetime as `arena`.
-    pub fn enter_local<F, R>(&'tcx self, f: F) -> R
-    where
-        F: FnOnce(TyCtxt<'tcx>) -> R,
-    {
-        let tcx = TyCtxt { gcx: self };
-        ty::tls::with_related_context(tcx, |icx| {
-            let new_icx = ty::tls::ImplicitCtxt {
-                tcx,
-                query: icx.query,
-                diagnostics: icx.diagnostics,
-                layout_depth: icx.layout_depth,
-                task_deps: icx.task_deps,
-            };
-            ty::tls::enter_context(&new_icx, |_| f(tcx))
-        })
-    }
-}
-
 /// A trait implemented for all `X<'a>` types that can be safely and
 /// efficiently converted to `X<'tcx>` as long as they are part of the
 /// provided `TyCtxt<'tcx>`.
@@ -1818,11 +1796,11 @@ pub mod tls {
         with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
     }
 
-    /// Allows access to the current `ImplicitCtxt` whose tcx field has the same global
-    /// interner as the tcx argument passed in. This means the closure is given an `ImplicitCtxt`
-    /// with the same `'tcx` lifetime as the `TyCtxt` passed in.
-    /// This will panic if you pass it a `TyCtxt` which has a different global interner from
-    /// the current `ImplicitCtxt`'s `tcx` field.
+    /// Allows access to the current `ImplicitCtxt` whose tcx field is the same as the tcx argument
+    /// passed in. This means the closure is given an `ImplicitCtxt` with the same `'tcx` lifetime
+    /// as the `TyCtxt` passed in.
+    /// This will panic if you pass it a `TyCtxt` which is different from the current
+    /// `ImplicitCtxt`'s `tcx` field.
     #[inline]
     pub fn with_related_context<'tcx, F, R>(tcx: TyCtxt<'tcx>, f: F) -> R
     where

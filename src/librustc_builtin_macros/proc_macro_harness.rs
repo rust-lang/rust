@@ -6,7 +6,7 @@ use rustc_ast::expand::is_proc_macro_attr;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast_pretty::pprust;
-use rustc_expand::base::{ExtCtxt, Resolver};
+use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::AstPass;
@@ -52,7 +52,7 @@ struct CollectProcMacros<'a> {
 
 pub fn inject(
     sess: &ParseSess,
-    resolver: &mut dyn Resolver,
+    resolver: &mut dyn ResolverExpand,
     mut krate: ast::Crate,
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,

@@ -1,0 +1,8 @@
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/issue-71611.rs:4:21
+   |
+LL | fn func<A, const F: fn(inner: A)>(outer: A) {
+   |                     ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

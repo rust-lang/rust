@@ -4,6 +4,7 @@
 use std::cell::Cell;
 
 use rustc_ast::ast::Mutability;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
@@ -28,7 +29,7 @@ use rustc_trait_selection::traits;
 use crate::const_eval::error_to_const_error;
 use crate::interpret::{
     self, compile_time_machine, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx, LocalState,
-    LocalValue, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer,
+    LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer,
     ScalarMaybeUninit, StackPopCleanup,
 };
 use crate::transform::{MirPass, MirSource};
@@ -151,11 +152,19 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 struct ConstPropMachine<'mir, 'tcx> {
     /// The virtual call stack.
     stack: Vec<Frame<'mir, 'tcx, (), ()>>,
+    /// `OnlyInsideOwnBlock` locals that were written in the current block get erased at the end.
+    written_only_inside_own_block_locals: FxHashSet<Local>,
+    /// Locals that need to be cleared after every block terminates.
+    only_propagate_inside_block_locals: BitSet<Local>,
 }
 
 impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
-    fn new() -> Self {
-        Self { stack: Vec::new() }
+    fn new(only_propagate_inside_block_locals: BitSet<Local>) -> Self {
+        Self {
+            stack: Vec::new(),
+            written_only_inside_own_block_locals: Default::default(),
+            only_propagate_inside_block_locals,
+        }
     }
 }
 
@@ -227,6 +236,18 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         l.access()
     }
 
+    fn access_local_mut<'a>(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+        frame: usize,
+        local: Local,
+    ) -> InterpResult<'tcx, Result<&'a mut LocalValue<Self::PointerTag>, MemPlace<Self::PointerTag>>>
+    {
+        if frame == 0 && ecx.machine.only_propagate_inside_block_locals.contains(local) {
+            ecx.machine.written_only_inside_own_block_locals.insert(local);
+        }
+        ecx.machine.stack[frame].locals[local].access_mut()
+    }
+
     fn before_access_global(
         _memory_extra: &(),
         _alloc_id: AllocId,
@@ -274,8 +295,6 @@ struct ConstPropagator<'mir, 'tcx> {
     // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
     // the last known `SourceInfo` here and just keep revisiting it.
     source_info: Option<SourceInfo>,
-    // Locals we need to forget at the end of the current block
-    locals_of_current_block: BitSet<Local>,
 }
 
 impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
@@ -313,8 +332,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let param_env = tcx.param_env(def_id).with_reveal_all();
 
         let span = tcx.def_span(def_id);
-        let mut ecx = InterpCx::new(tcx, span, param_env, ConstPropMachine::new(), ());
         let can_const_prop = CanConstProp::check(body);
+        let mut only_propagate_inside_block_locals = BitSet::new_empty(can_const_prop.len());
+        for (l, mode) in can_const_prop.iter_enumerated() {
+            if *mode == ConstPropMode::OnlyInsideOwnBlock {
+                only_propagate_inside_block_locals.insert(l);
+            }
+        }
+        let mut ecx = InterpCx::new(
+            tcx,
+            span,
+            param_env,
+            ConstPropMachine::new(only_propagate_inside_block_locals),
+            (),
+        );
 
         let ret = ecx
             .layout_of(body.return_ty().subst(tcx, substs))
@@ -345,7 +376,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
             local_decls: body.local_decls.clone(),
             source_info: None,
-            locals_of_current_block: BitSet::new_empty(body.local_decls.len()),
         }
     }
 
@@ -900,7 +930,6 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                                 Will remove it from const-prop after block is finished. Local: {:?}",
                                 place.local
                             );
-                            self.locals_of_current_block.insert(place.local);
                         }
                         ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
                             trace!("can't propagate into {:?}", place);
@@ -1089,10 +1118,27 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 }
             }
         }
-        // We remove all Locals which are restricted in propagation to their containing blocks.
-        for local in self.locals_of_current_block.iter() {
+
+        // We remove all Locals which are restricted in propagation to their containing blocks and
+        // which were modified in the current block.
+        // Take it out of the ecx so we can get a mutable reference to the ecx for `remove_const`
+        let mut locals = std::mem::take(&mut self.ecx.machine.written_only_inside_own_block_locals);
+        for &local in locals.iter() {
             Self::remove_const(&mut self.ecx, local);
         }
-        self.locals_of_current_block.clear();
+        locals.clear();
+        // Put it back so we reuse the heap of the storage
+        self.ecx.machine.written_only_inside_own_block_locals = locals;
+        if cfg!(debug_assertions) {
+            // Ensure we are correctly erasing locals with the non-debug-assert logic.
+            for local in self.ecx.machine.only_propagate_inside_block_locals.iter() {
+                assert!(
+                    self.get_const(local.into()).is_none()
+                        || self
+                            .layout_of(self.local_decls[local].ty)
+                            .map_or(true, |layout| layout.is_zst())
+                )
+            }
+        }
     }
 }

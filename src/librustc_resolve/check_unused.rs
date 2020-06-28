@@ -29,7 +29,7 @@ use crate::Resolver;
 use rustc_ast::ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast_lowering::Resolver as ResolverAstLowering;
+use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_middle::ty;

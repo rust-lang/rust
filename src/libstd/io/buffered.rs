@@ -400,7 +400,7 @@ impl<R: Seek> Seek for BufReader<R> {
 /// in memory, like a `Vec<u8>`.
 ///
 /// It is critical to call [`flush`] before `BufWriter<W>` is dropped. Though
-/// dropping will attempt to flush the the contents of the buffer, any errors
+/// dropping will attempt to flush the contents of the buffer, any errors
 /// that happen in the process of dropping will be ignored. Calling [`flush`]
 /// ensures that the buffer is empty and thus dropping will not even attempt
 /// file operations.
