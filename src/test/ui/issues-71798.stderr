@@ -4,14 +4,15 @@ error[E0425]: cannot find value `u` in this scope
 LL |     let _ = test_ref & u;
    |                        ^ not found in this scope
 
-error[E0277]: the trait bound `u32: std::future::Future` is not satisfied
+error[E0277]: `u32` is not a future
   --> $DIR/issues-71798.rs:1:25
    |
 LL | fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::future::Future` is not implemented for `u32`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `u32` is not a future
 LL |     *x
    |     -- this returned value is of type `u32`
    |
+   = help: the trait `std::future::Future` is not implemented for `u32`
    = note: the return type of a function must have a statically known size
 
 error: aborting due to 2 previous errors

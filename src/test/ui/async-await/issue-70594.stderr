@@ -27,12 +27,13 @@ error[E0744]: `.await` is not allowed in a `const`
 LL |     [1; ().await];
    |         ^^^^^^^^
 
-error[E0277]: the trait bound `(): std::future::Future` is not satisfied
+error[E0277]: `()` is not a future
   --> $DIR/issue-70594.rs:4:9
    |
 LL |     [1; ().await];
-   |         ^^^^^^^^ the trait `std::future::Future` is not implemented for `()`
+   |         ^^^^^^^^ `()` is not a future
    |
+   = help: the trait `std::future::Future` is not implemented for `()`
    = note: required by `std::future::Future::poll`
 
 error: aborting due to 5 previous errors
