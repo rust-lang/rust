@@ -5,8 +5,9 @@
 use std::{
     fmt,
     io::{self, BufReader},
+    ops,
     path::PathBuf,
-    process::{Command, Stdio},
+    process::{self, Command, Stdio},
     time::Duration,
 };
 
@@ -236,8 +237,9 @@ fn run_cargo(
     mut command: Command,
     on_message: &mut dyn FnMut(cargo_metadata::Message) -> bool,
 ) -> io::Result<()> {
-    let mut child =
+    let child =
         command.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null()).spawn()?;
+    let mut child = ChildKiller(child);
 
     // We manually read a line at a time, instead of using serde's
     // stream deserializers, because the deserializer cannot recover
@@ -282,4 +284,25 @@ fn run_cargo(
     }
 
     Ok(())
+}
+
+struct ChildKiller(process::Child);
+
+impl ops::Deref for ChildKiller {
+    type Target = process::Child;
+    fn deref(&self) -> &process::Child {
+        &self.0
+    }
+}
+
+impl ops::DerefMut for ChildKiller {
+    fn deref_mut(&mut self) -> &mut process::Child {
+        &mut self.0
+    }
+}
+
+impl Drop for ChildKiller {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+    }
 }
