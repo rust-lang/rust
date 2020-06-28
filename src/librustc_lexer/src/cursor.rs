@@ -23,8 +23,8 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    /// For debug assertions only
-    /// Returns the last eaten symbol (or '\0' in release builds).
+    /// Returns the last eaten symbol (or `'\0'` in release builds).
+    /// (For debug assertions only.)
     pub(crate) fn prev(&self) -> char {
         #[cfg(debug_assertions)]
         {
