@@ -40,7 +40,6 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
-#![feature(leading_trailing_ones)]
 #![feature(const_forget)]
 #![feature(option_unwrap_none)]
 #![feature(peekable_next_if)]
