@@ -216,7 +216,11 @@ impl GlobalState {
                         flycheck::Progress::DidCheckCrate(target) => {
                             (Progress::Report, Some(target))
                         }
-                        flycheck::Progress::DidFinish | flycheck::Progress::DidCancel => {
+                        flycheck::Progress::DidCancel => (Progress::End, None),
+                        flycheck::Progress::DidFinish(result) => {
+                            if let Err(err) = result {
+                                log::error!("cargo check failed: {}", err)
+                            }
                             (Progress::End, None)
                         }
                     };
