@@ -11,7 +11,6 @@ use hir_def::{
     docs::Documentation,
     expr::{BindingAnnotation, Pat, PatId},
     import_map,
-    item_tree::SelfParam,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
@@ -671,8 +670,8 @@ impl Function {
         db.function_data(self.id).name.clone()
     }
 
-    pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
-        db.function_data(self.id).self_param
+    pub fn has_self_param(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).has_self_param
     }
 
     pub fn params(self, db: &dyn HirDatabase) -> Vec<TypeRef> {

@@ -283,7 +283,7 @@ impl Ctx {
         let name = func.name()?.as_name();
 
         let mut params = Vec::new();
-        let mut func_self_param = None;
+        let mut has_self_param = false;
         if let Some(param_list) = func.param_list() {
             if let Some(self_param) = param_list.self_param() {
                 let self_type = match self_param.ty() {
@@ -302,10 +302,7 @@ impl Ctx {
                     }
                 };
                 params.push(self_type);
-                func_self_param = Some(SelfParam {
-                    is_ref: self_param.amp_token().is_some(),
-                    is_mut: self_param.mut_token().is_some(),
-                });
+                has_self_param = true;
             }
             for param in param_list.params() {
                 let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
@@ -338,7 +335,7 @@ impl Ctx {
             name,
             visibility,
             generic_params: GenericParamsId::EMPTY,
-            self_param: func_self_param,
+            has_self_param,
             is_unsafe: func.unsafe_token().is_some(),
             params: params.into_boxed_slice(),
             is_varargs,

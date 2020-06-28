@@ -500,18 +500,12 @@ pub struct Function {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
-    pub self_param: Option<SelfParam>,
+    pub has_self_param: bool,
     pub is_unsafe: bool,
     pub params: Box<[TypeRef]>,
     pub is_varargs: bool,
     pub ret_type: TypeRef,
     pub ast_id: FileAstId<ast::Fn>,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct SelfParam {
-    pub is_ref: bool,
-    pub is_mut: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

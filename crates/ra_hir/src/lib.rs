@@ -49,7 +49,7 @@ pub use hir_def::{
     docs::Documentation,
     nameres::ModuleSource,
     path::{ModPath, Path, PathKind},
-    type_ref::Mutability,
+    type_ref::{Mutability, TypeRef},
 };
 pub use hir_expand::{
     hygiene::Hygiene, name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc,

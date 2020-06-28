@@ -136,7 +136,7 @@ fn add_function_impl(
         .lookup_by(fn_name)
         .set_documentation(func.docs(ctx.db));
 
-    let completion_kind = if func.self_param(ctx.db).is_some() {
+    let completion_kind = if func.has_self_param(ctx.db) {
         CompletionItemKind::Method
     } else {
         CompletionItemKind::Function

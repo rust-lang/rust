@@ -640,7 +640,7 @@ fn is_valid_candidate(
                 }
             }
             if let Some(receiver_ty) = receiver_ty {
-                if data.self_param.is_none() {
+                if !data.has_self_param {
                     return false;
                 }
                 let transformed_receiver_ty = match transform_receiver_ty(db, m, self_ty) {

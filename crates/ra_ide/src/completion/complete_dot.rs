@@ -48,7 +48,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &T
         let mut seen_methods = FxHashSet::default();
         let traits_in_scope = ctx.scope.traits_in_scope();
         receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
-            if func.self_param(ctx.db).is_some()
+            if func.has_self_param(ctx.db)
                 && ctx.scope.module().map_or(true, |m| func.is_visible_from(ctx.db, m))
                 && seen_methods.insert(func.name(ctx.db))
             {

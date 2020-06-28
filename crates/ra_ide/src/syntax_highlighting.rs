@@ -4,7 +4,7 @@ mod injection;
 #[cfg(test)]
 mod tests;
 
-use hir::{Name, Semantics, VariantDef};
+use hir::{Name, Semantics, TypeRef, VariantDef};
 use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -756,8 +756,13 @@ fn is_method_call_unsafe(
     }
 
     let func = sema.resolve_method_call(&method_call_expr)?;
-    if func.self_param(sema.db)?.is_ref {
-        Some(())
+    if func.has_self_param(sema.db) {
+        let params = func.params(sema.db);
+        if matches!(params.into_iter().next(), Some(TypeRef::Reference(..))) {
+            Some(())
+        } else {
+            None
+        }
     } else {
         None
     }
