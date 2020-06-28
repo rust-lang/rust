@@ -1877,7 +1877,8 @@ impl<'test> TestCx<'test> {
         emit_metadata: EmitMetadata,
         allow_unused: AllowUnused,
     ) -> Command {
-        let is_rustdoc = self.is_rustdoc();
+        let is_aux = input_file.components().map(|c| c.as_os_str()).any(|c| c == "auxiliary");
+        let is_rustdoc = self.is_rustdoc() && !is_aux;
         let mut rustc = if !is_rustdoc {
             Command::new(&self.config.rustc_path)
         } else {
@@ -3502,6 +3503,7 @@ impl ProcRes {
     }
 }
 
+#[derive(Debug)]
 enum TargetLocation {
     ThisFile(PathBuf),
     ThisDirectory(PathBuf),
