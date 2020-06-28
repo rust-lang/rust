@@ -1,6 +1,6 @@
 // run-pass
 #![allow(dead_code)]
-#![warn(clashing_extern_decl)]
+#![warn(clashing_extern_declarations)]
 // pretty-expanded FIXME #23616
 
 extern {

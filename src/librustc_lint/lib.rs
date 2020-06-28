@@ -155,7 +155,7 @@ macro_rules! late_lint_passes {
                 // and change this to a module lint pass
                 MissingDebugImplementations: MissingDebugImplementations::default(),
                 ArrayIntoIter: ArrayIntoIter,
-                ClashingExternDecl: ClashingExternDecl::new(),
+                ClashingExternDeclarations: ClashingExternDeclarations::new(),
             ]
         );
     };
