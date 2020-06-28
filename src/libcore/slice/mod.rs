@@ -2664,13 +2664,17 @@ impl<T> [T] {
         self.iter().is_sorted_by_key(f)
     }
 
-    /// Returns index of partition point according to the given predicate,
-    /// such that all those that return true precede the index and
-    /// such that all those that return false succeed the index.
+    /// Returns the index of the partition point according to the given predicate
+    // (the index of the first element of the second partition).
     ///
-    /// The slice must be partitioned
-    /// so that all elements where the predicate returns true
-    /// precede the elements where the predicate returns false.
+    /// The slice is assumed to be partitioned according to the given predicate.
+    /// This means that all elements for which the predicate returns true are at the start of the slice
+    /// and all elements for which the predicate returns false are at the end.
+    /// For example, [7, 15, 3, 5, 4, 12, 6] is a partitioned under the predicate x % 2 != 0
+    /// (all odd numbers are at the start, all even at the end).
+    ///
+    /// If this slice is not partitioned, the returned result is unspecified and meaningless,
+    /// as this method performs a kind of binary search.
     ///
     /// # Examples
     ///
