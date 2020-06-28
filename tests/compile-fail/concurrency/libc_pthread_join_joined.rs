@@ -1,4 +1,4 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
+// ignore-windows: No libc on Windows
 
 // Joining an already joined thread is undefined behavior.
 

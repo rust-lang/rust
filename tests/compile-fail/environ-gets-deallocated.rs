@@ -1,4 +1,4 @@
-//ignore-windows: Windows does not have a global environ list that the program can access directly
+// ignore-windows: Windows does not have a global environ list that the program can access directly
 
 #[cfg(target_os="linux")]
 fn get_environ() -> *const *const u8 {

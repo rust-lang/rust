@@ -1,4 +1,4 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
+// ignore-windows: No libc on Windows
 
 // Joining a detached thread is undefined behavior.
 
