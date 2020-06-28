@@ -5,9 +5,6 @@ use rustc_hir::{GenericBound, Generics, WherePredicate};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
-#[derive(Copy, Clone)]
-pub struct TraitBounds;
-
 declare_clippy_lint! {
     /// **What it does:** This lint warns about unnecessary type repetitions in trait bounds
     ///
@@ -29,6 +26,18 @@ declare_clippy_lint! {
     "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
 }
 
+#[derive(Copy, Clone)]
+pub struct TraitBounds {
+    max_trait_bounds: u64,
+}
+
+impl TraitBounds {
+    #[must_use]
+    pub fn new(max_trait_bounds: u64) -> Self {
+        Self { max_trait_bounds }
+    }
+}
+
 impl_lint_pass!(TraitBounds => [TYPE_REPETITION_IN_BOUNDS]);
 
 impl<'tcx> LateLintPass<'tcx> for TraitBounds {
@@ -45,6 +54,9 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         let mut applicability = Applicability::MaybeIncorrect;
         for bound in gen.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref p) = bound {
+                if p.bounds.len() as u64 > self.max_trait_bounds {
+                    return;
+                }
                 let h = hash(&p.bounded_ty);
                 if let Some(ref v) = map.insert(h, p.bounds.iter().collect::<Vec<_>>()) {
                     let mut hint_string = format!(

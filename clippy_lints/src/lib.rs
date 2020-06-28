@@ -996,7 +996,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box checked_conversions::CheckedConversions);
     store.register_late_pass(|| box integer_division::IntegerDivision);
     store.register_late_pass(|| box inherent_to_string::InherentToString);
-    store.register_late_pass(|| box trait_bounds::TraitBounds);
+    let max_trait_bounds = conf.max_trait_bounds;
+    store.register_late_pass(move || box trait_bounds::TraitBounds::new(max_trait_bounds));
     store.register_late_pass(|| box comparison_chain::ComparisonChain);
     store.register_late_pass(|| box mut_key::MutableKeyType);
     store.register_late_pass(|| box modulo_arithmetic::ModuloArithmetic);
@@ -1033,7 +1034,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let array_size_threshold = conf.array_size_threshold;
     store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
     store.register_late_pass(move || box large_const_arrays::LargeConstArrays::new(array_size_threshold));
-    store.register_late_pass(move || box floating_point_arithmetic::FloatingPointArithmetic);
+    store.register_late_pass(|| box floating_point_arithmetic::FloatingPointArithmetic);
     store.register_early_pass(|| box as_conversions::AsConversions);
     store.register_early_pass(|| box utils::internal_lints::ProduceIce);
     store.register_late_pass(|| box let_underscore::LetUnderscore);
