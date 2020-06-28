@@ -36,6 +36,7 @@ pub struct JsonEmitter {
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
+    terminal_width: Option<usize>,
     macro_backtrace: bool,
 }
 
@@ -45,6 +46,7 @@ impl JsonEmitter {
         source_map: Lrc<SourceMap>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
+        terminal_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
@@ -54,6 +56,7 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
+            terminal_width,
             macro_backtrace,
         }
     }
@@ -61,6 +64,7 @@ impl JsonEmitter {
     pub fn basic(
         pretty: bool,
         json_rendered: HumanReadableErrorType,
+        terminal_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
@@ -69,6 +73,7 @@ impl JsonEmitter {
             Lrc::new(SourceMap::new(file_path_mapping)),
             pretty,
             json_rendered,
+            terminal_width,
             macro_backtrace,
         )
     }
@@ -79,6 +84,7 @@ impl JsonEmitter {
         source_map: Lrc<SourceMap>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
+        terminal_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
         JsonEmitter {
@@ -88,6 +94,7 @@ impl JsonEmitter {
             pretty,
             ui_testing: false,
             json_rendered,
+            terminal_width,
             macro_backtrace,
         }
     }
@@ -247,7 +254,13 @@ impl Diagnostic {
         let buf = BufWriter::default();
         let output = buf.clone();
         je.json_rendered
-            .new_emitter(Box::new(buf), Some(je.sm.clone()), false, None, je.macro_backtrace)
+            .new_emitter(
+                Box::new(buf),
+                Some(je.sm.clone()),
+                false,
+                je.terminal_width,
+                je.macro_backtrace,
+            )
             .ui_testing(je.ui_testing)
             .emit_diagnostic(diag);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
