@@ -50,7 +50,7 @@ impl fmt::Display for FlycheckConfig {
 #[derive(Debug)]
 pub struct FlycheckHandle {
     // XXX: drop order is significant
-    cmd_send: Sender<Restart>,
+    sender: Sender<Restart>,
     thread: jod_thread::JoinHandle,
 }
 
@@ -60,16 +60,15 @@ impl FlycheckHandle {
         config: FlycheckConfig,
         workspace_root: PathBuf,
     ) -> FlycheckHandle {
-        let (cmd_send, cmd_recv) = unbounded::<Restart>();
-        let thread = jod_thread::spawn(move || {
-            FlycheckActor::new(sender, config, workspace_root).run(cmd_recv);
-        });
-        FlycheckHandle { cmd_send, thread }
+        let actor = FlycheckActor::new(sender, config, workspace_root);
+        let (sender, receiver) = unbounded::<Restart>();
+        let thread = jod_thread::spawn(move || actor.run(receiver));
+        FlycheckHandle { sender, thread }
     }
 
     /// Schedule a re-start of the cargo check worker.
     pub fn update(&self) {
-        self.cmd_send.send(Restart).unwrap();
+        self.sender.send(Restart).unwrap();
     }
 }
 
@@ -125,7 +124,7 @@ impl FlycheckActor {
             recv(check_chan.unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
         }
     }
-    fn run(&mut self, inbox: Receiver<Restart>) {
+    fn run(mut self, inbox: Receiver<Restart>) {
         while let Some(event) = self.next_event(&inbox) {
             match event {
                 Event::Restart(Restart) => {
