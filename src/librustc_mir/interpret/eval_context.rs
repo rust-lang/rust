@@ -15,7 +15,7 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
-    self, fold::BottomUpFolder, query::TyCtxtAt, subst::SubstsRef, Ty, TyCtxt, TypeFoldable,
+    self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_span::{source_map::DUMMY_SP, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
@@ -24,6 +24,7 @@ use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
     ScalarMaybeUninit, StackPopJump,
 };
+use crate::transform::validate::equal_up_to_regions;
 use crate::util::storage::AlwaysLiveLocals;
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
@@ -220,42 +221,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx,
 /// This test should be symmetric, as it is primarily about layout compatibility.
 pub(super) fn mir_assign_valid_types<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
     src: TyAndLayout<'tcx>,
     dest: TyAndLayout<'tcx>,
 ) -> bool {
-    if src.ty == dest.ty {
-        // Equal types, all is good.
-        return true;
+    // Type-changing assignments can happen when subtyping is used. While
+    // all normal lifetimes are erased, higher-ranked types with their
+    // late-bound lifetimes are still around and can lead to type
+    // differences. So we compare ignoring lifetimes.
+    if equal_up_to_regions(tcx, param_env, src.ty, dest.ty) {
+        // Make sure the layout is equal, too -- just to be safe. Miri really
+        // needs layout equality. For performance reason we skip this check when
+        // the types are equal. Equal types *can* have different layouts when
+        // enum downcast is involved (as enum variants carry the type of the
+        // enum), but those should never occur in assignments.
+        if cfg!(debug_assertions) || src.ty != dest.ty {
+            assert_eq!(src.layout, dest.layout);
+        }
+        true
+    } else {
+        false
     }
-    if src.layout != dest.layout {
-        // Layout differs, definitely not equal.
-        // We do this here because Miri would *do the wrong thing* if we allowed layout-changing
-        // assignments.
-        return false;
-    }
-
-    // Type-changing assignments can happen for (at least) two reasons:
-    // 1. `&mut T` -> `&T` gets optimized from a reborrow to a mere assignment.
-    // 2. Subtyping is used. While all normal lifetimes are erased, higher-ranked types
-    //    with their late-bound lifetimes are still around and can lead to type differences.
-    // Normalize both of them away.
-    let normalize = |ty: Ty<'tcx>| {
-        ty.fold_with(&mut BottomUpFolder {
-            tcx,
-            // Normalize all references to immutable.
-            ty_op: |ty| match ty.kind {
-                ty::Ref(_, pointee, _) => tcx.mk_imm_ref(tcx.lifetimes.re_erased, pointee),
-                _ => ty,
-            },
-            // We just erase all late-bound lifetimes, but this is not fully correct (FIXME):
-            // lifetimes in invariant positions could matter (e.g. through associated types).
-            // We rely on the fact that layout was confirmed to be equal above.
-            lt_op: |_| tcx.lifetimes.re_erased,
-            // Leave consts unchanged.
-            ct_op: |ct| ct,
-        })
-    };
-    normalize(src.ty) == normalize(dest.ty)
 }
 
 /// Use the already known layout if given (but sanity check in debug mode),
@@ -263,6 +249,7 @@ pub(super) fn mir_assign_valid_types<'tcx>(
 #[cfg_attr(not(debug_assertions), inline(always))]
 pub(super) fn from_known_layout<'tcx>(
     tcx: TyCtxtAt<'tcx>,
+    param_env: ParamEnv<'tcx>,
     known_layout: Option<TyAndLayout<'tcx>>,
     compute: impl FnOnce() -> InterpResult<'tcx, TyAndLayout<'tcx>>,
 ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
@@ -271,7 +258,7 @@ pub(super) fn from_known_layout<'tcx>(
         Some(known_layout) => {
             if cfg!(debug_assertions) {
                 let check_layout = compute()?;
-                if !mir_assign_valid_types(tcx.tcx, check_layout, known_layout) {
+                if !mir_assign_valid_types(tcx.tcx, param_env, check_layout, known_layout) {
                     span_bug!(
                         tcx.span,
                         "expected type differs from actual type.\nexpected: {:?}\nactual: {:?}",
@@ -475,7 +462,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // have to support that case (mostly by skipping all caching).
         match frame.locals.get(local).and_then(|state| state.layout.get()) {
             None => {
-                let layout = from_known_layout(self.tcx, layout, || {
+                let layout = from_known_layout(self.tcx, self.param_env, layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty =
                         self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty);
