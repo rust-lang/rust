@@ -1,4 +1,4 @@
-//ignore-windows: Uses POSIX APIs
+// ignore-windows: No libc on Windows
 
 #![feature(rustc_private)]
 

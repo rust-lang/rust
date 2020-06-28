@@ -1,4 +1,4 @@
-// ignore-windows: Concurrency on Windows is not supported yet.
+// ignore-windows: No libc on Windows
 // error-pattern: unsupported operation: the main thread terminated without waiting for other threads
 
 // Check that we terminate the program when the main thread terminates.
