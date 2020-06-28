@@ -387,7 +387,10 @@ pub(super) fn check_opaque<'tcx>(
 ) {
     check_opaque_for_inheriting_lifetimes(tcx, def_id, span);
     tcx.ensure().type_of(def_id);
-    check_opaque_for_cycles(tcx, def_id, substs, span, origin);
+    if check_opaque_for_cycles(tcx, def_id, substs, span, origin).is_err() {
+        return;
+    }
+    check_opaque_meets_bounds(tcx, def_id, substs, span, origin);
 }
 
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
@@ -504,7 +507,7 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
     substs: SubstsRef<'tcx>,
     span: Span,
     origin: &hir::OpaqueTyOrigin,
-) {
+) -> Result<(), ErrorReported> {
     if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id.to_def_id(), substs)
     {
         match origin {
@@ -514,7 +517,68 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
             }
             _ => opaque_type_cycle_error(tcx, def_id, span),
         }
+        Err(ErrorReported)
+    } else {
+        Ok(())
     }
+}
+
+/// Check that the concrete type behind `impl Trait` actually implements `Trait`.
+fn check_opaque_meets_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    substs: SubstsRef<'tcx>,
+    span: Span,
+    origin: &hir::OpaqueTyOrigin,
+) {
+    match origin {
+        // Checked when type checking the function containing them.
+        hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => return,
+        // Can have different predicates to their defining use
+        hir::OpaqueTyOrigin::Binding | hir::OpaqueTyOrigin::Misc => {}
+    }
+
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let param_env = tcx.param_env(def_id);
+
+    tcx.infer_ctxt().enter(move |infcx| {
+        let inh = Inherited::new(infcx, def_id);
+        let infcx = &inh.infcx;
+        let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
+
+        let misc_cause = traits::ObligationCause::misc(span, hir_id);
+
+        let (_, opaque_type_map) = inh.register_infer_ok_obligations(
+            infcx.instantiate_opaque_types(def_id.to_def_id(), hir_id, param_env, &opaque_ty, span),
+        );
+
+        for (def_id, opaque_defn) in opaque_type_map {
+            match infcx
+                .at(&misc_cause, param_env)
+                .eq(opaque_defn.concrete_ty, tcx.type_of(def_id).subst(tcx, opaque_defn.substs))
+            {
+                Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
+                Err(ty_err) => tcx.sess.delay_span_bug(
+                    opaque_defn.definition_span,
+                    &format!(
+                        "could not unify `{}` with revealed type:\n{}",
+                        opaque_defn.concrete_ty, ty_err,
+                    ),
+                ),
+            }
+        }
+
+        // Check that all obligations are satisfied by the implementation's
+        // version.
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+            infcx.report_fulfillment_errors(errors, None, false);
+        }
+
+        // Finally, resolve all regions. This catches wily misuses of
+        // lifetime parameters.
+        let fcx = FnCtxt::new(&inh, param_env, hir_id);
+        fcx.regionck_item(hir_id, span, &[]);
+    });
 }
 
 pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {

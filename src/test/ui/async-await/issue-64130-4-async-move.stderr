@@ -30,7 +30,6 @@ help: consider moving this into a `let` binding to create a shorter lived borrow
    |
 LL |         match client.status() {
    |               ^^^^^^^^^^^^^^^
-   = note: the return type of a function must have a statically known size
 
 error: aborting due to previous error
 

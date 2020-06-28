@@ -9,7 +9,6 @@ LL | fn baz() -> impl Bar<Item = i32> {
    |
    = note: expected associated type `<impl Bar as Foo>::Item`
                          found type `i32`
-   = note: the return type of a function must have a statically known size
 help: consider constraining the associated type `<impl Bar as Foo>::Item` to `i32`
    |
 LL | fn bar() -> impl Bar<Item = i32> {
