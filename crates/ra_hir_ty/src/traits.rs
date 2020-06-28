@@ -1,5 +1,5 @@
 //! Trait solving using Chalk.
-use std::{panic, sync::Arc};
+use std::sync::Arc;
 
 use chalk_ir::cast::Cast;
 use hir_def::{
@@ -8,7 +8,7 @@ use hir_def::{
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
 
-use crate::{db::HirDatabase, DebruijnIndex};
+use crate::{db::HirDatabase, DebruijnIndex, Substs};
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 
@@ -190,15 +190,7 @@ fn solution_from_chalk(
     solution: chalk_solve::Solution<Interner>,
 ) -> Solution {
     let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<Interner>>| {
-        let value = subst
-            .value
-            .iter(&Interner)
-            .map(|p| match p.ty(&Interner) {
-                Some(ty) => from_chalk(db, ty.clone()),
-                None => unimplemented!(),
-            })
-            .collect();
-        let result = Canonical { value, num_vars: subst.binders.len(&Interner) };
+        let result = from_chalk(db, subst);
         SolutionVariables(result)
     };
     match solution {
@@ -222,7 +214,7 @@ fn solution_from_chalk(
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SolutionVariables(pub Canonical<Vec<Ty>>);
+pub struct SolutionVariables(pub Canonical<Substs>);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A (possible) solution for a proposed goal.

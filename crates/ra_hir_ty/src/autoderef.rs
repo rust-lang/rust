@@ -37,7 +37,7 @@ pub(crate) fn deref(
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
     if let Some(derefed) = ty.value.value.builtin_deref() {
-        Some(Canonical { value: derefed, num_vars: ty.value.num_vars })
+        Some(Canonical { value: derefed, kinds: ty.value.kinds.clone() })
     } else {
         deref_by_trait(db, krate, ty)
     }
@@ -68,8 +68,8 @@ fn deref_by_trait(
 
     // Check that the type implements Deref at all
     let trait_ref = TraitRef { trait_: deref_trait, substs: parameters.clone() };
-    let implements_goal = super::Canonical {
-        num_vars: ty.value.num_vars,
+    let implements_goal = Canonical {
+        kinds: ty.value.kinds.clone(),
         value: InEnvironment {
             value: Obligation::Trait(trait_ref),
             environment: ty.environment.clone(),
@@ -81,7 +81,7 @@ fn deref_by_trait(
 
     // Now do the assoc type projection
     let projection = super::traits::ProjectionPredicate {
-        ty: Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.num_vars)),
+        ty: Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.kinds.len())),
         projection_ty: super::ProjectionTy { associated_ty: target, parameters },
     };
 
@@ -89,7 +89,8 @@ fn deref_by_trait(
 
     let in_env = InEnvironment { value: obligation, environment: ty.environment };
 
-    let canonical = super::Canonical { num_vars: 1 + ty.value.num_vars, value: in_env };
+    let canonical =
+        Canonical::new(in_env, ty.value.kinds.iter().copied().chain(Some(super::TyKind::General)));
 
     let solution = db.trait_solve(krate, canonical)?;
 
@@ -110,7 +111,7 @@ fn deref_by_trait(
             // assumptions will be broken. We would need to properly introduce
             // new variables in that case
 
-            for i in 1..vars.0.num_vars {
+            for i in 1..vars.0.kinds.len() {
                 if vars.0.value[i - 1] != Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
                 {
                     warn!("complex solution for derefing {:?}: {:?}, ignoring", ty.value, solution);
@@ -119,7 +120,7 @@ fn deref_by_trait(
             }
             Some(Canonical {
                 value: vars.0.value[vars.0.value.len() - 1].clone(),
-                num_vars: vars.0.num_vars,
+                kinds: vars.0.kinds.clone(),
             })
         }
         Solution::Ambig(_) => {

@@ -662,13 +662,27 @@ impl TypeWalk for GenericPredicate {
 
 /// Basically a claim (currently not validated / checked) that the contained
 /// type / trait ref contains no inference variables; any inference variables it
-/// contained have been replaced by bound variables, and `num_vars` tells us how
-/// many there are. This is used to erase irrelevant differences between types
-/// before using them in queries.
+/// contained have been replaced by bound variables, and `kinds` tells us how
+/// many there are and whether they were normal or float/int variables. This is
+/// used to erase irrelevant differences between types before using them in
+/// queries.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Canonical<T> {
     pub value: T,
-    pub num_vars: usize,
+    pub kinds: Arc<[TyKind]>,
+}
+
+impl<T> Canonical<T> {
+    pub fn new(value: T, kinds: impl IntoIterator<Item = TyKind>) -> Self {
+        Self { value, kinds: kinds.into_iter().collect() }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TyKind {
+    General,
+    Integer,
+    Float,
 }
 
 /// A function signature as seen by type inference: Several parameter types and

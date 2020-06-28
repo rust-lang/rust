@@ -17,7 +17,7 @@ use crate::{
     primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
     traits::{builtin, AssocTyValue, Canonical, Impl, Obligation},
     ApplicationTy, CallableDef, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId,
-    ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
+    ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TyKind, TypeCtor,
 };
 
 use super::interner::*;
@@ -555,22 +555,39 @@ where
     type Chalk = chalk_ir::Canonical<T::Chalk>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Canonical<T::Chalk> {
-        let parameter = chalk_ir::CanonicalVarKind::new(
-            chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General),
-            chalk_ir::UniverseIndex::ROOT,
-        );
+        let kinds = self
+            .kinds
+            .iter()
+            .map(|k| match k {
+                TyKind::General => chalk_ir::TyKind::General,
+                TyKind::Integer => chalk_ir::TyKind::Integer,
+                TyKind::Float => chalk_ir::TyKind::Float,
+            })
+            .map(|tk| {
+                chalk_ir::CanonicalVarKind::new(
+                    chalk_ir::VariableKind::Ty(tk),
+                    chalk_ir::UniverseIndex::ROOT,
+                )
+            });
         let value = self.value.to_chalk(db);
-        chalk_ir::Canonical {
-            value,
-            binders: chalk_ir::CanonicalVarKinds::from(&Interner, vec![parameter; self.num_vars]),
-        }
+        chalk_ir::Canonical { value, binders: chalk_ir::CanonicalVarKinds::from(&Interner, kinds) }
     }
 
     fn from_chalk(db: &dyn HirDatabase, canonical: chalk_ir::Canonical<T::Chalk>) -> Canonical<T> {
-        Canonical {
-            num_vars: canonical.binders.len(&Interner),
-            value: from_chalk(db, canonical.value),
-        }
+        let kinds = canonical
+            .binders
+            .iter(&Interner)
+            .map(|k| match k.kind {
+                chalk_ir::VariableKind::Ty(tk) => match tk {
+                    chalk_ir::TyKind::General => TyKind::General,
+                    chalk_ir::TyKind::Integer => TyKind::Integer,
+                    chalk_ir::TyKind::Float => TyKind::Float,
+                },
+                chalk_ir::VariableKind::Lifetime => panic!("unexpected lifetime from Chalk"),
+                chalk_ir::VariableKind::Const(_) => panic!("unexpected const from Chalk"),
+            })
+            .collect();
+        Canonical { kinds, value: from_chalk(db, canonical.value) }
     }
 }
 

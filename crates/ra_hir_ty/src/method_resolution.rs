@@ -2,7 +2,7 @@
 //! For details about how this works in rustc, see the method lookup page in the
 //! [rustc guide](https://rust-lang.github.io/rustc-guide/method-lookup.html)
 //! and the corresponding code mostly in librustc_typeck/check/method/probe.rs.
-use std::sync::Arc;
+use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use hir_def::{
@@ -17,7 +17,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::Substs;
 use crate::{
     autoderef, db::HirDatabase, primitive::FloatBitness, utils::all_super_traits, ApplicationTy,
-    Canonical, DebruijnIndex, InEnvironment, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
+    Canonical, DebruijnIndex, InEnvironment, TraitEnvironment, TraitRef, Ty, TyKind, TypeCtor,
+    TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -377,7 +378,7 @@ fn iterate_method_candidates_with_autoref(
         return true;
     }
     let refed = Canonical {
-        num_vars: deref_chain[0].num_vars,
+        kinds: deref_chain[0].kinds.clone(),
         value: Ty::apply_one(TypeCtor::Ref(Mutability::Shared), deref_chain[0].value.clone()),
     };
     if iterate_method_candidates_by_receiver(
@@ -393,7 +394,7 @@ fn iterate_method_candidates_with_autoref(
         return true;
     }
     let ref_muted = Canonical {
-        num_vars: deref_chain[0].num_vars,
+        kinds: deref_chain[0].kinds.clone(),
         value: Ty::apply_one(TypeCtor::Ref(Mutability::Mut), deref_chain[0].value.clone()),
     };
     if iterate_method_candidates_by_receiver(
@@ -612,18 +613,19 @@ pub(crate) fn inherent_impl_substs(
     // we create a var for each type parameter of the impl; we need to keep in
     // mind here that `self_ty` might have vars of its own
     let vars = Substs::build_for_def(db, impl_id)
-        .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty.num_vars)
+        .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty.kinds.len())
         .build();
     let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
-    let self_ty_with_vars =
-        Canonical { num_vars: vars.len() + self_ty.num_vars, value: self_ty_with_vars };
-    let substs = super::infer::unify(&self_ty_with_vars, self_ty);
+    let mut kinds = self_ty.kinds.to_vec();
+    kinds.extend(iter::repeat(TyKind::General).take(vars.len()));
+    let tys = Canonical { kinds: kinds.into(), value: (self_ty_with_vars, self_ty.value.clone()) };
+    let substs = super::infer::unify(&tys);
     // We only want the substs for the vars we added, not the ones from self_ty.
     // Also, if any of the vars we added are still in there, we replace them by
     // Unknown. I think this can only really happen if self_ty contained
     // Unknown, and in that case we want the result to contain Unknown in those
     // places again.
-    substs.map(|s| fallback_bound_vars(s.suffix(vars.len()), self_ty.num_vars))
+    substs.map(|s| fallback_bound_vars(s.suffix(vars.len()), self_ty.kinds.len()))
 }
 
 /// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
@@ -683,15 +685,15 @@ fn generic_implements_goal(
     trait_: TraitId,
     self_ty: Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::Obligation>> {
-    let num_vars = self_ty.num_vars;
+    let mut kinds = self_ty.kinds.to_vec();
     let substs = super::Substs::build_for_def(db, trait_)
         .push(self_ty.value)
-        .fill_with_bound_vars(DebruijnIndex::INNERMOST, num_vars)
+        .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
         .build();
-    let num_vars = substs.len() - 1 + self_ty.num_vars;
+    kinds.extend(iter::repeat(TyKind::General).take(substs.len() - 1));
     let trait_ref = TraitRef { trait_, substs };
     let obligation = super::Obligation::Trait(trait_ref);
-    Canonical { num_vars, value: InEnvironment::new(env, obligation) }
+    Canonical { kinds: kinds.into(), value: InEnvironment::new(env, obligation) }
 }
 
 fn autoderef_method_receiver(
@@ -704,9 +706,9 @@ fn autoderef_method_receiver(
     if let Some(Ty::Apply(ApplicationTy { ctor: TypeCtor::Array, parameters })) =
         deref_chain.last().map(|ty| &ty.value)
     {
-        let num_vars = deref_chain.last().unwrap().num_vars;
+        let kinds = deref_chain.last().unwrap().kinds.clone();
         let unsized_ty = Ty::apply(TypeCtor::Slice, parameters.clone());
-        deref_chain.push(Canonical { value: unsized_ty, num_vars })
+        deref_chain.push(Canonical { value: unsized_ty, kinds })
     }
     deref_chain
 }
