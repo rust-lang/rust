@@ -11,6 +11,8 @@ use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 pub use rustc_infer::traits::util::*;
 
+use std::iter;
+
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator
 ///////////////////////////////////////////////////////////////////////////
@@ -355,6 +357,59 @@ pub fn generator_trait_ref_and_outputs(
 
 pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {
     assoc_item.defaultness.is_final() && tcx.impl_defaultness(assoc_item.container.id()).is_final()
+}
+
+/// Map a bound from an associated item to apply to some other type.
+/// For example, given the following trait
+///
+/// trait X<A> { type Y<'a>: PartialEq<A> }
+///
+/// Say that we know that `<() as X<B>>::Y<'c> = i32` and we need to check that
+/// the `PartialEq` bound applies. This function would return
+/// `i32: PartialEq<B>`.
+pub fn subst_assoc_item_bound<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bound: ty::Predicate<'tcx>,
+    normalized_projection_ty: Ty<'tcx>,
+    assoc_item_substs: &[GenericArg<'tcx>],
+) -> ty::Predicate<'tcx> {
+    let translate_predicate_substs = move |predicate_substs: SubstsRef<'tcx>| {
+        tcx.mk_substs(
+            iter::once(normalized_projection_ty.into())
+                .chain(predicate_substs[1..].iter().map(|s| s.subst(tcx, assoc_item_substs))),
+        )
+    };
+
+    match bound.kind() {
+        ty::PredicateKind::Trait(poly_tr, c) => poly_tr
+            .map_bound(|tr| {
+                let trait_substs = translate_predicate_substs(tr.trait_ref.substs);
+                ty::TraitRef { def_id: tr.def_id(), substs: trait_substs }
+            })
+            .with_constness(*c)
+            .to_predicate(tcx),
+        ty::PredicateKind::Projection(poly_projection) => poly_projection
+            .map_bound(|projection| {
+                let projection_substs = translate_predicate_substs(projection.projection_ty.substs);
+                ty::ProjectionPredicate {
+                    projection_ty: ty::ProjectionTy {
+                        substs: projection_substs,
+                        item_def_id: projection.projection_ty.item_def_id,
+                    },
+                    ty: projection.ty.subst(tcx, assoc_item_substs),
+                }
+            })
+            .to_predicate(tcx),
+        ty::PredicateKind::TypeOutlives(poly_outlives) => poly_outlives
+            .map_bound(|outlives| {
+                ty::OutlivesPredicate(
+                    normalized_projection_ty,
+                    outlives.1.subst(tcx, assoc_item_substs),
+                )
+            })
+            .to_predicate(tcx),
+        _ => bug!("unexepected projection bound: `{:?}`", bound),
+    }
 }
 
 pub enum TupleArgumentsFlag {
