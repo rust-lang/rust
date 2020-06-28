@@ -51,7 +51,7 @@ impl fmt::Display for FlycheckConfig {
 pub struct FlycheckHandle {
     // XXX: drop order is significant
     cmd_send: Sender<Restart>,
-    handle: jod_thread::JoinHandle,
+    thread: jod_thread::JoinHandle,
 }
 
 impl FlycheckHandle {
@@ -61,10 +61,10 @@ impl FlycheckHandle {
         workspace_root: PathBuf,
     ) -> FlycheckHandle {
         let (cmd_send, cmd_recv) = unbounded::<Restart>();
-        let handle = jod_thread::spawn(move || {
+        let thread = jod_thread::spawn(move || {
             FlycheckActor::new(sender, config, workspace_root).run(cmd_recv);
         });
-        FlycheckHandle { cmd_send, handle }
+        FlycheckHandle { cmd_send, thread }
     }
 
     /// Schedule a re-start of the cargo check worker.
