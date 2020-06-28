@@ -2694,6 +2694,15 @@ impl<T> [T] {
 
         while left != right {
             let mid = left + (right - left) / 2;
+            // SAFETY:
+            // When left < right, left <= mid < right.
+            // Therefore left always increases and right always decreases,
+            // and eigher of them is selected.
+            // In both cases left <= right is satisfied.
+            // Therefore if left < right in a step,
+            // left <= right is satisfied in the next step.
+            // Therefore as long as left != right, 0 <= left < right <= len is satisfied
+            // and if this case 0 <= mid < len is satisfied too.
             let value = unsafe { self.get_unchecked(mid) };
             if pred(value) {
                 left = mid + 1;
