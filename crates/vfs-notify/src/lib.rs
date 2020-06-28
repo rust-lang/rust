@@ -10,7 +10,7 @@ mod include;
 
 use std::convert::{TryFrom, TryInto};
 
-use crossbeam_channel::{select, unbounded, Receiver};
+use crossbeam_channel::{select, unbounded, Receiver, Sender};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashSet;
@@ -22,8 +22,8 @@ use crate::include::Include;
 #[derive(Debug)]
 pub struct NotifyHandle {
     // Relative order of fields below is significant.
-    sender: crossbeam_channel::Sender<Message>,
-    _thread: jod_thread::JoinHandle,
+    sender: Sender<Message>,
+    thread: jod_thread::JoinHandle,
 }
 
 #[derive(Debug)]
@@ -37,7 +37,7 @@ impl loader::Handle for NotifyHandle {
         let actor = NotifyActor::new(sender);
         let (sender, receiver) = unbounded::<Message>();
         let thread = jod_thread::spawn(move || actor.run(receiver));
-        NotifyHandle { sender, _thread: thread }
+        NotifyHandle { sender, thread }
     }
     fn set_config(&mut self, config: loader::Config) {
         self.sender.send(Message::Config(config)).unwrap()
