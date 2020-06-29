@@ -241,18 +241,27 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         traits::ObligationCause::new(self.span, self.body_id, code)
     }
 
-    fn normalize(&mut self) -> Vec<traits::PredicateObligation<'tcx>> {
+    fn normalize(mut self) -> Vec<traits::PredicateObligation<'tcx>> {
         let cause = self.cause(traits::MiscObligation);
         let infcx = &mut self.infcx;
         let param_env = self.param_env;
         let mut obligations = Vec::with_capacity(self.out.len());
-        for pred in &self.out {
-            assert!(!pred.has_escaping_bound_vars());
+        for mut obligation in self.out {
+            assert!(!obligation.has_escaping_bound_vars());
             let mut selcx = traits::SelectionContext::new(infcx);
             let i = obligations.len();
-            let value =
-                traits::normalize_to(&mut selcx, param_env, cause.clone(), pred, &mut obligations);
-            obligations.insert(i, value);
+            // Don't normalize the whole obligation, the param env is either
+            // already normalized, or we're currently normalizing the
+            // param_env. Either way we should only normalize the predicate.
+            let normalized_predicate = traits::normalize_to(
+                &mut selcx,
+                param_env,
+                cause.clone(),
+                &obligation.predicate,
+                &mut obligations,
+            );
+            obligation.predicate = normalized_predicate;
+            obligations.insert(i, obligation);
         }
         obligations
     }

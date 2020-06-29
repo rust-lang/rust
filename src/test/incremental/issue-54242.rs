@@ -1,6 +1,6 @@
 // revisions: rpass cfail
 
-trait Tr {
+trait Tr where Self::Arr: Sized {
     type Arr;
 
     const C: usize = 0;

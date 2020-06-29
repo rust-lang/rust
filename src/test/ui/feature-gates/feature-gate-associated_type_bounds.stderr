@@ -1,5 +1,5 @@
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:15:22
+  --> $DIR/feature-gate-associated_type_bounds.rs:16:22
    |
 LL |     type A: Iterator<Item: Copy>;
    |                      ^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     type A: Iterator<Item: Copy>;
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:19:22
+  --> $DIR/feature-gate-associated_type_bounds.rs:20:22
    |
 LL |     type B: Iterator<Item: 'static>;
    |                      ^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     type B: Iterator<Item: 'static>;
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:23:20
+  --> $DIR/feature-gate-associated_type_bounds.rs:24:20
    |
 LL | struct _St1<T: Tr1<As1: Tr2>> {
    |                    ^^^^^^^^
@@ -26,7 +26,7 @@ LL | struct _St1<T: Tr1<As1: Tr2>> {
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:30:18
+  --> $DIR/feature-gate-associated_type_bounds.rs:31:18
    |
 LL | enum _En1<T: Tr1<As1: Tr2>> {
    |                  ^^^^^^^^
@@ -35,7 +35,7 @@ LL | enum _En1<T: Tr1<As1: Tr2>> {
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:37:19
+  --> $DIR/feature-gate-associated_type_bounds.rs:38:19
    |
 LL | union _Un1<T: Tr1<As1: Tr2>> {
    |                   ^^^^^^^^
@@ -44,7 +44,7 @@ LL | union _Un1<T: Tr1<As1: Tr2>> {
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:44:37
+  --> $DIR/feature-gate-associated_type_bounds.rs:45:37
    |
 LL | type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
    |                                     ^^^^^^^^^^
@@ -53,7 +53,7 @@ LL | type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:47:22
+  --> $DIR/feature-gate-associated_type_bounds.rs:48:22
    |
 LL | fn _apit(_: impl Tr1<As1: Copy>) {}
    |                      ^^^^^^^^^
@@ -62,7 +62,7 @@ LL | fn _apit(_: impl Tr1<As1: Copy>) {}
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:49:26
+  --> $DIR/feature-gate-associated_type_bounds.rs:50:26
    |
 LL | fn _apit_dyn(_: &dyn Tr1<As1: Copy>) {}
    |                          ^^^^^^^^^
@@ -71,7 +71,7 @@ LL | fn _apit_dyn(_: &dyn Tr1<As1: Copy>) {}
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:52:24
+  --> $DIR/feature-gate-associated_type_bounds.rs:53:24
    |
 LL | fn _rpit() -> impl Tr1<As1: Copy> { S1 }
    |                        ^^^^^^^^^
@@ -80,7 +80,7 @@ LL | fn _rpit() -> impl Tr1<As1: Copy> { S1 }
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:55:31
+  --> $DIR/feature-gate-associated_type_bounds.rs:56:31
    |
 LL | fn _rpit_dyn() -> Box<dyn Tr1<As1: Copy>> { Box::new(S1) }
    |                               ^^^^^^^^^
@@ -89,7 +89,7 @@ LL | fn _rpit_dyn() -> Box<dyn Tr1<As1: Copy>> { Box::new(S1) }
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:58:23
+  --> $DIR/feature-gate-associated_type_bounds.rs:59:23
    |
 LL | const _cdef: impl Tr1<As1: Copy> = S1;
    |                       ^^^^^^^^^
@@ -98,7 +98,7 @@ LL | const _cdef: impl Tr1<As1: Copy> = S1;
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:64:24
+  --> $DIR/feature-gate-associated_type_bounds.rs:65:24
    |
 LL | static _sdef: impl Tr1<As1: Copy> = S1;
    |                        ^^^^^^^^^
@@ -107,7 +107,7 @@ LL | static _sdef: impl Tr1<As1: Copy> = S1;
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:71:21
+  --> $DIR/feature-gate-associated_type_bounds.rs:72:21
    |
 LL |     let _: impl Tr1<As1: Copy> = S1;
    |                     ^^^^^^^^^
@@ -116,7 +116,7 @@ LL |     let _: impl Tr1<As1: Copy> = S1;
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/feature-gate-associated_type_bounds.rs:58:14
+  --> $DIR/feature-gate-associated_type_bounds.rs:59:14
    |
 LL | const _cdef: impl Tr1<As1: Copy> = S1;
    |              ^^^^^^^^^^^^^^^^^^^
@@ -124,7 +124,7 @@ LL | const _cdef: impl Tr1<As1: Copy> = S1;
    = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/feature-gate-associated_type_bounds.rs:64:15
+  --> $DIR/feature-gate-associated_type_bounds.rs:65:15
    |
 LL | static _sdef: impl Tr1<As1: Copy> = S1;
    |               ^^^^^^^^^^^^^^^^^^^
@@ -132,7 +132,7 @@ LL | static _sdef: impl Tr1<As1: Copy> = S1;
    = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/feature-gate-associated_type_bounds.rs:71:12
+  --> $DIR/feature-gate-associated_type_bounds.rs:72:12
    |
 LL |     let _: impl Tr1<As1: Copy> = S1;
    |            ^^^^^^^^^^^^^^^^^^^
@@ -140,7 +140,7 @@ LL |     let _: impl Tr1<As1: Copy> = S1;
    = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `<<Self as _Tr3>::A as std::iter::Iterator>::Item: std::marker::Copy` is not satisfied
-  --> $DIR/feature-gate-associated_type_bounds.rs:15:28
+  --> $DIR/feature-gate-associated_type_bounds.rs:16:28
    |
 LL |     type A: Iterator<Item: Copy>;
    |                            ^^^^ the trait `std::marker::Copy` is not implemented for `<<Self as _Tr3>::A as std::iter::Iterator>::Item`

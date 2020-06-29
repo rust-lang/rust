@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 // compile-flags: -Zsave-analysis
 // This is also a regression test for #69415 and the above flag is needed.
 

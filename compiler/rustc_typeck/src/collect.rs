@@ -1787,10 +1787,22 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                 }) => {
                     if impl_trait_fn.is_some() {
                         // return-position impl trait
-                        // TODO: Investigate why we have this special case?
+                        //
+                        // We don't inherit predicates from the parent here:
+                        // If we have, say `fn f<'a, T: 'a>() -> impl Sized {}`
+                        // then the return type is `f::<'static, T>::{{opaque}}`.
+                        //
+                        // If we inherited the predicates of `f` then we would
+                        // require that `T: 'static` to show that the return
+                        // type is well-formed.
+                        //
+                        // The only way to have something with this opaque type
+                        // is from the return type of the containing function,
+                        // which will ensure that the function's predicates
+                        // hold.
                         return ty::GenericPredicates { parent: None, predicates: &[] };
                     } else {
-                        // type alias impl trait
+                        // type-alias impl trait
                         generics
                     }
                 }

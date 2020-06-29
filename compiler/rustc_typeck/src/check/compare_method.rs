@@ -1256,6 +1256,7 @@ pub fn check_type_bounds<'tcx>(
             );
             debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
 
+            inh.register_predicates(obligations);
             inh.register_predicate(obligation);
         }
 
