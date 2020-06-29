@@ -1536,9 +1536,44 @@ mod true_keyword {}
 //
 /// Define an alias for an existing type.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// The syntax is `type Name = ExistingType;`.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// # Examples
+///
+/// `type` does **not** create a new type:
+///
+/// ```rust
+/// type Meters = u32;
+/// type Kilograms = u32;
+///
+/// let m: Meters = 3;
+/// let k: Kilograms = 3;
+///
+/// assert_eq!(m, k);
+/// ```
+///
+/// In traits, `type` is used to declare an [associated type]:
+///
+/// ```rust
+/// trait Iterator {
+///     // associated type declaration
+///     type Item;
+///     fn next(&mut self) -> Option<Self::Item>;
+/// }
+///
+/// struct Once<T>(Option<T>);
+///
+/// impl<T> Iterator for Once<T> {
+///     // associated type definition
+///     type Item = T;
+///     fn next(&mut self) -> Option<Self::Item> {
+///         self.0.take()
+///     }
+/// }
+/// ```
+///
+/// [`trait`]: keyword.trait.html
+/// [associated type]: ../reference/items/associated-items.html#associated-types
 mod type_keyword {}
 
 #[doc(keyword = "unsafe")]
