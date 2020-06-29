@@ -2203,7 +2203,8 @@ assert_eq!((-10", stringify!($SelfT), ").signum(), -1);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_sign", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_sign", since = "1.46.0")]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn signum(self) -> Self {
                 match self {
