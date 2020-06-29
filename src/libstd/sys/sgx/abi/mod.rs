@@ -17,6 +17,9 @@ pub mod usercalls;
 #[cfg(not(test))]
 global_asm!(include_str!("entry.S"));
 
+#[repr(C)]
+struct EntryReturn(u64, u64);
+
 #[cfg(not(test))]
 #[no_mangle]
 unsafe extern "C" fn tcs_init(secondary: bool) {
@@ -56,8 +59,7 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
 // able to specify this
 #[cfg(not(test))]
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
-extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64) -> (u64, u64) {
+extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64) -> EntryReturn {
     // FIXME: how to support TLS in library mode?
     let tls = Box::new(tls::Tls::new());
     let _tls_guard = unsafe { tls.activate() };
@@ -65,7 +67,7 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
     if secondary {
         super::thread::Thread::entry();
 
-        (0, 0)
+        EntryReturn(0, 0)
     } else {
         extern "C" {
             fn main(argc: isize, argv: *const *const u8) -> isize;
