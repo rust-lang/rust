@@ -18,7 +18,7 @@ Note that it only work best with sized type without generics.
 
 ## Examples
 
-```rust
+```rust,ignore
 #![feature(rustc_attrs)]
 
 #[rustc_layout(abi, size)]
@@ -30,7 +30,7 @@ pub enum X {
 
 When that is compiled, the compiler will error with something like
 
-```
+```text
 error: abi: Aggregate { sized: true }
  --> src/lib.rs:4:1
   |
