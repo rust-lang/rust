@@ -92,7 +92,7 @@ message_on_remove = "Issue #{number}'s prioritization request has been removed."
 [notify-zulip."I-nominated"]
 required_labels = ["T-compiler"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
-topic = "I-prioritize #{number} {title}"
+topic = "I-nominated #{number} {title}"
 message_on_add = """\
 @*WG-prioritization/alerts* #{number} has been nominated for discussion in `T-compiler` meeting.
 
