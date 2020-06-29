@@ -1114,6 +1114,40 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         lub
     }
 
+    /// Like `universal_upper_bound`, but returns an approximation more suitable
+    /// for diagnostics. If `r` contains multiple disjoint universal regions
+    /// (e.g. 'a and 'b in `fn foo<'a, 'b> { ... }`, we pick the lower-numbered region.
+    /// This corresponds to picking named regions over unnamed regions
+    /// (e.g. picking early-bound regions over a closure late-bound region).
+    ///
+    /// This means that the returned value may not be a true upper bound, since
+    /// only 'static is known to outlive disjoint universal regions.
+    /// Therefore, this method should only be used in diagnostic code,
+    /// where displaying *some* named universal region is better than
+    /// falling back to 'static.
+    pub(in crate::borrow_check) fn approx_universal_upper_bound(&self, r: RegionVid) -> RegionVid {
+        debug!("approx_universal_upper_bound(r={:?}={})", r, self.region_value_str(r));
+
+        // Find the smallest universal region that contains all other
+        // universal regions within `region`.
+        let mut lub = self.universal_regions.fr_fn_body;
+        let r_scc = self.constraint_sccs.scc(r);
+        let static_r = self.universal_regions.fr_static;
+        for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            let new_lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
+            debug!("approx_universal_upper_bound: ur={:?} lub={:?} new_lub={:?}", ur, lub, new_lub);
+            if ur != static_r && lub != static_r && new_lub == static_r {
+                lub = std::cmp::min(ur, lub);
+            } else {
+                lub = new_lub;
+            }
+        }
+
+        debug!("approx_universal_upper_bound: r={:?} lub={:?}", r, lub);
+
+        lub
+    }
+
     /// Tests if `test` is true when applied to `lower_bound` at
     /// `point`.
     fn eval_verify_bound(
