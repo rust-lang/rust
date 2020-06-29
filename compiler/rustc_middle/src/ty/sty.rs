@@ -674,6 +674,13 @@ impl<'tcx> ExistentialPredicate<'tcx> {
     /// made to the tree. In particular, this ordering is preserved across incremental compilations.
     pub fn stable_cmp(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Ordering {
         use self::ExistentialPredicate::*;
+        // Note that we only call this method after checking that the
+        // given predicates represent a valid trait object.
+        //
+        // This means that we have at most one `ExistentialPredicate::Trait`
+        // and at most one `ExistentialPredicate::Projection` for each associated item.
+        // We therefore do not have to worry about the ordering for cases which
+        // are not well formed.
         match (*self, *other) {
             (Trait(_), Trait(_)) => Ordering::Equal,
             (Projection(ref a), Projection(ref b)) => {
