@@ -194,6 +194,43 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     }
 }
 
+#[unstable(feature = "box_error_send", issue = "none")]
+impl<'a, E: Error + Send + 'a> From<E> for Box<dyn Error + Send + 'a> {
+    /// Converts a type of [`Error`] + [`Send`] into a box of dyn [`Error`] + [`Send`].
+    ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::fmt;
+    /// use std::mem;
+    ///
+    /// #[derive(Debug)]
+    /// struct AnError;
+    ///
+    /// impl fmt::Display for AnError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f , "An error")
+    ///     }
+    /// }
+    ///
+    /// impl Error for AnError {}
+    ///
+    /// unsafe impl Send for AnError {}
+    ///
+    /// let an_error = AnError;
+    /// assert!(0 == mem::size_of_val(&an_error));
+    /// let a_boxed_error = Box::<dyn Error + Send>::from(an_error);
+    /// assert!(
+    ///     mem::size_of::<Box<dyn Error + Send>>() == mem::size_of_val(&a_boxed_error))
+    /// ```
+    fn from(err: E) -> Box<dyn Error + Send + 'a> {
+        Box::new(err)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of
