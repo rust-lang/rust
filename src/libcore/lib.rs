@@ -70,7 +70,6 @@
 #![feature(bound_cloned)]
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
-#![feature(const_ascii_ctype_on_intrinsics)]
 #![feature(const_alloc_layout)]
 #![feature(const_discriminant)]
 #![cfg_attr(bootstrap, feature(const_if_match))]
