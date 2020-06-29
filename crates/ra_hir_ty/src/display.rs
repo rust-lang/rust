@@ -308,7 +308,6 @@ impl HirDisplay for ApplicationTy {
                 }
 
                 if self.parameters.len() > 0 {
-                    let mut non_default_parameters = Vec::with_capacity(self.parameters.len());
                     let parameters_to_write =
                         if f.display_target.is_source_code() || f.omit_verbose_types() {
                             match self
@@ -319,20 +318,23 @@ impl HirDisplay for ApplicationTy {
                             {
                                 None => self.parameters.0.as_ref(),
                                 Some(default_parameters) => {
+                                    let mut default_from = 0;
                                     for (i, parameter) in self.parameters.iter().enumerate() {
                                         match (parameter, default_parameters.get(i)) {
                                             (&Ty::Unknown, _) | (_, None) => {
-                                                non_default_parameters.push(parameter.clone())
+                                                default_from = i + 1;
                                             }
-                                            (_, Some(default_parameter))
-                                                if parameter != default_parameter =>
-                                            {
-                                                non_default_parameters.push(parameter.clone())
+                                            (_, Some(default_parameter)) => {
+                                                let actual_default = default_parameter
+                                                    .clone()
+                                                    .subst(&self.parameters.prefix(i));
+                                                if parameter != &actual_default {
+                                                    default_from = i + 1;
+                                                }
                                             }
-                                            _ => (),
                                         }
                                     }
-                                    &non_default_parameters
+                                    &self.parameters.0[0..default_from]
                                 }
                             }
                         } else {

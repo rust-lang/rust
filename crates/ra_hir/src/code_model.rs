@@ -543,7 +543,7 @@ impl_froms!(Adt: Struct, Union, Enum);
 impl Adt {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.into());
-        subst.iter().any(|ty| ty == &Ty::Unknown)
+        subst.iter().any(|ty| &ty.value == &Ty::Unknown)
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be
@@ -775,7 +775,7 @@ pub struct TypeAlias {
 impl TypeAlias {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.id.into());
-        subst.iter().any(|ty| ty == &Ty::Unknown)
+        subst.iter().any(|ty| &ty.value == &Ty::Unknown)
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -1035,7 +1035,10 @@ impl TypeParam {
         let local_idx = hir_ty::param_idx(db, self.id)?;
         let resolver = self.id.parent.resolver(db.upcast());
         let environment = TraitEnvironment::lower(db, &resolver);
-        params.get(local_idx).cloned().map(|ty| Type {
+        let ty = params.get(local_idx)?.clone();
+        let subst = Substs::type_params(db, self.id.parent);
+        let ty = ty.subst(&subst.prefix(local_idx));
+        Some(Type {
             krate: self.id.parent.module(db.upcast()).krate,
             ty: InEnvironment { value: ty, environment },
         })

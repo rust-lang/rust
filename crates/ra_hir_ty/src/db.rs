@@ -14,7 +14,7 @@ use crate::{
     method_resolution::CrateImplDefs,
     traits::{chalk, AssocTyValue, Impl},
     Binders, CallableDef, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
-    ReturnTypeImplTraits, Substs, TraitRef, Ty, TyDefId, TypeCtor, ValueTyDefId,
+    ReturnTypeImplTraits, TraitRef, Ty, TyDefId, TypeCtor, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -65,7 +65,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn generic_predicates(&self, def: GenericDefId) -> Arc<[Binders<GenericPredicate>]>;
 
     #[salsa::invoke(crate::lower::generic_defaults_query)]
-    fn generic_defaults(&self, def: GenericDefId) -> Substs;
+    fn generic_defaults(&self, def: GenericDefId) -> Arc<[Binders<Ty>]>;
 
     #[salsa::invoke(crate::method_resolution::CrateImplDefs::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: CrateId) -> Arc<CrateImplDefs>;
