@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use itertools::Itertools;
+use rustc_hash::FxHashMap;
 
 use hir::{Adt, ModuleDef, PathResolution, Semantics, Struct};
-use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{algo, ast, match_ast, AstNode, SyntaxKind, SyntaxKind::*, SyntaxNode};
 
@@ -87,7 +87,7 @@ fn struct_definition(path: &ast::Path, sema: &Semantics<RootDatabase>) -> Option
     }
 }
 
-fn compute_fields_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<HashMap<String, usize>> {
+fn compute_fields_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<FxHashMap<String, usize>> {
     Some(
         struct_definition(path, &ctx.sema)?
             .fields(ctx.db)

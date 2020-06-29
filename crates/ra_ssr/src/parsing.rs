@@ -165,7 +165,7 @@ fn parse_pattern(pattern_str: &str) -> Result<Vec<PatternElement>, SsrError> {
 /// Checks for errors in a rule. e.g. the replace pattern referencing placeholders that the search
 /// pattern didn't define.
 fn validate_rule(rule: &SsrRule) -> Result<(), SsrError> {
-    let mut defined_placeholders = std::collections::HashSet::new();
+    let mut defined_placeholders = FxHashSet::default();
     for p in &rule.pattern.raw.tokens {
         if let PatternElement::Placeholder(placeholder) = p {
             defined_placeholders.insert(&placeholder.ident);

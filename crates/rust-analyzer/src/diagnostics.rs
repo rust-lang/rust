@@ -1,14 +1,14 @@
 //! Book keeping for keeping diagnostics easily in sync with the client.
 pub(crate) mod to_proto;
 
-use std::{collections::HashMap, mem, sync::Arc};
+use std::{mem, sync::Arc};
 
 use ra_ide::FileId;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::lsp_ext;
 
-pub(crate) type CheckFixes = Arc<HashMap<FileId, Vec<Fix>>>;
+pub(crate) type CheckFixes = Arc<FxHashMap<FileId, Vec<Fix>>>;
 
 #[derive(Debug, Default, Clone)]
 pub struct DiagnosticsConfig {
@@ -18,8 +18,8 @@ pub struct DiagnosticsConfig {
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
-    pub(crate) native: HashMap<FileId, Vec<lsp_types::Diagnostic>>,
-    pub(crate) check: HashMap<FileId, Vec<lsp_types::Diagnostic>>,
+    pub(crate) native: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
+    pub(crate) check: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
     pub(crate) check_fixes: CheckFixes,
     changes: FxHashSet<FileId>,
 }

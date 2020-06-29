@@ -254,6 +254,11 @@ The default name is a lowercased name of the type: `global_state: GlobalState`.
 Avoid ad-hoc acronyms and contractions, but use the ones that exist consistently (`db`, `ctx`, `acc`).
 The default name for "result of the function" local variable is `res`.
 
+## Collection types
+
+We prefer `rustc_hash::FxHashMap` and `rustc_hash::FxHashSet` instead of the ones in `std::collections`.
+They use a hasher that's slightly faster and using them consistently will reduce code size by some small amount.
+
 ## Preconditions
 
 Function preconditions should generally be expressed in types and provided by the caller (rather than checked by callee):
