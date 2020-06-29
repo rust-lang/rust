@@ -1018,7 +1018,7 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     min
 }
 
-/// Returns the element that gives the minimum value from the specified function.
+/// Returns the value that gives the minimum value from the specified function.
 ///
 /// Returns the first argument if the comparison determines them to be equal.
 ///
@@ -1083,7 +1083,7 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     max
 }
 
-/// Returns the element that gives the maximum value from the specified function.
+/// Returns the value that gives the maximum value from the specified function.
 ///
 /// Returns the second argument if the comparison determines them to be equal.
 ///
