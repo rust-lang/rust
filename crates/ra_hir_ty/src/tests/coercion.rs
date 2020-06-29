@@ -1,6 +1,7 @@
-use super::infer_with_mismatches;
 use insta::assert_snapshot;
 use test_utils::mark;
+
+use super::infer_with_mismatches;
 
 // Infer with some common definitions and impls.
 fn infer(source: &str) -> String {

@@ -41,6 +41,10 @@ pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextSize) ->
     ancestors_at_offset(syntax, offset).find_map(N::cast)
 }
 
+pub fn find_node_at_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
+    find_covering_element(syntax, range).ancestors().find_map(N::cast)
+}
+
 /// Skip to next non `trivia` token
 pub fn skip_trivia_token(mut token: SyntaxToken, direction: Direction) -> Option<SyntaxToken> {
     while token.kind().is_trivia() {

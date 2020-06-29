@@ -161,7 +161,7 @@ pub fn add_cursor(text: &str, offset: TextSize) -> String {
 }
 
 /// Extracts `//^ some text` annotations
-pub fn extract_annotations(text: &str) -> Vec<(TextSize, String)> {
+pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
     let mut res = Vec::new();
     let mut prev_line_start: Option<TextSize> = None;
     let mut line_start: TextSize = 0.into();
@@ -169,7 +169,7 @@ pub fn extract_annotations(text: &str) -> Vec<(TextSize, String)> {
         if let Some(idx) = line.find("//^") {
             let offset = prev_line_start.unwrap() + TextSize::of(&line[..idx + "//".len()]);
             let data = line[idx + "//^".len()..].trim().to_string();
-            res.push((offset, data))
+            res.push((TextRange::at(offset, 1.into()), data))
         }
         prev_line_start = Some(line_start);
         line_start += TextSize::of(line);
@@ -179,18 +179,20 @@ pub fn extract_annotations(text: &str) -> Vec<(TextSize, String)> {
 
 #[test]
 fn test_extract_annotations() {
-    let res = extract_annotations(&trim_indent(
+    let text = stdx::trim_indent(
         r#"
 fn main() {
     let x = 92;
       //^ def
-
-    x + 1
+    z + 1
 } //^ i32
     "#,
-    ));
-
-    assert_eq!(res, vec![(20.into(), "def".into()), (47.into(), "i32".into())]);
+    );
+    let res = extract_annotations(&text)
+        .into_iter()
+        .map(|(range, ann)| (&text[range], ann))
+        .collect::<Vec<_>>();
+    assert_eq!(res, vec![("x", "def".into()), ("z", "i32".into()),]);
 }
 
 // Comparison functionality borrowed from cargo:

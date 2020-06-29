@@ -1,7 +1,6 @@
-use super::{infer, type_at, type_at_pos};
-use crate::test_db::TestDB;
 use insta::assert_snapshot;
-use ra_db::fixture::WithFixture;
+
+use super::{check_types, infer};
 
 #[test]
 fn infer_slice_method() {
@@ -246,13 +245,13 @@ fn test() {
 
 #[test]
 fn cross_crate_associated_method_call() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:other_crate
 fn test() {
     let x = other_crate::foo::S::thing();
-    x<|>;
-}
+    x;
+} //^ i128
 
 //- /lib.rs crate:other_crate
 mod foo {
@@ -263,7 +262,6 @@ mod foo {
 }
 "#,
     );
-    assert_eq!("i128", type_at_pos(&db, pos));
 }
 
 #[test]
@@ -684,135 +682,127 @@ fn test() {
 
 #[test]
 fn method_resolution_unify_impl_self_type() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 struct S<T>;
 impl S<u32> { fn foo(&self) -> u8 {} }
 impl S<i32> { fn foo(&self) -> i8 {} }
-fn test() { (S::<u32>.foo(), S::<i32>.foo())<|>; }
+fn test() { (S::<u32>.foo(), S::<i32>.foo()); }
+          //^ (u8, i8)
 "#,
     );
-    assert_eq!(t, "(u8, i8)");
 }
 
 #[test]
 fn method_resolution_trait_before_autoref() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl S { fn foo(&self) -> i8 { 0 } }
 impl Trait for S { fn foo(self) -> u128 { 0 } }
-fn test() { S.foo()<|>; }
+fn test() { S.foo(); }
+                //^ u128
 "#,
     );
-    assert_eq!(t, "u128");
 }
 
 #[test]
 fn method_resolution_by_value_before_autoref() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Clone { fn clone(&self) -> Self; }
 struct S;
 impl Clone for S {}
 impl Clone for &S {}
-fn test() { (S.clone(), (&S).clone(), (&&S).clone())<|>; }
+fn test() { (S.clone(), (&S).clone(), (&&S).clone()); }
+          //^ (S, S, &S)
 "#,
     );
-    assert_eq!(t, "(S, S, &S)");
 }
 
 #[test]
 fn method_resolution_trait_before_autoderef() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl S { fn foo(self) -> i8 { 0 } }
 impl Trait for &S { fn foo(self) -> u128 { 0 } }
-fn test() { (&S).foo()<|>; }
+fn test() { (&S).foo(); }
+                   //^ u128
 "#,
     );
-    assert_eq!(t, "u128");
 }
 
 #[test]
 fn method_resolution_impl_before_trait() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl S { fn foo(self) -> i8 { 0 } }
 impl Trait for S { fn foo(self) -> u128 { 0 } }
-fn test() { S.foo()<|>; }
+fn test() { S.foo(); }
+                //^ i8
 "#,
     );
-    assert_eq!(t, "i8");
 }
 
 #[test]
 fn method_resolution_impl_ref_before_trait() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl S { fn foo(&self) -> i8 { 0 } }
 impl Trait for &S { fn foo(self) -> u128 { 0 } }
-fn test() { S.foo()<|>; }
+fn test() { S.foo(); }
+                //^ i8
 "#,
     );
-    assert_eq!(t, "i8");
 }
 
 #[test]
 fn method_resolution_trait_autoderef() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl Trait for S { fn foo(self) -> u128 { 0 } }
-fn test() { (&S).foo()<|>; }
+fn test() { (&S).foo(); }
+                   //^ u128
 "#,
     );
-    assert_eq!(t, "u128");
 }
 
 #[test]
 fn method_resolution_unsize_array() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 #[lang = "slice"]
 impl<T> [T] {
     fn len(&self) -> usize { loop {} }
 }
 fn test() {
     let a = [1, 2, 3];
-    a.len()<|>;
-}
+    a.len();
+}       //^ usize
 "#,
     );
-    assert_eq!(t, "usize");
 }
 
 #[test]
 fn method_resolution_trait_from_prelude() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:other_crate
 struct S;
 impl Clone for S {}
 
 fn test() {
-    S.clone()<|>;
+    S.clone();
+          //^ S
 }
 
 //- /lib.rs crate:other_crate
@@ -825,115 +815,107 @@ mod foo {
 }
 "#,
     );
-    assert_eq!("S", type_at_pos(&db, pos));
 }
 
 #[test]
 fn method_resolution_where_clause_for_unknown_trait() {
     // The blanket impl currently applies because we ignore the unresolved where clause
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl<T> Trait for T where T: UnknownTrait {}
-fn test() { (&S).foo()<|>; }
+fn test() { (&S).foo(); }
+                   //^ u128
 "#,
     );
-    assert_eq!(t, "u128");
 }
 
 #[test]
 fn method_resolution_where_clause_not_met() {
     // The blanket impl shouldn't apply because we can't prove S: Clone
-    let t = type_at(
+    // This is also to make sure that we don't resolve to the foo method just
+    // because that's the only method named foo we can find, which would make
+    // the below tests not work
+    check_types(
         r#"
-//- /main.rs
 trait Clone {}
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl<T> Trait for T where T: Clone {}
-fn test() { (&S).foo()<|>; }
+fn test() { (&S).foo(); }
+                   //^ {unknown}
 "#,
     );
-    // This is also to make sure that we don't resolve to the foo method just
-    // because that's the only method named foo we can find, which would make
-    // the below tests not work
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn method_resolution_where_clause_inline_not_met() {
     // The blanket impl shouldn't apply because we can't prove S: Clone
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Clone {}
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl<T: Clone> Trait for T {}
-fn test() { (&S).foo()<|>; }
+fn test() { (&S).foo(); }
+                   //^ {unknown}
 "#,
     );
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn method_resolution_where_clause_1() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Clone {}
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl Clone for S {}
 impl<T> Trait for T where T: Clone {}
-fn test() { S.foo()<|>; }
+fn test() { S.foo(); }
+                //^ u128
 "#,
     );
-    assert_eq!(t, "u128");
 }
 
 #[test]
 fn method_resolution_where_clause_2() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Into<T> { fn into(self) -> T; }
 trait From<T> { fn from(other: T) -> Self; }
 struct S1;
 struct S2;
 impl From<S2> for S1 {}
 impl<T, U> Into<U> for T where U: From<T> {}
-fn test() { S2.into()<|>; }
+fn test() { S2.into(); }
+                  //^ {unknown}
 "#,
     );
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn method_resolution_where_clause_inline() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Into<T> { fn into(self) -> T; }
 trait From<T> { fn from(other: T) -> Self; }
 struct S1;
 struct S2;
 impl From<S2> for S1 {}
 impl<T, U: From<T>> Into<U> for T {}
-fn test() { S2.into()<|>; }
+fn test() { S2.into(); }
+                  //^ {unknown}
 "#,
     );
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn method_resolution_overloaded_method() {
     test_utils::mark::check!(impl_self_type_match_without_receiver);
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 struct Wrapper<T>(T);
 struct Foo<T>(T);
 struct Bar<T>(T);
@@ -953,30 +935,30 @@ impl<T> Wrapper<Bar<T>> {
 fn main() {
     let a = Wrapper::<Foo<f32>>::new(1.0);
     let b = Wrapper::<Bar<f32>>::new(1.0);
-    (a, b)<|>;
+    (a, b);
+  //^ (Wrapper<Foo<f32>>, Wrapper<Bar<f32>>)
 }
 "#,
     );
-    assert_eq!(t, "(Wrapper<Foo<f32>>, Wrapper<Bar<f32>>)")
 }
 
 #[test]
 fn method_resolution_encountering_fn_type() {
-    type_at(
+    check_types(
         r#"
 //- /main.rs
 fn foo() {}
 trait FnOnce { fn call(self); }
-fn test() { foo.call()<|>; }
+fn test() { foo.call(); }
+                   //^ {unknown}
 "#,
     );
 }
 
 #[test]
 fn method_resolution_non_parameter_type() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 mod a {
     pub trait Foo {
         fn foo(&self);
@@ -988,18 +970,16 @@ fn foo<T>(t: Wrapper<T>)
 where
     Wrapper<T>: a::Foo,
 {
-    t.foo()<|>;
-}
+    t.foo();
+}       //^ {unknown}
 "#,
     );
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn method_resolution_3373() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 struct A<T>(T);
 
 impl A<i32> {
@@ -1007,19 +987,17 @@ impl A<i32> {
 }
 
 fn main() {
-    A::from(3)<|>;
-}
+    A::from(3);
+}          //^ A<i32>
 "#,
     );
-    assert_eq!(t, "A<i32>");
 }
 
 #[test]
 fn method_resolution_slow() {
     // this can get quite slow if we set the solver size limit too high
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait SendX {}
 
 struct S1; impl SendX for S1 {}
@@ -1037,10 +1015,10 @@ trait FnX {}
 
 impl<B, C> Trait for S<B, C> where C: FnX, B: SendX {}
 
-fn test() { (S {}).method()<|>; }
+fn test() { (S {}).method(); }
+                        //^ ()
 "#,
     );
-    assert_eq!(t, "()");
 }
 
 #[test]

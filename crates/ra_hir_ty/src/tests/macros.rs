@@ -1,16 +1,13 @@
 use std::fs;
 
 use insta::assert_snapshot;
-use ra_db::fixture::WithFixture;
 use test_utils::project_dir;
 
-use crate::test_db::TestDB;
-
-use super::{infer, type_at, type_at_pos};
+use super::{check_types, infer};
 
 #[test]
 fn cfg_impl_def() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:foo cfg:test
 use foo::S as T;
@@ -28,8 +25,8 @@ impl S {
 
 fn test() {
     let t = (S.foo1(), S.foo2(), T.foo3(), T.foo4());
-    t<|>;
-}
+    t;
+} //^ (i32, {unknown}, i32, {unknown})
 
 //- /foo.rs crate:foo
 struct S;
@@ -45,7 +42,6 @@ impl S {
 }
 "#,
     );
-    assert_eq!("(i32, {unknown}, i32, {unknown})", type_at_pos(&db, pos));
 }
 
 #[test]
@@ -253,26 +249,24 @@ fn foo() {
 
 #[test]
 fn processes_impls_generated_by_macros() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 macro_rules! m {
     ($ident:ident) => (impl Trait for $ident {})
 }
 trait Trait { fn foo(self) -> u128 {} }
 struct S;
 m!(S);
-fn test() { S.foo()<|>; }
+fn test() { S.foo(); }
+                //^ u128
 "#,
     );
-    assert_eq!(t, "u128");
 }
 
 #[test]
 fn infer_assoc_items_generated_by_macros() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 macro_rules! m {
     () => (fn foo(&self) -> u128 {0})
 }
@@ -281,17 +275,16 @@ impl S {
     m!();
 }
 
-fn test() { S.foo()<|>; }
+fn test() { S.foo(); }
+                //^ u128
 "#,
     );
-    assert_eq!(t, "u128");
 }
 
 #[test]
 fn infer_assoc_items_generated_by_macros_chain() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 macro_rules! m_inner {
     () => {fn foo(&self) -> u128 {0}}
 }
@@ -304,21 +297,21 @@ impl S {
     m!();
 }
 
-fn test() { S.foo()<|>; }
+fn test() { S.foo(); }
+                //^ u128
 "#,
     );
-    assert_eq!(t, "u128");
 }
 
 #[test]
 fn infer_macro_with_dollar_crate_is_correct_in_expr() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:foo
 fn test() {
     let x = (foo::foo!(1), foo::foo!(2));
-    x<|>;
-}
+    x;
+} //^ (i32, usize)
 
 //- /lib.rs crate:foo
 #[macro_export]
@@ -335,12 +328,11 @@ macro_rules! bar {
 pub fn baz() -> usize { 31usize }
 "#,
     );
-    assert_eq!("(i32, usize)", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_macro_with_dollar_crate_is_correct_in_trait_associate_type() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:foo
 use foo::Trait;
@@ -348,7 +340,8 @@ use foo::Trait;
 fn test() {
     let msg = foo::Message(foo::MessageRef);
     let r = msg.deref();
-    r<|>;
+    r;
+  //^ &MessageRef
 }
 
 //- /lib.rs crate:foo
@@ -375,7 +368,6 @@ macro_rules! expand {
 expand!();
 "#,
     );
-    assert_eq!("&MessageRef", type_at_pos(&db, pos));
 }
 
 #[test]
@@ -429,13 +421,13 @@ fn main() {
 
 #[test]
 fn infer_local_inner_macros() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:foo
 fn test() {
     let x = foo::foo!(1);
-    x<|>;
-}
+    x;
+} //^ i32
 
 //- /lib.rs crate:foo
 #[macro_export(local_inner_macros)]
@@ -450,7 +442,6 @@ macro_rules! bar {
 
 "#,
     );
-    assert_eq!("i32", type_at_pos(&db, pos));
 }
 
 #[test]
@@ -531,7 +522,7 @@ fn main() {
 
 #[test]
 fn infer_builtin_macros_include() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs
 #[rustc_builtin_macro]
@@ -540,14 +531,13 @@ macro_rules! include {() => {}}
 include!("foo.rs");
 
 fn main() {
-    bar()<|>;
-}
+    bar();
+}     //^ u32
 
 //- /foo.rs
 fn bar() -> u32 {0}
 "#,
     );
-    assert_eq!("u32", type_at_pos(&db, pos));
 }
 
 #[test]
@@ -565,18 +555,17 @@ macro_rules! include {() => {}}
 include!("foo.rs");
 
 fn main() {
-    RegisterBlock { }<|>;
+    RegisterBlock { };
+                  //^ RegisterBlock
 }
     "#;
     let fixture = format!("{}\n//- /foo.rs\n{}", fixture, big_file);
-
-    let (db, pos) = TestDB::with_position(&fixture);
-    assert_eq!("RegisterBlock", type_at_pos(&db, pos));
+    check_types(&fixture);
 }
 
 #[test]
 fn infer_builtin_macros_include_concat() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs
 #[rustc_builtin_macro]
@@ -588,19 +577,18 @@ macro_rules! concat {() => {}}
 include!(concat!("f", "oo.rs"));
 
 fn main() {
-    bar()<|>;
-}
+    bar();
+}     //^ u32
 
 //- /foo.rs
 fn bar() -> u32 {0}
 "#,
     );
-    assert_eq!("u32", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_builtin_macros_include_concat_with_bad_env_should_failed() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs
 #[rustc_builtin_macro]
@@ -615,32 +603,29 @@ macro_rules! env {() => {}}
 include!(concat!(env!("OUT_DIR"), "/foo.rs"));
 
 fn main() {
-    bar()<|>;
-}
+    bar();
+}     //^ {unknown}
 
 //- /foo.rs
 fn bar() -> u32 {0}
 "#,
     );
-    assert_eq!("{unknown}", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_builtin_macros_include_itself_should_failed() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
-//- /main.rs
 #[rustc_builtin_macro]
 macro_rules! include {() => {}}
 
 include!("main.rs");
 
 fn main() {
-    0<|>
-}
+    0
+} //^ i32
 "#,
     );
-    assert_eq!("i32", type_at_pos(&db, pos));
 }
 
 #[test]
@@ -686,14 +671,14 @@ fn main() {
 
 #[test]
 fn infer_derive_clone_simple() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:core
 #[derive(Clone)]
 struct S;
 fn test() {
-    S.clone()<|>;
-}
+    S.clone();
+}         //^ S
 
 //- /lib.rs crate:core
 #[prelude_import]
@@ -705,12 +690,11 @@ mod clone {
 }
 "#,
     );
-    assert_eq!("S", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_derive_clone_in_core() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /lib.rs crate:core
 #[prelude_import]
@@ -726,16 +710,15 @@ pub struct S;
 //- /main.rs crate:main deps:core
 use core::S;
 fn test() {
-    S.clone()<|>;
-}
+    S.clone();
+}         //^ S
 "#,
     );
-    assert_eq!("S", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_derive_clone_with_params() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:core
 #[derive(Clone)]
@@ -744,7 +727,8 @@ struct S;
 struct Wrapper<T>(T);
 struct NonClone;
 fn test() {
-    (Wrapper(S).clone(), Wrapper(NonClone).clone())<|>;
+    (Wrapper(S).clone(), Wrapper(NonClone).clone());
+  //^ (Wrapper<S>, {unknown})
 }
 
 //- /lib.rs crate:core
@@ -757,13 +741,12 @@ mod clone {
 }
 "#,
     );
-    assert_eq!("(Wrapper<S>, {unknown})", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_custom_derive_simple() {
     // FIXME: this test current now do nothing
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main
 use foo::Foo;
@@ -772,11 +755,10 @@ use foo::Foo;
 struct S{}
 
 fn test() {
-    S{}<|>;
-}
+    S{};
+}   //^ S
 "#,
     );
-    assert_eq!("S", type_at_pos(&db, pos));
 }
 
 #[test]
