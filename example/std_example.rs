@@ -111,6 +111,17 @@ fn main() {
 
     let kind = Nums::NegOne;
     assert_eq!(-1i128, kind as i128);
+
+    let options = [1u128];
+    match options[0] {
+        1 => (),
+        0 => loop {},
+        v => panic(v),
+    };
+}
+
+fn panic(_: u128) {
+    panic!();
 }
 
 #[target_feature(enable = "sse2")]
