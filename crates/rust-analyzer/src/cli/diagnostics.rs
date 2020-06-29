@@ -1,11 +1,14 @@
 //! Analyze all modules in a project for diagnostics. Exits with a non-zero status
 //! code if any errors are found.
 
+use std::path::Path;
+
 use anyhow::anyhow;
+use rustc_hash::FxHashSet;
+
 use hir::Crate;
 use ra_db::SourceDatabaseExt;
 use ra_ide::Severity;
-use std::{collections::HashSet, path::Path};
 
 use crate::cli::{load_cargo::load_cargo, Result};
 
@@ -20,7 +23,7 @@ pub fn diagnostics(
     let analysis = host.analysis();
 
     let mut found_error = false;
-    let mut visited_files = HashSet::new();
+    let mut visited_files = FxHashSet::default();
 
     let mut work = Vec::new();
     let krates = Crate::all(db);

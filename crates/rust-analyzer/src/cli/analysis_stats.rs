@@ -1,7 +1,11 @@
 //! Fully type-check project and print various stats, like the number of type
 //! errors.
 
-use std::{collections::HashSet, path::Path, time::Instant};
+use std::{path::Path, time::Instant};
+
+use itertools::Itertools;
+use rand::{seq::SliceRandom, thread_rng};
+use rustc_hash::FxHashSet;
 
 use hir::{
     db::{AstDatabase, DefDatabase, HirDatabase},
@@ -9,10 +13,8 @@ use hir::{
 };
 use hir_def::FunctionId;
 use hir_ty::{Ty, TypeWalk};
-use itertools::Itertools;
 use ra_db::SourceDatabaseExt;
 use ra_syntax::AstNode;
-use rand::{seq::SliceRandom, thread_rng};
 use stdx::format_to;
 
 use crate::cli::{load_cargo::load_cargo, progress_report::ProgressReport, Result, Verbosity};
@@ -33,7 +35,7 @@ pub fn analysis_stats(
     println!("Database loaded {:?}", db_load_time.elapsed());
     let analysis_time = Instant::now();
     let mut num_crates = 0;
-    let mut visited_modules = HashSet::new();
+    let mut visited_modules = FxHashSet::default();
     let mut visit_queue = Vec::new();
 
     let mut krates = Crate::all(db);
