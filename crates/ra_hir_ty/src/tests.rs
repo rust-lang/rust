@@ -17,17 +17,18 @@ use hir_def::{
     item_scope::ItemScope,
     keys,
     nameres::CrateDefMap,
-    AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId, ModuleId,
+    AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::{db::AstDatabase, InFile};
 use insta::assert_snapshot;
-use ra_db::{fixture::WithFixture, salsa::Database, FilePosition, SourceDatabase};
+use ra_db::{fixture::WithFixture, salsa::Database, FileRange, SourceDatabase};
 use ra_syntax::{
     algo,
     ast::{self, AstNode},
     SyntaxNode,
 };
 use stdx::format_to;
+use test_utils::extract_annotations;
 
 use crate::{
     db::HirDatabase, display::HirDisplay, infer::TypeMismatch, test_db::TestDB, InferenceResult, Ty,
@@ -37,21 +38,38 @@ use crate::{
 // against snapshots of the expected results using insta. Use cargo-insta to
 // update the snapshots.
 
-fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
-    type_at_pos_displayed(db, pos, |ty, _| ty.display(db).to_string())
+fn check_types(ra_fixture: &str) {
+    check_types_impl(ra_fixture, false)
 }
 
-fn displayed_source_at_pos(db: &TestDB, pos: FilePosition) -> String {
-    type_at_pos_displayed(db, pos, |ty, module_id| ty.display_source_code(db, module_id).unwrap())
+fn check_types_source_code(ra_fixture: &str) {
+    check_types_impl(ra_fixture, true)
 }
 
-fn type_at_pos_displayed(
-    db: &TestDB,
-    pos: FilePosition,
-    display_fn: impl FnOnce(&Ty, ModuleId) -> String,
-) -> String {
+fn check_types_impl(ra_fixture: &str, display_source: bool) {
+    let db = TestDB::with_files(ra_fixture);
+    let mut checked_one = false;
+    for file_id in db.all_files() {
+        let text = db.parse(file_id).syntax_node().to_string();
+        let annotations = extract_annotations(&text);
+        for (range, expected) in annotations {
+            let ty = type_at_range(&db, FileRange { file_id, range });
+            let actual = if display_source {
+                let module = db.module_for_file(file_id);
+                ty.display_source_code(&db, module).unwrap()
+            } else {
+                ty.display(&db).to_string()
+            };
+            assert_eq!(expected, actual);
+            checked_one = true;
+        }
+    }
+    assert!(checked_one, "no `//^` annotations found");
+}
+
+fn type_at_range(db: &TestDB, pos: FileRange) -> Ty {
     let file = db.parse(pos.file_id).ok().unwrap();
-    let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
+    let expr = algo::find_node_at_range::<ast::Expr>(file.syntax(), pos.range).unwrap();
     let fn_def = expr.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
     let module = db.module_for_file(pos.file_id);
     let func = *module.child_by_source(db)[keys::FUNCTION]
@@ -61,15 +79,9 @@ fn type_at_pos_displayed(
     let (_body, source_map) = db.body_with_source_map(func.into());
     if let Some(expr_id) = source_map.node_expr(InFile::new(pos.file_id.into(), &expr)) {
         let infer = db.infer(func.into());
-        let ty = &infer[expr_id];
-        return display_fn(ty, module);
+        return infer[expr_id].clone();
     }
     panic!("Can't find expression")
-}
-
-fn type_at(ra_fixture: &str) -> String {
-    let (db, file_pos) = TestDB::with_position(ra_fixture);
-    type_at_pos(&db, file_pos)
 }
 
 fn infer(ra_fixture: &str) -> String {

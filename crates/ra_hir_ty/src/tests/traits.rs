@@ -1,17 +1,13 @@
 use insta::assert_snapshot;
-use ra_db::fixture::WithFixture;
 use test_utils::mark;
 
-use crate::test_db::TestDB;
-
-use super::{infer, infer_with_mismatches, type_at, type_at_pos};
+use super::{check_types, infer, infer_with_mismatches};
 
 #[test]
 fn infer_await() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:core
-
 struct IntFuture;
 
 impl Future for IntFuture {
@@ -21,8 +17,8 @@ impl Future for IntFuture {
 fn test() {
     let r = IntFuture;
     let v = r.await;
-    v<|>;
-}
+    v;
+} //^ u64
 
 //- /core.rs crate:core
 #[prelude_import] use future::*;
@@ -32,18 +28,15 @@ mod future {
         type Output;
     }
 }
-
 "#,
     );
-    assert_eq!("u64", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_async() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:core
-
 async fn foo() -> u64 {
     128
 }
@@ -51,8 +44,8 @@ async fn foo() -> u64 {
 fn test() {
     let r = foo();
     let v = r.await;
-    v<|>;
-}
+    v;
+} //^ u64
 
 //- /core.rs crate:core
 #[prelude_import] use future::*;
@@ -62,26 +55,23 @@ mod future {
         type Output;
     }
 }
-
 "#,
     );
-    assert_eq!("u64", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_desugar_async() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:core
-
 async fn foo() -> u64 {
     128
 }
 
 fn test() {
     let r = foo();
-    r<|>;
-}
+    r;
+} //^ impl Future<Output = u64>
 
 //- /core.rs crate:core
 #[prelude_import] use future::*;
@@ -93,23 +83,20 @@ mod future {
 
 "#,
     );
-    assert_eq!("impl Future<Output = u64>", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_try() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:core
-
 fn test() {
     let r: Result<i32, u64> = Result::Ok(1);
     let v = r?;
-    v<|>;
-}
+    v;
+} //^ i32
 
 //- /core.rs crate:core
-
 #[prelude_import] use ops::*;
 mod ops {
     trait Try {
@@ -130,30 +117,26 @@ mod result {
         type Error = E;
     }
 }
-
 "#,
     );
-    assert_eq!("i32", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_for_loop() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:core,alloc
-
 use alloc::collections::Vec;
 
 fn test() {
     let v = Vec::new();
     v.push("foo");
     for x in v {
-        x<|>;
-    }
+        x;
+    } //^ &str
 }
 
 //- /core.rs crate:core
-
 #[prelude_import] use iter::*;
 mod iter {
     trait IntoIterator {
@@ -162,7 +145,6 @@ mod iter {
 }
 
 //- /alloc.rs crate:alloc deps:core
-
 mod collections {
     struct Vec<T> {}
     impl<T> Vec<T> {
@@ -176,15 +158,13 @@ mod collections {
 }
 "#,
     );
-    assert_eq!("&str", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_ops_neg() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:std
-
 struct Bar;
 struct Foo;
 
@@ -195,11 +175,10 @@ impl std::ops::Neg for Bar {
 fn test() {
     let a = Bar;
     let b = -a;
-    b<|>;
-}
+    b;
+} //^ Foo
 
 //- /std.rs crate:std
-
 #[prelude_import] use ops::*;
 mod ops {
     #[lang = "neg"]
@@ -209,15 +188,13 @@ mod ops {
 }
 "#,
     );
-    assert_eq!("Foo", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_ops_not() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:std
-
 struct Bar;
 struct Foo;
 
@@ -228,11 +205,10 @@ impl std::ops::Not for Bar {
 fn test() {
     let a = Bar;
     let b = !a;
-    b<|>;
-}
+    b;
+} //^ Foo
 
 //- /std.rs crate:std
-
 #[prelude_import] use ops::*;
 mod ops {
     #[lang = "not"]
@@ -242,7 +218,6 @@ mod ops {
 }
 "#,
     );
-    assert_eq!("Foo", type_at_pos(&db, pos));
 }
 
 #[test]
@@ -537,10 +512,9 @@ fn indexing_arrays() {
 
 #[test]
 fn infer_ops_index() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:std
-
 struct Bar;
 struct Foo;
 
@@ -551,11 +525,10 @@ impl std::ops::Index<u32> for Bar {
 fn test() {
     let a = Bar;
     let b = a[1u32];
-    b<|>;
-}
+    b;
+} //^ Foo
 
 //- /std.rs crate:std
-
 #[prelude_import] use ops::*;
 mod ops {
     #[lang = "index"]
@@ -565,19 +538,18 @@ mod ops {
 }
 "#,
     );
-    assert_eq!("Foo", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_ops_index_autoderef() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:std
 fn test() {
     let a = &[1u32, 2, 3];
     let b = a[1u32];
-    b<|>;
-}
+    b;
+} //^ u32
 
 //- /std.rs crate:std
 impl<T> ops::Index<u32> for [T] {
@@ -593,14 +565,12 @@ mod ops {
 }
 "#,
     );
-    assert_eq!("u32", type_at_pos(&db, pos));
 }
 
 #[test]
 fn deref_trait() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 #[lang = "deref"]
 trait Deref {
     type Target;
@@ -618,16 +588,15 @@ impl S {
 }
 
 fn test(s: Arc<S>) {
-    (*s, s.foo())<|>;
-}
+    (*s, s.foo());
+} //^ (S, u128)
 "#,
     );
-    assert_eq!(t, "(S, u128)");
 }
 
 #[test]
 fn deref_trait_with_inference_var() {
-    let t = type_at(
+    check_types(
         r#"
 //- /main.rs
 #[lang = "deref"]
@@ -647,19 +616,18 @@ fn foo(a: Arc<S>) {}
 
 fn test() {
     let a = new_arc();
-    let b = (*a)<|>;
+    let b = (*a);
+          //^ S
     foo(a);
 }
 "#,
     );
-    assert_eq!(t, "S");
 }
 
 #[test]
 fn deref_trait_infinite_recursion() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 #[lang = "deref"]
 trait Deref {
     type Target;
@@ -673,18 +641,16 @@ impl Deref for S {
 }
 
 fn test(s: S) {
-    s.foo()<|>;
-}
+    s.foo();
+}       //^ {unknown}
 "#,
     );
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn deref_trait_with_question_mark_size() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 #[lang = "deref"]
 trait Deref {
     type Target;
@@ -702,18 +668,16 @@ impl S {
 }
 
 fn test(s: Arc<S>) {
-    (*s, s.foo())<|>;
-}
+    (*s, s.foo());
+} //^ (S, u128)
 "#,
     );
-    assert_eq!(t, "(S, u128)");
 }
 
 #[test]
 fn obligation_from_function_clause() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 struct S;
 
 trait Trait<T> {}
@@ -722,16 +686,15 @@ impl Trait<u32> for S {}
 fn foo<T: Trait<U>, U>(t: T) -> U {}
 
 fn test(s: S) {
-    foo(s)<|>;
-}
+    (foo(s));
+} //^ u32
 "#,
     );
-    assert_eq!(t, "u32");
 }
 
 #[test]
 fn obligation_from_method_clause() {
-    let t = type_at(
+    check_types(
         r#"
 //- /main.rs
 struct S;
@@ -745,18 +708,16 @@ impl O {
 }
 
 fn test() {
-    O.foo(S)<|>;
-}
+    O.foo(S);
+}      //^ isize
 "#,
     );
-    assert_eq!(t, "isize");
 }
 
 #[test]
 fn obligation_from_self_method_clause() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 struct S;
 
 trait Trait<T> {}
@@ -767,18 +728,16 @@ impl S {
 }
 
 fn test() {
-    S.foo()<|>;
-}
+    S.foo();
+}       //^ i64
 "#,
     );
-    assert_eq!(t, "i64");
 }
 
 #[test]
 fn obligation_from_impl_clause() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 struct S;
 
 trait Trait<T> {}
@@ -790,32 +749,30 @@ impl<U, T: Trait<U>> O<T> {
 }
 
 fn test(o: O<S>) {
-    o.foo()<|>;
-}
+    o.foo();
+}       //^ &str
 "#,
     );
-    assert_eq!(t, "&str");
 }
 
 #[test]
 fn generic_param_env_1() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Clone {}
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl Clone for S {}
 impl<T> Trait for T where T: Clone {}
-fn test<T: Clone>(t: T) { t.foo()<|>; }
+fn test<T: Clone>(t: T) { t.foo(); }
+                             //^ u128
 "#,
     );
-    assert_eq!(t, "u128");
 }
 
 #[test]
 fn generic_param_env_1_not_met() {
-    let t = type_at(
+    check_types(
         r#"
 //- /main.rs
 trait Clone {}
@@ -823,45 +780,42 @@ trait Trait { fn foo(self) -> u128; }
 struct S;
 impl Clone for S {}
 impl<T> Trait for T where T: Clone {}
-fn test<T>(t: T) { t.foo()<|>; }
+fn test<T>(t: T) { t.foo(); }
+                       //^ {unknown}
 "#,
     );
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn generic_param_env_2() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl Trait for S {}
-fn test<T: Trait>(t: T) { t.foo()<|>; }
+fn test<T: Trait>(t: T) { t.foo(); }
+                              //^ u128
 "#,
     );
-    assert_eq!(t, "u128");
 }
 
 #[test]
 fn generic_param_env_2_not_met() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait { fn foo(self) -> u128; }
 struct S;
 impl Trait for S {}
-fn test<T>(t: T) { t.foo()<|>; }
+fn test<T>(t: T) { t.foo(); }
+                       //^ {unknown}
 "#,
     );
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn generic_param_env_deref() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 #[lang = "deref"]
 trait Deref {
     type Target;
@@ -870,17 +824,17 @@ trait Trait {}
 impl<T> Deref for T where T: Trait {
     type Target = i128;
 }
-fn test<T: Trait>(t: T) { (*t)<|>; }
+fn test<T: Trait>(t: T) { (*t); }
+                        //^ i128
 "#,
     );
-    assert_eq!(t, "i128");
 }
 
 #[test]
 fn associated_type_placeholder() {
-    let t = type_at(
+    // inside the generic function, the associated type gets normalized to a placeholder `ApplL::Out<T>` [https://rust-lang.github.io/rustc-guide/traits/associated-types.html#placeholder-associated-types].
+    check_types(
         r#"
-//- /main.rs
 pub trait ApplyL {
     type Out;
 }
@@ -893,19 +847,16 @@ impl<T> ApplyL for RefMutL<T> {
 
 fn test<T: ApplyL>() {
     let y: <RefMutL<T> as ApplyL>::Out = no_matter;
-    y<|>;
-}
+    y;
+} //^ ApplyL::Out<T>
 "#,
     );
-    // inside the generic function, the associated type gets normalized to a placeholder `ApplL::Out<T>` [https://rust-lang.github.io/rustc-guide/traits/associated-types.html#placeholder-associated-types].
-    assert_eq!(t, "ApplyL::Out<T>");
 }
 
 #[test]
 fn associated_type_placeholder_2() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 pub trait ApplyL {
     type Out;
 }
@@ -913,11 +864,10 @@ fn foo<T: ApplyL>(t: T) -> <T as ApplyL>::Out;
 
 fn test<T: ApplyL>(t: T) {
     let y = foo(t);
-    y<|>;
-}
+    y;
+} //^ ApplyL::Out<T>
 "#,
     );
-    assert_eq!(t, "ApplyL::Out<T>");
 }
 
 #[test]
@@ -1398,19 +1348,17 @@ fn test(a: impl Trait + 'lifetime, b: impl 'lifetime, c: impl (Trait), d: impl (
 #[test]
 #[ignore]
 fn error_bound_chalk() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait {
     fn foo(&self) -> u32 {}
 }
 
 fn test(x: (impl Trait + UnknownTrait)) {
-    x.foo()<|>;
-}
+    x.foo();
+}       //^ u32
 "#,
     );
-    assert_eq!(t, "u32");
 }
 
 #[test]
@@ -1480,7 +1428,7 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
 
 #[test]
 fn impl_trait_assoc_binding_projection_bug() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:std
 pub trait Language {
@@ -1499,8 +1447,8 @@ trait Clone {
 
 fn api_walkthrough() {
     for node in foo() {
-        node.clone()<|>;
-    }
+        node.clone();
+    }            //^ {unknown}
 }
 
 //- /std.rs crate:std
@@ -1518,7 +1466,6 @@ mod iter {
 }
 "#,
     );
-    assert_eq!("{unknown}", type_at_pos(&db, pos));
 }
 
 #[test]
@@ -1549,9 +1496,8 @@ fn test<T: Trait1<Type = u32>>(x: T) {
 
 #[test]
 fn where_clause_trait_in_scope_for_method_resolution() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 mod foo {
     trait Trait {
         fn foo(&self) -> u32 {}
@@ -1559,11 +1505,10 @@ mod foo {
 }
 
 fn test<T: foo::Trait>(x: T) {
-    x.foo()<|>;
-}
+    x.foo();
+}      //^ u32
 "#,
     );
-    assert_eq!(t, "u32");
 }
 
 #[test]
@@ -2012,7 +1957,7 @@ fn test() {
 
 #[test]
 fn unselected_projection_in_trait_env_1() {
-    let t = type_at(
+    check_types(
         r#"
 //- /main.rs
 trait Trait {
@@ -2025,18 +1970,16 @@ trait Trait2 {
 
 fn test<T: Trait>() where T::Item: Trait2 {
     let x: T::Item = no_matter;
-    x.foo()<|>;
-}
+    x.foo();
+}       //^ u32
 "#,
     );
-    assert_eq!(t, "u32");
 }
 
 #[test]
 fn unselected_projection_in_trait_env_2() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait<T> {
     type Item;
 }
@@ -2047,11 +1990,10 @@ trait Trait2 {
 
 fn test<T, U>() where T::Item: Trait2, T: Trait<U::Item>, U: Trait<()> {
     let x: T::Item = no_matter;
-    x.foo()<|>;
-}
+    x.foo();
+}       //^ u32
 "#,
     );
-    assert_eq!(t, "u32");
 }
 
 #[test]
@@ -2097,9 +2039,8 @@ impl Trait for S2 {
 
 #[test]
 fn unselected_projection_on_trait_self() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait {
     type Item;
 
@@ -2112,18 +2053,16 @@ impl Trait for S {
 }
 
 fn test() {
-    S.f()<|>;
-}
+    S.f();
+}     //^ u32
 "#,
     );
-    assert_eq!(t, "u32");
 }
 
 #[test]
 fn unselected_projection_chalk_fold() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Interner {}
 trait Fold<I: Interner, TI = I> {
     type Result;
@@ -2142,18 +2081,16 @@ where
 }
 
 fn foo<I: Interner>(interner: &I, t: Ty<I>) {
-    fold(interner, t)<|>;
-}
+    fold(interner, t);
+}     //^ Ty<I>
 "#,
     );
-    assert_eq!(t, "Ty<I>");
 }
 
 #[test]
 fn trait_impl_self_ty() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait<T> {
    fn foo(&self);
 }
@@ -2163,18 +2100,16 @@ struct S;
 impl Trait<Self> for S {}
 
 fn test() {
-    S.foo()<|>;
-}
+    S.foo();
+}       //^ ()
 "#,
     );
-    assert_eq!(t, "()");
 }
 
 #[test]
 fn trait_impl_self_ty_cycle() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Trait {
    fn foo(&self);
 }
@@ -2184,18 +2119,17 @@ struct S<T>;
 impl Trait for S<Self> {}
 
 fn test() {
-    S.foo()<|>;
-}
+    S.foo();
+}       //^ {unknown}
 "#,
     );
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn unselected_projection_in_trait_env_cycle_1() {
-    let t = type_at(
+    // this is a legitimate cycle
+    check_types(
         r#"
-//- /main.rs
 trait Trait {
     type Item;
 }
@@ -2203,17 +2137,16 @@ trait Trait {
 trait Trait2<T> {}
 
 fn test<T: Trait>() where T: Trait2<T::Item> {
-    let x: T::Item = no_matter<|>;
-}
+    let x: T::Item = no_matter;
+}                       //^ {unknown}
 "#,
     );
-    // this is a legitimate cycle
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn unselected_projection_in_trait_env_cycle_2() {
-    let t = type_at(
+    // this is a legitimate cycle
+    check_types(
         r#"
 //- /main.rs
 trait Trait<T> {
@@ -2221,19 +2154,16 @@ trait Trait<T> {
 }
 
 fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
-    let x: T::Item = no_matter<|>;
-}
+    let x: T::Item = no_matter;
+}                   //^ {unknown}
 "#,
     );
-    // this is a legitimate cycle
-    assert_eq!(t, "{unknown}");
 }
 
 #[test]
 fn inline_assoc_type_bounds_1() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Iterator {
     type Item;
 }
@@ -2249,29 +2179,26 @@ impl<T: Iterator> Iterator for S<T> {
 
 fn test<I: Iterator<Item: OtherTrait<u32>>>() {
     let x: <S<I> as Iterator>::Item;
-    x.foo()<|>;
-}
+    x.foo();
+}       //^ u32
 "#,
     );
-    assert_eq!(t, "u32");
 }
 
 #[test]
 fn inline_assoc_type_bounds_2() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 trait Iterator {
     type Item;
 }
 
 fn test<I: Iterator<Item: Iterator<Item = u32>>>() {
     let x: <<I as Iterator>::Item as Iterator>::Item;
-    x<|>;
-}
+    x;
+} //^ u32
 "#,
     );
-    assert_eq!(t, "u32");
 }
 
 #[test]
@@ -2445,9 +2372,8 @@ fn main() {
 
 #[test]
 fn associated_type_bound() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 pub trait Trait {
     type Item: OtherTrait<u32>;
 }
@@ -2463,18 +2389,16 @@ impl<T: Trait> Trait for S<T> {
 
 fn test<T: Trait>() {
     let y: <S<T> as Trait>::Item = no_matter;
-    y.foo()<|>;
-}
+    y.foo();
+}       //^ u32
 "#,
     );
-    assert_eq!(t, "u32");
 }
 
 #[test]
 fn dyn_trait_through_chalk() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 struct Box<T> {}
 #[lang = "deref"]
 trait Deref {
@@ -2488,18 +2412,16 @@ trait Trait {
 }
 
 fn test(x: Box<dyn Trait>) {
-    x.foo()<|>;
-}
+    x.foo();
+}       //^ ()
 "#,
     );
-    assert_eq!(t, "()");
 }
 
 #[test]
 fn string_to_owned() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 struct String {}
 pub trait ToOwned {
     type Owned;
@@ -2509,11 +2431,10 @@ impl ToOwned for str {
     type Owned = String;
 }
 fn test() {
-    "foo".to_owned()<|>;
-}
+    "foo".to_owned();
+}               //^ String
 "#,
     );
-    assert_eq!(t, "String");
 }
 
 #[test]
@@ -2637,9 +2558,8 @@ fn main() {
 
 #[test]
 fn nested_assoc() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 struct Bar;
 struct Foo;
 
@@ -2662,11 +2582,10 @@ impl<T:A> B for T {
 }
 
 fn main() {
-    Bar::foo()<|>;
-}
+    Bar::foo();
+}          //^ Foo
 "#,
     );
-    assert_eq!(t, "Foo");
 }
 
 #[test]
@@ -2846,12 +2765,12 @@ fn test() {
 
 #[test]
 fn integer_range_iterate() {
-    let t = type_at(
+    check_types(
         r#"
 //- /main.rs crate:main deps:core
 fn test() {
-    for x in 0..100 { x<|>; }
-}
+    for x in 0..100 { x; }
+}                   //^ i32
 
 //- /core.rs crate:core
 pub mod ops {
@@ -2886,7 +2805,6 @@ impl<A: Step> iter::Iterator for ops::Range<A> {
 }
 "#,
     );
-    assert_eq!(t, "i32");
 }
 
 #[test]

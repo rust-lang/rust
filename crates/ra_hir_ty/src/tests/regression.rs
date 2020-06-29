@@ -1,10 +1,7 @@
 use insta::assert_snapshot;
-use ra_db::fixture::WithFixture;
 use test_utils::mark;
 
-use crate::test_db::TestDB;
-
-use super::infer;
+use super::{check_types, infer};
 
 #[test]
 fn bug_484() {
@@ -404,13 +401,13 @@ fn test() {
 
 #[test]
 fn issue_2683_chars_impl() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:std
 fn test() {
     let chars: std::str::Chars<'_>;
-    (chars.next(), chars.nth(1))<|>;
-}
+    (chars.next(), chars.nth(1));
+} //^ (Option<char>, Option<char>)
 
 //- /std.rs crate:std
 #[prelude_import]
@@ -449,15 +446,12 @@ pub mod str {
 }
 "#,
     );
-
-    assert_eq!("(Option<char>, Option<char>)", super::type_at_pos(&db, pos));
 }
 
 #[test]
 fn issue_3642_bad_macro_stackover() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
-//- /main.rs
 #[macro_export]
 macro_rules! match_ast {
     (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
@@ -472,7 +466,8 @@ macro_rules! match_ast {
 }
 
 fn main() {
-    let anchor<|> = match_ast! {
+    let anchor = match_ast! {
+       //^ ()
         match parent {
             as => {},
             _ => return None
@@ -480,8 +475,6 @@ fn main() {
     };
 }"#,
     );
-
-    assert_eq!("()", super::type_at_pos(&db, pos));
 }
 
 #[test]

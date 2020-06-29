@@ -16,6 +16,7 @@ use std::{
 };
 
 use serde_json::Value;
+use stdx::lines_with_ends;
 use text_size::{TextRange, TextSize};
 
 pub use difference::Changeset as __Changeset;
@@ -157,6 +158,41 @@ pub fn add_cursor(text: &str, offset: TextSize) -> String {
     res.push_str("<|>");
     res.push_str(&text[offset..]);
     res
+}
+
+/// Extracts `//^ some text` annotations
+pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
+    let mut res = Vec::new();
+    let mut prev_line_start: Option<TextSize> = None;
+    let mut line_start: TextSize = 0.into();
+    for line in lines_with_ends(text) {
+        if let Some(idx) = line.find("//^") {
+            let offset = prev_line_start.unwrap() + TextSize::of(&line[..idx + "//".len()]);
+            let data = line[idx + "//^".len()..].trim().to_string();
+            res.push((TextRange::at(offset, 1.into()), data))
+        }
+        prev_line_start = Some(line_start);
+        line_start += TextSize::of(line);
+    }
+    res
+}
+
+#[test]
+fn test_extract_annotations() {
+    let text = stdx::trim_indent(
+        r#"
+fn main() {
+    let x = 92;
+      //^ def
+    z + 1
+} //^ i32
+    "#,
+    );
+    let res = extract_annotations(&text)
+        .into_iter()
+        .map(|(range, ann)| (&text[range], ann))
+        .collect::<Vec<_>>();
+    assert_eq!(res, vec![("x", "def".into()), ("z", "i32".into()),]);
 }
 
 // Comparison functionality borrowed from cargo:
