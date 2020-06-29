@@ -6,7 +6,7 @@ LL | fn baz<G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
    |        |
    |        help: consider introducing lifetime `'a` here: `'a,`
 
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `dest` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/missing-lifetimes-in-signature.rs:19:5
    |
 LL |   fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()

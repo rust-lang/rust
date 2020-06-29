@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `value` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/issue-16922.rs:4:14
    |
 LL | fn foo<T: Any>(value: &T) -> Box<dyn Any> {

@@ -4,13 +4,11 @@ struct A {
 
 impl A {
     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
-        self.x.iter().map(|a| a.0)
+        self.x.iter().map(|a| a.0) //~ ERROR E0759
     }
-    //~^^ ERROR cannot infer an appropriate lifetime
     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
-        self.x.iter().map(|a| a.0)
+        self.x.iter().map(|a| a.0) //~ ERROR E0759
     }
-    //~^^ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {}

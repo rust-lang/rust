@@ -45,13 +45,31 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let mut err = struct_span_err!(
                         tcx.sess,
                         cause.span,
-                        E0759,
-                        "cannot infer an appropriate lifetime"
+                        E0767,
+                        "{} has {} but calling `{}` introduces an implicit `'static` lifetime \
+                         requirement",
+                        param
+                            .param
+                            .pat
+                            .simple_ident()
+                            .map(|s| format!("`{}`", s))
+                            .unwrap_or_else(|| "`fn` parameter".to_string()),
+                        lifetime,
+                        assoc.ident,
                     );
                     err.span_label(param.param_ty_span, &format!("this data with {}...", lifetime));
                     err.span_label(
                         cause.span,
-                        "...is captured and required to live as long as `'static` here",
+                        &format!(
+                            "...is captured and required to live as long as `'static` here \
+                             because of an implicit lifetime bound on the {}",
+                            match assoc.container {
+                                AssocItemContainer::TraitContainer(id) =>
+                                    format!("`impl` of `{}`", tcx.def_path_str(id)),
+                                AssocItemContainer::ImplContainer(_) =>
+                                    "inherent `impl`".to_string(),
+                            },
+                        ),
                     );
                     if self.find_impl_on_dyn_trait(&mut err, param.param_ty, assoc) {
                         err.emit();
@@ -78,9 +96,48 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         } else {
             ("'_".to_owned(), "an anonymous lifetime `'_`".to_string())
         };
-        let mut err = struct_span_err!(tcx.sess, sp, E0759, "cannot infer an appropriate lifetime");
+        let param_name = param
+            .param
+            .pat
+            .simple_ident()
+            .map(|s| format!("`{}`", s))
+            .unwrap_or_else(|| "`fn` parameter".to_string());
+        let mut err = struct_span_err!(
+            tcx.sess,
+            sp,
+            E0759,
+            "{} has {} but it needs to satisfy a `'static` lifetime requirement",
+            param_name,
+            lifetime,
+        );
         err.span_label(param.param_ty_span, &format!("this data with {}...", lifetime));
         debug!("try_report_static_impl_trait: param_info={:?}", param);
+
+        let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
+
+        let mut postfix = String::new();
+        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sup_origin {
+            if let ObligationCauseCode::UnifyReceiver(assoc) = &cause.code {
+                if self.find_impl_on_dyn_trait(&mut err, param.param_ty, assoc)
+                    && fn_returns.is_empty()
+                {
+                    err.code(rustc_errors::error_code!(E0767));
+                    err.set_primary_message(&format!(
+                        "{} has {} but calling `{}` introduces an implicit `'static` lifetime \
+                         requirement",
+                        param_name, lifetime, assoc.ident,
+                    ));
+                    postfix = format!(
+                        " because of an implicit lifetime on the {}",
+                        match assoc.container {
+                            AssocItemContainer::TraitContainer(id) =>
+                                format!("`impl` of `{}`", tcx.def_path_str(id)),
+                            AssocItemContainer::ImplContainer(_) => "inherent `impl`".to_string(),
+                        },
+                    );
+                }
+            }
+        }
 
         // We try to make the output have fewer overlapping spans if possible.
         if (sp == sup_origin.span() || !return_sp.overlaps(sup_origin.span()))
@@ -108,36 +165,35 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 //    |           ----                               ^
                 err.span_label(
                     sup_origin.span(),
-                    "...is captured here, requiring it to live as long as `'static`",
+                    &format!(
+                        "...is captured here, requiring it to live as long as `'static`{}",
+                        postfix
+                    ),
                 );
             } else {
                 err.span_label(sup_origin.span(), "...is captured here...");
                 if return_sp < sup_origin.span() {
                     err.span_note(
                         return_sp,
-                        "...and is required to live as long as `'static` here",
+                        &format!("...and is required to live as long as `'static` here{}", postfix),
                     );
                 } else {
                     err.span_label(
                         return_sp,
-                        "...and is required to live as long as `'static` here",
+                        &format!("...and is required to live as long as `'static` here{}", postfix),
                     );
                 }
             }
         } else {
             err.span_label(
                 return_sp,
-                "...is captured and required to live as long as `'static` here",
+                &format!(
+                    "...is captured and required to live as long as `'static` here{}",
+                    postfix
+                ),
             );
         }
 
-        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sup_origin {
-            if let ObligationCauseCode::UnifyReceiver(assoc) = &cause.code {
-                self.find_impl_on_dyn_trait(&mut err, param.param_ty, assoc);
-            }
-        }
-
-        let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
         debug!("try_report_static_impl_trait: fn_return={:?}", fn_returns);
         // FIXME: account for the need of parens in `&(dyn Trait + '_)`
         let consider = "consider changing the";
@@ -295,20 +351,17 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             let mut multi_span: MultiSpan = vec![*span].into();
                             multi_span.push_span_label(
                                 *span,
-                                "this trait object has an implicit `'static` lifetime requirement"
-                                    .to_string(),
+                                "this has an implicit `'static` lifetime requirement".to_string(),
                             );
                             multi_span.push_span_label(
                                 assoc.ident.span,
-                                "the `'static` requirement is introduced when calling this method"
+                                "`'static` requirement is introduced when calling this method"
                                     .to_string(),
                             );
                             err.span_note(
                                 multi_span,
                                 &format!(
-                                    "when using method `{}` on `{}`, an implicit `'static` \
-                                     requirement is introduced",
-                                    assoc.ident,
+                                    "`{}`'s inherent `impl` has a `'static` requirement",
                                     tcx.def_path_str(*found_did),
                                 ),
                             );
@@ -363,22 +416,18 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let mut multi_span: MultiSpan = vec![*span].into();
                     multi_span.push_span_label(
                         *span,
-                        "this trait object has an implicit `'static` lifetime requirement"
-                            .to_string(),
+                        "this has an implicit `'static` lifetime requirement".to_string(),
                     );
                     multi_span.push_span_label(
                         method.span,
-                        "the `'static` requirement is introduced when calling this method"
-                            .to_string(),
+                        "`'static` requirement is introduced when calling this method".to_string(),
                     );
                     err.span_note(
                         multi_span,
                         &format!(
-                            "when using method `{}` of trait `{}` on `{}`, an implicit `'static` \
-                             requirement is introduced",
-                            method,
-                            tcx.def_path_str(container_id),
+                            "`{}`'s `impl` of `{}` has an implicit `'static` requirement",
                             tcx.def_path_str(*found_did),
+                            tcx.def_path_str(container_id),
                         ),
                     );
                     err.span_suggestion_verbose(
