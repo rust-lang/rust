@@ -177,7 +177,7 @@ fn copy_self_contained_objects(
     // To do that we have to distribute musl startup objects as a part of Rust toolchain
     // and link with them manually in the self-contained mode.
     if target.contains("musl") {
-        let srcdir = builder.musl_root(target).unwrap().join("lib");
+        let srcdir = builder.musl_libdir(target).unwrap();
         for &obj in &["crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
             copy_and_stamp(
                 builder,
@@ -266,8 +266,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, stage: u32, ca
         // Help the libc crate compile by assisting it in finding various
         // sysroot native libraries.
         if target.contains("musl") {
-            if let Some(p) = builder.musl_root(target) {
-                let root = format!("native={}/lib", p.to_str().unwrap());
+            if let Some(p) = builder.musl_libdir(target) {
+                let root = format!("native={}", p.to_str().unwrap());
                 cargo.rustflag("-L").rustflag(&root);
             }
         }

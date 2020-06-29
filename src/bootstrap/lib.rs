@@ -888,6 +888,15 @@ impl Build {
             .map(|p| &**p)
     }
 
+    /// Returns the "musl libdir" for this `target`.
+    fn musl_libdir(&self, target: Interned<String>) -> Option<PathBuf> {
+        let t = self.config.target_config.get(&target)?;
+        if let libdir @ Some(_) = &t.musl_libdir {
+            return libdir.clone();
+        }
+        self.musl_root(target).map(|root| root.join("lib"))
+    }
+
     /// Returns the sysroot for the wasi target, if defined
     fn wasi_root(&self, target: Interned<String>) -> Option<&Path> {
         self.config.target_config.get(&target).and_then(|t| t.wasi_root.as_ref()).map(|p| &**p)
