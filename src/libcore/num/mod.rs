@@ -740,9 +740,10 @@ assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
@@ -782,9 +783,10 @@ assert_eq!((", stringify!($SelfT), "::MIN + 2).checked_sub(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
@@ -824,9 +826,10 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
@@ -980,7 +983,8 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
@@ -1002,9 +1006,10 @@ assert_eq!(0x1", stringify!($SelfT), ".checked_shl(129), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
@@ -1026,9 +1031,10 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(128), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
@@ -1051,7 +1057,8 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_abs(self) -> Option<Self> {
                 if self.is_negative() {
@@ -2976,9 +2983,10 @@ Basic usage:
 assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
@@ -3016,9 +3024,10 @@ Basic usage:
 assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
@@ -3056,9 +3065,10 @@ Basic usage:
 assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
@@ -3206,7 +3216,8 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
@@ -3227,9 +3238,10 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
@@ -3250,9 +3262,10 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_checked_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
