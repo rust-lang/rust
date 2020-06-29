@@ -7,7 +7,7 @@ LL |     reexported_trait::FooStruct.trait_method();
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use reexported_trait::private::Trait;
+LL | use reexported_trait::Trait;
    |
 
 error[E0599]: no method named `trait_method_b` found for struct `reexported_trait::FooStruct` in the current scope
@@ -19,7 +19,7 @@ LL |     reexported_trait::FooStruct.trait_method_b();
    = help: items from traits can only be used if the trait is in scope
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL | use reexported_trait::private::TraitB;
+LL | use reexported_trait::TraitBRename;
    |
 
 error: aborting due to 2 previous errors
