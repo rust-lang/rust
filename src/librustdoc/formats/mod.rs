@@ -9,11 +9,15 @@ use rustc_span::def_id::DefId;
 use crate::clean;
 use crate::clean::types::GetDefId;
 
+/// Specifies whether rendering directly implemented trait items or ones from a certain Deref
+/// impl.
 pub enum AssocItemRender<'a> {
     All,
     DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type, deref_mut_: bool },
 }
 
+/// For different handling of associated items from the Deref target of a type rather than the type
+/// itself.
 #[derive(Copy, Clone, PartialEq)]
 pub enum RenderMode {
     Normal,

@@ -371,14 +371,12 @@ pub fn initial_ids() -> Vec<String> {
     .collect()
 }
 
+/// Generates the documentation for `crate` into the directory `dst`
 impl FormatRenderer for Context {
-    type Output = Self;
-
-    /// Generates the documentation for `crate` into the directory `dst`
     fn init(
         mut krate: clean::Crate,
         options: RenderOptions,
-        _renderinfo: RenderInfo,
+        _render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
     ) -> Result<(Context, clean::Crate), Error> {

@@ -7,23 +7,24 @@ use crate::config::{RenderInfo, RenderOptions};
 use crate::error::Error;
 use crate::formats::cache::{Cache, CACHE_KEY};
 
+/// Allows for different backends to rustdoc to be used with the `Renderer::run()` function. Each
+/// backend renderer has hooks for initialization, documenting an item, entering and exiting a
+/// module, and cleanup/finalizing output.
 pub trait FormatRenderer: Clone {
-    type Output: FormatRenderer;
-
-    /// Sets up any state required for the emulator. When this is called the cache has already been
+    /// Sets up any state required for the renderer. When this is called the cache has already been
     /// populated.
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        renderinfo: RenderInfo,
+        render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
-    ) -> Result<(Self::Output, clean::Crate), Error>;
+    ) -> Result<(Self, clean::Crate), Error>;
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
     fn item(&mut self, item: clean::Item, cache: &Cache) -> Result<(), Error>;
 
-    /// Renders a module (doesn't need to handle recursing into children).
+    /// Renders a module (should not handle recursing into children).
     fn mod_item_in(
         &mut self,
         item: &clean::Item,
@@ -54,19 +55,20 @@ impl Renderer {
         self,
         krate: clean::Crate,
         options: RenderOptions,
-        renderinfo: RenderInfo,
+        render_info: RenderInfo,
         diag: &rustc_errors::Handler,
         edition: Edition,
     ) -> Result<(), Error> {
         let (krate, mut cache) = Cache::from_krate(
-            renderinfo.clone(),
+            render_info.clone(),
             options.document_private,
             &options.extern_html_root_urls,
             &options.output,
             krate,
         );
 
-        let (mut renderer, mut krate) = T::init(krate, options, renderinfo, edition, &mut cache)?;
+        let (mut format_renderer, mut krate) =
+            T::init(krate, options, render_info, edition, &mut cache)?;
 
         let cache = Arc::new(cache);
         // Freeze the cache now that the index has been built. Put an Arc into TLS for future
@@ -81,7 +83,7 @@ impl Renderer {
         item.name = Some(krate.name.clone());
 
         // Render the crate documentation
-        let mut work = vec![(renderer.clone(), item)];
+        let mut work = vec![(format_renderer.clone(), item)];
 
         while let Some((mut cx, item)) = work.pop() {
             if item.is_mod() {
@@ -98,7 +100,7 @@ impl Renderer {
                     _ => unreachable!(),
                 };
                 for it in module.items {
-                    info!("Adding {:?} to worklist", it.name);
+                    debug!("Adding {:?} to worklist", it.name);
                     work.push((cx.clone(), it));
                 }
 
@@ -108,7 +110,7 @@ impl Renderer {
             }
         }
 
-        renderer.after_krate(&krate, &cache)?;
-        renderer.after_run(diag)
+        format_renderer.after_krate(&krate, &cache)?;
+        format_renderer.after_run(diag)
     }
 }

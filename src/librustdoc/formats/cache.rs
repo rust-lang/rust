@@ -126,7 +126,7 @@ pub struct Cache {
 
 impl Cache {
     pub fn from_krate(
-        renderinfo: RenderInfo,
+        render_info: RenderInfo,
         document_private: bool,
         extern_html_root_urls: &BTreeMap<String, String>,
         dst: &Path,
@@ -142,7 +142,7 @@ impl Cache {
             deref_mut_trait_did,
             owned_box_did,
             ..
-        } = renderinfo;
+        } = render_info;
 
         let external_paths =
             external_paths.into_iter().map(|(k, (v, t))| (k, (v, ItemType::from(t)))).collect();
