@@ -585,7 +585,7 @@ mod tests {
             "1+2"
         );
 
-        let edit = crate::replacing::matches_to_edit(&matches);
+        let edit = crate::replacing::matches_to_edit(&matches, input);
         let mut after = input.to_string();
         edit.apply(&mut after);
         assert_eq!(after, "fn main() { bar(1+2); }");

@@ -69,7 +69,8 @@ impl<'db> MatchFinder<'db> {
         if matches.matches.is_empty() {
             None
         } else {
-            Some(replacing::matches_to_edit(&matches))
+            use ra_db::SourceDatabaseExt;
+            Some(replacing::matches_to_edit(&matches, &self.sema.db.file_text(file_id)))
         }
     }
 
