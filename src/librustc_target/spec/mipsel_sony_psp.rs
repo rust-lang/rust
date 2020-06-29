@@ -6,10 +6,7 @@ const LINKER_SCRIPT: &str = include_str!("./mipsel_sony_psp_linker_script.ld");
 
 pub fn target() -> TargetResult {
     let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(
-        LinkerFlavor::Lld(LldFlavor::Ld),
-        vec!["--eh-frame-hdr".to_string(), "--emit-relocs".to_string()],
-    );
+    pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), vec!["--emit-relocs".to_string()]);
 
     Ok(Target {
         llvm_target: "mipsel-sony-psp".to_string(),

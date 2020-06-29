@@ -5,7 +5,6 @@ use super::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
 pub fn target() -> Result<Target, String> {
     const PRE_LINK_ARGS: &[&str] = &[
         "--as-needed",
-        "--eh-frame-hdr",
         "-z",
         "noexecstack",
         "-e",
