@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `fn` parameter has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/constant-in-expr-inherent-1.rs:8:5
    |
 LL | fn foo<'a>(_: &'a u32) -> &'static u32 {

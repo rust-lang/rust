@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/dyn-trait.rs:20:16
    |
 LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
