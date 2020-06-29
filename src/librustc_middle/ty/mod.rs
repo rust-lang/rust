@@ -2098,7 +2098,7 @@ impl<'tcx> VariantDef {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Encodable, Decodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub enum VariantDiscr {
     /// Explicit value for this variant, i.e., `X = 123`.
     /// The `DefId` corresponds to the embedded constant.

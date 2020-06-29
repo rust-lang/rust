@@ -385,11 +385,11 @@ pub trait Decoder {
 /// `MetadataEncodable` macros.
 ///
 /// * `Encodable` should be used in crates that don't depend on
-///   `librustc_middle`.
+///   `rustc_middle`.
+/// * `MetadataEncodable` is used in `rustc_metadata` for types that contain
+///   `rustc_metadata::rmeta::Lazy`.
 /// * `TyEncodable` should be used for types that are only serialized in crate
-///   metadata or the incremental cache, except for simple enums.where
-/// * `MetadataEncodable` is used in `rustc_metadata` for types that are only
-///   serialized in crate metadata.
+///   metadata or the incremental cache. This is most types in `rustc_middle`.
 pub trait Encodable<S: Encoder> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error>;
 }
@@ -400,61 +400,50 @@ pub trait Encodable<S: Encoder> {
 /// `MetadataDecodable` macros.
 ///
 /// * `Decodable` should be used in crates that don't depend on
-///   `librustc_middle`.
+///   `rustc_middle`.
+/// * `MetadataDecodable` is used in `rustc_metadata` for types that contain
+///   `rustc_metadata::rmeta::Lazy`.
 /// * `TyDecodable` should be used for types that are only serialized in crate
-///   metadata or the incremental cache, except for simple enums.where
-/// * `MetadataDecodable` is used in `rustc_metadata` for types that are only
-///   serialized in crate metadata.
+///   metadata or the incremental cache. This is most types in `rustc_middle`.
 pub trait Decodable<D: Decoder>: Sized {
     fn decode(d: &mut D) -> Result<Self, D::Error>;
 }
 
-impl<S: Encoder> Encodable<S> for usize {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_usize(*self)
+macro_rules! direct_serialize_impls {
+    ($($ty:ident $emit_method:ident $read_method:ident),*) => {
+        $(
+            impl<S: Encoder> Encodable<S> for $ty {
+                fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+                    s.$emit_method(*self)
+                }
+            }
+
+            impl<D: Decoder> Decodable<D> for $ty {
+                fn decode(d: &mut D) -> Result<$ty, D::Error> {
+                    d.$read_method()
+                }
+            }
+        )*
     }
 }
 
-impl<D: Decoder> Decodable<D> for usize {
-    fn decode(d: &mut D) -> Result<usize, D::Error> {
-        d.read_usize()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for u8 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u8(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for u8 {
-    fn decode(d: &mut D) -> Result<u8, D::Error> {
-        d.read_u8()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for u16 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u16(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for u16 {
-    fn decode(d: &mut D) -> Result<u16, D::Error> {
-        d.read_u16()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for u32 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for u32 {
-    fn decode(d: &mut D) -> Result<u32, D::Error> {
-        d.read_u32()
-    }
+direct_serialize_impls! {
+    usize emit_usize read_usize,
+    u8 emit_u8 read_u8,
+    u16 emit_u16 read_u16,
+    u32 emit_u32 read_u32,
+    u64 emit_u64 read_u64,
+    u128 emit_u128 read_u128,
+    isize emit_isize read_isize,
+    i8 emit_i8 read_i8,
+    i16 emit_i16 read_i16,
+    i32 emit_i32 read_i32,
+    i64 emit_i64 read_i64,
+    i128 emit_i128 read_i128,
+    f32 emit_f32 read_f32,
+    f64 emit_f64 read_f64,
+    bool emit_bool read_bool,
+    char emit_char read_char
 }
 
 impl<S: Encoder> Encodable<S> for ::std::num::NonZeroU32 {
@@ -466,102 +455,6 @@ impl<S: Encoder> Encodable<S> for ::std::num::NonZeroU32 {
 impl<D: Decoder> Decodable<D> for ::std::num::NonZeroU32 {
     fn decode(d: &mut D) -> Result<Self, D::Error> {
         d.read_u32().map(|d| ::std::num::NonZeroU32::new(d).unwrap())
-    }
-}
-
-impl<S: Encoder> Encodable<S> for u64 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u64(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for u64 {
-    fn decode(d: &mut D) -> Result<u64, D::Error> {
-        d.read_u64()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for u128 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u128(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for u128 {
-    fn decode(d: &mut D) -> Result<u128, D::Error> {
-        d.read_u128()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for isize {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_isize(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for isize {
-    fn decode(d: &mut D) -> Result<isize, D::Error> {
-        d.read_isize()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for i8 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_i8(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for i8 {
-    fn decode(d: &mut D) -> Result<i8, D::Error> {
-        d.read_i8()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for i16 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_i16(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for i16 {
-    fn decode(d: &mut D) -> Result<i16, D::Error> {
-        d.read_i16()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for i32 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_i32(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for i32 {
-    fn decode(d: &mut D) -> Result<i32, D::Error> {
-        d.read_i32()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for i64 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_i64(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for i64 {
-    fn decode(d: &mut D) -> Result<i64, D::Error> {
-        d.read_i64()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for i128 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_i128(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for i128 {
-    fn decode(d: &mut D) -> Result<i128, D::Error> {
-        d.read_i128()
     }
 }
 
@@ -586,54 +479,6 @@ impl<S: Encoder> Encodable<S> for String {
 impl<D: Decoder> Decodable<D> for String {
     fn decode(d: &mut D) -> Result<String, D::Error> {
         Ok(d.read_str()?.into_owned())
-    }
-}
-
-impl<S: Encoder> Encodable<S> for f32 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_f32(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for f32 {
-    fn decode(d: &mut D) -> Result<f32, D::Error> {
-        d.read_f32()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for f64 {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_f64(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for f64 {
-    fn decode(d: &mut D) -> Result<f64, D::Error> {
-        d.read_f64()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for bool {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_bool(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for bool {
-    fn decode(d: &mut D) -> Result<bool, D::Error> {
-        d.read_bool()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for char {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_char(*self)
-    }
-}
-
-impl<D: Decoder> Decodable<D> for char {
-    fn decode(d: &mut D) -> Result<char, D::Error> {
-        d.read_char()
     }
 }
 

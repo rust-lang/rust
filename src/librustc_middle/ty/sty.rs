@@ -215,7 +215,7 @@ impl TyKind<'tcx> {
 /// A type that is not publicly constructable. This prevents people from making `TyKind::Error`
 /// except through `tcx.err*()`.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
-#[derive(Encodable, Decodable, HashStable)]
+#[derive(TyEncodable, TyDecodable, HashStable)]
 pub struct DelaySpanBugEmitted(pub(super) ());
 
 // `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.

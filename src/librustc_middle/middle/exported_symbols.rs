@@ -8,7 +8,7 @@ use rustc_macros::HashStable;
 /// kind of crate, including cdylibs which export very few things.
 /// `Rust` will only be exported if the crate produced is a Rust
 /// dylib.
-#[derive(Eq, PartialEq, Debug, Copy, Clone, Encodable, Decodable, HashStable)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub enum SymbolExportLevel {
     C,
     Rust,
