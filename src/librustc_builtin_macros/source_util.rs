@@ -71,7 +71,7 @@ pub fn expand_stringify(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    let s = pprust::tts_to_string(tts);
+    let s = pprust::tts_to_string(&tts);
     base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&s)))
 }
 
