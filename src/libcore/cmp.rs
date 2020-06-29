@@ -908,6 +908,73 @@ pub macro PartialOrd($item:item) {
     /* compiler built-in */
 }
 
+/// Compares two values and returns them in order.
+///
+/// Returns the arguments in the order they were passed in if the comparison determines them to be equal.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_min_max_pair)]
+///
+/// use std::cmp;
+///
+/// assert_eq!(cmp::min_max(1, 2), (1, 2));
+/// assert_eq!(cmp::min_max(2, 2), (2, 2));
+/// assert_eq!(cmp::min_max(3, 2), (2, 3));
+/// ```
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_min_max_pair", issue = "none")]
+pub fn min_max<T: Ord>(v1: T, v2: T) -> (T, T) {
+    min_max_by(v1, v2, Ord::cmp)
+}
+
+/// Returns two values in order with respect to the specified comparison function.
+///
+/// Returns the arguments in the order they were passed in if the comparison determines them to be equal.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_min_max_pair)]
+///
+/// use std::cmp;
+///
+/// assert_eq!(cmp::min_max_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), (1, -2));
+/// assert_eq!(cmp::min_max_by(-2, 2, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), (-2, 2));
+/// ```
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_min_max_pair", issue = "none")]
+pub fn min_max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> (T, T) {
+    match compare(&v1, &v2) {
+        Ordering::Less | Ordering::Equal => (v1, v2),
+        Ordering::Greater => (v2, v1),
+    }
+}
+
+/// Returns two values in order based on the values they return from the specified function.
+///
+/// Returns the arguments in the order they were passed in if the comparison determines them to be equal.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cmp_min_max_pair)]
+///
+/// use std::cmp;
+///
+/// assert_eq!(cmp::min_max_by_key(-2, 1, |x: &i32| x.abs()), (1, -2));
+/// assert_eq!(cmp::min_max_by_key(-2, 2, |x: &i32| x.abs()), (-2, 2));
+/// ```
+#[inline]
+#[must_use]
+#[unstable(feature = "cmp_min_max_pair", issue = "none")]
+pub fn min_max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> (T, T) {
+    min_max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+}
+
 /// Compares and returns the minimum of two values.
 ///
 /// Returns the first argument if the comparison determines them to be equal.
