@@ -35,6 +35,7 @@
 #![feature(iter_is_partitioned)]
 #![feature(iter_order_by)]
 #![feature(cmp_min_max_by)]
+#![feature(cmp_min_max_pair)]
 #![feature(iter_map_while)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]

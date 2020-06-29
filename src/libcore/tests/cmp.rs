@@ -59,6 +59,29 @@ fn test_ord_min_max_by_key() {
 }
 
 #[test]
+fn test_ord_min_max_pair() {
+    assert_eq!(cmp::min_max(1, 2), (1, 2));
+    assert_eq!(cmp::min_max(2, 1), (1, 2));
+    assert_eq!(cmp::min_max(1, 1), (1, 1));
+}
+
+#[test]
+fn test_ord_min_max_by_pair() {
+    let f = |x: &i32, y: &i32| x.abs().cmp(&y.abs());
+    assert_eq!(cmp::min_max_by(1, -1, f), (1, -1));
+    assert_eq!(cmp::min_max_by(1, -2, f), (1, -2));
+    assert_eq!(cmp::min_max_by(2, -1, f), (-1, 2));
+}
+
+#[test]
+fn test_ord_min_max_by_key_pair() {
+    let f = |x: &i32| x.abs();
+    assert_eq!(cmp::min_max_by_key(1, -1, f), (1, -1));
+    assert_eq!(cmp::min_max_by_key(1, -2, f), (1, -2));
+    assert_eq!(cmp::min_max_by_key(2, -1, f), (-1, 2));
+}
+
+#[test]
 fn test_ordering_reverse() {
     assert_eq!(Less.reverse(), Greater);
     assert_eq!(Equal.reverse(), Equal);
