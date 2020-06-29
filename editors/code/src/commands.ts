@@ -171,9 +171,15 @@ export function ssr(ctx: Ctx): Cmd {
         const request = await vscode.window.showInputBox(options);
         if (!request) return;
 
-        const edit = await client.sendRequest(ra.ssr, { query: request, parseOnly: false });
+        vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Structured search replace in progress...",
+            cancellable: false,
+        }, async (_progress, _token) => {
+            const edit = await client.sendRequest(ra.ssr, { query: request, parseOnly: false });
 
-        await vscode.workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));
+            await vscode.workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));
+        });
     };
 }
 
