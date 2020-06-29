@@ -5,6 +5,7 @@ mod analysis_stats;
 mod analysis_bench;
 mod diagnostics;
 mod progress_report;
+mod ssr;
 
 use std::io::Read;
 
@@ -17,6 +18,7 @@ pub use analysis_bench::{analysis_bench, BenchWhat, Position};
 pub use analysis_stats::analysis_stats;
 pub use diagnostics::diagnostics;
 pub use load_cargo::load_cargo;
+pub use ssr::apply_ssr_rules;
 
 #[derive(Clone, Copy)]
 pub enum Verbosity {
