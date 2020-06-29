@@ -33,16 +33,16 @@ exclude = [
   "obj",
 ]
 
-# These options are controlled from our rustc wrapper script, so turn them off
-# here and have them controlled elsewhere.
-[profile.dev]
-debug = false
-debug-assertions = false
-[profile.test]
-debug = false
-debug-assertions = false
-
 [profile.release.package.compiler_builtins]
+# The compiler-builtins crate cannot reference libcore, and it's own CI will
+# verify that this is the case. This requires, however, that the crate is built
+# without overflow checks and debug assertions. Forcefully disable debug
+# assertions and overflow checks here which should ensure that even if these
+# assertions are enabled for libstd we won't enable then for compiler_builtins
+# which should ensure we still link everything correctly.
+debug-assertions = false
+overflow-checks = false
+
 # For compiler-builtins we always use a high number of codegen units.
 # The goal here is to place every single intrinsic into its own object
 # file to avoid symbol clashes with the system libgcc if possible. Note
