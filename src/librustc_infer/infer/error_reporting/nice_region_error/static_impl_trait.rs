@@ -8,8 +8,10 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorRepor
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{walk_ty, ErasedMap, NestedVisitorMap, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
-use rustc_middle::ty::{self, AssocItemContainer, RegionKind, Ty, TypeFoldable, TypeVisitor};
-use rustc_span::Span;
+use rustc_middle::ty::{
+    self, AssocItem, AssocItemContainer, RegionKind, Ty, TypeFoldable, TypeVisitor,
+};
+use rustc_span::{MultiSpan, Span};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static impl Trait.
@@ -51,7 +53,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         cause.span,
                         "...is captured and required to live as long as `'static` here",
                     );
-                    if self.find_impl_on_dyn_trait(&mut err, param.param_ty, &assoc.container) {
+                    if self.find_impl_on_dyn_trait(&mut err, param.param_ty, assoc) {
                         err.emit();
                         return Some(ErrorReported);
                     } else {
@@ -131,7 +133,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sup_origin {
             if let ObligationCauseCode::UnifyReceiver(assoc) = &cause.code {
-                self.find_impl_on_dyn_trait(&mut err, param.param_ty, &assoc.container);
+                self.find_impl_on_dyn_trait(&mut err, param.param_ty, assoc);
             }
         }
 
@@ -263,7 +265,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         ty: Ty<'_>,
-        container: &AssocItemContainer,
+        assoc: &AssocItem,
     ) -> bool {
         let tcx = self.tcx();
         let mut suggested = false;
@@ -272,7 +274,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let mut v = TraitObjectVisitor(vec![]);
         v.visit_ty(ty);
 
-        let container_id = match container {
+        let container_id = match assoc.container {
             // When the obligation comes from an `impl Foo for dyn Bar {}`, we
             // have the `DefId` of the `trait` itself, not the relevant `impl`
             // block. Because of this, we have to look at all the `trait`s
@@ -284,16 +286,35 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             // have the `DefId` of the relevant `Item`, so we use it directly.
             AssocItemContainer::ImplContainer(def_id) => {
                 if let Some(Node::Item(Item { kind: ItemKind::Impl { self_ty, .. }, .. })) =
-                    tcx.hir().get_if_local(*def_id)
+                    tcx.hir().get_if_local(def_id)
                 {
                     for found_did in &v.0 {
                         let mut hir_v = HirTraitObjectVisitor(vec![], *found_did);
                         hir_v.visit_ty(self_ty);
                         if let [span] = &hir_v.0[..] {
+                            let mut multi_span: MultiSpan = vec![*span].into();
+                            multi_span.push_span_label(
+                                *span,
+                                "this trait object has an implicit `'static` lifetime requirement"
+                                    .to_string(),
+                            );
+                            multi_span.push_span_label(
+                                assoc.ident.span,
+                                "the `'static` requirement is introduced when calling this method"
+                                    .to_string(),
+                            );
+                            err.span_note(
+                                multi_span,
+                                &format!(
+                                    "when using method `{}` on `{}`, an implicit `'static` \
+                                     requirement is introduced",
+                                    assoc.ident,
+                                    tcx.def_path_str(*found_did),
+                                ),
+                            );
                             err.span_suggestion_verbose(
                                 span.shrink_to_hi(),
-                                "this `impl` introduces an implicit `'static` requirement, \
-                                 consider changing it",
+                                "consider relaxing the implicit `'static` requirement",
                                 " + '_".to_string(),
                                 Applicability::MaybeIncorrect,
                             );
@@ -316,24 +337,53 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 let impl_did = tcx.hir().local_def_id(*impl_node);
                 match tcx.hir().get_if_local(impl_did.to_def_id()) {
                     Some(Node::Item(Item {
-                        kind: ItemKind::Impl { self_ty, of_trait: Some(of_trait), .. },
+                        kind: ItemKind::Impl { self_ty, of_trait: Some(of_trait), items, .. },
                         ..
-                    })) if of_trait.trait_def_id() == Some(*container_id) => Some(self_ty),
+                    })) if of_trait.trait_def_id() == Some(container_id) => Some((
+                        self_ty,
+                        // Get the ident of the method, in order to use its `Span`.
+                        items
+                            .iter()
+                            .filter(|item| item.ident == assoc.ident)
+                            .map(|item| item.ident)
+                            .next()
+                            .unwrap_or(assoc.ident),
+                    )),
                     _ => None,
                 }
             });
 
         // Given all the `impl`s of the relevant `trait`, look for those that are implemented for
         // the trait object in the `fn` parameter type.
-        for self_ty in impl_self_tys {
+        for (self_ty, method) in impl_self_tys {
             for found_did in &v.0 {
                 let mut hir_v = HirTraitObjectVisitor(vec![], *found_did);
                 hir_v.visit_ty(self_ty);
                 if let [span] = &hir_v.0[..] {
+                    let mut multi_span: MultiSpan = vec![*span].into();
+                    multi_span.push_span_label(
+                        *span,
+                        "this trait object has an implicit `'static` lifetime requirement"
+                            .to_string(),
+                    );
+                    multi_span.push_span_label(
+                        method.span,
+                        "the `'static` requirement is introduced when calling this method"
+                            .to_string(),
+                    );
+                    err.span_note(
+                        multi_span,
+                        &format!(
+                            "when using method `{}` of trait `{}` on `{}`, an implicit `'static` \
+                             requirement is introduced",
+                            method,
+                            tcx.def_path_str(container_id),
+                            tcx.def_path_str(*found_did),
+                        ),
+                    );
                     err.span_suggestion_verbose(
                         span.shrink_to_hi(),
-                        "this `impl` introduces an implicit `'static` requirement, \
-                            consider changing it",
+                        "consider relaxing the implicit `'static` requirement",
                         " + '_".to_string(),
                         Applicability::MaybeIncorrect,
                     );
