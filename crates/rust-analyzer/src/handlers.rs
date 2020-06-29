@@ -1283,7 +1283,7 @@ fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>)
         RunnableKind::Bin => {
             // Do not suggest binary run on other target than binary
             match &cargo_spec {
-                Some(spec) => spec.target_kind != TargetKind::Bin,
+                Some(spec) => !matches!(spec.target_kind, TargetKind::Bin | TargetKind::Example),
                 None => true,
             }
         }
