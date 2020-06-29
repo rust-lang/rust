@@ -1129,7 +1129,7 @@ $EndFeature, "
 ```"),
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1155,7 +1155,7 @@ assert_eq!(", stringify!($SelfT), "::MAX.saturating_sub(-1), ", stringify!($Self
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1183,7 +1183,7 @@ $EndFeature, "
 ```"),
 
             #[stable(feature = "saturating_neg", since = "1.45.0")]
-            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
             #[inline]
             pub const fn saturating_neg(self) -> Self {
                 intrinsics::saturating_sub(0, self)
@@ -1209,7 +1209,8 @@ $EndFeature, "
 ```"),
 
             #[stable(feature = "saturating_neg", since = "1.45.0")]
-            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn saturating_abs(self) -> Self {
                 if self.is_negative() {
@@ -1236,9 +1237,10 @@ assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($Self
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn saturating_mul(self, rhs: Self) -> Self {
                 match self.checked_mul(rhs) {
@@ -3330,7 +3332,7 @@ $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
             #[inline]
             pub const fn saturating_add(self, rhs: Self) -> Self {
                 intrinsics::saturating_add(self, rhs)
@@ -3352,7 +3354,7 @@ assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
             #[inline]
             pub const fn saturating_sub(self, rhs: Self) -> Self {
                 intrinsics::saturating_sub(self, rhs)
@@ -3374,9 +3376,10 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
 "::MAX);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn saturating_mul(self, rhs: Self) -> Self {
                 match self.checked_mul(rhs) {

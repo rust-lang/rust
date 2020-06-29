@@ -78,7 +78,6 @@
 #![feature(const_checked_int_methods)]
 #![feature(const_euclidean_int_methods)]
 #![feature(const_overflowing_int_methods)]
-#![feature(const_saturating_int_methods)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_int_pow)]
 #![feature(constctlz)]
