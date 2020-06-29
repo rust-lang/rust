@@ -191,8 +191,17 @@ fn check_rvalue(
             _,
             _,
         ) => Err((span, "function pointer casts are not allowed in const fn".into())),
-        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
-            Err((span, "unsizing casts are not allowed in const fn".into()))
+        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), op, cast_ty) => {
+            let pointee_ty = cast_ty.builtin_deref(true).unwrap().ty;
+            let unsized_ty = tcx.struct_tail_erasing_lifetimes(pointee_ty, tcx.param_env(def_id));
+            if let ty::Slice(_) | ty::Str = unsized_ty.kind {
+                check_operand(tcx, op, span, def_id, body)?;
+                // Casting/coercing things to slices is fine.
+                Ok(())
+            } else {
+                // We just can't allow trait objects until we have figured out trait method calls.
+                Err((span, "unsizing casts are not allowed in const fn".into()))
+            }
         }
         // binops are fine on integers
         Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {

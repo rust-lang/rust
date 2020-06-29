@@ -1,7 +1,6 @@
 #![feature(const_extern_fn)]
 
 const extern fn unsize(x: &[u8; 3]) -> &[u8] { x }
-//~^ ERROR unsizing casts are not allowed in const fn
 const unsafe extern "C" fn closure() -> fn() { || {} }
 //~^ ERROR function pointers in const fn are unstable
 const unsafe extern fn use_float() { 1.0 + 1.0; }
