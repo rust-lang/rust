@@ -615,7 +615,7 @@ crate fn collect_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>>(
     ty: &'a Binder<T>,
 ) -> (T, chalk_ir::VariableKinds<RustInterner<'tcx>>, BTreeMap<DefId, u32>) {
     let mut bound_vars_collector = BoundVarsCollector::new();
-    ty.skip_binder().visit_with(&mut bound_vars_collector);
+    ty.as_ref().skip_binder().visit_with(&mut bound_vars_collector);
     let mut parameters = bound_vars_collector.parameters;
     let named_parameters: BTreeMap<DefId, u32> = bound_vars_collector
         .named_parameters
@@ -625,7 +625,7 @@ crate fn collect_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>>(
         .collect();
 
     let mut bound_var_substitutor = NamedBoundVarSubstitutor::new(tcx, &named_parameters);
-    let new_ty = ty.skip_binder().fold_with(&mut bound_var_substitutor);
+    let new_ty = ty.as_ref().skip_binder().fold_with(&mut bound_var_substitutor);
 
     for var in named_parameters.values() {
         parameters.insert(*var, chalk_ir::VariableKind::Lifetime);

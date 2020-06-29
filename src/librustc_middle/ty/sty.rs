@@ -615,7 +615,7 @@ impl<'tcx> ExistentialPredicate<'tcx> {
 impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
-        match *self.skip_binder() {
+        match self.skip_binder() {
             ExistentialPredicate::Trait(tr) => {
                 Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
             }
@@ -776,7 +776,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 
     pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
         // Note that we preserve binding levels
-        Binder(ty::TraitPredicate { trait_ref: *self.skip_binder() })
+        Binder(ty::TraitPredicate { trait_ref: self.skip_binder() })
     }
 }
 
@@ -880,8 +880,8 @@ impl<T> Binder<T> {
     /// - extracting the `DefId` from a PolyTraitRef;
     /// - comparing the self type of a PolyTraitRef to see if it is equal to
     ///   a type parameter `X`, since the type `X` does not reference any regions
-    pub fn skip_binder(&self) -> &T {
-        &self.0
+    pub fn skip_binder(self) -> T {
+        self.0
     }
 
     pub fn as_ref(&self) -> Binder<&T> {
@@ -916,11 +916,7 @@ impl<T> Binder<T> {
     where
         T: TypeFoldable<'tcx>,
     {
-        if self.skip_binder().has_escaping_bound_vars() {
-            None
-        } else {
-            Some(self.skip_binder().clone())
-        }
+        if self.0.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
     }
 
     /// Given two things that have the same binder level,
@@ -997,7 +993,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct GenSig<'tcx> {
     pub resume_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,

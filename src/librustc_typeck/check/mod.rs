@@ -2446,7 +2446,7 @@ fn bounds_from_generic_predicates(
 /// Return placeholder code for the given function.
 fn fn_sig_suggestion(
     tcx: TyCtxt<'_>,
-    sig: &ty::FnSig<'_>,
+    sig: ty::FnSig<'_>,
     ident: Ident,
     predicates: ty::GenericPredicates<'_>,
     assoc: &ty::AssocItem,

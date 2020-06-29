@@ -216,7 +216,7 @@ fn check_object_overlap<'tcx>(
         let component_def_ids = data.iter().flat_map(|predicate| {
             match predicate.skip_binder() {
                 ty::ExistentialPredicate::Trait(tr) => Some(tr.def_id),
-                ty::ExistentialPredicate::AutoTrait(def_id) => Some(*def_id),
+                ty::ExistentialPredicate::AutoTrait(def_id) => Some(def_id),
                 // An associated type projection necessarily comes with
                 // an additional `Trait` requirement.
                 ty::ExistentialPredicate::Projection(..) => None,

@@ -318,10 +318,10 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // to associate causes/spans with each of the relations in
         // the stack to get this right.
         match dir {
-            EqTo => self.equate(a_is_expected).relate(&a_ty, &b_ty),
-            SubtypeOf => self.sub(a_is_expected).relate(&a_ty, &b_ty),
+            EqTo => self.equate(a_is_expected).relate(a_ty, b_ty),
+            SubtypeOf => self.sub(a_is_expected).relate(a_ty, b_ty),
             SupertypeOf => {
-                self.sub(a_is_expected).relate_with_variance(ty::Contravariant, &a_ty, &b_ty)
+                self.sub(a_is_expected).relate_with_variance(ty::Contravariant, a_ty, b_ty)
             }
         }?;
 
@@ -379,7 +379,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             param_env: self.param_env,
         };
 
-        let ty = match generalize.relate(&ty, &ty) {
+        let ty = match generalize.relate(ty, ty) {
             Ok(ty) => ty,
             Err(e) => {
                 debug!("generalize: failure {:?}", e);
@@ -490,8 +490,8 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
     fn binders<T>(
         &mut self,
-        a: &ty::Binder<T>,
-        b: &ty::Binder<T>,
+        a: ty::Binder<T>,
+        b: ty::Binder<T>,
     ) -> RelateResult<'tcx, ty::Binder<T>>
     where
         T: Relate<'tcx>,
@@ -519,8 +519,8 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
-        a: &T,
-        b: &T,
+        a: T,
+        b: T,
     ) -> RelateResult<'tcx, T> {
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
@@ -552,7 +552,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     match probe {
                         TypeVariableValue::Known { value: u } => {
                             debug!("generalize: known value {:?}", u);
-                            self.relate(&u, &u)
+                            self.relate(u, u)
                         }
                         TypeVariableValue::Unknown { universe } => {
                             match self.ambient_variance {
@@ -655,7 +655,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);
                 match var_value.val {
-                    ConstVariableValue::Known { value: u } => self.relate(&u, &u),
+                    ConstVariableValue::Known { value: u } => self.relate(u, u),
                     ConstVariableValue::Unknown { universe } => {
                         if self.for_universe.can_name(universe) {
                             Ok(c)

@@ -92,14 +92,14 @@ where
         for (predicate, _span) in predicates {
             match predicate.kind() {
                 ty::PredicateKind::Trait(poly_predicate, _) => {
-                    let ty::TraitPredicate { trait_ref } = *poly_predicate.skip_binder();
+                    let ty::TraitPredicate { trait_ref } = poly_predicate.skip_binder();
                     if self.visit_trait(trait_ref) {
                         return true;
                     }
                 }
                 ty::PredicateKind::Projection(poly_predicate) => {
                     let ty::ProjectionPredicate { projection_ty, ty } =
-                        *poly_predicate.skip_binder();
+                        poly_predicate.skip_binder();
                     if ty.visit_with(self) {
                         return true;
                     }
@@ -108,7 +108,7 @@ where
                     }
                 }
                 ty::PredicateKind::TypeOutlives(poly_predicate) => {
-                    let ty::OutlivesPredicate(ty, _region) = *poly_predicate.skip_binder();
+                    let ty::OutlivesPredicate(ty, _region) = poly_predicate.skip_binder();
                     if ty.visit_with(self) {
                         return true;
                     }
@@ -175,7 +175,7 @@ where
             ty::Dynamic(predicates, ..) => {
                 // All traits in the list are considered the "primary" part of the type
                 // and are visited by shallow visitors.
-                for predicate in *predicates.skip_binder() {
+                for predicate in predicates.skip_binder() {
                     let trait_ref = match predicate {
                         ty::ExistentialPredicate::Trait(trait_ref) => trait_ref,
                         ty::ExistentialPredicate::Projection(proj) => proj.trait_ref(tcx),
@@ -1270,7 +1270,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             );
 
             for (trait_predicate, _, _) in bounds.trait_bounds {
-                if self.visit_trait(*trait_predicate.skip_binder()) {
+                if self.visit_trait(trait_predicate.skip_binder()) {
                     return;
                 }
             }

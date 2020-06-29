@@ -911,7 +911,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
                 }
                 let sig = cx.tables().node_type(expr.hir_id).fn_sig(cx.tcx);
                 let from = sig.inputs().skip_binder()[0];
-                let to = *sig.output().skip_binder();
+                let to = sig.output().skip_binder();
                 return Some((from, to));
             }
             None
