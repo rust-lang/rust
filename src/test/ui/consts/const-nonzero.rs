@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(const_nonzero_int_methods)]
-
 use std::num::NonZeroU8;
 
 const X: NonZeroU8 = unsafe { NonZeroU8::new_unchecked(5) };
