@@ -1014,10 +1014,8 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 #[must_use]
 #[unstable(feature = "cmp_min_max_by", issue = "64460")]
 pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
-    match compare(&v1, &v2) {
-        Ordering::Less | Ordering::Equal => v1,
-        Ordering::Greater => v2,
-    }
+    let (min, _max) = min_max_by(v1, v2, compare);
+    min
 }
 
 /// Returns the element that gives the minimum value from the specified function.
@@ -1037,8 +1035,9 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[inline]
 #[must_use]
 #[unstable(feature = "cmp_min_max_by", issue = "64460")]
-pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
-    min_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, f: F) -> T {
+    let (min, _max) = min_max_by_key(v1, v2, f);
+    min
 }
 
 /// Compares and returns the maximum of two values.
@@ -1080,10 +1079,8 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 #[must_use]
 #[unstable(feature = "cmp_min_max_by", issue = "64460")]
 pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
-    match compare(&v1, &v2) {
-        Ordering::Less | Ordering::Equal => v2,
-        Ordering::Greater => v1,
-    }
+    let (_min, max) = min_max_by(v1, v2, compare);
+    max
 }
 
 /// Returns the element that gives the maximum value from the specified function.
@@ -1103,8 +1100,9 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[inline]
 #[must_use]
 #[unstable(feature = "cmp_min_max_by", issue = "64460")]
-pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
-    max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, f: F) -> T {
+    let (_min, max) = min_max_by_key(v1, v2, f);
+    max
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
