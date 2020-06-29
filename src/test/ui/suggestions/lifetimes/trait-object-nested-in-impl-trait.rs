@@ -27,7 +27,7 @@ impl Bar {
     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
         Iter {
             current: None,
-            remaining: self.0.iter(), //~ ERROR cannot infer an appropriate lifetime
+            remaining: self.0.iter(), //~ ERROR E0759
         }
     }
 }
@@ -38,7 +38,7 @@ impl Baz {
     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
         Iter {
             current: None,
-            remaining: self.0.iter(), //~ ERROR cannot infer an appropriate lifetime
+            remaining: self.0.iter(), //~ ERROR E0759
         }
     }
 }
@@ -49,7 +49,7 @@ impl Bat {
     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
         Iter {
             current: None,
-            remaining: self.0.iter(), //~ ERROR cannot infer an appropriate lifetime
+            remaining: self.0.iter(), //~ ERROR E0759
         }
     }
 }
@@ -60,7 +60,7 @@ impl Ban {
     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
         Iter {
             current: None,
-            remaining: self.0.iter(), //~ ERROR cannot infer an appropriate lifetime
+            remaining: self.0.iter(), //~ ERROR E0759
         }
     }
 }

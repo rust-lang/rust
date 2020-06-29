@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/project-fn-ret-contravariant.rs:38:8
    |
 LL | fn baz<'a,'b>(x: &'a u32) -> &'static u32 {

@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/issue-62097.rs:12:31
    |
 LL |     pub async fn run_dummy_fn(&self) {

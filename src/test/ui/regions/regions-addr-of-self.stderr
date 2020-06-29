@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/regions-addr-of-self.rs:7:37
    |
 LL |     pub fn chase_cat(&mut self) {
