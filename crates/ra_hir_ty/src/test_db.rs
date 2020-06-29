@@ -154,6 +154,19 @@ impl TestDB {
         });
         (buf, count)
     }
+
+    pub fn all_files(&self) -> Vec<FileId> {
+        let mut res = Vec::new();
+        let crate_graph = self.crate_graph();
+        for krate in crate_graph.iter() {
+            let crate_def_map = self.crate_def_map(krate);
+            for (module_id, _) in crate_def_map.modules.iter() {
+                let file_id = crate_def_map[module_id].origin.file_id();
+                res.extend(file_id)
+            }
+        }
+        res
+    }
 }
 
 impl TestDB {

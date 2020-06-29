@@ -28,6 +28,7 @@ use ra_syntax::{
     SyntaxNode,
 };
 use stdx::format_to;
+use test_utils::extract_annotations;
 
 use crate::{
     db::HirDatabase, display::HirDisplay, infer::TypeMismatch, test_db::TestDB, InferenceResult, Ty,
@@ -36,6 +37,21 @@ use crate::{
 // These tests compare the inference results for all expressions in a file
 // against snapshots of the expected results using insta. Use cargo-insta to
 // update the snapshots.
+
+fn check_types(ra_fixture: &str) {
+    let db = TestDB::with_files(ra_fixture);
+    let mut checked_one = false;
+    for file_id in db.all_files() {
+        let text = db.parse(file_id).syntax_node().to_string();
+        let annotations = extract_annotations(&text);
+        for (offset, expected) in annotations {
+            let actual = type_at_pos(&db, FilePosition { file_id, offset });
+            assert_eq!(expected, actual);
+            checked_one = true;
+        }
+    }
+    assert!(checked_one, "no `//^` annotations found");
+}
 
 fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
     type_at_pos_displayed(db, pos, |ty, _| ty.display(db).to_string())

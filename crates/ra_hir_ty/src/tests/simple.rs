@@ -1,19 +1,17 @@
-use super::{infer, type_at, type_at_pos};
-use crate::test_db::TestDB;
 use insta::assert_snapshot;
-use ra_db::fixture::WithFixture;
+
+use super::{check_types, infer};
 
 #[test]
 fn infer_box() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:std
-
 fn test() {
     let x = box 1;
     let t = (x, box x, box &1, box [1]);
-    t<|>;
-}
+    t;
+} //^ (Box<i32>, Box<Box<i32>>, Box<&i32>, Box<[i32; _]>)
 
 //- /std.rs crate:std
 #[prelude_import] use prelude::*;
@@ -25,29 +23,24 @@ mod boxed {
         inner: *mut T,
     }
 }
-
 "#,
     );
-    assert_eq!("(Box<i32>, Box<Box<i32>>, Box<&i32>, Box<[i32; _]>)", type_at_pos(&db, pos));
 }
 
 #[test]
 fn infer_adt_self() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
-//- /main.rs
 enum Nat { Succ(Self), Demo(Nat), Zero }
 
 fn test() {
     let foo: Nat = Nat::Zero;
     if let Nat::Succ(x) = foo {
-        x<|>
-    }
+        x
+    } //^ Nat
 }
-
 "#,
     );
-    assert_eq!("Nat", type_at_pos(&db, pos));
 }
 
 #[test]
@@ -93,7 +86,7 @@ fn foo() {
 
 #[test]
 fn infer_ranges() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
 //- /main.rs crate:main deps:core
 fn test() {
@@ -105,8 +98,8 @@ fn test() {
     let f = 'a'..='z';
 
     let t = (a, b, c, d, e, f);
-    t<|>;
-}
+    t;
+} //^ (RangeFull, RangeFrom<i32>, RangeTo<u32>, Range<usize>, RangeToInclusive<i32>, RangeInclusive<char>)
 
 //- /core.rs crate:core
 #[prelude_import] use prelude::*;
@@ -135,29 +128,22 @@ pub mod ops {
 }
 "#,
     );
-    assert_eq!(
-        "(RangeFull, RangeFrom<i32>, RangeTo<u32>, Range<usize>, RangeToInclusive<i32>, RangeInclusive<char>)",
-        type_at_pos(&db, pos),
-    );
 }
 
 #[test]
 fn infer_while_let() {
-    let (db, pos) = TestDB::with_position(
+    check_types(
         r#"
-//- /main.rs
 enum Option<T> { Some(T), None }
 
 fn test() {
     let foo: Option<f32> = None;
     while let Option::Some(x) = foo {
-        <|>x
-    }
+        x
+    } //^ f32
 }
-
 "#,
     );
-    assert_eq!("f32", type_at_pos(&db, pos));
 }
 
 #[test]
@@ -1687,9 +1673,8 @@ fn test() {
 
 #[test]
 fn shadowing_primitive() {
-    let t = type_at(
+    check_types(
         r#"
-//- /main.rs
 struct i32;
 struct Foo;
 
@@ -1697,15 +1682,15 @@ impl i32 { fn foo(&self) -> Foo { Foo } }
 
 fn main() {
     let x: i32 = i32;
-    x.foo()<|>;
+    x.foo();
+        //^ Foo
 }"#,
     );
-    assert_eq!(t, "Foo");
 }
 
 #[test]
 fn not_shadowing_primitive_by_module() {
-    let t = type_at(
+    check_types(
         r#"
 //- /str.rs
 fn foo() {}
@@ -1715,15 +1700,15 @@ mod str;
 fn foo() -> &'static str { "" }
 
 fn main() {
-    foo()<|>;
+    foo();
+      //^ &str
 }"#,
     );
-    assert_eq!(t, "&str");
 }
 
 #[test]
 fn not_shadowing_module_by_primitive() {
-    let t = type_at(
+    check_types(
         r#"
 //- /str.rs
 fn foo() -> u32 {0}
@@ -1733,10 +1718,10 @@ mod str;
 fn foo() -> &'static str { "" }
 
 fn main() {
-    str::foo()<|>;
+    str::foo();
+           //^ u32
 }"#,
     );
-    assert_eq!(t, "u32");
 }
 
 // This test is actually testing the shadowing behavior within ra_hir_def. It
@@ -1744,7 +1729,7 @@ fn main() {
 // capable of asserting the necessary conditions.
 #[test]
 fn should_be_shadowing_imports() {
-    let t = type_at(
+    check_types(
         r#"
 mod a {
     pub fn foo() -> i8 {0}
@@ -1759,30 +1744,12 @@ mod d {
 }
 
 fn main() {
-    d::foo()<|>;
+    d::foo();
+         //^ u8
+    d::foo{a:0};
+           //^ u8
 }"#,
     );
-    assert_eq!(t, "u8");
-
-    let t = type_at(
-        r#"
-mod a {
-    pub fn foo() -> i8 {0}
-    pub struct foo { a: i8 }
-}
-mod b { pub fn foo () -> u8 {0} }
-mod c { pub struct foo { a: u8 } }
-mod d {
-    pub use super::a::*;
-    pub use super::c::foo;
-    pub use super::b::foo;
-}
-
-fn main() {
-    d::foo{a:0<|>};
-}"#,
-    );
-    assert_eq!(t, "u8");
 }
 
 #[test]
