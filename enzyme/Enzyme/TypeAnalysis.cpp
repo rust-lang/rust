@@ -148,7 +148,7 @@ DataType getTypeFromTBAAString(std::string typeNameStringRef, Instruction* inst)
                 return inst->getType()->getScalarType();
             }
             if (inst->getType()->isIntOrIntVectorTy()) {
-                return inst->getType()->getScalarType();
+                return IntType::Integer;
             }
         }
     }

@@ -29,13 +29,16 @@ void afoobar(aVector& data, unsigned len) {
   ifft(data, len);
 }
 
+extern "C" {
+  int diffe_dupnoneed;
+}
 
 static double foobar_and_gradient(unsigned len) {
     double *inp = new double[2*len];
     for(int i=0; i<2*len; i++) inp[i] = 2.0;
     double *dinp = new double[2*len];
     for(int i=0; i<2*len; i++) dinp[i] = 1.0;
-    __enzyme_autodiff<void>(foobar, inp, dinp, len);
+    __enzyme_autodiff<void>(foobar, diffe_dupnoneed, inp, dinp, len);
     double res = dinp[0];
     delete[] dinp;
     delete[] inp;
@@ -228,7 +231,7 @@ int main(int argc, char** argv) {
   for(unsigned iters=max(1, N>>5); iters <= N; iters*=2) {
     printf("iters=%d\n", iters);
     adept_sincos(inp, iters);
-    //tapenade_sincos(inp, N);
+    tapenade_sincos(inp, iters);
     enzyme_sincos(inp, iters);
   }
 }

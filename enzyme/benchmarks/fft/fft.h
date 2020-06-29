@@ -170,47 +170,28 @@ extern "C" {
 #include <adBuffer.h>
 
 /*
-  Differentiation of swap in reverse (adjoint) mode:
-   gradient     of useful results: *a *b
-   with respect to varying inputs: *a *b
-   Plus diff mem management of: a:in b:in
-*/
-inline void swap_b(double *a, double *ab, double *b, double *bb) {
-    double temp = *a;
-    double tempb = 0.0;
-    tempb = *bb;
-    *bb = *ab;
-    *ab = tempb;
-}
-
-inline void swap_c(double *a, double *b) {
-    double temp = *a;
-    *a = *b;
-    *b = temp;
-}
-
-/*
-  Differentiation of recursiveApply in reverse (adjoint) mode:
+  Differentiation of recursiveApply in reverse (adjoint) mode (with options context):
    gradient     of useful results: *data
    with respect to varying inputs: *data
    Plus diff mem management of: data:in
 */
-// This is totally wrong because it cannot do combined for forwardreverse both times
-// I.e the forward pass isnt actually run, when needed
-static void recursiveApply_b(double *data, double *datab, int iSign, unsigned
+static void recursiveApply_b(double *data, double *datab, int iSign, unsigned 
         int N) {
     int arg1;
-    double arg10;
-    double arg10b;
+    double *arg10;
+    double *arg10b;
     int arg2;
     if (N != 1) {
         arg1 = N/2;
-        double wtemp = iSign*sin(M_PI/N);
-        double wpi = -iSign*sin(2*M_PI/N);
+        arg10b = datab + N;
+        arg10 = data + N;
+        arg2 = N/2;
+        double wtemp = iSign*sin(3.1415926536/N);
+        double wpi = -iSign*sin(2*3.1415926536/N);
         double wpr = -2.0*wtemp*wtemp;
         double wr = 1.0;
         double wi = 0.0;
-        for (unsigned int i = 0; i <= N-1; i += 2) {
+        for (int i = 0; i <= N-1; i += 2) {
             int iN = i + N;
             double tempr = data[iN]*wr - data[iN+1]*wi;
             double tempi = data[iN]*wi + data[iN+1]*wr;
@@ -223,8 +204,13 @@ static void recursiveApply_b(double *data, double *datab, int iSign, unsigned
             wi = wi + (wi*wpr + wtemp*wpi);
             pushInteger4(iN);
         }
-        // Fixed to not infinite loop
-        for (unsigned int i = N-(N-1)%2-1; i >= 0; i -= 2) {
+        pushPointer8(arg10b);
+        pushInteger4(arg2);
+        pushInteger4(arg1);
+        popInteger4(&arg1);
+        popInteger4(&arg2);
+        popPointer8((void **)&arg10b);
+        for (int i = N-(N-1)%2-1; i >= 0; i -= 2) {
             int iN;
             double tempr;
             double temprb = 0.0;
@@ -246,32 +232,26 @@ static void recursiveApply_b(double *data, double *datab, int iSign, unsigned
             temprb = temprb - tmpb;
             datab[iN + 1] = datab[iN + 1] + wr*tempib - wi*temprb;
             datab[iN] = datab[iN] + wi*tempib + wr*temprb;
-
-            // NOTE added break here since i>=0 is always true for unsigned
-            if (i == 0) break;
         }
-        //NOTE added recursive call 2
-        recursiveApply_b(data + N, datab, iSign, arg1);
-
+        recursiveApply_b(arg10, arg10b, iSign, arg2);
         recursiveApply_b(data, datab, iSign, arg1);
     }
 }
 
-static void recursiveApply_c(double *data, int iSign, unsigned int N) {
+static void recursiveApply_nodiff(double *data, int iSign, unsigned int N) {
     int arg1;
-    // corrected to be pointer not double
-    double* arg10;
+    double *arg10;
     int arg2;
     if (N == 1)
         return;
     else {
         arg1 = N/2;
-        recursiveApply_c(data, iSign, arg1);
+        recursiveApply_nodiff(data, iSign, arg1);
         arg10 = data + N;
         arg2 = N/2;
-        recursiveApply_c(arg10, iSign, arg2);
-        double wtemp = iSign*sin(M_PI/N);
-        double wpi = -iSign*sin(2*M_PI/N);
+        recursiveApply_nodiff(arg10, iSign, arg2);
+        double wtemp = iSign*sin(3.1415926536/N);
+        double wpi = -iSign*sin(2*3.1415926536/N);
         double wpr = -2.0*wtemp*wtemp;
         double wr = 1.0;
         double wi = 0.0;
@@ -291,7 +271,27 @@ static void recursiveApply_c(double *data, int iSign, unsigned int N) {
 }
 
 /*
-  Differentiation of scramble in reverse (adjoint) mode:
+  Differentiation of swap in reverse (adjoint) mode (with options context):
+   gradient     of useful results: *a *b
+   with respect to varying inputs: *a *b
+   Plus diff mem management of: a:in b:in
+*/
+static void swap_b(double *a, double *ab, double *b, double *bb) {
+    double temp = *a;
+    double tempb = 0.0;
+    tempb = *bb;
+    *bb = *ab;
+    *ab = tempb;
+}
+
+static void swap_nodiff(double *a, double *b) {
+    double temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+/*
+  Differentiation of scramble in reverse (adjoint) mode (with options context):
    gradient     of useful results: *data
    with respect to varying inputs: *data
    Plus diff mem management of: data:in
@@ -299,8 +299,8 @@ static void recursiveApply_c(double *data, int iSign, unsigned int N) {
 static void scramble_b(double *data, double *datab, unsigned int N) {
     int j = 1;
     int branch;
-    int adCount;
     for (int i = 1; i <= 2*N-1; i += 2) {
+        int adCount;
         if (j > i)
             pushControl1b(0);
         else
@@ -319,6 +319,7 @@ static void scramble_b(double *data, double *datab, unsigned int N) {
     }
     for (int i = 2*N-(2*N-2)%2-1; i >= 1; i -= 2) {
         int m;
+        int adCount;
         int i0;
         popInteger4(&j);
         popInteger4(&adCount);
@@ -327,18 +328,18 @@ static void scramble_b(double *data, double *datab, unsigned int N) {
         popControl1b(&branch);
         if (branch == 0) {
             swap_b(&(data[j]), &(datab[j]), &(data[i]), &(datab[i]));
-            swap_b(&(data[j - 1]), &(datab[j - 1]), &(data[i - 1]), &(datab[i
+            swap_b(&(data[j - 1]), &(datab[j - 1]), &(data[i - 1]), &(datab[i 
                    - 1]));
         }
     }
 }
 
-static void scramble_c(double *data, unsigned int N) {
+static void scramble_nodiff(double *data, unsigned int N) {
     int j = 1;
     for (int i = 1; i <= 2*N-1; i += 2) {
         if (j > i) {
-            swap_c(&(data[j - 1]), &(data[i - 1]));
-            swap_c(&(data[j]), &(data[i]));
+            swap_nodiff(&(data[j - 1]), &(data[i - 1]));
+            swap_nodiff(&(data[j]), &(data[i]));
         }
         int m = N;
         while(m >= 2 && j > m) {
@@ -350,25 +351,27 @@ static void scramble_c(double *data, unsigned int N) {
 }
 
 /*
-  Differentiation of rescale in reverse (adjoint) mode:
+  Differentiation of rescale in reverse (adjoint) mode (with options context):
    gradient     of useful results: *data
    with respect to varying inputs: *data
    Plus diff mem management of: data:in
 */
 static void rescale_b(double *data, double *datab, unsigned int N) {
     double scale = (double)1/N;
-    for (unsigned int i = 2*N-1; i > -1; --i)
+    pushReal8(scale);
+    popReal8(&scale);
+    for (int i = 2*N-1; i > -1; --i)
         datab[i] = scale*datab[i];
 }
 
-static void rescale_c(double *data, unsigned int N) {
+static void rescale_nodiff(double *data, unsigned int N) {
     double scale = (double)1/N;
     for (int i = 0; i < 2*N; ++i)
         data[i] *= scale;
 }
 
 /*
-  Differentiation of fft in reverse (adjoint) mode:
+  Differentiation of fft in reverse (adjoint) mode (with options context):
    gradient     of useful results: *data
    with respect to varying inputs: *data
    Plus diff mem management of: data:in
@@ -378,13 +381,13 @@ static void fft_b(double *data, double *datab, unsigned int N) {
     scramble_b(data, datab, N);
 }
 
-static void fft_c(double *data, unsigned int N) {
-    scramble_c(data, N);
-    recursiveApply_c(data, 1, N);
+static void fft_nodiff(double *data, unsigned int N) {
+    scramble_nodiff(data, N);
+    recursiveApply_nodiff(data, 1, N);
 }
 
 /*
-  Differentiation of ifft in reverse (adjoint) mode:
+  Differentiation of ifft in reverse (adjoint) mode (with options context):
    gradient     of useful results: *data
    with respect to varying inputs: *data
    Plus diff mem management of: data:in
@@ -395,24 +398,25 @@ static void ifft_b(double *data, double *datab, unsigned int N) {
     scramble_b(data, datab, N);
 }
 
-static void ifft_c(double *data, unsigned int N) {
-    scramble_c(data, N);
-    recursiveApply_c(data, -1, N);
-    rescale_c(data, N);
+static void ifft_nodiff(double *data, unsigned int N) {
+    scramble_nodiff(data, N);
+    recursiveApply_nodiff(data, -1, N);
+    rescale_nodiff(data, N);
 }
 
 /*
-  Differentiation of foobar in reverse (adjoint) mode:
+  Differentiation of foobar in reverse (adjoint) mode (with options context):
    gradient     of useful results: *data
    with respect to varying inputs: *data
    RW status of diff variables: *data:in-out
    Plus diff mem management of: data:in
 */
 void foobar_b(double *data, double *datab, unsigned int len) {
+    double chksum = 0.0;
+    int i;
     ifft_b(data, datab, len);
     fft_b(data, datab, len);
 }
-
 
 }
 
