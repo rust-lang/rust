@@ -9,7 +9,7 @@ use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{symbol, Span, Symbol, DUMMY_SP};
 
 /// How a lint level was set.
 #[derive(Clone, Copy, PartialEq, Eq, HashStable)]
@@ -28,7 +28,7 @@ pub enum LintSource {
 impl LintSource {
     pub fn name(&self) -> Symbol {
         match *self {
-            LintSource::Default => Symbol::intern("default"),
+            LintSource::Default => symbol::kw::Default,
             LintSource::Node(name, _, _) => name,
             LintSource::CommandLine(name) => name,
         }
