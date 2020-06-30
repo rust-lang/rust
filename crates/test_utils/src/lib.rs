@@ -11,6 +11,7 @@ pub mod mark;
 mod fixture;
 
 use std::{
+    convert::TryInto,
     env, fs,
     path::{Path, PathBuf},
 };
@@ -168,8 +169,10 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
     for line in lines_with_ends(text) {
         if let Some(idx) = line.find("//^") {
             let offset = prev_line_start.unwrap() + TextSize::of(&line[..idx + "//".len()]);
-            let data = line[idx + "//^".len()..].trim().to_string();
-            res.push((TextRange::at(offset, 1.into()), data))
+            let marker_and_data = &line[idx + "//".len()..];
+            let len = marker_and_data.chars().take_while(|&it| it == '^').count();
+            let data = marker_and_data[len..].trim().to_string();
+            res.push((TextRange::at(offset, len.try_into().unwrap()), data))
         }
         prev_line_start = Some(line_start);
         line_start += TextSize::of(line);
@@ -184,15 +187,15 @@ fn test_extract_annotations() {
 fn main() {
     let x = 92;
       //^ def
-    z + 1
-} //^ i32
+    zoo + 1
+} //^^^ i32
     "#,
     );
     let res = extract_annotations(&text)
         .into_iter()
         .map(|(range, ann)| (&text[range], ann))
         .collect::<Vec<_>>();
-    assert_eq!(res, vec![("x", "def".into()), ("z", "i32".into()),]);
+    assert_eq!(res, vec![("x", "def".into()), ("zoo", "i32".into()),]);
 }
 
 // Comparison functionality borrowed from cargo:
