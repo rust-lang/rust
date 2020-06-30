@@ -328,6 +328,26 @@ fn feature_allowed(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: Symbol) -> bo
         .map_or(false, |mut features| features.any(|name| name == feature_gate))
 }
 
+/// Returns `true` if the given library feature gate is allowed within the function with the given `DefId`.
+pub fn lib_feature_allowed(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: Symbol) -> bool {
+    // All features require that the corresponding gate be enabled,
+    // even if the function has `#[allow_internal_unstable(the_gate)]`.
+    if !tcx.features().declared_lib_features.iter().any(|&(sym, _)| sym == feature_gate) {
+        return false;
+    }
+
+    // If this crate is not using stability attributes, or this function is not claiming to be a
+    // stable `const fn`, that is all that is required.
+    if !tcx.features().staged_api || tcx.has_attr(def_id, sym::rustc_const_unstable) {
+        return true;
+    }
+
+    // However, we cannot allow stable `const fn`s to use unstable features without an explicit
+    // opt-in via `allow_internal_unstable`.
+    attr::allow_internal_unstable(&tcx.get_attrs(def_id), &tcx.sess.diagnostic())
+        .map_or(false, |mut features| features.any(|name| name == feature_gate))
+}
+
 fn check_terminator(
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
@@ -367,8 +387,17 @@ fn check_terminator(
             fn_span: _,
         } => {
             let fn_ty = func.ty(body, tcx);
-            if let ty::FnDef(def_id, _) = fn_ty.kind {
-                if !crate::const_eval::is_min_const_fn(tcx, def_id) {
+            if let ty::FnDef(fn_def_id, _) = fn_ty.kind {
+                // Allow unstable const if we opt in by using #[allow_internal_unstable]
+                // on function or macro declaration.
+                if !crate::const_eval::is_min_const_fn(tcx, fn_def_id)
+                    && !crate::const_eval::is_unstable_const_fn(tcx, fn_def_id)
+                        .map(|feature| {
+                            span.allows_unstable(feature)
+                                || lib_feature_allowed(tcx, def_id, feature)
+                        })
+                        .unwrap_or(false)
+                {
                     return Err((
                         span,
                         format!(
@@ -380,10 +409,10 @@ fn check_terminator(
                     ));
                 }
 
-                check_operand(tcx, func, span, def_id, body)?;
+                check_operand(tcx, func, span, fn_def_id, body)?;
 
                 for arg in args {
-                    check_operand(tcx, arg, span, def_id, body)?;
+                    check_operand(tcx, arg, span, fn_def_id, body)?;
                 }
                 Ok(())
             } else {
