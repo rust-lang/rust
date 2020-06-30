@@ -158,31 +158,22 @@ impl ItemScope {
         let mut changed = false;
 
         if let Some(types) = def.types {
-            match self.types.entry(name.clone()) {
-                Entry::Occupied(_) => {}
-                Entry::Vacant(e) => {
-                    e.insert(types);
-                    changed = true;
-                }
-            }
+            self.types.entry(name.clone()).or_insert_with(|| {
+                changed = true;
+                types
+            });
         }
         if let Some(values) = def.values {
-            match self.values.entry(name.clone()) {
-                Entry::Occupied(_) => {}
-                Entry::Vacant(e) => {
-                    e.insert(values);
-                    changed = true;
-                }
-            }
+            self.values.entry(name.clone()).or_insert_with(|| {
+                changed = true;
+                values
+            });
         }
         if let Some(macros) = def.macros {
-            match self.macros.entry(name.clone()) {
-                Entry::Occupied(_) => {}
-                Entry::Vacant(e) => {
-                    e.insert(macros);
-                    changed = true;
-                }
-            }
+            self.macros.entry(name.clone()).or_insert_with(|| {
+                changed = true;
+                macros
+            });
         }
 
         if def.is_none() {
