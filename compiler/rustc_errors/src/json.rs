@@ -159,6 +159,19 @@ impl Emitter for JsonEmitter {
         }
     }
 
+    fn emit_unused_externs(&mut self, unused_externs: &[&str]) {
+        let data = UnusedExterns { unused_extern_names: unused_externs };
+        let result = if self.pretty {
+            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+        } else {
+            writeln!(&mut self.dst, "{}", as_json(&data))
+        }
+        .and_then(|_| self.dst.flush());
+        if let Err(e) = result {
+            panic!("failed to print unused externs: {:?}", e);
+        }
+    }
+
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         Some(&self.sm)
     }
@@ -320,6 +333,12 @@ struct FutureBreakageItem {
 #[derive(Encodable)]
 struct FutureIncompatReport {
     future_incompat_report: Vec<FutureBreakageItem>,
+}
+
+#[derive(Encodable)]
+struct UnusedExterns<'a, 'b> {
+    /// List of unused externs by their names.
+    unused_extern_names: &'a [&'b str],
 }
 
 impl Diagnostic {

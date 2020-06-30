@@ -893,6 +893,7 @@ impl<'a> CrateLoader<'a> {
     fn report_unused_deps(&mut self, krate: &ast::Crate) {
         // Make a point span rather than covering the whole file
         let span = krate.span.shrink_to_lo();
+        let mut unused_externs = Vec::new();
         // Complain about anything left over
         for (name, entry) in self.sess.opts.externs.iter() {
             if let ExternLocation::FoundInLibrarySearchDirectories = entry.location {
@@ -917,6 +918,7 @@ impl<'a> CrateLoader<'a> {
                     )
                 }
             };
+            unused_externs.push(name as &str);
             self.sess.parse_sess.buffer_lint_with_diagnostic(
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                     span,
@@ -929,6 +931,8 @@ impl<'a> CrateLoader<'a> {
                     diag,
                 );
         }
+        // FIXME: add gating
+        self.sess.parse_sess.span_diagnostic.emit_unused_externs(&unused_externs);
     }
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
