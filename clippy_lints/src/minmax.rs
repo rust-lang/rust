@@ -36,7 +36,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {
                 }
                 match (
                     outer_max,
-                    Constant::partial_cmp(cx.tcx, cx.tables.expr_ty(ie), &outer_c, &inner_c),
+                    Constant::partial_cmp(cx.tcx, cx.tables().expr_ty(ie), &outer_c, &inner_c),
                 ) {
                     (_, None) | (MinMax::Max, Some(Ordering::Less)) | (MinMax::Min, Some(Ordering::Greater)) => (),
                     _ => {
@@ -62,15 +62,18 @@ enum MinMax {
 fn min_max<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
     if let ExprKind::Call(ref path, ref args) = expr.kind {
         if let ExprKind::Path(ref qpath) = path.kind {
-            cx.tables.qpath_res(qpath, path.hir_id).opt_def_id().and_then(|def_id| {
-                if match_def_path(cx, def_id, &paths::CMP_MIN) {
-                    fetch_const(cx, args, MinMax::Min)
-                } else if match_def_path(cx, def_id, &paths::CMP_MAX) {
-                    fetch_const(cx, args, MinMax::Max)
-                } else {
-                    None
-                }
-            })
+            cx.tables()
+                .qpath_res(qpath, path.hir_id)
+                .opt_def_id()
+                .and_then(|def_id| {
+                    if match_def_path(cx, def_id, &paths::CMP_MIN) {
+                        fetch_const(cx, args, MinMax::Min)
+                    } else if match_def_path(cx, def_id, &paths::CMP_MAX) {
+                        fetch_const(cx, args, MinMax::Max)
+                    } else {
+                        None
+                    }
+                })
         } else {
             None
         }
@@ -87,14 +90,14 @@ fn fetch_const<'a>(
     if args.len() != 2 {
         return None;
     }
-    if let Some(c) = constant_simple(cx, cx.tables, &args[0]) {
-        if constant_simple(cx, cx.tables, &args[1]).is_none() {
+    if let Some(c) = constant_simple(cx, cx.tables(), &args[0]) {
+        if constant_simple(cx, cx.tables(), &args[1]).is_none() {
             // otherwise ignore
             Some((m, c, &args[1]))
         } else {
             None
         }
-    } else if let Some(c) = constant_simple(cx, cx.tables, &args[1]) {
+    } else if let Some(c) = constant_simple(cx, cx.tables(), &args[1]) {
         Some((m, c, &args[0]))
     } else {
         None

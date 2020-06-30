@@ -84,7 +84,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
 
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
         cx.tcx.infer_ctxt().enter(|infcx| {
-            ExprUseVisitor::new(&mut v, &infcx, fn_def_id, cx.param_env, cx.tables).consume_body(body);
+            ExprUseVisitor::new(&mut v, &infcx, fn_def_id, cx.param_env, cx.tables()).consume_body(body);
         });
 
         for node in v.set {

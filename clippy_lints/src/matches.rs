@@ -540,7 +540,7 @@ fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
             // allow match arms with just expressions
             return;
         };
-        let ty = cx.tables.expr_ty(ex);
+        let ty = cx.tables().expr_ty(ex);
         if ty.kind != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
@@ -632,7 +632,7 @@ fn check_single_match_opt_like(
 
 fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     // Type of expression is `bool`.
-    if cx.tables.expr_ty(ex).kind == ty::Bool {
+    if cx.tables().expr_ty(ex).kind == ty::Bool {
         span_lint_and_then(
             cx,
             MATCH_BOOL,
@@ -695,8 +695,8 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
 }
 
 fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
-    if arms.len() >= 2 && cx.tables.expr_ty(ex).is_integral() {
-        let ranges = all_ranges(cx, arms, cx.tables.expr_ty(ex));
+    if arms.len() >= 2 && cx.tables().expr_ty(ex).is_integral() {
+        let ranges = all_ranges(cx, arms, cx.tables().expr_ty(ex));
         let type_ranges = type_ranges(&ranges);
         if !type_ranges.is_empty() {
             if let Some((start, end)) = overlapping(&type_ranges) {
@@ -714,7 +714,7 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'
 }
 
 fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
-    let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
+    let ex_ty = walk_ptrs_ty(cx.tables().expr_ty(ex));
     if is_type_diagnostic_item(cx, ex_ty, sym!(result_type)) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pat.kind {
@@ -755,7 +755,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
 }
 
 fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
-    let ty = cx.tables.expr_ty(ex);
+    let ty = cx.tables().expr_ty(ex);
     if !ty.is_enum() {
         // If there isn't a nice closed set of possible values that can be conveniently enumerated,
         // don't complain about not enumerating the mall.
@@ -935,8 +935,8 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
                 "as_mut"
             };
 
-            let output_ty = cx.tables.expr_ty(expr);
-            let input_ty = cx.tables.expr_ty(ex);
+            let output_ty = cx.tables().expr_ty(expr);
+            let input_ty = cx.tables().expr_ty(ex);
 
             let cast = if_chain! {
                 if let ty::Adt(_, substs) = input_ty.kind;
@@ -1006,13 +1006,13 @@ fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms:
     match match_body.kind {
         ExprKind::Block(block, _) => {
             // macro + expr_ty(body) == ()
-            if block.span.from_expansion() && cx.tables.expr_ty(&match_body).is_unit() {
+            if block.span.from_expansion() && cx.tables().expr_ty(&match_body).is_unit() {
                 snippet_body.push(';');
             }
         },
         _ => {
             // expr_ty(body) == ()
-            if cx.tables.expr_ty(&match_body).is_unit() {
+            if cx.tables().expr_ty(&match_body).is_unit() {
                 snippet_body.push(';');
             }
         },
@@ -1111,11 +1111,11 @@ fn all_ranges<'a, 'tcx>(
             {
                 if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
                     let lhs = match lhs {
-                        Some(lhs) => constant(cx, cx.tables, lhs)?.0,
+                        Some(lhs) => constant(cx, cx.tables(), lhs)?.0,
                         None => miri_to_const(ty.numeric_min_val(cx.tcx)?)?,
                     };
                     let rhs = match rhs {
-                        Some(rhs) => constant(cx, cx.tables, rhs)?.0,
+                        Some(rhs) => constant(cx, cx.tables(), rhs)?.0,
                         None => miri_to_const(ty.numeric_max_val(cx.tcx)?)?,
                     };
                     let rhs = match range_end {
@@ -1129,7 +1129,7 @@ fn all_ranges<'a, 'tcx>(
                 }
 
                 if let PatKind::Lit(ref value) = pat.kind {
-                    let value = constant(cx, cx.tables, value)?.0;
+                    let value = constant(cx, cx.tables(), value)?.0;
                     return Some(SpannedRange {
                         span: pat.span,
                         node: (value.clone(), Bound::Included(value)),

@@ -65,7 +65,7 @@ fn check_expression<'a, 'tcx>(
                     if match_qpath(path, &paths::OPTION_SOME) {
                         if_chain! {
                             if let hir::ExprKind::Path(path) = &args[0].kind;
-                            if let Res::Local(ref local) = cx.tables.qpath_res(path, args[0].hir_id);
+                            if let Res::Local(ref local) = cx.tables().qpath_res(path, args[0].hir_id);
                             then {
                                 if arg_id == *local {
                                     return (false, false)

@@ -53,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                     if let ExprKind::Binary(ref op, ref l, ref r) = body.value.kind;
                     if op.node == BinOpKind::Eq;
                     if match_type(cx,
-                               walk_ptrs_ty(cx.tables.expr_ty(&filter_args[0])),
+                               walk_ptrs_ty(cx.tables().expr_ty(&filter_args[0])),
                                &paths::SLICE_ITER);
                     then {
                         let needle = match get_path_name(l) {
@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                                 _ => { return; }
                             }
                         };
-                        if ty::Uint(UintTy::U8) != walk_ptrs_ty(cx.tables.expr_ty(needle)).kind {
+                        if ty::Uint(UintTy::U8) != walk_ptrs_ty(cx.tables().expr_ty(needle)).kind {
                             return;
                         }
                         let haystack = if let ExprKind::MethodCall(ref path, _, ref args, _) =

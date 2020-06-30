@@ -52,7 +52,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
             if let hir::ExprKind::MethodCall(ref method, _, ref args, _) = e.kind;
             if args.len() == 2;
             if method.ident.as_str() == "map";
-            let ty = cx.tables.expr_ty(&args[0]);
+            let ty = cx.tables().expr_ty(&args[0]);
             if is_type_diagnostic_item(cx, ty, sym!(option_type)) || match_trait_method(cx, e, &paths::ITERATOR);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
             let closure_body = cx.tcx.hir().body(body_id);
@@ -70,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
                                 if ident_eq(name, inner) {
-                                    if let ty::Ref(.., Mutability::Not) = cx.tables.expr_ty(inner).kind {
+                                    if let ty::Ref(.., Mutability::Not) = cx.tables().expr_ty(inner).kind {
                                         lint(cx, e.span, args[0].span, true);
                                     }
                                 }
@@ -79,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
                                 if ident_eq(name, &obj[0]) && method.ident.as_str() == "clone"
                                     && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
 
-                                    let obj_ty = cx.tables.expr_ty(&obj[0]);
+                                    let obj_ty = cx.tables().expr_ty(&obj[0]);
                                     if let ty::Ref(_, ty, _) = obj_ty.kind {
                                         let copy = is_copy(cx, ty);
                                         lint(cx, e.span, args[0].span, copy);

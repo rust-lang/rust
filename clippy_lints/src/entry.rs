@@ -109,7 +109,7 @@ fn check_cond<'a, 'tcx, 'b>(
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref key) = params[1].kind;
         then {
             let map = &params[0];
-            let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(map));
+            let obj_ty = walk_ptrs_ty(cx.tables().expr_ty(map));
 
             return if match_type(cx, obj_ty, &paths::BTREEMAP) {
                 Some(("BTreeMap", map, key))

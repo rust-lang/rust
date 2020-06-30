@@ -18,7 +18,7 @@ pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &'a LateContext<'a,
     };
     let def_id = expr.hir_id.owner.to_def_id();
     cx.tcx.infer_ctxt().enter(|infcx| {
-        ExprUseVisitor::new(&mut delegate, &infcx, def_id.expect_local(), cx.param_env, cx.tables).walk_expr(expr);
+        ExprUseVisitor::new(&mut delegate, &infcx, def_id.expect_local(), cx.param_env, cx.tables()).walk_expr(expr);
     });
 
     if delegate.skip {

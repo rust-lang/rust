@@ -343,7 +343,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
                 })
             {
                 let hir_id = ty.hir_id;
-                match self.cx.tables.qpath_res(qpath, hir_id) {
+                match self.cx.tables().qpath_res(qpath, hir_id) {
                     Res::Def(DefKind::TyAlias | DefKind::Struct, def_id) => {
                         let generics = self.cx.tcx.generics_of(def_id);
                         for _ in generics.params.as_slice() {

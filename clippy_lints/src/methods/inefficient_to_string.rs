@@ -11,9 +11,9 @@ use rustc_middle::ty::{self, Ty};
 /// Checks for the `INEFFICIENT_TO_STRING` lint
 pub fn lint<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'tcx>) {
     if_chain! {
-        if let Some(to_string_meth_did) = cx.tables.type_dependent_def_id(expr.hir_id);
+        if let Some(to_string_meth_did) = cx.tables().type_dependent_def_id(expr.hir_id);
         if match_def_path(cx, to_string_meth_did, &paths::TO_STRING_METHOD);
-        if let Some(substs) = cx.tables.node_substs_opt(expr.hir_id);
+        if let Some(substs) = cx.tables().node_substs_opt(expr.hir_id);
         let self_ty = substs.type_at(0);
         let (deref_self_ty, deref_count) = walk_ptrs_ty_depth(self_ty);
         if deref_count >= 1;

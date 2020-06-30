@@ -114,7 +114,7 @@ fn collect_unwrap_info<'a, 'tcx>(
         if_chain! {
             if let ExprKind::MethodCall(method_name, _, args, _) = &expr.kind;
             if let ExprKind::Path(QPath::Resolved(None, path)) = &args[0].kind;
-            let ty = cx.tables.expr_ty(&args[0]);
+            let ty = cx.tables().expr_ty(&args[0]);
             let name = method_name.ident.as_str();
             if is_relevant_option_call(cx, ty, &name) || is_relevant_result_call(cx, ty, &name);
             then {
