@@ -1461,6 +1461,7 @@ dependencies = [
  "ra_toolchain",
  "ra_tt",
  "rand",
+ "rayon",
  "rustc-hash",
  "serde",
  "serde_json",
