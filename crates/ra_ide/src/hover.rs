@@ -3,8 +3,8 @@ use std::iter::once;
 
 use hir::{
     db::DefDatabase, Adt, AsAssocItem, AsName, AssocItemContainer, AttrDef, Crate, Documentation,
-    FieldSource, HasSource, HirDisplay, Hygiene, ItemInNs, ModPath, ModuleDef, ModuleSource,
-    Semantics, Module
+    FieldSource, HasSource, HirDisplay, Hygiene, ItemInNs, ModPath, Module, ModuleDef,
+    ModuleSource, Semantics,
 };
 use itertools::Itertools;
 use lazy_static::lazy_static;
@@ -16,9 +16,7 @@ use ra_ide_db::{
     defs::{classify_name, classify_name_ref, Definition},
     RootDatabase,
 };
-use ra_syntax::{
-    ast, ast::Path, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset,
-};
+use ra_syntax::{ast, ast::Path, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
 use ra_tt::{Ident, Leaf, Literal, TokenTree};
 use url::Url;
 
@@ -441,8 +439,9 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> 
             // Two posibilities:
             // * path-based links: `../../module/struct.MyStruct.html`
             // * module-based links (AKA intra-doc links): `super::super::module::MyStruct`
-            let resolved = try_resolve_intra(db, definition, title, &target)
-                .or_else(|| try_resolve_path(db, definition, &target).map(|target| (target, title.to_string())));
+            let resolved = try_resolve_intra(db, definition, title, &target).or_else(|| {
+                try_resolve_path(db, definition, &target).map(|target| (target, title.to_string()))
+            });
 
             if let Some((target, title)) = resolved {
                 (target, title)
@@ -575,7 +574,8 @@ fn try_resolve_intra(
             .join(&get_symbol_filename(db, &Definition::ModuleDef(def))?)
             .ok()?
             .into_string(),
-    strip_prefixes_suffixes(link_text).to_string()))
+        strip_prefixes_suffixes(link_text).to_string(),
+    ))
 }
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).

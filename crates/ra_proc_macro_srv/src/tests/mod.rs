@@ -6,6 +6,7 @@ use test_utils::assert_eq_text;
 use utils::*;
 
 #[test]
+#[ignore]
 fn test_derive_serialize_proc_macro() {
     assert_expand(
         "serde_derive",
@@ -17,6 +18,7 @@ fn test_derive_serialize_proc_macro() {
 }
 
 #[test]
+#[ignore]
 fn test_derive_serialize_proc_macro_failed() {
     assert_expand(
         "serde_derive",
