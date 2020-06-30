@@ -3,7 +3,9 @@ use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
 use ra_db::{CrateName, Env, FileSet, SourceRoot, VfsPath};
-use test_utils::{extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER};
+use test_utils::{
+    extract_annotations, extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER,
+};
 
 use crate::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition, FileId, FilePosition, FileRange,
@@ -76,6 +78,24 @@ impl MockAnalysis {
             .find(|(_, data)| path == data.path)
             .expect("no file in this mock");
         FileId(idx as u32 + 1)
+    }
+    pub fn annotations(&self) -> Vec<(FileRange, String)> {
+        self.files
+            .iter()
+            .enumerate()
+            .flat_map(|(idx, fixture)| {
+                let file_id = FileId(idx as u32 + 1);
+                let annotations = extract_annotations(&fixture.text);
+                annotations
+                    .into_iter()
+                    .map(move |(range, data)| (FileRange { file_id, range }, data))
+            })
+            .collect()
+    }
+    pub fn annotation(&self) -> (FileRange, String) {
+        let mut all = self.annotations();
+        assert_eq!(all.len(), 1);
+        all.pop().unwrap()
     }
     pub fn analysis_host(self) -> AnalysisHost {
         let mut host = AnalysisHost::default();

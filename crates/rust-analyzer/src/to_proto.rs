@@ -446,6 +446,18 @@ pub(crate) fn location(
     Ok(loc)
 }
 
+/// Perefer using `location_link`, if the client has the cap.
+pub(crate) fn location_from_nav(
+    snap: &GlobalStateSnapshot,
+    nav: NavigationTarget,
+) -> Result<lsp_types::Location> {
+    let url = url(snap, nav.file_id());
+    let line_index = snap.analysis.file_line_index(nav.file_id())?;
+    let range = range(&line_index, nav.full_range());
+    let loc = lsp_types::Location::new(url, range);
+    Ok(loc)
+}
+
 pub(crate) fn location_link(
     snap: &GlobalStateSnapshot,
     src: Option<FileRange>,

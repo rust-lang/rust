@@ -177,6 +177,9 @@ There are many benefits to this:
 * less stuff printed during printf-debugging
 * less time to run test
 
+It also makes sense to format snippets more compactly (for example, by placing enum defitions like `enum E { Foo, Bar }` on a single line),
+as long as they are still readable.
+
 ## Order of Imports
 
 We separate import groups with blank lines

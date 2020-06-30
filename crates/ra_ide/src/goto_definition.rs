@@ -103,67 +103,32 @@ pub(crate) fn reference_definition(
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
-    use test_utils::assert_eq_text;
+    use ra_db::FileRange;
+    use ra_syntax::{TextRange, TextSize};
 
-    use crate::mock_analysis::analysis_and_position;
+    use crate::mock_analysis::MockAnalysis;
 
-    fn check_goto(ra_fixture: &str, expected: &str, expected_range: &str) {
-        let (analysis, pos) = analysis_and_position(ra_fixture);
+    fn check(ra_fixture: &str) {
+        let (mock, position) = MockAnalysis::with_files_and_position(ra_fixture);
+        let (mut expected, data) = mock.annotation();
+        let analysis = mock.analysis();
+        match data.as_str() {
+            "" => (),
+            "file" => {
+                expected.range =
+                    TextRange::up_to(TextSize::of(&*analysis.file_text(expected.file_id).unwrap()))
+            }
+            data => panic!("bad data: {}", data),
+        }
 
-        let mut navs = analysis.goto_definition(pos).unwrap().unwrap().info;
+        let mut navs = analysis.goto_definition(position).unwrap().unwrap().info;
         if navs.len() == 0 {
             panic!("unresolved reference")
         }
         assert_eq!(navs.len(), 1);
 
         let nav = navs.pop().unwrap();
-        let file_text = analysis.file_text(nav.file_id()).unwrap();
-
-        let mut actual = file_text[nav.full_range()].to_string();
-        if let Some(focus) = nav.focus_range() {
-            actual += "|";
-            actual += &file_text[focus];
-        }
-
-        if !expected_range.contains("...") {
-            test_utils::assert_eq_text!(&actual, expected_range);
-        } else {
-            let mut parts = expected_range.split("...");
-            let prefix = parts.next().unwrap();
-            let suffix = parts.next().unwrap();
-            assert!(
-                actual.starts_with(prefix) && actual.ends_with(suffix),
-                "\nExpected: {}\n Actual: {}\n",
-                expected_range,
-                actual
-            );
-        }
-
-        nav.assert_match(expected);
-    }
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let (analysis, pos) = analysis_and_position(ra_fixture);
-
-        let mut navs = analysis.goto_definition(pos).unwrap().unwrap().info;
-        if navs.len() == 0 {
-            panic!("unresolved reference")
-        }
-        assert_eq!(navs.len(), 1);
-
-        let nav = navs.pop().unwrap();
-        let file_text = analysis.file_text(nav.file_id()).unwrap();
-
-        let mut actual = nav.debug_render();
-        actual += "\n";
-        actual += &file_text[nav.full_range()].to_string();
-        if let Some(focus) = nav.focus_range() {
-            actual += "|";
-            actual += &file_text[focus];
-            actual += "\n";
-        }
-        expect.assert_eq(&actual);
+        assert_eq!(expected, FileRange { file_id: nav.file_id(), range: nav.range() });
     }
 
     #[test]
@@ -171,162 +136,116 @@ mod tests {
         check(
             r#"
 struct Foo;
+     //^^^
 enum E { X(Foo<|>) }
 "#,
-            expect![[r#"
-                Foo STRUCT_DEF FileId(1) 0..11 7..10
-                struct Foo;|Foo
-            "#]],
         );
     }
 
     #[test]
     fn goto_def_at_start_of_item() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo;
-            enum E { X(<|>Foo) }
-            ",
-            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
-            "struct Foo;|Foo",
+        check(
+            r#"
+struct Foo;
+     //^^^
+enum E { X(<|>Foo) }
+"#,
         );
     }
 
     #[test]
     fn goto_definition_resolves_correct_name() {
-        check_goto(
-            "
-            //- /lib.rs
-            use a::Foo;
-            mod a;
-            mod b;
-            enum E { X(Foo<|>) }
+        check(
+            r#"
+//- /lib.rs
+use a::Foo;
+mod a;
+mod b;
+enum E { X(Foo<|>) }
 
-            //- /a.rs
-            struct Foo;
-
-            //- /b.rs
-            struct Foo;
-            ",
-            "Foo STRUCT_DEF FileId(2) 0..11 7..10",
-            "struct Foo;|Foo",
+//- /a.rs
+struct Foo;
+     //^^^
+//- /b.rs
+struct Foo;
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_module_declaration() {
-        check_goto(
+        check(
             r#"
 //- /lib.rs
 mod <|>foo;
 
 //- /foo.rs
 // empty
+//^ file
 "#,
-            "foo SOURCE_FILE FileId(2) 0..9",
-            "// empty\n",
         );
 
-        check_goto(
+        check(
             r#"
 //- /lib.rs
 mod <|>foo;
 
 //- /foo/mod.rs
 // empty
+//^ file
 "#,
-            "foo SOURCE_FILE FileId(2) 0..9",
-            "// empty\n",
         );
     }
 
     #[test]
     fn goto_def_for_macros() {
-        check_goto(
-            "
-            //- /lib.rs
-            macro_rules! foo { () => { () } }
-
-            fn bar() {
-                <|>foo!();
-            }
-            ",
-            "foo MACRO_CALL FileId(1) 0..33 13..16",
-            "macro_rules! foo { () => { () } }|foo",
+        check(
+            r#"
+macro_rules! foo { () => { () } }
+           //^^^
+fn bar() {
+    <|>foo!();
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_macros_from_other_crates() {
-        check_goto(
-            "
-            //- /lib.rs
-            use foo::foo;
-            fn bar() {
-                <|>foo!();
-            }
-
-            //- /foo/lib.rs
-            #[macro_export]
-            macro_rules! foo { () => { () } }
-            ",
-            "foo MACRO_CALL FileId(2) 0..49 29..32",
-            "#[macro_export]\nmacro_rules! foo { () => { () } }|foo",
-        );
-    }
-
-    #[test]
-    fn goto_def_for_use_alias() {
-        check_goto(
+        check(
             r#"
 //- /lib.rs
-use foo as bar<|>;
+use foo::foo;
+fn bar() {
+    <|>foo!();
+}
 
 //- /foo/lib.rs
 #[macro_export]
 macro_rules! foo { () => { () } }
+           //^^^
 "#,
-            "SOURCE_FILE FileId(2) 0..50",
-            "#[macro_export]\nmacro_rules! foo { () => { () } }\n",
-        );
-    }
-
-    #[test]
-    fn goto_def_for_use_alias_foo_macro() {
-        check_goto(
-            "
-            //- /lib.rs
-            use foo::foo as bar<|>;
-
-            //- /foo/lib.rs
-            #[macro_export]
-            macro_rules! foo { () => { () } }
-            ",
-            "foo MACRO_CALL FileId(2) 0..49 29..32",
-            "#[macro_export]\nmacro_rules! foo { () => { () } }|foo",
         );
     }
 
     #[test]
     fn goto_def_for_macros_in_use_tree() {
-        check_goto(
-            "
-            //- /lib.rs
-            use foo::foo<|>;
+        check(
+            r#"
+//- /lib.rs
+use foo::foo<|>;
 
-            //- /foo/lib.rs
-            #[macro_export]
-            macro_rules! foo { () => { () } }
-            ",
-            "foo MACRO_CALL FileId(2) 0..49 29..32",
-            "#[macro_export]\nmacro_rules! foo { () => { () } }|foo",
+//- /foo/lib.rs
+#[macro_export]
+macro_rules! foo { () => { () } }
+           //^^^
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_macro_defined_fn_with_arg() {
-        check_goto(
+        check(
             r#"
 //- /lib.rs
 macro_rules! define_fn {
@@ -334,522 +253,478 @@ macro_rules! define_fn {
 }
 
 define_fn!(foo);
+         //^^^
 
 fn bar() {
    <|>foo();
 }
 "#,
-            "foo FN_DEF FileId(1) 65..81 76..79",
-            "define_fn!(foo);|foo",
         );
     }
 
     #[test]
     fn goto_def_for_macro_defined_fn_no_arg() {
-        check_goto(
+        check(
             r#"
 //- /lib.rs
 macro_rules! define_fn {
     () => (fn foo() {})
 }
 
-define_fn!();
+  define_fn!();
+//^^^^^^^^^^^^^
 
 fn bar() {
    <|>foo();
 }
 "#,
-            "foo FN_DEF FileId(1) 52..65 52..65",
-            "define_fn!();|define_fn!();",
         );
     }
 
     #[test]
     fn goto_definition_works_for_macro_inside_pattern() {
-        check_goto(
-            "
-            //- /lib.rs
-            macro_rules! foo {() => {0}}
+        check(
+            r#"
+//- /lib.rs
+macro_rules! foo {() => {0}}
+           //^^^
 
-            fn bar() {
-                match (0,1) {
-                    (<|>foo!(), _) => {}
-                }
-            }
-            ",
-            "foo MACRO_CALL FileId(1) 0..28 13..16",
-            "macro_rules! foo {() => {0}}|foo",
+fn bar() {
+    match (0,1) {
+        (<|>foo!(), _) => {}
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn goto_definition_works_for_macro_inside_match_arm_lhs() {
-        check_goto(
-            "
-            //- /lib.rs
-            macro_rules! foo {() => {0}}
+        check(
+            r#"
+//- /lib.rs
+macro_rules! foo {() => {0}}
+           //^^^
+fn bar() {
+    match 0 {
+        <|>foo!() => {}
+    }
+}
+"#,
+        );
+    }
 
-            fn bar() {
-                match 0 {
-                    <|>foo!() => {}
-                }
-            }
-            ",
-            "foo MACRO_CALL FileId(1) 0..28 13..16",
-            "macro_rules! foo {() => {0}}|foo",
+    #[test]
+    fn goto_def_for_use_alias() {
+        check(
+            r#"
+//- /lib.rs
+use foo as bar<|>;
+
+//- /foo/lib.rs
+// empty
+//^ file
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_use_alias_foo_macro() {
+        check(
+            r#"
+//- /lib.rs
+use foo::foo as bar<|>;
+
+//- /foo/lib.rs
+#[macro_export]
+macro_rules! foo { () => { () } }
+           //^^^
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_methods() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo;
-            impl Foo {
-                fn frobnicate(&self) { }
-            }
+        check(
+            r#"
+//- /lib.rs
+struct Foo;
+impl Foo {
+    fn frobnicate(&self) { }
+     //^^^^^^^^^^
+}
 
-            fn bar(foo: &Foo) {
-                foo.frobnicate<|>();
-            }
-            ",
-            "frobnicate FN_DEF FileId(1) 27..51 30..40",
-            "fn frobnicate(&self) { }|frobnicate",
+fn bar(foo: &Foo) {
+    foo.frobnicate<|>();
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_fields() {
-        check_goto(
-            r"
-            //- /lib.rs
-            struct Foo {
-                spam: u32,
-            }
+        check(
+            r#"
+struct Foo {
+    spam: u32,
+} //^^^^
 
-            fn bar(foo: &Foo) {
-                foo.spam<|>;
-            }
-            ",
-            "spam RECORD_FIELD_DEF FileId(1) 17..26 17..21",
-            "spam: u32|spam",
+fn bar(foo: &Foo) {
+    foo.spam<|>;
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_record_fields() {
-        check_goto(
-            r"
-            //- /lib.rs
-            struct Foo {
-                spam: u32,
-            }
+        check(
+            r#"
+//- /lib.rs
+struct Foo {
+    spam: u32,
+} //^^^^
 
-            fn bar() -> Foo {
-                Foo {
-                    spam<|>: 0,
-                }
-            }
-            ",
-            "spam RECORD_FIELD_DEF FileId(1) 17..26 17..21",
-            "spam: u32|spam",
+fn bar() -> Foo {
+    Foo {
+        spam<|>: 0,
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_record_pat_fields() {
-        check_goto(
-            r"
-            //- /lib.rs
-            struct Foo {
-                spam: u32,
-            }
+        check(
+            r#"
+//- /lib.rs
+struct Foo {
+    spam: u32,
+} //^^^^
 
-            fn bar(foo: Foo) -> Foo {
-                let Foo { spam<|>: _, } = foo
-            }
-            ",
-            "spam RECORD_FIELD_DEF FileId(1) 17..26 17..21",
-            "spam: u32|spam",
+fn bar(foo: Foo) -> Foo {
+    let Foo { spam<|>: _, } = foo
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_record_fields_macros() {
-        check_goto(
+        check(
             r"
-            //- /lib.rs
-            macro_rules! m { () => { 92 };}
-            struct Foo { spam: u32 }
+macro_rules! m { () => { 92 };}
+struct Foo { spam: u32 }
+           //^^^^
 
-            fn bar() -> Foo {
-                Foo { spam<|>: m!() }
-            }
-            ",
-            "spam RECORD_FIELD_DEF FileId(1) 45..54 45..49",
-            "spam: u32|spam",
+fn bar() -> Foo {
+    Foo { spam<|>: m!() }
+}
+",
         );
     }
 
     #[test]
     fn goto_for_tuple_fields() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo(u32);
+        check(
+            r#"
+struct Foo(u32);
+         //^^^
 
-            fn bar() {
-                let foo = Foo(0);
-                foo.<|>0;
-            }
-            ",
-            "TUPLE_FIELD_DEF FileId(1) 11..14",
-            "u32",
+fn bar() {
+    let foo = Foo(0);
+    foo.<|>0;
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_ufcs_inherent_methods() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo;
-            impl Foo {
-                fn frobnicate() { }
-            }
+        check(
+            r#"
+struct Foo;
+impl Foo {
+    fn frobnicate() { }
+}    //^^^^^^^^^^
 
-            fn bar(foo: &Foo) {
-                Foo::frobnicate<|>();
-            }
-            ",
-            "frobnicate FN_DEF FileId(1) 27..46 30..40",
-            "fn frobnicate() { }|frobnicate",
+fn bar(foo: &Foo) {
+    Foo::frobnicate<|>();
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_ufcs_trait_methods_through_traits() {
-        check_goto(
-            "
-            //- /lib.rs
-            trait Foo {
-                fn frobnicate();
-            }
+        check(
+            r#"
+trait Foo {
+    fn frobnicate();
+}    //^^^^^^^^^^
 
-            fn bar() {
-                Foo::frobnicate<|>();
-            }
-            ",
-            "frobnicate FN_DEF FileId(1) 16..32 19..29",
-            "fn frobnicate();|frobnicate",
+fn bar() {
+    Foo::frobnicate<|>();
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_ufcs_trait_methods_through_self() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo;
-            trait Trait {
-                fn frobnicate();
-            }
-            impl Trait for Foo {}
+        check(
+            r#"
+struct Foo;
+trait Trait {
+    fn frobnicate();
+}    //^^^^^^^^^^
+impl Trait for Foo {}
 
-            fn bar() {
-                Foo::frobnicate<|>();
-            }
-            ",
-            "frobnicate FN_DEF FileId(1) 30..46 33..43",
-            "fn frobnicate();|frobnicate",
+fn bar() {
+    Foo::frobnicate<|>();
+}
+"#,
         );
     }
 
     #[test]
     fn goto_definition_on_self() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo;
-            impl Foo {
-                pub fn new() -> Self {
-                    Self<|> {}
-                }
-            }
-            ",
-            "impl IMPL_DEF FileId(1) 12..73",
-            "impl Foo {...}",
+        check(
+            r#"
+struct Foo;
+impl Foo {
+   //^^^
+    pub fn new() -> Self {
+        Self<|> {}
+    }
+}
+"#,
+        );
+        check(
+            r#"
+struct Foo;
+impl Foo {
+   //^^^
+    pub fn new() -> Self<|> {
+        Self {}
+    }
+}
+"#,
         );
 
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo;
-            impl Foo {
-                pub fn new() -> Self<|> {
-                    Self {}
-                }
-            }
-            ",
-            "impl IMPL_DEF FileId(1) 12..73",
-            "impl Foo {...}",
+        check(
+            r#"
+enum Foo { A }
+impl Foo {
+   //^^^
+    pub fn new() -> Self<|> {
+        Foo::A
+    }
+}
+"#,
         );
 
-        check_goto(
-            "
-            //- /lib.rs
-            enum Foo { A }
-            impl Foo {
-                pub fn new() -> Self<|> {
-                    Foo::A
-                }
-            }
-            ",
-            "impl IMPL_DEF FileId(1) 15..75",
-            "impl Foo {...}",
-        );
-
-        check_goto(
-            "
-            //- /lib.rs
-            enum Foo { A }
-            impl Foo {
-                pub fn thing(a: &Self<|>) {
-                }
-            }
-            ",
-            "impl IMPL_DEF FileId(1) 15..62",
-            "impl Foo {...}",
+        check(
+            r#"
+enum Foo { A }
+impl Foo {
+   //^^^
+    pub fn thing(a: &Self<|>) {
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn goto_definition_on_self_in_trait_impl() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo;
-            trait Make {
-                fn new() -> Self;
-            }
-            impl Make for Foo {
-                fn new() -> Self {
-                    Self<|> {}
-                }
-            }
-            ",
-            "impl IMPL_DEF FileId(1) 49..115",
-            "impl Make for Foo {...}",
+        check(
+            r#"
+struct Foo;
+trait Make {
+    fn new() -> Self;
+}
+impl Make for Foo {
+            //^^^
+    fn new() -> Self {
+        Self<|> {}
+    }
+}
+"#,
         );
 
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo;
-            trait Make {
-                fn new() -> Self;
-            }
-            impl Make for Foo {
-                fn new() -> Self<|> {
-                    Self {}
-                }
-            }
-            ",
-            "impl IMPL_DEF FileId(1) 49..115",
-            "impl Make for Foo {...}",
+        check(
+            r#"
+struct Foo;
+trait Make {
+    fn new() -> Self;
+}
+impl Make for Foo {
+            //^^^
+    fn new() -> Self<|> {
+        Self {}
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_when_used_on_definition_name_itself() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo<|> { value: u32 }
-            ",
-            "Foo STRUCT_DEF FileId(1) 0..25 7..10",
-            "struct Foo { value: u32 }|Foo",
-        );
-
-        check_goto(
+        check(
             r#"
-            //- /lib.rs
-            struct Foo {
-                field<|>: string,
-            }
+struct Foo<|> { value: u32 }
+     //^^^
             "#,
-            "field RECORD_FIELD_DEF FileId(1) 17..30 17..22",
-            "field: string|field",
         );
 
-        check_goto(
-            "
-            //- /lib.rs
-            fn foo_test<|>() { }
-            ",
-            "foo_test FN_DEF FileId(1) 0..17 3..11",
-            "fn foo_test() { }|foo_test",
-        );
-
-        check_goto(
-            "
-            //- /lib.rs
-            enum Foo<|> {
-                Variant,
-            }
-            ",
-            "Foo ENUM_DEF FileId(1) 0..25 5..8",
-            "enum Foo {...}|Foo",
-        );
-
-        check_goto(
-            "
-            //- /lib.rs
-            enum Foo {
-                Variant1,
-                Variant2<|>,
-                Variant3,
-            }
-            ",
-            "Variant2 ENUM_VARIANT FileId(1) 29..37 29..37",
-            "Variant2|Variant2",
-        );
-
-        check_goto(
+        check(
             r#"
-            //- /lib.rs
-            static INNER<|>: &str = "";
-            "#,
-            "INNER STATIC_DEF FileId(1) 0..24 7..12",
-            "static INNER: &str = \"\";|INNER",
+struct Foo {
+    field<|>: string,
+} //^^^^^
+"#,
         );
 
-        check_goto(
+        check(
             r#"
-            //- /lib.rs
-            const INNER<|>: &str = "";
-            "#,
-            "INNER CONST_DEF FileId(1) 0..23 6..11",
-            "const INNER: &str = \"\";|INNER",
+fn foo_test<|>() { }
+ //^^^^^^^^
+"#,
         );
 
-        check_goto(
+        check(
             r#"
-            //- /lib.rs
-            type Thing<|> = Option<()>;
-            "#,
-            "Thing TYPE_ALIAS_DEF FileId(1) 0..24 5..10",
-            "type Thing = Option<()>;|Thing",
+enum Foo<|> { Variant }
+   //^^^
+"#,
         );
 
-        check_goto(
+        check(
             r#"
-            //- /lib.rs
-            trait Foo<|> { }
-            "#,
-            "Foo TRAIT_DEF FileId(1) 0..13 6..9",
-            "trait Foo { }|Foo",
+enum Foo {
+    Variant1,
+    Variant2<|>,
+  //^^^^^^^^
+    Variant3,
+}
+"#,
         );
 
-        check_goto(
+        check(
             r#"
-            //- /lib.rs
-            mod bar<|> { }
-            "#,
-            "bar MODULE FileId(1) 0..11 4..7",
-            "mod bar { }|bar",
+static INNER<|>: &str = "";
+     //^^^^^
+"#,
+        );
+
+        check(
+            r#"
+const INNER<|>: &str = "";
+    //^^^^^
+"#,
+        );
+
+        check(
+            r#"
+type Thing<|> = Option<()>;
+   //^^^^^
+"#,
+        );
+
+        check(
+            r#"
+trait Foo<|> { }
+    //^^^
+"#,
+        );
+
+        check(
+            r#"
+mod bar<|> { }
+  //^^^
+"#,
         );
     }
 
     #[test]
     fn goto_from_macro() {
-        check_goto(
-            "
-            //- /lib.rs
-            macro_rules! id {
-                ($($tt:tt)*) => { $($tt)* }
-            }
-            fn foo() {}
-            id! {
-                fn bar() {
-                    fo<|>o();
-                }
-            }
-            mod confuse_index { fn foo(); }
-            ",
-            "foo FN_DEF FileId(1) 52..63 55..58",
-            "fn foo() {}|foo",
+        check(
+            r#"
+macro_rules! id {
+    ($($tt:tt)*) => { $($tt)* }
+}
+fn foo() {}
+ //^^^
+id! {
+    fn bar() {
+        fo<|>o();
+    }
+}
+mod confuse_index { fn foo(); }
+"#,
         );
     }
 
     #[test]
     fn goto_through_format() {
-        check_goto(
-            "
-            //- /lib.rs
-            #[macro_export]
-            macro_rules! format {
-                ($($arg:tt)*) => ($crate::fmt::format($crate::__export::format_args!($($arg)*)))
-            }
-            #[rustc_builtin_macro]
-            #[macro_export]
-            macro_rules! format_args {
-                ($fmt:expr) => ({ /* compiler built-in */ });
-                ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
-            }
-            pub mod __export {
-                pub use crate::format_args;
-                fn foo() {} // for index confusion
-            }
-            fn foo() -> i8 {}
-            fn test() {
-                format!(\"{}\", fo<|>o())
-            }
-            ",
-            "foo FN_DEF FileId(1) 398..415 401..404",
-            "fn foo() -> i8 {}|foo",
+        check(
+            r#"
+#[macro_export]
+macro_rules! format {
+    ($($arg:tt)*) => ($crate::fmt::format($crate::__export::format_args!($($arg)*)))
+}
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! format_args {
+    ($fmt:expr) => ({ /* compiler built-in */ });
+    ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+}
+pub mod __export {
+    pub use crate::format_args;
+    fn foo() {} // for index confusion
+}
+fn foo() -> i8 {}
+ //^^^
+fn test() {
+    format!("{}", fo<|>o())
+}
+"#,
         );
     }
 
     #[test]
     fn goto_for_type_param() {
-        check_goto(
+        check(
             r#"
-            //- /lib.rs
-            struct Foo<T: Clone> {
-                t: <|>T,
-            }
-            "#,
-            "T TYPE_PARAM FileId(1) 11..19 11..12",
-            "T: Clone|T",
+struct Foo<T: Clone> { t: <|>T }
+         //^
+"#,
         );
     }
 
     #[test]
     fn goto_within_macro() {
-        check_goto(
+        check(
             r#"
-//- /lib.rs
 macro_rules! id {
     ($($tt:tt)*) => ($($tt)*)
 }
 
 fn foo() {
     let x = 1;
+      //^
     id!({
         let y = <|>x;
         let z = y;
     });
 }
 "#,
-            "x BIND_PAT FileId(1) 70..71",
-            "x",
         );
 
-        check_goto(
+        check(
             r#"
-//- /lib.rs
 macro_rules! id {
     ($($tt:tt)*) => ($($tt)*)
 }
@@ -858,159 +733,125 @@ fn foo() {
     let x = 1;
     id!({
         let y = x;
+          //^
         let z = <|>y;
     });
 }
 "#,
-            "y BIND_PAT FileId(1) 99..100",
-            "y",
         );
     }
 
     #[test]
     fn goto_def_in_local_fn() {
-        check_goto(
-            "
-            //- /lib.rs
-            fn main() {
-                fn foo() {
-                    let x = 92;
-                    <|>x;
-                }
-            }
-            ",
-            "x BIND_PAT FileId(1) 39..40",
-            "x",
+        check(
+            r#"
+fn main() {
+    fn foo() {
+        let x = 92;
+          //^
+        <|>x;
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_in_local_macro() {
-        check_goto(
-            r"
-            //- /lib.rs
-            fn bar() {
-                macro_rules! foo { () => { () } }
-                <|>foo!();
-            }
-            ",
-            "foo MACRO_CALL FileId(1) 15..48 28..31",
-            "macro_rules! foo { () => { () } }|foo",
+        check(
+            r#"
+fn bar() {
+    macro_rules! foo { () => { () } }
+               //^^^
+    <|>foo!();
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_field_init_shorthand() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo { x: i32 }
-            fn main() {
-                let x = 92;
-                Foo { x<|> };
-            }
-            ",
-            "x BIND_PAT FileId(1) 42..43",
-            "x",
+        check(
+            r#"
+struct Foo { x: i32 }
+fn main() {
+    let x = 92;
+      //^
+    Foo { x<|> };
+}
+"#,
         )
     }
 
     #[test]
     fn goto_def_for_enum_variant_field() {
-        check_goto(
-            "
-            //- /lib.rs
-            enum Foo {
-                Bar { x: i32 }
-            }
-            fn baz(foo: Foo) {
-                match foo {
-                    Foo::Bar { x<|> } => x
-                };
-            }
-            ",
-            "x RECORD_FIELD_DEF FileId(1) 21..27 21..22",
-            "x: i32|x",
+        check(
+            r#"
+enum Foo {
+    Bar { x: i32 }
+}       //^
+fn baz(foo: Foo) {
+    match foo {
+        Foo::Bar { x<|> } => x
+    };
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_enum_variant_self_pattern_const() {
-        check_goto(
-            "
-            //- /lib.rs
-            enum Foo {
-                Bar,
-            }
-            impl Foo {
-                fn baz(self) {
-                    match self {
-                        Self::Bar<|> => {}
-                    }
-                }
-            }
-            ",
-            "Bar ENUM_VARIANT FileId(1) 15..18 15..18",
-            "Bar|Bar",
+        check(
+            r#"
+enum Foo { Bar }
+         //^^^
+impl Foo {
+    fn baz(self) {
+        match self { Self::Bar<|> => {} }
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_enum_variant_self_pattern_record() {
-        check_goto(
-            "
-            //- /lib.rs
-            enum Foo {
-                Bar { val: i32 },
-            }
-            impl Foo {
-                fn baz(self) -> i32 {
-                    match self {
-                        Self::Bar<|> { val } => {}
-                    }
-                }
-            }
-            ",
-            "Bar ENUM_VARIANT FileId(1) 15..31 15..18",
-            "Bar { val: i32 }|Bar",
+        check(
+            r#"
+enum Foo { Bar { val: i32 } }
+         //^^^
+impl Foo {
+    fn baz(self) -> i32 {
+        match self { Self::Bar<|> { val } => {} }
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_enum_variant_self_expr_const() {
-        check_goto(
-            "
-            //- /lib.rs
-            enum Foo {
-                Bar,
-            }
-            impl Foo {
-                fn baz(self) {
-                    Self::Bar<|>;
-                }
-            }
-            ",
-            "Bar ENUM_VARIANT FileId(1) 15..18 15..18",
-            "Bar|Bar",
+        check(
+            r#"
+enum Foo { Bar }
+         //^^^
+impl Foo {
+    fn baz(self) { Self::Bar<|>; }
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_enum_variant_self_expr_record() {
-        check_goto(
-            "
-            //- /lib.rs
-            enum Foo {
-                Bar { val: i32 },
-            }
-            impl Foo {
-                fn baz(self) {
-                    Self::Bar<|> {val: 4};
-                }
-            }
-            ",
-            "Bar ENUM_VARIANT FileId(1) 15..31 15..18",
-            "Bar { val: i32 }|Bar",
+        check(
+            r#"
+enum Foo { Bar { val: i32 } }
+         //^^^
+impl Foo {
+    fn baz(self) { Self::Bar<|> {val: 4}; }
+}
+"#,
         );
     }
 }

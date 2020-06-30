@@ -11,7 +11,7 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::{FileRange, FileSymbol};
+use crate::FileSymbol;
 
 use super::short_label::ShortLabel;
 
@@ -47,6 +47,19 @@ impl NavigationTarget {
     pub fn range(&self) -> TextRange {
         self.focus_range.unwrap_or(self.full_range)
     }
+    /// A "most interesting" range withing the `full_range`.
+    ///
+    /// Typically, `full_range` is the whole syntax node,
+    /// including doc comments, and `focus_range` is the range of the identifier.
+    pub fn focus_range(&self) -> Option<TextRange> {
+        self.focus_range
+    }
+    pub fn full_range(&self) -> TextRange {
+        self.full_range
+    }
+    pub fn file_id(&self) -> FileId {
+        self.file_id
+    }
 
     pub fn name(&self) -> &SmolStr {
         &self.name
@@ -60,32 +73,12 @@ impl NavigationTarget {
         self.kind
     }
 
-    pub fn file_id(&self) -> FileId {
-        self.file_id
-    }
-
-    pub fn file_range(&self) -> FileRange {
-        FileRange { file_id: self.file_id, range: self.full_range }
-    }
-
-    pub fn full_range(&self) -> TextRange {
-        self.full_range
-    }
-
     pub fn docs(&self) -> Option<&str> {
         self.docs.as_deref()
     }
 
     pub fn description(&self) -> Option<&str> {
         self.description.as_deref()
-    }
-
-    /// A "most interesting" range withing the `full_range`.
-    ///
-    /// Typically, `full_range` is the whole syntax node,
-    /// including doc comments, and `focus_range` is the range of the identifier.
-    pub fn focus_range(&self) -> Option<TextRange> {
-        self.focus_range
     }
 
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
@@ -278,16 +271,22 @@ impl ToNav for hir::Module {
 impl ToNav for hir::ImplDef {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let frange = if let Some(item) = self.is_builtin_derive(db) {
+        let derive_attr = self.is_builtin_derive(db);
+        let frange = if let Some(item) = &derive_attr {
             original_range(db, item.syntax())
         } else {
             original_range(db, src.as_ref().map(|it| it.syntax()))
+        };
+        let focus_range = if derive_attr.is_some() {
+            None
+        } else {
+            src.value.target_type().map(|ty| original_range(db, src.with_value(ty.syntax())).range)
         };
 
         NavigationTarget::from_syntax(
             frange.file_id,
             "impl".into(),
-            None,
+            focus_range,
             frange.range,
             src.value.syntax().kind(),
         )
