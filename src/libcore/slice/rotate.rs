@@ -1,7 +1,5 @@
 // ignore-tidy-undocumented-unsafe
 
-#![deny(unsafe_op_in_unsafe_fn)]
-
 use crate::cmp;
 use crate::mem::{self, MaybeUninit};
 use crate::ptr;
