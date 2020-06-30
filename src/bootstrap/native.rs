@@ -175,6 +175,14 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
+        // Are we compiling for iOS/tvOS?
+        if target.contains("apple") && !target.contains("darwin") {
+            cfg.define("CMAKE_OSX_SYSROOT", "/");
+            cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");
+            cfg.define("LLVM_ENABLE_PLUGINS", "OFF"); // Prevent cmake from adding -bundle to CFLAGS automatically.
+            cfg.define("LLVM_ENABLE_ZLIB", "OFF");
+        }
+
         if builder.config.llvm_thin_lto {
             cfg.define("LLVM_ENABLE_LTO", "Thin");
             if !target.contains("apple") {

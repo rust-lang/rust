@@ -811,6 +811,11 @@ impl Build {
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
         }
+        
+        // Required for LLVM to properly compile.
+        if target.contains("apple-ios") {
+            base.push("-miphoneos-version-min=10.0".into());
+        }
 
         // Work around an apparently bad MinGW / GCC optimization,
         // See: http://lists.llvm.org/pipermail/cfe-dev/2016-December/051980.html
