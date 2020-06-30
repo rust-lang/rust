@@ -83,12 +83,6 @@ impl ItemScope {
         keys.into_iter().map(move |name| (name, self.get(name)))
     }
 
-    pub fn entries_without_primitives<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (&'a Name, PerNs)> + 'a {
-        self.entries()
-    }
-
     pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {
         self.defs.iter().copied()
     }
