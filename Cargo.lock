@@ -1163,7 +1163,6 @@ dependencies = [
  "ra_ide_db",
  "ra_parser",
  "ra_prof",
- "ra_project_model",
  "ra_ssr",
  "ra_syntax",
  "ra_text_edit",
