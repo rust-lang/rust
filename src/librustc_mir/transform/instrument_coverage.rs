@@ -5,65 +5,71 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::lang_items;
 use rustc_middle::hir;
 use rustc_middle::ich::StableHashingContext;
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::mir::coverage::*;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::CoverageInfo;
 use rustc_middle::mir::{
-    self, traversal, BasicBlock, BasicBlockData, CoverageData, Operand, Place, SourceInfo,
-    StatementKind, Terminator, TerminatorKind, START_BLOCK,
+    self, traversal, BasicBlock, BasicBlockData, Operand, Place, SourceInfo, StatementKind,
+    Terminator, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::ty;
 use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::FnDef;
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::{ConstKind, FnDef};
 use rustc_span::def_id::DefId;
-use rustc_span::Span;
+use rustc_span::{Pos, Span};
 
 /// Inserts call to count_code_region() as a placeholder to be replaced during code generation with
 /// the intrinsic llvm.instrprof.increment.
 pub struct InstrumentCoverage;
 
-/// The `query` provider for `CoverageData`, requested by `codegen_intrinsic_call()` when
+/// The `query` provider for `CoverageInfo`, requested by `codegen_intrinsic_call()` when
 /// constructing the arguments for `llvm.instrprof.increment`.
 pub(crate) fn provide(providers: &mut Providers<'_>) {
-    providers.coverage_data = |tcx, def_id| {
-        let mir_body = tcx.optimized_mir(def_id);
-        // FIXME(richkadel): The current implementation assumes the MIR for the given DefId
-        // represents a single function. Validate and/or correct if inlining and/or monomorphization
-        // invalidates these assumptions.
-        let count_code_region_fn =
-            tcx.require_lang_item(lang_items::CountCodeRegionFnLangItem, None);
-        let mut num_counters: u32 = 0;
-        // The `num_counters` argument to `llvm.instrprof.increment` is the number of injected
-        // counters, with each counter having an index from `0..num_counters-1`. MIR optimization
-        // may split and duplicate some BasicBlock sequences. Simply counting the calls may not
-        // not work; but computing the num_counters by adding `1` to the highest index (for a given
-        // instrumented function) is valid.
-        for (_, data) in traversal::preorder(mir_body) {
-            if let Some(terminator) = &data.terminator {
-                if let TerminatorKind::Call { func: Operand::Constant(func), args, .. } =
-                    &terminator.kind
-                {
-                    if let FnDef(called_fn_def_id, _) = func.literal.ty.kind {
-                        if called_fn_def_id == count_code_region_fn {
-                            if let Operand::Constant(constant) =
-                                args.get(0).expect("count_code_region has at least one arg")
-                            {
-                                if let ConstKind::Value(ConstValue::Scalar(value)) =
-                                    constant.literal.val
-                                {
-                                    let index = value
-                                        .to_u32()
-                                        .expect("count_code_region index at arg0 is u32");
-                                    num_counters = std::cmp::max(num_counters, index + 1);
-                                }
-                            }
-                        }
-                    }
+    providers.coverageinfo = |tcx, def_id| coverageinfo_from_mir(tcx, def_id);
+}
+
+fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, mir_def_id: DefId) -> CoverageInfo {
+    let mir_body = tcx.optimized_mir(mir_def_id);
+    // FIXME(richkadel): The current implementation assumes the MIR for the given DefId
+    // represents a single function. Validate and/or correct if inlining (which should be disabled
+    // if -Zinstrument-coverage is enabled) and/or monomorphization invalidates these assumptions.
+    let count_code_region_fn = tcx.require_lang_item(lang_items::CountCodeRegionFnLangItem, None);
+
+    // The `num_counters` argument to `llvm.instrprof.increment` is the number of injected
+    // counters, with each counter having an index from `0..num_counters-1`. MIR optimization
+    // may split and duplicate some BasicBlock sequences. Simply counting the calls may not
+    // not work; but computing the num_counters by adding `1` to the highest index (for a given
+    // instrumented function) is valid.
+    let mut num_counters: u32 = 0;
+    for terminator in traversal::preorder(mir_body)
+        .map(|(_, data)| (data, count_code_region_fn))
+        .filter_map(terminators_that_call_given_fn)
+    {
+        if let TerminatorKind::Call { args, .. } = &terminator.kind {
+            let index_arg = args.get(count_code_region_args::COUNTER_INDEX).expect("arg found");
+            let index =
+                mir::Operand::scalar_from_const(index_arg).to_u32().expect("index arg is u32");
+            num_counters = std::cmp::max(num_counters, index + 1);
+        }
+    }
+    let hash = if num_counters > 0 { hash_mir_source(tcx, mir_def_id) } else { 0 };
+    CoverageInfo { num_counters, hash }
+}
+
+fn terminators_that_call_given_fn(
+    (data, fn_def_id): (&'tcx BasicBlockData<'tcx>, DefId),
+) -> Option<&'tcx Terminator<'tcx>> {
+    if let Some(terminator) = &data.terminator {
+        if let TerminatorKind::Call { func: Operand::Constant(func), .. } = &terminator.kind {
+            if let FnDef(called_fn_def_id, _) = func.literal.ty.kind {
+                if called_fn_def_id == fn_def_id {
+                    return Some(&terminator);
                 }
             }
         }
-        let hash = if num_counters > 0 { hash_mir_source(tcx, def_id) } else { 0 };
-        CoverageData { num_counters, hash }
-    };
+    }
+    None
 }
 
 struct Instrumentor<'tcx> {
@@ -102,17 +108,16 @@ impl<'tcx> Instrumentor<'tcx> {
     fn inject_counters(&mut self, mir_body: &mut mir::Body<'tcx>) {
         // FIXME(richkadel): As a first step, counters are only injected at the top of each
         // function. The complete solution will inject counters at each conditional code branch.
-        let top_of_function = START_BLOCK;
-        let entire_function = mir_body.span;
-
-        self.inject_counter(mir_body, top_of_function, entire_function);
+        let code_region = mir_body.span;
+        let next_block = START_BLOCK;
+        self.inject_counter(mir_body, code_region, next_block);
     }
 
     fn inject_counter(
         &mut self,
         mir_body: &mut mir::Body<'tcx>,
-        next_block: BasicBlock,
         code_region: Span,
+        next_block: BasicBlock,
     ) {
         let injection_point = code_region.shrink_to_lo();
 
@@ -121,12 +126,20 @@ impl<'tcx> Instrumentor<'tcx> {
             self.tcx.require_lang_item(lang_items::CountCodeRegionFnLangItem, None),
             injection_point,
         );
-        let counter_index = Operand::const_from_scalar(
-            self.tcx,
-            self.tcx.types.u32,
-            Scalar::from_u32(self.next_counter()),
-            injection_point,
-        );
+
+        let index = self.next_counter();
+
+        let mut args = Vec::new();
+
+        use count_code_region_args::*;
+        debug_assert_eq!(COUNTER_INDEX, args.len());
+        args.push(self.const_u32(index, injection_point));
+
+        debug_assert_eq!(START_BYTE_POS, args.len());
+        args.push(self.const_u32(code_region.lo().to_u32(), injection_point));
+
+        debug_assert_eq!(END_BYTE_POS, args.len());
+        args.push(self.const_u32(code_region.hi().to_u32(), injection_point));
 
         let mut patch = MirPatch::new(mir_body);
 
@@ -136,7 +149,7 @@ impl<'tcx> Instrumentor<'tcx> {
             new_block,
             TerminatorKind::Call {
                 func: count_code_region_fn,
-                args: vec![counter_index],
+                args,
                 // new_block will swapped with the next_block, after applying patch
                 destination: Some((Place::from(temp), new_block)),
                 cleanup: None,
@@ -153,6 +166,10 @@ impl<'tcx> Instrumentor<'tcx> {
         // To insert the `new_block` in front of the first block in the counted branch (the
         // `next_block`), just swap the indexes, leaving the rest of the graph unchanged.
         mir_body.basic_blocks_mut().swap(next_block, new_block);
+    }
+
+    fn const_u32(&self, value: u32, span: Span) -> Operand<'tcx> {
+        Operand::const_from_scalar(self.tcx, self.tcx.types.u32, Scalar::from_u32(value), span)
     }
 }
 

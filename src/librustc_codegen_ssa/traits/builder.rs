@@ -1,5 +1,6 @@
 use super::abi::AbiBuilderMethods;
 use super::asm::AsmBuilderMethods;
+use super::coverageinfo::CoverageInfoBuilderMethods;
 use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
 use super::type_::ArgAbiMethods;
@@ -29,6 +30,7 @@ pub enum OverflowOp {
 
 pub trait BuilderMethods<'a, 'tcx>:
     HasCodegen<'tcx>
+    + CoverageInfoBuilderMethods<'tcx>
     + DebugInfoBuilderMethods
     + ArgAbiMethods<'tcx>
     + AbiBuilderMethods<'tcx>

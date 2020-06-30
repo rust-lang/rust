@@ -651,6 +651,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         if intrinsic.is_some() && intrinsic != Some("drop_in_place") {
+            let intrinsic = intrinsic.unwrap();
+
+            // `is_codegen_intrinsic()` allows the backend implementation to perform compile-time
+            // operations before converting the `args` to backend values.
+            if !bx.is_codegen_intrinsic(intrinsic, &args, self.instance) {
+                // If the intrinsic call was fully addressed by the `is_codegen_intrinsic()` call
+                // (as a compile-time operation), return immediately. This avoids the need to
+                // convert the arguments, the call to `codegen_intrinsic_call()`, and the return
+                // value handling.
+                return;
+            }
+
             let dest = match ret_dest {
                 _ if fn_abi.ret.is_indirect() => llargs[0],
                 ReturnDest::Nothing => {
@@ -670,7 +682,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // third argument must be constant. This is
                     // checked by const-qualification, which also
                     // promotes any complex rvalues to constants.
-                    if i == 2 && intrinsic.unwrap().starts_with("simd_shuffle") {
+                    if i == 2 && intrinsic.starts_with("simd_shuffle") {
                         if let mir::Operand::Constant(constant) = arg {
                             let c = self.eval_mir_constant(constant);
                             let (llval, ty) = self.simd_shuffle_indices(
