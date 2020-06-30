@@ -345,7 +345,7 @@ fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<
 
 #[cfg(test)]
 mod tests {
-    use insta::assert_debug_snapshot;
+    use expect::{expect, Expect};
     use test_utils::extract_annotations;
 
     use crate::{inlay_hints::InlayHintsConfig, mock_analysis::single_file};
@@ -361,6 +361,12 @@ mod tests {
         let actual =
             inlay_hints.into_iter().map(|it| (it.range, it.label.to_string())).collect::<Vec<_>>();
         assert_eq!(expected, actual);
+    }
+
+    fn check_expect(ra_fixture: &str, config: InlayHintsConfig, expect: Expect) {
+        let (analysis, file_id) = single_file(ra_fixture);
+        let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
+        expect.assert_debug_eq(&inlay_hints)
     }
 
     #[test]
@@ -772,34 +778,41 @@ fn main() {
 
     #[test]
     fn chaining_hints_ignore_comments() {
-        let (analysis, file_id) = single_file(
+        check_expect(
             r#"
-            struct A(B);
-            impl A { fn into_b(self) -> B { self.0 } }
-            struct B(C);
-            impl B { fn into_c(self) -> C { self.0 } }
-            struct C;
+struct A(B);
+impl A { fn into_b(self) -> B { self.0 } }
+struct B(C);
+impl B { fn into_c(self) -> C { self.0 } }
+struct C;
 
-            fn main() {
-                let c = A(B(C))
-                    .into_b() // This is a comment
-                    .into_c();
-            }"#,
+fn main() {
+    let c = A(B(C))
+        .into_b() // This is a comment
+        .into_c();
+}
+"#,
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 147..172,
+                        kind: ChainingHint,
+                        label: "B",
+                    },
+                    InlayHint {
+                        range: 147..154,
+                        kind: ChainingHint,
+                        label: "A",
+                    },
+                ]
+            "#]],
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 147..172,
-                kind: ChainingHint,
-                label: "B",
-            },
-            InlayHint {
-                range: 147..154,
-                kind: ChainingHint,
-                label: "A",
-            },
-        ]
-        "###);
     }
 
     #[test]
@@ -826,7 +839,7 @@ fn main() {
 
     #[test]
     fn struct_access_chaining_hints() {
-        let (analysis, file_id) = single_file(
+        check_expect(
             r#"
 struct A { pub b: B }
 struct B { pub c: C }
@@ -845,58 +858,71 @@ fn main() {
     let x = D
         .foo();
 }"#,
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 143..190,
+                        kind: ChainingHint,
+                        label: "C",
+                    },
+                    InlayHint {
+                        range: 143..179,
+                        kind: ChainingHint,
+                        label: "B",
+                    },
+                ]
+            "#]],
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 143..190,
-                kind: ChainingHint,
-                label: "C",
-            },
-            InlayHint {
-                range: 143..179,
-                kind: ChainingHint,
-                label: "B",
-            },
-        ]
-        "###);
     }
 
     #[test]
     fn generic_chaining_hints() {
-        let (analysis, file_id) = single_file(
+        check_expect(
             r#"
-            struct A<T>(T);
-            struct B<T>(T);
-            struct C<T>(T);
-            struct X<T,R>(T, R);
+struct A<T>(T);
+struct B<T>(T);
+struct C<T>(T);
+struct X<T,R>(T, R);
 
-            impl<T> A<T> {
-                fn new(t: T) -> Self { A(t) }
-                fn into_b(self) -> B<T> { B(self.0) }
-            }
-            impl<T> B<T> {
-                fn into_c(self) -> C<T> { C(self.0) }
-            }
-            fn main() {
-                let c = A::new(X(42, true))
-                    .into_b()
-                    .into_c();
-            }"#,
+impl<T> A<T> {
+    fn new(t: T) -> Self { A(t) }
+    fn into_b(self) -> B<T> { B(self.0) }
+}
+impl<T> B<T> {
+    fn into_c(self) -> C<T> { C(self.0) }
+}
+fn main() {
+    let c = A::new(X(42, true))
+        .into_b()
+        .into_c();
+}
+"#,
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 246..283,
+                        kind: ChainingHint,
+                        label: "B<X<i32, bool>>",
+                    },
+                    InlayHint {
+                        range: 246..265,
+                        kind: ChainingHint,
+                        label: "A<X<i32, bool>>",
+                    },
+                ]
+            "#]],
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 246..283,
-                kind: ChainingHint,
-                label: "B<X<i32, bool>>",
-            },
-            InlayHint {
-                range: 246..265,
-                kind: ChainingHint,
-                label: "A<X<i32, bool>>",
-            },
-        ]
-        "###);
     }
 }
