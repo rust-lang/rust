@@ -1,6 +1,11 @@
 //! FIXME: write short doc here
 
-use std::{ffi::OsStr, ops, path::Path, process::Command};
+use std::{
+    ffi::OsStr,
+    ops,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use anyhow::{Context, Result};
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
@@ -308,9 +313,13 @@ pub fn load_extern_resources(
         if let Ok(message) = message {
             match message {
                 Message::BuildScriptExecuted(BuildScript { package_id, out_dir, cfgs, .. }) => {
-                    let out_dir = AbsPathBuf::assert(out_dir);
-                    res.out_dirs.insert(package_id.clone(), out_dir);
-                    res.cfgs.insert(package_id, cfgs);
+                    // cargo_metadata crate returns default (empty) path for
+                    // older cargos, which is not absolute, so work around that.
+                    if out_dir != PathBuf::default() {
+                        let out_dir = AbsPathBuf::assert(out_dir);
+                        res.out_dirs.insert(package_id.clone(), out_dir);
+                        res.cfgs.insert(package_id, cfgs);
+                    }
                 }
                 Message::CompilerArtifact(message) => {
                     if message.target.kind.contains(&"proc-macro".to_string()) {
