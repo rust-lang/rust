@@ -10,8 +10,6 @@ use test_utils::{
 use crate::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition, FileId, FilePosition, FileRange,
 };
-use ra_syntax::TextRange;
-use rustc_hash::FxHashMap;
 
 /// Mock analysis is used in test to bootstrap an AnalysisHost/Analysis
 /// from a set of in-memory files.
@@ -81,27 +79,23 @@ impl MockAnalysis {
             .expect("no file in this mock");
         FileId(idx as u32 + 1)
     }
-    pub fn annotations(&self) -> FxHashMap<FileId, Vec<(TextRange, String)>> {
+    pub fn annotations(&self) -> Vec<(FileRange, String)> {
         self.files
             .iter()
             .enumerate()
-            .filter_map(|(idx, fixture)| {
+            .flat_map(|(idx, fixture)| {
                 let file_id = FileId(idx as u32 + 1);
                 let annotations = extract_annotations(&fixture.text);
-                if annotations.is_empty() {
-                    return None;
-                }
-                Some((file_id, annotations))
+                annotations
+                    .into_iter()
+                    .map(move |(range, data)| (FileRange { file_id, range }, data))
             })
             .collect()
     }
     pub fn annotation(&self) -> (FileRange, String) {
-        let all = self.annotations();
+        let mut all = self.annotations();
         assert_eq!(all.len(), 1);
-        let (file_id, mut for_file) = all.into_iter().next().unwrap();
-        assert_eq!(for_file.len(), 1);
-        let (range, data) = for_file.pop().unwrap();
-        (FileRange { file_id, range}, data)
+        all.pop().unwrap()
     }
     pub fn analysis_host(self) -> AnalysisHost {
         let mut host = AnalysisHost::default();

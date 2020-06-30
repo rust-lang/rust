@@ -279,13 +279,17 @@ impl ToNav for hir::Module {
 impl ToNav for hir::ImplDef {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let frange = if let Some(item) = self.is_builtin_derive(db) {
+        let derive_attr = self.is_builtin_derive(db);
+        let frange = if let Some(item) = &derive_attr {
             original_range(db, item.syntax())
         } else {
             original_range(db, src.as_ref().map(|it| it.syntax()))
         };
-        let focus_range =
-            src.value.target_type().map(|ty| original_range(db, src.with_value(ty.syntax())).range);
+        let focus_range = if derive_attr.is_some() {
+            None
+        } else {
+            src.value.target_type().map(|ty| original_range(db, src.with_value(ty.syntax())).range)
+        };
 
         NavigationTarget::from_syntax(
             frange.file_id,
