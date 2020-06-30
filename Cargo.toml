@@ -9,10 +9,10 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", features = ["unwind"] }
-cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/" }
-cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/" }
-cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/" }
+cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind"] }
+cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
+cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
+cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 target-lexicon = "0.10.0"
 
 ar = "0.8.0"
@@ -42,7 +42,7 @@ features = ["write"] # We don't need read support
 #gimli = { path = "../" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cranelift-simplejit = { git = "https://github.com/bytecodealliance/wasmtime/" }
+cranelift-simplejit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 libloading = "0.6.0"
 
 [profile.dev]
