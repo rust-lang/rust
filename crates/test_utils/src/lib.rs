@@ -11,7 +11,7 @@ pub mod mark;
 mod fixture;
 
 use std::{
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     env, fs,
     path::{Path, PathBuf},
 };
@@ -169,13 +169,27 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
     for line in lines_with_ends(text) {
         if let Some(idx) = line.find("//^") {
             let offset = prev_line_start.unwrap() + TextSize::of(&line[..idx + "//".len()]);
-            let marker_and_data = &line[idx + "//".len()..];
-            let len = marker_and_data.chars().take_while(|&it| it == '^').count();
-            let data = marker_and_data[len..].trim().to_string();
-            res.push((TextRange::at(offset, len.try_into().unwrap()), data))
+            for (line_range, text) in extract_line_annotations(&line[idx + "//".len()..]) {
+                res.push((line_range + offset, text))
+            }
         }
         prev_line_start = Some(line_start);
         line_start += TextSize::of(line);
+    }
+    res
+}
+
+fn extract_line_annotations(mut line: &str) -> Vec<(TextRange, String)> {
+    let mut res = Vec::new();
+    let mut offset: TextSize = 0.into();
+    while !line.is_empty() {
+        let len = line.chars().take_while(|&it| it == '^').count();
+        assert!(len > 0);
+        let range = TextRange::at(offset, len.try_into().unwrap());
+        let next = line[len..].find('^').map_or(line.len(), |it| it + len);
+        res.push((range, line[len..][..next - len].trim().to_string()));
+        line = &line[next..];
+        offset += TextSize::try_from(next).unwrap();
     }
     res
 }
@@ -185,8 +199,8 @@ fn test_extract_annotations() {
     let text = stdx::trim_indent(
         r#"
 fn main() {
-    let x = 92;
-      //^ def
+    let (x,     y) = (9, 2);
+       //^ def  ^ def
     zoo + 1
 } //^^^ i32
     "#,
@@ -195,7 +209,7 @@ fn main() {
         .into_iter()
         .map(|(range, ann)| (&text[range], ann))
         .collect::<Vec<_>>();
-    assert_eq!(res, vec![("x", "def".into()), ("zoo", "i32".into()),]);
+    assert_eq!(res, vec![("x", "def".into()), ("y", "def".into()), ("zoo", "i32".into()),]);
 }
 
 // Comparison functionality borrowed from cargo:
