@@ -28,7 +28,6 @@ use ra_syntax::{
     SyntaxNode,
 };
 use stdx::format_to;
-use test_utils::extract_annotations;
 
 use crate::{
     db::HirDatabase, display::HirDisplay, infer::TypeMismatch, test_db::TestDB, InferenceResult, Ty,
@@ -49,9 +48,7 @@ fn check_types_source_code(ra_fixture: &str) {
 fn check_types_impl(ra_fixture: &str, display_source: bool) {
     let db = TestDB::with_files(ra_fixture);
     let mut checked_one = false;
-    for file_id in db.all_files() {
-        let text = db.parse(file_id).syntax_node().to_string();
-        let annotations = extract_annotations(&text);
+    for (file_id, annotations) in db.extract_annotations() {
         for (range, expected) in annotations {
             let ty = type_at_range(&db, FileRange { file_id, range });
             let actual = if display_source {
