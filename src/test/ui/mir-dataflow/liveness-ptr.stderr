@@ -1,8 +1,8 @@
 error: rustc_peek: bit not set
-  --> $DIR/liveness-ptr.rs:18:14
+  --> $DIR/liveness-ptr.rs:18:5
    |
-LL |     unsafe { rustc_peek(x); }
-   |              ^^^^^^^^^^^^^
+LL |     rustc_peek(x);
+   |     ^^^^^^^^^^^^^
 
 error: stop_after_dataflow ended compilation
 

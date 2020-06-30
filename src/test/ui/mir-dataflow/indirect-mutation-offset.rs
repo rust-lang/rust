@@ -38,7 +38,7 @@ const BOO: i32 = {
 
     *rmut_cell = 42;  // Mutates `x` indirectly even though `x` is not marked indirectly mutable!!!
     let val = *rmut_cell;
-    unsafe { rustc_peek(x) }; //~ ERROR rustc_peek: bit not set
+    rustc_peek(x); //~ ERROR rustc_peek: bit not set
 
     val
 };
