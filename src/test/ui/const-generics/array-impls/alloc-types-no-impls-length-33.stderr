@@ -18,7 +18,7 @@ LL |     let boxed_array = <Box<[i32; 33]>>::try_from(boxed_slice);
              <std::boxed::Box<(dyn std::error::Error + 'static)> as std::convert::From<&str>>
              <std::boxed::Box<(dyn std::error::Error + 'static)> as std::convert::From<std::borrow::Cow<'a, str>>>
              <std::boxed::Box<(dyn std::error::Error + 'static)> as std::convert::From<std::string::String>>
-           and 22 others
+           and 23 others
    = note: required because of the requirements on the impl of `std::convert::Into<std::boxed::Box<[i32; 33]>>` for `std::boxed::Box<[i32]>`
    = note: required because of the requirements on the impl of `std::convert::TryFrom<std::boxed::Box<[i32]>>` for `std::boxed::Box<[i32; 33]>`
 
