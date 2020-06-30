@@ -64,6 +64,7 @@ impl NavigationTarget {
         self.file_id
     }
 
+    // TODO: inconsistent
     pub fn file_range(&self) -> FileRange {
         FileRange { file_id: self.file_id, range: self.full_range }
     }
@@ -283,11 +284,13 @@ impl ToNav for hir::ImplDef {
         } else {
             original_range(db, src.as_ref().map(|it| it.syntax()))
         };
+        let focus_range =
+            src.value.target_type().map(|ty| original_range(db, src.with_value(ty.syntax())).range);
 
         NavigationTarget::from_syntax(
             frange.file_id,
             "impl".into(),
-            None,
+            focus_range,
             frange.range,
             src.value.syntax().kind(),
         )
