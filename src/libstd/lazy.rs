@@ -85,14 +85,14 @@ impl<T: fmt::Debug> fmt::Debug for SyncOnceCell<T> {
 #[unstable(feature = "once_cell", issue = "68198")]
 impl<T: Clone> Clone for SyncOnceCell<T> {
     fn clone(&self) -> SyncOnceCell<T> {
-        let res = SyncOnceCell::new();
+        let cell = Self::new();
         if let Some(value) = self.get() {
-            match res.set(value.clone()) {
+            match cell.set(value.clone()) {
                 Ok(()) => (),
                 Err(_) => unreachable!(),
             }
         }
-        res
+        cell
     }
 }
 
@@ -100,8 +100,10 @@ impl<T: Clone> Clone for SyncOnceCell<T> {
 impl<T> From<T> for SyncOnceCell<T> {
     fn from(value: T) -> Self {
         let cell = Self::new();
-        cell.get_or_init(|| value);
-        cell
+        match cell.set(value) {
+            Ok(()) => cell,
+            Err(_) => unreachable!(),
+        }
     }
 }
 
@@ -155,8 +157,7 @@ impl<T> SyncOnceCell<T> {
 
     /// Sets the contents of this cell to `value`.
     ///
-    /// Returns `Ok(())` if the cell was empty and `Err(value)` if it was
-    /// full.
+    /// Returns `Ok(())` if the cell's value was updated.
     ///
     /// # Examples
     ///
@@ -262,8 +263,10 @@ impl<T> SyncOnceCell<T> {
         F: FnOnce() -> Result<T, E>,
     {
         // Fast path check
-        // NOTE: This acquire here is important to ensure
-        // `SyncLazy::force` is correctly synchronized
+        // NOTE: We need to perform an acquire on the state in this method
+        // in order to correctly synchronize `SyncLazy::force`. This is
+        // currently done by calling `self.get()`, which in turn calls
+        // `self.is_initialized()`, which in turn performs the acquire.
         if let Some(value) = self.get() {
             return Ok(value);
         }
@@ -410,6 +413,8 @@ const COMPLETE: usize = 0x2;
 
 const STATE_MASK: usize = 0x3;
 
+// The alignment here is so that we can stash the state in the lower
+// bits of the `next` pointer
 #[repr(align(4))]
 struct Waiter {
     thread: Cell<Option<Thread>>,
