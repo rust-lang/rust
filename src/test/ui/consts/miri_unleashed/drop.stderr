@@ -4,7 +4,9 @@ error[E0080]: could not evaluate static initializer
 LL | / pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 LL | |     // Code here does not matter - this is replaced by the
 LL | |     // real drop glue by the compiler.
-LL | |     drop_in_place(to_drop)
+LL | |
+LL | |     // SAFETY: see comment above
+LL | |     unsafe { drop_in_place(to_drop) }
 LL | | }
    | | ^
    | | |
