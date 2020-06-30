@@ -372,6 +372,9 @@ impl<'a> Builder<'a> {
                 tool::Rustdoc,
                 tool::Clippy,
                 tool::CargoClippy,
+                tool::Semverver,
+                tool::SemverPublic,
+                tool::CargoSemver,
                 native::Llvm,
                 native::Sanitizers,
                 tool::Rustfmt,
@@ -380,7 +383,7 @@ impl<'a> Builder<'a> {
                 native::Lld
             ),
             Kind::Check | Kind::Clippy | Kind::Fix | Kind::Format => {
-                describe!(check::Std, check::Rustc, check::Rustdoc, check::Clippy)
+                describe!(check::Std, check::Rustc, check::Rustdoc, check::Clippy, check::Semverver)
             }
             Kind::Test => describe!(
                 crate::toolstate::ToolStateCheck,
@@ -426,6 +429,7 @@ impl<'a> Builder<'a> {
                 test::RustdocJSNotStd,
                 test::RustdocTheme,
                 test::RustdocUi,
+                test::Semverver,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows

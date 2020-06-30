@@ -237,6 +237,7 @@ pub fn prepare_tool_cargo(
             || path.ends_with("clippy")
             || path.ends_with("miri")
             || path.ends_with("rustfmt")
+            || path.ends_with("semverver")
         {
             cargo.env("LIBZ_SYS_STATIC", "1");
             features.push("rustc-workspace-hack/all-static".to_string());
@@ -604,6 +605,7 @@ macro_rules! tool_extended {
                             |tools| {
                                 tools.iter().any(|tool| match tool.as_ref() {
                                     "clippy" => $tool_name == "clippy-driver",
+                                    "semverver" => $tool_name == "rust-semverver",
                                     x => $tool_name == x,
                             })
                         }),
@@ -659,6 +661,11 @@ tool_extended!((self, builder),
     };
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, {};
     RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, {};
+    // FIXME(eddyb) use `in_tree=true` for semverver, when Cargo can build
+    // with deny-warnings + `-Wrust_2018_idioms` (which it can't today).
+    CargoSemver, semverver, "src/tools/semverver", "cargo-semver", stable=false, {};
+    Semverver, semverver, "src/tools/semverver", "rust-semverver", stable=false, {};
+    SemverPublic, semverver, "src/tools/semverver", "rust-semver-public", stable=false, {};
 );
 
 impl<'a> Builder<'a> {

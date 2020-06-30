@@ -23,4 +23,4 @@ set -e
 # debugging: print out the saved toolstates
 cat /tmp/toolstate/toolstates.json
 python3 "$X_PY" test check-tools
-python3 "$X_PY" test src/tools/clippy
+python3 "$X_PY" test src/tools/clippy src/tools/semverver

@@ -559,6 +559,45 @@ impl Step for Clippy {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Semverver {
+    stage: u32,
+    host: Interned<String>,
+}
+
+impl Step for Semverver {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/semverver")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Semverver { stage: run.builder.top_stage, host: run.target });
+    }
+
+    /// Runs `cargo test` for semverver.
+    fn run(self, builder: &Builder<'_>) {
+        let stage = self.stage;
+        let host = self.host;
+        let compiler = builder.compiler(stage, host);
+
+        builder
+            .ensure(tool::CargoSemver { compiler, target: self.host, extra_features: Vec::new() })
+            .expect("in-tree tool");
+        builder
+            .ensure(tool::Semverver { compiler, target: self.host, extra_features: Vec::new() })
+            .expect("in-tree tool");
+        builder
+            .ensure(tool::SemverPublic { compiler, target: self.host, extra_features: Vec::new() })
+            .expect("in-tree tool");
+
+        // FIXME(eddyb) actually run tests from `src/tools/semverver`.
+    }
+}
+
 fn path_for_cargo(builder: &Builder<'_>, compiler: Compiler) -> OsString {
     // Configure PATH to find the right rustc. NB. we have to use PATH
     // and not RUSTC because the Cargo test suite has tests that will

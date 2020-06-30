@@ -27,7 +27,7 @@ name = "rust-semver-public"
 path = "src/bin/rust_semver_public.rs"
 
 [dependencies]
-cargo = "0.44"
+cargo = "0.47"
 crates-io = "0.32"
 curl = "0.4.21"
 env_logger = "0.7"
@@ -40,3 +40,8 @@ serde_json = "1.0.34"
 
 [dev-dependencies]
 quickcheck = "0.9"
+
+# A noop dependency that changes in the Rust repository, it's a bit of a hack.
+# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
+# for more information.
+rustc-workspace-hack = "1.0.0"

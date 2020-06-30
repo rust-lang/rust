@@ -26,6 +26,7 @@ members = [
   "src/tools/rustdoc-themes",
   "src/tools/unicode-table-generator",
   "src/tools/expand-yaml-anchors",
+  "src/tools/semverver",
 ]
 exclude = [
   "build",
@@ -68,6 +69,9 @@ cargo = { path = "src/tools/cargo" }
 # that we're shipping as well (to ensure that the rustfmt in RLS and the
 # `rustfmt` executable are the same exact version).
 rustfmt-nightly = { path = "src/tools/rustfmt" }
+
+# Cargo again but from `crates.io` (semverver uses that instead of a git dependency).
+cargo = { path = "src/tools/cargo" }
 
 # See comments in `src/tools/rustc-workspace-hack/README.md` for what's going on
 # here

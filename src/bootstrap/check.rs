@@ -196,11 +196,13 @@ macro_rules! tool_check_step {
 }
 
 tool_check_step!(Rustdoc, "src/tools/rustdoc", SourceType::InTree);
-// Clippy is a hybrid. It is an external tool, but uses a git subtree instead
-// of a submodule. Since the SourceType only drives the deny-warnings
-// behavior, treat it as in-tree so that any new warnings in clippy will be
-// rejected.
+// Clippy and semverver are hybrids. They're external tools, but use git subtrees
+// instead of submodules. Since the SourceType only drives the deny-warnings
+// behavior, treat it as in-tree so that any new warnings will be rejected.
 tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
+// FIXME(eddyb) use `InTree` here as per the comment above, when Cargo can build
+// with deny-warnings + `-Wrust_2018_idioms` (which it can't today).
+tool_check_step!(Semverver, "src/tools/semverver", SourceType::Submodule);
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
