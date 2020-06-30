@@ -330,11 +330,12 @@ pub(crate) fn handle_workspace_symbol(
     fn exec_query(snap: &GlobalStateSnapshot, query: Query) -> Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();
         for nav in snap.analysis.symbol_search(query)? {
+            let container_name = nav.container_name().map(|v| v.to_string());
             let info = SymbolInformation {
                 name: nav.name().to_string(),
                 kind: to_proto::symbol_kind(nav.kind()),
-                location: to_proto::location(snap, nav.file_range())?,
-                container_name: nav.container_name().map(|v| v.to_string()),
+                location: to_proto::location_from_nav(snap, nav)?,
+                container_name,
                 deprecated: None,
             };
             res.push(info);
@@ -1213,8 +1214,8 @@ fn show_impl_command_link(
             let position = to_proto::position(&line_index, position.offset);
             let locations: Vec<_> = nav_data
                 .info
-                .iter()
-                .filter_map(|it| to_proto::location(snap, it.file_range()).ok())
+                .into_iter()
+                .filter_map(|nav| to_proto::location_from_nav(snap, nav).ok())
                 .collect();
             let title = implementation_title(locations.len());
             let command = show_references_command(title, &uri, position, locations);

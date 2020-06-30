@@ -76,7 +76,7 @@ fn impls_for_trait(
 mod tests {
     use ra_db::FileRange;
 
-    use crate::mock_analysis::{analysis_and_position, MockAnalysis};
+    use crate::mock_analysis::MockAnalysis;
 
     fn check(ra_fixture: &str) {
         let (mock, position) = MockAnalysis::with_files_and_position(ra_fixture);
