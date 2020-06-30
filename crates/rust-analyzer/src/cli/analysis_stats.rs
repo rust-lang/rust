@@ -5,6 +5,7 @@ use std::{path::Path, time::Instant};
 
 use itertools::Itertools;
 use rand::{seq::SliceRandom, thread_rng};
+use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 
 use hir::{
@@ -13,11 +14,22 @@ use hir::{
 };
 use hir_def::FunctionId;
 use hir_ty::{Ty, TypeWalk};
-use ra_db::SourceDatabaseExt;
+use ra_db::{
+    salsa::{self, ParallelDatabase},
+    SourceDatabaseExt,
+};
 use ra_syntax::AstNode;
 use stdx::format_to;
 
 use crate::cli::{load_cargo::load_cargo, progress_report::ProgressReport, Result, Verbosity};
+
+/// Need to wrap Snapshot to provide `Clone` impl for `map_with`
+struct Snap<DB>(DB);
+impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
+    fn clone(&self) -> Snap<salsa::Snapshot<DB>> {
+        Snap(self.0.snapshot())
+    }
+}
 
 pub fn analysis_stats(
     verbosity: Verbosity,
@@ -26,6 +38,7 @@ pub fn analysis_stats(
     only: Option<&str>,
     with_deps: bool,
     randomize: bool,
+    parallel: bool,
     load_output_dirs: bool,
     with_proc_macro: bool,
 ) -> Result<()> {
@@ -91,12 +104,26 @@ pub fn analysis_stats(
         funcs.shuffle(&mut thread_rng());
     }
 
-    let inference_time = Instant::now();
     let mut bar = match verbosity {
         Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
         _ => ProgressReport::new(funcs.len() as u64),
     };
 
+    if parallel {
+        let inference_time = Instant::now();
+        let snap = Snap(db.snapshot());
+        funcs
+            .par_iter()
+            .map_with(snap, |snap, &f| {
+                let f_id = FunctionId::from(f);
+                snap.0.body(f_id.into());
+                snap.0.infer(f_id.into());
+            })
+            .count();
+        println!("Parallel Inference: {:?}, {}", inference_time.elapsed(), ra_prof::memory_usage());
+    }
+
+    let inference_time = Instant::now();
     bar.tick();
     let mut num_exprs = 0;
     let mut num_exprs_unknown = 0;

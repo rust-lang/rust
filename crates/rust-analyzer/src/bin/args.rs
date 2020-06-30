@@ -25,6 +25,7 @@ pub(crate) enum Command {
     },
     Stats {
         randomize: bool,
+        parallel: bool,
         memory_usage: bool,
         only: Option<String>,
         with_deps: bool,
@@ -157,10 +158,14 @@ USAGE:
     rust-analyzer analysis-stats [FLAGS] [OPTIONS] [PATH]
 
 FLAGS:
+    -o, --only              Only analyze items matching this path
     -h, --help              Prints help information
-        --memory-usage
+        --memory-usage      Collect memory usage statistics (requires `--feature jemalloc`)
+        --randomize         Randomize order in which crates, modules, and items are processed
+        --parallel          Run type inference in parallel
         --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
-        --with-proc-macro    Use ra-proc-macro-srv for proc-macro expanding
+        --with-proc-macro   Use ra-proc-macro-srv for proc-macro expanding
+        --with-deps         Also analyze all dependencies
     -v, --verbose
     -q, --quiet
 
@@ -174,6 +179,7 @@ ARGS:
                 }
 
                 let randomize = matches.contains("--randomize");
+                let parallel = matches.contains("--parallel");
                 let memory_usage = matches.contains("--memory-usage");
                 let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
                 let with_deps: bool = matches.contains("--with-deps");
@@ -189,6 +195,7 @@ ARGS:
 
                 Command::Stats {
                     randomize,
+                    parallel,
                     memory_usage,
                     only,
                     with_deps,
@@ -209,7 +216,7 @@ USAGE:
 FLAGS:
     -h, --help          Prints help information
     --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
-    --with-proc-macro    Use ra-proc-macro-srv for proc-macro expanding
+    --with-proc-macro   Use ra-proc-macro-srv for proc-macro expanding
     -v, --verbose
 
 OPTIONS:

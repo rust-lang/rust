@@ -32,6 +32,7 @@ fn main() -> Result<()> {
         args::Command::Highlight { rainbow } => cli::highlight(rainbow)?,
         args::Command::Stats {
             randomize,
+            parallel,
             memory_usage,
             only,
             with_deps,
@@ -45,6 +46,7 @@ fn main() -> Result<()> {
             only.as_ref().map(String::as_ref),
             with_deps,
             randomize,
+            parallel,
             load_output_dirs,
             with_proc_macro,
         )?,
