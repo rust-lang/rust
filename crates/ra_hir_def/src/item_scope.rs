@@ -1,6 +1,8 @@
 //! Describes items defined or visible (ie, imported) in a certain scope.
 //! This is shared between modules and blocks.
 
+use std::collections::hash_map::Entry;
+
 use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use ra_db::CrateId;
@@ -11,7 +13,6 @@ use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, HasModule, ImplId,
     LocalModuleId, Lookup, MacroDefId, ModuleDefId, TraitId,
 };
-use std::collections::hash_map::Entry;
 
 #[derive(Copy, Clone)]
 pub(crate) enum ImportType {
