@@ -1,5 +1,3 @@
-#![feature(track_caller)]
-
 fn main() {
     (0..)
         .map(
