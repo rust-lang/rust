@@ -19,6 +19,7 @@ mod asm;
 mod backend;
 mod builder;
 mod consts;
+mod coverageinfo;
 mod debuginfo;
 mod declare;
 mod intrinsic;
@@ -32,6 +33,7 @@ pub use self::asm::{AsmBuilderMethods, AsmMethods, InlineAsmOperandRef};
 pub use self::backend::{Backend, BackendTypes, CodegenBackend, ExtraBackendMethods};
 pub use self::builder::{BuilderMethods, OverflowOp};
 pub use self::consts::ConstMethods;
+pub use self::coverageinfo::{CoverageInfoBuilderMethods, CoverageInfoMethods};
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
 pub use self::declare::{DeclareMethods, PreDefineMethods};
 pub use self::intrinsic::IntrinsicCallMethods;
@@ -56,6 +58,7 @@ pub trait CodegenMethods<'tcx>:
     + MiscMethods<'tcx>
     + ConstMethods<'tcx>
     + StaticMethods
+    + CoverageInfoMethods
     + DebugInfoMethods<'tcx>
     + DeclareMethods<'tcx>
     + AsmMethods
@@ -72,6 +75,7 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
         + MiscMethods<'tcx>
         + ConstMethods<'tcx>
         + StaticMethods
+        + CoverageInfoMethods
         + DebugInfoMethods<'tcx>
         + DeclareMethods<'tcx>
         + AsmMethods

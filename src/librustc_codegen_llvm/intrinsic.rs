@@ -13,12 +13,15 @@ use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
+use rustc_codegen_ssa::coverageinfo::CounterOp;
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_hir as hir;
+use rustc_middle::mir::coverage;
+use rustc_middle::mir::Operand;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
@@ -81,6 +84,53 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Valu
 }
 
 impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+    fn is_codegen_intrinsic(
+        &mut self,
+        intrinsic: &str,
+        args: &Vec<Operand<'tcx>>,
+        caller_instance: ty::Instance<'tcx>,
+    ) -> bool {
+        match intrinsic {
+            "count_code_region" => {
+                use coverage::count_code_region_args::*;
+                self.add_counter_region(
+                    caller_instance,
+                    op_to_u32(&args[COUNTER_INDEX]),
+                    op_to_u32(&args[START_BYTE_POS]),
+                    op_to_u32(&args[END_BYTE_POS]),
+                );
+                true // Also inject the counter increment in the backend
+            }
+            "coverage_counter_add" | "coverage_counter_subtract" => {
+                use coverage::coverage_counter_expression_args::*;
+                self.add_counter_expression_region(
+                    caller_instance,
+                    op_to_u32(&args[COUNTER_EXPRESSION_INDEX]),
+                    op_to_u32(&args[LEFT_INDEX]),
+                    if intrinsic == "coverage_counter_add" {
+                        CounterOp::Add
+                    } else {
+                        CounterOp::Subtract
+                    },
+                    op_to_u32(&args[RIGHT_INDEX]),
+                    op_to_u32(&args[START_BYTE_POS]),
+                    op_to_u32(&args[END_BYTE_POS]),
+                );
+                false // Does not inject backend code
+            }
+            "coverage_unreachable" => {
+                use coverage::coverage_unreachable_args::*;
+                self.add_unreachable_region(
+                    caller_instance,
+                    op_to_u32(&args[START_BYTE_POS]),
+                    op_to_u32(&args[END_BYTE_POS]),
+                );
+                false // Does not inject backend code
+            }
+            _ => true, // Unhandled intrinsics should be passed to `codegen_intrinsic_call()`
+        }
+    }
+
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -143,15 +193,16 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 // FIXME(richkadel): The current implementation assumes the MIR for the given
                 // caller_instance represents a single function. Validate and/or correct if inlining
                 // and/or monomorphization invalidates these assumptions.
-                let coverage_data = tcx.coverage_data(caller_instance.def_id());
+                let coverageinfo = tcx.coverageinfo(caller_instance.def_id());
                 let mangled_fn = tcx.symbol_name(caller_instance);
                 let (mangled_fn_name, _len_val) = self.const_str(mangled_fn.name);
-                let hash = self.const_u64(coverage_data.hash);
-                let num_counters = self.const_u32(coverage_data.num_counters);
-                let index = args[0].immediate();
+                let hash = self.const_u64(coverageinfo.hash);
+                let num_counters = self.const_u32(coverageinfo.num_counters);
+                use coverage::count_code_region_args::*;
+                let index = args[COUNTER_INDEX].immediate();
                 debug!(
                     "count_code_region to LLVM intrinsic instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
-                    mangled_fn.name, hash, num_counters, index
+                    mangled_fn.name, hash, num_counters, index,
                 );
                 self.instrprof_increment(mangled_fn_name, hash, num_counters, index)
             }
@@ -2130,4 +2181,8 @@ fn float_type_width(ty: Ty<'_>) -> Option<u64> {
         ty::Float(t) => Some(t.bit_width()),
         _ => None,
     }
+}
+
+fn op_to_u32<'tcx>(op: &Operand<'tcx>) -> u32 {
+    Operand::scalar_from_const(op).to_u32().expect("Scalar is u32")
 }
