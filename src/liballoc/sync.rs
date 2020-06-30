@@ -591,11 +591,9 @@ impl<T: ?Sized> Arc<T> {
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
 
-        // SAFETY: This cannot go through Deref::deref.
-        // Instead, we manually offset the pointer rather than manifesting a reference.
-        // This is so that the returned pointer retains the same provenance as our pointer.
-        // This is required so that e.g. `get_mut` can write through the pointer
-        // after the Arc is recovered through `from_raw`.
+        // SAFETY: This cannot go through Deref::deref or RcBoxPtr::inner.
+        // This is required to retain raw/mut provenance such that e.g. `get_mut` can
+        // write through the pointer after the Rc is recovered through `from_raw`.
         unsafe { &raw const (*ptr).data }
     }
 
