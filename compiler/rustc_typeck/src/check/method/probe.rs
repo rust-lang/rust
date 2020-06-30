@@ -1227,7 +1227,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         if let Some(uc) = unstable_candidates {
             applicable_candidates.retain(|&(p, _)| {
                 if let stability::EvalResult::Deny { feature, .. } =
-                    self.tcx.eval_stability(p.item.def_id, None, self.span, true)
+                    self.tcx.eval_stability(p.item.def_id, None, self.span)
                 {
                     uc.push((p, feature));
                     return false;

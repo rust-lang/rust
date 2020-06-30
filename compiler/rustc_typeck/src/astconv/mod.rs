@@ -366,7 +366,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             param.def_id,
                             Some(arg.id()),
                             arg.span(),
-                            false,
                             |_, _| (),
                         )
                     }
