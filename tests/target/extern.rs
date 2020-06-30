@@ -73,6 +73,14 @@ extern "C" {
         mode3: *const c_char,
         file: *mut FILE,
     ) -> *mut FILE;
+
+    async fn foo() -> *mut Bar;
+    const fn foo() -> *mut Bar;
+    unsafe fn foo() -> *mut Bar;
+
+    pub async fn foo() -> *mut Bar;
+    pub(super) const fn foo() -> *mut Bar;
+    pub(crate) unsafe fn foo() -> *mut Bar;
 }
 
 extern "C" {}
