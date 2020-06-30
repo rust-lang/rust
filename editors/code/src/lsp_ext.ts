@@ -60,6 +60,7 @@ export interface Runnable {
         workspaceRoot?: string;
         cargoArgs: string[];
         executableArgs: string[];
+        expectTest?: boolean;
     };
 }
 export const runnables = new lc.RequestType<RunnablesParams, Runnable[], void>("experimental/runnables");

@@ -352,6 +352,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "expect"
+version = "0.1.0"
+dependencies = [
+ "difference",
+ "once_cell",
+ "stdx",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1134,6 +1143,7 @@ name = "ra_ide"
 version = "0.1.0"
 dependencies = [
  "either",
+ "expect",
  "indexmap",
  "insta",
  "itertools",

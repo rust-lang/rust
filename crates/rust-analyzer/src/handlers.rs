@@ -23,7 +23,7 @@ use ra_ide::{
 };
 use ra_prof::profile;
 use ra_project_model::TargetKind;
-use ra_syntax::{AstNode, SyntaxKind, TextRange, TextSize};
+use ra_syntax::{algo, ast, AstNode, SyntaxKind, TextRange, TextSize};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use stdx::{format_to, split_delim};
@@ -407,8 +407,19 @@ pub(crate) fn handle_runnables(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.analysis.file_line_index(file_id)?;
     let offset = params.position.map(|it| from_proto::offset(&line_index, it));
-    let mut res = Vec::new();
     let cargo_spec = CargoTargetSpec::for_file(&snap, file_id)?;
+
+    let expect_test = match offset {
+        Some(offset) => {
+            let source_file = snap.analysis.parse(file_id)?;
+            algo::find_node_at_offset::<ast::MacroCall>(source_file.syntax(), offset)
+                .and_then(|it| it.path()?.segment()?.name_ref())
+                .map_or(false, |it| it.text() == "expect")
+        }
+        None => false,
+    };
+
+    let mut res = Vec::new();
     for runnable in snap.analysis.runnables(file_id)? {
         if let Some(offset) = offset {
             if !runnable.nav.full_range().contains_inclusive(offset) {
@@ -418,8 +429,12 @@ pub(crate) fn handle_runnables(
         if should_skip_target(&runnable, cargo_spec.as_ref()) {
             continue;
         }
-
-        res.push(to_proto::runnable(&snap, file_id, runnable)?);
+        let mut runnable = to_proto::runnable(&snap, file_id, runnable)?;
+        if expect_test {
+            runnable.label = format!("{} + expect", runnable.label);
+            runnable.args.expect_test = Some(true);
+        }
+        res.push(runnable);
     }
 
     // Add `cargo check` and `cargo test` for the whole package
@@ -438,6 +453,7 @@ pub(crate) fn handle_runnables(
                             spec.package.clone(),
                         ],
                         executable_args: Vec::new(),
+                        expect_test: None,
                     },
                 })
             }
@@ -451,6 +467,7 @@ pub(crate) fn handle_runnables(
                     workspace_root: None,
                     cargo_args: vec!["check".to_string(), "--workspace".to_string()],
                     executable_args: Vec::new(),
+                    expect_test: None,
                 },
             });
         }

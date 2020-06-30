@@ -666,6 +666,7 @@ pub(crate) fn runnable(
             workspace_root: workspace_root.map(|it| it.into()),
             cargo_args,
             executable_args,
+            expect_test: None,
         },
     })
 }
