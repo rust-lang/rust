@@ -376,7 +376,14 @@ impl<'a> Parser<'a> {
     /// let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>();
     ///                                                        ^^ help: remove extra angle brackets
     /// ```
-    pub(super) fn check_trailing_angle_brackets(&mut self, segment: &PathSegment, end: TokenKind) {
+    ///
+    /// If `true` is returned, then trailing brackets were recovered, tokens were consumed
+    /// up until one of the tokens in 'end' was encountered, and an error was emitted.
+    pub(super) fn check_trailing_angle_brackets(
+        &mut self,
+        segment: &PathSegment,
+        end: &[&TokenKind],
+    ) -> bool {
         // This function is intended to be invoked after parsing a path segment where there are two
         // cases:
         //
@@ -409,7 +416,7 @@ impl<'a> Parser<'a> {
             parsed_angle_bracket_args,
         );
         if !parsed_angle_bracket_args {
-            return;
+            return false;
         }
 
         // Keep the span at the start so we can highlight the sequence of `>` characters to be
@@ -447,18 +454,18 @@ impl<'a> Parser<'a> {
             number_of_gt, number_of_shr,
         );
         if number_of_gt < 1 && number_of_shr < 1 {
-            return;
+            return false;
         }
 
         // Finally, double check that we have our end token as otherwise this is the
         // second case.
         if self.look_ahead(position, |t| {
             trace!("check_trailing_angle_brackets: t={:?}", t);
-            *t == end
+            end.contains(&&t.kind)
         }) {
             // Eat from where we started until the end token so that parsing can continue
             // as if we didn't have those extra angle brackets.
-            self.eat_to_tokens(&[&end]);
+            self.eat_to_tokens(end);
             let span = lo.until(self.token.span);
 
             let total_num_of_gt = number_of_gt + number_of_shr * 2;
@@ -473,7 +480,9 @@ impl<'a> Parser<'a> {
                 Applicability::MachineApplicable,
             )
             .emit();
+            return true;
         }
+        false
     }
 
     /// Check to see if a pair of chained operators looks like an attempt at chained comparison,
