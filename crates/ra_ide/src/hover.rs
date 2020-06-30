@@ -17,7 +17,7 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{
-    ast, ast::{Path, MacroCall}, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, TokenAtOffset,
+    ast, ast::Path, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset,
 };
 use ra_tt::{Ident, Leaf, Literal, TokenTree};
 use url::Url;
@@ -534,10 +534,7 @@ fn try_resolve_intra(
     let link_target = strip_prefixes_suffixes(link_target);
 
     // Parse link as a module path
-    // This expects a full document, which a single path isn't, but we can just ignore the errors.
-    let parsed = SyntaxNode::new_root(ra_syntax::parse_text(link_target).0);
-    // TODO: Proper parsing
-    let path = parsed.descendants().filter_map(Path::cast).next()?;
+    let path = Path::parse(link_target).ok()?;
     let modpath = ModPath::from_src(path, &Hygiene::new_unhygienic()).unwrap();
 
     // Resolve it relative to symbol's location (according to the RFC this should consider small scopes
@@ -613,7 +610,6 @@ fn get_doc_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
     let attrs = db.attrs(AttrDef::from(krate.root_module(db)?).into());
     let doc_attr_q = attrs.by_key("doc");
 
-    // TODO: Tests for this parsing
     let doc_url = if doc_attr_q.exists() {
         doc_attr_q.tt_values().map(|tt| {
             let name = tt.token_trees.iter()
@@ -1830,32 +1826,32 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "S",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..19,
-                                name: "S",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    7..8,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct S",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::S",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..19,
+                            name: "S",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                7..8,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct S",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -1874,51 +1870,51 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "S",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 17..37,
-                                name: "S",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    24..25,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct S",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::S",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 17..37,
+                            name: "S",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                24..25,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct S",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "Arg",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..16,
-                                name: "Arg",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    7..10,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct Arg",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::Arg",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..16,
+                            name: "Arg",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                7..10,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct Arg",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -1937,51 +1933,51 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "S",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 17..37,
-                                name: "S",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    24..25,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct S",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::S",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 17..37,
+                            name: "S",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                24..25,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct S",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "Arg",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..16,
-                                name: "Arg",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    7..10,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct Arg",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::Arg",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..16,
+                            name: "Arg",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                7..10,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct Arg",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2003,70 +1999,70 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "A",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..14,
-                                name: "A",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    7..8,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct A",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::A",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..14,
+                            name: "A",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                7..8,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct A",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "B",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 15..29,
-                                name: "B",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    22..23,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct B",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::B",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 15..29,
+                            name: "B",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                22..23,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct B",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "M::C",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 42..60,
-                                name: "C",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    53..54,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "pub struct C",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::M::C",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 42..60,
+                            name: "C",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                53..54,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "pub struct C",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-               "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2086,32 +2082,32 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "Foo",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..12,
-                                name: "Foo",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..9,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Foo",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::Foo",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..12,
+                            name: "Foo",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..9,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Foo",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2132,51 +2128,51 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "Foo",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..15,
-                                name: "Foo",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..9,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Foo",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::Foo",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..15,
+                            name: "Foo",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..9,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Foo",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "S",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 16..25,
-                                name: "S",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    23..24,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct S",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::S",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 16..25,
+                            name: "S",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                23..24,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct S",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2197,51 +2193,51 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "Foo",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..12,
-                                name: "Foo",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..9,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Foo",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::Foo",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..12,
+                            name: "Foo",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..9,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Foo",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "Bar",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 13..25,
-                                name: "Bar",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    19..22,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Bar",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::Bar",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 13..25,
+                            name: "Bar",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                19..22,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Bar",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2264,89 +2260,89 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "Foo",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..15,
-                                name: "Foo",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..9,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Foo",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::Foo",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..15,
+                            name: "Foo",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..9,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Foo",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "Bar",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 16..31,
-                                name: "Bar",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    22..25,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Bar",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::Bar",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 16..31,
+                            name: "Bar",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                22..25,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Bar",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "S1",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 32..44,
-                                name: "S1",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    39..41,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct S1",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::S1",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 32..44,
+                            name: "S1",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                39..41,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct S1",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "S2",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 45..57,
-                                name: "S2",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    52..54,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct S2",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::S2",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 45..57,
+                            name: "S2",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                52..54,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct S2",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-               "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2361,32 +2357,32 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "Foo",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..12,
-                                name: "Foo",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..9,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Foo",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::Foo",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..12,
+                            name: "Foo",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..9,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Foo",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2404,70 +2400,70 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "Foo",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..12,
-                                name: "Foo",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..9,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Foo",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::Foo",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..12,
+                            name: "Foo",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..9,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Foo",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "Bar",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 13..28,
-                                name: "Bar",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    19..22,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Bar",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::Bar",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 13..28,
+                            name: "Bar",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                19..22,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Bar",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "S",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 29..39,
-                                name: "S",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    36..37,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct S",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::S",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 29..39,
+                            name: "S",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                36..37,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct S",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2483,51 +2479,51 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "Foo",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..15,
-                                name: "Foo",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..9,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Foo",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::Foo",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..15,
+                            name: "Foo",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..9,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Foo",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "S",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 16..27,
-                                name: "S",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    23..24,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct S",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::S",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 16..27,
+                            name: "S",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                23..24,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct S",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2555,7 +2551,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             GoToType(
                 [
                     HoverGotoTypeData {
-                        mod_path: "B",
+                        mod_path: "test::B",
                         nav: NavigationTarget {
                             file_id: FileId(
                                 1,
@@ -2574,7 +2570,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                         },
                     },
                     HoverGotoTypeData {
-                        mod_path: "Foo",
+                        mod_path: "test::Foo",
                         nav: NavigationTarget {
                             file_id: FileId(
                                 1,
@@ -2610,32 +2606,32 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "Foo",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..12,
-                                name: "Foo",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..9,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Foo",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::Foo",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..12,
+                            name: "Foo",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..9,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Foo",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2651,51 +2647,51 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "Foo",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..15,
-                                name: "Foo",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..9,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Foo",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::Foo",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..15,
+                            name: "Foo",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..9,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Foo",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "S",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 16..27,
-                                name: "S",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    23..24,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct S",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::S",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 16..27,
+                            name: "S",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                23..24,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct S",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2714,89 +2710,89 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "ImplTrait",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..21,
-                                name: "ImplTrait",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..15,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait ImplTrait",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::ImplTrait",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..21,
+                            name: "ImplTrait",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..15,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait ImplTrait",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "B",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 43..57,
-                                name: "B",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    50..51,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct B",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::B",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 43..57,
+                            name: "B",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                50..51,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct B",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "DynTrait",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 22..42,
-                                name: "DynTrait",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    28..36,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait DynTrait",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::DynTrait",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 22..42,
+                            name: "DynTrait",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                28..36,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait DynTrait",
+                            ),
+                            docs: None,
                         },
-                        HoverGotoTypeData {
-                            mod_path: "S",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 58..69,
-                                name: "S",
-                                kind: STRUCT_DEF,
-                                focus_range: Some(
-                                    65..66,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "struct S",
-                                ),
-                                docs: None,
-                            },
+                    },
+                    HoverGotoTypeData {
+                        mod_path: "test::S",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 58..69,
+                            name: "S",
+                            kind: STRUCT_DEF,
+                            focus_range: Some(
+                                65..66,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "struct S",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 
     #[test]
@@ -2828,31 +2824,31 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         assert_debug_snapshot!(actions,
             @r###"
-            [
-                GoToType(
-                    [
-                        HoverGotoTypeData {
-                            mod_path: "Foo",
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    1,
-                                ),
-                                full_range: 0..62,
-                                name: "Foo",
-                                kind: TRAIT_DEF,
-                                focus_range: Some(
-                                    6..9,
-                                ),
-                                container_name: None,
-                                description: Some(
-                                    "trait Foo",
-                                ),
-                                docs: None,
-                            },
+        [
+            GoToType(
+                [
+                    HoverGotoTypeData {
+                        mod_path: "test::Foo",
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 0..62,
+                            name: "Foo",
+                            kind: TRAIT_DEF,
+                            focus_range: Some(
+                                6..9,
+                            ),
+                            container_name: None,
+                            description: Some(
+                                "trait Foo",
+                            ),
+                            docs: None,
                         },
-                    ],
-                ),
-            ]
-            "###);
+                    },
+                ],
+            ),
+        ]
+        "###);
     }
 }
