@@ -325,22 +325,22 @@ pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
 /// parenthesis will always be added for a mix of these.
 pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
     /// Returns `true` if the operator is a shift operator `<<` or `>>`.
-    fn is_shift(op: &AssocOp) -> bool {
-        matches!(*op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
+    fn is_shift(op: AssocOp) -> bool {
+        matches!(op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
     }
 
     /// Returns `true` if the operator is a arithmetic operator
     /// (i.e., `+`, `-`, `*`, `/`, `%`).
-    fn is_arith(op: &AssocOp) -> bool {
+    fn is_arith(op: AssocOp) -> bool {
         matches!(
-            *op,
+            op,
             AssocOp::Add | AssocOp::Subtract | AssocOp::Multiply | AssocOp::Divide | AssocOp::Modulus
         )
     }
 
     /// Returns `true` if the operator `op` needs parenthesis with the operator
     /// `other` in the direction `dir`.
-    fn needs_paren(op: &AssocOp, other: &AssocOp, dir: Associativity) -> bool {
+    fn needs_paren(op: AssocOp, other: AssocOp, dir: Associativity) -> bool {
         other.precedence() < op.precedence()
             || (other.precedence() == op.precedence()
                 && ((op != other && associativity(op) != dir)
@@ -349,14 +349,14 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
             || is_shift(other) && is_arith(op)
     }
 
-    let lhs_paren = if let Sugg::BinOp(ref lop, _) = *lhs {
-        needs_paren(&op, lop, Associativity::Left)
+    let lhs_paren = if let Sugg::BinOp(lop, _) = *lhs {
+        needs_paren(op, lop, Associativity::Left)
     } else {
         false
     };
 
-    let rhs_paren = if let Sugg::BinOp(ref rop, _) = *rhs {
-        needs_paren(&op, rop, Associativity::Right)
+    let rhs_paren = if let Sugg::BinOp(rop, _) = *rhs {
+        needs_paren(op, rop, Associativity::Right)
     } else {
         false
     };
@@ -424,13 +424,13 @@ enum Associativity {
 /// they are considered
 /// associative.
 #[must_use]
-fn associativity(op: &AssocOp) -> Associativity {
+fn associativity(op: AssocOp) -> Associativity {
     use rustc_ast::util::parser::AssocOp::{
         Add, As, Assign, AssignOp, BitAnd, BitOr, BitXor, Colon, Divide, DotDot, DotDotEq, Equal, Greater,
         GreaterEqual, LAnd, LOr, Less, LessEqual, Modulus, Multiply, NotEqual, ShiftLeft, ShiftRight, Subtract,
     };
 
-    match *op {
+    match op {
         Assign | AssignOp(_) => Associativity::Right,
         Add | BitAnd | BitOr | BitXor | LAnd | LOr | Multiply | As | Colon => Associativity::Both,
         Divide | Equal | Greater | GreaterEqual | Less | LessEqual | Modulus | NotEqual | ShiftLeft | ShiftRight

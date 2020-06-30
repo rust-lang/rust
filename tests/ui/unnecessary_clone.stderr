@@ -1,37 +1,5 @@
-error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:21:5
-   |
-LL |     42.clone();
-   |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
-   |
-   = note: `-D clippy::clone-on-copy` implied by `-D warnings`
-
-error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:25:5
-   |
-LL |     (&42).clone();
-   |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
-
-error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:28:5
-   |
-LL |     rc.borrow().clone();
-   |     ^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*rc.borrow()`
-
-error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:34:14
-   |
-LL |     is_ascii('z'.clone());
-   |              ^^^^^^^^^^^ help: try removing the `clone` call: `'z'`
-
-error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:38:14
-   |
-LL |     vec.push(42.clone());
-   |              ^^^^^^^^^^ help: try removing the `clone` call: `42`
-
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:48:5
+  --> $DIR/unnecessary_clone.rs:23:5
    |
 LL |     rc.clone();
    |     ^^^^^^^^^^ help: try this: `Rc::<bool>::clone(&rc)`
@@ -39,43 +7,45 @@ LL |     rc.clone();
    = note: `-D clippy::clone-on-ref-ptr` implied by `-D warnings`
 
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:51:5
+  --> $DIR/unnecessary_clone.rs:26:5
    |
 LL |     arc.clone();
    |     ^^^^^^^^^^^ help: try this: `Arc::<bool>::clone(&arc)`
 
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:54:5
+  --> $DIR/unnecessary_clone.rs:29:5
    |
 LL |     rcweak.clone();
    |     ^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&rcweak)`
 
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:57:5
+  --> $DIR/unnecessary_clone.rs:32:5
    |
 LL |     arc_weak.clone();
    |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&arc_weak)`
 
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:61:33
+  --> $DIR/unnecessary_clone.rs:36:33
    |
 LL |     let _: Arc<dyn SomeTrait> = x.clone();
    |                                 ^^^^^^^^^ help: try this: `Arc::<SomeImpl>::clone(&x)`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:65:5
+  --> $DIR/unnecessary_clone.rs:40:5
    |
 LL |     t.clone();
    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
+   |
+   = note: `-D clippy::clone-on-copy` implied by `-D warnings`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:67:5
+  --> $DIR/unnecessary_clone.rs:42:5
    |
 LL |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:73:22
+  --> $DIR/unnecessary_clone.rs:48:22
    |
 LL |     let z: &Vec<_> = y.clone();
    |                      ^^^^^^^^^
@@ -91,13 +61,13 @@ LL |     let z: &Vec<_> = <&std::vec::Vec<i32>>::clone(y);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:109:20
+  --> $DIR/unnecessary_clone.rs:84:20
    |
 LL |         let _: E = a.clone();
    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:114:22
+  --> $DIR/unnecessary_clone.rs:89:22
    |
 LL |         let _ = &mut encoded.clone();
    |                      ^^^^^^^^^^^^^^^
@@ -112,7 +82,7 @@ LL |         let _ = &mut <&[u8]>::clone(encoded);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:115:18
+  --> $DIR/unnecessary_clone.rs:90:18
    |
 LL |         let _ = &encoded.clone();
    |                  ^^^^^^^^^^^^^^^
@@ -126,5 +96,5 @@ help: or try being explicit if you are sure, that you want to clone a reference
 LL |         let _ = &<&[u8]>::clone(encoded);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 16 previous errors
+error: aborting due to 11 previous errors
 

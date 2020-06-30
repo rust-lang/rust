@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// non-async-aware MutexGuard.
     ///
     /// **Why is this bad?** The Mutex types found in syd::sync and parking_lot
-    /// are not designed to operator in an async context across await points.
+    /// are not designed to operate in an async context across await points.
     ///
     /// There are two potential solutions. One is to use an asynx-aware Mutex
     /// type. Many asynchronous foundation crates provide such a Mutex type. The
