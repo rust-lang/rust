@@ -1597,6 +1597,9 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.arg(format!("--dynamic-linker={}ld.so.1", prefix));
     }
 
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
+    cmd.add_eh_frame_header();
+
     // NO-OPT-OUT, OBJECT-FILES-NO
     if crt_objects_fallback {
         cmd.no_crt_objects();
