@@ -141,7 +141,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     {
         tcx.fold_regions(&ty, &mut false, |region, _| match *region {
             ty::ReVar(vid) => {
-                let upper_bound = self.universal_upper_bound(vid);
+                // Find something that we can name
+                let upper_bound = self.approx_universal_upper_bound(vid);
                 self.definitions[upper_bound].external_name.unwrap_or(region)
             }
             _ => region,
