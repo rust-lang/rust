@@ -154,7 +154,7 @@ whole crate, like we normally do).
 ### Other Data Structures
 
 Here are some other notable data structures involved in expansion and integration:
-- [`Resolver`] - a trait used to break crate dependencies. This allows the
+- [`ResolverExpand`] - a trait used to break crate dependencies. This allows the
   resolver services to be used in [`rustc_ast`], despite [`rustc_resolve`] and
   pretty much everything else depending on [`rustc_ast`].
 - [`ExtCtxt`]/[`ExpansionData`] - various intermediate data kept and used by expansion
@@ -168,7 +168,7 @@ Here are some other notable data structures involved in expansion and integratio
 
 [`rustc_ast`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/index.html
 [`rustc_resolve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/index.html
-[`Resolver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.Resolver.html
+[`ResolverExpand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.ResolverExpand.html
 [`ExtCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/struct.ExtCtxt.html
 [`ExpansionData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/struct.ExpansionData.html
 [`Annotatable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/enum.Annotatable.html
