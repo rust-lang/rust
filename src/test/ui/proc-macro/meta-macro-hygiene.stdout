@@ -1,4 +1,4 @@
-Def site: $DIR/auxiliary/make-macro.rs:5:9: 8:10 (#3)
+Def site: $DIR/auxiliary/make-macro.rs:7:9: 10:10 (#3)
 #![feature /* 0#0 */(prelude_import)]
 #[prelude_import /* 0#1 */]
 use std /* 0#1 */::prelude /* 0#1 */::v1 /* 0#1 */::*;

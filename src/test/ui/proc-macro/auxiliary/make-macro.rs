@@ -1,3 +1,5 @@
+// force-host
+
 #[macro_export]
 macro_rules! make_it {
     ($name:ident) => {
