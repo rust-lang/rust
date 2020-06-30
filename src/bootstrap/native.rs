@@ -421,7 +421,11 @@ fn configure_cmake(
         cflags.push_str(&format!(" {}", s));
     }
     if target.contains("apple-ios") {
-        cflags.push_str(" -miphoneos-version-min=10.0");
+        if target.contains("86-") {
+            cflags.push_str(" -miphonesimulator-version-min=10.0");
+        } else {
+            cflags.push_str(" -miphoneos-version-min=10.0");
+        }
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
