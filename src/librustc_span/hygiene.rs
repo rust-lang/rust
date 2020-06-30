@@ -1,9 +1,8 @@
-//! Machinery for hygienic macros, inspired by the `MTWT[1]` paper.
+//! Machinery for hygienic macros.
 //!
-//! `[1]` Matthew Flatt, Ryan Culpepper, David Darais, and Robert Bruce Findler. 2012.
-//! *Macros that work together: Compile-time bindings, partial expansion,
-//! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
-//! DOI=10.1017/S0956796812000093 <https://doi.org/10.1017/S0956796812000093>
+//! Inspired by Matthew Flatt et al., “Macros That Work Together: Compile-Time Bindings, Partial
+//! Expansion, and Definition Contexts,” *Journal of Functional Programming* 22, no. 2
+//! (March 1, 2012): 181–216, <https://doi.org/10.1017/S0956796812000093>.
 
 // Hygiene data is stored in a global variable and accessed via TLS, which
 // means that accesses are somewhat expensive. (`HygieneData::with`
