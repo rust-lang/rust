@@ -1,150 +1,5 @@
-use crate::matching::MatchFailureReason;
-use crate::{matching, Match, MatchFinder, SsrMatches, SsrPattern, SsrRule};
-use matching::record_match_fails_reasons_scope;
-use ra_db::{FileId, FileRange, SourceDatabaseExt};
-use ra_syntax::ast::AstNode;
-use ra_syntax::{ast, SyntaxKind, SyntaxNode, TextRange};
-
-struct MatchDebugInfo {
-    node: SyntaxNode,
-    /// Our search pattern parsed as the same kind of syntax node as `node`. e.g. expression, item,
-    /// etc. Will be absent if the pattern can't be parsed as that kind.
-    pattern: Result<SyntaxNode, MatchFailureReason>,
-    matched: Result<Match, MatchFailureReason>,
-}
-
-impl SsrPattern {
-    pub(crate) fn tree_for_kind_with_reason(
-        &self,
-        kind: SyntaxKind,
-    ) -> Result<&SyntaxNode, MatchFailureReason> {
-        record_match_fails_reasons_scope(true, || self.tree_for_kind(kind))
-            .map_err(|e| MatchFailureReason { reason: e.reason.unwrap() })
-    }
-}
-
-impl std::fmt::Debug for MatchDebugInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "========= PATTERN ==========\n")?;
-        match &self.pattern {
-            Ok(pattern) => {
-                write!(f, "{:#?}", pattern)?;
-            }
-            Err(err) => {
-                write!(f, "{}", err.reason)?;
-            }
-        }
-        write!(
-            f,
-            "\n============ AST ===========\n\
-            {:#?}\n============================",
-            self.node
-        )?;
-        match &self.matched {
-            Ok(_) => write!(f, "Node matched")?,
-            Err(reason) => write!(f, "Node failed to match because: {}", reason.reason)?,
-        }
-        Ok(())
-    }
-}
-
-impl SsrMatches {
-    /// Returns `self` with any nested matches removed and made into top-level matches.
-    pub(crate) fn flattened(self) -> SsrMatches {
-        let mut out = SsrMatches::default();
-        self.flatten_into(&mut out);
-        out
-    }
-
-    fn flatten_into(self, out: &mut SsrMatches) {
-        for mut m in self.matches {
-            for p in m.placeholder_values.values_mut() {
-                std::mem::replace(&mut p.inner_matches, SsrMatches::default()).flatten_into(out);
-            }
-            out.matches.push(m);
-        }
-    }
-}
-
-impl Match {
-    pub(crate) fn matched_text(&self) -> String {
-        self.matched_node.text().to_string()
-    }
-}
-
-impl<'db> MatchFinder<'db> {
-    /// Adds a search pattern. For use if you intend to only call `find_matches_in_file`. If you
-    /// intend to do replacement, use `add_rule` instead.
-    fn add_search_pattern(&mut self, pattern: SsrPattern) {
-        self.add_rule(SsrRule { pattern, template: "()".parse().unwrap() })
-    }
-
-    /// Finds all nodes in `file_id` whose text is exactly equal to `snippet` and attempts to match
-    /// them, while recording reasons why they don't match. This API is useful for command
-    /// line-based debugging where providing a range is difficult.
-    fn debug_where_text_equal(&self, file_id: FileId, snippet: &str) -> Vec<MatchDebugInfo> {
-        let file = self.sema.parse(file_id);
-        let mut res = Vec::new();
-        let file_text = self.sema.db.file_text(file_id);
-        let mut remaining_text = file_text.as_str();
-        let mut base = 0;
-        let len = snippet.len() as u32;
-        while let Some(offset) = remaining_text.find(snippet) {
-            let start = base + offset as u32;
-            let end = start + len;
-            self.output_debug_for_nodes_at_range(
-                file.syntax(),
-                TextRange::new(start.into(), end.into()),
-                &None,
-                &mut res,
-            );
-            remaining_text = &remaining_text[offset + snippet.len()..];
-            base = end;
-        }
-        res
-    }
-
-    fn output_debug_for_nodes_at_range(
-        &self,
-        node: &SyntaxNode,
-        range: TextRange,
-        restrict_range: &Option<FileRange>,
-        out: &mut Vec<MatchDebugInfo>,
-    ) {
-        for node in node.children() {
-            if !node.text_range().contains_range(range) {
-                continue;
-            }
-            if node.text_range() == range {
-                for rule in &self.rules {
-                    let pattern =
-                        rule.pattern.tree_for_kind_with_reason(node.kind()).map(|p| p.clone());
-                    out.push(MatchDebugInfo {
-                        matched: matching::get_match(true, rule, &node, restrict_range, &self.sema)
-                            .map_err(|e| MatchFailureReason {
-                                reason: e.reason.unwrap_or_else(|| {
-                                    "Match failed, but no reason was given".to_owned()
-                                }),
-                            }),
-                        pattern,
-                        node: node.clone(),
-                    });
-                }
-            } else if let Some(macro_call) = ast::MacroCall::cast(node.clone()) {
-                if let Some(expanded) = self.sema.expand(&macro_call) {
-                    if let Some(tt) = macro_call.token_tree() {
-                        self.output_debug_for_nodes_at_range(
-                            &expanded,
-                            range,
-                            &Some(self.sema.original_range(tt.syntax())),
-                            out,
-                        );
-                    }
-                }
-            }
-        }
-    }
-}
+use crate::{MatchFinder, SsrRule};
+use ra_db::{FileId, SourceDatabaseExt};
 
 fn parse_error_text(query: &str) -> String {
     format!("{}", query.parse::<SsrRule>().unwrap_err())
@@ -258,6 +113,19 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
 
 fn assert_no_match(pattern: &str, code: &str) {
     assert_matches(pattern, code, &[]);
+}
+
+fn assert_match_failure_reason(pattern: &str, code: &str, snippet: &str, expected_reason: &str) {
+    let (db, file_id) = single_file(code);
+    let mut match_finder = MatchFinder::new(&db);
+    match_finder.add_search_pattern(pattern.parse().unwrap());
+    let mut reasons = Vec::new();
+    for d in match_finder.debug_where_text_equal(file_id, snippet) {
+        if let Some(reason) = d.match_failure_reason() {
+            reasons.push(reason.to_owned());
+        }
+    }
+    assert_eq!(reasons, vec![expected_reason]);
 }
 
 #[test]
@@ -622,4 +490,31 @@ fn preserves_whitespace_within_macro_expansion() {
             }
             fn f() {macro1!(4 - 3 - 1   *   2}"#,
     )
+}
+
+#[test]
+fn match_failure_reasons() {
+    let code = r#"
+        macro_rules! foo {
+            ($a:expr) => {
+                1 + $a + 2
+            };
+        }
+        fn f1() {
+            bar(1, 2);
+            foo!(5 + 43.to_string() + 5);
+        }
+        "#;
+    assert_match_failure_reason(
+        "bar($a, 3)",
+        code,
+        "bar(1, 2)",
+        r#"Pattern wanted token '3' (INT_NUMBER), but code had token '2' (INT_NUMBER)"#,
+    );
+    assert_match_failure_reason(
+        "42.to_string()",
+        code,
+        "43.to_string()",
+        r#"Pattern wanted token '42' (INT_NUMBER), but code had token '43' (INT_NUMBER)"#,
+    );
 }

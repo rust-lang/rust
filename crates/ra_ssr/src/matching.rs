@@ -8,9 +8,7 @@ use crate::{
 use hir::Semantics;
 use ra_db::FileRange;
 use ra_syntax::ast::{AstNode, AstToken};
-use ra_syntax::{
-    ast, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
-};
+use ra_syntax::{ast, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken};
 use rustc_hash::FxHashMap;
 use std::{cell::Cell, iter::Peekable};
 
@@ -44,8 +42,8 @@ macro_rules! fail_match {
 
 /// Information about a match that was found.
 #[derive(Debug)]
-pub(crate) struct Match {
-    pub(crate) range: TextRange,
+pub struct Match {
+    pub(crate) range: FileRange,
     pub(crate) matched_node: SyntaxNode,
     pub(crate) placeholder_values: FxHashMap<Var, PlaceholderMatch>,
     pub(crate) ignored_comments: Vec<ast::Comment>,
@@ -135,7 +133,7 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
         match_state.attempt_match_node(&match_inputs, &pattern_tree, code)?;
         match_state.validate_range(&sema.original_range(code))?;
         match_state.match_out = Some(Match {
-            range: sema.original_range(code).range,
+            range: sema.original_range(code),
             matched_node: code.clone(),
             placeholder_values: FxHashMap::default(),
             ignored_comments: Vec::new(),

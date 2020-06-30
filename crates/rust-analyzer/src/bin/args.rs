@@ -5,7 +5,7 @@
 
 use anyhow::{bail, Result};
 use pico_args::Arguments;
-use ra_ssr::SsrRule;
+use ra_ssr::{SsrPattern, SsrRule};
 use rust_analyzer::cli::{BenchWhat, Position, Verbosity};
 
 use std::{fmt::Write, path::PathBuf};
@@ -49,6 +49,10 @@ pub(crate) enum Command {
     },
     Ssr {
         rules: Vec<SsrRule>,
+    },
+    StructuredSearch {
+        debug_snippet: Option<String>,
+        patterns: Vec<SsrPattern>,
     },
     ProcMacro,
     RunServer,
@@ -294,6 +298,7 @@ EXAMPLE:
     rust-analyzer ssr '$a.foo($b) ==> bar($a, $b)'
 
 FLAGS:
+    --debug <snippet>   Prints debug information for any nodes with source exactly equal to <snippet>
     -h, --help          Prints help information
 
 ARGS:
@@ -306,6 +311,34 @@ ARGS:
                     rules.push(rule);
                 }
                 Command::Ssr { rules }
+            }
+            "search" => {
+                if matches.contains(["-h", "--help"]) {
+                    eprintln!(
+                        "\
+rust-analyzer search
+
+USAGE:
+    rust-analyzer search [FLAGS] [PATTERN...]
+
+EXAMPLE:
+    rust-analyzer search '$a.foo($b)'
+
+FLAGS:
+    --debug <snippet>   Prints debug information for any nodes with source exactly equal to <snippet>
+    -h, --help          Prints help information
+
+ARGS:
+    <PATTERN>           A structured search pattern"
+                    );
+                    return Ok(Err(HelpPrinted));
+                }
+                let debug_snippet = matches.opt_value_from_str("--debug")?;
+                let mut patterns = Vec::new();
+                while let Some(rule) = matches.free_from_str()? {
+                    patterns.push(rule);
+                }
+                Command::StructuredSearch { patterns, debug_snippet }
             }
             _ => {
                 print_subcommands();
@@ -334,6 +367,7 @@ SUBCOMMANDS:
     diagnostics
     proc-macro
     parse
+    search
     ssr
     symbols"
     )

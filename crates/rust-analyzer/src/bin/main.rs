@@ -65,6 +65,9 @@ fn main() -> Result<()> {
         args::Command::Ssr { rules } => {
             cli::apply_ssr_rules(rules)?;
         }
+        args::Command::StructuredSearch { patterns, debug_snippet } => {
+            cli::search_for_patterns(patterns, debug_snippet)?;
+        }
         args::Command::Version => println!("rust-analyzer {}", env!("REV")),
     }
     Ok(())
