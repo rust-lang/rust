@@ -3,12 +3,10 @@
 use crate::{
     cell::{Cell, UnsafeCell},
     fmt,
-    marker::PhantomData,
     mem::{self, MaybeUninit},
     ops::{Deref, Drop},
     panic::{RefUnwindSafe, UnwindSafe},
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-    thread::{self, Thread},
+    sync::Once,
 };
 
 #[doc(inline)]
@@ -42,10 +40,7 @@ pub use core::lazy::*;
 /// ```
 #[unstable(feature = "once_cell", issue = "68198")]
 pub struct SyncOnceCell<T> {
-    // This `state` word is actually an encoded version of just a pointer to a
-    // `Waiter`, so we add the `PhantomData` appropriately.
-    state_and_queue: AtomicUsize,
-    _marker: PhantomData<*mut Waiter>,
+    once: Once,
     // Whether or not the value is initialized is tracked by `state_and_queue`.
     value: UnsafeCell<MaybeUninit<T>>,
 }
@@ -122,8 +117,7 @@ impl<T> SyncOnceCell<T> {
     #[unstable(feature = "once_cell", issue = "68198")]
     pub const fn new() -> SyncOnceCell<T> {
         SyncOnceCell {
-            state_and_queue: AtomicUsize::new(INCOMPLETE),
-            _marker: PhantomData,
+            once: Once::new(),
             value: UnsafeCell::new(MaybeUninit::uninit()),
         }
     }
@@ -135,7 +129,7 @@ impl<T> SyncOnceCell<T> {
     #[unstable(feature = "once_cell", issue = "68198")]
     pub fn get(&self) -> Option<&T> {
         if self.is_initialized() {
-            // Safe b/c checked is_initialize
+            // Safe b/c checked is_initialized
             Some(unsafe { self.get_unchecked() })
         } else {
             None
@@ -148,7 +142,7 @@ impl<T> SyncOnceCell<T> {
     #[unstable(feature = "once_cell", issue = "68198")]
     pub fn get_mut(&mut self) -> Option<&mut T> {
         if self.is_initialized() {
-            // Safe b/c checked is_initialize and we have a unique access
+            // Safe b/c checked is_initialized and we have a unique access
             Some(unsafe { self.get_unchecked_mut() })
         } else {
             None
@@ -350,37 +344,32 @@ impl<T> SyncOnceCell<T> {
         }
     }
 
-    /// Safety: synchronizes with store to value via Release/(Acquire|SeqCst).
     #[inline]
     fn is_initialized(&self) -> bool {
-        // An `Acquire` load is enough because that makes all the initialization
-        // operations visible to us, and, this being a fast path, weaker
-        // ordering helps with performance. This `Acquire` synchronizes with
-        // `SeqCst` operations on the slow path.
-        self.state_and_queue.load(Ordering::Acquire) == COMPLETE
+        self.once.is_completed()
     }
 
-    /// Safety: synchronizes with store to value via SeqCst read from state,
-    /// writes value only once because we never get to INCOMPLETE state after a
-    /// successful write.
     #[cold]
     fn initialize<F, E>(&self, f: F) -> Result<(), E>
     where
         F: FnOnce() -> Result<T, E>,
     {
-        let mut f = Some(f);
         let mut res: Result<(), E> = Ok(());
         let slot = &self.value;
-        initialize_inner(&self.state_and_queue, &mut || {
-            let f = f.take().unwrap();
+
+        // Ignore poisoning from other threads
+        // If another thread panics, then we'll be able to run our closure
+        self.once.call_once_force(|p| {
             match f() {
                 Ok(value) => {
                     unsafe { (&mut *slot.get()).write(value) };
-                    true
                 }
                 Err(e) => {
                     res = Err(e);
-                    false
+
+                    // Treat the underlying `Once` as poisoned since we
+                    // failed to initialize our value. Calls
+                    p.poison();
                 }
             }
         });
@@ -404,106 +393,6 @@ impl<T> Drop for SyncOnceCell<T> {
     fn drop(&mut self) {
         // Safety: The cell is being dropped, so it can't be accessed again
         unsafe { self.take_inner() };
-    }
-}
-
-const INCOMPLETE: usize = 0x0;
-const RUNNING: usize = 0x1;
-const COMPLETE: usize = 0x2;
-
-const STATE_MASK: usize = 0x3;
-
-// The alignment here is so that we can stash the state in the lower
-// bits of the `next` pointer
-#[repr(align(4))]
-struct Waiter {
-    thread: Cell<Option<Thread>>,
-    signaled: AtomicBool,
-    next: *const Waiter,
-}
-
-struct WaiterQueue<'a> {
-    state_and_queue: &'a AtomicUsize,
-    set_state_on_drop_to: usize,
-}
-
-impl Drop for WaiterQueue<'_> {
-    fn drop(&mut self) {
-        let state_and_queue =
-            self.state_and_queue.swap(self.set_state_on_drop_to, Ordering::AcqRel);
-
-        assert_eq!(state_and_queue & STATE_MASK, RUNNING);
-
-        unsafe {
-            let mut queue = (state_and_queue & !STATE_MASK) as *const Waiter;
-            while !queue.is_null() {
-                let next = (*queue).next;
-                let thread = (*queue).thread.replace(None).unwrap();
-                (*queue).signaled.store(true, Ordering::Release);
-                queue = next;
-                thread.unpark();
-            }
-        }
-    }
-}
-
-fn initialize_inner(my_state_and_queue: &AtomicUsize, init: &mut dyn FnMut() -> bool) -> bool {
-    let mut state_and_queue = my_state_and_queue.load(Ordering::Acquire);
-
-    loop {
-        match state_and_queue {
-            COMPLETE => return true,
-            INCOMPLETE => {
-                let old = my_state_and_queue.compare_and_swap(
-                    state_and_queue,
-                    RUNNING,
-                    Ordering::Acquire,
-                );
-                if old != state_and_queue {
-                    state_and_queue = old;
-                    continue;
-                }
-                let mut waiter_queue = WaiterQueue {
-                    state_and_queue: my_state_and_queue,
-                    set_state_on_drop_to: INCOMPLETE,
-                };
-                let success = init();
-
-                waiter_queue.set_state_on_drop_to = if success { COMPLETE } else { INCOMPLETE };
-                return success;
-            }
-            _ => {
-                assert!(state_and_queue & STATE_MASK == RUNNING);
-                wait(&my_state_and_queue, state_and_queue);
-                state_and_queue = my_state_and_queue.load(Ordering::Acquire);
-            }
-        }
-    }
-}
-
-fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
-    loop {
-        if current_state & STATE_MASK != RUNNING {
-            return;
-        }
-
-        let node = Waiter {
-            thread: Cell::new(Some(thread::current())),
-            signaled: AtomicBool::new(false),
-            next: (current_state & !STATE_MASK) as *const Waiter,
-        };
-        let me = &node as *const Waiter as usize;
-
-        let old = state_and_queue.compare_and_swap(current_state, me | RUNNING, Ordering::Release);
-        if old != current_state {
-            current_state = old;
-            continue;
-        }
-
-        while !node.signaled.load(Ordering::Acquire) {
-            thread::park();
-        }
-        break;
     }
 }
 
@@ -763,6 +652,7 @@ mod tests {
 
         let res = panic::catch_unwind(|| cell.get_or_try_init(|| -> Result<_, ()> { panic!() }));
         assert!(res.is_err());
+        assert!(!cell.is_initialized());
         assert!(cell.get().is_none());
 
         assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
