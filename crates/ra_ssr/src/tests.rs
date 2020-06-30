@@ -152,12 +152,12 @@ fn parse_error_text(query: &str) -> String {
 
 #[test]
 fn parser_empty_query() {
-    assert_eq!(parse_error_text(""), "Parse error: Cannot find delemiter `==>>`");
+    assert_eq!(parse_error_text(""), "Parse error: Cannot find delimiter `==>>`");
 }
 
 #[test]
 fn parser_no_delimiter() {
-    assert_eq!(parse_error_text("foo()"), "Parse error: Cannot find delemiter `==>>`");
+    assert_eq!(parse_error_text("foo()"), "Parse error: Cannot find delimiter `==>>`");
 }
 
 #[test]
@@ -227,7 +227,7 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, result: &str) {
         let mut after = db.file_text(file_id).to_string();
         edits.apply(&mut after);
         // Likewise, we need to make sure that whatever transformations fixture parsing applies,
-        // also get appplied to our expected result.
+        // also get applied to our expected result.
         let result = normalize_code(result);
         assert_eq!(after, result);
     } else {
