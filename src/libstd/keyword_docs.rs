@@ -1625,9 +1625,9 @@ mod dyn_keyword {}
 /// The [Rust equivalent of a C-style union][union].
 ///
 /// A `union` looks like a [`struct`] in terms of declaration, but all of its
-/// fields exist simultaneously, superimposed over one another. For instance,
+/// fields exist in the same memory, superimposed over one another. For instance,
 /// if we wanted some bits in memory that we sometimes interpret as a `u32` and
-/// sometimes as an `f32`, we would write:
+/// sometimes as an `f32`, we could write:
 ///
 /// ```rust
 /// union IntOrFloat {
@@ -1647,6 +1647,7 @@ mod dyn_keyword {}
 ///
 /// It is possible to use pattern matching on `union`s. A single field name must
 /// be used and it must match the name of one of the `union`'s field.
+/// Like reading from a `union`, pattern matching on a `union` requires `unsafe`.
 ///
 /// ```rust
 /// union IntOrFloat {
@@ -1658,8 +1659,8 @@ mod dyn_keyword {}
 ///
 /// unsafe {
 ///     match u {
-///         IntOrFloat { i: 10 } => println!("Found exactly ten !"),
-///         // The field name is used to deduce the type
+///         IntOrFloat { i: 10 } => println!("Found exactly ten!"),
+///         // Matching the field `f` provides an `f32`.
 ///         IntOrFloat { f } => println!("Found f = {} !", f),
 ///     }
 /// }
@@ -1667,8 +1668,8 @@ mod dyn_keyword {}
 ///
 /// # References to union fields
 ///
-/// All fields in a union are all at the same place in memory which means
-/// borrowing one borrows all of them, for the same duration:
+/// All fields in a `union` are all at the same place in memory which means
+/// borrowing one borrows the entire `union`, for the same lifetime:
 ///
 /// ```rust,compile_fail,E0502
 /// union IntOrFloat {
