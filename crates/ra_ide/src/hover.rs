@@ -17,7 +17,7 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{
-    ast, ast::Path, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, TokenAtOffset,
+    ast, ast::{Path, MacroCall}, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, TokenAtOffset,
 };
 use ra_tt::{Ident, Leaf, Literal, TokenTree};
 use url::Url;
@@ -394,35 +394,36 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
 // Rewrites a markdown document, resolving links using `callback` and additionally striping prefixes/suffixes on link titles.
 fn map_links<'e>(
     events: impl Iterator<Item = Event<'e>>,
-    callback: impl Fn(&str, &str) -> String,
+    callback: impl Fn(&str, &str) -> (String, String),
 ) -> impl Iterator<Item = Event<'e>> {
     let mut in_link = false;
-    let mut link_text = CowStr::Borrowed("");
+    let mut link_target: Option<CowStr> = None;
+
     events.map(move |evt| match evt {
-        Event::Start(Tag::Link(..)) => {
+        Event::Start(Tag::Link(_link_type, ref target, _)) => {
             in_link = true;
+            link_target = Some(target.clone());
             evt
         }
-        Event::End(Tag::Link(link_type, target, _)) => {
+        Event::End(Tag::Link(link_type, _target, _)) => {
             in_link = false;
-            let target = callback(&target, &link_text);
-            Event::End(Tag::Link(link_type, CowStr::Boxed(target.into()), CowStr::Borrowed("")))
+            Event::End(Tag::Link(link_type, link_target.take().unwrap(), CowStr::Borrowed("")))
         }
         Event::Text(s) if in_link => {
-            link_text = s.clone();
-            // TODO: This can unintentionally strip words from path-based links.
-            // See std::box::Box -> std::box link as an example.
-            Event::Text(CowStr::Boxed(strip_prefixes_suffixes(&s).into()))
+            let (link_target_s, link_name) = callback(&link_target.take().unwrap(), &s);
+            link_target = Some(CowStr::Boxed(link_target_s.into()));
+            Event::Text(CowStr::Boxed(link_name.into()))
         }
         Event::Code(s) if in_link => {
-            link_text = s.clone();
-            Event::Code(CowStr::Boxed(strip_prefixes_suffixes(&s).into()))
+            let (link_target_s, link_name) = callback(&link_target.take().unwrap(), &s);
+            link_target = Some(CowStr::Boxed(link_target_s.into()));
+            Event::Code(CowStr::Boxed(link_name.into()))
         }
         _ => evt,
     })
 }
 
-/// Rewrite documentation links in markdown to point to local documentation/docs.rs
+/// Rewrite documentation links in markdown to point to an online host (e.g. docs.rs)
 fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> Option<String> {
     let doc = Parser::new_with_broken_link_callback(
         markdown,
@@ -431,21 +432,22 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> 
     );
 
     let doc = map_links(doc, |target, title: &str| {
-        match Url::parse(target) {
-            // If this is a valid absolute URL don't touch it
-            Ok(_) => target.to_string(),
-            // Otherwise there are two main possibilities
-            // path-based links: `../../module/struct.MyStruct.html`
-            // module-based links (AKA intra-doc links): `super::super::module::MyStruct`
-            Err(_) => {
-                let resolved = try_resolve_intra(db, definition, title, &target)
-                    .or_else(|| try_resolve_path(db, definition, &target));
+        // This check is imperfect, there's some overlap between valid intra-doc links
+        // and valid URLs so we choose to be too eager to try to resolve what might be
+        // a URL.
+        if target.contains("://") {
+            (target.to_string(), title.to_string())
+        } else {
+            // Two posibilities:
+            // * path-based links: `../../module/struct.MyStruct.html`
+            // * module-based links (AKA intra-doc links): `super::super::module::MyStruct`
+            let resolved = try_resolve_intra(db, definition, title, &target)
+                .or_else(|| try_resolve_path(db, definition, &target).map(|target| (target, title.to_string())));
 
-                if let Some(resolved) = resolved {
-                    resolved
-                } else {
-                    target.to_string()
-                }
+            if let Some((target, title)) = resolved {
+                (target, title)
+            } else {
+                (target.to_string(), title.to_string())
             }
         }
     });
@@ -520,7 +522,7 @@ fn try_resolve_intra(
     definition: &Definition,
     link_text: &str,
     link_target: &str,
-) -> Option<String> {
+) -> Option<(String, String)> {
     // Set link_target for implied shortlinks
     let link_target =
         if link_target.is_empty() { link_text.trim_matches('`') } else { link_target };
@@ -534,6 +536,7 @@ fn try_resolve_intra(
     // Parse link as a module path
     // This expects a full document, which a single path isn't, but we can just ignore the errors.
     let parsed = SyntaxNode::new_root(ra_syntax::parse_text(link_target).0);
+    // TODO: Proper parsing
     let path = parsed.descendants().filter_map(Path::cast).next()?;
     let modpath = ModPath::from_src(path, &Hygiene::new_unhygienic()).unwrap();
 
@@ -566,7 +569,7 @@ fn try_resolve_intra(
     let import_map = db.import_map(krate.into());
     let path = import_map.path_of(ns)?;
 
-    Some(
+    Some((
         get_doc_url(db, &krate)?
             .join(&format!("{}/", krate.display_name(db)?))
             .ok()?
@@ -575,7 +578,7 @@ fn try_resolve_intra(
             .join(&get_symbol_filename(db, &Definition::ModuleDef(def))?)
             .ok()?
             .into_string(),
-    )
+    strip_prefixes_suffixes(link_text).to_string()))
 }
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
@@ -1485,15 +1488,30 @@ fn func(foo: i32) { if true { <|>foo; }; }
     }
 
     #[test]
-    fn test_hover_intra_link() {
+    fn test_hover_path_link_no_strip() {
         check_hover_result(
             r"
             //- /lib.rs
             pub struct Foo;
-            /// [Foo](Foo)
+            /// [struct Foo](struct.Foo.html)
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
+            &["pub struct Bar\n```\n___\n\n[struct Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
+        );
+    }
+
+    #[test]
+    fn test_hover_intra_link() {
+        check_hover_result(
+            r"
+            //- /lib.rs
+            pub mod foo {
+                pub struct Foo;
+            }
+            /// [Foo](foo::Foo)
+            pub struct B<|>ar
+            ",
+            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/foo/struct.Foo.html)"],
         );
     }
 
