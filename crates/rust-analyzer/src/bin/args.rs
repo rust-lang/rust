@@ -98,7 +98,7 @@ USAGE:
     rust-analyzer parse [FLAGS]
 
 FLAGS:
-    -h, --help       Prints help inforamtion
+    -h, --help       Prints help information
         --no-dump"
                     );
                     return Ok(Err(HelpPrinted));

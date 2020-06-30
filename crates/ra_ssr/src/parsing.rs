@@ -55,7 +55,7 @@ impl FromStr for SsrRule {
         let pattern = it.next().expect("at least empty string").trim();
         let template = it
             .next()
-            .ok_or_else(|| SsrError("Cannot find delemiter `==>>`".into()))?
+            .ok_or_else(|| SsrError("Cannot find delimiter `==>>`".into()))?
             .trim()
             .to_string();
         if it.next().is_some() {

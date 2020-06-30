@@ -225,7 +225,7 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
             match self.next_non_trivial(&mut code_it) {
                 None => {
                     if let Some(p) = pattern_it.next() {
-                        fail_match!("Part of the pattern was unmached: {:?}", p);
+                        fail_match!("Part of the pattern was unmatched: {:?}", p);
                     }
                     return Ok(());
                 }

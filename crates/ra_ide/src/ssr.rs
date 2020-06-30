@@ -4,7 +4,7 @@ use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
 use crate::SourceFileEdit;
 use ra_ssr::{MatchFinder, SsrError, SsrRule};
 
-// Feature: Structural Seach and Replace
+// Feature: Structural Search and Replace
 //
 // Search and replace with named wildcards that will match any expression, type, path, pattern or item.
 // The syntax for a structural search replace command is `<search_pattern> ==>> <replace_pattern>`.
