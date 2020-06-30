@@ -2,8 +2,8 @@
 
 use crate::reexport::Name;
 use crate::utils::{
-    first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, without_block_comments,
+    first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_help,
+    span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
@@ -17,7 +17,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Symbol, SymbolStr};
 use semver::Version;
 
 static UNIX_SYSTEMS: &[&str] = &[
@@ -183,6 +183,29 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for `warn`/`deny`/`forbid` attributes targeting the whole clippy::restriction category.
+    ///
+    /// **Why is this bad?** Restriction lints sometimes are in contrast with other lints or even go against idiomatic rust.
+    /// These lints should only be enabled on a lint-by-lint basis and with careful consideration.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust
+    /// #![deny(clippy::restriction)]
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// #![deny(clippy::as_conversions)]
+    /// ```
+    pub BLANKET_CLIPPY_RESTRICTION_LINTS,
+    style,
+    "enabling the complete restriction group"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for `#[cfg_attr(rustfmt, rustfmt_skip)]` and suggests to replace it
     /// with `#[rustfmt::skip]`.
     ///
@@ -249,15 +272,17 @@ declare_lint_pass!(Attributes => [
     DEPRECATED_SEMVER,
     USELESS_ATTRIBUTE,
     UNKNOWN_CLIPPY_LINTS,
+    BLANKET_CLIPPY_RESTRICTION_LINTS,
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
     fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
         if let Some(items) = &attr.meta_item_list() {
             if let Some(ident) = attr.ident() {
-                match &*ident.as_str() {
+                let ident = &*ident.as_str();
+                match ident {
                     "allow" | "warn" | "deny" | "forbid" => {
-                        check_clippy_lint_names(cx, items);
+                        check_clippy_lint_names(cx, ident, items);
                     },
                     _ => {},
                 }
@@ -363,38 +388,43 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
     }
 }
 
-#[allow(clippy::single_match_else)]
-fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
-    let lint_store = cx.lints();
-    for lint in items {
+fn check_clippy_lint_names(cx: &LateContext<'_, '_>, ident: &str, items: &[NestedMetaItem]) {
+    fn extract_name(lint: &NestedMetaItem) -> Option<SymbolStr> {
         if_chain! {
             if let Some(meta_item) = lint.meta_item();
             if meta_item.path.segments.len() > 1;
             if let tool_name = meta_item.path.segments[0].ident;
             if tool_name.as_str() == "clippy";
-            let name = meta_item.path.segments.last().unwrap().ident.name;
-            if let CheckLintNameResult::Tool(Err((None, _))) = lint_store.check_lint_name(
-                &name.as_str(),
-                Some(tool_name.name),
-            );
+            let lint_name = meta_item.path.segments.last().unwrap().ident.name;
             then {
+                return Some(lint_name.as_str());
+            }
+        }
+        None
+    }
+
+    let lint_store = cx.lints();
+    for lint in items {
+        if let Some(lint_name) = extract_name(lint) {
+            if let CheckLintNameResult::Tool(Err((None, _))) =
+                lint_store.check_lint_name(&lint_name, Some(sym!(clippy)))
+            {
                 span_lint_and_then(
                     cx,
                     UNKNOWN_CLIPPY_LINTS,
                     lint.span(),
-                    &format!("unknown clippy lint: clippy::{}", name),
+                    &format!("unknown clippy lint: clippy::{}", lint_name),
                     |diag| {
-                        let name_lower = name.as_str().to_lowercase();
-                        let symbols = lint_store.get_lints().iter().map(
-                            |l| Symbol::intern(&l.name_lower())
-                        ).collect::<Vec<_>>();
-                        let sugg = find_best_match_for_name(
-                            symbols.iter(),
-                            &format!("clippy::{}", name_lower),
-                            None,
-                        );
-                        if name.as_str().chars().any(char::is_uppercase)
-                            && lint_store.find_lints(&format!("clippy::{}", name_lower)).is_ok() {
+                        let name_lower = lint_name.to_lowercase();
+                        let symbols = lint_store
+                            .get_lints()
+                            .iter()
+                            .map(|l| Symbol::intern(&l.name_lower()))
+                            .collect::<Vec<_>>();
+                        let sugg = find_best_match_for_name(symbols.iter(), &format!("clippy::{}", name_lower), None);
+                        if lint_name.chars().any(char::is_uppercase)
+                            && lint_store.find_lints(&format!("clippy::{}", name_lower)).is_ok()
+                        {
                             diag.span_suggestion(
                                 lint.span(),
                                 "lowercase the lint name",
@@ -409,10 +439,19 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                                 Applicability::MachineApplicable,
                             );
                         }
-                    }
+                    },
+                );
+            } else if lint_name == "restriction" && ident != "allow" {
+                span_lint_and_help(
+                    cx,
+                    BLANKET_CLIPPY_RESTRICTION_LINTS,
+                    lint.span(),
+                    "restriction lints are not meant to be all enabled",
+                    None,
+                    "try enabling only the lints you really need",
                 );
             }
-        };
+        }
     }
 }
 
