@@ -12,7 +12,7 @@ use super::MoveDataParamEnv;
 
 use crate::util::elaborate_drops::DropFlagState;
 
-use super::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
+use super::move_paths::{HasMoveData, InitIndex, InitKind, MoveData, MovePathIndex};
 use super::{AnalysisDomain, BottomValue, GenKill, GenKillAnalysis};
 
 use super::drop_flag_effects_for_function_entry;
@@ -124,11 +124,23 @@ pub struct MaybeUninitializedPlaces<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
+
+    mark_inactive_variants_as_uninit: bool,
 }
 
 impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
-        MaybeUninitializedPlaces { tcx, body, mdpe }
+        MaybeUninitializedPlaces { tcx, body, mdpe, mark_inactive_variants_as_uninit: false }
+    }
+
+    /// Causes inactive enum variants to be marked as "maybe uninitialized" after a switch on an
+    /// enum discriminant.
+    ///
+    /// This is correct in a vacuum but is not the default because it causes problems in the borrow
+    /// checker, where this information gets propagated along `FakeEdge`s.
+    pub fn mark_inactive_variants_as_uninit(mut self) -> Self {
+        self.mark_inactive_variants_as_uninit = true;
+        self
     }
 }
 
@@ -350,27 +362,16 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         _adt: &ty::AdtDef,
         variant: VariantIdx,
     ) {
-        let enum_mpi = match self.move_data().rev_lookup.find(enum_place.as_ref()) {
-            LookupResult::Exact(mpi) => mpi,
-            LookupResult::Parent(_) => return,
-        };
-
-        // Kill all move paths that correspond to variants other than this one
-        let move_paths = &self.move_data().move_paths;
-        let enum_path = &move_paths[enum_mpi];
-        for (mpi, variant_path) in enum_path.children(move_paths) {
-            trans.kill(mpi);
-            match variant_path.place.projection.last().unwrap() {
-                mir::ProjectionElem::Downcast(_, idx) if *idx == variant => continue,
-                _ => drop_flag_effects::on_all_children_bits(
-                    self.tcx,
-                    self.body,
-                    self.move_data(),
-                    mpi,
-                    |mpi| trans.kill(mpi),
-                ),
-            }
-        }
+        // Kill all move paths that correspond to variants we know to be inactive along this
+        // particular outgoing edge of a `SwitchInt`.
+        drop_flag_effects::on_all_inactive_variants(
+            self.tcx,
+            self.body,
+            self.move_data(),
+            enum_place,
+            variant,
+            |mpi| trans.kill(mpi),
+        );
     }
 }
 
@@ -441,6 +442,30 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             |mpi| {
                 trans.kill(mpi);
             },
+        );
+    }
+
+    fn discriminant_switch_effect(
+        &self,
+        trans: &mut impl GenKill<Self::Idx>,
+        _block: mir::BasicBlock,
+        enum_place: mir::Place<'tcx>,
+        _adt: &ty::AdtDef,
+        variant: VariantIdx,
+    ) {
+        if !self.mark_inactive_variants_as_uninit {
+            return;
+        }
+
+        // Mark all move paths that correspond to variants other than this one as maybe
+        // uninitialized (in reality, they are *definitely* uninitialized).
+        drop_flag_effects::on_all_inactive_variants(
+            self.tcx,
+            self.body,
+            self.move_data(),
+            enum_place,
+            variant,
+            |mpi| trans.gen(mpi),
         );
     }
 }
