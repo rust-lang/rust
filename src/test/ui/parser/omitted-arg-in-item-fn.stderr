@@ -9,7 +9,7 @@ help: if this is a `self` type, give it a parameter name
    |
 LL | fn foo(self: x) {
    |        ^^^^^^^
-help: if this was a parameter name, give it a type
+help: if this is a parameter name, give it a type
    |
 LL | fn foo(x: TypeName) {
    |        ^^^^^^^^^^^
