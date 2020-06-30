@@ -2273,7 +2273,16 @@ impl<T: ?Sized> AsRef<T> for Arc<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Arc<T> {}
 
-/// Computes the offset of the data field within `ArcInner`.
+/// Get the offset within an `ArcInner` for
+/// a payload of type described by a pointer.
+///
+/// # Safety
+///
+/// This has the same safety requirements as `align_of_val_raw`. In effect:
+///
+/// - This function is safe for any argument if `T` is sized, and
+/// - if `T` is unsized, the pointer must have appropriate pointer metadata
+///   aquired from the real instance that you are getting this offset for.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Align the unsized value to the end of the `ArcInner`.
     // Because it is `?Sized`, it will always be the last field in memory.
