@@ -125,6 +125,7 @@ impl Rewrite for ast::Local {
 // FIXME convert to using rewrite style rather than visitor
 // FIXME format modules in this style
 #[allow(dead_code)]
+#[derive(Debug)]
 struct Item<'a> {
     unsafety: ast::Unsafe,
     abi: Cow<'static, str>,
@@ -153,6 +154,7 @@ impl<'a> Item<'a> {
     }
 }
 
+#[derive(Debug)]
 enum BodyElement<'a> {
     // Stmt(&'a ast::Stmt),
     // Field(&'a ast::Field),
@@ -174,26 +176,10 @@ pub(crate) struct FnSig<'a> {
 }
 
 impl<'a> FnSig<'a> {
-    pub(crate) fn new(
-        decl: &'a ast::FnDecl,
-        generics: &'a ast::Generics,
-        vis: ast::Visibility,
-    ) -> FnSig<'a> {
-        FnSig {
-            decl,
-            generics,
-            ext: ast::Extern::None,
-            is_async: Cow::Owned(ast::Async::No),
-            constness: ast::Const::No,
-            defaultness: ast::Defaultness::Final,
-            unsafety: ast::Unsafe::No,
-            visibility: vis,
-        }
-    }
-
     pub(crate) fn from_method_sig(
         method_sig: &'a ast::FnSig,
         generics: &'a ast::Generics,
+        visibility: ast::Visibility,
     ) -> FnSig<'a> {
         FnSig {
             unsafety: method_sig.header.unsafety,
@@ -203,7 +189,7 @@ impl<'a> FnSig<'a> {
             ext: method_sig.header.ext,
             decl: &*method_sig.decl,
             generics,
-            visibility: DEFAULT_VISIBILITY,
+            visibility,
         }
     }
 
@@ -216,9 +202,8 @@ impl<'a> FnSig<'a> {
         match *fn_kind {
             visit::FnKind::Fn(fn_ctxt, _, fn_sig, vis, _) => match fn_ctxt {
                 visit::FnCtxt::Assoc(..) => {
-                    let mut fn_sig = FnSig::from_method_sig(fn_sig, generics);
+                    let mut fn_sig = FnSig::from_method_sig(fn_sig, generics, vis.clone());
                     fn_sig.defaultness = defaultness;
-                    fn_sig.visibility = vis.clone();
                     fn_sig
                 }
                 _ => FnSig {
@@ -347,7 +332,7 @@ impl<'a> FmtVisitor<'a> {
             &context,
             indent,
             ident,
-            &FnSig::from_method_sig(sig, generics),
+            &FnSig::from_method_sig(sig, generics, DEFAULT_VISIBILITY),
             span,
             FnBraceStyle::None,
         )?;
@@ -3062,7 +3047,7 @@ impl Rewrite for ast::ForeignItem {
                 context,
                 shape.indent,
                 self.ident,
-                &FnSig::new(&fn_sig.decl, generics, self.vis.clone()),
+                &FnSig::from_method_sig(&fn_sig, generics, self.vis.clone()),
                 span,
                 FnBraceStyle::None,
             )
