@@ -481,7 +481,7 @@ impl<'a> WorkInfo<'a> {
             let target = cargo::core::compiler::CompileTarget::new(&target);
             if let Ok(target) = target {
                 let kind = cargo::core::compiler::CompileKind::Target(target);
-                opts.build_config.requested_kind = kind;
+                opts.build_config.requested_kinds = vec![kind];
             }
         }
 
@@ -526,7 +526,8 @@ impl<'a> WorkInfo<'a> {
         for i in &build_plan.invocations {
             if let Some(kind) = i.target_kind.get(0) {
                 if kind.contains("lib") && i.package_name == name {
-                    return Ok((i.outputs[0].clone(), compilation.deps_output));
+                    // FIXME(eddyb) handle multiple targets.
+                    return Ok((i.outputs[0].clone(), compilation.deps_output.into_iter().next().unwrap().1));
                 }
             }
         }

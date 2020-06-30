@@ -79,7 +79,7 @@ impl<'a, 'tcx> MismatchRelation<'a, 'tcx> {
             let old_ty = self.tcx.type_of(old_def_id);
             let new_ty = self.tcx.type_of(new_def_id);
             debug!("relating item pair");
-            let _ = self.relate(&old_ty, &new_ty);
+            let _ = self.relate(old_ty, new_ty);
         }
     }
 
@@ -118,13 +118,13 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _: ty::Variance,
-        a: &T,
-        b: &T,
+        a: T,
+        b: T,
     ) -> RelateResult<'tcx, T> {
         self.relate(a, b)
     }
 
-    fn relate<T: Relate<'tcx>>(&mut self, a: &T, b: &T) -> RelateResult<'tcx, T> {
+    fn relate<T: Relate<'tcx>>(&mut self, a: T, b: T) -> RelateResult<'tcx, T> {
         debug!("relate: mismatch relation: a: {:?}, b: {:?}", a, b);
         Relate::relate(self, a, b)
     }
@@ -135,7 +135,7 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
         use rustc_middle::ty::TyKind;
 
         if self.current_old_types.contains(a) || self.current_new_types.contains(b) {
-            return Ok(self.tcx.types.err);
+            return Ok(self.tcx.ty_error());
         }
 
         self.current_old_types.insert(a);
@@ -161,7 +161,7 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
                         {
                             let b_field_ty = b_field.ty(self.tcx, b_substs);
 
-                            let _ = self.relate(&a_field_ty, &b_field_ty)?;
+                            let _ = self.relate(a_field_ty, b_field_ty)?;
                         }
                     }
 
@@ -188,16 +188,16 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
             }
             (&TyKind::Array(a_t, _), &TyKind::Array(b_t, _))
             | (&TyKind::Slice(a_t), &TyKind::Slice(b_t)) => {
-                let _ = self.relate(&a_t, &b_t)?;
+                let _ = self.relate(a_t, b_t)?;
                 None
             }
             (&TyKind::RawPtr(a_mt), &TyKind::RawPtr(b_mt)) => {
-                let _ = self.relate(&a_mt, &b_mt)?;
+                let _ = self.relate(a_mt, b_mt)?;
                 None
             }
             (&TyKind::Ref(a_r, a_ty, _), &TyKind::Ref(b_r, b_ty, _)) => {
-                let _ = self.relate(&a_r, &b_r)?;
-                let _ = self.relate(&a_ty, &b_ty)?;
+                let _ = self.relate(a_r, b_r)?;
+                let _ = self.relate(a_ty, b_ty)?;
                 None
             }
             (&TyKind::FnDef(a_def_id, a_substs), &TyKind::FnDef(b_def_id, b_substs)) => {
@@ -214,17 +214,17 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
                 Some((a, b))
             }
             (&TyKind::FnPtr(a_fty), &TyKind::FnPtr(b_fty)) => {
-                let _ = self.relate(&a_fty, &b_fty)?;
+                let _ = self.relate(a_fty, b_fty)?;
                 None
             }
             (&TyKind::Dynamic(a_obj, a_r), &TyKind::Dynamic(b_obj, b_r)) => {
-                let _ = self.relate(&a_r, &b_r)?;
+                let _ = self.relate(a_r, b_r)?;
                 let a = a_obj.principal();
                 let b = b_obj.principal();
 
                 if let (Some(a), Some(b)) = (a, b) {
                     if self.check_substs(a.skip_binder().substs, b.skip_binder().substs) {
-                        let _ = self.relate(&a.skip_binder().substs, &b.skip_binder().substs)?;
+                        let _ = self.relate(a.skip_binder().substs, b.skip_binder().substs)?;
                         let a = Res::Def(DefKind::Trait, a.skip_binder().def_id);
                         let b = Res::Def(DefKind::Trait, b.skip_binder().def_id);
                         Some((a, b))
@@ -236,11 +236,11 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
                 }
             }
             (&TyKind::Tuple(as_), &TyKind::Tuple(bs)) => {
-                let _ = as_.iter().zip(bs).map(|(a, b)| self.relate(&a, &b));
+                let _ = as_.iter().zip(bs).map(|(a, b)| self.relate(a, b));
                 None
             }
             (&TyKind::Projection(a_data), &TyKind::Projection(b_data)) => {
-                let _ = self.relate(&a_data, &b_data)?;
+                let _ = self.relate(a_data, b_data)?;
 
                 let a = Res::Def(DefKind::AssocTy, a_data.item_def_id);
                 let b = Res::Def(DefKind::AssocTy, b_data.item_def_id);
@@ -279,7 +279,7 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
             }
         }
 
-        Ok(self.tcx.types.err)
+        Ok(self.tcx.ty_error())
     }
 
     fn regions(
@@ -300,8 +300,8 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
 
     fn binders<T: Relate<'tcx>>(
         &mut self,
-        a: &ty::Binder<T>,
-        b: &ty::Binder<T>,
+        a: ty::Binder<T>,
+        b: ty::Binder<T>,
     ) -> RelateResult<'tcx, ty::Binder<T>> {
         Ok(ty::Binder::bind(
             self.relate(a.skip_binder(), b.skip_binder())?,

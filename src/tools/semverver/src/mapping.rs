@@ -50,8 +50,7 @@ impl Hash for InherentEntry {
         match self.kind {
             AssocKind::Const => 0_u8.hash(hasher),
             AssocKind::Fn => 1_u8.hash(hasher),
-            AssocKind::OpaqueTy => 2_u8.hash(hasher),
-            AssocKind::Type => 3_u8.hash(hasher),
+            AssocKind::Type => 2_u8.hash(hasher),
         }
 
         self.name.hash(hasher);
@@ -366,8 +365,7 @@ impl NameMapping {
                 TraitAlias | // TODO: will need some handling later on
                 AssocTy |
                 TyParam |
-                OpaqueTy |
-                AssocOpaqueTy => Some(&mut self.type_map),
+                OpaqueTy => Some(&mut self.type_map),
                 Fn |
                 Const |
                 ConstParam |

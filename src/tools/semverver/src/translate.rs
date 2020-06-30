@@ -208,10 +208,10 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
                         let res: Vec<_> = preds
                             .iter()
                             .map(|p| {
-                                match *p.skip_binder() {
+                                match p.skip_binder() {
                                     Trait(existential_trait_ref) => {
                                         let trait_ref = Binder::bind(existential_trait_ref)
-                                            .with_self_ty(self.tcx, self.tcx.types.err);
+                                            .with_self_ty(self.tcx, self.tcx.ty_error());
                                         let did = trait_ref.skip_binder().def_id;
                                         let substs = trait_ref.skip_binder().substs;
 
@@ -234,7 +234,7 @@ impl<'a, 'tcx> TranslationContext<'a, 'tcx> {
                                     }
                                     Projection(existential_projection) => {
                                         let projection_pred = Binder::bind(existential_projection)
-                                            .with_self_ty(self.tcx, self.tcx.types.err);
+                                            .with_self_ty(self.tcx, self.tcx.ty_error());
                                         let item_def_id =
                                             projection_pred.skip_binder().projection_ty.item_def_id;
                                         let substs =
@@ -561,7 +561,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceCleanupFolder<'a, 'tcx> {
                     .tcx
                     .mk_ref(self.infcx.tcx.lifetimes.re_erased, ty_and_mut)
             }
-            TyKind::Infer(_) => self.infcx.tcx.mk_ty(TyKind::Error),
+            TyKind::Infer(_) => self.infcx.tcx.ty_error(),
             _ => t1,
         }
     }
