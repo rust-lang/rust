@@ -414,7 +414,10 @@ impl Once {
                     };
                     // Run the initialization function, letting it know if we're
                     // poisoned or not.
-                    let init_state = OnceState { poisoned: state_and_queue == POISONED, set_state_on_drop_to: Cell::new(COMPLETE) };
+                    let init_state = OnceState {
+                        poisoned: state_and_queue == POISONED,
+                        set_state_on_drop_to: Cell::new(COMPLETE),
+                    };
                     init(&init_state);
                     waiter_queue.set_state_on_drop_to = init_state.set_state_on_drop_to.get();
                     break;

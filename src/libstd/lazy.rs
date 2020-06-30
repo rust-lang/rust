@@ -116,10 +116,7 @@ impl<T> SyncOnceCell<T> {
     /// Creates a new empty cell.
     #[unstable(feature = "once_cell", issue = "68198")]
     pub const fn new() -> SyncOnceCell<T> {
-        SyncOnceCell {
-            once: Once::new(),
-            value: UnsafeCell::new(MaybeUninit::uninit()),
-        }
+        SyncOnceCell { once: Once::new(), value: UnsafeCell::new(MaybeUninit::uninit()) }
     }
 
     /// Gets the reference to the underlying value.
