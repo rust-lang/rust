@@ -1479,7 +1479,7 @@ impl<T> Weak<T> {
         // because dangling weaks are only created for sized T. wrapping_offset
         // is used so that we can use the same code path for dangling weak refs.
         unsafe {
-            let offset = data_offset(&raw const (*ptr).data);
+            let offset = data_offset(fake_ptr);
             set_data_ptr(fake_ptr, (ptr as *mut u8).wrapping_offset(offset))
         }
     }
