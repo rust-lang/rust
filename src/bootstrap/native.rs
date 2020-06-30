@@ -420,6 +420,9 @@ fn configure_cmake(
     if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push_str(&format!(" {}", s));
     }
+    if target.contains("apple-ios") {
+        cflags.push_str(" -miphoneos-version-min=10.0");
+    }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
     if builder.config.llvm_static_stdcpp && !target.contains("msvc") && !target.contains("netbsd") {
