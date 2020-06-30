@@ -1,7 +1,5 @@
 //! impl char {}
 
-#![deny(unsafe_op_in_unsafe_fn)]
-
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;

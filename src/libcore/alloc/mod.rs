@@ -1,7 +1,6 @@
 //! Memory allocation APIs
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
-#![deny(unsafe_op_in_unsafe_fn)]
 
 mod global;
 mod layout;

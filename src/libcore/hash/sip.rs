@@ -1,7 +1,6 @@
 //! An implementation of SipHash.
 
 #![allow(deprecated)] // the types in this module are deprecated
-#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::cmp;
 use crate::marker::PhantomData;

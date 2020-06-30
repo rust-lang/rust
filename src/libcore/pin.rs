@@ -375,7 +375,6 @@
 //! [`i32`]: ../../std/primitive.i32.html
 
 #![stable(feature = "pin", since = "1.33.0")]
-#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::cmp::{self, PartialEq, PartialOrd};
 use crate::fmt;

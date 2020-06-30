@@ -53,7 +53,6 @@
     issue = "none"
 )]
 #![allow(missing_docs)]
-#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::marker::DiscriminantKind;
 use crate::mem;

@@ -1,7 +1,5 @@
 //! Character conversions.
 
-#![deny(unsafe_op_in_unsafe_fn)]
-
 use crate::convert::TryFrom;
 use crate::fmt;
 use crate::mem::transmute;

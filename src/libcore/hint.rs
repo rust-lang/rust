@@ -2,8 +2,6 @@
 
 //! Hints to compiler that affects how code should be emitted or optimized.
 
-#![deny(unsafe_op_in_unsafe_fn)]
-
 use crate::intrinsics;
 
 /// Informs the compiler that this point in the code is not reachable, enabling

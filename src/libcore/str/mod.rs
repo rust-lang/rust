@@ -7,7 +7,6 @@
 //! [`std::str`]: ../../std/str/index.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![deny(unsafe_op_in_unsafe_fn)]
 
 use self::pattern::Pattern;
 use self::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};

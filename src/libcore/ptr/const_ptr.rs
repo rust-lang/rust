@@ -95,7 +95,9 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
-        if self.is_null() { None } else { Some(&*self) }
+        // SAFETY: the caller must guarantee that `self` is valid
+        // for a reference if it isn't null.
+        if self.is_null() { None } else { unsafe { Some(&*self) } }
     }
 
     /// Calculates the offset from a pointer.
@@ -157,7 +159,8 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        intrinsics::offset(self, count)
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        unsafe { intrinsics::offset(self, count) }
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -292,7 +295,8 @@ impl<T: ?Sized> *const T {
     {
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
-        intrinsics::ptr_offset_from(self, origin)
+        // SAFETY: the caller must uphold the safety contract for `ptr_offset_from`.
+        unsafe { intrinsics::ptr_offset_from(self, origin) }
     }
 
     /// Returns whether two pointers are guaranteed to be equal.
@@ -471,7 +475,8 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        self.offset(count as isize)
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        unsafe { self.offset(count as isize) }
     }
 
     /// Calculates the offset from a pointer (convenience for
@@ -534,7 +539,8 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        self.offset((count as isize).wrapping_neg())
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        unsafe { self.offset((count as isize).wrapping_neg()) }
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -663,7 +669,8 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        read(self)
+        // SAFETY: the caller must uphold the safety contract for `read`.
+        unsafe { read(self) }
     }
 
     /// Performs a volatile read of the value from `self` without moving it. This
@@ -682,7 +689,8 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        read_volatile(self)
+        // SAFETY: the caller must uphold the safety contract for `read_volatile`.
+        unsafe { read_volatile(self) }
     }
 
     /// Reads the value from `self` without moving it. This leaves the
@@ -699,7 +707,8 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        read_unaligned(self)
+        // SAFETY: the caller must uphold the safety contract for `read_unaligned`.
+        unsafe { read_unaligned(self) }
     }
 
     /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
@@ -716,7 +725,8 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        copy(self, dest, count)
+        // SAFETY: the caller must uphold the safety contract for `copy`.
+        unsafe { copy(self, dest, count) }
     }
 
     /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
@@ -733,7 +743,8 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        copy_nonoverlapping(self, dest, count)
+        // SAFETY: the caller must uphold the safety contract for `copy_nonoverlapping`.
+        unsafe { copy_nonoverlapping(self, dest, count) }
     }
 
     /// Computes the offset that needs to be applied to the pointer in order to make it aligned to

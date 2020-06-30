@@ -115,7 +115,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![cfg_attr(not(target_has_atomic_load_store = "8"), allow(dead_code))]
 #![cfg_attr(not(target_has_atomic_load_store = "8"), allow(unused_imports))]
-#![deny(unsafe_op_in_unsafe_fn)]
 
 use self::Ordering::*;
 

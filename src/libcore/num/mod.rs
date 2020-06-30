@@ -3,7 +3,6 @@
 //! Numeric traits and functions for the built-in numeric types.
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::convert::Infallible;
 use crate::fmt;

@@ -1,6 +1,5 @@
 #![stable(feature = "", since = "1.30.0")]
 #![allow(non_camel_case_types)]
-#![deny(unsafe_op_in_unsafe_fn)]
 
 //! Utilities related to FFI bindings.
 
