@@ -34,3 +34,11 @@ type Foo<const N: usize> = [i32; N + 1];
 pub trait Foo: Bar<{Baz::COUNT}> {
 	const ASD: usize;
 }
+
+// #4263
+fn const_generics_on_params<
+    // AAAA
+        const BBBB: usize,
+    /* CCCC */
+    const DDDD: usize,
+    >() {}
