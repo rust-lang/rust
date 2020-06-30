@@ -931,8 +931,9 @@ impl<'a> CrateLoader<'a> {
                     diag,
                 );
         }
-        // FIXME: add gating
-        self.sess.parse_sess.span_diagnostic.emit_unused_externs(&unused_externs);
+        if self.sess.opts.json_unused_externs {
+            self.sess.parse_sess.span_diagnostic.emit_unused_externs(&unused_externs);
+        }
     }
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {

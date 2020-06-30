@@ -147,6 +147,9 @@ top_level_options!(
         // by the compiler.
         json_artifact_notifications: bool [TRACKED],
 
+        // `true` if we're emitting a JSON blob containing the unused externs
+        json_unused_externs: bool [UNTRACKED],
+
         pretty: Option<PpMode> [UNTRACKED],
     }
 );
