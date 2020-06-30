@@ -1,6 +1,8 @@
 //! Describes items defined or visible (ie, imported) in a certain scope.
 //! This is shared between modules and blocks.
 
+use std::collections::hash_map::Entry;
+
 use hir_expand::name::Name;
 use once_cell::sync::Lazy;
 use ra_db::CrateId;
@@ -27,7 +29,11 @@ pub struct PerNsGlobImports {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ItemScope {
-    visible: FxHashMap<Name, PerNs>,
+    types: FxHashMap<Name, (ModuleDefId, Visibility)>,
+    values: FxHashMap<Name, (ModuleDefId, Visibility)>,
+    macros: FxHashMap<Name, (MacroDefId, Visibility)>,
+    unresolved: FxHashSet<Name>,
+
     defs: Vec<ModuleDefId>,
     impls: Vec<ImplId>,
     /// Macros visible in current module in legacy textual scope
@@ -65,14 +71,16 @@ pub(crate) enum BuiltinShadowMode {
 /// Other methods will only resolve values, types and module scoped macros only.
 impl ItemScope {
     pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, PerNs)> + 'a {
-        //FIXME: shadowing
-        self.visible.iter().map(|(n, def)| (n, *def))
-    }
+        // FIXME: shadowing
+        let keys: FxHashSet<_> = self
+            .types
+            .keys()
+            .chain(self.values.keys())
+            .chain(self.macros.keys())
+            .chain(self.unresolved.iter())
+            .collect();
 
-    pub fn entries_without_primitives<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (&'a Name, PerNs)> + 'a {
-        self.visible.iter().map(|(n, def)| (n, *def))
+        keys.into_iter().map(move |name| (name, self.get(name)))
     }
 
     pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {
@@ -91,7 +99,7 @@ impl ItemScope {
 
     /// Iterate over all module scoped macros
     pub(crate) fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
-        self.visible.iter().filter_map(|(name, def)| def.take_macros().map(|macro_| (name, macro_)))
+        self.entries().filter_map(|(name, def)| def.take_macros().map(|macro_| (name, macro_)))
     }
 
     /// Iterate over all legacy textual scoped macros visible at the end of the module
@@ -101,12 +109,16 @@ impl ItemScope {
 
     /// Get a name from current module scope, legacy macros are not included
     pub(crate) fn get(&self, name: &Name) -> PerNs {
-        self.visible.get(name).copied().unwrap_or_else(PerNs::none)
+        PerNs {
+            types: self.types.get(name).copied(),
+            values: self.values.get(name).copied(),
+            macros: self.macros.get(name).copied(),
+        }
     }
 
     pub(crate) fn name_of(&self, item: ItemInNs) -> Option<(&Name, Visibility)> {
-        for (name, per_ns) in &self.visible {
-            if let Some(vis) = item.match_with(*per_ns) {
+        for (name, per_ns) in self.entries() {
+            if let Some(vis) = item.match_with(per_ns) {
                 return Some((name, vis));
             }
         }
@@ -114,8 +126,8 @@ impl ItemScope {
     }
 
     pub(crate) fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {
-        self.visible.values().filter_map(|def| match def.take_types() {
-            Some(ModuleDefId::TraitId(t)) => Some(t),
+        self.types.values().filter_map(|(def, _)| match def {
+            ModuleDefId::TraitId(t) => Some(*t),
             _ => None,
         })
     }
@@ -138,21 +150,30 @@ impl ItemScope {
 
     pub(crate) fn push_res(&mut self, name: Name, def: PerNs) -> bool {
         let mut changed = false;
-        let existing = self.visible.entry(name).or_default();
 
-        if existing.types.is_none() && def.types.is_some() {
-            existing.types = def.types;
-            changed = true;
+        if let Some(types) = def.types {
+            self.types.entry(name.clone()).or_insert_with(|| {
+                changed = true;
+                types
+            });
+        }
+        if let Some(values) = def.values {
+            self.values.entry(name.clone()).or_insert_with(|| {
+                changed = true;
+                values
+            });
+        }
+        if let Some(macros) = def.macros {
+            self.macros.entry(name.clone()).or_insert_with(|| {
+                changed = true;
+                macros
+            });
         }
 
-        if existing.values.is_none() && def.values.is_some() {
-            existing.values = def.values;
-            changed = true;
-        }
-
-        if existing.macros.is_none() && def.macros.is_some() {
-            existing.macros = def.macros;
-            changed = true;
+        if def.is_none() {
+            if self.unresolved.insert(name) {
+                changed = true;
+            }
         }
 
         changed
@@ -166,17 +187,17 @@ impl ItemScope {
         def_import_type: ImportType,
     ) -> bool {
         let mut changed = false;
-        let existing = self.visible.entry(lookup.1.clone()).or_default();
 
         macro_rules! check_changed {
             (
                 $changed:ident,
-                ( $existing:ident / $def:ident ) . $field:ident,
+                ( $this:ident / $def:ident ) . $field:ident,
                 $glob_imports:ident [ $lookup:ident ],
                 $def_import_type:ident
-            ) => {
-                match ($existing.$field, $def.$field) {
-                    (None, Some(_)) => {
+            ) => {{
+                let existing = $this.$field.entry($lookup.1.clone());
+                match (existing, $def.$field) {
+                    (Entry::Vacant(entry), Some(_)) => {
                         match $def_import_type {
                             ImportType::Glob => {
                                 $glob_imports.$field.insert($lookup.clone());
@@ -186,32 +207,42 @@ impl ItemScope {
                             }
                         }
 
-                        $existing.$field = $def.$field;
+                        if let Some(fld) = $def.$field {
+                            entry.insert(fld);
+                        }
                         $changed = true;
                     }
-                    (Some(_), Some(_))
+                    (Entry::Occupied(mut entry), Some(_))
                         if $glob_imports.$field.contains(&$lookup)
                             && matches!($def_import_type, ImportType::Named) =>
                     {
                         mark::hit!(import_shadowed);
                         $glob_imports.$field.remove(&$lookup);
-                        $existing.$field = $def.$field;
+                        if let Some(fld) = $def.$field {
+                            entry.insert(fld);
+                        }
                         $changed = true;
                     }
                     _ => {}
                 }
-            };
+            }};
         }
 
-        check_changed!(changed, (existing / def).types, glob_imports[lookup], def_import_type);
-        check_changed!(changed, (existing / def).values, glob_imports[lookup], def_import_type);
-        check_changed!(changed, (existing / def).macros, glob_imports[lookup], def_import_type);
+        check_changed!(changed, (self / def).types, glob_imports[lookup], def_import_type);
+        check_changed!(changed, (self / def).values, glob_imports[lookup], def_import_type);
+        check_changed!(changed, (self / def).macros, glob_imports[lookup], def_import_type);
+
+        if def.is_none() {
+            if self.unresolved.insert(lookup.1) {
+                changed = true;
+            }
+        }
 
         changed
     }
 
     pub(crate) fn resolutions<'a>(&'a self) -> impl Iterator<Item = (Name, PerNs)> + 'a {
-        self.visible.iter().map(|(name, res)| (name.clone(), *res))
+        self.entries().map(|(name, res)| (name.clone(), res))
     }
 
     pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroDefId> {
