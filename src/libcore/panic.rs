@@ -190,7 +190,6 @@ impl<'a> Location<'a> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(track_caller)]
     /// use core::panic::Location;
     ///
     /// /// Returns the [`Location`] at which it is called.
@@ -206,7 +205,7 @@ impl<'a> Location<'a> {
     ///
     /// let fixed_location = get_just_one_location();
     /// assert_eq!(fixed_location.file(), file!());
-    /// assert_eq!(fixed_location.line(), 15);
+    /// assert_eq!(fixed_location.line(), 14);
     /// assert_eq!(fixed_location.column(), 5);
     ///
     /// // running the same untracked function in a different location gives us the same result
@@ -217,7 +216,7 @@ impl<'a> Location<'a> {
     ///
     /// let this_location = get_caller_location();
     /// assert_eq!(this_location.file(), file!());
-    /// assert_eq!(this_location.line(), 29);
+    /// assert_eq!(this_location.line(), 28);
     /// assert_eq!(this_location.column(), 21);
     ///
     /// // running the tracked function in a different location produces a different value
@@ -226,13 +225,8 @@ impl<'a> Location<'a> {
     /// assert_ne!(this_location.line(), another_location.line());
     /// assert_ne!(this_location.column(), another_location.column());
     /// ```
-    // FIXME: When stabilizing this method, please also update the documentation
-    // of `intrinsics::caller_location`.
-    #[unstable(
-        feature = "track_caller",
-        reason = "uses #[track_caller] which is not yet stable",
-        issue = "47809"
-    )]
+    #[stable(feature = "track_caller", since = "1.46.0")]
+    #[rustc_const_unstable(feature = "const_caller_location", issue = "47809")]
     #[track_caller]
     pub const fn caller() -> &'static Location<'static> {
         crate::intrinsics::caller_location()

@@ -494,10 +494,6 @@ declare_features! (
     /// Allows the use of raw-dylibs (RFC 2627).
     (active, raw_dylib, "1.40.0", Some(58713), None),
 
-    /// Allows `#[track_caller]` to be used which provides
-    /// accurate caller location reporting during panic (RFC 2091).
-    (active, track_caller, "1.40.0", Some(47809), None),
-
     /// Allows making `dyn Trait` well-formed even if `Trait` is not object safe.
     /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.

@@ -1,11 +1,11 @@
 error[E0737]: `#[track_caller]` requires Rust ABI
-  --> $DIR/error-with-invalid-abi.rs:3:1
+  --> $DIR/error-with-invalid-abi.rs:1:1
    |
 LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
 error[E0737]: `#[track_caller]` requires Rust ABI
-  --> $DIR/error-with-invalid-abi.rs:8:5
+  --> $DIR/error-with-invalid-abi.rs:6:5
    |
 LL |     #[track_caller]
    |     ^^^^^^^^^^^^^^^

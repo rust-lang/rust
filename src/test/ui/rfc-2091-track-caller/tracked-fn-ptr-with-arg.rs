@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(track_caller)]
-
 fn pass_to_ptr_call<T>(f: fn(T), x: T) {
     f(x);
 }

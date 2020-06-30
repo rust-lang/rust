@@ -5,7 +5,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
-#![feature(track_caller)]
+#![cfg_attr(bootstrap, feature(track_caller))]
 
 pub use emitter::ColorConfig;
 
