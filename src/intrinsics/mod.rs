@@ -471,7 +471,26 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             assert_eq!(args.len(), 3);
             let byte_amount = fx.bcx.ins().imul(count, elem_size);
 
-            if intrinsic.ends_with("_nonoverlapping") {
+            if intrinsic.contains("nonoverlapping") {
+                // FIXME emit_small_memcpy
+                fx.bcx.call_memcpy(fx.module.target_config(), dst, src, byte_amount);
+            } else {
+                // FIXME emit_small_memmove
+                fx.bcx.call_memmove(fx.module.target_config(), dst, src, byte_amount);
+            }
+        };
+        // NOTE: the volatile variants have src and dst swapped
+        volatile_copy_memory | volatile_copy_nonoverlapping_memory, <elem_ty> (v dst, v src, v count) {
+            let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
+            let elem_size = fx
+                .bcx
+                .ins()
+                .iconst(fx.pointer_type, elem_size as i64);
+            assert_eq!(args.len(), 3);
+            let byte_amount = fx.bcx.ins().imul(count, elem_size);
+
+            // FIXME make the copy actually volatile when using emit_small_mem{cpy,move}
+            if intrinsic.contains("nonoverlapping") {
                 // FIXME emit_small_memcpy
                 fx.bcx.call_memcpy(fx.module.target_config(), dst, src, byte_amount);
             } else {
@@ -633,11 +652,13 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         transmute, (c from) {
             ret.write_cvalue_transmute(fx, from);
         };
-        write_bytes, (c dst, v val, v count) {
+        write_bytes | volatile_set_memory, (c dst, v val, v count) {
             let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap().ty;
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
             let count = fx.bcx.ins().imul_imm(count, pointee_size as i64);
             let dst_ptr = dst.load_scalar(fx);
+            // FIXME make the memset actually volatile when switching to emit_small_memset
+            // FIXME use emit_small_memset
             fx.bcx.call_memset(fx.module.target_config(), dst_ptr, val, count);
         };
         ctlz | ctlz_nonzero, <T> (v arg) {
@@ -812,7 +833,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let pointee_size: u64 = fx.layout_of(T).size.bytes();
             let diff = fx.bcx.ins().isub(ptr, base);
             // FIXME this can be an exact division.
-            let val = CValue::by_val(fx.bcx.ins().udiv_imm(diff, pointee_size as i64), isize_layout);
+            let val = CValue::by_val(fx.bcx.ins().sdiv_imm(diff, pointee_size as i64), isize_layout);
             ret.write_cvalue(fx, val);
         };
 
@@ -965,6 +986,28 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
             let ret_val = CValue::const_val(fx, ret.layout(), 0);
             ret.write_cvalue(fx, ret_val);
+        };
+
+        fadd_fast | fsub_fast | fmul_fast | fdiv_fast | frem_fast, (c x, c y) {
+            let res = crate::num::trans_float_binop(fx, match intrinsic {
+                "fadd_fast" => BinOp::Add,
+                "fsub_fast" => BinOp::Sub,
+                "fmul_fast" => BinOp::Mul,
+                "fdiv_fast" => BinOp::Div,
+                "frem_fast" => BinOp::Rem,
+                _ => unreachable!(),
+            }, x, y);
+            ret.write_cvalue(fx, res);
+        };
+        float_to_int_unchecked, (v f) {
+            let res = crate::cast::clif_int_or_float_cast(
+                fx,
+                f,
+                false,
+                fx.clif_type(ret.layout().ty).unwrap(),
+                type_sign(ret.layout().ty),
+            );
+            ret.write_cvalue(fx, CValue::by_val(res, ret.layout()));
         };
     }
 

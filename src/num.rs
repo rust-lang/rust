@@ -168,16 +168,18 @@ pub(crate) fn trans_int_binop<'tcx>(
         BinOp::BitOr => b.bor(lhs, rhs),
         BinOp::Shl => {
             let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
-            let rhs = clif_intcast(fx, rhs, lhs_ty, false);
-            fx.bcx.ins().ishl(lhs, rhs)
+            let actual_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
+            let actual_shift = clif_intcast(fx, actual_shift, types::I8, false);
+            fx.bcx.ins().ishl(lhs, actual_shift)
         }
         BinOp::Shr => {
             let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
-            let rhs = clif_intcast(fx, rhs, lhs_ty, false);
+            let actual_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
+            let actual_shift = clif_intcast(fx, actual_shift, types::I8, false);
             if signed {
-                fx.bcx.ins().sshr(lhs, rhs)
+                fx.bcx.ins().sshr(lhs, actual_shift)
             } else {
-                fx.bcx.ins().ushr(lhs, rhs)
+                fx.bcx.ins().ushr(lhs, actual_shift)
             }
         }
         // Compare binops handles by `codegen_binop`.
@@ -283,7 +285,10 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
             }
         }
         BinOp::Shl => {
-            let val = fx.bcx.ins().ishl(lhs, rhs);
+            let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
+            let actual_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
+            let actual_shift = clif_intcast(fx, actual_shift, types::I8, false);
+            let val = fx.bcx.ins().ishl(lhs, actual_shift);
             let ty = fx.bcx.func.dfg.value_type(val);
             let max_shift = i64::from(ty.bits()) - 1;
             let has_overflow =
@@ -291,10 +296,13 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
             (val, has_overflow)
         }
         BinOp::Shr => {
+            let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
+            let actual_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
+            let actual_shift = clif_intcast(fx, actual_shift, types::I8, false);
             let val = if !signed {
-                fx.bcx.ins().ushr(lhs, rhs)
+                fx.bcx.ins().ushr(lhs, actual_shift)
             } else {
-                fx.bcx.ins().sshr(lhs, rhs)
+                fx.bcx.ins().sshr(lhs, actual_shift)
             };
             let ty = fx.bcx.func.dfg.value_type(val);
             let max_shift = i64::from(ty.bits()) - 1;
