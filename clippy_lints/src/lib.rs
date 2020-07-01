@@ -460,7 +460,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     );
     store.register_removed(
         "clippy::replace_consts",
-        "associated-constants `MIN`/`MAX` of integers are prefer to `{min,max}_value()` and module constants",
+        "associated-constants `MIN`/`MAX` of integers are prefered to `{min,max}_value()` and module constants",
+    );
+    store.register_removed(
+        "clippy::regex_macro",
+        "the regex! macro has been removed from the regex crate in 2018",
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
@@ -755,7 +759,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &reference::DEREF_ADDROF,
         &reference::REF_IN_DEREF,
         &regex::INVALID_REGEX,
-        &regex::REGEX_MACRO,
         &regex::TRIVIAL_REGEX,
         &returns::NEEDLESS_RETURN,
         &returns::UNUSED_UNIT,
@@ -1380,7 +1383,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&reference::DEREF_ADDROF),
         LintId::of(&reference::REF_IN_DEREF),
         LintId::of(&regex::INVALID_REGEX),
-        LintId::of(&regex::REGEX_MACRO),
         LintId::of(&regex::TRIVIAL_REGEX),
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
@@ -1517,7 +1519,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(&redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING),
         LintId::of(&redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
-        LintId::of(&regex::REGEX_MACRO),
         LintId::of(&regex::TRIVIAL_REGEX),
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),

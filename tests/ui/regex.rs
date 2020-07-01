@@ -1,5 +1,5 @@
 #![allow(unused)]
-#![warn(clippy::invalid_regex, clippy::trivial_regex, clippy::regex_macro)]
+#![warn(clippy::invalid_regex, clippy::trivial_regex)]
 
 extern crate regex;
 

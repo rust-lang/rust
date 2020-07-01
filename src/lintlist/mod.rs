@@ -1866,13 +1866,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "reference",
     },
     Lint {
-        name: "regex_macro",
-        group: "style",
-        desc: "use of `regex!(_)` instead of `Regex::new(_)`",
-        deprecation: None,
-        module: "regex",
-    },
-    Lint {
         name: "rest_pat_in_fully_bound_structs",
         group: "restriction",
         desc: "a match on a struct that binds all fields but still uses the wildcard pattern",
