@@ -14,7 +14,7 @@ use once_cell::sync::Lazy;
 use stdx::{lines_with_ends, trim_indent};
 
 const HELP: &str = "
-You can update all `expect![[]]` tests by:
+You can update all `expect![[]]` tests by running:
 
     env UPDATE_EXPECT=1 cargo test
 
@@ -25,24 +25,35 @@ fn update_expect() -> bool {
     env::var("UPDATE_EXPECT").is_ok()
 }
 
-/// expect![[""]]
+/// expect![[r#"inline snapshot"#]]
 #[macro_export]
 macro_rules! expect {
-    [[$lit:literal]] => {$crate::Expect {
+    [[$data:literal]] => {$crate::Expect {
         position: $crate::Position {
             file: file!(),
             line: line!(),
             column: column!(),
         },
-        data: $lit,
+        data: $data,
     }};
     [[]] => { $crate::expect![[""]] };
+}
+
+/// expect_file!["/crates/foo/test_data/foo.rs"]
+#[macro_export]
+macro_rules! expect_file {
+    [$path:literal] => {$crate::ExpectFile { path: $path }};
 }
 
 #[derive(Debug)]
 pub struct Expect {
     pub position: Position,
     pub data: &'static str,
+}
+
+#[derive(Debug)]
+pub struct ExpectFile {
+    pub path: &'static str,
 }
 
 #[derive(Debug)]
@@ -64,7 +75,7 @@ impl Expect {
         if &trimmed == actual {
             return;
         }
-        Runtime::fail(self, &trimmed, actual);
+        Runtime::fail_expect(self, &trimmed, actual);
     }
     pub fn assert_debug_eq(&self, actual: &impl fmt::Debug) {
         let actual = format!("{:#?}\n", actual);
@@ -100,6 +111,25 @@ impl Expect {
     }
 }
 
+impl ExpectFile {
+    pub fn assert_eq(&self, actual: &str) {
+        let expected = self.read();
+        if actual == expected {
+            return;
+        }
+        Runtime::fail_file(self, &expected, actual);
+    }
+    fn read(&self) -> String {
+        fs::read_to_string(self.abs_path()).unwrap_or_default().replace("\r\n", "\n")
+    }
+    fn write(&self, contents: &str) {
+        fs::write(self.abs_path(), contents).unwrap()
+    }
+    fn abs_path(&self) -> PathBuf {
+        workspace_root().join(self.path)
+    }
+}
+
 #[derive(Default)]
 struct Runtime {
     help_printed: bool,
@@ -108,7 +138,7 @@ struct Runtime {
 static RT: Lazy<Mutex<Runtime>> = Lazy::new(Default::default);
 
 impl Runtime {
-    fn fail(expect: &Expect, expected: &str, actual: &str) {
+    fn fail_expect(expect: &Expect, expected: &str, actual: &str) {
         let mut rt = RT.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if update_expect() {
             println!("\x1b[1m\x1b[92mupdating\x1b[0m: {}", expect.position);
@@ -118,7 +148,21 @@ impl Runtime {
                 .update(expect, actual);
             return;
         }
-        let print_help = !mem::replace(&mut rt.help_printed, true);
+        rt.panic(expect.position.to_string(), expected, actual);
+    }
+
+    fn fail_file(expect: &ExpectFile, expected: &str, actual: &str) {
+        let mut rt = RT.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        if update_expect() {
+            println!("\x1b[1m\x1b[92mupdating\x1b[0m: {}", expect.path);
+            expect.write(actual);
+            return;
+        }
+        rt.panic(expect.path.to_string(), expected, actual);
+    }
+
+    fn panic(&mut self, position: String, expected: &str, actual: &str) {
+        let print_help = !mem::replace(&mut self.help_printed, true);
         let help = if print_help { HELP } else { "" };
 
         let diff = Changeset::new(actual, expected, "\n");
@@ -143,7 +187,7 @@ impl Runtime {
 {}
 ----
 ",
-            expect.position, help, expected, actual, diff
+            position, help, expected, actual, diff
         );
         // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
         panic::resume_unwind(Box::new(()));
