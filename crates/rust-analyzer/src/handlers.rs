@@ -1045,7 +1045,7 @@ pub(crate) fn handle_call_hierarchy_incoming(
     let item = params.item;
 
     let doc = TextDocumentIdentifier::new(item.uri);
-    let frange = from_proto::file_range(&snap, doc, item.range)?;
+    let frange = from_proto::file_range(&snap, doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
     let call_items = match snap.analysis.incoming_calls(fpos)? {
@@ -1080,7 +1080,7 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let item = params.item;
 
     let doc = TextDocumentIdentifier::new(item.uri);
-    let frange = from_proto::file_range(&snap, doc, item.range)?;
+    let frange = from_proto::file_range(&snap, doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
     let call_items = match snap.analysis.outgoing_calls(fpos)? {
