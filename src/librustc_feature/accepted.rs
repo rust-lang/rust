@@ -262,9 +262,9 @@ declare_features! (
     /// Allows using subslice patterns, `[a, .., b]` and `[a, xs @ .., b]`.
     (accepted, slice_patterns, "1.42.0", Some(62254), None),
     /// Allows the use of `if` and `match` in constants.
-    (accepted, const_if_match, "1.45.0", Some(49146), None),
+    (accepted, const_if_match, "1.46.0", Some(49146), None),
     /// Allows the use of `loop` and `while` in constants.
-    (accepted, const_loop, "1.45.0", Some(52000), None),
+    (accepted, const_loop, "1.46.0", Some(52000), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
