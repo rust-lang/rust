@@ -1684,7 +1684,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
         let generics =
-            self.in_progress_tables.and_then(|table| table.borrow().hir_owner).map(|table_owner| {
+            self.in_progress_tables.map(|table| table.borrow().hir_owner).map(|table_owner| {
                 let hir_id = hir.as_local_hir_id(table_owner);
                 let parent_id = hir.get_parent_item(hir_id);
                 (

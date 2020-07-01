@@ -109,12 +109,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     ) -> WritebackCx<'cx, 'tcx> {
         let owner = body.id().hir_id.owner;
 
-        WritebackCx {
-            fcx,
-            tables: ty::TypeckTables::empty(Some(owner)),
-            body,
-            rustc_dump_user_substs,
-        }
+        WritebackCx { fcx, tables: ty::TypeckTables::new(owner), body, rustc_dump_user_substs }
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -342,7 +337,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_closures(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
         assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
-        let common_hir_owner = fcx_tables.hir_owner.unwrap();
+        let common_hir_owner = fcx_tables.hir_owner;
 
         for (&id, &origin) in fcx_tables.closure_kind_origins().iter() {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id: id };
@@ -363,7 +358,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_user_provided_tys(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
         assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
-        let common_hir_owner = fcx_tables.hir_owner.unwrap();
+        let common_hir_owner = fcx_tables.hir_owner;
 
         let mut errors_buffer = Vec::new();
         for (&local_id, c_ty) in fcx_tables.user_provided_types().iter() {
@@ -561,7 +556,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_liberated_fn_sigs(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
         assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
-        let common_hir_owner = fcx_tables.hir_owner.unwrap();
+        let common_hir_owner = fcx_tables.hir_owner;
 
         for (&local_id, fn_sig) in fcx_tables.liberated_fn_sigs().iter() {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
@@ -573,7 +568,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_fru_field_types(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
         assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
-        let common_hir_owner = fcx_tables.hir_owner.unwrap();
+        let common_hir_owner = fcx_tables.hir_owner;
 
         for (&local_id, ftys) in fcx_tables.fru_field_types().iter() {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
