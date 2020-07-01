@@ -513,6 +513,7 @@ impl<T> RawTable<T> {
 
     /// Erases an element from the table, dropping it in place.
     #[cfg_attr(feature = "inline-more", inline)]
+    #[allow(clippy::needless_pass_by_value)]
     pub unsafe fn erase(&mut self, item: Bucket<T>) {
         // Erase the element from the table first since drop might panic.
         self.erase_no_drop(&item);
@@ -521,6 +522,7 @@ impl<T> RawTable<T> {
 
     /// Removes an element from the table, returning it.
     #[cfg_attr(feature = "inline-more", inline)]
+    #[allow(clippy::needless_pass_by_value)]
     pub unsafe fn remove(&mut self, item: Bucket<T>) -> T {
         self.erase_no_drop(&item);
         item.read()
