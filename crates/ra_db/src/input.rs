@@ -67,7 +67,7 @@ pub struct CrateGraph {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateName(SmolStr);
 
 impl CrateName {
@@ -94,6 +94,13 @@ impl fmt::Display for CrateName {
     }
 }
 
+impl ops::Deref for CrateName {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProcMacroId(pub u32);
 
@@ -117,7 +124,7 @@ pub struct CrateData {
     /// The name to display to the end user.
     /// This actual crate name can be different in a particular dependent crate
     /// or may even be missing for some cases, such as a dummy crate for the code snippet.
-    pub display_name: Option<CrateName>,
+    pub display_name: Option<String>,
     pub cfg_options: CfgOptions,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
@@ -138,7 +145,7 @@ pub struct Env {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dependency {
     pub crate_id: CrateId,
-    pub name: SmolStr,
+    pub name: CrateName,
 }
 
 impl CrateGraph {
@@ -146,7 +153,7 @@ impl CrateGraph {
         &mut self,
         file_id: FileId,
         edition: Edition,
-        display_name: Option<CrateName>,
+        display_name: Option<String>,
         cfg_options: CfgOptions,
         env: Env,
         proc_macro: Vec<(SmolStr, Arc<dyn ra_tt::TokenExpander>)>,
@@ -178,7 +185,7 @@ impl CrateGraph {
         if self.dfs_find(from, to, &mut FxHashSet::default()) {
             return Err(CyclicDependenciesError);
         }
-        self.arena.get_mut(&from).unwrap().add_dep(name.0, to);
+        self.arena.get_mut(&from).unwrap().add_dep(name, to);
         Ok(())
     }
 
@@ -247,7 +254,7 @@ impl CrateId {
 }
 
 impl CrateData {
-    fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
+    fn add_dep(&mut self, name: CrateName, crate_id: CrateId) {
         self.dependencies.push(Dependency { name, crate_id })
     }
 }
@@ -429,7 +436,10 @@ mod tests {
             .is_ok());
         assert_eq!(
             graph[crate1].dependencies,
-            vec![Dependency { crate_id: crate2, name: "crate_name_with_dashes".into() }]
+            vec![Dependency {
+                crate_id: crate2,
+                name: CrateName::new("crate_name_with_dashes").unwrap()
+            }]
         );
     }
 }

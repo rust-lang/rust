@@ -130,7 +130,7 @@ impl MockAnalysis {
                 let other_crate = crate_graph.add_crate_root(
                     file_id,
                     edition,
-                    Some(CrateName::new(crate_name).unwrap()),
+                    Some(crate_name.to_string()),
                     cfg,
                     env,
                     Default::default(),

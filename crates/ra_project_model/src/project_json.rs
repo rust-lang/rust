@@ -4,9 +4,9 @@ use std::path::PathBuf;
 
 use paths::{AbsPath, AbsPathBuf};
 use ra_cfg::CfgOptions;
-use ra_db::{CrateId, Dependency, Edition};
+use ra_db::{CrateId, CrateName, Dependency, Edition};
 use rustc_hash::FxHashSet;
-use serde::Deserialize;
+use serde::{de, Deserialize};
 use stdx::split_delim;
 
 /// Roots and crates that compose this Rust project.
@@ -50,7 +50,7 @@ impl ProjectJson {
                         .into_iter()
                         .map(|dep_data| Dependency {
                             crate_id: CrateId(dep_data.krate as u32),
-                            name: dep_data.name.into(),
+                            name: dep_data.name,
                         })
                         .collect::<Vec<_>>(),
                     cfg: {
@@ -113,5 +113,14 @@ struct DepData {
     /// Identifies a crate by position in the crates array.
     #[serde(rename = "crate")]
     krate: usize,
-    name: String,
+    #[serde(deserialize_with = "deserialize_crate_name")]
+    name: CrateName,
+}
+
+fn deserialize_crate_name<'de, D>(de: D) -> Result<CrateName, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let name = String::deserialize(de)?;
+    CrateName::new(&name).map_err(|err| de::Error::custom(format!("invalid crate name: {:?}", err)))
 }

@@ -288,10 +288,7 @@ impl ProjectWorkspace {
                         if let (Some(&from), Some(&to)) =
                             (crates.get(&from_crate_id), crates.get(&to_crate_id))
                         {
-                            if crate_graph
-                                .add_dep(from, CrateName::new(&dep.name).unwrap(), to)
-                                .is_err()
-                            {
+                            if crate_graph.add_dep(from, dep.name.clone(), to).is_err() {
                                 log::error!(
                                     "cyclic dependency {:?} -> {:?}",
                                     from_crate_id,
@@ -312,13 +309,11 @@ impl ProjectWorkspace {
 
                         let env = Env::default();
                         let proc_macro = vec![];
-                        let crate_name = CrateName::new(&sysroot[krate].name)
-                            .expect("Sysroot crate names should not contain dashes");
-
+                        let name = sysroot[krate].name.clone();
                         let crate_id = crate_graph.add_crate_root(
                             file_id,
                             Edition::Edition2018,
-                            Some(crate_name),
+                            Some(name),
                             cfg_options.clone(),
                             env,
                             proc_macro,
@@ -392,7 +387,7 @@ impl ProjectWorkspace {
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,
                                 edition,
-                                Some(CrateName::normalize_dashes(&cargo[pkg].name)),
+                                Some(cargo[pkg].name.clone()),
                                 cfg_options,
                                 env,
                                 proc_macro.clone(),
