@@ -33,7 +33,7 @@ crate struct Cx<'a, 'tcx> {
     crate identity_substs: &'tcx InternalSubsts<'tcx>,
 
     crate region_scope_tree: &'tcx region::ScopeTree,
-    crate tables: &'a ty::TypeckTables<'tcx>,
+    crate typeck_results: &'a ty::TypeckResults<'tcx>,
 
     /// This is `Constness::Const` if we are compiling a `static`,
     /// `const`, or the body of a `const fn`.
@@ -53,7 +53,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     crate fn new(infcx: &'a InferCtxt<'a, 'tcx>, src_id: hir::HirId) -> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;
         let src_def_id = tcx.hir().local_def_id(src_id);
-        let tables = tcx.typeck_tables_of(src_def_id);
+        let typeck_results = tcx.typeck(src_def_id);
         let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {
@@ -81,7 +81,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             param_env: tcx.param_env(src_def_id),
             identity_substs: InternalSubsts::identity_for_item(tcx, src_def_id.to_def_id()),
             region_scope_tree: tcx.region_scope_tree(src_def_id),
-            tables,
+            typeck_results,
             constness,
             body_owner: src_def_id.to_def_id(),
             body_owner_kind,
@@ -150,7 +150,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node),
         };
-        Pat::from_hir(self.tcx, self.param_env, self.tables(), p)
+        Pat::from_hir(self.tcx, self.param_env, self.typeck_results(), p)
     }
 
     crate fn trait_method(
@@ -188,8 +188,8 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         self.tcx
     }
 
-    crate fn tables(&self) -> &'a ty::TypeckTables<'tcx> {
-        self.tables
+    crate fn typeck_results(&self) -> &'a ty::TypeckResults<'tcx> {
+        self.typeck_results
     }
 
     crate fn check_overflow(&self) -> bool {
@@ -206,8 +206,8 @@ impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'_, 'tcx> {
         self.tcx()
     }
 
-    fn tables(&self) -> &ty::TypeckTables<'tcx> {
-        self.tables()
+    fn typeck_results(&self) -> &ty::TypeckResults<'tcx> {
+        self.typeck_results()
     }
 }
 

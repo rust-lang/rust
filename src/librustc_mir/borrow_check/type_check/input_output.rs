@@ -36,7 +36,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if !self.tcx().is_closure(self.mir_def_id.to_def_id()) {
             user_provided_sig = None;
         } else {
-            let typeck_tables = self.tcx().typeck_tables_of(self.mir_def_id);
+            let typeck_tables = self.tcx().typeck(self.mir_def_id);
             user_provided_sig =
                 match typeck_tables.user_provided_sigs.get(&self.mir_def_id.to_def_id()) {
                     None => None,

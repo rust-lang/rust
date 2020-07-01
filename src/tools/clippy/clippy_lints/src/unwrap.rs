@@ -92,20 +92,23 @@ fn collect_unwrap_info<'a, 'tcx>(
     invert: bool,
 ) -> Vec<UnwrapInfo<'tcx>> {
     fn is_relevant_option_call(cx: &LateContext<'_, '_>, ty: Ty<'_>, method_name: &str) -> bool {
-        is_type_diagnostic_item(cx, ty, sym!(option_type)) && ["is_some", "is_none"].contains(&method_name)
+        is_type_diagnostic_item(cx, ty, sym!(option_type))
+            && ["is_some", "is_none"].contains(&method_name)
     }
 
     fn is_relevant_result_call(cx: &LateContext<'_, '_>, ty: Ty<'_>, method_name: &str) -> bool {
-        is_type_diagnostic_item(cx, ty, sym!(result_type)) && ["is_ok", "is_err"].contains(&method_name)
+        is_type_diagnostic_item(cx, ty, sym!(result_type))
+            && ["is_ok", "is_err"].contains(&method_name)
     }
 
     if let ExprKind::Binary(op, left, right) = &expr.kind {
         match (invert, op.node) {
-            (false, BinOpKind::And | BinOpKind::BitAnd) | (true, BinOpKind::Or | BinOpKind::BitOr) => {
+            (false, BinOpKind::And | BinOpKind::BitAnd)
+            | (true, BinOpKind::Or | BinOpKind::BitOr) => {
                 let mut unwrap_info = collect_unwrap_info(cx, left, branch, invert);
                 unwrap_info.append(&mut collect_unwrap_info(cx, right, branch, invert));
                 return unwrap_info;
-            },
+            }
             _ => (),
         }
     } else if let ExprKind::Unary(UnOp::UnNot, expr) = &expr.kind {
@@ -114,7 +117,7 @@ fn collect_unwrap_info<'a, 'tcx>(
         if_chain! {
             if let ExprKind::MethodCall(method_name, _, args, _) = &expr.kind;
             if let ExprKind::Path(QPath::Resolved(None, path)) = &args[0].kind;
-            let ty = cx.tables().expr_ty(&args[0]);
+            let ty = cx.typeck_results().expr_ty(&args[0]);
             let name = method_name.ident.as_str();
             if is_relevant_option_call(cx, ty, &name) || is_relevant_result_call(cx, ty, &name);
             then {
@@ -223,10 +226,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unwrap {
             return;
         }
 
-        let mut v = UnwrappableVariablesVisitor {
-            cx,
-            unwrappables: Vec::new(),
-        };
+        let mut v = UnwrappableVariablesVisitor { cx, unwrappables: Vec::new() };
 
         walk_fn(&mut v, kind, decl, body.id(), span, fn_id);
     }

@@ -1,6 +1,6 @@
 use crate::utils::{
-    is_normalizable, last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_sugg,
-    span_lint_and_then, sugg,
+    is_normalizable, last_path_segment, match_def_path, paths, snippet, span_lint,
+    span_lint_and_sugg, span_lint_and_then, sugg,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -299,11 +299,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
         if_chain! {
             if let ExprKind::Call(ref path_expr, ref args) = e.kind;
             if let ExprKind::Path(ref qpath) = path_expr.kind;
-            if let Some(def_id) = cx.tables().qpath_res(qpath, path_expr.hir_id).opt_def_id();
+            if let Some(def_id) = cx.typeck_results().qpath_res(qpath, path_expr.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::TRANSMUTE);
             then {
-                let from_ty = cx.tables().expr_ty(&args[0]);
-                let to_ty = cx.tables().expr_ty(e);
+                let from_ty = cx.typeck_results().expr_ty(&args[0]);
+                let to_ty = cx.typeck_results().expr_ty(e);
 
                 match (&from_ty.kind, &to_ty.kind) {
                     _ if from_ty == to_ty => span_lint(
@@ -633,7 +633,11 @@ fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath<'_>, to_ref_ty: Ty<'_
 
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment
-fn is_layout_incompatible<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
+fn is_layout_incompatible<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    from: Ty<'tcx>,
+    to: Ty<'tcx>,
+) -> bool {
     let empty_param_env = ty::ParamEnv::empty();
     // check if `from` and `to` are normalizable to avoid ICE (#4968)
     if !(is_normalizable(cx, empty_param_env, from) && is_normalizable(cx, empty_param_env, to)) {
@@ -642,7 +646,9 @@ fn is_layout_incompatible<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, from: Ty<'tcx>, 
     let from_ty_layout = cx.tcx.layout_of(empty_param_env.and(from));
     let to_ty_layout = cx.tcx.layout_of(empty_param_env.and(to));
     if let (Ok(from_layout), Ok(to_layout)) = (from_ty_layout, to_ty_layout) {
-        from_layout.size != to_layout.size || from_layout.align != to_layout.align || from_layout.abi != to_layout.abi
+        from_layout.size != to_layout.size
+            || from_layout.align != to_layout.align
+            || from_layout.abi != to_layout.abi
     } else {
         // no idea about layout, so don't lint
         false

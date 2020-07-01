@@ -4,7 +4,7 @@ use rustc_middle::ty::{self, CanonicalUserType, TyCtxt, UserType};
 crate trait UserAnnotatedTyHelpers<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
-    fn tables(&self) -> &ty::TypeckTables<'tcx>;
+    fn typeck_results(&self) -> &ty::TypeckResults<'tcx>;
 
     /// Looks up the type associated with this hir-id and applies the
     /// user-given substitutions; the hir-id must map to a suitable
@@ -13,10 +13,10 @@ crate trait UserAnnotatedTyHelpers<'tcx> {
         &self,
         hir_id: hir::HirId,
     ) -> Option<CanonicalUserType<'tcx>> {
-        let user_provided_types = self.tables().user_provided_types();
+        let user_provided_types = self.typeck_results().user_provided_types();
         let mut user_ty = *user_provided_types.get(hir_id)?;
         debug!("user_subts_applied_to_ty_of_hir_id: user_ty={:?}", user_ty);
-        let ty = self.tables().node_type(hir_id);
+        let ty = self.typeck_results().node_type(hir_id);
         match ty.kind {
             ty::Adt(adt_def, ..) => {
                 if let UserType::TypeOf(ref mut did, _) = &mut user_ty.value {

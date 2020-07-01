@@ -81,7 +81,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitSaturatingSub {
                 };
 
                 // Check if the variable in the condition statement is an integer
-                if !cx.tables().expr_ty(cond_var).is_integral() {
+                if !cx.typeck_results().expr_ty(cond_var).is_integral() {
                     return;
                 }
 
@@ -93,7 +93,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitSaturatingSub {
                     ExprKind::Lit(ref cond_lit) => {
                         // Check if the constant is zero
                         if let LitKind::Int(0, _) = cond_lit.node {
-                            if cx.tables().expr_ty(cond_left).is_signed() {
+                            if cx.typeck_results().expr_ty(cond_left).is_signed() {
                             } else {
                                 print_lint_and_sugg(cx, &var_name, expr);
                             };
@@ -132,7 +132,7 @@ fn subtracts_one<'a>(cx: &LateContext<'_, '_>, expr: &Expr<'a>) -> Option<&'a Ex
                     None
                 }
             }
-        },
+        }
         ExprKind::Assign(ref target, ref value, _) => {
             if_chain! {
                 if let ExprKind::Binary(ref op1, ref left1, ref right1) = value.kind;
@@ -148,7 +148,7 @@ fn subtracts_one<'a>(cx: &LateContext<'_, '_>, expr: &Expr<'a>) -> Option<&'a Ex
                     None
                 }
             }
-        },
+        }
         _ => None,
     }
 }

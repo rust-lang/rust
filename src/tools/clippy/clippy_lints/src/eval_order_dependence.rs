@@ -1,7 +1,9 @@
 use crate::utils::{get_parent_expr, span_lint, span_lint_and_note};
 use if_chain::if_chain;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{def, BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, QPath, Stmt, StmtKind};
+use rustc_hir::{
+    def, BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, QPath, Stmt, StmtKind,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
@@ -75,20 +77,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
                 if let ExprKind::Path(ref qpath) = lhs.kind {
                     if let QPath::Resolved(_, ref path) = *qpath {
                         if path.segments.len() == 1 {
-                            if let def::Res::Local(var) = cx.tables().qpath_res(qpath, lhs.hir_id) {
-                                let mut visitor = ReadVisitor {
-                                    cx,
-                                    var,
-                                    write_expr: expr,
-                                    last_expr: expr,
-                                };
+                            if let def::Res::Local(var) =
+                                cx.typeck_results().qpath_res(qpath, lhs.hir_id)
+                            {
+                                let mut visitor =
+                                    ReadVisitor { cx, var, write_expr: expr, last_expr: expr };
                                 check_for_unsequenced_reads(&mut visitor);
                             }
                         }
                     }
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
@@ -97,9 +97,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
                 if let Local { init: Some(ref e), .. } = **local {
                     DivergenceVisitor { cx }.visit_expr(e);
                 }
-            },
-            StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => DivergenceVisitor { cx }.maybe_walk_expr(e),
-            StmtKind::Item(..) => {},
+            }
+            StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => {
+                DivergenceVisitor { cx }.maybe_walk_expr(e)
+            }
+            StmtKind::Item(..) => {}
         }
     }
 }
@@ -111,7 +113,7 @@ struct DivergenceVisitor<'a, 'tcx> {
 impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
-            ExprKind::Closure(..) => {},
+            ExprKind::Closure(..) => {}
             ExprKind::Match(ref e, arms, _) => {
                 self.visit_expr(e);
                 for arm in arms {
@@ -121,7 +123,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
                     // make sure top level arm expressions aren't linted
                     self.maybe_walk_expr(&*arm.body);
                 }
-            },
+            }
             _ => walk_expr(self, e),
         }
     }
@@ -135,30 +137,33 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
-            ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
+            ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => {
+                self.report_diverging_sub_expr(e)
+            }
             ExprKind::Call(ref func, _) => {
-                let typ = self.cx.tables().expr_ty(func);
+                let typ = self.cx.typeck_results().expr_ty(func);
                 match typ.kind {
                     ty::FnDef(..) | ty::FnPtr(_) => {
                         let sig = typ.fn_sig(self.cx.tcx);
-                        if let ty::Never = self.cx.tcx.erase_late_bound_regions(&sig).output().kind {
+                        if let ty::Never = self.cx.tcx.erase_late_bound_regions(&sig).output().kind
+                        {
                             self.report_diverging_sub_expr(e);
                         }
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
-            },
+            }
             ExprKind::MethodCall(..) => {
-                let borrowed_table = self.cx.tables();
+                let borrowed_table = self.cx.typeck_results();
                 if borrowed_table.expr_ty(e).is_never() {
                     self.report_diverging_sub_expr(e);
                 }
-            },
+            }
             _ => {
                 // do not lint expressions referencing objects of type `!`, as that required a
                 // diverging expression
                 // to begin with
-            },
+            }
         }
         self.maybe_walk_expr(e);
     }
@@ -203,12 +208,12 @@ fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
             Node::Item(_) => {
                 // We reached the top of the function, stop.
                 break;
-            },
+            }
             _ => StopEarly::KeepGoing,
         };
         match stop_early {
             StopEarly::Stop => break,
-            StopEarly::KeepGoing => {},
+            StopEarly::KeepGoing => {}
         }
 
         cur_id = parent_id;
@@ -238,7 +243,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr<'_>) -
         | ExprKind::Repeat(_, _)
         | ExprKind::Struct(_, _, _) => {
             walk_expr(vis, expr);
-        },
+        }
         ExprKind::Binary(op, _, _) | ExprKind::AssignOp(op, _, _) => {
             if op.node == BinOpKind::And || op.node == BinOpKind::Or {
                 // x && y and x || y always evaluate x first, so these are
@@ -246,7 +251,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr<'_>) -
             } else {
                 walk_expr(vis, expr);
             }
-        },
+        }
         ExprKind::Closure(_, _, _, _, _) => {
             // Either
             //
@@ -259,10 +264,10 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr<'_>) -
             //
             // This is also the only place we need to stop early (grrr).
             return StopEarly::Stop;
-        },
+        }
         // All other expressions either have only one child or strictly
         // sequence the evaluation order of their sub-expressions.
-        _ => {},
+        _ => {}
     }
 
     vis.last_expr = expr;
@@ -275,10 +280,9 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt<'_>) -
         StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => check_expr(vis, expr),
         // If the declaration is of a local variable, check its initializer
         // expression if it has one. Otherwise, keep going.
-        StmtKind::Local(ref local) => local
-            .init
-            .as_ref()
-            .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr)),
+        StmtKind::Local(ref local) => {
+            local.init.as_ref().map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr))
+        }
         _ => StopEarly::KeepGoing,
     }
 }
@@ -309,7 +313,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
                 if_chain! {
                     if let QPath::Resolved(None, ref path) = *qpath;
                     if path.segments.len() == 1;
-                    if let def::Res::Local(local_id) = self.cx.tables().qpath_res(qpath, expr.hir_id);
+                    if let def::Res::Local(local_id) = self.cx.typeck_results().qpath_res(qpath, expr.hir_id);
                     if local_id == self.var;
                     // Check that this is a read, not a write.
                     if !is_in_assignment_position(self.cx, expr);

@@ -77,7 +77,7 @@ fn mirrored_exprs(
         // Two boxes with mirrored contents
         (ExprKind::Box(left_expr), ExprKind::Box(right_expr)) => {
             mirrored_exprs(cx, left_expr, a_ident, right_expr, b_ident)
-        },
+        }
         // Two arrays with mirrored contents
         (ExprKind::Array(left_exprs), ExprKind::Array(right_exprs)) => left_exprs
             .iter()
@@ -91,7 +91,7 @@ fn mirrored_exprs(
                     .iter()
                     .zip(right_args.iter())
                     .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
-        },
+        }
         // The two exprs are method calls.
         // Check to see that the function is the same and the arguments are mirrored
         // This is enough because the receiver of the method is listed in the arguments
@@ -104,60 +104,52 @@ fn mirrored_exprs(
                     .iter()
                     .zip(right_args.iter())
                     .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
-        },
+        }
         // Two tuples with mirrored contents
         (ExprKind::Tup(left_exprs), ExprKind::Tup(right_exprs)) => left_exprs
             .iter()
             .zip(right_exprs.iter())
             .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident)),
         // Two binary ops, which are the same operation and which have mirrored arguments
-        (ExprKind::Binary(left_op, left_left, left_right), ExprKind::Binary(right_op, right_left, right_right)) => {
+        (
+            ExprKind::Binary(left_op, left_left, left_right),
+            ExprKind::Binary(right_op, right_left, right_right),
+        ) => {
             left_op.node == right_op.node
                 && mirrored_exprs(cx, left_left, a_ident, right_left, b_ident)
                 && mirrored_exprs(cx, left_right, a_ident, right_right, b_ident)
-        },
+        }
         // Two unary ops, which are the same operation and which have the same argument
         (ExprKind::Unary(left_op, left_expr), ExprKind::Unary(right_op, right_expr)) => {
             left_op == right_op && mirrored_exprs(cx, left_expr, a_ident, right_expr, b_ident)
-        },
+        }
         // The two exprs are literals of some kind
         (ExprKind::Lit(left_lit), ExprKind::Lit(right_lit)) => left_lit.node == right_lit.node,
-        (ExprKind::Cast(left, _), ExprKind::Cast(right, _)) => mirrored_exprs(cx, left, a_ident, right, b_ident),
+        (ExprKind::Cast(left, _), ExprKind::Cast(right, _)) => {
+            mirrored_exprs(cx, left, a_ident, right, b_ident)
+        }
         (ExprKind::DropTemps(left_block), ExprKind::DropTemps(right_block)) => {
             mirrored_exprs(cx, left_block, a_ident, right_block, b_ident)
-        },
+        }
         (ExprKind::Field(left_expr, left_ident), ExprKind::Field(right_expr, right_ident)) => {
-            left_ident.name == right_ident.name && mirrored_exprs(cx, left_expr, a_ident, right_expr, right_ident)
-        },
+            left_ident.name == right_ident.name
+                && mirrored_exprs(cx, left_expr, a_ident, right_expr, right_ident)
+        }
         // Two paths: either one is a and the other is b, or they're identical to each other
         (
-            ExprKind::Path(QPath::Resolved(
-                _,
-                Path {
-                    segments: left_segments,
-                    ..
-                },
-            )),
-            ExprKind::Path(QPath::Resolved(
-                _,
-                Path {
-                    segments: right_segments,
-                    ..
-                },
-            )),
+            ExprKind::Path(QPath::Resolved(_, Path { segments: left_segments, .. })),
+            ExprKind::Path(QPath::Resolved(_, Path { segments: right_segments, .. })),
         ) => {
             (left_segments
                 .iter()
                 .zip(right_segments.iter())
                 .all(|(left, right)| left.ident == right.ident)
-                && left_segments
-                    .iter()
-                    .all(|seg| &seg.ident != a_ident && &seg.ident != b_ident))
+                && left_segments.iter().all(|seg| &seg.ident != a_ident && &seg.ident != b_ident))
                 || (left_segments.len() == 1
                     && &left_segments[0].ident == a_ident
                     && right_segments.len() == 1
                     && &right_segments[0].ident == b_ident)
-        },
+        }
         // Matching expressions, but one or both is borrowed
         (
             ExprKind::AddrOf(left_kind, Mutability::Not, left_expr),
@@ -165,8 +157,10 @@ fn mirrored_exprs(
         ) => left_kind == right_kind && mirrored_exprs(cx, left_expr, a_ident, right_expr, b_ident),
         (_, ExprKind::AddrOf(_, Mutability::Not, right_expr)) => {
             mirrored_exprs(cx, a_expr, a_ident, right_expr, b_ident)
-        },
-        (ExprKind::AddrOf(_, Mutability::Not, left_expr), _) => mirrored_exprs(cx, left_expr, a_ident, b_expr, b_ident),
+        }
+        (ExprKind::AddrOf(_, Mutability::Not, left_expr), _) => {
+            mirrored_exprs(cx, left_expr, a_ident, b_expr, b_ident)
+        }
         _ => false,
     }
 }
@@ -177,7 +171,7 @@ fn detect_lint(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<LintTrigger>
         if let name = name_ident.ident.name.to_ident_string();
         if name == "sort_by" || name == "sort_unstable_by";
         if let [vec, Expr { kind: ExprKind::Closure(_, _, closure_body_id, _, _), .. }] = args;
-        if utils::match_type(cx, &cx.tables().expr_ty(vec), &paths::VEC);
+        if utils::match_type(cx, &cx.typeck_results().expr_ty(vec), &paths::VEC);
         if let closure_body = cx.tcx.hir().body(*closure_body_id);
         if let &[
             Param { pat: Pat { kind: PatKind::Binding(_, _, left_ident, _), .. }, ..},
@@ -264,7 +258,7 @@ impl LateLintPass<'_, '_> for UnnecessarySortBy {
                 ),
                 Applicability::MachineApplicable,
             ),
-            None => {},
+            None => {}
         }
     }
 }

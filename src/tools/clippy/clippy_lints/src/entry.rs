@@ -1,5 +1,7 @@
 use crate::utils::SpanlessEq;
-use crate::utils::{get_item_name, higher, is_type_diagnostic_item, match_type, paths, snippet, snippet_opt};
+use crate::utils::{
+    get_item_name, higher, is_type_diagnostic_item, match_type, paths, snippet, snippet_opt,
+};
 use crate::utils::{snippet_with_applicability, span_lint_and_then, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -69,27 +71,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapPass {
                         // XXXManishearth we can also check for if/else blocks containing `None`.
                     };
 
-                    let mut visitor = InsertVisitor {
-                        cx,
-                        span: expr.span,
-                        ty,
-                        map,
-                        key,
-                        sole_expr,
-                    };
+                    let mut visitor =
+                        InsertVisitor { cx, span: expr.span, ty, map, key, sole_expr };
 
                     walk_expr(&mut visitor, &**then_block);
                 }
             } else if let Some(ref else_block) = *else_block {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
-                    let mut visitor = InsertVisitor {
-                        cx,
-                        span: expr.span,
-                        ty,
-                        map,
-                        key,
-                        sole_expr: false,
-                    };
+                    let mut visitor =
+                        InsertVisitor { cx, span: expr.span, ty, map, key, sole_expr: false };
 
                     walk_expr(&mut visitor, else_block);
                 }
@@ -109,7 +99,7 @@ fn check_cond<'a, 'tcx, 'b>(
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref key) = params[1].kind;
         then {
             let map = &params[0];
-            let obj_ty = walk_ptrs_ty(cx.tables().expr_ty(map));
+            let obj_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(map));
 
             return if match_type(cx, obj_ty, &paths::BTREEMAP) {
                 Some(("BTreeMap", map, key))

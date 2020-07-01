@@ -1,6 +1,7 @@
 use crate::utils::paths;
 use crate::utils::{
-    is_copy, is_type_diagnostic_item, match_trait_method, remove_blocks, snippet_with_applicability, span_lint_and_sugg,
+    is_copy, is_type_diagnostic_item, match_trait_method, remove_blocks,
+    snippet_with_applicability, span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -52,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
             if let hir::ExprKind::MethodCall(ref method, _, ref args, _) = e.kind;
             if args.len() == 2;
             if method.ident.as_str() == "map";
-            let ty = cx.tables().expr_ty(&args[0]);
+            let ty = cx.typeck_results().expr_ty(&args[0]);
             if is_type_diagnostic_item(cx, ty, sym!(option_type)) || match_trait_method(cx, e, &paths::ITERATOR);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
             let closure_body = cx.tcx.hir().body(body_id);
@@ -70,7 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
                                 if ident_eq(name, inner) {
-                                    if let ty::Ref(.., Mutability::Not) = cx.tables().expr_ty(inner).kind {
+                                    if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind {
                                         lint(cx, e.span, args[0].span, true);
                                     }
                                 }
@@ -79,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
                                 if ident_eq(name, &obj[0]) && method.ident.as_str() == "clone"
                                     && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
 
-                                    let obj_ty = cx.tables().expr_ty(&obj[0]);
+                                    let obj_ty = cx.typeck_results().expr_ty(&obj[0]);
                                     if let ty::Ref(_, ty, _) = obj_ty.kind {
                                         let copy = is_copy(cx, ty);
                                         lint(cx, e.span, args[0].span, copy);
@@ -127,10 +128,7 @@ fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span, copied: bool) {
             replace,
             "You are using an explicit closure for copying elements",
             "Consider calling the dedicated `copied` method",
-            format!(
-                "{}.copied()",
-                snippet_with_applicability(cx, root, "..", &mut applicability)
-            ),
+            format!("{}.copied()", snippet_with_applicability(cx, root, "..", &mut applicability)),
             applicability,
         )
     } else {
@@ -140,10 +138,7 @@ fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span, copied: bool) {
             replace,
             "You are using an explicit closure for cloning elements",
             "Consider calling the dedicated `cloned` method",
-            format!(
-                "{}.cloned()",
-                snippet_with_applicability(cx, root, "..", &mut applicability)
-            ),
+            format!("{}.cloned()", snippet_with_applicability(cx, root, "..", &mut applicability)),
             applicability,
         )
     }
