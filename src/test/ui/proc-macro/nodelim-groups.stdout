@@ -1,0 +1,156 @@
+PRINT-BANG INPUT (DISPLAY): "hi" 1 + (25) + 1 (1 + 1)
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Literal {
+        kind: Str,
+        symbol: "hi",
+        suffix: None,
+        span: $DIR/nodelim-groups.rs:13:42: 13:46 (#3),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/nodelim-groups.rs:17:16: 17:17 (#0),
+            },
+            Punct {
+                ch: '+',
+                spacing: Alone,
+                span: $DIR/nodelim-groups.rs:17:18: 17:19 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Literal {
+                        kind: Integer,
+                        symbol: "25",
+                        suffix: None,
+                        span: $DIR/nodelim-groups.rs:17:21: 17:23 (#0),
+                    },
+                ],
+                span: $DIR/nodelim-groups.rs:17:20: 17:24 (#0),
+            },
+            Punct {
+                ch: '+',
+                spacing: Alone,
+                span: $DIR/nodelim-groups.rs:17:25: 17:26 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/nodelim-groups.rs:17:27: 17:28 (#0),
+            },
+        ],
+        span: $DIR/nodelim-groups.rs:13:47: 13:51 (#3),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/nodelim-groups.rs:13:53: 13:54 (#3),
+            },
+            Punct {
+                ch: '+',
+                spacing: Alone,
+                span: $DIR/nodelim-groups.rs:13:55: 13:56 (#3),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/nodelim-groups.rs:13:57: 13:58 (#3),
+            },
+        ],
+        span: $DIR/nodelim-groups.rs:13:52: 13:59 (#3),
+    },
+]
+PRINT-BANG INPUT (DISPLAY): "hi" "hello".len() + "world".len() (1 + 1)
+PRINT-BANG RE-COLLECTED (DISPLAY): "hi" "hello" . len() + "world" . len() (1 + 1)
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Literal {
+        kind: Str,
+        symbol: "hi",
+        suffix: None,
+        span: $DIR/nodelim-groups.rs:13:42: 13:46 (#8),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Literal {
+                kind: Str,
+                symbol: "hello",
+                suffix: None,
+                span: $DIR/nodelim-groups.rs:13:47: 13:51 (#8),
+            },
+            Punct {
+                ch: '.',
+                spacing: Alone,
+                span: $DIR/nodelim-groups.rs:13:47: 13:51 (#8),
+            },
+            Ident {
+                ident: "len",
+                span: $DIR/nodelim-groups.rs:13:47: 13:51 (#8),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [],
+                span: $DIR/nodelim-groups.rs:13:47: 13:51 (#8),
+            },
+            Punct {
+                ch: '+',
+                spacing: Alone,
+                span: $DIR/nodelim-groups.rs:13:47: 13:51 (#8),
+            },
+            Literal {
+                kind: Str,
+                symbol: "world",
+                suffix: None,
+                span: $DIR/nodelim-groups.rs:13:47: 13:51 (#8),
+            },
+            Punct {
+                ch: '.',
+                spacing: Alone,
+                span: $DIR/nodelim-groups.rs:13:47: 13:51 (#8),
+            },
+            Ident {
+                ident: "len",
+                span: $DIR/nodelim-groups.rs:13:47: 13:51 (#8),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [],
+                span: $DIR/nodelim-groups.rs:13:47: 13:51 (#8),
+            },
+        ],
+        span: $DIR/nodelim-groups.rs:13:47: 13:51 (#8),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/nodelim-groups.rs:13:53: 13:54 (#8),
+            },
+            Punct {
+                ch: '+',
+                spacing: Alone,
+                span: $DIR/nodelim-groups.rs:13:55: 13:56 (#8),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/nodelim-groups.rs:13:57: 13:58 (#8),
+            },
+        ],
+        span: $DIR/nodelim-groups.rs:13:52: 13:59 (#8),
+    },
+]
