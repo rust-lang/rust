@@ -243,8 +243,9 @@ impl RootDatabase {
             hir::db::GenericPredicatesForParamQuery
             hir::db::GenericPredicatesQuery
             hir::db::GenericDefaultsQuery
-            hir::db::ImplsInCrateQuery
-            hir::db::ImplsFromDepsQuery
+            hir::db::InherentImplsInCrateQuery
+            hir::db::TraitImplsInCrateQuery
+            hir::db::TraitImplsInDepsQuery
             hir::db::InternTypeCtorQuery
             hir::db::InternTypeParamIdQuery
             hir::db::InternChalkImplQuery

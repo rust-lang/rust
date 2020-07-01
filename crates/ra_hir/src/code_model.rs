@@ -1053,12 +1053,14 @@ pub struct ImplDef {
 
 impl ImplDef {
     pub fn all_in_crate(db: &dyn HirDatabase, krate: Crate) -> Vec<ImplDef> {
-        let impls = db.impls_in_crate(krate.id);
-        impls.all_impls().map(Self::from).collect()
+        let inherent = db.inherent_impls_in_crate(krate.id);
+        let trait_ = db.trait_impls_in_crate(krate.id);
+
+        inherent.all_impls().chain(trait_.all_impls()).map(Self::from).collect()
     }
     pub fn for_trait(db: &dyn HirDatabase, krate: Crate, trait_: Trait) -> Vec<ImplDef> {
-        let impls = db.impls_in_crate(krate.id);
-        impls.lookup_impl_defs_for_trait(trait_.id).map(Self::from).collect()
+        let impls = db.trait_impls_in_crate(krate.id);
+        impls.for_trait(trait_.id).map(Self::from).collect()
     }
 
     pub fn target_trait(self, db: &dyn HirDatabase) -> Option<TypeRef> {
@@ -1303,10 +1305,10 @@ impl Type {
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
         for krate in self.ty.value.def_crates(db, krate.id)? {
-            let impls = db.impls_in_crate(krate);
+            let impls = db.inherent_impls_in_crate(krate);
 
-            for impl_def in impls.lookup_impl_defs(&self.ty.value) {
-                for &item in db.impl_data(impl_def).items.iter() {
+            for impl_def in impls.for_self_ty(&self.ty.value) {
+                for &item in db.impl_data(*impl_def).items.iter() {
                     if let Some(result) = callback(item.into()) {
                         return Some(result);
                     }

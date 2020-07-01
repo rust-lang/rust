@@ -77,8 +77,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         // Note: Since we're using impls_for_trait, only impls where the trait
         // can be resolved should ever reach Chalk. `impl_datum` relies on that
         // and will panic if the trait can't be resolved.
-        let in_deps = self.db.impls_from_deps(self.krate);
-        let in_self = self.db.impls_in_crate(self.krate);
+        let in_deps = self.db.trait_impls_in_deps(self.krate);
+        let in_self = self.db.trait_impls_in_crate(self.krate);
         let impl_maps = [in_deps, in_self];
 
         let id_to_chalk = |id: hir_def::ImplId| Impl::ImplDef(id).to_chalk(self.db);
@@ -87,14 +87,12 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             Some(fp) => impl_maps
                 .iter()
                 .flat_map(|crate_impl_defs| {
-                    crate_impl_defs.lookup_impl_defs_for_trait_and_ty(trait_, fp).map(id_to_chalk)
+                    crate_impl_defs.for_trait_and_self_ty(trait_, fp).map(id_to_chalk)
                 })
                 .collect(),
             None => impl_maps
                 .iter()
-                .flat_map(|crate_impl_defs| {
-                    crate_impl_defs.lookup_impl_defs_for_trait(trait_).map(id_to_chalk)
-                })
+                .flat_map(|crate_impl_defs| crate_impl_defs.for_trait(trait_).map(id_to_chalk))
                 .collect(),
         };
 

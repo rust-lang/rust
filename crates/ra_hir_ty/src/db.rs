@@ -11,7 +11,7 @@ use ra_db::{impl_intern_key, salsa, CrateId, Upcast};
 use ra_prof::profile;
 
 use crate::{
-    method_resolution::CrateImplDefs,
+    method_resolution::{InherentImpls, TraitImpls},
     traits::{chalk, AssocTyValue, Impl},
     Binders, CallableDef, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
     ReturnTypeImplTraits, TraitRef, Ty, TyDefId, TypeCtor, ValueTyDefId,
@@ -67,11 +67,14 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::lower::generic_defaults_query)]
     fn generic_defaults(&self, def: GenericDefId) -> Arc<[Binders<Ty>]>;
 
-    #[salsa::invoke(crate::method_resolution::CrateImplDefs::impls_in_crate_query)]
-    fn impls_in_crate(&self, krate: CrateId) -> Arc<CrateImplDefs>;
+    #[salsa::invoke(InherentImpls::inherent_impls_in_crate_query)]
+    fn inherent_impls_in_crate(&self, krate: CrateId) -> Arc<InherentImpls>;
 
-    #[salsa::invoke(crate::method_resolution::CrateImplDefs::impls_from_deps_query)]
-    fn impls_from_deps(&self, krate: CrateId) -> Arc<CrateImplDefs>;
+    #[salsa::invoke(TraitImpls::trait_impls_in_crate_query)]
+    fn trait_impls_in_crate(&self, krate: CrateId) -> Arc<TraitImpls>;
+
+    #[salsa::invoke(TraitImpls::trait_impls_in_deps_query)]
+    fn trait_impls_in_deps(&self, krate: CrateId) -> Arc<TraitImpls>;
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
