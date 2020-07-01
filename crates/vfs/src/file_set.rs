@@ -69,7 +69,7 @@ impl FileSetConfig {
             Ok(it) => it,
             Err(it) => it.saturating_sub(1),
         };
-        if path.starts_with(&self.roots[idx].0) {
+        if !self.roots.is_empty() && path.starts_with(&self.roots[idx].0) {
             self.roots[idx].1
         } else {
             self.len() - 1
