@@ -1,6 +1,6 @@
 #[doc(include = "panic.md")]
 #[macro_export]
-#[allow_internal_unstable(core_panic, track_caller)]
+#[allow_internal_unstable(core_panic, const_caller_location)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
@@ -151,7 +151,7 @@ macro_rules! assert_ne {
 /// An unchecked assertion allows a program in an inconsistent state to keep
 /// running, which might have unexpected consequences but does not introduce
 /// unsafety as long as this only happens in safe code. The performance cost
-/// of assertions, is however, not measurable in general. Replacing [`assert!`]
+/// of assertions, however, is not measurable in general. Replacing [`assert!`]
 /// with `debug_assert!` is thus only encouraged after thorough profiling, and
 /// more importantly, only in safe code!
 ///

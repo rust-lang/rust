@@ -316,7 +316,7 @@
 #![feature(toowned_clone_into)]
 #![feature(total_cmp)]
 #![feature(trace_macros)]
-#![feature(track_caller)]
+#![cfg_attr(bootstrap, feature(track_caller))]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]

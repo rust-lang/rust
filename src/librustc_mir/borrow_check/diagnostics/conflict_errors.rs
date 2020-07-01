@@ -1923,7 +1923,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 // We use a mix of the HIR and the Ty types to get information
                 // as the HIR doesn't have full types for closure arguments.
-                let return_ty = *sig.output().skip_binder();
+                let return_ty = sig.output().skip_binder();
                 let mut return_span = fn_decl.output.span();
                 if let hir::FnRetTy::Return(ty) = &fn_decl.output {
                     if let hir::TyKind::Rptr(lifetime, _) = ty.kind {
@@ -1965,7 +1965,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let argument_ty = sig.inputs().skip_binder().first()?;
 
                 let return_span = fn_decl.output.span();
-                let return_ty = *sig.output().skip_binder();
+                let return_ty = sig.output().skip_binder();
 
                 // We expect the first argument to be a reference.
                 match argument_ty.kind {

@@ -1569,7 +1569,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // no need to overload user in such cases
                     return;
                 }
-                let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
+                let SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
                 self.need_type_info_err(body_id, span, a, ErrorCode::E0282)

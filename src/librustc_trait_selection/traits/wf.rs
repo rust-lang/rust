@@ -695,7 +695,7 @@ pub fn object_region_bounds<'tcx>(
     let open_ty = tcx.mk_ty_infer(ty::FreshTy(0));
 
     let predicates = existential_predicates.iter().filter_map(|predicate| {
-        if let ty::ExistentialPredicate::Projection(_) = *predicate.skip_binder() {
+        if let ty::ExistentialPredicate::Projection(_) = predicate.skip_binder() {
             None
         } else {
             Some(predicate.with_self_ty(tcx, open_ty))

@@ -6,8 +6,6 @@
 //! we don't inspect the location returned -- it would be difficult to distinguish between the
 //! explicit panic and a failed assertion. That it compiles and runs is enough for this one.
 
-#![feature(track_caller)]
-
 #[track_caller]
 fn doesnt_return() -> ! {
     let _location = core::panic::Location::caller();

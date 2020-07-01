@@ -2518,3 +2518,11 @@ impl DoubleEndedIterator for Drain<'_> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for Drain<'_> {}
+
+#[stable(feature = "from_char_for_string", since = "1.46.0")]
+impl From<char> for String {
+    #[inline]
+    fn from(c: char) -> Self {
+        c.to_string()
+    }
+}

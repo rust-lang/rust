@@ -122,7 +122,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if self.regioncx.universal_regions().is_universal_region(r) {
             Some(r)
         } else {
-            let upper_bound = self.regioncx.universal_upper_bound(r);
+            // We just want something nameable, even if it's not
+            // actually an upper bound.
+            let upper_bound = self.regioncx.approx_universal_upper_bound(r);
 
             if self.regioncx.upper_bound_in_region_scc(r, upper_bound) {
                 self.to_error_region_vid(upper_bound)

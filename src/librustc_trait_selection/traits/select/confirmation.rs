@@ -326,7 +326,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // probably flatten the binder from the obligation and the binder
         // from the object. Have to try to make a broken test case that
         // results.
-        let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         let poly_trait_ref = match self_ty.kind {
             ty::Dynamic(ref data, ..) => data
                 .principal()
@@ -379,7 +379,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("confirm_fn_pointer_candidate({:?})", obligation);
 
         // Okay to skip binder; it is reintroduced below.
-        let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         let sig = self_ty.fn_sig(self.tcx());
         let trait_ref = closure_trait_ref_and_return_type(
             self.tcx(),
@@ -448,7 +448,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
-        let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         let (generator_def_id, substs) = match self_ty.kind {
             ty::Generator(id, substs, _) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
@@ -497,7 +497,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
-        let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.kind {
             ty::Closure(id, substs) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
