@@ -39,7 +39,7 @@ macro_rules! expect {
     [[]] => { $crate::expect![[""]] };
 }
 
-/// expect_file!["/crates/foo/test_data/foo.rs"]
+/// expect_file!["/crates/foo/test_data/bar.html"]
 #[macro_export]
 macro_rules! expect_file {
     [$path:literal] => {$crate::ExpectFile { path: $path }};
