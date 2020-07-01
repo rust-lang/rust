@@ -118,7 +118,7 @@
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(stmt_expr_attributes)]
-#![feature(track_caller)]
+#![cfg_attr(bootstrap, feature(track_caller))]
 #![feature(transparent_unions)]
 #![feature(unboxed_closures)]
 #![feature(unsized_locals)]

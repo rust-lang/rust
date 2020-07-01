@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(track_caller)]
-
 macro_rules! assert_expansion_site_is_tracked {
     () => {{
         let location = std::panic::Location::caller();

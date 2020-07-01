@@ -1,4 +1,4 @@
-#![feature(naked_functions, track_caller)]
+#![feature(naked_functions)]
 
 #[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`
 #[naked]
