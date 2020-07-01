@@ -1027,7 +1027,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_token(&mut self, token: Token) -> TokenStream {
         match token.kind {
-            token::Interpolated(nt, _) => {
+            token::Interpolated(nt) => {
                 let tts = (self.nt_to_tokenstream)(&nt, &self.sess.parse_sess, token.span);
                 self.lower_token_stream(tts)
             }
