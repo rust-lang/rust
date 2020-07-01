@@ -15,6 +15,7 @@ pub enum FoldKind {
     Imports,
     Mods,
     Block,
+    ArgList,
 }
 
 #[derive(Debug)]
@@ -83,6 +84,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
         COMMENT => Some(FoldKind::Comment),
         USE_ITEM => Some(FoldKind::Imports),
+        ARG_LIST => Some(FoldKind::ArgList),
         RECORD_FIELD_DEF_LIST
         | RECORD_FIELD_PAT_LIST
         | ITEM_LIST
@@ -196,89 +198,85 @@ fn contiguous_range_for_comment(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use test_utils::extract_ranges;
+    use test_utils::extract_tags;
 
-    fn do_check(text: &str, fold_kinds: &[FoldKind]) {
-        let (ranges, text) = extract_ranges(text, "fold");
+    use super::*;
+
+    fn check(ra_fixture: &str) {
+        let (ranges, text) = extract_tags(ra_fixture, "fold");
+
         let parse = SourceFile::parse(&text);
         let folds = folding_ranges(&parse.tree());
-
         assert_eq!(
             folds.len(),
             ranges.len(),
             "The amount of folds is different than the expected amount"
         );
-        assert_eq!(
-            folds.len(),
-            fold_kinds.len(),
-            "The amount of fold kinds is different than the expected amount"
-        );
-        for ((fold, range), fold_kind) in
-            folds.iter().zip(ranges.into_iter()).zip(fold_kinds.iter())
-        {
+
+        for (fold, (range, attr)) in folds.iter().zip(ranges.into_iter()) {
             assert_eq!(fold.range.start(), range.start());
             assert_eq!(fold.range.end(), range.end());
-            assert_eq!(&fold.kind, fold_kind);
+
+            let kind = match fold.kind {
+                FoldKind::Comment => "comment",
+                FoldKind::Imports => "imports",
+                FoldKind::Mods => "mods",
+                FoldKind::Block => "block",
+                FoldKind::ArgList => "arglist",
+            };
+            assert_eq!(kind, &attr.unwrap());
         }
     }
 
     #[test]
     fn test_fold_comments() {
-        let text = r#"
-<fold>// Hello
+        check(
+            r#"
+<fold comment>// Hello
 // this is a multiline
 // comment
 //</fold>
 
 // But this is not
 
-fn main() <fold>{
-    <fold>// We should
+fn main() <fold block>{
+    <fold comment>// We should
     // also
     // fold
     // this one.</fold>
-    <fold>//! But this one is different
+    <fold comment>//! But this one is different
     //! because it has another flavor</fold>
-    <fold>/* As does this
+    <fold comment>/* As does this
     multiline comment */</fold>
-}</fold>"#;
-
-        let fold_kinds = &[
-            FoldKind::Comment,
-            FoldKind::Block,
-            FoldKind::Comment,
-            FoldKind::Comment,
-            FoldKind::Comment,
-        ];
-        do_check(text, fold_kinds);
+}</fold>"#,
+        );
     }
 
     #[test]
     fn test_fold_imports() {
-        let text = r#"
-<fold>use std::<fold>{
+        check(
+            r#"
+<fold imports>use std::<fold block>{
     str,
     vec,
     io as iop
 }</fold>;</fold>
 
-fn main() <fold>{
-}</fold>"#;
-
-        let folds = &[FoldKind::Imports, FoldKind::Block, FoldKind::Block];
-        do_check(text, folds);
+fn main() <fold block>{
+}</fold>"#,
+        );
     }
 
     #[test]
     fn test_fold_mods() {
-        let text = r#"
+        check(
+            r#"
 
 pub mod foo;
-<fold>mod after_pub;
+<fold mods>mod after_pub;
 mod after_pub_next;</fold>
 
-<fold>mod before_pub;
+<fold mods>mod before_pub;
 mod before_pub_next;</fold>
 pub mod bar;
 
@@ -286,90 +284,93 @@ mod not_folding_single;
 pub mod foobar;
 pub not_folding_single_next;
 
-<fold>#[cfg(test)]
+<fold mods>#[cfg(test)]
 mod with_attribute;
 mod with_attribute_next;</fold>
 
-fn main() <fold>{
-}</fold>"#;
-
-        let folds = &[FoldKind::Mods, FoldKind::Mods, FoldKind::Mods, FoldKind::Block];
-        do_check(text, folds);
+fn main() <fold block>{
+}</fold>"#,
+        );
     }
 
     #[test]
     fn test_fold_import_groups() {
-        let text = r#"
-<fold>use std::str;
+        check(
+            r#"
+<fold imports>use std::str;
 use std::vec;
 use std::io as iop;</fold>
 
-<fold>use std::mem;
+<fold imports>use std::mem;
 use std::f64;</fold>
 
 use std::collections::HashMap;
 // Some random comment
 use std::collections::VecDeque;
 
-fn main() <fold>{
-}</fold>"#;
-
-        let folds = &[FoldKind::Imports, FoldKind::Imports, FoldKind::Block];
-        do_check(text, folds);
+fn main() <fold block>{
+}</fold>"#,
+        );
     }
 
     #[test]
     fn test_fold_import_and_groups() {
-        let text = r#"
-<fold>use std::str;
+        check(
+            r#"
+<fold imports>use std::str;
 use std::vec;
 use std::io as iop;</fold>
 
-<fold>use std::mem;
+<fold imports>use std::mem;
 use std::f64;</fold>
 
-<fold>use std::collections::<fold>{
+<fold imports>use std::collections::<fold block>{
     HashMap,
     VecDeque,
 }</fold>;</fold>
 // Some random comment
 
-fn main() <fold>{
-}</fold>"#;
-
-        let folds = &[
-            FoldKind::Imports,
-            FoldKind::Imports,
-            FoldKind::Imports,
-            FoldKind::Block,
-            FoldKind::Block,
-        ];
-        do_check(text, folds);
+fn main() <fold block>{
+}</fold>"#,
+        );
     }
 
     #[test]
     fn test_folds_macros() {
-        let text = r#"
-macro_rules! foo <fold>{
+        check(
+            r#"
+macro_rules! foo <fold block>{
     ($($tt:tt)*) => { $($tt)* }
 }</fold>
-"#;
-
-        let folds = &[FoldKind::Block];
-        do_check(text, folds);
+"#,
+        );
     }
 
     #[test]
     fn test_fold_match_arms() {
-        let text = r#"
-fn main() <fold>{
-    match 0 <fold>{
+        check(
+            r#"
+fn main() <fold block>{
+    match 0 <fold block>{
         0 => 0,
         _ => 1,
     }</fold>
-}</fold>"#;
+}</fold>"#,
+        );
+    }
 
-        let folds = &[FoldKind::Block, FoldKind::Block];
-        do_check(text, folds);
+    #[test]
+    fn fold_big_calls() {
+        check(
+            r#"
+fn main() <fold block>{
+    frobnicate<fold arglist>(
+        1,
+        2,
+        3,
+    )</fold>
+}</fold>
+        "#,
+        )
     }
 }

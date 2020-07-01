@@ -173,12 +173,19 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
 
 #[cfg(test)]
 mod tests {
+    use expect::{expect, Expect};
+
     use super::*;
-    use insta::assert_debug_snapshot;
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        let file = SourceFile::parse(ra_fixture).ok().unwrap();
+        let structure = file_structure(&file);
+        expect.assert_debug_eq(&structure)
+    }
 
     #[test]
     fn test_file_structure() {
-        let file = SourceFile::parse(
+        check(
             r#"
 struct Foo {
     x: i32
@@ -223,216 +230,211 @@ fn obsolete() {}
 #[deprecated(note = "for awhile")]
 fn very_obsolete() {}
 "#,
-        )
-        .ok()
-        .unwrap();
-        let structure = file_structure(&file);
-        assert_debug_snapshot!(structure,
-        @r###"
-        [
-            StructureNode {
-                parent: None,
-                label: "Foo",
-                navigation_range: 8..11,
-                node_range: 1..26,
-                kind: STRUCT_DEF,
-                detail: None,
-                deprecated: false,
-            },
-            StructureNode {
-                parent: Some(
-                    0,
-                ),
-                label: "x",
-                navigation_range: 18..19,
-                node_range: 18..24,
-                kind: RECORD_FIELD_DEF,
-                detail: Some(
-                    "i32",
-                ),
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "m",
-                navigation_range: 32..33,
-                node_range: 28..158,
-                kind: MODULE,
-                detail: None,
-                deprecated: false,
-            },
-            StructureNode {
-                parent: Some(
-                    2,
-                ),
-                label: "bar1",
-                navigation_range: 43..47,
-                node_range: 40..52,
-                kind: FN_DEF,
-                detail: Some(
-                    "fn()",
-                ),
-                deprecated: false,
-            },
-            StructureNode {
-                parent: Some(
-                    2,
-                ),
-                label: "bar2",
-                navigation_range: 60..64,
-                node_range: 57..81,
-                kind: FN_DEF,
-                detail: Some(
-                    "fn<T>(t: T) -> T",
-                ),
-                deprecated: false,
-            },
-            StructureNode {
-                parent: Some(
-                    2,
-                ),
-                label: "bar3",
-                navigation_range: 89..93,
-                node_range: 86..156,
-                kind: FN_DEF,
-                detail: Some(
-                    "fn<A, B>(a: A, b: B) -> Vec< u32 >",
-                ),
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "E",
-                navigation_range: 165..166,
-                node_range: 160..180,
-                kind: ENUM_DEF,
-                detail: None,
-                deprecated: false,
-            },
-            StructureNode {
-                parent: Some(
-                    6,
-                ),
-                label: "X",
-                navigation_range: 169..170,
-                node_range: 169..170,
-                kind: ENUM_VARIANT,
-                detail: None,
-                deprecated: false,
-            },
-            StructureNode {
-                parent: Some(
-                    6,
-                ),
-                label: "Y",
-                navigation_range: 172..173,
-                node_range: 172..178,
-                kind: ENUM_VARIANT,
-                detail: None,
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "T",
-                navigation_range: 186..187,
-                node_range: 181..193,
-                kind: TYPE_ALIAS_DEF,
-                detail: Some(
-                    "()",
-                ),
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "S",
-                navigation_range: 201..202,
-                node_range: 194..213,
-                kind: STATIC_DEF,
-                detail: Some(
-                    "i32",
-                ),
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "C",
-                navigation_range: 220..221,
-                node_range: 214..232,
-                kind: CONST_DEF,
-                detail: Some(
-                    "i32",
-                ),
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "impl E",
-                navigation_range: 239..240,
-                node_range: 234..243,
-                kind: IMPL_DEF,
-                detail: None,
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "impl fmt::Debug for E",
-                navigation_range: 265..266,
-                node_range: 245..269,
-                kind: IMPL_DEF,
-                detail: None,
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "mc",
-                navigation_range: 284..286,
-                node_range: 271..303,
-                kind: MACRO_CALL,
-                detail: None,
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "mcexp",
-                navigation_range: 334..339,
-                node_range: 305..356,
-                kind: MACRO_CALL,
-                detail: None,
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "mcexp",
-                navigation_range: 387..392,
-                node_range: 358..409,
-                kind: MACRO_CALL,
-                detail: None,
-                deprecated: false,
-            },
-            StructureNode {
-                parent: None,
-                label: "obsolete",
-                navigation_range: 428..436,
-                node_range: 411..441,
-                kind: FN_DEF,
-                detail: Some(
-                    "fn()",
-                ),
-                deprecated: true,
-            },
-            StructureNode {
-                parent: None,
-                label: "very_obsolete",
-                navigation_range: 481..494,
-                node_range: 443..499,
-                kind: FN_DEF,
-                detail: Some(
-                    "fn()",
-                ),
-                deprecated: true,
-            },
-        ]
-        "###
-                );
+            expect![[r#"
+                [
+                    StructureNode {
+                        parent: None,
+                        label: "Foo",
+                        navigation_range: 8..11,
+                        node_range: 1..26,
+                        kind: STRUCT_DEF,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            0,
+                        ),
+                        label: "x",
+                        navigation_range: 18..19,
+                        node_range: 18..24,
+                        kind: RECORD_FIELD_DEF,
+                        detail: Some(
+                            "i32",
+                        ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "m",
+                        navigation_range: 32..33,
+                        node_range: 28..158,
+                        kind: MODULE,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            2,
+                        ),
+                        label: "bar1",
+                        navigation_range: 43..47,
+                        node_range: 40..52,
+                        kind: FN_DEF,
+                        detail: Some(
+                            "fn()",
+                        ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            2,
+                        ),
+                        label: "bar2",
+                        navigation_range: 60..64,
+                        node_range: 57..81,
+                        kind: FN_DEF,
+                        detail: Some(
+                            "fn<T>(t: T) -> T",
+                        ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            2,
+                        ),
+                        label: "bar3",
+                        navigation_range: 89..93,
+                        node_range: 86..156,
+                        kind: FN_DEF,
+                        detail: Some(
+                            "fn<A, B>(a: A, b: B) -> Vec< u32 >",
+                        ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "E",
+                        navigation_range: 165..166,
+                        node_range: 160..180,
+                        kind: ENUM_DEF,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            6,
+                        ),
+                        label: "X",
+                        navigation_range: 169..170,
+                        node_range: 169..170,
+                        kind: ENUM_VARIANT,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            6,
+                        ),
+                        label: "Y",
+                        navigation_range: 172..173,
+                        node_range: 172..178,
+                        kind: ENUM_VARIANT,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "T",
+                        navigation_range: 186..187,
+                        node_range: 181..193,
+                        kind: TYPE_ALIAS_DEF,
+                        detail: Some(
+                            "()",
+                        ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "S",
+                        navigation_range: 201..202,
+                        node_range: 194..213,
+                        kind: STATIC_DEF,
+                        detail: Some(
+                            "i32",
+                        ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "C",
+                        navigation_range: 220..221,
+                        node_range: 214..232,
+                        kind: CONST_DEF,
+                        detail: Some(
+                            "i32",
+                        ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "impl E",
+                        navigation_range: 239..240,
+                        node_range: 234..243,
+                        kind: IMPL_DEF,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "impl fmt::Debug for E",
+                        navigation_range: 265..266,
+                        node_range: 245..269,
+                        kind: IMPL_DEF,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "mc",
+                        navigation_range: 284..286,
+                        node_range: 271..303,
+                        kind: MACRO_CALL,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "mcexp",
+                        navigation_range: 334..339,
+                        node_range: 305..356,
+                        kind: MACRO_CALL,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "mcexp",
+                        navigation_range: 387..392,
+                        node_range: 358..409,
+                        kind: MACRO_CALL,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "obsolete",
+                        navigation_range: 428..436,
+                        node_range: 411..441,
+                        kind: FN_DEF,
+                        detail: Some(
+                            "fn()",
+                        ),
+                        deprecated: true,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "very_obsolete",
+                        navigation_range: 481..494,
+                        node_range: 443..499,
+                        kind: FN_DEF,
+                        detail: Some(
+                            "fn()",
+                        ),
+                        deprecated: true,
+                    },
+                ]
+            "#]],
+        );
     }
 }
