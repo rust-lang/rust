@@ -6,7 +6,7 @@
 //! e.g. expressions, type references etc.
 
 use crate::{SsrError, SsrPattern, SsrRule};
-use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind};
+use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind, T};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::str::FromStr;
 
@@ -161,7 +161,7 @@ fn parse_pattern(pattern_str: &str) -> Result<Vec<PatternElement>, SsrError> {
     let mut placeholder_names = FxHashSet::default();
     let mut tokens = tokenize(pattern_str)?.into_iter();
     while let Some(token) = tokens.next() {
-        if token.kind == SyntaxKind::DOLLAR {
+        if token.kind == T![$] {
             let placeholder = parse_placeholder(&mut tokens)?;
             if !placeholder_names.insert(placeholder.ident.clone()) {
                 bail!("Name `{}` repeats more than once", placeholder.ident);
@@ -226,7 +226,7 @@ fn parse_placeholder(tokens: &mut std::vec::IntoIter<Token>) -> Result<Placehold
             SyntaxKind::IDENT => {
                 name = Some(token.text);
             }
-            SyntaxKind::L_CURLY => {
+            T!['{'] => {
                 let token =
                     tokens.next().ok_or_else(|| SsrError::new("Unexpected end of placeholder"))?;
                 if token.kind == SyntaxKind::IDENT {
@@ -237,10 +237,10 @@ fn parse_placeholder(tokens: &mut std::vec::IntoIter<Token>) -> Result<Placehold
                         .next()
                         .ok_or_else(|| SsrError::new("Placeholder is missing closing brace '}'"))?;
                     match token.kind {
-                        SyntaxKind::COLON => {
+                        T![:] => {
                             constraints.push(parse_constraint(tokens)?);
                         }
-                        SyntaxKind::R_CURLY => break,
+                        T!['}'] => break,
                         _ => bail!("Unexpected token while parsing placeholder: '{}'", token.text),
                     }
                 }
@@ -330,24 +330,24 @@ mod tests {
             result.pattern.raw.tokens,
             vec![
                 token(SyntaxKind::IDENT, "foo"),
-                token(SyntaxKind::L_PAREN, "("),
+                token(T!['('], "("),
                 placeholder("a"),
-                token(SyntaxKind::COMMA, ","),
+                token(T![,], ","),
                 token(SyntaxKind::WHITESPACE, " "),
                 placeholder("b"),
-                token(SyntaxKind::R_PAREN, ")"),
+                token(T![')'], ")"),
             ]
         );
         assert_eq!(
             result.template.tokens,
             vec![
                 token(SyntaxKind::IDENT, "bar"),
-                token(SyntaxKind::L_PAREN, "("),
+                token(T!['('], "("),
                 placeholder("b"),
-                token(SyntaxKind::COMMA, ","),
+                token(T![,], ","),
                 token(SyntaxKind::WHITESPACE, " "),
                 placeholder("a"),
-                token(SyntaxKind::R_PAREN, ")"),
+                token(T![')'], ")"),
             ]
         );
     }
