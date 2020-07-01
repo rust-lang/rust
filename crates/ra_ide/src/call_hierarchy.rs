@@ -39,10 +39,11 @@ pub(crate) fn call_hierarchy(
 
 pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Option<Vec<CallItem>> {
     let sema = Semantics::new(db);
+
     // 1. Find all refs
     // 2. Loop through refs and determine unique fndef. This will become our `from: CallHierarchyItem,` in the reply.
     // 3. Add ranges relative to the start of the fndef.
-    let refs = references::find_all_refs(db, position, None)?;
+    let refs = references::find_all_refs(&sema, position, None)?;
 
     let mut calls = CallLocations::default();
 

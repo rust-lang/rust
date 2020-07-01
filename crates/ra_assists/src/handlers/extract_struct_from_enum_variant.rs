@@ -53,7 +53,7 @@ pub(crate) fn extract_struct_from_enum_variant(
         target,
         |builder| {
             let definition = Definition::ModuleDef(ModuleDef::EnumVariant(variant_hir));
-            let res = definition.find_usages(&ctx.db(), None);
+            let res = definition.find_usages(&ctx.sema, None);
             let start_offset = variant.parent_enum().syntax().text_range().start();
             let mut visited_modules_set = FxHashSet::default();
             visited_modules_set.insert(current_module);
