@@ -136,7 +136,7 @@ impl GlobalState {
             log::info!("queued count = {}", queue_count);
         }
 
-        let mut became_ready = false;
+        let prev_status = self.status;
         match event {
             Event::Lsp(msg) => match msg {
                 lsp_server::Message::Request(req) => self.on_request(loop_start, req)?,
@@ -168,15 +168,17 @@ impl GlobalState {
                     }
                 }
                 vfs::loader::Message::Progress { n_total, n_done } => {
-                    if n_total > 0 {
+                    if n_total == 0 {
+                        self.status = Status::Ready;
+                    } else {
                         let state = if n_done == 0 {
+                            self.status = Status::Loading;
                             Progress::Begin
                         } else if n_done < n_total {
                             Progress::Report
                         } else {
                             assert_eq!(n_done, n_total);
                             self.status = Status::Ready;
-                            became_ready = true;
                             Progress::End
                         };
                         self.report_progress(
@@ -233,13 +235,13 @@ impl GlobalState {
         }
 
         let state_changed = self.process_changes();
-        if became_ready {
+        if prev_status == Status::Loading && self.status == Status::Ready {
             if let Some(flycheck) = &self.flycheck {
                 flycheck.handle.update();
             }
         }
 
-        if self.status == Status::Ready && (state_changed || became_ready) {
+        if self.status == Status::Ready && (state_changed || prev_status == Status::Loading) {
             let subscriptions = self
                 .mem_docs
                 .iter()

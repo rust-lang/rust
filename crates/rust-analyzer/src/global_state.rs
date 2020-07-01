@@ -27,7 +27,7 @@ use crate::{
     Result,
 };
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum Status {
     Loading,
     Ready,
