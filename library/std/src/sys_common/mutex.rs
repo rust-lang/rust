@@ -30,7 +30,8 @@ impl Mutex {
     /// `init()`) is undefined behavior.
     #[inline]
     pub unsafe fn init(&mut self) {
-        self.0.init()
+        // SAFETY: the caller must uphold the safety contract for `init`.
+        unsafe { self.0.init() }
     }
 
     /// Locks the mutex blocking the current thread until it is available.
@@ -39,14 +40,18 @@ impl Mutex {
     /// previous function call.
     #[inline]
     pub unsafe fn raw_lock(&self) {
-        self.0.lock()
+        // SAFETY: the caller must uphold the safety contract for `lock`.
+        unsafe { self.0.lock() }
     }
 
     /// Calls raw_lock() and then returns an RAII guard to guarantee the mutex
     /// will be unlocked.
     #[inline]
     pub unsafe fn lock(&self) -> MutexGuard<'_> {
-        self.raw_lock();
+        // SAFETY: the caller must uphold the safety contract for `raw_lock`.
+        unsafe {
+            self.raw_lock();
+        }
         MutexGuard(&self.0)
     }
 
@@ -57,7 +62,8 @@ impl Mutex {
     /// previous function call.
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        self.0.try_lock()
+        // SAFETY: the caller must uphold the safety contract for `try_lock`.
+        unsafe { self.0.try_lock() }
     }
 
     /// Unlocks the mutex.
@@ -69,7 +75,8 @@ impl Mutex {
     /// lock() whenever possible.
     #[inline]
     pub unsafe fn raw_unlock(&self) {
-        self.0.unlock()
+        // SAFETY: the caller must uphold the safety contract for `unlock`.
+        unsafe { self.0.unlock() }
     }
 
     /// Deallocates all resources associated with this mutex.
@@ -78,7 +85,8 @@ impl Mutex {
     /// this mutex.
     #[inline]
     pub unsafe fn destroy(&self) {
-        self.0.destroy()
+        // SAFETY: the caller must uphold the safety contract for `destroy`.
+        unsafe { self.0.destroy() }
     }
 }
 

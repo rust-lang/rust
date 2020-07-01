@@ -23,7 +23,8 @@ impl RWLock {
     /// previous method call.
     #[inline]
     pub unsafe fn read(&self) {
-        self.0.read()
+        // SAFETY: the caller must uphold the safety contract for `read`.
+        unsafe { self.0.read() }
     }
 
     /// Attempts to acquire shared access to this lock, returning whether it
@@ -35,7 +36,8 @@ impl RWLock {
     /// previous method call.
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
-        self.0.try_read()
+        // SAFETY: the caller must uphold the safety contract for `try_read`.
+        unsafe { self.0.try_read() }
     }
 
     /// Acquires write access to the underlying lock, blocking the current thread
@@ -45,7 +47,8 @@ impl RWLock {
     /// previous method call.
     #[inline]
     pub unsafe fn write(&self) {
-        self.0.write()
+        // SAFETY: the caller must uphold the safety contract for `write`.
+        unsafe { self.0.write() }
     }
 
     /// Attempts to acquire exclusive access to this lock, returning whether it
@@ -57,7 +60,8 @@ impl RWLock {
     /// previous method call.
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        self.0.try_write()
+        // SAFETY: the caller must uphold the safety contract for `try_write`.
+        unsafe { self.0.try_write() }
     }
 
     /// Unlocks previously acquired shared access to this lock.
@@ -65,7 +69,8 @@ impl RWLock {
     /// Behavior is undefined if the current thread does not have shared access.
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        self.0.read_unlock()
+        // SAFETY: the caller must uphold the safety contract for `read_unlock`.
+        unsafe { self.0.read_unlock() }
     }
 
     /// Unlocks previously acquired exclusive access to this lock.
@@ -74,7 +79,8 @@ impl RWLock {
     /// exclusive access.
     #[inline]
     pub unsafe fn write_unlock(&self) {
-        self.0.write_unlock()
+        // SAFETY: the caller must uphold the safety contract for `write_unlock`.
+        unsafe { self.0.write_unlock() }
     }
 
     /// Destroys OS-related resources with this RWLock.
@@ -83,6 +89,7 @@ impl RWLock {
     /// lock.
     #[inline]
     pub unsafe fn destroy(&self) {
-        self.0.destroy()
+        // SAFETY: the caller must uphold the safety contract for `destroy`.
+        unsafe { self.0.destroy() }
     }
 }

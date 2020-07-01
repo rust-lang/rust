@@ -127,7 +127,8 @@ impl StaticKey {
     /// been allocated.
     #[inline]
     pub unsafe fn get(&self) -> *mut u8 {
-        imp::get(self.key())
+        // SAFETY: the caller must uphold the safety contract for `get`.
+        unsafe { imp::get(self.key()) }
     }
 
     /// Sets this TLS key to a new value.
@@ -136,13 +137,16 @@ impl StaticKey {
     /// been allocated.
     #[inline]
     pub unsafe fn set(&self, val: *mut u8) {
-        imp::set(self.key(), val)
+        // SAFETY: the caller must uphold the safety contract for `set`.
+        unsafe { imp::set(self.key(), val) }
     }
 
     #[inline]
     unsafe fn key(&self) -> imp::Key {
         match self.key.load(Ordering::Relaxed) {
-            0 => self.lazy_init() as imp::Key,
+            // SAFETY: `0` is used as a sentinel value for an unitialized value,
+            // which means that initializing it is safe.
+            0 => unsafe { self.lazy_init() as imp::Key },
             n => n as imp::Key,
         }
     }
@@ -157,10 +161,13 @@ impl StaticKey {
             // We never call `INIT_LOCK.init()`, so it is UB to attempt to
             // acquire this mutex reentrantly!
             static INIT_LOCK: Mutex = Mutex::new();
-            let _guard = INIT_LOCK.lock();
+
+            // SAFETY: `INIT_LOCK` is an immutable static thus the
+            // mutex cannot be moved.
+            let _guard = unsafe { INIT_LOCK.lock() };
             let mut key = self.key.load(Ordering::SeqCst);
             if key == 0 {
-                key = imp::create(self.dtor) as usize;
+                key = unsafe { imp::create(self.dtor) as usize };
                 self.key.store(key, Ordering::SeqCst);
             }
             rtassert!(key != 0);
@@ -176,13 +183,15 @@ impl StaticKey {
         // value of 0, but with some gyrations to make sure we have a non-0
         // value returned from the creation routine.
         // FIXME: this is clearly a hack, and should be cleaned up.
-        let key1 = imp::create(self.dtor);
+        let key1 = unsafe { imp::create(self.dtor) };
         let key = if key1 != 0 {
             key1
         } else {
-            let key2 = imp::create(self.dtor);
-            imp::destroy(key1);
-            key2
+            unsafe {
+                let key2 = imp::create(self.dtor);
+                imp::destroy(key1);
+                key2
+            }
         };
         rtassert!(key != 0);
         match self.key.compare_and_swap(0, key as usize, Ordering::SeqCst) {
@@ -190,7 +199,9 @@ impl StaticKey {
             0 => key as usize,
             // If someone beat us to the punch, use their key instead
             n => {
-                imp::destroy(key);
+                unsafe {
+                    imp::destroy(key);
+                }
                 n
             }
         }

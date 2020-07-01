@@ -25,19 +25,22 @@ impl Condvar {
     /// address.
     #[inline]
     pub unsafe fn init(&mut self) {
-        self.0.init()
+        // SAFETY: the caller must uphold the safety contract for `init`.
+        unsafe { self.0.init() }
     }
 
     /// Signals one waiter on this condition variable to wake up.
     #[inline]
     pub unsafe fn notify_one(&self) {
-        self.0.notify_one()
+        // SAFETY: the caller must uphold the safety contract for `notify_one`.
+        unsafe { self.0.notify_one() }
     }
 
     /// Awakens all current waiters on this condition variable.
     #[inline]
     pub unsafe fn notify_all(&self) {
-        self.0.notify_all()
+        // SAFETY: the caller must uphold the safety contract for `notify_all`.
+        unsafe { self.0.notify_all() }
     }
 
     /// Waits for a signal on the specified mutex.
@@ -47,7 +50,8 @@ impl Condvar {
     /// on this condition variable.
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
-        self.0.wait(mutex::raw(mutex))
+        // SAFETY: the caller must uphold the safety contract for `wait`.
+        unsafe { self.0.wait(mutex::raw(mutex)) }
     }
 
     /// Waits for a signal on the specified mutex with a timeout duration
@@ -58,7 +62,8 @@ impl Condvar {
     /// on this condition variable.
     #[inline]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
-        self.0.wait_timeout(mutex::raw(mutex), dur)
+        // SAFETY: the caller must uphold the safety contract for `wait_timeout`.
+        unsafe { self.0.wait_timeout(mutex::raw(mutex), dur) }
     }
 
     /// Deallocates all resources associated with this condition variable.
@@ -67,6 +72,7 @@ impl Condvar {
     /// this condition variable.
     #[inline]
     pub unsafe fn destroy(&self) {
-        self.0.destroy()
+        // SAFETY: the caller must uphold the safety contract for `destroy`.
+        unsafe { self.0.destroy() }
     }
 }

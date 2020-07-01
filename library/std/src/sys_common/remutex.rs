@@ -53,7 +53,12 @@ impl<T> ReentrantMutex<T> {
     /// once this mutex is in its final resting place, and only then are the
     /// lock/unlock methods safe.
     pub const unsafe fn new(t: T) -> ReentrantMutex<T> {
-        ReentrantMutex { inner: sys::ReentrantMutex::uninitialized(), data: t }
+        // `ReentrantMutex::uninitialized()` is not unsafe on all platforms
+        #[allow(unused_unsafe)]
+        // SAFETY: the caller must guarantee that `init` is called.
+        unsafe {
+            ReentrantMutex { inner: sys::ReentrantMutex::uninitialized(), data: t }
+        }
     }
 
     /// Initializes this mutex so it's ready for use.
@@ -63,7 +68,8 @@ impl<T> ReentrantMutex<T> {
     /// Unsafe to call more than once, and must be called after this will no
     /// longer move in memory.
     pub unsafe fn init(&self) {
-        self.inner.init();
+        // SAFETY: the caller must uphold the safety contract for `init`.
+        unsafe { self.inner.init() };
     }
 
     /// Acquires a mutex, blocking the current thread until it is able to do so.
@@ -79,6 +85,7 @@ impl<T> ReentrantMutex<T> {
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
     pub fn lock(&self) -> ReentrantMutexGuard<'_, T> {
+        // SAFETY: the caller must uphold the safety contract for `lock`.
         unsafe { self.inner.lock() }
         ReentrantMutexGuard::new(&self)
     }

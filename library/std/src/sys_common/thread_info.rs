@@ -1,4 +1,8 @@
-#![allow(dead_code)] // stack_guard isn't used right now on all platforms
+// stack_guard isn't used right now on all platforms
+#![allow(dead_code)]
+// FIXME: this should be removed once `thread_local!` denies unsafe ops in unsafe
+// fns. This cannot be done yet because the macro is also used in libproc_macro.
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use crate::cell::RefCell;
 use crate::sys::thread::guard::Guard;

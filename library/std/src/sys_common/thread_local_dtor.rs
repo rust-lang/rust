@@ -29,21 +29,25 @@ pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut
 
     static DTORS: StaticKey = StaticKey::new(Some(run_dtors));
     type List = Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
-    if DTORS.get().is_null() {
+    if unsafe { DTORS.get().is_null() } {
         let v: Box<List> = box Vec::new();
-        DTORS.set(Box::into_raw(v) as *mut u8);
+        unsafe { DTORS.set(Box::into_raw(v) as *mut u8) }
     }
-    let list: &mut List = &mut *(DTORS.get() as *mut List);
+    let list: &mut List = unsafe { &mut *(DTORS.get() as *mut List) };
     list.push((t, dtor));
 
     unsafe extern "C" fn run_dtors(mut ptr: *mut u8) {
         while !ptr.is_null() {
-            let list: Box<List> = Box::from_raw(ptr as *mut List);
+            let list: Box<List> = unsafe { Box::from_raw(ptr as *mut List) };
             for (ptr, dtor) in list.into_iter() {
-                dtor(ptr);
+                unsafe {
+                    dtor(ptr);
+                }
             }
-            ptr = DTORS.get();
-            DTORS.set(ptr::null_mut());
+            unsafe {
+                ptr = DTORS.get();
+                DTORS.set(ptr::null_mut());
+            }
         }
     }
 }

@@ -26,10 +26,14 @@ const DONE: *mut Queue = 1_usize as *mut _;
 const ITERS: usize = 10;
 
 unsafe fn init() -> bool {
-    if QUEUE.is_null() {
+    // SAFETY: the caller must ensure that `QUEUE` is not in use anywhere else,
+    // which `push` below does by locking `LOCK`.
+    if unsafe { QUEUE.is_null() } {
         let state: Box<Queue> = box Vec::new();
-        QUEUE = Box::into_raw(state);
-    } else if QUEUE == DONE {
+        unsafe {
+            QUEUE = Box::into_raw(state);
+        }
+    } else if unsafe { QUEUE == DONE } {
         // can't re-init after a cleanup
         return false;
     }

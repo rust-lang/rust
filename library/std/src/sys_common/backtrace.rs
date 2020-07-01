@@ -76,44 +76,46 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     let mut res = Ok(());
     // Start immediately if we're not using a short backtrace.
     let mut start = print_fmt != PrintFmt::Short;
-    backtrace_rs::trace_unsynchronized(|frame| {
-        if print_fmt == PrintFmt::Short && idx > MAX_NB_FRAMES {
-            return false;
-        }
+    unsafe {
+        backtrace_rs::trace_unsynchronized(|frame| {
+            if print_fmt == PrintFmt::Short && idx > MAX_NB_FRAMES {
+                return false;
+            }
 
-        let mut hit = false;
-        let mut stop = false;
-        backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
-            hit = true;
-            if print_fmt == PrintFmt::Short {
-                if let Some(sym) = symbol.name().and_then(|s| s.as_str()) {
-                    if sym.contains("__rust_begin_short_backtrace") {
-                        stop = true;
-                        return;
+            let mut hit = false;
+            let mut stop = false;
+            backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
+                hit = true;
+                if print_fmt == PrintFmt::Short {
+                    if let Some(sym) = symbol.name().and_then(|s| s.as_str()) {
+                        if sym.contains("__rust_begin_short_backtrace") {
+                            stop = true;
+                            return;
+                        }
+                        if sym.contains("__rust_end_short_backtrace") {
+                            start = true;
+                            return;
+                        }
                     }
-                    if sym.contains("__rust_end_short_backtrace") {
-                        start = true;
-                        return;
-                    }
+                }
+
+                if start {
+                    res = bt_fmt.frame().symbol(frame, symbol);
+                }
+            });
+            if stop {
+                return false;
+            }
+            if !hit {
+                if start {
+                    res = bt_fmt.frame().print_raw(frame.ip(), None, None, None);
                 }
             }
 
-            if start {
-                res = bt_fmt.frame().symbol(frame, symbol);
-            }
+            idx += 1;
+            res.is_ok()
         });
-        if stop {
-            return false;
-        }
-        if !hit {
-            if start {
-                res = bt_fmt.frame().print_raw(frame.ip(), None, None, None);
-            }
-        }
-
-        idx += 1;
-        res.is_ok()
-    });
+    }
     res?;
     bt_fmt.finish()?;
     if print_fmt == PrintFmt::Short {

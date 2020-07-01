@@ -480,7 +480,8 @@ impl Wtf8 {
     /// marked unsafe.
     #[inline]
     unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
-        mem::transmute(value)
+        // SAFETY: the caller must guarantee that `value` is a valid WTF-8 value.
+        unsafe { mem::transmute(value) }
     }
 
     /// Creates a mutable WTF-8 slice from a mutable WTF-8 byte slice.
@@ -489,7 +490,8 @@ impl Wtf8 {
     /// marked unsafe.
     #[inline]
     unsafe fn from_mut_bytes_unchecked(value: &mut [u8]) -> &mut Wtf8 {
-        mem::transmute(value)
+        // SAFETY: the caller must guarantee that `value` is a valid WTF-8 value.
+        unsafe { mem::transmute(value) }
     }
 
     /// Returns the length, in WTF-8 bytes.
@@ -785,8 +787,10 @@ pub fn is_code_point_boundary(slice: &Wtf8, index: usize) -> bool {
 /// Copied from core::str::raw::slice_unchecked
 #[inline]
 pub unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
-    // memory layout of an &[u8] and &Wtf8 are the same
-    Wtf8::from_bytes_unchecked(slice::from_raw_parts(s.bytes.as_ptr().add(begin), end - begin))
+    // SAFETY: the memory layout of an &[u8] and &Wtf8 are the same
+    unsafe {
+        Wtf8::from_bytes_unchecked(slice::from_raw_parts(s.bytes.as_ptr().add(begin), end - begin))
+    }
 }
 
 /// Copied from core::str::raw::slice_error_fail
