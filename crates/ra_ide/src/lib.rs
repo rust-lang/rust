@@ -75,7 +75,7 @@ pub use crate::{
     },
 };
 
-pub use hir::Documentation;
+pub use hir::{Documentation, Semantics};
 pub use ra_assists::{Assist, AssistConfig, AssistId, ResolvedAssist};
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,
@@ -385,7 +385,9 @@ impl Analysis {
         position: FilePosition,
         search_scope: Option<SearchScope>,
     ) -> Cancelable<Option<ReferenceSearchResult>> {
-        self.with_db(|db| references::find_all_refs(db, position, search_scope).map(|it| it.info))
+        self.with_db(|db| {
+            references::find_all_refs(&Semantics::new(db), position, search_scope).map(|it| it.info)
+        })
     }
 
     /// Returns a short text describing element at position.

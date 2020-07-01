@@ -24,23 +24,24 @@ pub(crate) fn rename(
     position: FilePosition,
     new_name: &str,
 ) -> Option<RangeInfo<SourceChange>> {
+    let sema = Semantics::new(db);
+
     match lex_single_valid_syntax_kind(new_name)? {
         SyntaxKind::IDENT | SyntaxKind::UNDERSCORE => (),
-        SyntaxKind::SELF_KW => return rename_to_self(db, position),
+        SyntaxKind::SELF_KW => return rename_to_self(&sema, position),
         _ => return None,
     }
 
-    let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
     if let Some(module) = find_module_at_offset(&sema, position, syntax) {
-        rename_mod(db, position, module, new_name)
+        rename_mod(&sema, position, module, new_name)
     } else if let Some(self_token) =
         syntax.token_at_offset(position.offset).find(|t| t.kind() == SyntaxKind::SELF_KW)
     {
-        rename_self_to_param(db, position, self_token, new_name)
+        rename_self_to_param(&sema, position, self_token, new_name)
     } else {
-        rename_reference(sema.db, position, new_name)
+        rename_reference(&sema, position, new_name)
     }
 }
 
@@ -97,7 +98,7 @@ fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFil
 }
 
 fn rename_mod(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     position: FilePosition,
     module: Module,
     new_name: &str,
@@ -105,12 +106,12 @@ fn rename_mod(
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
 
-    let src = module.definition_source(db);
-    let file_id = src.file_id.original_file(db);
+    let src = module.definition_source(sema.db);
+    let file_id = src.file_id.original_file(sema.db);
     match src.value {
         ModuleSource::SourceFile(..) => {
             // mod is defined in path/to/dir/mod.rs
-            let dst = if module.is_mod_rs(db) {
+            let dst = if module.is_mod_rs(sema.db) {
                 format!("../{}/mod.rs", new_name)
             } else {
                 format!("{}.rs", new_name)
@@ -122,17 +123,17 @@ fn rename_mod(
         ModuleSource::Module(..) => {}
     }
 
-    if let Some(src) = module.declaration_source(db) {
-        let file_id = src.file_id.original_file(db);
+    if let Some(src) = module.declaration_source(sema.db) {
+        let file_id = src.file_id.original_file(sema.db);
         let name = src.value.name()?;
         let edit = SourceFileEdit {
-            file_id: file_id,
+            file_id,
             edit: TextEdit::replace(name.syntax().text_range(), new_name.into()),
         };
         source_file_edits.push(edit);
     }
 
-    let RangeInfo { range, info: refs } = find_all_refs(db, position, None)?;
+    let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)?;
     let ref_edits = refs
         .references
         .into_iter()
@@ -142,8 +143,10 @@ fn rename_mod(
     Some(RangeInfo::new(range, SourceChange::from_edits(source_file_edits, file_system_edits)))
 }
 
-fn rename_to_self(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<SourceChange>> {
-    let sema = Semantics::new(db);
+fn rename_to_self(
+    sema: &Semantics<RootDatabase>,
+    position: FilePosition,
+) -> Option<RangeInfo<SourceChange>> {
     let source_file = sema.parse(position.file_id);
     let syn = source_file.syntax();
 
@@ -158,7 +161,7 @@ fn rename_to_self(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo
         _ => return None, // not renaming other types
     };
 
-    let RangeInfo { range, info: refs } = find_all_refs(db, position, None)?;
+    let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)?;
 
     let param_range = first_param.syntax().text_range();
     let (param_ref, usages): (Vec<Reference>, Vec<Reference>) = refs
@@ -210,16 +213,15 @@ fn text_edit_from_self_param(
 }
 
 fn rename_self_to_param(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     position: FilePosition,
     self_token: SyntaxToken,
     new_name: &str,
 ) -> Option<RangeInfo<SourceChange>> {
-    let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
     let syn = source_file.syntax();
 
-    let text = db.file_text(position.file_id);
+    let text = sema.db.file_text(position.file_id);
     let fn_def = find_node_at_offset::<ast::FnDef>(syn, position.offset)?;
     let search_range = fn_def.syntax().text_range();
 
@@ -249,11 +251,11 @@ fn rename_self_to_param(
 }
 
 fn rename_reference(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     position: FilePosition,
     new_name: &str,
 ) -> Option<RangeInfo<SourceChange>> {
-    let RangeInfo { range, info: refs } = find_all_refs(db, position, None)?;
+    let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)?;
 
     let edit = refs
         .into_iter()

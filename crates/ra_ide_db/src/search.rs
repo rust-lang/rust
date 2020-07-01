@@ -180,20 +180,20 @@ impl Definition {
 
     pub fn find_usages(
         &self,
-        db: &RootDatabase,
+        sema: &Semantics<RootDatabase>,
         search_scope: Option<SearchScope>,
     ) -> Vec<Reference> {
         let _p = profile("Definition::find_usages");
 
         let search_scope = {
-            let base = self.search_scope(db);
+            let base = self.search_scope(sema.db);
             match search_scope {
                 None => base,
                 Some(scope) => base.intersection(&scope),
             }
         };
 
-        let name = match self.name(db) {
+        let name = match self.name(sema.db) {
             None => return Vec::new(),
             Some(it) => it.to_string(),
         };
@@ -202,11 +202,10 @@ impl Definition {
         let mut refs = vec![];
 
         for (file_id, search_range) in search_scope {
-            let text = db.file_text(file_id);
+            let text = sema.db.file_text(file_id);
             let search_range =
                 search_range.unwrap_or(TextRange::up_to(TextSize::of(text.as_str())));
 
-            let sema = Semantics::new(db);
             let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
 
             for (idx, _) in text.match_indices(pat) {
@@ -221,9 +220,6 @@ impl Definition {
                     } else {
                         continue;
                     };
-
-                // FIXME: reuse sb
-                // See https://github.com/rust-lang/rust/pull/68198#issuecomment-574269098
 
                 match classify_name_ref(&sema, &name_ref) {
                     Some(NameRefClass::Definition(def)) if &def == self => {

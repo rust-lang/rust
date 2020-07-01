@@ -86,12 +86,11 @@ impl IntoIterator for ReferenceSearchResult {
 }
 
 pub(crate) fn find_all_refs(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
     let _p = profile("find_all_refs");
-    let sema = Semantics::new(db);
     let syntax = sema.parse(position.file_id).syntax().clone();
 
     let (opt_name, search_kind) = if let Some(name) =
@@ -108,15 +107,15 @@ pub(crate) fn find_all_refs(
     let RangeInfo { range, info: def } = find_name(&sema, &syntax, position, opt_name)?;
 
     let references = def
-        .find_usages(db, search_scope)
+        .find_usages(sema, search_scope)
         .into_iter()
         .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
         .collect();
 
-    let decl_range = def.try_to_nav(db)?.range();
+    let decl_range = def.try_to_nav(sema.db)?.range();
 
     let declaration = Declaration {
-        nav: def.try_to_nav(db)?,
+        nav: def.try_to_nav(sema.db)?,
         kind: ReferenceKind::Other,
         access: decl_access(&def, &syntax, decl_range),
     };
