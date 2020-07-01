@@ -83,6 +83,11 @@ impl PathResolution {
 /// Primary API to get semantic information, like types, from syntax trees.
 pub struct Semantics<'db, DB> {
     pub db: &'db DB,
+    impl_: SemanticsImpl<'db>,
+}
+
+pub struct SemanticsImpl<'db> {
+    pub db: &'db dyn HirDatabase,
     s2d_cache: RefCell<SourceToDefCache>,
     cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
 }
@@ -95,7 +100,166 @@ impl<DB> fmt::Debug for Semantics<'_, DB> {
 
 impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn new(db: &DB) -> Semantics<DB> {
-        Semantics { db, s2d_cache: Default::default(), cache: Default::default() }
+        let impl_ = SemanticsImpl::new(db);
+        Semantics { db, impl_ }
+    }
+
+    pub fn parse(&self, file_id: FileId) -> ast::SourceFile {
+        self.impl_.parse(file_id)
+    }
+
+    pub fn ast<T: AstDiagnostic + Diagnostic>(&self, d: &T) -> <T as AstDiagnostic>::AST {
+        self.impl_.ast(d)
+    }
+
+    pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
+        self.impl_.expand(macro_call)
+    }
+
+    pub fn expand_hypothetical(
+        &self,
+        actual_macro_call: &ast::MacroCall,
+        hypothetical_args: &ast::TokenTree,
+        token_to_map: SyntaxToken,
+    ) -> Option<(SyntaxNode, SyntaxToken)> {
+        self.impl_.expand_hypothetical(actual_macro_call, hypothetical_args, token_to_map)
+    }
+
+    pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
+        self.impl_.descend_into_macros(token)
+    }
+
+    pub fn descend_node_at_offset<N: ast::AstNode>(
+        &self,
+        node: &SyntaxNode,
+        offset: TextSize,
+    ) -> Option<N> {
+        self.impl_.descend_node_at_offset(node, offset)
+    }
+
+    pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
+        self.impl_.original_range(node)
+    }
+
+    pub fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+        self.impl_.diagnostics_range(diagnostics)
+    }
+
+    pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
+        self.impl_.ancestors_with_macros(node)
+    }
+
+    pub fn ancestors_at_offset_with_macros(
+        &self,
+        node: &SyntaxNode,
+        offset: TextSize,
+    ) -> impl Iterator<Item = SyntaxNode> + '_ {
+        self.impl_.ancestors_at_offset_with_macros(node, offset)
+    }
+
+    /// Find a AstNode by offset inside SyntaxNode, if it is inside *Macrofile*,
+    /// search up until it is of the target AstNode type
+    pub fn find_node_at_offset_with_macros<N: AstNode>(
+        &self,
+        node: &SyntaxNode,
+        offset: TextSize,
+    ) -> Option<N> {
+        self.impl_.find_node_at_offset_with_macros(node, offset)
+    }
+
+    /// Find a AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
+    /// descend it and find again
+    pub fn find_node_at_offset_with_descend<N: AstNode>(
+        &self,
+        node: &SyntaxNode,
+        offset: TextSize,
+    ) -> Option<N> {
+        self.impl_.find_node_at_offset_with_descend(node, offset)
+    }
+
+    pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
+        self.impl_.type_of_expr(expr)
+    }
+
+    pub fn type_of_pat(&self, pat: &ast::Pat) -> Option<Type> {
+        self.impl_.type_of_pat(pat)
+    }
+
+    pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
+        self.impl_.resolve_method_call(call)
+    }
+
+    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {
+        self.impl_.resolve_field(field)
+    }
+
+    pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<(Field, Option<Local>)> {
+        self.impl_.resolve_record_field(field)
+    }
+
+    pub fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<Field> {
+        self.impl_.resolve_record_field_pat(field)
+    }
+
+    pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {
+        self.impl_.resolve_macro_call(macro_call)
+    }
+
+    pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
+        self.impl_.resolve_path(path)
+    }
+
+    pub fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantId> {
+        self.impl_.resolve_variant(record_lit)
+    }
+
+    pub fn lower_path(&self, path: &ast::Path) -> Option<Path> {
+        self.impl_.lower_path(path)
+    }
+
+    pub fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {
+        self.impl_.resolve_bind_pat_to_const(pat)
+    }
+
+    // FIXME: use this instead?
+    // pub fn resolve_name_ref(&self, name_ref: &ast::NameRef) -> Option<???>;
+
+    pub fn record_literal_missing_fields(&self, literal: &ast::RecordLit) -> Vec<(Field, Type)> {
+        self.impl_.record_literal_missing_fields(literal)
+    }
+
+    pub fn record_pattern_missing_fields(&self, pattern: &ast::RecordPat) -> Vec<(Field, Type)> {
+        self.impl_.record_pattern_missing_fields(pattern)
+    }
+
+    pub fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
+        self.impl_.to_def(src)
+    }
+
+    pub fn to_module_def(&self, file: FileId) -> Option<Module> {
+        self.impl_.to_module_def(file)
+    }
+
+    pub fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db> {
+        self.impl_.scope(node)
+    }
+
+    pub fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
+        self.impl_.scope_at_offset(node, offset)
+    }
+
+    pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
+        self.impl_.scope_for_def(def)
+    }
+
+    pub fn assert_contains_node(&self, node: &SyntaxNode) {
+        self.impl_.assert_contains_node(node)
+    }
+}
+
+impl<'db> SemanticsImpl<'db> {
+    pub fn new(db: &'db dyn HirDatabase) -> Self {
+        Self { db, s2d_cache: Default::default(), cache: Default::default() }
     }
 
     pub fn parse(&self, file_id: FileId) -> ast::SourceFile {
@@ -108,7 +272,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         let file_id = d.source().file_id;
         let root = self.db.parse_or_expand(file_id).unwrap();
         self.cache(root, file_id);
-        d.ast(self.db)
+        d.ast(self.db.upcast())
     }
 
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
@@ -130,9 +294,15 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
             self.find_file(actual_macro_call.syntax().clone()).with_value(actual_macro_call);
         let sa = self.analyze2(macro_call.map(|it| it.syntax()), None);
         let krate = sa.resolver.krate()?;
-        let macro_call_id = macro_call
-            .as_call_id(self.db, krate, |path| sa.resolver.resolve_path_as_macro(self.db, &path))?;
-        hir_expand::db::expand_hypothetical(self.db, macro_call_id, hypothetical_args, token_to_map)
+        let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
+            sa.resolver.resolve_path_as_macro(self.db.upcast(), &path)
+        })?;
+        hir_expand::db::expand_hypothetical(
+            self.db.upcast(),
+            macro_call_id,
+            hypothetical_args,
+            token_to_map,
+        )
     }
 
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
@@ -147,7 +317,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
                 return None;
             }
             let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
-            let token = file_id.expansion_info(self.db)?.map_token_down(token.as_ref())?;
+            let token = file_id.expansion_info(self.db.upcast())?.map_token_down(token.as_ref())?;
 
             self.cache(find_root(&token.value.parent()), token.file_id);
 
@@ -184,7 +354,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
         let node = self.find_file(node);
-        node.ancestors_with_macros(self.db).map(|it| it.value)
+        node.ancestors_with_macros(self.db.upcast()).map(|it| it.value)
     }
 
     pub fn ancestors_at_offset_with_macros(
@@ -197,8 +367,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
             .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
     }
 
-    /// Find a AstNode by offset inside SyntaxNode, if it is inside *Macrofile*,
-    /// search up until it is of the target AstNode type
     pub fn find_node_at_offset_with_macros<N: AstNode>(
         &self,
         node: &SyntaxNode,
@@ -207,8 +375,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.ancestors_at_offset_with_macros(node, offset).find_map(N::cast)
     }
 
-    /// Find a AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
-    /// descend it and find again
     pub fn find_node_at_offset_with_descend<N: AstNode>(
         &self,
         node: &SyntaxNode,
@@ -267,9 +433,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.analyze(pat.syntax()).resolve_bind_pat_to_const(self.db, pat)
     }
 
-    // FIXME: use this instead?
-    // pub fn resolve_name_ref(&self, name_ref: &ast::NameRef) -> Option<???>;
-
     pub fn record_literal_missing_fields(&self, literal: &ast::RecordLit) -> Vec<(Field, Type)> {
         self.analyze(literal.syntax())
             .record_literal_missing_fields(self.db, literal)
@@ -310,7 +473,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
-        let resolver = def.id.resolver(self.db);
+        let resolver = def.id.resolver(self.db.upcast());
         SemanticsScope { db: self.db, resolver }
     }
 
@@ -331,12 +494,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
             ChildContainer::DefWithBodyId(def) => {
                 return SourceAnalyzer::new_for_body(self.db, def, src, offset)
             }
-            ChildContainer::TraitId(it) => it.resolver(self.db),
-            ChildContainer::ImplId(it) => it.resolver(self.db),
-            ChildContainer::ModuleId(it) => it.resolver(self.db),
-            ChildContainer::EnumId(it) => it.resolver(self.db),
-            ChildContainer::VariantId(it) => it.resolver(self.db),
-            ChildContainer::GenericDefId(it) => it.resolver(self.db),
+            ChildContainer::TraitId(it) => it.resolver(self.db.upcast()),
+            ChildContainer::ImplId(it) => it.resolver(self.db.upcast()),
+            ChildContainer::ModuleId(it) => it.resolver(self.db.upcast()),
+            ChildContainer::EnumId(it) => it.resolver(self.db.upcast()),
+            ChildContainer::VariantId(it) => it.resolver(self.db.upcast()),
+            ChildContainer::GenericDefId(it) => it.resolver(self.db.upcast()),
         };
         SourceAnalyzer::new_for_resolver(resolver, src)
     }
@@ -382,14 +545,14 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 pub trait ToDef: AstNode + Clone {
     type Def;
 
-    fn to_def<DB: HirDatabase>(sema: &Semantics<DB>, src: InFile<Self>) -> Option<Self::Def>;
+    fn to_def(sema: &SemanticsImpl, src: InFile<Self>) -> Option<Self::Def>;
 }
 
 macro_rules! to_def_impls {
     ($(($def:path, $ast:path, $meth:ident)),* ,) => {$(
         impl ToDef for $ast {
             type Def = $def;
-            fn to_def<DB: HirDatabase>(sema: &Semantics<DB>, src: InFile<Self>) -> Option<Self::Def> {
+            fn to_def(sema: &SemanticsImpl, src: InFile<Self>) -> Option<Self::Def> {
                 sema.with_ctx(|ctx| ctx.$meth(src)).map(<$def>::from)
             }
         }

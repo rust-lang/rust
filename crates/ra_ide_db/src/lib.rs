@@ -13,7 +13,7 @@ mod wasm_shims;
 
 use std::sync::Arc;
 
-use hir::db::{AstDatabase, DefDatabase};
+use hir::db::{AstDatabase, DefDatabase, HirDatabase};
 use ra_db::{
     salsa::{self, Database, Durability},
     Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase,
@@ -48,6 +48,12 @@ impl Upcast<dyn AstDatabase> for RootDatabase {
 
 impl Upcast<dyn DefDatabase> for RootDatabase {
     fn upcast(&self) -> &(dyn DefDatabase + 'static) {
+        &*self
+    }
+}
+
+impl Upcast<dyn HirDatabase> for RootDatabase {
+    fn upcast(&self) -> &(dyn HirDatabase + 'static) {
         &*self
     }
 }
