@@ -324,10 +324,10 @@ mod tests {
     ///  * a diagnostic is produced
     ///  * this diagnostic touches the input cursor position
     ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
-    fn check_apply_diagnostic_fix_from_position(fixture: &str, after: &str) {
+    fn check_apply_diagnostic_fix_from_position(ra_fixture: &str, after: &str) {
         let after = trim_indent(after);
 
-        let (analysis, file_position) = analysis_and_position(fixture);
+        let (analysis, file_position) = analysis_and_position(ra_fixture);
         let diagnostic = analysis.diagnostics(file_position.file_id).unwrap().pop().unwrap();
         let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
@@ -365,14 +365,14 @@ mod tests {
 
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
     /// apply to the file containing the cursor.
-    fn check_no_diagnostic_for_target_file(fixture: &str) {
-        let (analysis, file_position) = analysis_and_position(fixture);
+    fn check_no_diagnostic_for_target_file(ra_fixture: &str) {
+        let (analysis, file_position) = analysis_and_position(ra_fixture);
         let diagnostics = analysis.diagnostics(file_position.file_id).unwrap();
         assert_eq!(diagnostics.len(), 0);
     }
 
-    fn check_no_diagnostic(content: &str) {
-        let (analysis, file_id) = single_file(content);
+    fn check_no_diagnostic(ra_fixture: &str) {
+        let (analysis, file_id) = single_file(ra_fixture);
         let diagnostics = analysis.diagnostics(file_id).unwrap();
         assert_eq!(diagnostics.len(), 0, "expected no diagnostic, found one");
     }
@@ -473,7 +473,8 @@ mod tests {
 
     #[test]
     fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
-        let content = r#"
+        check_no_diagnostic_for_target_file(
+            r"
             //- /main.rs
             use core::result::Result::{self, Ok, Err};
 
@@ -485,13 +486,14 @@ mod tests {
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
-        "#;
-        check_no_diagnostic_for_target_file(content);
+        ",
+        );
     }
 
     #[test]
     fn test_wrap_return_type_not_applicable_when_return_type_is_not_result() {
-        let content = r#"
+        check_no_diagnostic_for_target_file(
+            r"
             //- /main.rs
             use core::result::Result::{self, Ok, Err};
 
@@ -508,8 +510,8 @@ mod tests {
             pub mod result {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
-        "#;
-        check_no_diagnostic_for_target_file(content);
+        ",
+        );
     }
 
     #[test]
@@ -618,7 +620,8 @@ mod tests {
 
     #[test]
     fn test_fill_struct_fields_no_diagnostic() {
-        let content = r"
+        check_no_diagnostic(
+            r"
             struct TestStruct {
                 one: i32,
                 two: i64,
@@ -628,14 +631,14 @@ mod tests {
                 let one = 1;
                 let s = TestStruct{ one, two: 2 };
             }
-        ";
-
-        check_no_diagnostic(content);
+        ",
+        );
     }
 
     #[test]
     fn test_fill_struct_fields_no_diagnostic_on_spread() {
-        let content = r"
+        check_no_diagnostic(
+            r"
             struct TestStruct {
                 one: i32,
                 two: i64,
@@ -645,9 +648,8 @@ mod tests {
                 let one = 1;
                 let s = TestStruct{ ..a };
             }
-        ";
-
-        check_no_diagnostic(content);
+        ",
+        );
     }
 
     #[test]

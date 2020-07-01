@@ -55,8 +55,8 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 mod tests {
     use crate::mock_analysis::analysis_and_position;
 
-    fn check_goto(fixture: &str, expected: &str) {
-        let (analysis, pos) = analysis_and_position(fixture);
+    fn check_goto(ra_fixture: &str, expected: &str) {
+        let (analysis, pos) = analysis_and_position(ra_fixture);
 
         let mut navs = analysis.goto_type_definition(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);
@@ -67,7 +67,7 @@ mod tests {
     #[test]
     fn goto_type_definition_works_simple() {
         check_goto(
-            "
+            r"
             //- /lib.rs
             struct Foo;
             fn foo() {
@@ -82,7 +82,7 @@ mod tests {
     #[test]
     fn goto_type_definition_works_simple_ref() {
         check_goto(
-            "
+            r"
             //- /lib.rs
             struct Foo;
             fn foo() {
@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn goto_type_definition_works_through_macro() {
         check_goto(
-            "
+            r"
             //- /lib.rs
             macro_rules! id {
                 ($($tt:tt)*) => { $($tt)* }
@@ -116,7 +116,7 @@ mod tests {
     #[test]
     fn goto_type_definition_for_param() {
         check_goto(
-            "
+            r"
             //- /lib.rs
             struct Foo;
             fn foo(<|>f: Foo) {}
@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn goto_type_definition_for_tuple_field() {
         check_goto(
-            "
+            r"
             //- /lib.rs
             struct Foo;
             struct Bar(Foo);
