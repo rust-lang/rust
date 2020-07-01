@@ -5,19 +5,19 @@ mod foo {
     trait OtherTrait<'a> {}
     impl<'a> OtherTrait<'a> for &'a () {}
 
-    trait ObjectTrait {}
-    trait MyTrait {
-        fn use_self(&self) -> &();
+    trait ObjectTrait<T> {}
+    trait MyTrait<T> {
+        fn use_self<K>(&self) -> &();
     }
     trait Irrelevant {}
 
-    impl MyTrait for dyn ObjectTrait {
-        fn use_self(&self) -> &() { panic!() }
+    impl<T> MyTrait<T> for dyn ObjectTrait<T> {
+        fn use_self<K>(&self) -> &() { panic!() }
     }
-    impl Irrelevant for dyn ObjectTrait {}
+    impl<T> Irrelevant for dyn ObjectTrait<T> {}
 
-    fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
-        val.use_self() //~ ERROR E0759
+    fn use_it<'a, T>(val: &'a dyn ObjectTrait<T>) -> impl OtherTrait<'a> + 'a {
+        val.use_self::<T>() //~ ERROR E0759
     }
 }
 
@@ -76,19 +76,16 @@ mod ban {
 
     trait ObjectTrait {}
     trait MyTrait {
-        fn use_self(&self) -> &();
+        fn use_self(&self) -> &() { panic!() }
     }
     trait Irrelevant {}
 
-    impl MyTrait for dyn ObjectTrait {
-        fn use_self(&self) -> &() { panic!() }
-    }
+    impl MyTrait for dyn ObjectTrait {}
     impl Irrelevant for dyn ObjectTrait {}
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> {
         val.use_self() //~ ERROR E0759
     }
 }
-
 
 fn main() {}

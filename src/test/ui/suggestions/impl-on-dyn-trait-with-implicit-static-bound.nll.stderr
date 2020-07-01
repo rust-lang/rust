@@ -1,10 +1,10 @@
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:20:9
    |
-LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
-   |                   --- `val` is a reference that is only valid in the function body
-LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^ `val` escapes the function body here
+LL |     fn use_it<'a, T>(val: &'a dyn ObjectTrait<T>) -> impl OtherTrait<'a> + 'a {
+   |                      --- `val` is a reference that is only valid in the function body
+LL |         val.use_self::<T>()
+   |         ^^^^^^^^^^^^^^^^^^^ `val` escapes the function body here
    |
    = help: consider replacing `'a` with `'static`
 
@@ -19,7 +19,7 @@ LL |         val.use_self()
    = help: consider replacing `'a` with `'static`
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:89:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:87:9
    |
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> {
    |                   --- `val` is a reference that is only valid in the function body

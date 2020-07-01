@@ -6,6 +6,7 @@
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::{
     FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine,
+    Unimplemented,
 };
 use rustc_errors::ErrorReported;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -53,6 +54,18 @@ pub fn codegen_fulfill_obligation<'tcx>(
                     &format!(
                         "encountered ambiguity selecting `{:?}` during codegen, presuming due to \
                          overflow or prior type error",
+                        trait_ref
+                    ),
+                );
+                return Err(ErrorReported);
+            }
+            Err(Unimplemented) => {
+                // This can trigger when we probe for the source of a `'static` lifetime requirement
+                // on a trait object: `impl Foo for dyn Trait {}` has an implicit `'static` bound.
+                infcx.tcx.sess.delay_span_bug(
+                    rustc_span::DUMMY_SP,
+                    &format!(
+                        "Encountered error `Unimplemented` selecting `{:?}` during codegen",
                         trait_ref
                     ),
                 );
