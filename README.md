@@ -1,7 +1,9 @@
-# The Rust Programming Language
+<a href = "https://www.rust-lang.org/"> 
+<img width = "90%" height = "auto" src = "https://img.shields.io/badge/Rust-Programming%20Language-black?style=flat&logo=rust" alt = "The Rust Programming Language">
+</a>
 
 This is the main source code repository for [Rust]. It contains the compiler,
-standard library, and documentation.
+standard library, and documentation. 
 
 [Rust]: https://www.rust-lang.org
 
@@ -17,9 +19,9 @@ Read ["Installation"] from [The Book].
 _Note: If you wish to contribute to the compiler, you should read [this
 chapter][rustcguidebuild] of the rustc-dev-guide instead of this section._
 
-The Rust build system has a Python script called `x.py` to bootstrap building
-the compiler. More information about it may be found by running `./x.py --help`
-or reading the [rustc dev guide][rustcguidebuild].
+The Rust build system uses a Python script called `x.py` to build the compiler,
+which manages the bootstrapping process. More information about it can be found 
+by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
 
 [rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 
@@ -54,9 +56,8 @@ or reading the [rustc dev guide][rustcguidebuild].
     $ cp config.toml.example config.toml
     ```
 
-    It is recommended that if you plan to use the Rust build system to create
-    an installation (using `./x.py install`) that you set the `prefix` value
-    in the `[install]` section to a directory that you have write permissions.
+    If you plan to use `x.py install` to create an installation, it is recommended
+    that you set the `prefix` value in the `[install]` section to a directory.
 
     Create install directory if you are not installing in default directory
 
@@ -143,8 +144,8 @@ shell with:
 ```
 
 Currently, building Rust only works with some known versions of Visual Studio. If
-you have a more recent version installed the build system doesn't understand
-then you may need to force rustbuild to use an older version. This can be done
+you have a more recent version installed and the build system doesn't understand,
+you may need to force rustbuild to use an older version. This can be done
 by manually calling the appropriate vcvars file before running the bootstrap.
 
 ```batch
