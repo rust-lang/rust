@@ -3029,3 +3029,21 @@ fn infer_dyn_fn_output() {
     "###
     );
 }
+
+#[test]
+fn variable_kinds() {
+    check_types(
+        r#"
+trait Trait<T> { fn get(self, t: T) -> T; }
+struct S;
+impl Trait<u128> for S {}
+impl Trait<f32> for S {}
+fn test() {
+    S.get(1);
+  //^^^^^^^^ u128
+    S.get(1.);
+  //^^^^^^^^ f32
+}
+        "#,
+    );
+}

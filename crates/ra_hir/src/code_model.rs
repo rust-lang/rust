@@ -1189,7 +1189,7 @@ impl Type {
             None => return false,
         };
 
-        let canonical_ty = Canonical { value: self.ty.value.clone(), num_vars: 0 };
+        let canonical_ty = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
         method_resolution::implements_trait(
             &canonical_ty,
             db,
@@ -1213,7 +1213,7 @@ impl Type {
                 self.ty.environment.clone(),
                 hir_ty::Obligation::Trait(trait_ref),
             ),
-            num_vars: 0,
+            kinds: Arc::new([]),
         };
 
         db.trait_solve(self.krate, goal).is_some()
@@ -1288,7 +1288,7 @@ impl Type {
     pub fn autoderef<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Type> + 'a {
         // There should be no inference vars in types passed here
         // FIXME check that?
-        let canonical = Canonical { value: self.ty.value.clone(), num_vars: 0 };
+        let canonical = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
         let environment = self.ty.environment.clone();
         let ty = InEnvironment { value: canonical, environment };
         autoderef(db, Some(self.krate), ty)
@@ -1329,7 +1329,7 @@ impl Type {
         // There should be no inference vars in types passed here
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
-        let canonical = Canonical { value: self.ty.value.clone(), num_vars: 0 };
+        let canonical = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
 
         let env = self.ty.environment.clone();
         let krate = krate.id;
@@ -1360,7 +1360,7 @@ impl Type {
         // There should be no inference vars in types passed here
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
-        let canonical = Canonical { value: self.ty.value.clone(), num_vars: 0 };
+        let canonical = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
 
         let env = self.ty.environment.clone();
         let krate = krate.id;
