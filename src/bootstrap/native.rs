@@ -423,6 +423,7 @@ fn configure_cmake(
     if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push_str(&format!(" {}", s));
     }
+    // Some compiler features used by LLVM (such as thread locals) will not work on a min version below iOS 10.
     if target.contains("apple-ios") {
         if target.contains("86-") {
             cflags.push_str(" -miphonesimulator-version-min=10.0");
