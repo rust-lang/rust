@@ -340,6 +340,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             _ => return false,
         };
 
+        let mut v = TraitObjectVisitor(vec![]);
+        v.visit_ty(ty);
+
         // Get the `Ident` of the method being called and the corresponding `impl` (to point at
         // `Bar` in `impl Foo for dyn Bar {}` and the definition of the method being called).
         let (ident, self_ty) = match tcx.hir().get_if_local(instance.def_id()) {
@@ -359,15 +362,30 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         // obligation comes from the `impl`. Find that `impl` so that we can point
                         // at it in the suggestion.
                         let trait_did = tcx.hir().local_def_id(parent_id).to_def_id();
-                        match tcx.hir().trait_impls(trait_did)
+                        match tcx
+                            .hir()
+                            .trait_impls(trait_did)
                             .iter()
                             .filter_map(|impl_node| {
                                 let impl_did = tcx.hir().local_def_id(*impl_node);
                                 match tcx.hir().get_if_local(impl_did.to_def_id()) {
                                     Some(Node::Item(Item {
-                                        kind: ItemKind::Impl { self_ty, of_trait: Some(of_trait), .. },
+                                        kind: ItemKind::Impl { self_ty, .. },
                                         ..
-                                    })) if of_trait.trait_def_id() == Some(trait_did) => Some(self_ty),
+                                    })) if v.0.iter().all(|did| {
+                                        // FIXME: we should check `self_ty` against the receiver
+                                        // type in the `UnifyReceiver` context, but for now, use
+                                        // this imperfect proxy. This will fail if there are
+                                        // multiple `impl`s for the same trait like
+                                        // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
+                                        // In that case, only the first one will get suggestions.
+                                        let mut hir_v = HirTraitObjectVisitor(vec![], *did);
+                                        hir_v.visit_ty(self_ty);
+                                        !hir_v.0.is_empty()
+                                    }) =>
+                                    {
+                                        Some(self_ty)
+                                    }
                                     _ => None,
                                 }
                             })
@@ -384,8 +402,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         };
 
         // Find the trait object types in the argument, so we point at *only* the trait object.
-        let mut v = TraitObjectVisitor(vec![]);
-        v.visit_ty(ty);
         for found_did in &v.0 {
             let mut hir_v = HirTraitObjectVisitor(vec![], *found_did);
             hir_v.visit_ty(self_ty);
