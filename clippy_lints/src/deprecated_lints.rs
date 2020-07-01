@@ -153,5 +153,13 @@ declare_deprecated_lint! {
     ///
     /// **Deprecation reason:** Associated-constants are now preferred.
     pub REPLACE_CONSTS,
-    "associated-constants `MIN`/`MAX` of integers are prefer to `{min,max}_value()` and module constants"
+    "associated-constants `MIN`/`MAX` of integers are prefered to `{min,max}_value()` and module constants"
+}
+
+declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** The regex! macro does not exist anymore.
+    pub REGEX_MACRO,
+    "the regex! macro has been removed from the regex crate in 2018"
 }
