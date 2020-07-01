@@ -149,15 +149,17 @@ fn with_files(
             let crate_id = crate_graph.add_crate_root(
                 file_id,
                 meta.edition,
-                Some(CrateName::new(&krate).unwrap()),
+                Some(krate.clone()),
                 meta.cfg,
                 meta.env,
                 Default::default(),
             );
-            let prev = crates.insert(krate.clone(), crate_id);
+            let crate_name = CrateName::new(&krate).unwrap();
+            let prev = crates.insert(crate_name.clone(), crate_id);
             assert!(prev.is_none());
             for dep in meta.deps {
-                crate_deps.push((krate.clone(), dep))
+                let dep = CrateName::new(&dep).unwrap();
+                crate_deps.push((crate_name.clone(), dep))
             }
         } else if meta.path == "/main.rs" || meta.path == "/lib.rs" {
             assert!(default_crate_root.is_none());

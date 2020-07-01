@@ -31,7 +31,7 @@ use hir_ty::{
     ApplicationTy, Canonical, GenericPredicate, InEnvironment, Substs, TraitEnvironment, Ty,
     TyDefId, TypeCtor,
 };
-use ra_db::{CrateId, CrateName, Edition, FileId};
+use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
 use ra_syntax::ast::{self, AttrsOwner, NameOwner};
 use rustc_hash::FxHashSet;
@@ -94,8 +94,8 @@ impl Crate {
         db.crate_graph()[self.id].edition
     }
 
-    pub fn display_name(self, db: &dyn HirDatabase) -> Option<CrateName> {
-        db.crate_graph()[self.id].display_name.as_ref().cloned()
+    pub fn display_name(self, db: &dyn HirDatabase) -> Option<String> {
+        db.crate_graph()[self.id].display_name.clone()
     }
 
     pub fn query_external_importables(
