@@ -55,7 +55,6 @@ use crate::{
 pub(crate) struct AssistContext<'a> {
     pub(crate) config: &'a AssistConfig,
     pub(crate) sema: Semantics<'a, RootDatabase>,
-    pub(crate) db: &'a RootDatabase,
     pub(crate) frange: FileRange,
     source_file: SourceFile,
 }
@@ -67,8 +66,11 @@ impl<'a> AssistContext<'a> {
         frange: FileRange,
     ) -> AssistContext<'a> {
         let source_file = sema.parse(frange.file_id);
-        let db = sema.db;
-        AssistContext { config, sema, db, frange, source_file }
+        AssistContext { config, sema, frange, source_file }
+    }
+
+    pub(crate) fn db(&self) -> &RootDatabase {
+        self.sema.db
     }
 
     // NB, this ignores active selection.

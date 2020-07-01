@@ -117,7 +117,7 @@ impl FunctionBuilder {
         let mut file = ctx.frange.file_id;
         let target = match &target_module {
             Some(target_module) => {
-                let module_source = target_module.definition_source(ctx.db);
+                let module_source = target_module.definition_source(ctx.db());
                 let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, &module_source)?;
                 file = in_file;
                 target
@@ -269,7 +269,7 @@ fn fn_arg_type(
         return None;
     }
 
-    if let Ok(rendered) = ty.display_source_code(ctx.db, target_module.into()) {
+    if let Ok(rendered) = ty.display_source_code(ctx.db(), target_module.into()) {
         Some(rendered)
     } else {
         None

@@ -44,7 +44,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
 
     let def = ctx.sema.to_def(&bind_pat)?;
     let def = Definition::Local(def);
-    let refs = def.find_usages(ctx.db, None);
+    let refs = def.find_usages(ctx.db(), None);
     if refs.is_empty() {
         mark::hit!(test_not_applicable_if_variable_unused);
         return None;

@@ -90,10 +90,10 @@ fn struct_definition(path: &ast::Path, sema: &Semantics<RootDatabase>) -> Option
 fn compute_fields_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<FxHashMap<String, usize>> {
     Some(
         struct_definition(path, &ctx.sema)?
-            .fields(ctx.db)
+            .fields(ctx.db())
             .iter()
             .enumerate()
-            .map(|(idx, field)| (field.name(ctx.db).to_string(), idx))
+            .map(|(idx, field)| (field.name(ctx.db()).to_string(), idx))
             .collect(),
     )
 }

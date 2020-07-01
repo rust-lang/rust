@@ -36,7 +36,7 @@ use crate::{utils::insert_use_statement, AssistContext, AssistId, Assists, Group
 // ```
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let auto_import_assets = AutoImportAssets::new(&ctx)?;
-    let proposed_imports = auto_import_assets.search_for_imports(ctx.db);
+    let proposed_imports = auto_import_assets.search_for_imports(ctx.db());
     if proposed_imports.is_empty() {
         return None;
     }

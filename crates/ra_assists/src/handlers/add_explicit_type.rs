@@ -57,7 +57,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
         return None;
     }
 
-    let inferred_type = ty.display_source_code(ctx.db, module.into()).ok()?;
+    let inferred_type = ty.display_source_code(ctx.db(), module.into()).ok()?;
     acc.add(
         AssistId("add_explicit_type"),
         format!("Insert explicit type `{}`", inferred_type),

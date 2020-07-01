@@ -122,7 +122,7 @@ fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
 // FIXME: change the new fn checking to a more semantic approach when that's more
 // viable (e.g. we process proc macros, etc)
 fn find_struct_impl(ctx: &AssistContext, strukt: &ast::StructDef) -> Option<Option<ast::ImplDef>> {
-    let db = ctx.db;
+    let db = ctx.db();
     let module = strukt.syntax().ancestors().find(|node| {
         ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())
     })?;

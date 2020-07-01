@@ -51,11 +51,11 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let module = ctx.sema.scope(expr.syntax()).module()?;
 
     let missing_arms: Vec<MatchArm> = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr) {
-        let variants = enum_def.variants(ctx.db);
+        let variants = enum_def.variants(ctx.db());
 
         let mut variants = variants
             .into_iter()
-            .filter_map(|variant| build_pat(ctx.db, module, variant))
+            .filter_map(|variant| build_pat(ctx.db(), module, variant))
             .filter(|variant_pat| is_variant_missing(&mut arms, variant_pat))
             .map(|pat| make::match_arm(iter::once(pat), make::expr_empty_block()))
             .collect::<Vec<_>>();
@@ -84,11 +84,11 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
         // where each tuple represents a proposed match arm.
         enum_defs
             .into_iter()
-            .map(|enum_def| enum_def.variants(ctx.db))
+            .map(|enum_def| enum_def.variants(ctx.db()))
             .multi_cartesian_product()
             .map(|variants| {
                 let patterns =
-                    variants.into_iter().filter_map(|variant| build_pat(ctx.db, module, variant));
+                    variants.into_iter().filter_map(|variant| build_pat(ctx.db(), module, variant));
                 ast::Pat::from(make::tuple_pat(patterns))
             })
             .filter(|variant_pat| is_variant_missing(&mut arms, variant_pat))

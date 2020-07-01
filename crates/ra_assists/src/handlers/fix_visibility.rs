@@ -41,14 +41,14 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> O
     };
 
     let current_module = ctx.sema.scope(&path.syntax()).module()?;
-    let target_module = def.module(ctx.db)?;
+    let target_module = def.module(ctx.db())?;
 
-    let vis = target_module.visibility_of(ctx.db, &def)?;
-    if vis.is_visible_from(ctx.db, current_module.into()) {
+    let vis = target_module.visibility_of(ctx.db(), &def)?;
+    if vis.is_visible_from(ctx.db(), current_module.into()) {
         return None;
     };
 
-    let (offset, target, target_file, target_name) = target_data_for_def(ctx.db, def)?;
+    let (offset, target, target_file, target_name) = target_data_for_def(ctx.db(), def)?;
 
     let missing_visibility =
         if current_module.krate() == target_module.krate() { "pub(crate)" } else { "pub" };
@@ -72,16 +72,16 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
     let (record_field_def, _) = ctx.sema.resolve_record_field(&record_field)?;
 
     let current_module = ctx.sema.scope(record_field.syntax()).module()?;
-    let visibility = record_field_def.visibility(ctx.db);
-    if visibility.is_visible_from(ctx.db, current_module.into()) {
+    let visibility = record_field_def.visibility(ctx.db());
+    if visibility.is_visible_from(ctx.db(), current_module.into()) {
         return None;
     }
 
-    let parent = record_field_def.parent_def(ctx.db);
-    let parent_name = parent.name(ctx.db);
-    let target_module = parent.module(ctx.db);
+    let parent = record_field_def.parent_def(ctx.db());
+    let parent_name = parent.name(ctx.db());
+    let target_module = parent.module(ctx.db());
 
-    let in_file_source = record_field_def.source(ctx.db);
+    let in_file_source = record_field_def.source(ctx.db());
     let (offset, target) = match in_file_source.value {
         hir::FieldSource::Named(it) => {
             let s = it.syntax();
@@ -95,9 +95,9 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
 
     let missing_visibility =
         if current_module.krate() == target_module.krate() { "pub(crate)" } else { "pub" };
-    let target_file = in_file_source.file_id.original_file(ctx.db);
+    let target_file = in_file_source.file_id.original_file(ctx.db());
 
-    let target_name = record_field_def.name(ctx.db);
+    let target_name = record_field_def.name(ctx.db());
     let assist_label =
         format!("Change visibility of {}.{} to {}", parent_name, target_name, missing_visibility);
 
