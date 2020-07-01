@@ -417,8 +417,8 @@ mod tests {
         assert_eq!(offset, position.into());
     }
 
-    fn check_hover_result(fixture: &str, expected: &[&str]) -> (String, Vec<HoverAction>) {
-        let (analysis, position) = analysis_and_position(fixture);
+    fn check_hover_result(ra_fixture: &str, expected: &[&str]) -> (String, Vec<HoverAction>) {
+        let (analysis, position) = analysis_and_position(ra_fixture);
         let hover = analysis.hover(position).unwrap().unwrap();
         let mut results = Vec::from(hover.info.results());
         results.sort();
@@ -435,8 +435,8 @@ mod tests {
         (content[hover.range].to_string(), hover.info.actions().to_vec())
     }
 
-    fn check_hover_no_result(fixture: &str) {
-        let (analysis, position) = analysis_and_position(fixture);
+    fn check_hover_no_result(ra_fixture: &str) {
+        let (analysis, position) = analysis_and_position(ra_fixture);
         assert!(analysis.hover(position).unwrap().is_none());
     }
 
@@ -923,7 +923,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_through_macro() {
         let (hover_on, _) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             macro_rules! id {
                 ($($tt:tt)*) => { $($tt)* }
@@ -944,7 +944,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_through_expr_in_macro() {
         let (hover_on, _) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             macro_rules! id {
                 ($($tt:tt)*) => { $($tt)* }
@@ -962,7 +962,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_through_expr_in_macro_recursive() {
         let (hover_on, _) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             macro_rules! id_deep {
                 ($($tt:tt)*) => { $($tt)* }
@@ -983,7 +983,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_through_func_in_macro_recursive() {
         let (hover_on, _) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             macro_rules! id_deep {
                 ($($tt:tt)*) => { $($tt)* }
@@ -1026,7 +1026,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_through_assert_macro() {
         let (hover_on, _) = check_hover_result(
-            r#"
+            r"
             //- /lib.rs
             #[rustc_builtin_macro]
             macro_rules! assert {}
@@ -1035,7 +1035,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             fn foo() {
                 assert!(ba<|>r());
             }
-            "#,
+            ",
             &["fn bar() -> bool"],
         );
 
@@ -1077,14 +1077,14 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_function_show_qualifiers() {
         check_hover_result(
-            "
+            r"
             //- /lib.rs
             async fn foo<|>() {}
             ",
             &["async fn foo()"],
         );
         check_hover_result(
-            "
+            r"
             //- /lib.rs
             pub const unsafe fn foo<|>() {}
             ",
@@ -1102,7 +1102,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_trait_show_qualifiers() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             unsafe trait foo<|>() {}
             ",
@@ -1114,7 +1114,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_mod_with_same_name_as_function() {
         check_hover_result(
-            "
+            r"
             //- /lib.rs
             use self::m<|>y::Bar;
 
@@ -1237,7 +1237,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_trait_has_impl_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             trait foo<|>() {}
             ",
@@ -1249,7 +1249,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_struct_has_impl_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             struct foo<|>() {}
             ",
@@ -1261,7 +1261,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_union_has_impl_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             union foo<|>() {}
             ",
@@ -1273,7 +1273,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_enum_has_impl_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             enum foo<|>() {
                 A,
@@ -1288,7 +1288,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_test_has_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             #[test]
             fn foo_<|>test() {}
@@ -1332,7 +1332,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_test_mod_has_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             mod tests<|> {
                 #[test]
@@ -1373,7 +1373,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_struct_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /main.rs
             struct S{ f1: u32 }
 
@@ -1416,7 +1416,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_generic_struct_has_goto_type_actions() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /main.rs
             struct Arg(u32);
             struct S<T>{ f1: T }
@@ -1479,7 +1479,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_generic_struct_has_flattened_goto_type_actions() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /main.rs
             struct Arg(u32);
             struct S<T>{ f1: T }
@@ -1542,7 +1542,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_tuple_has_goto_type_actions() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /main.rs
             struct A(u32);
             struct B(u32);
@@ -1627,7 +1627,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_return_impl_trait_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /main.rs
             trait Foo {}
 
@@ -1672,7 +1672,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_generic_return_impl_trait_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /main.rs
             trait Foo<T> {}
             struct S;
@@ -1737,7 +1737,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_return_impl_traits_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /main.rs
             trait Foo {}
             trait Bar {}
@@ -1802,7 +1802,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_generic_return_impl_traits_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /main.rs
             trait Foo<T> {}
             trait Bar<T> {}
@@ -1907,7 +1907,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_arg_impl_trait_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             trait Foo {}
             fn foo(ar<|>g: &impl Foo) {}
@@ -1947,7 +1947,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_arg_impl_traits_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             trait Foo {}
             trait Bar<T> {}
@@ -2028,7 +2028,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_arg_generic_impl_trait_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             trait Foo<T> {}
             struct S {}
@@ -2088,7 +2088,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_dyn_return_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /main.rs
             trait Foo {}
             struct S;
@@ -2156,7 +2156,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_dyn_arg_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             trait Foo {}
             fn foo(ar<|>g: &dyn Foo) {}
@@ -2196,7 +2196,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_generic_dyn_arg_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             trait Foo<T> {}
             struct S {}
@@ -2256,7 +2256,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_goto_type_action_links_order() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /lib.rs
             trait ImplTrait<T> {}
             trait DynTrait<T> {}
@@ -2357,7 +2357,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
     #[test]
     fn test_hover_associated_type_has_goto_type_action() {
         let (_, actions) = check_hover_result(
-            "
+            r"
             //- /main.rs
             trait Foo {
                 type Item;

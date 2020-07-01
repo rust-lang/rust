@@ -137,8 +137,8 @@ mod tests {
         documentation: &'a str,
     }
 
-    fn check_detail_and_documentation(fixture: &str, expected: DetailAndDocumentation) {
-        let (analysis, position) = analysis_and_position(fixture);
+    fn check_detail_and_documentation(ra_fixture: &str, expected: DetailAndDocumentation) {
+        let (analysis, position) = analysis_and_position(ra_fixture);
         let config = CompletionConfig::default();
         let completions = analysis.completions(&config, position).unwrap().unwrap();
         for item in completions {
