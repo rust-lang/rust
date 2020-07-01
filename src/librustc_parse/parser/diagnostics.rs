@@ -1415,7 +1415,7 @@ impl<'a> Parser<'a> {
                 if self.token != token::Lt {
                     err.span_suggestion(
                         pat.span,
-                        "if this was a parameter name, give it a type",
+                        "if this is a parameter name, give it a type",
                         format!("{}: TypeName", ident),
                         Applicability::HasPlaceholders,
                     );
