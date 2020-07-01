@@ -8,6 +8,7 @@
 //! extension traits of `std::os::$platform`.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::OsString;
 use crate::fmt;
