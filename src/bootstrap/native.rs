@@ -176,7 +176,7 @@ impl Step for Llvm {
         }
 
         // Are we compiling for iOS/tvOS?
-        if target.contains("apple") && !target.contains("darwin") {
+        if target.contains("apple-ios") || target.contains("apple-tvos") {
             // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
             cfg.define("CMAKE_OSX_SYSROOT", "/");
             cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");
