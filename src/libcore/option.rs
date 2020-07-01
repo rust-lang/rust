@@ -179,8 +179,9 @@ impl<T> Option<T> {
     /// [`Some`]: #variant.Some
     #[must_use = "if you intended to assert that this has a value, consider `.unwrap()` instead"]
     #[inline]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_some(&self) -> bool {
+    pub const fn is_some(&self) -> bool {
         matches!(*self, Some(_))
     }
 
@@ -200,8 +201,9 @@ impl<T> Option<T> {
     #[must_use = "if you intended to assert that this doesn't have a value, consider \
                   `.and_then(|| panic!(\"`Option` had a value when expected `None`\"))` instead"]
     #[inline]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_none(&self) -> bool {
+    pub const fn is_none(&self) -> bool {
         !self.is_some()
     }
 
@@ -259,8 +261,9 @@ impl<T> Option<T> {
     /// println!("still can print text: {:?}", text);
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_ref(&self) -> Option<&T> {
+    pub const fn as_ref(&self) -> Option<&T> {
         match *self {
             Some(ref x) => Some(x),
             None => None,
@@ -580,8 +583,9 @@ impl<T> Option<T> {
     /// assert_eq!(x.iter().next(), None);
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, T> {
+    pub const fn iter(&self) -> Iter<'_, T> {
         Iter { inner: Item { opt: self.as_ref() } }
     }
 
