@@ -94,6 +94,13 @@ impl fmt::Display for CrateName {
     }
 }
 
+impl ops::Deref for CrateName {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProcMacroId(pub u32);
 
@@ -138,7 +145,7 @@ pub struct Env {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dependency {
     pub crate_id: CrateId,
-    pub name: SmolStr,
+    pub name: CrateName,
 }
 
 impl CrateGraph {
@@ -178,7 +185,7 @@ impl CrateGraph {
         if self.dfs_find(from, to, &mut FxHashSet::default()) {
             return Err(CyclicDependenciesError);
         }
-        self.arena.get_mut(&from).unwrap().add_dep(name.0, to);
+        self.arena.get_mut(&from).unwrap().add_dep(name, to);
         Ok(())
     }
 
@@ -247,7 +254,7 @@ impl CrateId {
 }
 
 impl CrateData {
-    fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
+    fn add_dep(&mut self, name: CrateName, crate_id: CrateId) {
         self.dependencies.push(Dependency { name, crate_id })
     }
 }
@@ -429,7 +436,10 @@ mod tests {
             .is_ok());
         assert_eq!(
             graph[crate1].dependencies,
-            vec![Dependency { crate_id: crate2, name: "crate_name_with_dashes".into() }]
+            vec![Dependency {
+                crate_id: crate2,
+                name: CrateName::new("crate_name_with_dashes").unwrap()
+            }]
         );
     }
 }

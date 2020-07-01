@@ -161,7 +161,7 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: LazyMacroId) -> tt::TokenTree {
     // XXX
     //  All crates except core itself should have a dependency on core,
     //  We detect `core` by seeing whether it doesn't have such a dependency.
-    let tt = if cg[krate].dependencies.iter().any(|dep| dep.name == "core") {
+    let tt = if cg[krate].dependencies.iter().any(|dep| &*dep.name == "core") {
         quote! { core }
     } else {
         quote! { crate }

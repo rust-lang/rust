@@ -288,10 +288,7 @@ impl ProjectWorkspace {
                         if let (Some(&from), Some(&to)) =
                             (crates.get(&from_crate_id), crates.get(&to_crate_id))
                         {
-                            if crate_graph
-                                .add_dep(from, CrateName::new(&dep.name).unwrap(), to)
-                                .is_err()
-                            {
+                            if crate_graph.add_dep(from, dep.name.clone(), to).is_err() {
                                 log::error!(
                                     "cyclic dependency {:?} -> {:?}",
                                     from_crate_id,
