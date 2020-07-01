@@ -24,6 +24,8 @@ opt-level = 0
 opt-level = 0
 [profile.release.package.salsa-macros]
 opt-level = 0
+[profile.release.package.tracing-attributes]
+opt-level = 0
 [profile.release.package.xtask]
 opt-level = 0
 
