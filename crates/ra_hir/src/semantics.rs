@@ -297,19 +297,19 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.with_ctx(|ctx| ctx.file_to_def(file)).map(Module::from)
     }
 
-    pub fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db, DB> {
+    pub fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db> {
         let node = self.find_file(node.clone());
         let resolver = self.analyze2(node.as_ref(), None).resolver;
         SemanticsScope { db: self.db, resolver }
     }
 
-    pub fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db, DB> {
+    pub fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
         let node = self.find_file(node.clone());
         let resolver = self.analyze2(node.as_ref(), Some(offset)).resolver;
         SemanticsScope { db: self.db, resolver }
     }
 
-    pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db, DB> {
+    pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
         let resolver = def.id.resolver(self.db);
         SemanticsScope { db: self.db, resolver }
     }
@@ -419,12 +419,12 @@ fn find_root(node: &SyntaxNode) -> SyntaxNode {
     node.ancestors().last().unwrap()
 }
 
-pub struct SemanticsScope<'a, DB> {
-    pub db: &'a DB,
+pub struct SemanticsScope<'a> {
+    pub db: &'a dyn HirDatabase,
     resolver: Resolver,
 }
 
-impl<'a, DB: HirDatabase> SemanticsScope<'a, DB> {
+impl<'a> SemanticsScope<'a> {
     pub fn module(&self) -> Option<Module> {
         Some(Module { id: self.resolver.module()? })
     }
@@ -433,13 +433,13 @@ impl<'a, DB: HirDatabase> SemanticsScope<'a, DB> {
     // FIXME: rename to visible_traits to not repeat scope?
     pub fn traits_in_scope(&self) -> FxHashSet<TraitId> {
         let resolver = &self.resolver;
-        resolver.traits_in_scope(self.db)
+        resolver.traits_in_scope(self.db.upcast())
     }
 
     pub fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
         let resolver = &self.resolver;
 
-        resolver.process_all_names(self.db, &mut |name, def| {
+        resolver.process_all_names(self.db.upcast(), &mut |name, def| {
             let def = match def {
                 resolver::ScopeDef::PerNs(it) => {
                     let items = ScopeDef::all_items(it);
