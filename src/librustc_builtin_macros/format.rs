@@ -537,7 +537,7 @@ impl<'a, 'b> Context<'a, 'b> {
                                     name
                                 ));
                                 err.note(
-                                    "to avoid ambiguity format_args! cannot capture variables \
+                                    "to avoid ambiguity, `format_args!` cannot capture variables \
                                      when the format string is expanded from a macro",
                                 );
                             } else if self.ecx.parse_sess().unstable_features.is_nightly_build() {
