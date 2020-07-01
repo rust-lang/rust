@@ -782,7 +782,7 @@ impl Nonterminal {
     /// We need to maintain some special pretty-printing behavior for them due to incorrect
     /// asserts in old versions of those crates and their wide use in the ecosystem.
     /// See issue #73345 for more details.
-    /// FIXME: Remove this eventually.
+    /// FIXME(#73933): Remove this eventually.
     pub fn pretty_printing_compatibility_hack(&self) -> bool {
         if let NtItem(item) = self {
             let name = item.ident.name;
