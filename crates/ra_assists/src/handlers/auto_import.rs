@@ -5,7 +5,7 @@ use hir::{
     AsAssocItem, AssocItemContainer, ModPath, Module, ModuleDef, PathResolution, Semantics, Trait,
     Type,
 };
-use ra_ide_db::{imports_locator::ImportsLocator, RootDatabase};
+use ra_ide_db::{imports_locator, RootDatabase};
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -35,8 +35,8 @@ use crate::{utils::insert_use_statement, AssistContext, AssistId, Assists, Group
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let auto_import_assets = AutoImportAssets::new(&ctx)?;
-    let proposed_imports = auto_import_assets.search_for_imports(ctx.db());
+    let auto_import_assets = AutoImportAssets::new(ctx)?;
+    let proposed_imports = auto_import_assets.search_for_imports(ctx);
     if proposed_imports.is_empty() {
         return None;
     }
@@ -127,11 +127,11 @@ impl AutoImportAssets {
         GroupLabel(name)
     }
 
-    fn search_for_imports(&self, db: &RootDatabase) -> BTreeSet<ModPath> {
+    fn search_for_imports(&self, ctx: &AssistContext) -> BTreeSet<ModPath> {
         let _p = profile("auto_import::search_for_imports");
+        let db = ctx.db();
         let current_crate = self.module_with_name_to_import.krate();
-        ImportsLocator::new(db, current_crate)
-            .find_imports(&self.get_search_query())
+        imports_locator::find_imports(&ctx.sema, current_crate, &self.get_search_query())
             .into_iter()
             .filter_map(|candidate| match &self.import_candidate {
                 ImportCandidate::TraitAssocItem(assoc_item_type, _) => {
