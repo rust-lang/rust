@@ -168,22 +168,24 @@ impl GlobalState {
                     }
                 }
                 vfs::loader::Message::Progress { n_total, n_done } => {
-                    let state = if n_done == 0 {
-                        Progress::Begin
-                    } else if n_done < n_total {
-                        Progress::Report
-                    } else {
-                        assert_eq!(n_done, n_total);
-                        self.status = Status::Ready;
-                        became_ready = true;
-                        Progress::End
-                    };
-                    self.report_progress(
-                        "roots scanned",
-                        state,
-                        Some(format!("{}/{}", n_done, n_total)),
-                        Some(Progress::percentage(n_done, n_total)),
-                    )
+                    if n_total > 0 {
+                        let state = if n_done == 0 {
+                            Progress::Begin
+                        } else if n_done < n_total {
+                            Progress::Report
+                        } else {
+                            assert_eq!(n_done, n_total);
+                            self.status = Status::Ready;
+                            became_ready = true;
+                            Progress::End
+                        };
+                        self.report_progress(
+                            "roots scanned",
+                            state,
+                            Some(format!("{}/{}", n_done, n_total)),
+                            Some(Progress::percentage(n_done, n_total)),
+                        )
+                    }
                 }
             },
             Event::Flycheck(task) => match task {
