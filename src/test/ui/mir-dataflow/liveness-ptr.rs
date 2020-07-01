@@ -10,17 +10,17 @@ fn foo() -> i32 {
     x = 0;
 
     // `x` is live here since it is used in the next statement...
-    unsafe { rustc_peek(x); }
+    rustc_peek(x);
 
     p = &x;
 
     // ... but not here, even while it can be accessed through `p`.
-    unsafe { rustc_peek(x); } //~ ERROR rustc_peek: bit not set
+    rustc_peek(x); //~ ERROR rustc_peek: bit not set
     let tmp = unsafe { *p };
 
     x = tmp + 1;
 
-    unsafe { rustc_peek(x); }
+    rustc_peek(x);
 
     x
 }
