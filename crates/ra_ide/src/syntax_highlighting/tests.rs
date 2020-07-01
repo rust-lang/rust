@@ -1,6 +1,7 @@
 use std::fs;
 
-use test_utils::{assert_eq_text, project_dir, read_text};
+use expect::{expect_file, ExpectFile};
+use test_utils::project_dir;
 
 use crate::{mock_analysis::single_file, FileRange, TextRange};
 
@@ -91,7 +92,7 @@ impl<T> Option<T> {
 }
 "#
         .trim(),
-        "crates/ra_ide/src/snapshots/highlighting.html",
+        expect_file!["crates/ra_ide/test_data/highlighting.html"],
         false,
     );
 }
@@ -114,7 +115,7 @@ fn bar() {
 }
 "#
         .trim(),
-        "crates/ra_ide/src/snapshots/rainbow_highlighting.html",
+        expect_file!["crates/ra_ide/test_data/rainbow_highlighting.html"],
         true,
     );
 }
@@ -167,7 +168,7 @@ fn main() {
     );
 }"##
         .trim(),
-        "crates/ra_ide/src/snapshots/highlight_injection.html",
+        expect_file!["crates/ra_ide/test_data/highlight_injection.html"],
         false,
     );
 }
@@ -250,7 +251,7 @@ fn main() {
     println!("{ничоси}", ничоси = 92);
 }"#
         .trim(),
-        "crates/ra_ide/src/snapshots/highlight_strings.html",
+        expect_file!["crates/ra_ide/test_data/highlight_strings.html"],
         false,
     );
 }
@@ -278,7 +279,7 @@ fn main() {
 }
 "#
         .trim(),
-        "crates/ra_ide/src/snapshots/highlight_unsafe.html",
+        expect_file!["crates/ra_ide/test_data/highlight_unsafe.html"],
         false,
     );
 }
@@ -354,7 +355,7 @@ macro_rules! noop {
 }
 "#
         .trim(),
-        "crates/ra_ide/src/snapshots/highlight_doctest.html",
+        expect_file!["crates/ra_ide/test_data/highlight_doctest.html"],
         false,
     );
 }
@@ -362,11 +363,8 @@ macro_rules! noop {
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.
-fn check_highlighting(ra_fixture: &str, snapshot: &str, rainbow: bool) {
+fn check_highlighting(ra_fixture: &str, expect: ExpectFile, rainbow: bool) {
     let (analysis, file_id) = single_file(ra_fixture);
-    let dst_file = project_dir().join(snapshot);
     let actual_html = &analysis.highlight_as_html(file_id, rainbow).unwrap();
-    let expected_html = &read_text(&dst_file);
-    fs::write(dst_file, &actual_html).unwrap();
-    assert_eq_text!(expected_html, actual_html);
+    expect.assert_eq(actual_html)
 }

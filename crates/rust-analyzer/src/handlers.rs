@@ -415,7 +415,7 @@ pub(crate) fn handle_runnables(
             let source_file = snap.analysis.parse(file_id)?;
             algo::find_node_at_offset::<ast::MacroCall>(source_file.syntax(), offset)
                 .and_then(|it| it.path()?.segment()?.name_ref())
-                .map_or(false, |it| it.text() == "expect")
+                .map_or(false, |it| it.text() == "expect" || it.text() == "expect_file")
         }
         None => false,
     };
