@@ -132,6 +132,7 @@ impl FlycheckActor {
                     self.cancel_check_process();
 
                     let mut command = self.check_command();
+                    log::info!("restart flycheck {:?}", command);
                     command.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null());
                     if let Ok(child) = command.spawn().map(JodChild) {
                         self.cargo_handle = Some(CargoHandle::spawn(child));
