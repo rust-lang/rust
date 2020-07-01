@@ -44,7 +44,7 @@ pub struct Config {
     pub root_path: AbsPathBuf,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LinkedProject {
     ProjectManifest(ProjectManifest),
     InlineJsonProject(ProjectJson),
