@@ -128,9 +128,9 @@ fn add_missing_impl_members_inner(
     let missing_items = get_missing_assoc_items(&ctx.sema, &impl_def)
         .iter()
         .map(|i| match i {
-            hir::AssocItem::Function(i) => ast::AssocItem::FnDef(i.source(ctx.db).value),
-            hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAliasDef(i.source(ctx.db).value),
-            hir::AssocItem::Const(i) => ast::AssocItem::ConstDef(i.source(ctx.db).value),
+            hir::AssocItem::Function(i) => ast::AssocItem::FnDef(i.source(ctx.db()).value),
+            hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAliasDef(i.source(ctx.db()).value),
+            hir::AssocItem::Const(i) => ast::AssocItem::ConstDef(i.source(ctx.db()).value),
         })
         .filter(|t| def_name(&t).is_some())
         .filter(|t| match t {
