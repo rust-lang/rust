@@ -19,11 +19,14 @@ impl GlobalState {
         if self.config.lru_capacity != old_config.lru_capacity {
             self.analysis_host.update_lru_capacity(old_config.lru_capacity);
         }
-        if self.config.flycheck != old_config.flycheck {
+        if self.config.linked_projects != old_config.linked_projects {
+            self.reload()
+        } else if self.config.flycheck != old_config.flycheck {
             self.reload_flycheck();
         }
     }
     pub(crate) fn reload(&mut self) {
+        log::info!("reloading projects: {:?}", self.config.linked_projects);
         let workspaces = {
             if self.config.linked_projects.is_empty()
                 && self.config.notifications.cargo_toml_not_found

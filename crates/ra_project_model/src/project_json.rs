@@ -10,7 +10,7 @@ use serde::{de, Deserialize};
 use stdx::split_delim;
 
 /// Roots and crates that compose this Rust project.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectJson {
     pub(crate) roots: Vec<Root>,
     pub(crate) crates: Vec<Crate>,
@@ -18,14 +18,14 @@ pub struct ProjectJson {
 
 /// A root points to the directory which contains Rust crates. rust-analyzer watches all files in
 /// all roots. Roots might be nested.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Root {
     pub(crate) path: AbsPathBuf,
 }
 
 /// A crate points to the root module of a crate and lists the dependencies of the crate. This is
 /// useful in creating the crate graph.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Crate {
     pub(crate) root_module: AbsPathBuf,
     pub(crate) edition: Edition,
