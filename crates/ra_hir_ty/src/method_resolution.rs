@@ -38,136 +38,131 @@ impl TyFingerprint {
     }
 }
 
-/// A queryable and mergeable collection of impls.
-#[derive(Debug, PartialEq, Eq)]
-pub struct CrateImplDefs {
-    inherent_impls: FxHashMap<TyFingerprint, Vec<ImplId>>,
-    impls_by_trait: FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Vec<ImplId>>>,
+/// Trait impls defined or available in some crate.
+#[derive(Debug, Eq, PartialEq)]
+pub struct TraitImpls {
+    // If the `Option<TyFingerprint>` is `None`, the impl may apply to any self type.
+    map: FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Vec<ImplId>>>,
 }
 
-impl CrateImplDefs {
-    pub(crate) fn impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<CrateImplDefs> {
-        let _p = profile("impls_in_crate_query");
-        let mut res = CrateImplDefs {
-            inherent_impls: FxHashMap::default(),
-            impls_by_trait: FxHashMap::default(),
-        };
-        res.fill(db, krate);
+impl TraitImpls {
+    pub(crate) fn trait_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
+        let _p = profile("trait_impls_in_crate_query");
+        let mut impls = Self { map: FxHashMap::default() };
 
-        Arc::new(res)
-    }
-
-    /// Collects all impls from transitive dependencies of `krate` that may be used by `krate`.
-    ///
-    /// The full set of impls that can be used by `krate` is the returned map plus all the impls
-    /// from `krate` itself.
-    pub(crate) fn impls_from_deps_query(
-        db: &dyn HirDatabase,
-        krate: CrateId,
-    ) -> Arc<CrateImplDefs> {
-        let _p = profile("impls_from_deps_query");
-        let crate_graph = db.crate_graph();
-        let mut res = CrateImplDefs {
-            inherent_impls: FxHashMap::default(),
-            impls_by_trait: FxHashMap::default(),
-        };
-
-        // For each dependency, calculate `impls_from_deps` recursively, then add its own
-        // `impls_in_crate`.
-        // As we might visit crates multiple times, `merge` has to deduplicate impls to avoid
-        // wasting memory.
-        for dep in &crate_graph[krate].dependencies {
-            res.merge(&db.impls_from_deps(dep.crate_id));
-            res.merge(&db.impls_in_crate(dep.crate_id));
-        }
-
-        Arc::new(res)
-    }
-
-    fn fill(&mut self, db: &dyn HirDatabase, krate: CrateId) {
         let crate_def_map = db.crate_def_map(krate);
         for (_module_id, module_data) in crate_def_map.modules.iter() {
             for impl_id in module_data.scope.impls() {
-                match db.impl_trait(impl_id) {
-                    Some(tr) => {
-                        let self_ty = db.impl_self_ty(impl_id);
-                        let self_ty_fp = TyFingerprint::for_impl(&self_ty.value);
-                        self.impls_by_trait
-                            .entry(tr.value.trait_)
-                            .or_default()
-                            .entry(self_ty_fp)
-                            .or_default()
-                            .push(impl_id);
-                    }
-                    None => {
-                        let self_ty = db.impl_self_ty(impl_id);
-                        if let Some(self_ty_fp) = TyFingerprint::for_impl(&self_ty.value) {
-                            self.inherent_impls.entry(self_ty_fp).or_default().push(impl_id);
-                        }
-                    }
-                }
+                let target_trait = match db.impl_trait(impl_id) {
+                    Some(tr) => tr.value.trait_,
+                    None => continue,
+                };
+                let self_ty = db.impl_self_ty(impl_id);
+                let self_ty_fp = TyFingerprint::for_impl(&self_ty.value);
+                impls
+                    .map
+                    .entry(target_trait)
+                    .or_default()
+                    .entry(self_ty_fp)
+                    .or_default()
+                    .push(impl_id);
             }
         }
+
+        Arc::new(impls)
+    }
+
+    pub(crate) fn trait_impls_in_deps_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
+        let _p = profile("trait_impls_in_deps_query");
+        let crate_graph = db.crate_graph();
+        let mut res = Self { map: FxHashMap::default() };
+
+        for krate in crate_graph.transitive_deps(krate) {
+            res.merge(&db.trait_impls_in_crate(krate));
+        }
+
+        Arc::new(res)
     }
 
     fn merge(&mut self, other: &Self) {
-        for (fp, impls) in &other.inherent_impls {
-            let vec = self.inherent_impls.entry(*fp).or_default();
-            vec.extend(impls);
-            vec.sort();
-            vec.dedup();
-        }
-
-        for (trait_, other_map) in &other.impls_by_trait {
-            let map = self.impls_by_trait.entry(*trait_).or_default();
+        for (trait_, other_map) in &other.map {
+            let map = self.map.entry(*trait_).or_default();
             for (fp, impls) in other_map {
                 let vec = map.entry(*fp).or_default();
                 vec.extend(impls);
-                vec.sort();
-                vec.dedup();
             }
         }
     }
 
-    pub fn lookup_impl_defs(&self, ty: &Ty) -> impl Iterator<Item = ImplId> + '_ {
-        let fingerprint = TyFingerprint::for_impl(ty);
-        fingerprint.and_then(|f| self.inherent_impls.get(&f)).into_iter().flatten().copied()
-    }
-
-    pub fn lookup_impl_defs_for_trait(&self, tr: TraitId) -> impl Iterator<Item = ImplId> + '_ {
-        self.impls_by_trait
-            .get(&tr)
+    /// Queries all impls of the given trait.
+    pub fn for_trait(&self, trait_: TraitId) -> impl Iterator<Item = ImplId> + '_ {
+        self.map
+            .get(&trait_)
             .into_iter()
-            .flat_map(|m| m.values().flat_map(|v| v.iter().copied()))
+            .flat_map(|map| map.values().flat_map(|v| v.iter().copied()))
     }
 
-    pub fn lookup_impl_defs_for_trait_and_ty(
+    /// Queries all impls of `trait_` that may apply to `self_ty`.
+    pub fn for_trait_and_self_ty(
         &self,
-        tr: TraitId,
-        fp: TyFingerprint,
+        trait_: TraitId,
+        self_ty: TyFingerprint,
     ) -> impl Iterator<Item = ImplId> + '_ {
-        self.impls_by_trait
-            .get(&tr)
-            .and_then(|m| m.get(&Some(fp)))
+        self.map
+            .get(&trait_)
             .into_iter()
-            .flatten()
-            .copied()
-            .chain(
-                self.impls_by_trait
-                    .get(&tr)
-                    .and_then(|m| m.get(&None))
-                    .into_iter()
-                    .flatten()
-                    .copied(),
-            )
+            .flat_map(move |map| map.get(&None).into_iter().chain(map.get(&Some(self_ty))))
+            .flat_map(|v| v.iter().copied())
     }
 
-    pub fn all_impls<'a>(&'a self) -> impl Iterator<Item = ImplId> + 'a {
-        self.inherent_impls
-            .values()
-            .chain(self.impls_by_trait.values().flat_map(|m| m.values()))
-            .flatten()
-            .copied()
+    pub fn all_impls(&self) -> impl Iterator<Item = ImplId> + '_ {
+        self.map.values().flat_map(|map| map.values().flat_map(|v| v.iter().copied()))
+    }
+}
+
+/// Inherent impls defined in some crate.
+///
+/// Inherent impls can only be defined in the crate that also defines the self type of the impl
+/// (note that some primitives are considered to be defined by both libcore and liballoc).
+///
+/// This makes inherent impl lookup easier than trait impl lookup since we only have to consider a
+/// single crate.
+#[derive(Debug, Eq, PartialEq)]
+pub struct InherentImpls {
+    map: FxHashMap<TyFingerprint, Vec<ImplId>>,
+}
+
+impl InherentImpls {
+    pub(crate) fn inherent_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
+        let mut map: FxHashMap<_, Vec<_>> = FxHashMap::default();
+
+        let crate_def_map = db.crate_def_map(krate);
+        for (_module_id, module_data) in crate_def_map.modules.iter() {
+            for impl_id in module_data.scope.impls() {
+                let data = db.impl_data(impl_id);
+                if data.target_trait.is_some() {
+                    continue;
+                }
+
+                let self_ty = db.impl_self_ty(impl_id);
+                if let Some(fp) = TyFingerprint::for_impl(&self_ty.value) {
+                    map.entry(fp).or_default().push(impl_id);
+                }
+            }
+        }
+
+        Arc::new(Self { map })
+    }
+
+    pub fn for_self_ty(&self, self_ty: &Ty) -> &[ImplId] {
+        match TyFingerprint::for_impl(self_ty) {
+            Some(fp) => self.map.get(&fp).map(|vec| vec.as_ref()).unwrap_or(&[]),
+            None => &[],
+        }
+    }
+
+    pub fn all_impls(&self) -> impl Iterator<Item = ImplId> + '_ {
+        self.map.values().flat_map(|v| v.iter().copied())
     }
 }
 
@@ -524,9 +519,9 @@ fn iterate_inherent_methods(
         None => return false,
     };
     for krate in def_crates {
-        let impls = db.impls_in_crate(krate);
+        let impls = db.inherent_impls_in_crate(krate);
 
-        for impl_def in impls.lookup_impl_defs(&self_ty.value) {
+        for &impl_def in impls.for_self_ty(&self_ty.value) {
             for &item in db.impl_data(impl_def).items.iter() {
                 if !is_valid_candidate(db, name, receiver_ty, item, self_ty) {
                     continue;

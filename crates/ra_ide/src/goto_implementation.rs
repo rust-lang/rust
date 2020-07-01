@@ -219,6 +219,10 @@ impl T for &Foo {}
   #[derive(Copy)]
 //^^^^^^^^^^^^^^^
 struct Foo<|>;
+
+mod marker {
+    trait Copy {}
+}
 "#,
         );
     }
