@@ -1,7 +1,7 @@
 #![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
 #![doc(hidden)]
 
-use core::alloc::{LayoutErr, MemoryBlock};
+use core::alloc::MemoryBlock;
 use core::cmp;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
@@ -172,7 +172,8 @@ impl<T, A: AllocRef> RawVec<T, A> {
         if mem::size_of::<T>() == 0 {
             Self::new_in(alloc)
         } else {
-            let layout = Layout::array::<T>(capacity).unwrap_or_else(|_| capacity_overflow());
+            let layout =
+                array_layout(Layout::new::<T>(), capacity).unwrap_or_else(|_| capacity_overflow());
             alloc_guard(layout.size()).unwrap_or_else(|_| capacity_overflow());
 
             let memory = alloc.alloc(layout, init).unwrap_or_else(|_| handle_alloc_error(layout));
@@ -418,10 +419,10 @@ impl<T, A: AllocRef> RawVec<T, A> {
         };
         let cap = cmp::max(min_non_zero_cap, cap);
 
-        let new_layout = Layout::array::<T>(cap);
+        let elem_layout = Layout::new::<T>();
 
         // `finish_grow` is non-generic over `T`.
-        let memory = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
+        let memory = finish_grow(cap, elem_layout, self.current_memory(), &mut self.alloc)?;
         self.set_memory(memory);
         Ok(())
     }
@@ -437,10 +438,11 @@ impl<T, A: AllocRef> RawVec<T, A> {
         }
 
         let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-        let new_layout = Layout::array::<T>(cap);
+
+        let elem_layout = Layout::new::<T>();
 
         // `finish_grow` is non-generic over `T`.
-        let memory = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
+        let memory = finish_grow(cap, elem_layout, self.current_memory(), &mut self.alloc)?;
         self.set_memory(memory);
         Ok(())
     }
@@ -472,16 +474,17 @@ impl<T, A: AllocRef> RawVec<T, A> {
 // above `RawVec::grow_amortized` for details. (The `A` parameter isn't
 // significant, because the number of different `A` types seen in practice is
 // much smaller than the number of `T` types.)
+#[inline]
 fn finish_grow<A>(
-    new_layout: Result<Layout, LayoutErr>,
+    cap: usize,
+    elem_layout: Layout,
     current_memory: Option<(NonNull<u8>, Layout)>,
     alloc: &mut A,
 ) -> Result<MemoryBlock, TryReserveError>
 where
     A: AllocRef,
 {
-    // Check for the error here to minimize the size of `RawVec::grow_*`.
-    let new_layout = new_layout.map_err(|_| CapacityOverflow)?;
+    let new_layout = array_layout(elem_layout, cap)?;
 
     alloc_guard(new_layout.size())?;
 
@@ -494,6 +497,15 @@ where
     .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?;
 
     Ok(memory)
+}
+
+// This is equivalent to Layout::array, but is non-generic and has a different
+// error type in its result. It helps reduce the amount of LLVM IR generated.
+#[inline]
+fn array_layout(elem_layout: Layout, n: usize) -> Result<Layout, TryReserveError> {
+    let (new_layout, offset) = elem_layout.repeat(n).map_err(|_| CapacityOverflow)?;
+    debug_assert_eq!(offset, elem_layout.size());
+    Ok(new_layout.pad_to_align())
 }
 
 unsafe impl<#[may_dangle] T, A: AllocRef> Drop for RawVec<T, A> {
