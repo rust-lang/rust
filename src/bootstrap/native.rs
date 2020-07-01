@@ -177,9 +177,12 @@ impl Step for Llvm {
 
         // Are we compiling for iOS/tvOS?
         if target.contains("apple") && !target.contains("darwin") {
+            // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
             cfg.define("CMAKE_OSX_SYSROOT", "/");
             cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");
-            cfg.define("LLVM_ENABLE_PLUGINS", "OFF"); // Prevent cmake from adding -bundle to CFLAGS automatically.
+            // Prevent cmake from adding -bundle to CFLAGS automatically, which leads to a compiler error because "-bitcode_bundle" also gets added.
+            cfg.define("LLVM_ENABLE_PLUGINS", "OFF");
+            // Zlib fails to link properly, leading to a compiler error.
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
