@@ -3,7 +3,7 @@
 // only-linux
 // run-pass
 
-#![feature(asm, track_caller, thread_local)]
+#![feature(asm, thread_local)]
 
 extern "C" fn f1() -> i32 {
     111
