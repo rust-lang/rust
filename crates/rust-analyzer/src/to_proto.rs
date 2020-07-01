@@ -352,7 +352,7 @@ pub(crate) fn folding_range(
     let kind = match fold.kind {
         FoldKind::Comment => Some(lsp_types::FoldingRangeKind::Comment),
         FoldKind::Imports => Some(lsp_types::FoldingRangeKind::Imports),
-        FoldKind::Mods | FoldKind::Block => None,
+        FoldKind::Mods | FoldKind::Block | FoldKind::ArgList => None,
     };
 
     let range = range(line_index, fold.range);
@@ -685,32 +685,27 @@ pub(crate) fn runnable(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::extract_ranges;
+    use ra_ide::Analysis;
 
     use super::*;
 
     #[test]
     fn conv_fold_line_folding_only_fixup() {
-        let text = r#"<fold>mod a;
+        let text = r#"mod a;
 mod b;
-mod c;</fold>
+mod c;
 
-fn main() <fold>{
-    if cond <fold>{
+fn main() {
+    if cond {
         a::do_a();
-    }</fold> else <fold>{
+    } else {
         b::do_b();
-    }</fold>
-}</fold>"#;
+    }
+}"#;
 
-        let (ranges, text) = extract_ranges(text, "fold");
-        assert_eq!(ranges.len(), 4);
-        let folds = vec![
-            Fold { range: ranges[0], kind: FoldKind::Mods },
-            Fold { range: ranges[1], kind: FoldKind::Block },
-            Fold { range: ranges[2], kind: FoldKind::Block },
-            Fold { range: ranges[3], kind: FoldKind::Block },
-        ];
+        let (analysis, file_id) = Analysis::from_single_file(text.to_string());
+        let folds = analysis.folding_ranges(file_id).unwrap();
+        assert_eq!(folds.len(), 4);
 
         let line_index = LineIndex::new(&text);
         let converted: Vec<lsp_types::FoldingRange> =
