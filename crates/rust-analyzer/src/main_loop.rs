@@ -276,7 +276,7 @@ impl GlobalState {
         self.register_request(&req, request_received);
 
         RequestDispatcher { req: Some(req), global_state: self }
-            .on_sync::<lsp_ext::CollectGarbage>(|s, ()| Ok(s.analysis_host.collect_garbage()))?
+            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.reload()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
             .on_sync::<lsp_types::request::Shutdown>(|_, ()| Ok(()))?

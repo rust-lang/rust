@@ -6,7 +6,7 @@ import * as lc from "vscode-languageclient";
 
 export const analyzerStatus = new lc.RequestType<null, string, void>("rust-analyzer/analyzerStatus");
 
-export const collectGarbage = new lc.RequestType<null, null, void>("rust-analyzer/collectGarbage");
+export const reloadWorkspace = new lc.RequestType<null, null, void>("rust-analyzer/reloadWorkspace");
 
 export interface SyntaxTreeParams {
     textDocument: lc.TextDocumentIdentifier;
