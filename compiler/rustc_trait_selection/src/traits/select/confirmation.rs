@@ -342,7 +342,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> ImplSourceObjectData<'tcx, PredicateObligation<'tcx>> {
         debug!("confirm_object_candidate({:?})", obligation);
 
-        let self_ty = self.infcx.replace_bound_vars_with_placeholders(&obligation.self_ty());
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+        let self_ty = self.infcx.replace_bound_vars_with_placeholders(&self_ty);
         let data = match self_ty.kind() {
             ty::Dynamic(data, ..) => data,
             _ => span_bug!(obligation.cause.span, "object candidate with non-object"),
@@ -448,7 +449,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )
         .map_bound(|(trait_ref, _)| trait_ref);
 
-        let Normalized { value: trait_ref, obligations } = ensure_sufficient_stack(|| {
+        let Normalized { value: trait_ref, mut obligations } = ensure_sufficient_stack(|| {
             project::normalize_with_depth(
                 self,
                 obligation.param_env,
@@ -458,12 +459,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             )
         });
 
-        self.confirm_poly_trait_refs(
+        obligations.extend(self.confirm_poly_trait_refs(
             obligation.cause.clone(),
             obligation.param_env,
             obligation.predicate.to_poly_trait_ref(),
             trait_ref,
-        )?;
+        )?);
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested: obligations })
     }
 
