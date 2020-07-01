@@ -294,7 +294,7 @@ pub trait PrettyPrinter<'tcx>:
                             true,
                         ));
                     }
-                    (ExternCrateSource::Path, LOCAL_CRATE) if self.tcx().sess.rust_2018() => {
+                    (ExternCrateSource::Path, LOCAL_CRATE) => {
                         debug!("try_print_visible_def_path: def_id={:?}", def_id);
                         return Ok((self.path_crate(cnum)?, true));
                     }
