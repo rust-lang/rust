@@ -28,10 +28,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
         debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
 
-        self.tcx.infer_ctxt().enter(|infcx| {
+        let pat = self.tcx.infer_ctxt().enter(|infcx| {
             let mut convert = ConstToPat::new(self, id, span, infcx);
             convert.to_pat(cv, mir_structural_match_violation)
-        })
+        });
+
+        debug!("const_to_pat: pat={:?}", pat);
+        pat
     }
 }
 
@@ -44,6 +47,10 @@ struct ConstToPat<'a, 'tcx> {
     // we will not subsequently issue an irrelevant lint for the same const
     // value.
     saw_const_match_error: Cell<bool>,
+
+    // For backcompat we need to keep allowing non-structurally-eq types behind references.
+    // See also all the `cant-hide-behind` tests.
+    behind_reference: Cell<bool>,
 
     // inference context used for checking `T: Structural` bounds.
     infcx: InferCtxt<'a, 'tcx>,
@@ -65,6 +72,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             param_env: pat_ctxt.param_env,
             include_lint_checks: pat_ctxt.include_lint_checks,
             saw_const_match_error: Cell::new(false),
+            behind_reference: Cell::new(false),
         }
     }
 
@@ -233,31 +241,20 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 tcx.sess.span_err(span, "cannot use unions in constant patterns");
                 PatKind::Wild
             }
-            // keep old code until future-compat upgraded to errors.
+            // If the type is not structurally comparable, just emit the constant directly,
+            // causing the pattern match code to treat it opaquely.
+            // FIXME: This code doesn't emit errors itself, the caller emits the errors.
+            // So instead of specific errors, you just get blanket errors about the whole
+            // const type. See
+            // https://github.com/rust-lang/rust/pull/70743#discussion_r404701963 for
+            // details.
+            // Backwards compatibility hack because we can't cause hard errors on these
+            // types, so we compare them via `PartialEq::eq` at runtime.
+            ty::Adt(..) if !self.type_marked_structural(cv.ty) && self.behind_reference.get() => {
+                PatKind::Constant { value: cv }
+            }
             ty::Adt(adt_def, _) if !self.type_marked_structural(cv.ty) => {
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, cv.ty);
-                let path = tcx.def_path_str(adt_def.did);
-                let msg = format!(
-                    "to use a constant of type `{}` in a pattern, \
-                     `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                    path, path,
-                );
-                self.saw_const_match_error.set(true);
-                tcx.sess.span_err(span, &msg);
-                PatKind::Wild
-            }
-            // keep old code until future-compat upgraded to errors.
-            ty::Ref(_, adt_ty, _) if adt_ty.is_adt() && !self.type_marked_structural(adt_ty) => {
-                let adt_def =
-                    if let ty::Adt(adt_def, _) = adt_ty.kind() { adt_def } else { unreachable!() };
-
-                debug!(
-                    "adt_def {:?} has !type_marked_structural for adt_ty: {:?}",
-                    adt_def, adt_ty
-                );
-
-                // HACK(estebank): Side-step ICE #53708, but anything other than erroring here
-                // would be wrong. Returnging `PatKind::Wild` is not technically correct.
                 let path = tcx.def_path_str(adt_def.did);
                 let msg = format!(
                     "to use a constant of type `{}` in a pattern, \
@@ -293,7 +290,68 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 slice: None,
                 suffix: Vec::new(),
             },
-            _ => PatKind::Constant { value: cv },
+            ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
+                // These are not allowed and will error elsewhere anyway.
+                ty::Dynamic(..) => PatKind::Constant { value: cv },
+                // `&str` and `&[u8]` are represented as `ConstValue::Slice`, let's keep using this
+                // optimization for now.
+                ty::Str => PatKind::Constant { value: cv },
+                ty::Slice(elem_ty) if elem_ty == tcx.types.u8 => PatKind::Constant { value: cv },
+                // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
+                // matching against references, you can only use byte string literals.
+                // FIXME: clean this up, likely by permitting array patterns when matching on slices
+                ty::Array(elem_ty, _) if elem_ty == tcx.types.u8 => PatKind::Constant { value: cv },
+                // Cannot merge this with the catch all branch below, because the `const_deref`
+                // changes the type from slice to array, and slice patterns behave differently from
+                // array patterns.
+                ty::Slice(..) => {
+                    let old = self.behind_reference.replace(true);
+                    let array = tcx.deref_const(self.param_env.and(cv));
+                    let val = PatKind::Deref {
+                        subpattern: Pat {
+                            kind: Box::new(PatKind::Slice {
+                                prefix: tcx
+                                    .destructure_const(param_env.and(array))
+                                    .fields
+                                    .iter()
+                                    .map(|val| self.recur(val))
+                                    .collect(),
+                                slice: None,
+                                suffix: vec![],
+                            }),
+                            span,
+                            ty: pointee_ty,
+                        },
+                    };
+                    self.behind_reference.set(old);
+                    val
+                }
+                // Backwards compatibility hack. Don't take away the reference, since
+                // `PartialEq::eq` takes a reference, this makes the rest of the matching logic
+                // simpler.
+                ty::Adt(..) if !self.type_marked_structural(pointee_ty) => {
+                    PatKind::Constant { value: cv }
+                }
+                _ => {
+                    let old = self.behind_reference.replace(true);
+                    let val = PatKind::Deref {
+                        subpattern: self.recur(tcx.deref_const(self.param_env.and(cv))),
+                    };
+                    self.behind_reference.set(old);
+                    val
+                }
+            },
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::FnDef(..) => {
+                PatKind::Constant { value: cv }
+            }
+            // FIXME: these can have very suprising behaviour where optimization levels or other
+            // compilation choices change the runtime behaviour of the match.
+            // See https://github.com/rust-lang/rust/issues/70861 for examples.
+            ty::FnPtr(..) | ty::RawPtr(..) => PatKind::Constant { value: cv },
+            _ => {
+                tcx.sess.delay_span_bug(span, &format!("cannot make a pattern out of {}", cv.ty));
+                PatKind::Wild
+            }
         };
 
         Pat { span, ty: cv.ty, kind: Box::new(kind) }

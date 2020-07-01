@@ -93,8 +93,7 @@ pub(crate) fn deref_const<'tcx>(
         MemPlaceMeta::None => mplace.layout.ty,
         MemPlaceMeta::Poison => bug!("poison metadata in `deref_const`: {:#?}", mplace),
         // In case of unsized types, figure out the real type behind.
-        MemPlaceMeta::Meta(scalar) => match mplace.layout.ty.kind {
-            ty::Dynamic(..) => ecx.read_drop_type_from_vtable(scalar).unwrap().1,
+        MemPlaceMeta::Meta(scalar) => match mplace.layout.ty.kind() {
             ty::Str => bug!("there's no sized equivalent of a `str`"),
             ty::Slice(elem_ty) => tcx.mk_array(elem_ty, scalar.to_machine_usize(&tcx).unwrap()),
             _ => bug!(

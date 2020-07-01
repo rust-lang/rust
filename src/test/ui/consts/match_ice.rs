@@ -10,10 +10,9 @@ fn main() {
     match C {
         C => {}
         //~^ ERROR to use a constant of type `S` in a pattern, `S` must be annotated with
-        //~| ERROR to use a constant of type `S` in a pattern, `S` must be annotated with
     }
     const K: &T = &T;
-    match K { //~ ERROR non-exhaustive patterns: `&T` not covered
+    match K {
         K => {}
     }
 }
