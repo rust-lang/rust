@@ -59,8 +59,8 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _: ty::Variance,
-        a: &T,
-        b: &T,
+        a: T,
+        b: T,
     ) -> RelateResult<'tcx, T> {
         self.relate(a, b)
     }
@@ -124,8 +124,8 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
 
     fn binders<T>(
         &mut self,
-        a: &ty::Binder<T>,
-        b: &ty::Binder<T>,
+        a: ty::Binder<T>,
+        b: ty::Binder<T>,
     ) -> RelateResult<'tcx, ty::Binder<T>>
     where
         T: Relate<'tcx>,
@@ -136,7 +136,7 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
         } else {
             // Fast path for the common case.
             self.relate(a.skip_binder(), b.skip_binder())?;
-            Ok(a.clone())
+            Ok(a)
         }
     }
 }

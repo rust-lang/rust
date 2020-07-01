@@ -219,7 +219,7 @@ impl SymbolMangler<'tcx> {
         lifetime_depths.end += lifetimes;
 
         self.binders.push(BinderLevel { lifetime_depths });
-        self = print_value(self, value.skip_binder())?;
+        self = print_value(self, value.as_ref().skip_binder())?;
         self.binders.pop();
 
         Ok(self)

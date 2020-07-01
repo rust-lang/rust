@@ -74,8 +74,8 @@ pub fn equal_up_to_regions(
         fn relate_with_variance<T: Relate<'tcx>>(
             &mut self,
             _: ty::Variance,
-            a: &T,
-            b: &T,
+            a: T,
+            b: T,
         ) -> RelateResult<'tcx, T> {
             // Ignore variance, require types to be exactly the same.
             self.relate(a, b)
@@ -108,8 +108,8 @@ pub fn equal_up_to_regions(
 
         fn binders<T>(
             &mut self,
-            a: &ty::Binder<T>,
-            b: &ty::Binder<T>,
+            a: ty::Binder<T>,
+            b: ty::Binder<T>,
         ) -> RelateResult<'tcx, ty::Binder<T>>
         where
             T: Relate<'tcx>,
@@ -121,7 +121,7 @@ pub fn equal_up_to_regions(
 
     // Instantiate and run relation.
     let mut relator: LifetimeIgnoreRelation<'tcx> = LifetimeIgnoreRelation { tcx: tcx, param_env };
-    relator.relate(&src, &dest).is_ok()
+    relator.relate(src, dest).is_ok()
 }
 
 struct TypeChecker<'a, 'tcx> {
