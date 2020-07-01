@@ -29,9 +29,11 @@ fn update_expect() -> bool {
 #[macro_export]
 macro_rules! expect {
     [[$lit:literal]] => {$crate::Expect {
-        file: file!(),
-        line: line!(),
-        column: column!(),
+        position: $crate::Position {
+            file: file!(),
+            line: line!(),
+            column: column!(),
+        },
         data: $lit,
     }};
     [[]] => { $crate::expect![[""]] };
@@ -39,10 +41,21 @@ macro_rules! expect {
 
 #[derive(Debug)]
 pub struct Expect {
+    pub position: Position,
+    pub data: &'static str,
+}
+
+#[derive(Debug)]
+pub struct Position {
     pub file: &'static str,
     pub line: u32,
     pub column: u32,
-    pub data: &'static str,
+}
+
+impl fmt::Display for Position {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}:{}", self.file, self.line, self.column)
+    }
 }
 
 impl Expect {
@@ -69,7 +82,7 @@ impl Expect {
         let mut target_line = None;
         let mut line_start = 0;
         for (i, line) in lines_with_ends(file).enumerate() {
-            if i == self.line as usize - 1 {
+            if i == self.position.line as usize - 1 {
                 let pat = "expect![[";
                 let offset = line.find(pat).unwrap();
                 let literal_start = line_start + offset + pat.len();
@@ -98,12 +111,9 @@ impl Runtime {
     fn fail(expect: &Expect, expected: &str, actual: &str) {
         let mut rt = RT.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if update_expect() {
-            println!(
-                "\x1b[1m\x1b[92mupdating\x1b[0m: {}:{}:{}",
-                expect.file, expect.line, expect.column
-            );
+            println!("\x1b[1m\x1b[92mupdating\x1b[0m: {}", expect.position);
             rt.per_file
-                .entry(expect.file)
+                .entry(expect.position.file)
                 .or_insert_with(|| FileRuntime::new(expect))
                 .update(expect, actual);
             return;
@@ -116,7 +126,7 @@ impl Runtime {
         println!(
             "\n
 \x1b[1m\x1b[91merror\x1b[97m: expect test failed\x1b[0m
-   \x1b[1m\x1b[34m-->\x1b[0m {}:{}:{}
+   \x1b[1m\x1b[34m-->\x1b[0m {}
 {}
 \x1b[1mExpect\x1b[0m:
 ----
@@ -133,7 +143,7 @@ impl Runtime {
 {}
 ----
 ",
-            expect.file, expect.line, expect.column, help, expected, actual, diff
+            expect.position, help, expected, actual, diff
         );
         // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
         panic::resume_unwind(Box::new(()));
@@ -148,7 +158,7 @@ struct FileRuntime {
 
 impl FileRuntime {
     fn new(expect: &Expect) -> FileRuntime {
-        let path = workspace_root().join(expect.file);
+        let path = workspace_root().join(expect.position.file);
         let original_text = fs::read_to_string(&path).unwrap();
         let patchwork = Patchwork::new(original_text.clone());
         FileRuntime { path, original_text, patchwork }
