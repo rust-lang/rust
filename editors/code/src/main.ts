@@ -88,7 +88,7 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
-    ctx.registerCommand('collectGarbage', commands.collectGarbage);
+    ctx.registerCommand('reloadWorkspace', commands.reloadWorkspace);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
     ctx.registerCommand('joinLines', commands.joinLines);
     ctx.registerCommand('parentModule', commands.parentModule);

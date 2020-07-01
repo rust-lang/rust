@@ -14,12 +14,12 @@ impl Request for AnalyzerStatus {
     const METHOD: &'static str = "rust-analyzer/analyzerStatus";
 }
 
-pub enum CollectGarbage {}
+pub enum ReloadWorkspace {}
 
-impl Request for CollectGarbage {
+impl Request for ReloadWorkspace {
     type Params = ();
     type Result = ();
-    const METHOD: &'static str = "rust-analyzer/collectGarbage";
+    const METHOD: &'static str = "rust-analyzer/reloadWorkspace";
 }
 
 pub enum SyntaxTree {}

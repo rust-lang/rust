@@ -389,15 +389,15 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
 
 Returns internal status message, mostly for debugging purposes.
 
-## Collect Garbage
+## Reload Workspace
 
-**Method:** `rust-analyzer/collectGarbage`
+**Method:** `rust-analyzer/reloadWorkspace`
 
 **Request:** `null`
 
 **Response:** `null`
 
-Frees some caches. For internal use, and is mostly broken at the moment.
+Reloads project information (that is, re-executes `cargo metadata`).
 
 ## Syntax Tree
 

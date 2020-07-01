@@ -61,7 +61,7 @@
     "activationEvents": [
         "onLanguage:rust",
         "onCommand:rust-analyzer.analyzerStatus",
-        "onCommand:rust-analyzer.collectGarbage",
+        "onCommand:rust-analyzer.reloadWorkspace",
         "workspaceContains:**/Cargo.toml"
     ],
     "main": "./out/src/main",
@@ -143,8 +143,8 @@
                 "category": "Rust Analyzer"
             },
             {
-                "command": "rust-analyzer.collectGarbage",
-                "title": "Run garbage collection",
+                "command": "rust-analyzer.reloadWorkspace",
+                "title": "Reload workspace",
                 "category": "Rust Analyzer"
             },
             {
@@ -815,7 +815,7 @@
                     "when": "inRustProject"
                 },
                 {
-                    "command": "rust-analyzer.collectGarbage",
+                    "command": "rust-analyzer.reloadWorkspace",
                     "when": "inRustProject"
                 },
                 {

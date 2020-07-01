@@ -330,8 +330,8 @@ export function expandMacro(ctx: Ctx): Cmd {
     };
 }
 
-export function collectGarbage(ctx: Ctx): Cmd {
-    return async () => ctx.client.sendRequest(ra.collectGarbage, null);
+export function reloadWorkspace(ctx: Ctx): Cmd {
+    return async () => ctx.client.sendRequest(ra.reloadWorkspace, null);
 }
 
 export function showReferences(ctx: Ctx): Cmd {
