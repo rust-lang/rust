@@ -127,9 +127,12 @@ pub unsafe trait GlobalAlloc {
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         let size = layout.size();
-        let ptr = self.alloc(layout);
+        // SAFETY: the safety contract for `alloc` must be upheld by the caller.
+        let ptr = unsafe { self.alloc(layout) };
         if !ptr.is_null() {
-            ptr::write_bytes(ptr, 0, size);
+            // SAFETY: as allocation succeeded, the region from `ptr`
+            // of size `size` is guaranteed to be valid for writes.
+            unsafe { ptr::write_bytes(ptr, 0, size) };
         }
         ptr
     }
@@ -187,11 +190,18 @@ pub unsafe trait GlobalAlloc {
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-        let new_ptr = self.alloc(new_layout);
+        // SAFETY: the caller must ensure that the `new_size` does not overflow.
+        // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid.
+        let new_layout = unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
+        // SAFETY: the caller must ensure that `new_layout` is greater than zero.
+        let new_ptr = unsafe { self.alloc(new_layout) };
         if !new_ptr.is_null() {
-            ptr::copy_nonoverlapping(ptr, new_ptr, cmp::min(layout.size(), new_size));
-            self.dealloc(ptr, layout);
+            // SAFETY: the previously allocated block cannot overlap the newly allocated block.
+            // The safety contract for `dealloc` must be upheld by the caller.
+            unsafe {
+                ptr::copy_nonoverlapping(ptr, new_ptr, cmp::min(layout.size(), new_size));
+                self.dealloc(ptr, layout);
+            }
         }
         new_ptr
     }

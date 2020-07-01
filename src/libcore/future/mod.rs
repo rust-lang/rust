@@ -85,5 +85,7 @@ where
 #[unstable(feature = "gen_future", issue = "50547")]
 #[inline]
 pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
-    &mut *cx.0.as_ptr().cast()
+    // SAFETY: the caller must guarantee that `cx.0` is a valid pointer
+    // that fulfills all the requirements for a mutable reference.
+    unsafe { &mut *cx.0.as_ptr().cast() }
 }

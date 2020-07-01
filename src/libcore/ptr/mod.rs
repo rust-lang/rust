@@ -184,7 +184,9 @@ mod mut_ptr;
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
-    drop_in_place(to_drop)
+
+    // SAFETY: see comment above
+    unsafe { drop_in_place(to_drop) }
 }
 
 /// Creates a null raw pointer.
@@ -374,9 +376,15 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     let mut tmp = MaybeUninit::<T>::uninit();
 
     // Perform the swap
-    copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
-    copy(y, x, 1); // `x` and `y` may overlap
-    copy_nonoverlapping(tmp.as_ptr(), y, 1);
+    // SAFETY: the caller must guarantee that `x` and `y` are
+    // valid for writes and properly aligned. `tmp` cannot be
+    // overlapping either `x` or `y` because `tmp` was just allocated
+    // on the stack as a separate allocated object.
+    unsafe {
+        copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
+        copy(y, x, 1); // `x` and `y` may overlap
+        copy_nonoverlapping(tmp.as_ptr(), y, 1);
+    }
 }
 
 /// Swaps `count * size_of::<T>()` bytes between the two regions of memory
@@ -432,7 +440,9 @@ pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     let x = x as *mut u8;
     let y = y as *mut u8;
     let len = mem::size_of::<T>() * count;
-    swap_nonoverlapping_bytes(x, y, len)
+    // SAFETY: the caller must guarantee that `x` and `y` are
+    // valid for writes and properly aligned.
+    unsafe { swap_nonoverlapping_bytes(x, y, len) }
 }
 
 #[inline]
@@ -440,11 +450,16 @@ pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
     // For types smaller than the block optimization below,
     // just swap directly to avoid pessimizing codegen.
     if mem::size_of::<T>() < 32 {
-        let z = read(x);
-        copy_nonoverlapping(y, x, 1);
-        write(y, z);
+        // SAFETY: the caller must guarantee that `x` and `y` are valid
+        // for writes, properly aligned, and non-overlapping.
+        unsafe {
+            let z = read(x);
+            copy_nonoverlapping(y, x, 1);
+            write(y, z);
+        }
     } else {
-        swap_nonoverlapping(x, y, 1);
+        // SAFETY: the caller must uphold the safety contract for `swap_nonoverlapping`.
+        unsafe { swap_nonoverlapping(x, y, 1) };
     }
 }
 
@@ -471,14 +486,23 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
         // Declaring `t` here avoids aligning the stack when this loop is unused
         let mut t = mem::MaybeUninit::<Block>::uninit();
         let t = t.as_mut_ptr() as *mut u8;
-        let x = x.add(i);
-        let y = y.add(i);
 
-        // Swap a block of bytes of x & y, using t as a temporary buffer
-        // This should be optimized into efficient SIMD operations where available
-        copy_nonoverlapping(x, t, block_size);
-        copy_nonoverlapping(y, x, block_size);
-        copy_nonoverlapping(t, y, block_size);
+        // SAFETY: As `i < len`, and as the caller must guarantee that `x` and `y` are valid
+        // for `len` bytes, `x + i` and `y + i` must be valid adresses, which fulfills the
+        // safety contract for `add`.
+        //
+        // Also, the caller must guarantee that `x` and `y` are valid for writes, properly aligned,
+        // and non-overlapping, which fulfills the safety contract for `copy_nonoverlapping`.
+        unsafe {
+            let x = x.add(i);
+            let y = y.add(i);
+
+            // Swap a block of bytes of x & y, using t as a temporary buffer
+            // This should be optimized into efficient SIMD operations where available
+            copy_nonoverlapping(x, t, block_size);
+            copy_nonoverlapping(y, x, block_size);
+            copy_nonoverlapping(t, y, block_size);
+        }
         i += block_size;
     }
 
@@ -488,12 +512,16 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
         let rem = len - i;
 
         let t = t.as_mut_ptr() as *mut u8;
-        let x = x.add(i);
-        let y = y.add(i);
 
-        copy_nonoverlapping(x, t, rem);
-        copy_nonoverlapping(y, x, rem);
-        copy_nonoverlapping(t, y, rem);
+        // SAFETY: see previous safety comment.
+        unsafe {
+            let x = x.add(i);
+            let y = y.add(i);
+
+            copy_nonoverlapping(x, t, rem);
+            copy_nonoverlapping(y, x, rem);
+            copy_nonoverlapping(t, y, rem);
+        }
     }
 }
 
@@ -540,7 +568,13 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
-    mem::swap(&mut *dst, &mut src); // cannot overlap
+    // SAFETY: the caller must guarantee that `dst` is valid to be
+    // cast to a mutable reference (valid for writes, aligned, initialized),
+    // and cannot overlap `src` since `dst` must point to a distinct
+    // allocated object.
+    unsafe {
+        mem::swap(&mut *dst, &mut src); // cannot overlap
+    }
     src
 }
 
@@ -658,8 +692,16 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 pub unsafe fn read<T>(src: *const T) -> T {
     // `copy_nonoverlapping` takes care of debug_assert.
     let mut tmp = MaybeUninit::<T>::uninit();
-    copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-    tmp.assume_init()
+    // SAFETY: the caller must guarantee that `src` is valid for reads.
+    // `src` cannot overlap `tmp` because `tmp` was just allocated on
+    // the stack as a separate allocated object.
+    //
+    // Also, since we just wrote a valid value into `tmp`, it is guaranteed
+    // to be properly initialized.
+    unsafe {
+        copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+        tmp.assume_init()
+    }
 }
 
 /// Reads the value from `src` without moving it. This leaves the
@@ -752,8 +794,16 @@ pub unsafe fn read<T>(src: *const T) -> T {
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
     // `copy_nonoverlapping` takes care of debug_assert.
     let mut tmp = MaybeUninit::<T>::uninit();
-    copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, mem::size_of::<T>());
-    tmp.assume_init()
+    // SAFETY: the caller must guarantee that `src` is valid for reads.
+    // `src` cannot overlap `tmp` because `tmp` was just allocated on
+    // the stack as a separate allocated object.
+    //
+    // Also, since we just wrote a valid value into `tmp`, it is guaranteed
+    // to be properly initialized.
+    unsafe {
+        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, mem::size_of::<T>());
+        tmp.assume_init()
+    }
 }
 
 /// Overwrites a memory location with the given value without reading or
@@ -847,7 +897,8 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
         // Not panicking to keep codegen impact smaller.
         abort();
     }
-    intrinsics::move_val_init(&mut *dst, src)
+    // SAFETY: the caller must uphold the safety contract for `move_val_init`.
+    unsafe { intrinsics::move_val_init(&mut *dst, src) }
 }
 
 /// Overwrites a memory location with the given value without reading or
@@ -939,8 +990,13 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
-    // `copy_nonoverlapping` takes care of debug_assert.
-    copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, mem::size_of::<T>());
+    // SAFETY: the caller must guarantee that `dst` is valid for writes.
+    // `dst` cannot overlap `src` because the caller has mutable access
+    // to `dst` while `src` is owned by this function.
+    unsafe {
+        // `copy_nonoverlapping` takes care of debug_assert.
+        copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, mem::size_of::<T>());
+    }
     mem::forget(src);
 }
 
@@ -1015,7 +1071,8 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
         // Not panicking to keep codegen impact smaller.
         abort();
     }
-    intrinsics::volatile_load(src)
+    // SAFETY: the caller must uphold the safety contract for `volatile_load`.
+    unsafe { intrinsics::volatile_load(src) }
 }
 
 /// Performs a volatile write of a memory location with the given value without
@@ -1087,7 +1144,10 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
         // Not panicking to keep codegen impact smaller.
         abort();
     }
-    intrinsics::volatile_store(dst, src);
+    // SAFETY: the caller must uphold the safety contract for `volatile_store`.
+    unsafe {
+        intrinsics::volatile_store(dst, src);
+    }
 }
 
 /// Align pointer `p`.
@@ -1173,8 +1233,8 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     }
 
     let smoda = stride & a_minus_one;
-    // a is power-of-two so cannot be 0. stride = 0 is handled above.
-    let gcdpow = intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a));
+    // SAFETY: a is power-of-two so cannot be 0. stride = 0 is handled above.
+    let gcdpow = unsafe { intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a)) };
     let gcd = 1usize << gcdpow;
 
     if p as usize & (gcd.wrapping_sub(1)) == 0 {

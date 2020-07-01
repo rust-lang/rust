@@ -149,6 +149,8 @@
 #![feature(const_type_id)]
 #![feature(const_caller_location)]
 #![feature(no_niche)] // rust-lang/rust#68303
+#![feature(unsafe_block_in_unsafe_fn)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[prelude_import]
 #[allow(unused)]
@@ -279,7 +281,13 @@ pub mod primitive;
 // set up in such a way that directly pulling it here works such that the
 // crate uses the this crate as its libcore.
 #[path = "../stdarch/crates/core_arch/src/mod.rs"]
-#[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
+#[allow(
+    missing_docs,
+    missing_debug_implementations,
+    dead_code,
+    unused_imports,
+    unsafe_op_in_unsafe_fn
+)]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
 // merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
 #[cfg_attr(not(bootstrap), allow(clashing_extern_declarations))]

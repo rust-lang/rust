@@ -419,7 +419,11 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
-    &*(v as *const [u8] as *const str)
+    // SAFETY: the caller must guarantee that the bytes `v`
+    // are valid UTF-8, thus the cast to `*const str` is safe.
+    // Also, the pointer dereference is safe because that pointer
+    // comes from a reference which is guaranteed to be valid for reads.
+    unsafe { &*(v as *const [u8] as *const str) }
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -444,7 +448,11 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[inline]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
-    &mut *(v as *mut [u8] as *mut str)
+    // SAFETY: the caller must guarantee that the bytes `v`
+    // are valid UTF-8, thus the cast to `*mut str` is safe.
+    // Also, the pointer dereference is safe because that pointer
+    // comes from a reference which is guaranteed to be valid for writes.
+    unsafe { &mut *(v as *mut [u8] as *mut str) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -867,7 +875,9 @@ unsafe impl TrustedLen for Bytes<'_> {}
 #[doc(hidden)]
 unsafe impl TrustedRandomAccess for Bytes<'_> {
     unsafe fn get_unchecked(&mut self, i: usize) -> u8 {
-        self.0.get_unchecked(i)
+        // SAFETY: the caller must uphold the safety contract
+        // for `TrustedRandomAccess::get_unchecked`.
+        unsafe { self.0.get_unchecked(i) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -1904,15 +1914,27 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            let ptr = slice.as_ptr().add(self.start);
+            // SAFETY: the caller guarantees that `self` is in bounds of `slice`
+            // which satisfies all the conditions for `add`.
+            let ptr = unsafe { slice.as_ptr().add(self.start) };
             let len = self.end - self.start;
-            super::from_utf8_unchecked(slice::from_raw_parts(ptr, len))
+            // SAFETY: as the caller guarantees that `self` is in bounds of `slice`,
+            // we can safely construct a subslice with `from_raw_parts` and use it
+            // since we return a shared thus immutable reference.
+            // The call to `from_utf8_unchecked` is safe since the data comes from
+            // a `str` which is guaranteed to be valid utf8, since the caller
+            // must guarantee that `self.start` and `self.end` are char boundaries.
+            unsafe { super::from_utf8_unchecked(slice::from_raw_parts(ptr, len)) }
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            let ptr = slice.as_mut_ptr().add(self.start);
+            // SAFETY: see comments for `get_unchecked`.
+            let ptr = unsafe { slice.as_mut_ptr().add(self.start) };
             let len = self.end - self.start;
-            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, len))
+            // SAFETY: mostly identical to the comments for `get_unchecked`, except that we
+            // can return a mutable reference since the caller passed a mutable reference
+            // and is thus guaranteed to have exclusive write access to `slice`.
+            unsafe { super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, len)) }
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -1974,12 +1996,21 @@ mod traits {
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
             let ptr = slice.as_ptr();
-            super::from_utf8_unchecked(slice::from_raw_parts(ptr, self.end))
+            // SAFETY: as the caller guarantees that `self` is in bounds of `slice`,
+            // we can safely construct a subslice with `from_raw_parts` and use it
+            // since we return a shared thus immutable reference.
+            // The call to `from_utf8_unchecked` is safe since the data comes from
+            // a `str` which is guaranteed to be valid utf8, since the caller
+            // must guarantee that `self.end` is a char boundary.
+            unsafe { super::from_utf8_unchecked(slice::from_raw_parts(ptr, self.end)) }
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
             let ptr = slice.as_mut_ptr();
-            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, self.end))
+            // SAFETY: mostly identical to `get_unchecked`, except that we can safely
+            // return a mutable reference since the caller passed a mutable reference
+            // and is thus guaranteed to have exclusive write access to `slice`.
+            unsafe { super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, self.end)) }
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -2036,15 +2067,27 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            let ptr = slice.as_ptr().add(self.start);
+            // SAFETY: the caller guarantees that `self` is in bounds of `slice`
+            // which satisfies all the conditions for `add`.
+            let ptr = unsafe { slice.as_ptr().add(self.start) };
             let len = slice.len() - self.start;
-            super::from_utf8_unchecked(slice::from_raw_parts(ptr, len))
+            // SAFETY: as the caller guarantees that `self` is in bounds of `slice`,
+            // we can safely construct a subslice with `from_raw_parts` and use it
+            // since we return a shared thus immutable reference.
+            // The call to `from_utf8_unchecked` is safe since the data comes from
+            // a `str` which is guaranteed to be valid utf8, since the caller
+            // must guarantee that `self.start` is a char boundary.
+            unsafe { super::from_utf8_unchecked(slice::from_raw_parts(ptr, len)) }
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            let ptr = slice.as_mut_ptr().add(self.start);
+            // SAFETY: identical to `get_unchecked`.
+            let ptr = unsafe { slice.as_mut_ptr().add(self.start) };
             let len = slice.len() - self.start;
-            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, len))
+            // SAFETY: mostly identical to `get_unchecked`, except that we can safely
+            // return a mutable reference since the caller passed a mutable reference
+            // and is thus guaranteed to have exclusive write access to `slice`.
+            unsafe { super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, len)) }
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -2099,11 +2142,13 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            (*self.start()..self.end() + 1).get_unchecked(slice)
+            // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
+            unsafe { (*self.start()..self.end() + 1).get_unchecked(slice) }
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            (*self.start()..self.end() + 1).get_unchecked_mut(slice)
+            // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
+            unsafe { (*self.start()..self.end() + 1).get_unchecked_mut(slice) }
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -2148,11 +2193,13 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            (..self.end + 1).get_unchecked(slice)
+            // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
+            unsafe { (..self.end + 1).get_unchecked(slice) }
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            (..self.end + 1).get_unchecked_mut(slice)
+            // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
+            unsafe { (..self.end + 1).get_unchecked_mut(slice) }
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -2373,7 +2420,11 @@ impl str {
     #[stable(feature = "str_mut_extras", since = "1.20.0")]
     #[inline(always)]
     pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
-        &mut *(self as *mut str as *mut [u8])
+        // SAFETY: the cast from `&str` to `&[u8]` is safe since `str`
+        // has the same layout as `&[u8]` (only libstd can make this guarantee).
+        // The pointer dereference is safe since it comes from a mutable reference which
+        // is guaranteed to be valid for writes.
+        unsafe { &mut *(self as *mut str as *mut [u8]) }
     }
 
     /// Converts a string slice to a raw pointer.
@@ -2509,7 +2560,8 @@ impl str {
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
-        i.get_unchecked(self)
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
+        unsafe { i.get_unchecked(self) }
     }
 
     /// Returns a mutable, unchecked subslice of `str`.
@@ -2541,7 +2593,8 @@ impl str {
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
-        i.get_unchecked_mut(self)
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
+        unsafe { i.get_unchecked_mut(self) }
     }
 
     /// Creates a string slice from another string slice, bypassing safety
@@ -2591,7 +2644,8 @@ impl str {
     #[rustc_deprecated(since = "1.29.0", reason = "use `get_unchecked(begin..end)` instead")]
     #[inline]
     pub unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
-        (begin..end).get_unchecked(self)
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
+        unsafe { (begin..end).get_unchecked(self) }
     }
 
     /// Creates a string slice from another string slice, bypassing safety
@@ -2622,7 +2676,8 @@ impl str {
     #[rustc_deprecated(since = "1.29.0", reason = "use `get_unchecked_mut(begin..end)` instead")]
     #[inline]
     pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
-        (begin..end).get_unchecked_mut(self)
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
+        unsafe { (begin..end).get_unchecked_mut(self) }
     }
 
     /// Divide one string slice into two at an index.
