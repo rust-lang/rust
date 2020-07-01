@@ -2,7 +2,7 @@ use crate::base::{self, *};
 use crate::proc_macro_server;
 
 use rustc_ast::ast::{self, ItemKind, MetaItemKind, NestedMetaItem};
-use rustc_ast::token::{self, FlattenGroup};
+use rustc_ast::token;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, ErrorReported};
@@ -105,8 +105,7 @@ impl MultiItemModifier for ProcMacroDerive {
 
         let item = token::NtItem(item);
         let input = if item.pretty_printing_compatibility_hack() {
-            TokenTree::token(token::Interpolated(Lrc::new(item), FlattenGroup::Yes), DUMMY_SP)
-                .into()
+            TokenTree::token(token::Interpolated(Lrc::new(item)), DUMMY_SP).into()
         } else {
             nt_to_tokenstream(&item, ecx.parse_sess, DUMMY_SP)
         };
