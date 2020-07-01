@@ -361,10 +361,10 @@ There are two kinds of tests:
 The purpose of inline tests is not to achieve full coverage by test cases, but to explain to the reader of the code what each particular `if` and `match` is responsible for.
 If you are tempted to add a large inline test, it might be a good idea to leave only the simplest example in place, and move the test to a manual `parser/ok` test.
 
-To update test data, run with `UPDATE_EXPECTATIONS` variable:
+To update test data, run with `UPDATE_EXPECT` variable:
 
 ```bash
-env UPDATE_EXPECTATIONS=1 cargo qt
+env UPDATE_EXPECT=1 cargo qt
 ```
 
 After adding a new inline test you need to run `cargo xtest codegen` and also update the test data as described above.

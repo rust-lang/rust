@@ -274,7 +274,7 @@ fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
         fs::write(path, actual).unwrap();
         return;
     }
-    if env::var("UPDATE_EXPECTATIONS").is_ok() {
+    if env::var("UPDATE_EXPECT").is_ok() {
         println!("rewriting {}", pretty_path.display());
         fs::write(path, actual).unwrap();
         return;
