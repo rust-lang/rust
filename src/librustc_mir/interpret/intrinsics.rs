@@ -409,6 +409,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
                 self.copy_op(self.operand_index(args[0], index)?, dest)?;
             }
+            sym::likely | sym::unlikely => {
+                // These just return their argument
+                self.copy_op(args[0], dest)?;
+            }
             // FIXME(#73156): Handle source code coverage in const eval
             sym::count_code_region => (),
             _ => return Ok(false),
