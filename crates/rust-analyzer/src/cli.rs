@@ -18,7 +18,7 @@ pub use analysis_bench::{analysis_bench, BenchWhat, Position};
 pub use analysis_stats::analysis_stats;
 pub use diagnostics::diagnostics;
 pub use load_cargo::load_cargo;
-pub use ssr::apply_ssr_rules;
+pub use ssr::{apply_ssr_rules, search_for_patterns};
 
 #[derive(Clone, Copy)]
 pub enum Verbosity {

@@ -21,8 +21,10 @@ fn matches_to_edit_at_offset(
 ) -> TextEdit {
     let mut edit_builder = ra_text_edit::TextEditBuilder::default();
     for m in &matches.matches {
-        edit_builder
-            .replace(m.range.checked_sub(relative_start).unwrap(), render_replace(m, file_src));
+        edit_builder.replace(
+            m.range.range.checked_sub(relative_start).unwrap(),
+            render_replace(m, file_src),
+        );
     }
     edit_builder.finish()
 }

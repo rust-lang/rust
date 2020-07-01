@@ -28,7 +28,7 @@ pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
 
 pub trait AstDiagnostic {
     type AST;
-    fn ast(&self, db: &impl AstDatabase) -> Self::AST;
+    fn ast(&self, db: &dyn AstDatabase) -> Self::AST;
 }
 
 impl dyn Diagnostic {

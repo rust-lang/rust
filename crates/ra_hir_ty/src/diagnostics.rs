@@ -32,7 +32,7 @@ impl Diagnostic for NoSuchField {
 impl AstDiagnostic for NoSuchField {
     type AST = ast::RecordField;
 
-    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
+    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
         let node = self.source().value.to_node(&root);
         ast::RecordField::cast(node).unwrap()
@@ -65,7 +65,7 @@ impl Diagnostic for MissingFields {
 impl AstDiagnostic for MissingFields {
     type AST = ast::RecordFieldList;
 
-    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
+    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
         let node = self.source().value.to_node(&root);
         ast::RecordFieldList::cast(node).unwrap()
@@ -135,7 +135,7 @@ impl Diagnostic for MissingOkInTailExpr {
 impl AstDiagnostic for MissingOkInTailExpr {
     type AST = ast::Expr;
 
-    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
+    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.file).unwrap();
         let node = self.source().value.to_node(&root);
         ast::Expr::cast(node).unwrap()
@@ -163,7 +163,7 @@ impl Diagnostic for BreakOutsideOfLoop {
 impl AstDiagnostic for BreakOutsideOfLoop {
     type AST = ast::Expr;
 
-    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
+    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.file).unwrap();
         let node = self.source().value.to_node(&root);
         ast::Expr::cast(node).unwrap()
@@ -191,7 +191,7 @@ impl Diagnostic for MissingUnsafe {
 impl AstDiagnostic for MissingUnsafe {
     type AST = ast::Expr;
 
-    fn ast(&self, db: &impl AstDatabase) -> Self::AST {
+    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
         let node = self.source().value.to_node(&root);
         ast::Expr::cast(node).unwrap()
