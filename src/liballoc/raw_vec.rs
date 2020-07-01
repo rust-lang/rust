@@ -395,37 +395,8 @@ impl<T, A: AllocRef> RawVec<T, A> {
     // of the code that doesn't depend on `T` as possible is in functions that
     // are non-generic over `T`.
     fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        // This is ensured by the calling contexts.
-        debug_assert!(additional > 0);
-
-        if mem::size_of::<T>() == 0 {
-            // Since we return a capacity of `usize::MAX` when `elem_size` is
-            // 0, getting to here necessarily means the `RawVec` is overfull.
-            return Err(CapacityOverflow);
-        }
-
-        // Nothing we can really do about these checks, sadly.
-        let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-
-        // This guarantees exponential growth. The doubling cannot overflow
-        // because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        let cap = cmp::max(self.cap * 2, required_cap);
-
-        // Tiny Vecs are dumb. Skip to:
-        // - 8 if the element size is 1, because any heap allocators is likely
-        //   to round up a request of less than 8 bytes to at least 8 bytes.
-        // - 4 if elements are moderate-sized (<= 1 KiB).
-        // - 1 otherwise, to avoid wasting too much space for very short Vecs.
-        // Note that `min_non_zero_cap` is computed statically.
         let elem_size = mem::size_of::<T>();
-        let min_non_zero_cap = if elem_size == 1 {
-            8
-        } else if elem_size <= 1024 {
-            4
-        } else {
-            1
-        };
-        let cap = cmp::max(min_non_zero_cap, cap);
+        let cap = cap_amortized(elem_size, len, additional, self.cap)?;
 
         let elem_layout = Layout::new::<T>();
 
@@ -476,6 +447,46 @@ impl<T, A: AllocRef> RawVec<T, A> {
         self.set_memory(memory);
         Ok(())
     }
+}
+
+// This function is outside `RawVec` to minimize compile times. See the comment
+// above `RawVec::grow_amortized` for details.
+#[inline]
+fn cap_amortized(
+    elem_size: usize,
+    len: usize,
+    additional: usize,
+    curr_cap: usize,
+) -> Result<usize, TryReserveError> {
+    // This is ensured by the calling contexts.
+    debug_assert!(additional > 0);
+
+    // Tiny Vecs are dumb. Skip to:
+    // - 8 if the element size is 1, because any heap allocators is likely
+    //   to round up a request of less than 8 bytes to at least 8 bytes.
+    // - 4 if elements are moderate-sized (<= 1 KiB).
+    // - 1 otherwise, to avoid wasting too much space for very short Vecs.
+    // Note that `min_non_zero_cap` is computed statically.
+    let min_non_zero_cap = if elem_size == 0 {
+        // Since we return a capacity of `usize::MAX` when `elem_size` is
+        // 0, getting to here necessarily means the `RawVec` is overfull.
+        return Err(CapacityOverflow);
+    } else if elem_size == 1 {
+        8
+    } else if elem_size <= 1024 {
+        4
+    } else {
+        1
+    };
+
+    // Nothing we can really do about these checks, sadly.
+    let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
+
+    // This guarantees exponential growth. The doubling cannot overflow
+    // because `cap <= isize::MAX` and the type of `cap` is `usize`.
+    let cap = cmp::max(curr_cap * 2, required_cap);
+
+    Ok(cmp::max(min_non_zero_cap, cap))
 }
 
 // This function is outside `RawVec` to minimize compile times. See the comment
