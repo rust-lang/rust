@@ -3,6 +3,7 @@
 
 // min-system-llvm-version: 9.0
 // ignore-arm
+// ignore-aarch64
 // ignore-mips
 // ignore-mips64
 // ignore-powerpc
