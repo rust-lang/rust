@@ -16,6 +16,7 @@ use std::fmt::Display;
 use std::ops::{Add, Neg, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parenthesis.
+#[derive(Clone)]
 pub enum Sugg<'a> {
     /// An expression that never needs parenthesis such as `1337` or `[0; 42]`.
     NonParen(Cow<'a, str>),
@@ -33,46 +34,6 @@ impl Display for Sugg<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match *self {
             Sugg::NonParen(ref s) | Sugg::MaybeParen(ref s) | Sugg::BinOp(_, ref s) => s.fmt(f),
-        }
-    }
-}
-
-// It's impossible to derive Clone due to the lack of the impl Clone for AssocOp
-impl Clone for Sugg<'_> {
-    fn clone(&self) -> Self {
-        /// manually cloning AssocOp
-        fn clone_assoc_op(this: &AssocOp) -> AssocOp {
-            match this {
-                AssocOp::Add => AssocOp::Add,
-                AssocOp::Subtract => AssocOp::Subtract,
-                AssocOp::Multiply => AssocOp::Multiply,
-                AssocOp::Divide => AssocOp::Divide,
-                AssocOp::Modulus => AssocOp::Modulus,
-                AssocOp::LAnd => AssocOp::LAnd,
-                AssocOp::LOr => AssocOp::LOr,
-                AssocOp::BitXor => AssocOp::BitXor,
-                AssocOp::BitAnd => AssocOp::BitAnd,
-                AssocOp::BitOr => AssocOp::BitOr,
-                AssocOp::ShiftLeft => AssocOp::ShiftLeft,
-                AssocOp::ShiftRight => AssocOp::ShiftRight,
-                AssocOp::Equal => AssocOp::Equal,
-                AssocOp::Less => AssocOp::Less,
-                AssocOp::LessEqual => AssocOp::LessEqual,
-                AssocOp::NotEqual => AssocOp::NotEqual,
-                AssocOp::Greater => AssocOp::Greater,
-                AssocOp::GreaterEqual => AssocOp::GreaterEqual,
-                AssocOp::Assign => AssocOp::Assign,
-                AssocOp::AssignOp(t) => AssocOp::AssignOp(*t),
-                AssocOp::As => AssocOp::As,
-                AssocOp::DotDot => AssocOp::DotDot,
-                AssocOp::DotDotEq => AssocOp::DotDotEq,
-                AssocOp::Colon => AssocOp::Colon,
-            }
-        }
-        match self {
-            Sugg::NonParen(x) => Sugg::NonParen(x.clone()),
-            Sugg::MaybeParen(x) => Sugg::MaybeParen(x.clone()),
-            Sugg::BinOp(op, x) => Sugg::BinOp(clone_assoc_op(op), x.clone()),
         }
     }
 }
