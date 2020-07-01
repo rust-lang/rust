@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/feature-gate-precise_pointer_size_matching.rs:6:11
+  --> $DIR/non-exhaustive-pattern-pointer-size-int.rs:4:11
    |
 LL |     match 0usize {
    |           ^^^^^^ pattern `_` not covered
@@ -10,7 +10,7 @@ LL |     match 0usize {
    = note: to exhaustively match on either pointer-size integer type, wildcards must be used
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/feature-gate-precise_pointer_size_matching.rs:10:11
+  --> $DIR/non-exhaustive-pattern-pointer-size-int.rs:13:11
    |
 LL |     match 0isize {
    |           ^^^^^^ pattern `_` not covered

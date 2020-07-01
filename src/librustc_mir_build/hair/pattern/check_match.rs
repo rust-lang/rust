@@ -468,6 +468,7 @@ fn check_exhaustive<'p, 'tcx>(
     // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
     // informative.
     let mut err;
+    let joined_patterns = joined_uncovered_patterns(&witnesses);
     if is_empty_match && !non_empty_enum {
         err = create_e0004(
             cx.tcx.sess,
@@ -475,7 +476,6 @@ fn check_exhaustive<'p, 'tcx>(
             format!("non-exhaustive patterns: type `{}` is non-empty", scrut_ty),
         );
     } else {
-        let joined_patterns = joined_uncovered_patterns(&witnesses);
         err = create_e0004(
             cx.tcx.sess,
             sp,
@@ -490,6 +490,14 @@ fn check_exhaustive<'p, 'tcx>(
          possibly by adding wildcards or more match arms",
     );
     err.note(&format!("the matched value is of type `{}`", scrut_ty));
+    if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
+        && joined_patterns == "`_`"
+    {
+        err.note("for `usize` and `isize`, no assumptions about the maximum value are permitted");
+        err.note(
+            "to exhaustively match on either pointer-size integer type, wildcards must be used",
+        );
+    }
     err.emit();
 }
 
