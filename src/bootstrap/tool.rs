@@ -366,7 +366,7 @@ bootstrap_tool!(
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
 );
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct ErrorIndex {
     pub compiler: Compiler,
 }
@@ -449,7 +449,7 @@ impl Step for RemoteTestServer {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct Rustdoc {
     /// This should only ever be 0 or 2.
     /// We sometimes want to reference the "bootstrap" rustdoc, which is why this option is here.
