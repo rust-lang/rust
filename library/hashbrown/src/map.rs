@@ -578,9 +578,7 @@ impl<K, V, S> HashMap<K, V, S> {
             for item in self.table.iter() {
                 let &mut (ref key, ref mut value) = item.as_mut();
                 if !f(key, value) {
-                    // Erase the element from the table first since drop might panic.
-                    self.table.erase_no_drop(&item);
-                    item.drop();
+                    self.table.erase(item);
                 }
             }
         }
@@ -1035,8 +1033,7 @@ where
         unsafe {
             let hash = make_hash(&self.hash_builder, &k);
             if let Some(item) = self.table.find(hash, |x| k.eq(x.0.borrow())) {
-                self.table.erase_no_drop(&item);
-                Some(item.read())
+                Some(self.table.remove(item))
             } else {
                 None
             }
@@ -1373,8 +1370,7 @@ where
             while let Some(item) = self.iter.next() {
                 let &mut (ref key, ref mut value) = item.as_mut();
                 if !(self.f)(key, value) {
-                    self.table.erase_no_drop(&item);
-                    return Some(item.read());
+                    return Some(self.table.remove(item));
                 }
             }
         }
@@ -1783,10 +1779,7 @@ impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
     /// Take the ownership of the key and value from the map.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
-        unsafe {
-            self.table.erase_no_drop(&self.elem);
-            self.elem.read()
-        }
+        unsafe { self.table.remove(self.elem) }
     }
 }
 
@@ -2427,10 +2420,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry(self) -> (K, V) {
-        unsafe {
-            self.table.table.erase_no_drop(&self.elem);
-            self.elem.read()
-        }
+        unsafe { self.table.table.remove(self.elem) }
     }
 
     /// Gets a reference to the value in the entry.
