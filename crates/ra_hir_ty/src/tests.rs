@@ -508,6 +508,30 @@ fn no_such_field_with_feature_flag_diagnostics_on_struct_fields() {
 }
 
 #[test]
+fn no_such_field_with_type_macro() {
+    let diagnostics = TestDB::with_files(
+        r"
+        macro_rules! Type {
+            () => { u32 };
+        }
+
+        struct Foo {
+            bar: Type![],
+        }
+        impl Foo {
+            fn new() -> Self {
+                Foo { bar: 0 }
+            }
+        }
+        ",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r###""###);
+}
+
+#[test]
 fn missing_record_pat_field_diagnostic() {
     let diagnostics = TestDB::with_files(
         r"

@@ -211,7 +211,7 @@ impl Ctx {
     fn lower_record_field(&mut self, field: &ast::RecordFieldDef) -> Option<Field> {
         let name = field.name()?.as_name();
         let visibility = self.lower_visibility(field);
-        let type_ref = self.lower_type_ref(&field.ascribed_type()?);
+        let type_ref = self.lower_type_ref_opt(field.ascribed_type());
         let res = Field { name, type_ref, visibility };
         Some(res)
     }
