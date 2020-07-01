@@ -87,10 +87,12 @@ fn fetch_const<'a>(cx: &LateContext<'_>, args: &'a [Expr<'a>], m: MinMax) -> Opt
         return None;
     }
     constant_simple(cx, cx.tables, &args[0]).map_or_else(
-        || if let Some(c) = constant_simple(cx, cx.tables(), &args[1]) {
-            Some((m, c, &args[0]))
-        } else {
-            None
+        || {
+            if let Some(c) = constant_simple(cx, cx.tables(), &args[1]) {
+                Some((m, c, &args[0]))
+            } else {
+                None
+            }
         },
         |c| {
             if constant_simple(cx, cx.tables, &args[1]).is_none() {
@@ -99,5 +101,6 @@ fn fetch_const<'a>(cx: &LateContext<'_>, args: &'a [Expr<'a>], m: MinMax) -> Opt
             } else {
                 None
             }
-    })
+        },
+    )
 }
