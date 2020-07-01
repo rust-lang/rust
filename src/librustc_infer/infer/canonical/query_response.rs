@@ -271,7 +271,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                         },
                         ty::Variance::Invariant,
                     )
-                    .relate(&v1, &v2)?;
+                    .relate(v1, v2)?;
                 }
 
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
@@ -285,7 +285,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                         },
                         ty::Variance::Invariant,
                     )
-                    .relate(&v1, &v2)?;
+                    .relate(v1, v2)?;
                 }
 
                 _ => {
@@ -302,7 +302,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 // Screen out `'a: 'a` cases -- we skip the binder here but
                 // only compare the inner values to one another, so they are still at
                 // consistent binding levels.
-                let &ty::OutlivesPredicate(k1, r2) = r_c.skip_binder();
+                let ty::OutlivesPredicate(k1, r2) = r_c.skip_binder();
                 if k1 != r2.into() { Some(r_c) } else { None }
             }),
         );
@@ -526,7 +526,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
         unsubstituted_region_constraints.iter().map(move |constraint| {
             let constraint = substitute_value(self.tcx, result_subst, constraint);
-            let &ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
+            let ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
 
             Obligation::new(
                 cause.clone(),

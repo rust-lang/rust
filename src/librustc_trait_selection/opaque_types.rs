@@ -691,7 +691,7 @@ where
     OP: FnMut(ty::Region<'tcx>),
 {
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> bool {
-        t.skip_binder().visit_with(self);
+        t.as_ref().skip_binder().visit_with(self);
         false // keep visiting
     }
 

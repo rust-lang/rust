@@ -220,7 +220,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
-        let self_ty = *obligation.self_ty().skip_binder();
+        let self_ty = obligation.self_ty().skip_binder();
         match self_ty.kind {
             ty::Generator(..) => {
                 debug!(
@@ -299,7 +299,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Okay to skip binder because what we are inspecting doesn't involve bound regions.
-        let self_ty = *obligation.self_ty().skip_binder();
+        let self_ty = obligation.self_ty().skip_binder();
         match self_ty.kind {
             ty::Infer(ty::TyVar(_)) => {
                 debug!("assemble_fn_pointer_candidates: ambiguous self-type");
@@ -362,7 +362,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         // Okay to skip binder here because the tests we do below do not involve bound regions.
-        let self_ty = *obligation.self_ty().skip_binder();
+        let self_ty = obligation.self_ty().skip_binder();
         debug!("assemble_candidates_from_auto_impls(self_ty={:?})", self_ty);
 
         let def_id = obligation.predicate.def_id();
@@ -583,7 +583,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         // Okay to skip binder here because the tests we do below do not involve bound regions.
-        let self_ty = *obligation.self_ty().skip_binder();
+        let self_ty = obligation.self_ty().skip_binder();
         debug!("assemble_candidates_for_trait_alias(self_ty={:?})", self_ty);
 
         let def_id = obligation.predicate.def_id();

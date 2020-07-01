@@ -2102,11 +2102,11 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .emit();
             }
         };
-        for (input, ty) in decl.inputs.iter().zip(*fty.inputs().skip_binder()) {
+        for (input, ty) in decl.inputs.iter().zip(fty.inputs().skip_binder()) {
             check(&input, ty)
         }
         if let hir::FnRetTy::Return(ref ty) = decl.output {
-            check(&ty, *fty.output().skip_binder())
+            check(&ty, fty.output().skip_binder())
         }
     }
 

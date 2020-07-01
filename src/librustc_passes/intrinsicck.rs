@@ -422,7 +422,7 @@ impl Visitor<'tcx> for ExprVisitor<'tcx> {
                         let typ = self.tables.node_type(expr.hir_id);
                         let sig = typ.fn_sig(self.tcx);
                         let from = sig.inputs().skip_binder()[0];
-                        let to = *sig.output().skip_binder();
+                        let to = sig.output().skip_binder();
                         self.check_transmute(expr.span, from, to);
                     }
                 }

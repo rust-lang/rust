@@ -500,7 +500,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return false;
             }
             // We're emitting a suggestion, so we can just ignore regions
-            let fn_sig = *self.tcx.fn_sig(def_id).skip_binder();
+            let fn_sig = self.tcx.fn_sig(def_id).skip_binder();
 
             let other_ty = if let FnDef(def_id, _) = other_ty.kind {
                 if !self.tcx.has_typeck_tables(def_id) {
