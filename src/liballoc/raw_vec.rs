@@ -291,10 +291,14 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// # }
     /// ```
     pub fn reserve(&mut self, len: usize, additional: usize) {
-        match self.try_reserve(len, additional) {
-            Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocError { layout, .. }) => handle_alloc_error(layout),
-            Ok(()) => { /* yay */ }
+        // This function is marginally shorter if it calls `try_reserve`, but
+        // that results in more LLVM IR being generated.
+        if self.needs_to_grow(len, additional) {
+            match self.grow_amortized(len, additional) {
+                Ok(()) => { /* yay */ }
+                Err(CapacityOverflow) => capacity_overflow(),
+                Err(AllocError { layout, .. }) => handle_alloc_error(layout),
+            }
         }
     }
 
@@ -327,10 +331,14 @@ impl<T, A: AllocRef> RawVec<T, A> {
     ///
     /// Aborts on OOM.
     pub fn reserve_exact(&mut self, len: usize, additional: usize) {
-        match self.try_reserve_exact(len, additional) {
-            Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocError { layout, .. }) => handle_alloc_error(layout),
-            Ok(()) => { /* yay */ }
+        // This function is marginally shorter if it calls `try_reserve_exact`,
+        // but that results in more LLVM IR being generated.
+        if self.needs_to_grow(len, additional) {
+            match self.grow_exact(len, additional) {
+                Ok(()) => { /* yay */ }
+                Err(CapacityOverflow) => capacity_overflow(),
+                Err(AllocError { layout, .. }) => handle_alloc_error(layout),
+            }
         }
     }
 
