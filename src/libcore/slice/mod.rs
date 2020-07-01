@@ -1459,6 +1459,68 @@ impl<T> [T] {
         m >= n && needle == &self[m - n..]
     }
 
+    /// Returns a subslice with the prefix removed.
+    ///
+    /// This method returns [`None`] if slice does not start with `prefix`.
+    /// Also it returns the original slice if `prefix` is an empty slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_strip)]
+    /// let v = &[10, 40, 30];
+    /// assert_eq!(v.strip_prefix(&[10]), Some(&[40, 30][..]));
+    /// assert_eq!(v.strip_prefix(&[10, 40]), Some(&[30][..]));
+    /// assert_eq!(v.strip_prefix(&[50]), None);
+    /// assert_eq!(v.strip_prefix(&[10, 50]), None);
+    /// ```
+    #[must_use = "returns the subslice without modifying the original"]
+    #[unstable(feature = "slice_strip", issue = "73413")]
+    pub fn strip_prefix(&self, prefix: &[T]) -> Option<&[T]>
+    where
+        T: PartialEq,
+    {
+        let n = prefix.len();
+        if n <= self.len() {
+            let (head, tail) = self.split_at(n);
+            if head == prefix {
+                return Some(tail);
+            }
+        }
+        None
+    }
+
+    /// Returns a subslice with the suffix removed.
+    ///
+    /// This method returns [`None`] if slice does not end with `suffix`.
+    /// Also it returns the original slice if `suffix` is an empty slice
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_strip)]
+    /// let v = &[10, 40, 30];
+    /// assert_eq!(v.strip_suffix(&[30]), Some(&[10, 40][..]));
+    /// assert_eq!(v.strip_suffix(&[40, 30]), Some(&[10][..]));
+    /// assert_eq!(v.strip_suffix(&[50]), None);
+    /// assert_eq!(v.strip_suffix(&[50, 30]), None);
+    /// ```
+    #[must_use = "returns the subslice without modifying the original"]
+    #[unstable(feature = "slice_strip", issue = "73413")]
+    pub fn strip_suffix(&self, suffix: &[T]) -> Option<&[T]>
+    where
+        T: PartialEq,
+    {
+        let (len, n) = (self.len(), suffix.len());
+        if n <= len {
+            let (head, tail) = self.split_at(len - n);
+            if tail == suffix {
+                return Some(head);
+            }
+        }
+        None
+    }
+
     /// Binary searches this sorted slice for a given element.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
