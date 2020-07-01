@@ -591,8 +591,8 @@ impl<T: ?Sized> Arc<T> {
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
 
-        // SAFETY: This cannot go through Deref::deref or RcBoxPtr::inner.
-        // This is required to retain raw/mut provenance such that e.g. `get_mut` can
+        // SAFETY: This cannot go through Deref::deref or RcBoxPtr::inner because
+        // this is required to retain raw/mut provenance such that e.g. `get_mut` can
         // write through the pointer after the Rc is recovered through `from_raw`.
         unsafe { &raw const (*ptr).data }
     }
@@ -1477,7 +1477,8 @@ impl<T> Weak<T> {
         // a dangling weak (usize::MAX). data_offset is safe to call, because we
         // know a pointer to unsized T must be derived from a real unsized T,
         // because dangling weaks are only created for sized T. wrapping_offset
-        // is used so that we can use the same code path for dangling weak refs.
+        // is used so that we can use the same code path for the non-dangling
+        // unsized case and the potentially dangling sized case.
         unsafe {
             let offset = data_offset(fake_ptr);
             set_data_ptr(fake_ptr, (ptr as *mut u8).wrapping_offset(offset))
