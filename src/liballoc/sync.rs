@@ -1473,9 +1473,9 @@ impl<T> Weak<T> {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(self.ptr);
 
         // SAFETY: we must offset the pointer manually, and said pointer may be
-        // a dangling weak (usize::MAX). data_offset is safe to call, because we
-        // know a pointer to unsized T must be derived from a real unsized T,
-        // because dangling weaks are only created for sized T. wrapping_offset
+        // a dangling weak (usize::MAX) if T is sized. data_offset is safe to call,
+        // because we know that a pointer to unsized T was derived from a real
+        // unsized T, as dangling weaks are only created for sized T. wrapping_offset
         // is used so that we can use the same code path for the non-dangling
         // unsized case and the potentially dangling sized case.
         unsafe {
