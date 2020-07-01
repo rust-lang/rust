@@ -197,6 +197,23 @@ impl CrateGraph {
         self.arena.keys().copied()
     }
 
+    /// Returns an iterator over all transitive dependencies of the given crate.
+    pub fn transitive_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> + '_ {
+        let mut worklist = vec![of];
+        let mut deps = FxHashSet::default();
+
+        while let Some(krate) = worklist.pop() {
+            if !deps.insert(krate) {
+                continue;
+            }
+
+            worklist.extend(self[krate].dependencies.iter().map(|dep| dep.crate_id));
+        }
+
+        deps.remove(&of);
+        deps.into_iter()
+    }
+
     // FIXME: this only finds one crate with the given root; we could have multiple
     pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
         let (&crate_id, _) =
