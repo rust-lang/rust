@@ -1,0 +1,32 @@
+Def site: $DIR/auxiliary/make-macro.rs:7:9: 10:10 (#3)
+#![feature /* 0#0 */(prelude_import)]
+#[prelude_import /* 0#1 */]
+use std /* 0#1 */::prelude /* 0#1 */::v1 /* 0#1 */::*;
+#[macro_use /* 0#1 */]
+extern crate std /* 0#1 */;
+// aux-build:make-macro.rs
+// aux-build:meta-macro.rs
+// edition:2018
+// compile-flags: -Z span-debug -Z unpretty=expanded,hygiene
+// check-pass
+// normalize-stdout-test "\d+#" -> "0#"
+// ^ We don't care about symbol ids, so set them all to 0
+// in the stdout
+extern crate meta_macro /* 0#0 */;
+
+fn main /* 0#0 */() { }
+
+/*
+Expansions:
+0: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
+1: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
+2: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
+
+SyntaxContexts:
+#0: parent: #0, outer_mark: (ExpnId(0), Opaque)
+#1: parent: #0, outer_mark: (ExpnId(1), Opaque)
+#2: parent: #0, outer_mark: (ExpnId(1), Transparent)
+#3: parent: #0, outer_mark: (ExpnId(2), Opaque)
+#4: parent: #0, outer_mark: (ExpnId(2), Transparent)
+#5: parent: #0, outer_mark: (ExpnId(2), SemiTransparent)
+*/
