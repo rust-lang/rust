@@ -213,7 +213,7 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    pub(crate) fn scope(&self) -> SemanticsScope<'_, RootDatabase> {
+    pub(crate) fn scope(&self) -> SemanticsScope<'_> {
         self.sema.scope_at_offset(&self.token.parent(), self.offset)
     }
 
