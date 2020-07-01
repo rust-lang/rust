@@ -2,7 +2,7 @@
 //! https://github.com/rust-analyzer/rust-analyzer/pull/5101
 use std::{
     collections::HashMap,
-    env, fmt, fs,
+    env, fmt, fs, mem,
     ops::Range,
     panic,
     path::{Path, PathBuf},
@@ -97,24 +97,25 @@ static RT: Lazy<Mutex<Runtime>> = Lazy::new(Default::default);
 impl Runtime {
     fn fail(expect: &Expect, expected: &str, actual: &str) {
         let mut rt = RT.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        let mut updated = "";
         if update_expect() {
-            updated = " (updated)";
+            println!(
+                "\x1b[1m\x1b[92mupdating\x1b[0m: {}:{}:{}",
+                expect.file, expect.line, expect.column
+            );
             rt.per_file
                 .entry(expect.file)
                 .or_insert_with(|| FileRuntime::new(expect))
                 .update(expect, actual);
+            return;
         }
-        let print_help = !rt.help_printed && !update_expect();
-        rt.help_printed = true;
-
+        let print_help = !mem::replace(&mut rt.help_printed, true);
         let help = if print_help { HELP } else { "" };
 
         let diff = Changeset::new(actual, expected, "\n");
 
         println!(
             "\n
-\x1b[1m\x1b[91merror\x1b[97m: expect test failed\x1b[0m{}
+\x1b[1m\x1b[91merror\x1b[97m: expect test failed\x1b[0m
    \x1b[1m\x1b[34m-->\x1b[0m {}:{}:{}
 {}
 \x1b[1mExpect\x1b[0m:
@@ -132,7 +133,7 @@ impl Runtime {
 {}
 ----
 ",
-            updated, expect.file, expect.line, expect.column, help, expected, actual, diff
+            expect.file, expect.line, expect.column, help, expected, actual, diff
         );
         // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
         panic::resume_unwind(Box::new(()));
