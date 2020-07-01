@@ -347,7 +347,7 @@ impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
 
         GenericBound::TraitBound(
             PolyTrait {
-                trait_: (*poly_trait_ref.skip_binder(), bounds).clean(cx),
+                trait_: (poly_trait_ref.skip_binder(), bounds).clean(cx),
                 generic_params: late_bound_regions,
             },
             hir::TraitBoundModifier::None,
@@ -549,7 +549,7 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::PolyOutlivesPredicate<Ty<'tcx>,
 
 impl<'tcx> Clean<WherePredicate> for ty::PolyProjectionPredicate<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> WherePredicate {
-        let ty::ProjectionPredicate { projection_ty, ty } = *self.skip_binder();
+        let ty::ProjectionPredicate { projection_ty, ty } = self.skip_binder();
         WherePredicate::EqPredicate { lhs: projection_ty.clean(cx), rhs: ty.clean(cx) }
     }
 }
@@ -1177,7 +1177,7 @@ impl Clean<Item> for ty::AssocItem {
                         ty::ImplContainer(def_id) => cx.tcx.type_of(def_id),
                         ty::TraitContainer(_) => cx.tcx.types.self_param,
                     };
-                    let self_arg_ty = *sig.input(0).skip_binder();
+                    let self_arg_ty = sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
                         decl.inputs.values[0].type_ = Generic(String::from("Self"));
                     } else if let ty::Ref(_, ty, _) = self_arg_ty.kind {
@@ -1679,7 +1679,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                                 if let ty::PredicateKind::Projection(proj) = pred.kind() {
                                     let proj = proj.skip_binder();
                                     if proj.projection_ty.trait_ref(cx.tcx)
-                                        == *trait_ref.skip_binder()
+                                        == trait_ref.skip_binder()
                                     {
                                         Some(TypeBinding {
                                             name: cx

@@ -502,7 +502,7 @@ fn compare_self_type<'tcx>(
             ty::ImplContainer(_) => impl_trait_ref.self_ty(),
             ty::TraitContainer(_) => tcx.types.self_param,
         };
-        let self_arg_ty = *tcx.fn_sig(method.def_id).input(0).skip_binder();
+        let self_arg_ty = tcx.fn_sig(method.def_id).input(0).skip_binder();
         let param_env = ty::ParamEnv::reveal_all();
 
         tcx.infer_ctxt().enter(|infcx| {

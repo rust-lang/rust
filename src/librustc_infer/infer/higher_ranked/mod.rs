@@ -11,8 +11,8 @@ use rustc_middle::ty::{self, Binder, TypeFoldable};
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     pub fn higher_ranked_sub<T>(
         &mut self,
-        a: &Binder<T>,
-        b: &Binder<T>,
+        a: Binder<T>,
+        b: Binder<T>,
         a_is_expected: bool,
     ) -> RelateResult<'tcx, Binder<T>>
     where
@@ -33,20 +33,20 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         self.infcx.commit_if_ok(|_| {
             // First, we instantiate each bound region in the supertype with a
             // fresh placeholder region.
-            let (b_prime, _) = self.infcx.replace_bound_vars_with_placeholders(b);
+            let (b_prime, _) = self.infcx.replace_bound_vars_with_placeholders(&b);
 
             // Next, we instantiate each bound region in the subtype
             // with a fresh region variable. These region variables --
             // but no other pre-existing region variables -- can name
             // the placeholders.
             let (a_prime, _) =
-                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
+                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, &a);
 
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
 
             // Compare types now that bound regions have been replaced.
-            let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
+            let result = self.sub(a_is_expected).relate(a_prime, b_prime)?;
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 

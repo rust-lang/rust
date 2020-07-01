@@ -336,7 +336,7 @@ impl<'tcx> TyCtxt<'tcx> {
         {
             fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
                 self.outer_index.shift_in(1);
-                let result = t.skip_binder().visit_with(self);
+                let result = t.as_ref().skip_binder().visit_with(self);
                 self.outer_index.shift_out(1);
                 result
             }
@@ -558,7 +558,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let fld_c = |bound_ct, ty| {
             self.mk_const(ty::Const { val: ty::ConstKind::Bound(ty::INNERMOST, bound_ct), ty })
         };
-        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
+        self.replace_escaping_bound_vars(value.as_ref().skip_binder(), fld_r, fld_t, fld_c)
     }
 
     /// Replaces all escaping bound vars. The `fld_r` closure replaces escaping
@@ -617,7 +617,7 @@ impl<'tcx> TyCtxt<'tcx> {
         H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
         T: TypeFoldable<'tcx>,
     {
-        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
+        self.replace_escaping_bound_vars(value.as_ref().skip_binder(), fld_r, fld_t, fld_c)
     }
 
     /// Replaces any late-bound regions bound in `value` with
@@ -673,7 +673,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<'tcx>,
     {
         let mut collector = LateBoundRegionsCollector::new(just_constraint);
-        let result = value.skip_binder().visit_with(&mut collector);
+        let result = value.as_ref().skip_binder().visit_with(&mut collector);
         assert!(!result); // should never have stopped early
         collector.regions
     }

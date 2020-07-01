@@ -514,7 +514,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::Binder<T> {
     type Lifted = ty::Binder<T::Lifted>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(self.skip_binder()).map(ty::Binder::bind)
+        tcx.lift(self.as_ref().skip_binder()).map(ty::Binder::bind)
     }
 }
 
@@ -655,7 +655,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             VariadicMismatch(x) => VariadicMismatch(x),
             CyclicTy(t) => return tcx.lift(&t).map(|t| CyclicTy(t)),
             ProjectionMismatched(x) => ProjectionMismatched(x),
-            ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
             Sorts(ref x) => return tcx.lift(x).map(Sorts),
             ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch),
             ConstMismatch(ref x) => return tcx.lift(x).map(ConstMismatch),
@@ -798,7 +797,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.skip_binder().visit_with(visitor)
+        self.as_ref().skip_binder().visit_with(visitor)
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
