@@ -1,7 +1,9 @@
 // run-pass
-// compile-flags:-Zmir-opt-level=0
+// only-wasm32
+// compile-flags: -Zmir-opt-level=0 -C target-feature=+nontrapping-fptoint
 
 #![feature(test, stmt_expr_attributes)]
+#![feature(track_caller)]
 #![deny(overflowing_literals)]
 
 #[path = "saturating-float-casts-impl.rs"]
