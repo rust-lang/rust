@@ -83,7 +83,7 @@ impl PathResolution {
 /// Primary API to get semantic information, like types, from syntax trees.
 pub struct Semantics<'db, DB> {
     pub db: &'db DB,
-    impl_: SemanticsImpl<'db>,
+    imp: SemanticsImpl<'db>,
 }
 
 pub struct SemanticsImpl<'db> {
@@ -101,19 +101,22 @@ impl<DB> fmt::Debug for Semantics<'_, DB> {
 impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn new(db: &DB) -> Semantics<DB> {
         let impl_ = SemanticsImpl::new(db);
-        Semantics { db, impl_ }
+        Semantics { db, imp: impl_ }
     }
 
     pub fn parse(&self, file_id: FileId) -> ast::SourceFile {
-        self.impl_.parse(file_id)
+        self.imp.parse(file_id)
     }
 
     pub fn ast<T: AstDiagnostic + Diagnostic>(&self, d: &T) -> <T as AstDiagnostic>::AST {
-        self.impl_.ast(d)
+        let file_id = d.source().file_id;
+        let root = self.db.parse_or_expand(file_id).unwrap();
+        self.imp.cache(root, file_id);
+        d.ast(self.db.upcast())
     }
 
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
-        self.impl_.expand(macro_call)
+        self.imp.expand(macro_call)
     }
 
     pub fn expand_hypothetical(
@@ -122,11 +125,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         hypothetical_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, SyntaxToken)> {
-        self.impl_.expand_hypothetical(actual_macro_call, hypothetical_args, token_to_map)
+        self.imp.expand_hypothetical(actual_macro_call, hypothetical_args, token_to_map)
     }
 
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
-        self.impl_.descend_into_macros(token)
+        self.imp.descend_into_macros(token)
     }
 
     pub fn descend_node_at_offset<N: ast::AstNode>(
@@ -134,19 +137,19 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> Option<N> {
-        self.impl_.descend_node_at_offset(node, offset)
+        self.imp.descend_node_at_offset(node, offset).find_map(N::cast)
     }
 
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
-        self.impl_.original_range(node)
+        self.imp.original_range(node)
     }
 
     pub fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
-        self.impl_.diagnostics_range(diagnostics)
+        self.imp.diagnostics_range(diagnostics)
     }
 
     pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
-        self.impl_.ancestors_with_macros(node)
+        self.imp.ancestors_with_macros(node)
     }
 
     pub fn ancestors_at_offset_with_macros(
@@ -154,7 +157,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> impl Iterator<Item = SyntaxNode> + '_ {
-        self.impl_.ancestors_at_offset_with_macros(node, offset)
+        self.imp.ancestors_at_offset_with_macros(node, offset)
     }
 
     /// Find a AstNode by offset inside SyntaxNode, if it is inside *Macrofile*,
@@ -164,7 +167,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> Option<N> {
-        self.impl_.find_node_at_offset_with_macros(node, offset)
+        self.imp.ancestors_at_offset_with_macros(node, offset).find_map(N::cast)
     }
 
     /// Find a AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
@@ -174,86 +177,91 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> Option<N> {
-        self.impl_.find_node_at_offset_with_descend(node, offset)
+        if let Some(it) = find_node_at_offset(&node, offset) {
+            return Some(it);
+        }
+
+        self.imp.descend_node_at_offset(node, offset).find_map(N::cast)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
-        self.impl_.type_of_expr(expr)
+        self.imp.type_of_expr(expr)
     }
 
     pub fn type_of_pat(&self, pat: &ast::Pat) -> Option<Type> {
-        self.impl_.type_of_pat(pat)
+        self.imp.type_of_pat(pat)
     }
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
-        self.impl_.resolve_method_call(call)
+        self.imp.resolve_method_call(call)
     }
 
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {
-        self.impl_.resolve_field(field)
+        self.imp.resolve_field(field)
     }
 
     pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<(Field, Option<Local>)> {
-        self.impl_.resolve_record_field(field)
+        self.imp.resolve_record_field(field)
     }
 
     pub fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<Field> {
-        self.impl_.resolve_record_field_pat(field)
+        self.imp.resolve_record_field_pat(field)
     }
 
     pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {
-        self.impl_.resolve_macro_call(macro_call)
+        self.imp.resolve_macro_call(macro_call)
     }
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
-        self.impl_.resolve_path(path)
+        self.imp.resolve_path(path)
     }
 
     pub fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantId> {
-        self.impl_.resolve_variant(record_lit)
+        self.imp.resolve_variant(record_lit)
     }
 
     pub fn lower_path(&self, path: &ast::Path) -> Option<Path> {
-        self.impl_.lower_path(path)
+        self.imp.lower_path(path)
     }
 
     pub fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {
-        self.impl_.resolve_bind_pat_to_const(pat)
+        self.imp.resolve_bind_pat_to_const(pat)
     }
 
     // FIXME: use this instead?
     // pub fn resolve_name_ref(&self, name_ref: &ast::NameRef) -> Option<???>;
 
     pub fn record_literal_missing_fields(&self, literal: &ast::RecordLit) -> Vec<(Field, Type)> {
-        self.impl_.record_literal_missing_fields(literal)
+        self.imp.record_literal_missing_fields(literal)
     }
 
     pub fn record_pattern_missing_fields(&self, pattern: &ast::RecordPat) -> Vec<(Field, Type)> {
-        self.impl_.record_pattern_missing_fields(pattern)
+        self.imp.record_pattern_missing_fields(pattern)
     }
 
     pub fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
-        self.impl_.to_def(src)
+        let src = self.imp.find_file(src.syntax().clone()).with_value(src).cloned();
+        T::to_def(&self.imp, src)
     }
 
     pub fn to_module_def(&self, file: FileId) -> Option<Module> {
-        self.impl_.to_module_def(file)
+        self.imp.to_module_def(file)
     }
 
     pub fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db> {
-        self.impl_.scope(node)
+        self.imp.scope(node)
     }
 
     pub fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
-        self.impl_.scope_at_offset(node, offset)
+        self.imp.scope_at_offset(node, offset)
     }
 
     pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
-        self.impl_.scope_for_def(def)
+        self.imp.scope_for_def(def)
     }
 
     pub fn assert_contains_node(&self, node: &SyntaxNode) {
-        self.impl_.assert_contains_node(node)
+        self.imp.assert_contains_node(node)
     }
 }
 
@@ -266,13 +274,6 @@ impl<'db> SemanticsImpl<'db> {
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
-    }
-
-    pub fn ast<T: AstDiagnostic + Diagnostic>(&self, d: &T) -> <T as AstDiagnostic>::AST {
-        let file_id = d.source().file_id;
-        let root = self.db.parse_or_expand(file_id).unwrap();
-        self.cache(root, file_id);
-        d.ast(self.db.upcast())
     }
 
     pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
@@ -329,15 +330,16 @@ impl<'db> SemanticsImpl<'db> {
         token.value
     }
 
-    pub fn descend_node_at_offset<N: ast::AstNode>(
+    pub fn descend_node_at_offset(
         &self,
         node: &SyntaxNode,
         offset: TextSize,
-    ) -> Option<N> {
+    ) -> impl Iterator<Item = SyntaxNode> + '_ {
         // Handle macro token cases
         node.token_at_offset(offset)
             .map(|token| self.descend_into_macros(token))
-            .find_map(|it| self.ancestors_with_macros(it.parent()).find_map(N::cast))
+            .map(|it| self.ancestors_with_macros(it.parent()))
+            .flatten()
     }
 
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
@@ -365,25 +367,6 @@ impl<'db> SemanticsImpl<'db> {
         node.token_at_offset(offset)
             .map(|token| self.ancestors_with_macros(token.parent()))
             .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
-    }
-
-    pub fn find_node_at_offset_with_macros<N: AstNode>(
-        &self,
-        node: &SyntaxNode,
-        offset: TextSize,
-    ) -> Option<N> {
-        self.ancestors_at_offset_with_macros(node, offset).find_map(N::cast)
-    }
-
-    pub fn find_node_at_offset_with_descend<N: AstNode>(
-        &self,
-        node: &SyntaxNode,
-        offset: TextSize,
-    ) -> Option<N> {
-        if let Some(it) = find_node_at_offset(&node, offset) {
-            return Some(it);
-        }
-        self.descend_node_at_offset(&node, offset)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
@@ -445,11 +428,6 @@ impl<'db> SemanticsImpl<'db> {
             .unwrap_or_default()
     }
 
-    pub fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
-        let src = self.find_file(src.syntax().clone()).with_value(src).cloned();
-        T::to_def(self, src)
-    }
-
     fn with_ctx<F: FnOnce(&mut SourceToDefCtx) -> T, T>(&self, f: F) -> T {
         let mut cache = self.s2d_cache.borrow_mut();
         let mut ctx = SourceToDefCtx { db: self.db, cache: &mut *cache };
@@ -504,7 +482,7 @@ impl<'db> SemanticsImpl<'db> {
         SourceAnalyzer::new_for_resolver(resolver, src)
     }
 
-    fn cache(&self, root_node: SyntaxNode, file_id: HirFileId) {
+    pub fn cache(&self, root_node: SyntaxNode, file_id: HirFileId) {
         assert!(root_node.parent().is_none());
         let mut cache = self.cache.borrow_mut();
         let prev = cache.insert(root_node, file_id);
@@ -520,7 +498,7 @@ impl<'db> SemanticsImpl<'db> {
         cache.get(root_node).copied()
     }
 
-    fn find_file(&self, node: SyntaxNode) -> InFile<SyntaxNode> {
+    pub fn find_file(&self, node: SyntaxNode) -> InFile<SyntaxNode> {
         let root_node = find_root(&node);
         let file_id = self.lookup(&root_node).unwrap_or_else(|| {
             panic!(
