@@ -161,11 +161,10 @@ pub fn wait(event_mask: u64, mut timeout: u64) -> IoResult<u64> {
         // model the enclave runner which is serving the wait usercall is not
         // trusted to ensure accurate timeouts.
         if let Ok(timeout_signed) = i64::try_from(timeout) {
-            let tenth = 1 + timeout_signed / 10;
+            let tenth = timeout_signed / 10;
             let deviation = (rdrand64() as i64).checked_rem(tenth).unwrap_or(0);
             timeout = timeout_signed.saturating_add(deviation) as _;
         }
-        timeout = cmp::min(u64::MAX - 1, cmp::max(1, timeout));
     }
     unsafe { raw::wait(event_mask, timeout).from_sgx_result() }
 }
