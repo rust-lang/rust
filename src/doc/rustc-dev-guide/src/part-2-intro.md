@@ -9,7 +9,6 @@ to file an issue on the [rustc-dev-guide
 repo](https://github.com/rust-lang/rustc-dev-guide/issues) or contact the compiler
 team, as detailed in [this chapter from Part 1](./compiler-team.md).
 
-In this part, we will specifically look at the high-level architecture of the
-compiler. Specifically, will look at the query system, incremental compilation,
-and interning. These are three overarching design choices that impact the whole
-compiler.
+In this part, we will look at the high-level architecture of the compiler. In
+particular, we will look at three overarching design choices that impact the
+whole compiler: the query system, incremental compilation, and interning.
