@@ -714,3 +714,10 @@ fn test_try_reserve_exact() {
         }
     }
 }
+
+#[test]
+fn test_from_char() {
+    assert_eq!(String::from('a'), 'a'.to_string());
+    let s: String = 'x'.into();
+    assert_eq!(s, 'x'.to_string());
+}
