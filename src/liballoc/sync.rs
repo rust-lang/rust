@@ -1471,7 +1471,6 @@ impl<T> Weak<T> {
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(self.ptr);
-        let fake_ptr = ptr as *mut T;
 
         // SAFETY: we must offset the pointer manually, and said pointer may be
         // a dangling weak (usize::MAX). data_offset is safe to call, because we
@@ -1480,8 +1479,8 @@ impl<T> Weak<T> {
         // is used so that we can use the same code path for the non-dangling
         // unsized case and the potentially dangling sized case.
         unsafe {
-            let offset = data_offset(fake_ptr);
-            set_data_ptr(fake_ptr, (ptr as *mut u8).wrapping_offset(offset))
+            let offset = data_offset(ptr as *mut T);
+            set_data_ptr(ptr as *mut T, (ptr as *mut u8).wrapping_offset(offset))
         }
     }
 
