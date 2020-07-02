@@ -63,11 +63,11 @@ pub use crate::completion::{
 // There also snippet completions:
 //
 // .Expressions
-// - `pd` -> `println!("{:?}")`
-// - `ppd` -> `println!("{:#?}")`
+// - `pd` -> `eprintln!(" = {:?}", );")`
+// - `ppd` -> `eprintln!(" = {:#?}", );`
 //
 // .Items
-// - `tfn` -> `#[test] fn f(){}`
+// - `tfn` -> `#[test] fn feature(){}`
 // - `tmod` ->
 // ```rust
 // #[cfg(test)]
@@ -75,7 +75,7 @@ pub use crate::completion::{
 //     use super::*;
 //
 //     #[test]
-//     fn test_fn() {}
+//     fn test_name() {}
 // }
 // ```
 
