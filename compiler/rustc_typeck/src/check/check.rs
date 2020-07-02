@@ -524,6 +524,18 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 }
 
 /// Check that the concrete type behind `impl Trait` actually implements `Trait`.
+///
+/// This is mostly checked at the places that specify the opaque type, but we
+/// check those cases in the `param_env` of that function, which may have
+/// bounds not on this opaque type:
+///
+/// type X<T> = impl Clone
+/// fn f<T: Clone>(t: T) -> X<T> {
+///     t
+/// }
+///
+/// Without this check the above code is incorrectly accepted: we would ICE if
+/// some tried, for example, to clone an `Option<X<&mut ()>>`.
 fn check_opaque_meets_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,

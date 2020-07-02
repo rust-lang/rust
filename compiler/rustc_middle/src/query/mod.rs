@@ -159,9 +159,8 @@ rustc_queries! {
         /// Returns the list of bounds that can be used for
         /// `SelectionCandidate::ProjectionCandidate` and
         /// `ProjectionTyCandidate::TraitDef`.
-        /// Specifically this is the bounds (equivalent to) those
-        /// written on the trait's type definition, or those
-        /// after the `impl` keyword
+        /// Specifically this is the bounds written on the trait's type
+        /// definition, or those after the `impl` keyword
         ///
         /// type X: Bound + 'lt
         ///         ^^^^^^^^^^^
@@ -169,11 +168,28 @@ rustc_queries! {
         ///      ^^^^^^^^^^^^^^^
         ///
         /// `key` is the `DefId` of the associated type or opaque type.
+        ///
+        /// Bounds from the parent (e.g. with nested impl trait) are not included.
         query explicit_item_bounds(key: DefId) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
             desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
         }
 
-        /// Elaborated the predicates from `explicit_item_bounds`.
+        /// Elaborated version of the predicates from `explicit_item_bounds`.
+        ///
+        /// Example for
+        ///
+        /// trait MyTrait {
+        ///     type MyAType: Eq + ?Sized`
+        /// }
+        ///
+        /// `explicit_item_bounds` returns `[<Self as MyTrait>::MyAType: Eq]`,
+        /// and `item_bounds` returns
+        /// [
+        ///     <Self as Trait>::MyAType: Eq,
+        ///     <Self as Trait>::MyAType: PartialEq<<Self as Trait>::MyAType>
+        /// ]
+        ///
+        /// Bounds from the parent (e.g. with nested impl trait) are not included.
         query item_bounds(key: DefId) -> &'tcx ty::List<ty::Predicate<'tcx>> {
             desc { |tcx| "elaborating item bounds for `{}`", tcx.def_path_str(key) }
         }

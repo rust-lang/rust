@@ -337,8 +337,26 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// into `self.out`.
     fn compute_projection(&mut self, data: ty::ProjectionTy<'tcx>) {
         // A projection is well-formed if
-        // (a) its predicates hold
+        //
+        // (a) its predicates hold (*)
         // (b) its substs are wf
+        //
+        // (*) The predicates of an associated type include the predicates of
+        //     the trait that it's contained in. For example, given
+        //
+        // trait A<T>: Clone {
+        //     type X where T: Copy;
+        // }
+        //
+        // The predicates of `<() as A<i32>>::X` are:
+        // [
+        //     `(): Sized`
+        //     `(): Clone`
+        //     `(): A<i32>`
+        //     `i32: Sized`
+        //     `i32: Clone`
+        //     `i32: Copy`
+        // ]
         let obligations = self.nominal_obligations(data.item_def_id, data.substs);
         self.out.extend(obligations);
 

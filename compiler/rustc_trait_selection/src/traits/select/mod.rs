@@ -1156,6 +1156,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.selection_cache.insert(param_env.and(trait_ref), dep_node, candidate);
     }
 
+    /// Matches a predicate against the bounds of its self type.
+    ///
+    /// Given an obligation like `<T as Foo>::Bar: Baz` where the self type is
+    /// a projection, look at the bounds of `T::Bar`, see if we can find a
+    /// `Baz` bound and it there is one it returns it.
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,

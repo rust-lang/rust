@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 pub use rustc_infer::traits::util::*;
@@ -365,14 +365,24 @@ pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {
 /// trait X<A> { type Y<'a>: PartialEq<A> }
 ///
 /// Say that we know that `<() as X<B>>::Y<'c> = i32` and we need to check that
-/// the `PartialEq` bound applies. This function would return
-/// `i32: PartialEq<B>`.
+/// the `PartialEq` bound applies. We would then call this function with:
+///
+/// - `bound` = `<Self as X<A>>::Y<'a>: PartialEq`
+/// - `normalized_projection_ty` = `i32`
+/// - `assoc_item_substs` = `[(), B, 'c]`
+///
+/// This method would then return `i32: PartialEq<B>`.
 pub fn subst_assoc_item_bound<'tcx>(
     tcx: TyCtxt<'tcx>,
     bound: ty::Predicate<'tcx>,
     normalized_projection_ty: Ty<'tcx>,
     assoc_item_substs: &[GenericArg<'tcx>],
 ) -> ty::Predicate<'tcx> {
+    // We're substituting these inside the closure passed to map_bound, so they
+    // can't have escaping bound regions.
+    assert!(!normalized_projection_ty.has_escaping_bound_vars());
+    assert!(!assoc_item_substs.iter().all(|arg| arg.has_escaping_bound_vars()));
+
     let translate_predicate_substs = move |predicate_substs: SubstsRef<'tcx>| {
         tcx.mk_substs(
             iter::once(normalized_projection_ty.into())
