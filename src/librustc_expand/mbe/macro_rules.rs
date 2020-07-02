@@ -224,7 +224,7 @@ fn generic_extension<'cx>(
     let sess = cx.parse_sess;
 
     if cx.trace_macros() {
-        let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(arg.clone()));
+        let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(&arg));
         trace_macros_note(&mut cx.expansions, sp, msg);
     }
 
@@ -300,7 +300,7 @@ fn generic_extension<'cx>(
                 }
 
                 if cx.trace_macros() {
-                    let msg = format!("to `{}`", pprust::tts_to_string(tts.clone()));
+                    let msg = format!("to `{}`", pprust::tts_to_string(&tts));
                     trace_macros_note(&mut cx.expansions, sp, msg);
                 }
 
