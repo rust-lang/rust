@@ -319,6 +319,7 @@
 #![cfg_attr(bootstrap, feature(track_caller))]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
+#![feature(unsafe_block_in_unsafe_fn)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
