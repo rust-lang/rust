@@ -4,14 +4,14 @@ use crate::module::DirectoryOwnership;
 use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, FlattenGroup};
-use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
+use rustc_ast::token;
+use rustc_ast::tokenstream::{self, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
-use rustc_parse::{self, parser, MACRO_ARGUMENTS};
+use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit};
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
@@ -120,10 +120,7 @@ impl Annotatable {
         }
     }
 
-    crate fn into_tokens(self) -> TokenStream {
-        // `Annotatable` can be converted into tokens directly, but we
-        // are packing it into a nonterminal as a piece of AST to make
-        // the produced token stream look nicer in pretty-printed form.
+    crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
         let nt = match self {
             Annotatable::Item(item) => token::NtItem(item),
             Annotatable::TraitItem(item) | Annotatable::ImplItem(item) => {
@@ -142,7 +139,7 @@ impl Annotatable {
             | Annotatable::StructField(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
         };
-        TokenTree::token(token::Interpolated(Lrc::new(nt), FlattenGroup::Yes), DUMMY_SP).into()
+        nt_to_tokenstream(&nt, sess, DUMMY_SP)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
@@ -374,7 +371,7 @@ where
         impl MutVisitor for AvoidInterpolatedIdents {
             fn visit_tt(&mut self, tt: &mut tokenstream::TokenTree) {
                 if let tokenstream::TokenTree::Token(token) = tt {
-                    if let token::Interpolated(nt, _) = &token.kind {
+                    if let token::Interpolated(nt) = &token.kind {
                         if let token::NtIdent(ident, is_raw) = **nt {
                             *tt = tokenstream::TokenTree::token(
                                 token::Ident(ident.name, is_raw),

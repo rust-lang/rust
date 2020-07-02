@@ -148,9 +148,14 @@ pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
     printer.s.eof()
 }
 
-// This makes comma-separated lists look slightly nicer,
-// and also addresses a specific regression described in issue #63896.
+// This makes printed token streams look slightly nicer,
+// and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
+    if let TokenTree::Token(token) = prev {
+        if let token::DocComment(s) = token.kind {
+            return !s.as_str().starts_with("//");
+        }
+    }
     match tt {
         TokenTree::Token(token) => match token.kind {
             token::Comma => false,
@@ -163,7 +168,14 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
             },
             _ => true,
         },
-        _ => true,
+        TokenTree::Delimited(_, DelimToken::Bracket, _) => match prev {
+            TokenTree::Token(token) => match token.kind {
+                token::Pound => false,
+                _ => true,
+            },
+            _ => true,
+        },
+        TokenTree::Delimited(..) => true,
     }
 }
 
@@ -266,7 +278,7 @@ fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>)
         token::Shebang(s) => format!("/* shebang: {}*/", s),
         token::Unknown(s) => s.to_string(),
 
-        token::Interpolated(ref nt, _) => nonterminal_to_string(nt),
+        token::Interpolated(ref nt) => nonterminal_to_string(nt),
     }
 }
 
