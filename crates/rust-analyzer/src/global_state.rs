@@ -32,6 +32,7 @@ pub(crate) enum Status {
     Loading,
     Ready,
     Invalid,
+    NeedsReload,
 }
 
 impl Default for Status {

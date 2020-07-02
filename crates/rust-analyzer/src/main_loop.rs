@@ -111,6 +111,35 @@ impl GlobalState {
     }
 
     fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
+        let registration_options = lsp_types::TextDocumentRegistrationOptions {
+            document_selector: Some(vec![
+                lsp_types::DocumentFilter {
+                    language: None,
+                    scheme: None,
+                    pattern: Some("**/*.rs".into()),
+                },
+                lsp_types::DocumentFilter {
+                    language: None,
+                    scheme: None,
+                    pattern: Some("**/Cargo.toml".into()),
+                },
+                lsp_types::DocumentFilter {
+                    language: None,
+                    scheme: None,
+                    pattern: Some("**/Cargo.lock".into()),
+                },
+            ]),
+        };
+        let registration = lsp_types::Registration {
+            id: "textDocument/didSave".to_string(),
+            method: "textDocument/didSave".to_string(),
+            register_options: Some(serde_json::to_value(registration_options).unwrap()),
+        };
+        self.send_request::<lsp_types::request::RegisterCapability>(
+            lsp_types::RegistrationParams { registrations: vec![registration] },
+            |_, _| (),
+        );
+
         self.reload();
 
         while let Some(event) = self.next_event(&inbox) {
@@ -281,6 +310,7 @@ impl GlobalState {
                 Status::Loading => lsp_ext::Status::Loading,
                 Status::Ready => lsp_ext::Status::Ready,
                 Status::Invalid => lsp_ext::Status::Invalid,
+                Status::NeedsReload => lsp_ext::Status::NeedsReload,
             };
             self.send_notification::<lsp_ext::StatusNotification>(lsp_status);
         }
@@ -395,9 +425,15 @@ impl GlobalState {
                 );
                 Ok(())
             })?
-            .on::<lsp_types::notification::DidSaveTextDocument>(|this, _params| {
+            .on::<lsp_types::notification::DidSaveTextDocument>(|this, params| {
                 if let Some(flycheck) = &this.flycheck {
                     flycheck.handle.update();
+                }
+                let uri = params.text_document.uri.as_str();
+                if uri.ends_with("Cargo.toml") || uri.ends_with("Cargo.lock") {
+                    if matches!(this.status, Status::Ready | Status::Invalid) {
+                        this.transition(Status::NeedsReload);
+                    }
                 }
                 Ok(())
             })?

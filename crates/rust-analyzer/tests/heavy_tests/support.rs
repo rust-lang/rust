@@ -176,12 +176,19 @@ impl Server {
         while let Some(msg) = self.recv() {
             match msg {
                 Message::Request(req) => {
-                    if req.method != "window/workDoneProgress/create"
-                        && !(req.method == "client/registerCapability"
-                            && req.params.to_string().contains("workspace/didChangeWatchedFiles"))
-                    {
-                        panic!("unexpected request: {:?}", req)
+                    if req.method == "window/workDoneProgress/create" {
+                        continue;
                     }
+                    if req.method == "client/registerCapability" {
+                        let params = req.params.to_string();
+                        if ["workspace/didChangeWatchedFiles", "textDocument/didSave"]
+                            .iter()
+                            .any(|&it| params.contains(it))
+                        {
+                            continue;
+                        }
+                    }
+                    panic!("unexpected request: {:?}", req)
                 }
                 Message::Notification(_) => (),
                 Message::Response(res) => {
