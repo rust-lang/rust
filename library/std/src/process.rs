@@ -105,6 +105,7 @@
 //! [`Read`]: ../io/trait.Read.html
 
 #![stable(feature = "process", since = "1.0.0")]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::io::prelude::*;
 
@@ -311,7 +312,8 @@ impl Read for ChildStdout {
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        // SAFETY: Read is guaranteed to work on uninitialized memory
+        unsafe { Initializer::nop() }
     }
 }
 
@@ -372,7 +374,8 @@ impl Read for ChildStderr {
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        // SAFETY: Read is guaranteed to work on uninitialized memory
+        unsafe { Initializer::nop() }
     }
 }
 
