@@ -629,7 +629,9 @@ impl f32 {
     where
         Self: FloatToInt<Int>,
     {
-        FloatToInt::<Int>::to_int_unchecked(self)
+        // SAFETY: the caller must uphold the safety contract for
+        // `FloatToInt::to_int_unchecked`.
+        unsafe { FloatToInt::<Int>::to_int_unchecked(self) }
     }
 
     /// Raw transmutation to `u32`.

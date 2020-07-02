@@ -130,15 +130,19 @@ unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
     let mut i = 0; // current byte index (from LSB) in the output u64
     let mut out = 0;
     if i + 3 < len {
-        out = load_int_le!(buf, start + i, u32) as u64;
+        // SAFETY: `i` cannot be greater than `len`, and the caller must guarantee
+        // that the index start..start+len is in bounds.
+        out = unsafe { load_int_le!(buf, start + i, u32) } as u64;
         i += 4;
     }
     if i + 1 < len {
-        out |= (load_int_le!(buf, start + i, u16) as u64) << (i * 8);
+        // SAFETY: same as above.
+        out |= (unsafe { load_int_le!(buf, start + i, u16) } as u64) << (i * 8);
         i += 2
     }
     if i < len {
-        out |= (*buf.get_unchecked(start + i) as u64) << (i * 8);
+        // SAFETY: same as above.
+        out |= (unsafe { *buf.get_unchecked(start + i) } as u64) << (i * 8);
         i += 1;
     }
     debug_assert_eq!(i, len);

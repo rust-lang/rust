@@ -90,7 +90,8 @@ impl Layout {
     #[rustc_const_stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
-        Layout { size_: size, align_: NonZeroUsize::new_unchecked(align) }
+        // SAFETY: the caller must ensure that `align` is greater than zero.
+        Layout { size_: size, align_: unsafe { NonZeroUsize::new_unchecked(align) } }
     }
 
     /// The minimum size in bytes for a memory block of this layout.

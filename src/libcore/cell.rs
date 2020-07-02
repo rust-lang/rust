@@ -1005,7 +1005,12 @@ impl<T: ?Sized> RefCell<T> {
     #[inline]
     pub unsafe fn try_borrow_unguarded(&self) -> Result<&T, BorrowError> {
         if !is_writing(self.borrow.get()) {
-            Ok(&*self.value.get())
+            // SAFETY: We check that nobody is actively writing now, but it is
+            // the caller's responsibility to ensure that nobody writes until
+            // the returned reference is no longer in use.
+            // Also, `self.value.get()` refers to the value owned by `self`
+            // and is thus guaranteed to be valid for the lifetime of `self`.
+            Ok(unsafe { &*self.value.get() })
         } else {
             Err(BorrowError { _private: () })
         }

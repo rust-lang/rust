@@ -623,8 +623,11 @@ pub const fn needs_drop<T>() -> bool {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 pub unsafe fn zeroed<T>() -> T {
-    intrinsics::assert_zero_valid::<T>();
-    MaybeUninit::zeroed().assume_init()
+    // SAFETY: the caller must guarantee that an all-zero value is valid for `T`.
+    unsafe {
+        intrinsics::assert_zero_valid::<T>();
+        MaybeUninit::zeroed().assume_init()
+    }
 }
 
 /// Bypasses Rust's normal memory-initialization checks by pretending to
@@ -656,8 +659,11 @@ pub unsafe fn zeroed<T>() -> T {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
 pub unsafe fn uninitialized<T>() -> T {
-    intrinsics::assert_uninit_valid::<T>();
-    MaybeUninit::uninit().assume_init()
+    // SAFETY: the caller must guarantee that an unitialized value is valid for `T`.
+    unsafe {
+        intrinsics::assert_uninit_valid::<T>();
+        MaybeUninit::uninit().assume_init()
+    }
 }
 
 /// Swaps the values at two mutable locations, without deinitializing either one.
@@ -922,9 +928,14 @@ pub fn drop<T>(_x: T) {}
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     // If U has a higher alignment requirement, src may not be suitably aligned.
     if align_of::<U>() > align_of::<T>() {
-        ptr::read_unaligned(src as *const T as *const U)
+        // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
+        // The caller must guarantee that the actual transmutation is safe.
+        unsafe { ptr::read_unaligned(src as *const T as *const U) }
     } else {
-        ptr::read(src as *const T as *const U)
+        // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
+        // We just checked that `src as *const U` was properly aligned.
+        // The caller must guarantee that the actual transmutation is safe.
+        unsafe { ptr::read(src as *const T as *const U) }
     }
 }
 

@@ -272,7 +272,8 @@ where
     T: Copy,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        *self.it.get_unchecked(i)
+        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+        unsafe { *self.it.get_unchecked(i) }
     }
 
     #[inline]
@@ -402,7 +403,8 @@ where
     T: Clone,
 {
     default unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        self.it.get_unchecked(i).clone()
+        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+        unsafe { self.it.get_unchecked(i) }.clone()
     }
 
     #[inline]
@@ -418,7 +420,8 @@ where
     T: Copy,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        *self.it.get_unchecked(i)
+        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+        unsafe { *self.it.get_unchecked(i) }
     }
 
     #[inline]
@@ -930,7 +933,8 @@ where
     F: FnMut(I::Item) -> B,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        (self.f)(self.iter.get_unchecked(i))
+        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+        (self.f)(unsafe { self.iter.get_unchecked(i) })
     }
     #[inline]
     fn may_have_side_effect() -> bool {
@@ -1392,7 +1396,8 @@ where
     I: TrustedRandomAccess,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> (usize, I::Item) {
-        (self.count + i, self.iter.get_unchecked(i))
+        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+        (self.count + i, unsafe { self.iter.get_unchecked(i) })
     }
 
     fn may_have_side_effect() -> bool {
