@@ -523,16 +523,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[_] = check_arg_count(args)?;
             }
 
-            #[rustfmt::skip]
-            | "likely"
-            | "unlikely"
-            => {
-                // These just return their argument
-                let &[b] = check_arg_count(args)?;
-                let b = this.read_immediate(b)?;
-                this.write_immediate(*b, dest)?;
-            }
-
             "try" => return this.handle_try(args, dest, ret),
 
             name => throw_unsup_format!("unimplemented intrinsic: {}", name),
