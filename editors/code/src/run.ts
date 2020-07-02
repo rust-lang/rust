@@ -111,7 +111,7 @@ export function prepareEnv(runnable: ra.Runnable, runnableEnvCfg: RunnableEnvCfg
                 }
             }
         } else {
-            Object.assign(env, runnableEnvCfg as Record<string, string>);
+            Object.assign(env, runnableEnvCfg);
         }
     }
 

@@ -3,7 +3,7 @@ import { prepareEnv } from '../../src/run';
 import { RunnableEnvCfg } from '../../src/config';
 import * as ra from '../../src/lsp_ext';
 
-function make_runnable(label: string): ra.Runnable {
+function makeRunnable(label: string): ra.Runnable {
     return {
         label,
         kind: "cargo",
@@ -11,21 +11,21 @@ function make_runnable(label: string): ra.Runnable {
             cargoArgs: [],
             executableArgs: []
         }
-    }
+    };
 }
 
-function fakePrepareEnv(runnable_name: string, config: RunnableEnvCfg) : Record<string, string> {
-    const runnable = make_runnable(runnable_name);
+function fakePrepareEnv(runnableName: string, config: RunnableEnvCfg): Record<string, string> {
+    const runnable = makeRunnable(runnableName);
     return prepareEnv(runnable, config);
 }
 
 suite('Runnable env', () => {
     test('Global config works', () => {
-        const bin_env = fakePrepareEnv("run project_name", {"GLOBAL": "g"});
-        assert.equal(bin_env["GLOBAL"], "g");
+        const binEnv = fakePrepareEnv("run project_name", { "GLOBAL": "g" });
+        assert.equal(binEnv["GLOBAL"], "g");
 
-        const test_env = fakePrepareEnv("test some::mod::test_name", {"GLOBAL": "g"});
-        assert.equal(test_env["GLOBAL"], "g");
+        const testEnv = fakePrepareEnv("test some::mod::test_name", { "GLOBAL": "g" });
+        assert.equal(testEnv["GLOBAL"], "g");
     });
 
     test('null mask works', () => {
@@ -34,11 +34,11 @@ suite('Runnable env', () => {
                 env: { DATA: "data" }
             }
         ];
-        const bin_env = fakePrepareEnv("run project_name", config);
-        assert.equal(bin_env["DATA"], "data");
+        const binEnv = fakePrepareEnv("run project_name", config);
+        assert.equal(binEnv["DATA"], "data");
 
-        const test_env = fakePrepareEnv("test some::mod::test_name", config);
-        assert.equal(test_env["DATA"], "data");
+        const testEnv = fakePrepareEnv("test some::mod::test_name", config);
+        assert.equal(testEnv["DATA"], "data");
     });
 
     test('order works', () => {
@@ -50,11 +50,11 @@ suite('Runnable env', () => {
                 env: { DATA: "newdata" }
             }
         ];
-        const bin_env = fakePrepareEnv("run project_name", config);
-        assert.equal(bin_env["DATA"], "newdata");
+        const binEnv = fakePrepareEnv("run project_name", config);
+        assert.equal(binEnv["DATA"], "newdata");
 
-        const test_env = fakePrepareEnv("test some::mod::test_name", config);
-        assert.equal(test_env["DATA"], "newdata");
+        const testEnv = fakePrepareEnv("test some::mod::test_name", config);
+        assert.equal(testEnv["DATA"], "newdata");
     });
 
     test('mask works', () => {
@@ -71,14 +71,14 @@ suite('Runnable env', () => {
                 env: { DATA: "special_test" }
             }
         ];
-        const bin_env = fakePrepareEnv("run project_name", config);
-        assert.equal(bin_env["DATA"], "rundata");
+        const binEnv = fakePrepareEnv("run project_name", config);
+        assert.equal(binEnv["DATA"], "rundata");
 
-        const test_env = fakePrepareEnv("test some::mod::test_name", config);
-        assert.equal(test_env["DATA"], "data");
+        const testEnv = fakePrepareEnv("test some::mod::test_name", config);
+        assert.equal(testEnv["DATA"], "data");
 
-        const special_test_env = fakePrepareEnv("test some::mod::special_test", config);
-        assert.equal(special_test_env["DATA"], "special_test");
+        const specialTestEnv = fakePrepareEnv("test some::mod::special_test", config);
+        assert.equal(specialTestEnv["DATA"], "special_test");
     });
 
     test('exact test name works', () => {
@@ -91,11 +91,11 @@ suite('Runnable env', () => {
                 env: { DATA: "test special" }
             }
         ];
-        const test_env = fakePrepareEnv("test some::mod::test_name", config);
-        assert.equal(test_env["DATA"], "test special");
+        const testEnv = fakePrepareEnv("test some::mod::test_name", config);
+        assert.equal(testEnv["DATA"], "test special");
 
-        const special_test_env = fakePrepareEnv("test some::mod::another_test", config);
-        assert.equal(special_test_env["DATA"], "data");
+        const specialTestEnv = fakePrepareEnv("test some::mod::another_test", config);
+        assert.equal(specialTestEnv["DATA"], "data");
     });
 
     test('test mod name works', () => {
@@ -108,11 +108,11 @@ suite('Runnable env', () => {
                 env: { DATA: "mod special" }
             }
         ];
-        const test_env = fakePrepareEnv("test some::mod::test_name", config);
-        assert.equal(test_env["DATA"], "mod special");
+        const testEnv = fakePrepareEnv("test some::mod::test_name", config);
+        assert.equal(testEnv["DATA"], "mod special");
 
-        const special_test_env = fakePrepareEnv("test some::mod::another_test", config);
-        assert.equal(special_test_env["DATA"], "mod special");
+        const specialTestEnv = fakePrepareEnv("test some::mod::another_test", config);
+        assert.equal(specialTestEnv["DATA"], "mod special");
     });
 
 });
