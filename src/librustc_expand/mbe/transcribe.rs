@@ -4,7 +4,7 @@ use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 
 use rustc_ast::ast::MacCall;
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, FlattenGroup, NtTT, Token};
+use rustc_ast::token::{self, NtTT, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -240,10 +240,7 @@ pub(super) fn transcribe<'a>(
                             result.push(tt.clone().into());
                         } else {
                             marker.visit_span(&mut sp);
-                            let token = TokenTree::token(
-                                token::Interpolated(nt.clone(), FlattenGroup::No),
-                                sp,
-                            );
+                            let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
                             result.push(token.into());
                         }
                     } else {

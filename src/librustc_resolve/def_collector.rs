@@ -256,7 +256,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     }
 
     fn visit_token(&mut self, t: Token) {
-        if let token::Interpolated(nt, _) = t.kind {
+        if let token::Interpolated(nt) = t.kind {
             if let token::NtExpr(ref expr) = *nt {
                 if let ExprKind::MacCall(..) = expr.kind {
                     self.visit_macro_invoc(expr.id);
