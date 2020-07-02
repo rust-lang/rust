@@ -51,8 +51,9 @@ pub enum TokenKind {
     // Multi-char tokens:
     /// "// comment"
     LineComment,
-    /// "/* block comment */"
-    /// Block comments can be recursive, so the sequence like "/* /* */"
+    /// `/* block comment */`
+    ///
+    /// Block comments can be recursive, so the sequence like `/* /* */`
     /// will not be considered terminated and will result in a parsing error.
     BlockComment { terminated: bool },
     /// Any whitespace characters sequence.
