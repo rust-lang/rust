@@ -87,6 +87,22 @@ You can also use `--keep-stage 1` when running tests. Something like this:
 - Initial test run: `./x.py test -i --stage 1 src/test/ui`
 - Subsequent test run: `./x.py test -i --stage 1 src/test/ui --keep-stage 1`
 
+## Fine-tuning optimizations
+
+Setting `optimize = false` makes the compiler too slow for tests. However, to
+improve the test cycle, you can disable optimizations selectively only for the
+crates you'll have to rebuild
+([source](https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/incremental.20compilation.20question/near/202712165)).
+For example, when working on `rustc_mir_build`, the `rustc_mir_build` and
+`rustc_driver` crates take the most time to incrementally rebuild. You could
+therefore set the following in the root `Cargo.toml`:
+```toml
+[profile.release.package.rustc_mir_build]
+opt-level = 0
+[profile.release.package.rustc_driver]
+opt-level = 0
+```
+
 ## Working on multiple branches at the same time
 
 Working on multiple branches in parallel can be a little annoying, since
