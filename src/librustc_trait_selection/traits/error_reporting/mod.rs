@@ -429,6 +429,24 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             );
                         }
 
+                        let is_fn_trait = [
+                            self.tcx.lang_items().fn_trait(),
+                            self.tcx.lang_items().fn_mut_trait(),
+                            self.tcx.lang_items().fn_once_trait(),
+                        ]
+                        .contains(&Some(trait_ref.def_id()));
+                        let is_target_feature_fn =
+                            if let ty::FnDef(def_id, _) = trait_ref.skip_binder().self_ty().kind {
+                                !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                            } else {
+                                false
+                            };
+                        if is_fn_trait && is_target_feature_fn {
+                            err.note(
+                                "`#[target_feature]` functions do not implement the `Fn` traits",
+                            );
+                        }
+
                         // Try to report a help message
                         if !trait_ref.has_infer_types_or_consts()
                             && self.predicate_can_apply(obligation.param_env, trait_ref)
