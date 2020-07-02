@@ -158,6 +158,8 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn sext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn fptoui_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Option<Self::Value>;
+    fn fptosi_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Option<Self::Value>;
     fn fptoui(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fptosi(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn uitofp(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;

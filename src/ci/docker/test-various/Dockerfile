@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   wget \
   patch
 
-RUN curl -sL https://nodejs.org/dist/v9.2.0/node-v9.2.0-linux-x64.tar.xz | \
+RUN curl -sL https://nodejs.org/dist/v14.4.0/node-v14.4.0-linux-x64.tar.xz | \
   tar -xJ
 
 WORKDIR /build/
@@ -30,7 +30,7 @@ RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
-  --set build.nodejs=/node-v9.2.0-linux-x64/bin/node \
+  --set build.nodejs=/node-v14.4.0-linux-x64/bin/node \
   --set rust.lld
 
 # Some run-make tests have assertions about code size, and enabling debug
