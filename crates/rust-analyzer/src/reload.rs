@@ -27,16 +27,15 @@ impl GlobalState {
     }
     pub(crate) fn reload(&mut self) {
         log::info!("reloading projects: {:?}", self.config.linked_projects);
-        let workspaces = {
-            if self.config.linked_projects.is_empty()
-                && self.config.notifications.cargo_toml_not_found
-            {
-                self.show_message(
-                    lsp_types::MessageType::Error,
-                    "rust-analyzer failed to discover workspace".to_string(),
-                );
-            };
+        if self.config.linked_projects.is_empty() && self.config.notifications.cargo_toml_not_found
+        {
+            self.show_message(
+                lsp_types::MessageType::Error,
+                "rust-analyzer failed to discover workspace".to_string(),
+            );
+        };
 
+        let workspaces = {
             self.config
                 .linked_projects
                 .iter()
