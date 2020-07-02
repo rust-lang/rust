@@ -387,6 +387,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             // Check for infer types because cases like `Option<{integer}>` would
                             // panic otherwise.
                             if !expr_ty.has_infer_types()
+                                && !ty.has_infer_types()
                                 && fcx.tcx.type_implements_trait((
                                     from_trait,
                                     ty,
