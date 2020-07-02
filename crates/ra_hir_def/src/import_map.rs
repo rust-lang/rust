@@ -5,14 +5,15 @@ use std::{cmp::Ordering, fmt, hash::BuildHasherDefault, sync::Arc};
 use fst::{self, Streamer};
 use indexmap::{map::Entry, IndexMap};
 use ra_db::CrateId;
-use rustc_hash::FxHasher;
+use rustc_hash::{FxHashMap, FxHasher};
+use smallvec::SmallVec;
 
 use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
     path::{ModPath, PathKind},
     visibility::Visibility,
-    ModuleDefId, ModuleId,
+    AssocItemId, ModuleDefId, ModuleId, TraitId,
 };
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
@@ -34,6 +35,7 @@ pub struct ImportInfo {
 ///
 /// Note that all paths are relative to the containing crate's root, so the crate name still needs
 /// to be prepended to the `ModPath` before the path is valid.
+#[derive(Default)]
 pub struct ImportMap {
     map: FxIndexMap<ItemInNs, ImportInfo>,
 
@@ -45,13 +47,17 @@ pub struct ImportMap {
     /// the index of the first one.
     importables: Vec<ItemInNs>,
     fst: fst::Map<Vec<u8>>,
+
+    /// Maps names of associated items to the item's ID. Only includes items whose defining trait is
+    /// exported.
+    assoc_map: FxHashMap<String, SmallVec<[AssocItemId; 1]>>,
 }
 
 impl ImportMap {
     pub fn import_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<Self> {
         let _p = ra_prof::profile("import_map_query");
         let def_map = db.crate_def_map(krate);
-        let mut import_map = FxIndexMap::with_capacity_and_hasher(64, Default::default());
+        let mut import_map = Self::default();
 
         // We look only into modules that are public(ly reexported), starting with the crate root.
         let empty = ModPath { kind: PathKind::Plain, segments: vec![] };
@@ -85,7 +91,7 @@ impl ImportMap {
 
                 for item in per_ns.iter_items() {
                     let path = mk_path();
-                    match import_map.entry(item) {
+                    match import_map.map.entry(item) {
                         Entry::Vacant(entry) => {
                             entry.insert(ImportInfo { path, container: module });
                         }
@@ -105,11 +111,16 @@ impl ImportMap {
                     if let Some(ModuleDefId::ModuleId(mod_id)) = item.as_module_def_id() {
                         worklist.push((mod_id, mk_path()));
                     }
+
+                    // If we've added a path to a trait, add the trait's methods to the method map.
+                    if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
+                        import_map.collect_trait_methods(db, tr);
+                    }
                 }
             }
         }
 
-        let mut importables = import_map.iter().collect::<Vec<_>>();
+        let mut importables = import_map.map.iter().collect::<Vec<_>>();
 
         importables.sort_by(cmp);
 
@@ -133,10 +144,10 @@ impl ImportMap {
             builder.insert(key, start as u64).unwrap();
         }
 
-        let fst = fst::Map::new(builder.into_inner().unwrap()).unwrap();
-        let importables = importables.iter().map(|(item, _)| **item).collect();
+        import_map.fst = fst::Map::new(builder.into_inner().unwrap()).unwrap();
+        import_map.importables = importables.iter().map(|(item, _)| **item).collect();
 
-        Arc::new(Self { map: import_map, fst, importables })
+        Arc::new(import_map)
     }
 
     /// Returns the `ModPath` needed to import/mention `item`, relative to this crate's root.
@@ -146,6 +157,13 @@ impl ImportMap {
 
     pub fn import_info_for(&self, item: ItemInNs) -> Option<&ImportInfo> {
         self.map.get(&item)
+    }
+
+    fn collect_trait_methods(&mut self, db: &dyn DefDatabase, tr: TraitId) {
+        let data = db.trait_data(tr);
+        for (name, item) in data.items.iter() {
+            self.assoc_map.entry(name.to_string()).or_default().push(*item);
+        }
     }
 }
 
@@ -287,6 +305,19 @@ pub fn search_dependencies<'a>(
                 res.truncate(query.limit);
                 return res;
             }
+        }
+    }
+
+    // Add all exported associated items whose names match the query (exactly).
+    for map in &import_maps {
+        if let Some(v) = map.assoc_map.get(&query.query) {
+            res.extend(v.iter().map(|&assoc| {
+                ItemInNs::Types(match assoc {
+                    AssocItemId::FunctionId(it) => it.into(),
+                    AssocItemId::ConstId(it) => it.into(),
+                    AssocItemId::TypeAliasId(it) => it.into(),
+                })
+            }));
         }
     }
 
