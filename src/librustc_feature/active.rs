@@ -567,6 +567,9 @@ declare_features! (
     /// Be more precise when looking for live drops in a const context.
     (active, const_precise_live_drops, "1.46.0", Some(73255), None),
 
+    /// Allows capturing variables in scope using format_args!
+    (active, format_args_capture, "1.46.0", Some(67984), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

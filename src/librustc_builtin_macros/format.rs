@@ -107,6 +107,9 @@ struct Context<'a, 'b> {
     arg_spans: Vec<Span>,
     /// All the formatting arguments that have formatting flags set, in order for diagnostics.
     arg_with_formatting: Vec<parse::FormatSpec<'a>>,
+
+    /// Whether this format string came from a string literal, as opposed to a macro.
+    is_literal: bool,
 }
 
 /// Parses the arguments from the given list of tokens, returning the diagnostic
@@ -498,10 +501,55 @@ impl<'a, 'b> Context<'a, 'b> {
                         self.verify_arg_type(Exact(idx), ty)
                     }
                     None => {
-                        let msg = format!("there is no argument named `{}`", name);
-                        let sp = *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp);
-                        let mut err = self.ecx.struct_span_err(sp, &msg[..]);
-                        err.emit();
+                        let capture_feature_enabled = self
+                            .ecx
+                            .ecfg
+                            .features
+                            .map_or(false, |features| features.format_args_capture);
+
+                        // For the moment capturing variables from format strings expanded from macros is
+                        // disabled (see RFC #2795)
+                        let can_capture = capture_feature_enabled && self.is_literal;
+
+                        if can_capture {
+                            // Treat this name as a variable to capture from the surrounding scope
+                            let idx = self.args.len();
+                            self.arg_types.push(Vec::new());
+                            self.arg_unique_types.push(Vec::new());
+                            self.args.push(
+                                self.ecx.expr_ident(self.fmtsp, Ident::new(name, self.fmtsp)),
+                            );
+                            self.names.insert(name, idx);
+                            self.verify_arg_type(Exact(idx), ty)
+                        } else {
+                            let msg = format!("there is no argument named `{}`", name);
+                            let sp = if self.is_literal {
+                                *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp)
+                            } else {
+                                self.fmtsp
+                            };
+                            let mut err = self.ecx.struct_span_err(sp, &msg[..]);
+
+                            if capture_feature_enabled && !self.is_literal {
+                                err.note(&format!(
+                                    "did you intend to capture a variable `{}` from \
+                                     the surrounding scope?",
+                                    name
+                                ));
+                                err.note(
+                                    "to avoid ambiguity, `format_args!` cannot capture variables \
+                                     when the format string is expanded from a macro",
+                                );
+                            } else if self.ecx.parse_sess().unstable_features.is_nightly_build() {
+                                err.help(&format!(
+                                    "if you intended to capture `{}` from the surrounding scope, add \
+                                     `#![feature(format_args_capture)]` to the crate attributes",
+                                    name
+                                ));
+                            }
+
+                            err.emit();
+                        }
                     }
                 }
             }
@@ -951,6 +999,7 @@ pub fn expand_preparsed_format_args(
         invalid_refs: Vec::new(),
         arg_spans,
         arg_with_formatting: Vec::new(),
+        is_literal: parser.is_literal,
     };
 
     // This needs to happen *after* the Parser has consumed all pieces to create all the spans
