@@ -417,7 +417,7 @@ impl<T> RawTable<T> {
 
     /// Attempts to allocate a new hash table with at least enough capacity
     /// for inserting the given number of elements without reallocating.
-    fn try_with_capacity(
+    fn fallible_with_capacity(
         capacity: usize,
         fallability: Fallibility,
     ) -> Result<Self, TryReserveError> {
@@ -435,10 +435,17 @@ impl<T> RawTable<T> {
         }
     }
 
+    /// Attempts to allocate a new hash table with at least enough capacity
+    /// for inserting the given number of elements without reallocating.
+    #[cfg(feature = "raw")]
+    pub fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError> {
+        Self::fallible_with_capacity(capacity, Fallibility::Fallible)
+    }
+
     /// Allocates a new hash table with at least enough capacity for inserting
     /// the given number of elements without reallocating.
     pub fn with_capacity(capacity: usize) -> Self {
-        Self::try_with_capacity(capacity, Fallibility::Infallible)
+        Self::fallible_with_capacity(capacity, Fallibility::Infallible)
             .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() })
     }
 
@@ -834,7 +841,7 @@ impl<T> RawTable<T> {
             debug_assert!(self.items <= capacity);
 
             // Allocate and initialize the new table.
-            let mut new_table = Self::try_with_capacity(capacity, fallability)?;
+            let mut new_table = Self::fallible_with_capacity(capacity, fallability)?;
             new_table.growth_left -= self.items;
             new_table.items = self.items;
 
