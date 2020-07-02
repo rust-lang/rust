@@ -21,6 +21,7 @@ pub(crate) struct CargoTargetSpec {
 
 impl CargoTargetSpec {
     pub(crate) fn runnable_args(
+        snap: &GlobalStateSnapshot,
         spec: Option<CargoTargetSpec>,
         kind: &RunnableKind,
         cfgs: &[CfgExpr],
@@ -78,13 +79,21 @@ impl CargoTargetSpec {
             }
         }
 
-        let mut features = Vec::new();
-        for cfg in cfgs {
-            required_features(cfg, &mut features);
-        }
-        for feature in features {
-            args.push("--features".to_string());
-            args.push(feature);
+        if snap.config.cargo.all_features {
+            args.push("--all-features".to_string());
+        } else {
+            let mut features = Vec::new();
+            for cfg in cfgs {
+                required_features(cfg, &mut features);
+            }
+            for feature in &snap.config.cargo.features {
+                features.push(feature.clone());
+            }
+            features.dedup();
+            for feature in features {
+                args.push("--features".to_string());
+                args.push(feature);
+            }
         }
 
         Ok((args, extra_args))
