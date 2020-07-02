@@ -40,7 +40,8 @@ impl MachineStopType for TerminationInfo {}
 
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
-    PoppedTrackedPointerTag(Item),
+    PoppedPointerTag(Item),
+    CreatedCallId(CallId),
     CreatedAlloc(AllocId),
     FreedAlloc(AllocId),
 }
@@ -204,8 +205,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             for e in diagnostics.borrow_mut().drain(..) {
                 use NonHaltingDiagnostic::*;
                 let msg = match e {
-                    PoppedTrackedPointerTag(item) =>
+                    PoppedPointerTag(item) =>
                         format!("popped tracked tag for item {:?}", item),
+                    CreatedCallId(id) =>
+                        format!("function call with id {}", id),
                     CreatedAlloc(AllocId(id)) =>
                         format!("created allocation with id {}", id),
                     FreedAlloc(AllocId(id)) =>
