@@ -336,6 +336,17 @@ impl<'tcx> Instance<'tcx> {
         tcx.resolve_instance(tcx.erase_regions(&param_env.and((def_id, substs))))
     }
 
+    // This should be kept up to date with `resolve`.
+    pub fn resolve_const_arg(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def: ty::WithOptParam<DefId>,
+        substs: SubstsRef<'tcx>,
+    ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+        let substs = tcx.erase_regions(&substs);
+        tcx.resolve_instance_of_const_arg(tcx.erase_regions(&param_env.and((def, substs))))
+    }
+
     pub fn resolve_for_fn_ptr(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,

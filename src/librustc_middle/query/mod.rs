@@ -1463,5 +1463,14 @@ rustc_queries! {
         ) -> Result<Option<ty::Instance<'tcx>>, ErrorReported> {
             desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
         }
+
+        query resolve_instance_of_const_arg(
+            key: ty::ParamEnvAnd<'tcx, (ty::WithOptParam<DefId>, SubstsRef<'tcx>)>
+        ) -> Result<Option<ty::Instance<'tcx>>, ErrorReported> {
+            desc {
+                "resolving instance of the potential const argument `{}`",
+                ty::Instance::new(key.value.0.did, key.value.1),
+            }
+        }
     }
 }

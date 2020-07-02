@@ -28,7 +28,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             ty::ConstKind::Unevaluated(def, substs, promoted) => self
                 .cx
                 .tcx()
-                .const_eval_resolve(ty::ParamEnv::reveal_all(), def.did, substs, promoted, None)
+                .const_eval_resolve(ty::ParamEnv::reveal_all(), def, substs, promoted, None)
                 .map_err(|err| {
                     if promoted.is_none() {
                         self.cx

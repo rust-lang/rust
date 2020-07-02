@@ -527,7 +527,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
                         match self.selcx.infcx().const_eval_resolve(
                             obligation.param_env,
-                            def.did,
+                            def,
                             substs,
                             promoted,
                             Some(obligation.cause.span),

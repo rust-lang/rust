@@ -116,8 +116,8 @@ pub fn predicate_obligations<'a, 'tcx>(
             wf.compute(data.skip_binder().a.into()); // (*)
             wf.compute(data.skip_binder().b.into()); // (*)
         }
-        &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
-            let obligations = wf.nominal_obligations(def_id, substs);
+        &ty::PredicateKind::ConstEvaluatable(def, substs) => {
+            let obligations = wf.nominal_obligations(def.did, substs);
             wf.out.extend(obligations);
 
             for arg in substs.iter() {
@@ -365,7 +365,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             let obligations = self.nominal_obligations(def.did, substs);
                             self.out.extend(obligations);
 
-                            let predicate = ty::PredicateKind::ConstEvaluatable(def.did, substs)
+                            let predicate = ty::PredicateKind::ConstEvaluatable(def, substs)
                                 .to_predicate(self.tcx());
                             let cause = self.cause(traits::MiscObligation);
                             self.out.push(traits::Obligation::new(

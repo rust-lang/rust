@@ -511,7 +511,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         self.infcx
                             .const_eval_resolve(
                                 obligation.param_env,
-                                def.did,
+                                def,
                                 substs,
                                 promoted,
                                 Some(obligation.cause.span),

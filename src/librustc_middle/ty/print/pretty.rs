@@ -2027,9 +2027,9 @@ define_print_and_forward_display! {
                    print_value_path(closure_def_id, &[]),
                    write("` implements the trait `{}`", kind))
             }
-            &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+            &ty::PredicateKind::ConstEvaluatable(def, substs) => {
                 p!(write("the constant `"),
-                   print_value_path(def_id, substs),
+                   print_value_path(def.did, substs),
                    write("` can be evaluated"))
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {
