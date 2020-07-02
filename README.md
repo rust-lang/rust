@@ -196,6 +196,9 @@ Miri adds its own set of `-Z` flags:
   is popped from a borrow stack (which is where the tag becomes invalid and any
   future use of it will error).  This helps you in finding out why UB is
   happening and where in your code would be a good place to look for it.
+* `-Zmiri-track-call-id=<id>` shows a backtrace when the given call id is
+  assigned to a stack frame.  This helps in debugging UB related to Stacked
+  Borrows "protectors".
 
 [alignment-false-positives]: https://github.com/rust-lang/miri/issues/1074
 

@@ -65,7 +65,7 @@ pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, Stack, Stacks, Tag,
+    EvalContextExt as StackedBorEvalContextExt, Item, Permission, CallId, PtrId, Stack, Stacks, Tag,
 };
 pub use crate::thread::{
     EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager, ThreadState,

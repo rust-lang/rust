@@ -129,11 +129,12 @@ impl MemoryExtra {
         rng: StdRng,
         stacked_borrows: bool,
         tracked_pointer_tag: Option<PtrId>,
+        tracked_call_id: Option<CallId>,
         tracked_alloc_id: Option<AllocId>,
         check_alignment: bool,
     ) -> Self {
         let stacked_borrows = if stacked_borrows {
-            Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(tracked_pointer_tag))))
+            Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(tracked_pointer_tag, tracked_call_id))))
         } else {
             None
         };
