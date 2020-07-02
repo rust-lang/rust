@@ -146,6 +146,28 @@ impl LanguageItemCollector<'tcx> {
                             ));
                         }
                     }
+                    let mut note_def = |which, def_id: DefId| {
+                        let crate_name = self.tcx.crate_name(def_id.krate);
+                        let note = if def_id.is_local() {
+                            format!("{} definition in the local crate (`{}`)", which, crate_name)
+                        } else {
+                            let paths: Vec<_> = self
+                                .tcx
+                                .crate_extern_paths(def_id.krate)
+                                .iter()
+                                .map(|p| p.display().to_string())
+                                .collect();
+                            format!(
+                                "{} definition in `{}` loaded from {}",
+                                which,
+                                crate_name,
+                                paths.join(", ")
+                            )
+                        };
+                        err.note(&note);
+                    };
+                    note_def("first", original_def_id);
+                    note_def("second", item_def_id);
                 }
                 err.emit();
             }
