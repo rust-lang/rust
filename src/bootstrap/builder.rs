@@ -527,9 +527,22 @@ impl<'a> Builder<'a> {
     }
 
     fn new_internal(build: &Build, kind: Kind, paths: Vec<PathBuf>) -> Builder<'_> {
+        let top_stage = if let Some(explicit_stage) = build.config.stage {
+            explicit_stage
+        } else {
+            // See https://github.com/rust-lang/compiler-team/issues/326
+            match kind {
+                Kind::Doc => 0,
+                Kind::Build | Kind::Test => 1,
+                Kind::Bench | Kind::Dist | Kind::Install => 2,
+                // These are all bootstrap tools, which don't depend on the compiler.
+                // The stage we pass shouldn't matter, but use 0 just in case.
+                Kind::Check | Kind::Clippy | Kind::Fix | Kind::Run | Kind::Format => 0,
+            }
+        };
         Builder {
             build,
-            top_stage: build.config.stage.unwrap_or(2),
+            top_stage,
             kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
