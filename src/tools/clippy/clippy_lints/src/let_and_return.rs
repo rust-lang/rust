@@ -107,7 +107,7 @@ impl BorrowVisitor<'_, '_> {
                     ..
                 },
                 ..,
-            ) => self.cx.tables().qpath_res(qpath, expr.hir_id).opt_def_id(),
+            ) => self.cx.qpath_res(qpath, expr.hir_id).opt_def_id(),
             _ => None,
         }
     }

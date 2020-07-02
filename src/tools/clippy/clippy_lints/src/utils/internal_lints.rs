@@ -347,7 +347,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty<'_>) -> bool {
     ) = ty.kind
     {
         if let TyKind::Path(ref path) = inner.kind {
-            if let Res::Def(DefKind::Struct, def_id) = cx.tables().qpath_res(path, inner.hir_id) {
+            if let Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, inner.hir_id) {
                 return match_def_path(cx, def_id, &paths::LINT);
             }
         }

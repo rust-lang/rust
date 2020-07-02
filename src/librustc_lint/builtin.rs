@@ -165,7 +165,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                 .pat_ty(pat)
                 .ty_adt_def()
                 .expect("struct pattern type is not an ADT")
-                .variant_of_res(cx.tables().qpath_res(qpath, pat.hir_id));
+                .variant_of_res(cx.qpath_res(qpath, pat.hir_id));
             for fieldpat in field_pats {
                 if fieldpat.is_shorthand {
                     continue;
@@ -901,7 +901,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
             expr: &hir::Expr<'_>,
         ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
             let def = if let hir::ExprKind::Path(ref qpath) = expr.kind {
-                cx.tables().qpath_res(qpath, expr.hir_id)
+                cx.qpath_res(qpath, expr.hir_id)
             } else {
                 return None;
             };
@@ -1891,7 +1891,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             if let hir::ExprKind::Call(ref path_expr, ref args) = expr.kind {
                 // Find calls to `mem::{uninitialized,zeroed}` methods.
                 if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
-                    let def_id = cx.tables().qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+                    let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
 
                     if cx.tcx.is_diagnostic_item(sym::mem_zeroed, def_id) {
                         return Some(InitKind::Zeroed);
@@ -1911,8 +1911,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                     // See if the `self` parameter is one of the dangerous constructors.
                     if let hir::ExprKind::Call(ref path_expr, _) = args[0].kind {
                         if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
-                            let def_id =
-                                cx.tables().qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+                            let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
 
                             if cx.tcx.is_diagnostic_item(sym::maybe_uninit_zeroed, def_id) {
                                 return Some(InitKind::Zeroed);

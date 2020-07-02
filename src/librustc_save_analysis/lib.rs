@@ -1,6 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(nll)]
 #![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(track_caller))]
 #![recursion_limit = "256"]
 
 mod dump_visitor;
@@ -47,12 +48,9 @@ use rls_data::{
 
 use log::{debug, error, info};
 
-pub struct SaveContext<'l, 'tcx> {
+pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'tcx>,
-    tables: &'l ty::TypeckTables<'tcx>,
-    /// Used as a fallback when nesting the typeck tables during item processing
-    /// (if these are not available for that item, e.g. don't own a body)
-    empty_tables: &'l ty::TypeckTables<'tcx>,
+    maybe_typeck_tables: Option<&'tcx ty::TypeckTables<'tcx>>,
     access_levels: &'l AccessLevels,
     span_utils: SpanUtils<'tcx>,
     config: Config,
@@ -67,6 +65,14 @@ pub enum Data {
 }
 
 impl<'l, 'tcx> SaveContext<'l, 'tcx> {
+    /// Gets the type-checking side-tables for the current body.
+    /// As this will ICE if called outside bodies, only call when working with
+    /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
+    #[track_caller]
+    fn tables(&self) -> &'tcx ty::TypeckTables<'tcx> {
+        self.maybe_typeck_tables.expect("`SaveContext::tables` called outside of body")
+    }
+
     fn span_from_span(&self, span: Span) -> SpanData {
         use rls_span::{Column, Row};
 
@@ -518,13 +524,13 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &hir::Expr<'_>) -> Option<Data> {
-        let ty = self.tables.expr_ty_adjusted_opt(expr)?;
+        let ty = self.tables().expr_ty_adjusted_opt(expr)?;
         if matches!(ty.kind, ty::Error(_)) {
             return None;
         }
         match expr.kind {
             hir::ExprKind::Field(ref sub_ex, ident) => {
-                match self.tables.expr_ty_adjusted(&sub_ex).kind {
+                match self.tables().expr_ty_adjusted(&sub_ex).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
                         filter!(self.span_utils, ident.span);
@@ -569,7 +575,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 }
             }
             hir::ExprKind::MethodCall(ref seg, ..) => {
-                let method_id = match self.tables.type_dependent_def_id(expr.hir_id) {
+                let method_id = match self.tables().type_dependent_def_id(expr.hir_id) {
                     Some(id) => id,
                     None => {
                         debug!("could not resolve method id for {:?}", expr);
@@ -618,7 +624,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             },
 
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Struct(ref qpath, ..), .. }) => {
-                self.tables.qpath_res(qpath, hir_id)
+                self.tables().qpath_res(qpath, hir_id)
             }
 
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Path(ref qpath), .. })
@@ -629,9 +635,12 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     | hir::PatKind::TupleStruct(ref qpath, ..),
                 ..
             })
-            | Node::Ty(&hir::Ty { kind: hir::TyKind::Path(ref qpath), .. }) => {
-                self.tables.qpath_res(qpath, hir_id)
-            }
+            | Node::Ty(&hir::Ty { kind: hir::TyKind::Path(ref qpath), .. }) => match qpath {
+                hir::QPath::Resolved(_, path) => path.res,
+                hir::QPath::TypeRelative(..) => self
+                    .maybe_typeck_tables
+                    .map_or(Res::Err, |tables| tables.qpath_res(qpath, hir_id)),
+            },
 
             Node::Binding(&hir::Pat {
                 kind: hir::PatKind::Binding(_, canonical_id, ..), ..
@@ -1001,8 +1010,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
 
         let save_ctxt = SaveContext {
             tcx,
-            tables: &ty::TypeckTables::empty(None),
-            empty_tables: &ty::TypeckTables::empty(None),
+            maybe_typeck_tables: None,
             access_levels: &access_levels,
             span_utils: SpanUtils::new(&tcx.sess),
             config: find_config(config),

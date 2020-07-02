@@ -24,6 +24,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::lint::LintDiagnosticBuilder;
@@ -427,14 +428,11 @@ pub struct LateContext<'a, 'tcx> {
     /// Current body, or `None` if outside a body.
     pub enclosing_body: Option<hir::BodyId>,
 
-    /// Type-checking side-tables for the current body. Access using the
-    /// `tables` method, which handles querying the tables on demand.
+    /// Type-checking side-tables for the current body. Access using the `tables`
+    /// and `maybe_tables` methods, which handle querying the tables on demand.
     // FIXME(eddyb) move all the code accessing internal fields like this,
     // to this module, to avoid exposing it to lint logic.
     pub(super) cached_typeck_tables: Cell<Option<&'tcx ty::TypeckTables<'tcx>>>,
-
-    // HACK(eddyb) replace this with having `Option` around `&TypeckTables`.
-    pub(super) empty_typeck_tables: &'a ty::TypeckTables<'tcx>,
 
     /// Parameter environment for the item we are in.
     pub param_env: ty::ParamEnv<'tcx>,
@@ -677,18 +675,35 @@ impl LintContext for EarlyContext<'_> {
 
 impl<'a, 'tcx> LateContext<'a, 'tcx> {
     /// Gets the type-checking side-tables for the current body,
-    /// or empty `TypeckTables` if outside a body.
-    // FIXME(eddyb) return `Option<&'tcx ty::TypeckTables<'tcx>>`,
-    // where `None` indicates we're outside a body.
-    pub fn tables(&self) -> &'a ty::TypeckTables<'tcx> {
-        if let Some(body) = self.enclosing_body {
-            self.cached_typeck_tables.get().unwrap_or_else(|| {
+    /// or `None` if outside a body.
+    pub fn maybe_typeck_tables(&self) -> Option<&'tcx ty::TypeckTables<'tcx>> {
+        self.cached_typeck_tables.get().or_else(|| {
+            self.enclosing_body.map(|body| {
                 let tables = self.tcx.body_tables(body);
                 self.cached_typeck_tables.set(Some(tables));
                 tables
             })
-        } else {
-            self.empty_typeck_tables
+        })
+    }
+
+    /// Gets the type-checking side-tables for the current body.
+    /// As this will ICE if called outside bodies, only call when working with
+    /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
+    #[track_caller]
+    pub fn tables(&self) -> &'tcx ty::TypeckTables<'tcx> {
+        self.maybe_typeck_tables().expect("`LateContext::tables` called outside of body")
+    }
+
+    /// Returns the final resolution of a `QPath`, or `Res::Err` if unavailable.
+    /// Unlike `.tables().qpath_res(qpath, id)`, this can be used even outside
+    /// bodies (e.g. for paths in `hir::Ty`), without any risk of ICE-ing.
+    pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
+        match *qpath {
+            hir::QPath::Resolved(_, ref path) => path.res,
+            hir::QPath::TypeRelative(..) => self
+                .maybe_typeck_tables()
+                .and_then(|tables| tables.type_dependent_def(id))
+                .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
         }
     }
 

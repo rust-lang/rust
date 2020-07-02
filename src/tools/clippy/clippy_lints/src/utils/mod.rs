@@ -898,7 +898,7 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(ref fun, _) = expr.kind {
         if let ExprKind::Path(ref qp) = fun.kind {
-            let res = cx.tables().qpath_res(qp, fun.hir_id);
+            let res = cx.qpath_res(qp, fun.hir_id);
             return match res {
                 def::Res::Def(DefKind::Variant | DefKind::Ctor(..), ..) => true,
                 def::Res::Def(_, def_id) => cx.tcx.is_promotable_const_fn(def_id),
@@ -914,7 +914,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_, '_>, expr: &Exp
 pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat<'_>) -> bool {
     fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, id: HirId) -> bool {
         matches!(
-            cx.tables().qpath_res(qpath, id),
+            cx.qpath_res(qpath, id),
             def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), _)
         )
     }
@@ -1190,7 +1190,7 @@ pub fn match_function_call<'a, 'tcx>(
     if_chain! {
         if let ExprKind::Call(ref fun, ref args) = expr.kind;
         if let ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(fun_def_id) = cx.tables().qpath_res(qpath, fun.hir_id).opt_def_id();
+        if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
         if match_def_path(cx, fun_def_id, path);
         then {
             return Some(&args)
@@ -1317,7 +1317,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool 
     let did = match expr.kind {
         ExprKind::Call(ref path, _) => if_chain! {
             if let ExprKind::Path(ref qpath) = path.kind;
-            if let def::Res::Def(_, did) = cx.tables().qpath_res(qpath, path.hir_id);
+            if let def::Res::Def(_, did) = cx.qpath_res(qpath, path.hir_id);
             then {
                 Some(did)
             } else {
