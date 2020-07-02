@@ -1958,7 +1958,40 @@ extern "rust-intrinsic" {
     /// generation.
     #[cfg(not(bootstrap))]
     #[lang = "count_code_region"]
-    pub fn count_code_region(index: u32);
+    pub fn count_code_region(index: u32, start_byte_pos: u32, end_byte_pos: u32);
+
+    /// Internal marker for code coverage expressions, injected into the MIR when the
+    /// "instrument-coverage" option is enabled. This intrinsic is not converted into a
+    /// backend intrinsic call, but its arguments are extracted during the production of a
+    /// "coverage map", which is injected into the generated code, as additional data.
+    /// This marker identifies a code region and two other counters or counter expressions
+    /// whose sum is the number of times the code region was executed.
+    #[cfg(not(bootstrap))]
+    pub fn coverage_counter_add(
+        index: u32,
+        left_index: u32,
+        right_index: u32,
+        start_byte_pos: u32,
+        end_byte_pos: u32,
+    );
+
+    /// This marker identifies a code region and two other counters or counter expressions
+    /// whose difference is the number of times the code region was executed.
+    /// (See `coverage_counter_add` for more information.)
+    #[cfg(not(bootstrap))]
+    pub fn coverage_counter_subtract(
+        index: u32,
+        left_index: u32,
+        right_index: u32,
+        start_byte_pos: u32,
+        end_byte_pos: u32,
+    );
+
+    /// This marker identifies a code region to be added to the "coverage map" to indicate source
+    /// code that can never be reached.
+    /// (See `coverage_counter_add` for more information.)
+    #[cfg(not(bootstrap))]
+    pub fn coverage_unreachable(start_byte_pos: u32, end_byte_pos: u32);
 
     /// See documentation of `<*const T>::guaranteed_eq` for details.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
@@ -2099,7 +2132,10 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
         // Not panicking to keep codegen impact smaller.
         abort();
     }
-    copy_nonoverlapping(src, dst, count)
+
+    // SAFETY: the safety contract for `copy_nonoverlapping` must be
+    // upheld by the caller.
+    unsafe { copy_nonoverlapping(src, dst, count) }
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -2165,7 +2201,9 @@ pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
         // Not panicking to keep codegen impact smaller.
         abort();
     }
-    copy(src, dst, count)
+
+    // SAFETY: the safety contract for `copy` must be upheld by the caller.
+    unsafe { copy(src, dst, count) }
 }
 
 /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
@@ -2248,5 +2286,7 @@ pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     }
 
     debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
-    write_bytes(dst, val, count)
+
+    // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
+    unsafe { write_bytes(dst, val, count) }
 }

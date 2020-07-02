@@ -11,19 +11,31 @@
       bb0: {
 -         falseUnwind -> [real: bb1, cleanup: bb2]; // scope 0 at $DIR/instrument_coverage.rs:10:5: 14:6
 +         StorageLive(_4);                 // scope 0 at $DIR/instrument_coverage.rs:9:1: 15:2
-+         _4 = const std::intrinsics::count_code_region(const 0_u32) -> bb7; // scope 0 at $DIR/instrument_coverage.rs:9:1: 15:2
++         _4 = const std::intrinsics::count_code_region(const 0_u32, const 387_u32, const 465_u32) -> bb7; // scope 0 at $DIR/instrument_coverage.rs:9:1: 15:2
 +                                          // ty::Const
-+                                          // + ty: unsafe extern "rust-intrinsic" fn(u32) {std::intrinsics::count_code_region}
++                                          // + ty: unsafe extern "rust-intrinsic" fn(u32, u32, u32) {std::intrinsics::count_code_region}
 +                                          // + val: Value(Scalar(<ZST>))
 +                                          // mir::Constant
 +                                          // + span: $DIR/instrument_coverage.rs:9:1: 9:1
-+                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
++                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32, u32, u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000000))
 +                                          // mir::Constant
 +                                          // + span: $DIR/instrument_coverage.rs:9:1: 9:1
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x00000183))
++                                          // mir::Constant
++                                          // + span: $DIR/instrument_coverage.rs:9:1: 9:1
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000183)) }
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x000001d1))
++                                          // mir::Constant
++                                          // + span: $DIR/instrument_coverage.rs:9:1: 9:1
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x000001d1)) }
       }
   
       bb1: {

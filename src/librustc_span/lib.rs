@@ -309,7 +309,9 @@ impl Ord for Span {
     }
 }
 
-/// A collection of spans. Spans have two orthogonal attributes:
+/// A collection of `Span`s.
+///
+/// Spans have two orthogonal attributes:
 ///
 /// - They can be *primary spans*. In this case they are the locus of
 ///   the error, and would be rendered with `^^^`.

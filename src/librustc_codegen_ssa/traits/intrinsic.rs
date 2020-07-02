@@ -1,5 +1,6 @@
 use super::BackendTypes;
 use crate::mir::operand::OperandRef;
+use rustc_middle::mir::Operand;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_target::abi::call::FnAbi;
@@ -17,6 +18,16 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
         span: Span,
         caller_instance: ty::Instance<'tcx>,
     );
+
+    /// Intrinsic-specific pre-codegen processing, if any is required. Some intrinsics are handled
+    /// at compile time and do not generate code. Returns true if codegen is required or false if
+    /// the intrinsic does not need code generation.
+    fn is_codegen_intrinsic(
+        &mut self,
+        intrinsic: &str,
+        args: &Vec<Operand<'tcx>>,
+        caller_instance: ty::Instance<'tcx>,
+    ) -> bool;
 
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);

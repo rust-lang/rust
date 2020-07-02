@@ -7,7 +7,7 @@ pub fn expand_log_syntax<'cx>(
     sp: rustc_span::Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
-    println!("{}", pprust::tts_to_string(tts));
+    println!("{}", pprust::tts_to_string(&tts));
 
     // any so that `log_syntax` can be invoked as an expression and item.
     base::DummyResult::any_valid(sp)

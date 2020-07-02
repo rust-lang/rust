@@ -7,7 +7,6 @@ pub fn opts() -> TargetOptions {
         vec![
             "-Wl,-Bstatic".to_string(),
             "-Wl,--no-dynamic-linker".to_string(),
-            "-Wl,--eh-frame-hdr".to_string(),
             "-Wl,--gc-sections".to_string(),
         ],
     );

@@ -679,7 +679,10 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     {
         let pointer = &*self.pointer;
         let new_pointer = func(pointer);
-        Pin::new_unchecked(new_pointer)
+
+        // SAFETY: the safety contract for `new_unchecked` must be
+        // upheld by the caller.
+        unsafe { Pin::new_unchecked(new_pointer) }
     }
 
     /// Gets a shared reference out of a pin.
@@ -769,9 +772,13 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
         U: ?Sized,
         F: FnOnce(&mut T) -> &mut U,
     {
-        let pointer = Pin::get_unchecked_mut(self);
+        // SAFETY: the caller is responsible for not moving the
+        // value out of this reference.
+        let pointer = unsafe { Pin::get_unchecked_mut(self) };
         let new_pointer = func(pointer);
-        Pin::new_unchecked(new_pointer)
+        // SAFETY: as the value of `this` is guaranteed to not have
+        // been moved out, this call to `new_unchecked` is safe.
+        unsafe { Pin::new_unchecked(new_pointer) }
     }
 }
 

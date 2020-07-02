@@ -189,12 +189,14 @@ macro_rules! step_identical_methods {
     () => {
         #[inline]
         unsafe fn forward_unchecked(start: Self, n: usize) -> Self {
-            start.unchecked_add(n as Self)
+            // SAFETY: the caller has to guarantee that `start + n` doesn't overflow.
+            unsafe { start.unchecked_add(n as Self) }
         }
 
         #[inline]
         unsafe fn backward_unchecked(start: Self, n: usize) -> Self {
-            start.unchecked_sub(n as Self)
+            // SAFETY: the caller has to guarantee that `start - n` doesn't overflow.
+            unsafe { start.unchecked_sub(n as Self) }
         }
 
         #[inline]
@@ -450,21 +452,33 @@ unsafe impl Step for char {
     #[inline]
     unsafe fn forward_unchecked(start: char, count: usize) -> char {
         let start = start as u32;
-        let mut res = Step::forward_unchecked(start, count);
+        // SAFETY: the caller must guarantee that this doesn't overflow
+        // the range of values for a char.
+        let mut res = unsafe { Step::forward_unchecked(start, count) };
         if start < 0xD800 && 0xD800 <= res {
-            res = Step::forward_unchecked(res, 0x800);
+            // SAFETY: the caller must guarantee that this doesn't overflow
+            // the range of values for a char.
+            res = unsafe { Step::forward_unchecked(res, 0x800) };
         }
-        char::from_u32_unchecked(res)
+        // SAFETY: because of the previous contract, this is guaranteed
+        // by the caller to be a valid char.
+        unsafe { char::from_u32_unchecked(res) }
     }
 
     #[inline]
     unsafe fn backward_unchecked(start: char, count: usize) -> char {
         let start = start as u32;
-        let mut res = Step::backward_unchecked(start, count);
+        // SAFETY: the caller must guarantee that this doesn't overflow
+        // the range of values for a char.
+        let mut res = unsafe { Step::backward_unchecked(start, count) };
         if start >= 0xE000 && 0xE000 > res {
-            res = Step::backward_unchecked(res, 0x800);
+            // SAFETY: the caller must guarantee that this doesn't overflow
+            // the range of values for a char.
+            res = unsafe { Step::backward_unchecked(res, 0x800) };
         }
-        char::from_u32_unchecked(res)
+        // SAFETY: because of the previous contract, this is guaranteed
+        // by the caller to be a valid char.
+        unsafe { char::from_u32_unchecked(res) }
     }
 }
 

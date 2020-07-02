@@ -54,6 +54,11 @@ fn dist_baseline() {
         &[dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },]
     );
     assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+    // Make sure rustdoc is only built once.
+    assert_eq!(
+        first(builder.cache.all::<tool::Rustdoc>()),
+        &[tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },]
+    );
 }
 
 #[test]
@@ -413,4 +418,78 @@ fn test_exclude() {
 
     // Ensure other tests are not affected.
     assert!(builder.cache.contains::<test::RustdocUi>());
+}
+
+#[test]
+fn doc_default() {
+    let mut config = configure(&[], &[]);
+    config.compiler_docs = true;
+    config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
+    let build = Build::new(config);
+    let mut builder = Builder::new(&build);
+    builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
+    let a = INTERNER.intern_str("A");
+
+    // error_index_generator uses stage 1 to share rustdoc artifacts with the
+    // rustdoc tool.
+    assert_eq!(
+        first(builder.cache.all::<doc::ErrorIndex>()),
+        &[doc::ErrorIndex { compiler: Compiler { host: a, stage: 1 }, target: a },]
+    );
+    assert_eq!(
+        first(builder.cache.all::<tool::ErrorIndex>()),
+        &[tool::ErrorIndex { compiler: Compiler { host: a, stage: 1 } }]
+    );
+    // This is actually stage 1, but Rustdoc::run swaps out the compiler with
+    // stage minus 1 if --stage is not 0. Very confusing!
+    assert_eq!(
+        first(builder.cache.all::<tool::Rustdoc>()),
+        &[tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },]
+    );
+}
+
+#[test]
+fn test_docs() {
+    // Behavior of `x.py test` doing various documentation tests.
+    let mut config = configure(&[], &[]);
+    config.cmd = Subcommand::Test {
+        paths: vec![],
+        test_args: vec![],
+        rustc_args: vec![],
+        fail_fast: true,
+        doc_tests: DocTests::Yes,
+        bless: false,
+        compare_mode: None,
+        rustfix_coverage: false,
+        pass: None,
+    };
+    let build = Build::new(config);
+    let mut builder = Builder::new(&build);
+    builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
+    let a = INTERNER.intern_str("A");
+
+    // error_index_generator uses stage 1 to share rustdoc artifacts with the
+    // rustdoc tool.
+    assert_eq!(
+        first(builder.cache.all::<doc::ErrorIndex>()),
+        &[doc::ErrorIndex { compiler: Compiler { host: a, stage: 1 }, target: a },]
+    );
+    assert_eq!(
+        first(builder.cache.all::<tool::ErrorIndex>()),
+        &[tool::ErrorIndex { compiler: Compiler { host: a, stage: 1 } }]
+    );
+    // Unfortunately rustdoc is built twice. Once from stage1 for compiletest
+    // (and other things), and once from stage0 for std crates. Ideally it
+    // would only be built once. If someone wants to fix this, it might be
+    // worth investigating if it would be possible to test std from stage1.
+    // Note that the stages here are +1 than what they actually are because
+    // Rustdoc::run swaps out the compiler with stage minus 1 if --stage is
+    // not 0.
+    assert_eq!(
+        first(builder.cache.all::<tool::Rustdoc>()),
+        &[
+            tool::Rustdoc { compiler: Compiler { host: a, stage: 1 } },
+            tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },
+        ]
+    );
 }

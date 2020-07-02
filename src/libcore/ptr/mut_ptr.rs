@@ -89,7 +89,9 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
-        if self.is_null() { None } else { Some(&*self) }
+        // SAFETY: the caller must guarantee that `self` is valid for a
+        // reference if it isn't null.
+        if self.is_null() { None } else { unsafe { Some(&*self) } }
     }
 
     /// Calculates the offset from a pointer.
@@ -151,7 +153,10 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        intrinsics::offset(self, count) as *mut T
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        // The obtained pointer is valid for writes since the caller must
+        // guarantee that it points to the same allocated object as `self`.
+        unsafe { intrinsics::offset(self, count) as *mut T }
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -270,7 +275,9 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
     pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
-        if self.is_null() { None } else { Some(&mut *self) }
+        // SAFETY: the caller must guarantee that `self` is be valid for
+        // a mutable reference if it isn't null.
+        if self.is_null() { None } else { unsafe { Some(&mut *self) } }
     }
 
     /// Returns whether two pointers are guaranteed to be equal.
@@ -406,7 +413,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        (self as *const T).offset_from(origin)
+        // SAFETY: the caller must uphold the safety contract for `offset_from`.
+        unsafe { (self as *const T).offset_from(origin) }
     }
 
     /// Calculates the distance between two pointers. The returned value is in
@@ -518,7 +526,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        self.offset(count as isize)
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        unsafe { self.offset(count as isize) }
     }
 
     /// Calculates the offset from a pointer (convenience for
@@ -581,7 +590,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        self.offset((count as isize).wrapping_neg())
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        unsafe { self.offset((count as isize).wrapping_neg()) }
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -710,7 +720,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        read(self)
+        // SAFETY: the caller must uphold the safety contract for ``.
+        unsafe { read(self) }
     }
 
     /// Performs a volatile read of the value from `self` without moving it. This
@@ -729,7 +740,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        read_volatile(self)
+        // SAFETY: the caller must uphold the safety contract for `read_volatile`.
+        unsafe { read_volatile(self) }
     }
 
     /// Reads the value from `self` without moving it. This leaves the
@@ -746,7 +758,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        read_unaligned(self)
+        // SAFETY: the caller must uphold the safety contract for `read_unaligned`.
+        unsafe { read_unaligned(self) }
     }
 
     /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
@@ -763,7 +776,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        copy(self, dest, count)
+        // SAFETY: the caller must uphold the safety contract for `copy`.
+        unsafe { copy(self, dest, count) }
     }
 
     /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
@@ -780,7 +794,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        copy_nonoverlapping(self, dest, count)
+        // SAFETY: the caller must uphold the safety contract for `copy_nonoverlapping`.
+        unsafe { copy_nonoverlapping(self, dest, count) }
     }
 
     /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
@@ -797,7 +812,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        copy(src, self, count)
+        // SAFETY: the caller must uphold the safety contract for `copy`.
+        unsafe { copy(src, self, count) }
     }
 
     /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
@@ -814,7 +830,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        copy_nonoverlapping(src, self, count)
+        // SAFETY: the caller must uphold the safety contract for `copy_nonoverlapping`.
+        unsafe { copy_nonoverlapping(src, self, count) }
     }
 
     /// Executes the destructor (if any) of the pointed-to value.
@@ -825,7 +842,8 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn drop_in_place(self) {
-        drop_in_place(self)
+        // SAFETY: the caller must uphold the safety contract for `drop_in_place`.
+        unsafe { drop_in_place(self) }
     }
 
     /// Overwrites a memory location with the given value without reading or
@@ -840,7 +858,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        write(self, val)
+        // SAFETY: the caller must uphold the safety contract for `write`.
+        unsafe { write(self, val) }
     }
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
@@ -855,7 +874,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        write_bytes(self, val, count)
+        // SAFETY: the caller must uphold the safety contract for `write_bytes`.
+        unsafe { write_bytes(self, val, count) }
     }
 
     /// Performs a volatile write of a memory location with the given value without
@@ -874,7 +894,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        write_volatile(self, val)
+        // SAFETY: the caller must uphold the safety contract for `write_volatile`.
+        unsafe { write_volatile(self, val) }
     }
 
     /// Overwrites a memory location with the given value without reading or
@@ -891,7 +912,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        write_unaligned(self, val)
+        // SAFETY: the caller must uphold the safety contract for `write_unaligned`.
+        unsafe { write_unaligned(self, val) }
     }
 
     /// Replaces the value at `self` with `src`, returning the old
@@ -906,7 +928,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        replace(self, src)
+        // SAFETY: the caller must uphold the safety contract for `replace`.
+        unsafe { replace(self, src) }
     }
 
     /// Swaps the values at two mutable locations of the same type, without
@@ -922,7 +945,8 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        swap(self, with)
+        // SAFETY: the caller must uphold the safety contract for `swap`.
+        unsafe { swap(self, with) }
     }
 
     /// Computes the offset that needs to be applied to the pointer in order to make it aligned to

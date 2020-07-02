@@ -178,9 +178,10 @@ where
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> I::Item {
         match self.iter {
-            Some(ref mut iter) => iter.get_unchecked(i),
+            // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+            Some(ref mut iter) => unsafe { iter.get_unchecked(i) },
             // SAFETY: the caller asserts there is an item at `i`, so we're not exhausted.
-            None => intrinsics::unreachable(),
+            None => unsafe { intrinsics::unreachable() },
         }
     }
 

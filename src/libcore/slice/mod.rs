@@ -310,7 +310,8 @@ impl<T> [T] {
     where
         I: SliceIndex<Self>,
     {
-        index.get_unchecked(self)
+        // SAFETY: the caller must uphold the safety requirements for `get_unchecked`.
+        unsafe { index.get_unchecked(self) }
     }
 
     /// Returns a mutable reference to an element or subslice, without doing
@@ -341,7 +342,8 @@ impl<T> [T] {
     where
         I: SliceIndex<Self>,
     {
-        index.get_unchecked_mut(self)
+        // SAFETY: the caller must uphold the safety requirements for `get_unchecked_mut`.
+        unsafe { index.get_unchecked_mut(self) }
     }
 
     /// Returns a raw pointer to the slice's buffer.
@@ -1459,6 +1461,68 @@ impl<T> [T] {
         m >= n && needle == &self[m - n..]
     }
 
+    /// Returns a subslice with the prefix removed.
+    ///
+    /// This method returns [`None`] if slice does not start with `prefix`.
+    /// Also it returns the original slice if `prefix` is an empty slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_strip)]
+    /// let v = &[10, 40, 30];
+    /// assert_eq!(v.strip_prefix(&[10]), Some(&[40, 30][..]));
+    /// assert_eq!(v.strip_prefix(&[10, 40]), Some(&[30][..]));
+    /// assert_eq!(v.strip_prefix(&[50]), None);
+    /// assert_eq!(v.strip_prefix(&[10, 50]), None);
+    /// ```
+    #[must_use = "returns the subslice without modifying the original"]
+    #[unstable(feature = "slice_strip", issue = "73413")]
+    pub fn strip_prefix(&self, prefix: &[T]) -> Option<&[T]>
+    where
+        T: PartialEq,
+    {
+        let n = prefix.len();
+        if n <= self.len() {
+            let (head, tail) = self.split_at(n);
+            if head == prefix {
+                return Some(tail);
+            }
+        }
+        None
+    }
+
+    /// Returns a subslice with the suffix removed.
+    ///
+    /// This method returns [`None`] if slice does not end with `suffix`.
+    /// Also it returns the original slice if `suffix` is an empty slice
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_strip)]
+    /// let v = &[10, 40, 30];
+    /// assert_eq!(v.strip_suffix(&[30]), Some(&[10, 40][..]));
+    /// assert_eq!(v.strip_suffix(&[40, 30]), Some(&[10][..]));
+    /// assert_eq!(v.strip_suffix(&[50]), None);
+    /// assert_eq!(v.strip_suffix(&[50, 30]), None);
+    /// ```
+    #[must_use = "returns the subslice without modifying the original"]
+    #[unstable(feature = "slice_strip", issue = "73413")]
+    pub fn strip_suffix(&self, suffix: &[T]) -> Option<&[T]>
+    where
+        T: PartialEq,
+    {
+        let (len, n) = (self.len(), suffix.len());
+        if n <= len {
+            let (head, tail) = self.split_at(len - n);
+            if tail == suffix {
+                return Some(head);
+            }
+        }
+        None
+    }
+
     /// Binary searches this sorted slice for a given element.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
@@ -2519,18 +2583,21 @@ impl<T> [T] {
         // First, find at what point do we split between the first and 2nd slice. Easy with
         // ptr.align_offset.
         let ptr = self.as_ptr();
-        let offset = crate::ptr::align_offset(ptr, mem::align_of::<U>());
+        let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
         if offset > self.len() {
             (self, &[], &[])
         } else {
             let (left, rest) = self.split_at(offset);
-            // now `rest` is definitely aligned, so `from_raw_parts_mut` below is okay
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
-            (
-                left,
-                from_raw_parts(rest.as_ptr() as *const U, us_len),
-                from_raw_parts(rest.as_ptr().add(rest.len() - ts_len), ts_len),
-            )
+            // SAFETY: now `rest` is definitely aligned, so `from_raw_parts` below is okay,
+            // since the caller guarantees that we can transmute `T` to `U` safely.
+            unsafe {
+                (
+                    left,
+                    from_raw_parts(rest.as_ptr() as *const U, us_len),
+                    from_raw_parts(rest.as_ptr().add(rest.len() - ts_len), ts_len),
+                )
+            }
         }
     }
 
@@ -2575,21 +2642,23 @@ impl<T> [T] {
         // First, find at what point do we split between the first and 2nd slice. Easy with
         // ptr.align_offset.
         let ptr = self.as_ptr();
-        let offset = crate::ptr::align_offset(ptr, mem::align_of::<U>());
+        let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
         if offset > self.len() {
             (self, &mut [], &mut [])
         } else {
             let (left, rest) = self.split_at_mut(offset);
-            // now `rest` is definitely aligned, so `from_raw_parts_mut` below is okay
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             let rest_len = rest.len();
             let mut_ptr = rest.as_mut_ptr();
             // We can't use `rest` again after this, that would invalidate its alias `mut_ptr`!
-            (
-                left,
-                from_raw_parts_mut(mut_ptr as *mut U, us_len),
-                from_raw_parts_mut(mut_ptr.add(rest_len - ts_len), ts_len),
-            )
+            // SAFETY: see comments for `align_to`.
+            unsafe {
+                (
+                    left,
+                    from_raw_parts_mut(mut_ptr as *mut U, us_len),
+                    from_raw_parts_mut(mut_ptr.add(rest_len - ts_len), ts_len),
+                )
+            }
         }
     }
 
@@ -2914,12 +2983,18 @@ impl<T> SliceIndex<[T]> for usize {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &T {
-        &*slice.as_ptr().add(self)
+        // SAFETY: `slice` cannot be longer than `isize::MAX` and
+        // the caller guarantees that `self` is in bounds of `slice`
+        // so `self` cannot overflow an `isize`, so the call to `add` is safe.
+        // The obtained pointer comes from a reference which is guaranteed
+        // to be valid.
+        unsafe { &*slice.as_ptr().add(self) }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut T {
-        &mut *slice.as_mut_ptr().add(self)
+        // SAFETY: see comments for `get_unchecked` above.
+        unsafe { &mut *slice.as_mut_ptr().add(self) }
     }
 
     #[inline]
@@ -2959,12 +3034,18 @@ impl<T> SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        from_raw_parts(slice.as_ptr().add(self.start), self.end - self.start)
+        // SAFETY: `slice` cannot be longer than `isize::MAX` and
+        // the caller guarantees that `self` is in bounds of `slice`
+        // so `self` cannot overflow an `isize`, so the call to `add` is safe.
+        // Also, since the caller guarantees that `self` is in bounds of `slice`,
+        // `from_raw_parts` will give a subslice of `slice` which is always safe.
+        unsafe { from_raw_parts(slice.as_ptr().add(self.start), self.end - self.start) }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        from_raw_parts_mut(slice.as_mut_ptr().add(self.start), self.end - self.start)
+        // SAFETY: see comments for `get_unchecked` above.
+        unsafe { from_raw_parts_mut(slice.as_mut_ptr().add(self.start), self.end - self.start) }
     }
 
     #[inline]
@@ -3004,12 +3085,14 @@ impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        (0..self.end).get_unchecked(slice)
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { (0..self.end).get_unchecked(slice) }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        (0..self.end).get_unchecked_mut(slice)
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { (0..self.end).get_unchecked_mut(slice) }
     }
 
     #[inline]
@@ -3039,12 +3122,14 @@ impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        (self.start..slice.len()).get_unchecked(slice)
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { (self.start..slice.len()).get_unchecked(slice) }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        (self.start..slice.len()).get_unchecked_mut(slice)
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { (self.start..slice.len()).get_unchecked_mut(slice) }
     }
 
     #[inline]
@@ -3113,12 +3198,14 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        (*self.start()..self.end() + 1).get_unchecked(slice)
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { (*self.start()..self.end() + 1).get_unchecked(slice) }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        (*self.start()..self.end() + 1).get_unchecked_mut(slice)
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { (*self.start()..self.end() + 1).get_unchecked_mut(slice) }
     }
 
     #[inline]
@@ -3154,12 +3241,14 @@ impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        (0..=self.end).get_unchecked(slice)
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { (0..=self.end).get_unchecked(slice) }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        (0..=self.end).get_unchecked_mut(slice)
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { (0..=self.end).get_unchecked_mut(slice) }
     }
 
     #[inline]
@@ -3308,7 +3397,9 @@ macro_rules! iterator {
                     self.ptr.as_ptr()
                 } else {
                     let old = self.ptr.as_ptr();
-                    self.ptr = NonNull::new_unchecked(self.ptr.as_ptr().offset(offset));
+                    // SAFETY: the caller guarantees that `offset` doesn't exceed `self.len()`,
+                    // so this new pointer is inside `self` and thus guaranteed to be non-null.
+                    self.ptr = unsafe { NonNull::new_unchecked(self.ptr.as_ptr().offset(offset)) };
                     old
                 }
             }
@@ -3322,7 +3413,10 @@ macro_rules! iterator {
                     zst_shrink!(self, offset);
                     self.ptr.as_ptr()
                 } else {
-                    self.end = self.end.offset(-offset);
+                    // SAFETY: the caller guarantees that `offset` doesn't exceed `self.len()`,
+                    // which is guaranteed to not overflow an `isize`. Also, the resulting pointer
+                    // is in bounds of `slice`, which fulfills the other requirements for `offset`.
+                    self.end = unsafe { self.end.offset(-offset) };
                     self.end
                 }
             }
@@ -4640,7 +4734,11 @@ impl<T> FusedIterator for Windows<'_, T> {}
 #[doc(hidden)]
 unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
-        from_raw_parts(self.v.as_ptr().add(i), self.size)
+        // SAFETY: since the caller guarantees that `i` is in bounds,
+        // which means that `i` cannot overflow an `isize`, and the
+        // slice created by `from_raw_parts` is a subslice of `self.v`
+        // thus is guaranteed to be valid for the lifetime `'a` of `self.v`.
+        unsafe { from_raw_parts(self.v.as_ptr().add(i), self.size) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -4784,7 +4882,14 @@ unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
             None => self.v.len(),
             Some(end) => cmp::min(end, self.v.len()),
         };
-        from_raw_parts(self.v.as_ptr().add(start), end - start)
+        // SAFETY: the caller guarantees that `i` is in bounds,
+        // which means that `start` must be in bounds of the
+        // underlying `self.v` slice, and we made sure that `end`
+        // is also in bounds of `self.v`. Thus, `start` cannot overflow
+        // an `isize`, and the slice constructed by `from_raw_parts`
+        // is a subslice of `self.v` which is guaranteed to be valid
+        // for the lifetime `'a` of `self.v`.
+        unsafe { from_raw_parts(self.v.as_ptr().add(start), end - start) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -4926,7 +5031,8 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
             None => self.v.len(),
             Some(end) => cmp::min(end, self.v.len()),
         };
-        from_raw_parts_mut(self.v.as_mut_ptr().add(start), end - start)
+        // SAFETY: see comments for `Chunks::get_unchecked`.
+        unsafe { from_raw_parts_mut(self.v.as_mut_ptr().add(start), end - start) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -5063,7 +5169,8 @@ impl<T> FusedIterator for ChunksExact<'_, T> {}
 unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
         let start = i * self.chunk_size;
-        from_raw_parts(self.v.as_ptr().add(start), self.chunk_size)
+        // SAFETY: mostly identical to `Chunks::get_unchecked`.
+        unsafe { from_raw_parts(self.v.as_ptr().add(start), self.chunk_size) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -5197,7 +5304,8 @@ impl<T> FusedIterator for ChunksExactMut<'_, T> {}
 unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T] {
         let start = i * self.chunk_size;
-        from_raw_parts_mut(self.v.as_mut_ptr().add(start), self.chunk_size)
+        // SAFETY: see comments for `ChunksExactMut::get_unchecked`.
+        unsafe { from_raw_parts_mut(self.v.as_mut_ptr().add(start), self.chunk_size) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -5344,7 +5452,8 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunks<'a, T> {
             None => 0,
             Some(start) => start,
         };
-        from_raw_parts(self.v.as_ptr().add(start), end - start)
+        // SAFETY: mostly identical to `Chunks::get_unchecked`.
+        unsafe { from_raw_parts(self.v.as_ptr().add(start), end - start) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -5489,7 +5598,8 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {
             None => 0,
             Some(start) => start,
         };
-        from_raw_parts_mut(self.v.as_mut_ptr().add(start), end - start)
+        // SAFETY: see comments for `RChunks::get_unchecked`.
+        unsafe { from_raw_parts_mut(self.v.as_mut_ptr().add(start), end - start) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -5630,7 +5740,8 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
         let end = self.v.len() - i * self.chunk_size;
         let start = end - self.chunk_size;
-        from_raw_parts(self.v.as_ptr().add(start), self.chunk_size)
+        // SAFETY: mostmy identical to `Chunks::get_unchecked`.
+        unsafe { from_raw_parts(self.v.as_ptr().add(start), self.chunk_size) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -5769,7 +5880,8 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T] {
         let end = self.v.len() - i * self.chunk_size;
         let start = end - self.chunk_size;
-        from_raw_parts_mut(self.v.as_mut_ptr().add(start), self.chunk_size)
+        // SAFETY: see comments for `RChunksExact::get_unchecked`.
+        unsafe { from_raw_parts_mut(self.v.as_mut_ptr().add(start), self.chunk_size) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -5865,7 +5977,8 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
         mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
         "attempt to create slice covering at least half the address space"
     );
-    &*ptr::slice_from_raw_parts(data, len)
+    // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
+    unsafe { &*ptr::slice_from_raw_parts(data, len) }
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
@@ -5905,7 +6018,8 @@ pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T]
         mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
         "attempt to create slice covering at least half the address space"
     );
-    &mut *ptr::slice_from_raw_parts_mut(data, len)
+    // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
+    unsafe { &mut *ptr::slice_from_raw_parts_mut(data, len) }
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
@@ -6181,7 +6295,11 @@ impl_marker_for!(BytewiseEquality,
 #[doc(hidden)]
 unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a T {
-        &*self.ptr.as_ptr().add(i)
+        // SAFETY: the caller must guarantee that `i` is in bounds
+        // of the underlying slice, so `i` cannot overflow an `isize`,
+        // and the returned references is guaranteed to refer to an element
+        // of the slice and thus guaranteed to be valid.
+        unsafe { &*self.ptr.as_ptr().add(i) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -6191,7 +6309,8 @@ unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
 #[doc(hidden)]
 unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut T {
-        &mut *self.ptr.as_ptr().add(i)
+        // SAFETY: see comments for `Iter::get_unchecked`.
+        unsafe { &mut *self.ptr.as_ptr().add(i) }
     }
     fn may_have_side_effect() -> bool {
         false

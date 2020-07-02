@@ -39,6 +39,7 @@ use std::{iter, mem, option};
 use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
 
+pub mod coverage;
 pub mod interpret;
 pub mod mono;
 mod predecessors;
@@ -1817,6 +1818,18 @@ impl<'tcx> Operand<'tcx> {
         })
     }
 
+    /// Convenience helper to make a `Scalar` from the given `Operand`, assuming that `Operand`
+    /// wraps a constant literal value. Panics if this is not the case.
+    pub fn scalar_from_const(operand: &Operand<'tcx>) -> Scalar {
+        match operand {
+            Operand::Constant(constant) => match constant.literal.val.try_to_scalar() {
+                Some(scalar) => scalar,
+                _ => panic!("{:?}: Scalar value expected", constant.literal.val),
+            },
+            _ => panic!("{:?}: Constant expected", operand),
+        }
+    }
+
     pub fn to_copy(&self) -> Self {
         match *self {
             Operand::Copy(_) | Operand::Constant(_) => self.clone(),
@@ -2489,19 +2502,4 @@ impl Location {
             dominators.is_dominated_by(other.block, self.block)
         }
     }
-}
-
-/// Coverage data associated with each function (MIR) instrumented with coverage counters, when
-/// compiled with `-Zinstrument_coverage`. The query `tcx.coverage_data(DefId)` computes these
-/// values on demand (during code generation). This query is only valid after executing the MIR pass
-/// `InstrumentCoverage`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct CoverageData {
-    /// A hash value that can be used by the consumer of the coverage profile data to detect
-    /// changes to the instrumented source of the associated MIR body (typically, for an
-    /// individual function).
-    pub hash: u64,
-
-    /// The total number of coverage region counters added to the MIR `Body`.
-    pub num_counters: u32,
 }

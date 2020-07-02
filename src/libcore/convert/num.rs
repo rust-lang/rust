@@ -28,7 +28,8 @@ macro_rules! impl_float_to_int {
                 #[doc(hidden)]
                 #[inline]
                 unsafe fn to_int_unchecked(self) -> $Int {
-                    crate::intrinsics::float_to_int_unchecked(self)
+                    // SAFETY: the safety contract must be upheld by the caller.
+                    unsafe { crate::intrinsics::float_to_int_unchecked(self) }
                 }
             }
         )+

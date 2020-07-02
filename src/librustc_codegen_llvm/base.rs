@@ -150,6 +150,11 @@ pub fn compile_codegen_unit(
                 cx.create_used_variable()
             }
 
+            // Finalize code coverage by injecting the coverage map
+            if cx.sess().opts.debugging_opts.instrument_coverage {
+                cx.coverageinfo_finalize();
+            }
+
             // Finalize debuginfo
             if cx.sess().opts.debuginfo != DebugInfo::None {
                 cx.debuginfo_finalize();
