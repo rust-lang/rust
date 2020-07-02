@@ -811,6 +811,146 @@ fn main() {
     }
 
     #[test]
+    fn trait_method_cross_crate() {
+        check_assist(
+            auto_import,
+            r"
+            //- /main.rs crate:main deps:dep
+            fn main() {
+                let test_struct = dep::test_mod::TestStruct {};
+                test_struct.test_meth<|>od()
+            }
+            //- /dep.rs crate:dep
+            pub mod test_mod {
+                pub trait TestTrait {
+                    fn test_method(&self);
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_method(&self) {}
+                }
+            }
+            ",
+            r"
+            use dep::test_mod::TestTrait;
+
+            fn main() {
+                let test_struct = dep::test_mod::TestStruct {};
+                test_struct.test_method()
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn assoc_fn_cross_crate() {
+        check_assist(
+            auto_import,
+            r"
+            //- /main.rs crate:main deps:dep
+            fn main() {
+                dep::test_mod::TestStruct::test_func<|>tion
+            }
+            //- /dep.rs crate:dep
+            pub mod test_mod {
+                pub trait TestTrait {
+                    fn test_function();
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_function() {}
+                }
+            }
+            ",
+            r"
+            use dep::test_mod::TestTrait;
+
+            fn main() {
+                dep::test_mod::TestStruct::test_function
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn assoc_const_cross_crate() {
+        check_assist(
+            auto_import,
+            r"
+            //- /main.rs crate:main deps:dep
+            fn main() {
+                dep::test_mod::TestStruct::CONST<|>
+            }
+            //- /dep.rs crate:dep
+            pub mod test_mod {
+                pub trait TestTrait {
+                    const CONST: bool;
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    const CONST: bool = true;
+                }
+            }
+            ",
+            r"
+            use dep::test_mod::TestTrait;
+
+            fn main() {
+                dep::test_mod::TestStruct::CONST
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn assoc_fn_as_method_cross_crate() {
+        check_assist_not_applicable(
+            auto_import,
+            r"
+            //- /main.rs crate:main deps:dep
+            fn main() {
+                let test_struct = dep::test_mod::TestStruct {};
+                test_struct.test_func<|>tion()
+            }
+            //- /dep.rs crate:dep
+            pub mod test_mod {
+                pub trait TestTrait {
+                    fn test_function();
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_function() {}
+                }
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn private_trait_cross_crate() {
+        check_assist_not_applicable(
+            auto_import,
+            r"
+            //- /main.rs crate:main deps:dep
+            fn main() {
+                let test_struct = dep::test_mod::TestStruct {};
+                test_struct.test_meth<|>od()
+            }
+            //- /dep.rs crate:dep
+            pub mod test_mod {
+                trait TestTrait {
+                    fn test_method(&self);
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_method(&self) {}
+                }
+            }
+            ",
+        );
+    }
+
+    #[test]
     fn not_applicable_for_imported_trait_for_method() {
         check_assist_not_applicable(
             auto_import,
