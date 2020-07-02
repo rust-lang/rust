@@ -1,4 +1,4 @@
-# Appendix C: Glossary
+# Glossary
 
 Term                                     | Meaning
 -----------------------------------------|--------
