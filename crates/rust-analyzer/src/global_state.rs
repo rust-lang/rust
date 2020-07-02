@@ -31,6 +31,7 @@ use crate::{
 pub(crate) enum Status {
     Loading,
     Ready,
+    Invalid,
 }
 
 impl Default for Status {

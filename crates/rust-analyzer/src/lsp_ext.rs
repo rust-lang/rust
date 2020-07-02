@@ -3,7 +3,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use lsp_types::request::Request;
-use lsp_types::{Position, Range, TextDocumentIdentifier};
+use lsp_types::{notification::Notification, Position, Range, TextDocumentIdentifier};
 use serde::{Deserialize, Serialize};
 
 pub enum AnalyzerStatus {}
@@ -206,6 +206,22 @@ impl Request for Ssr {
 pub struct SsrParams {
     pub query: String,
     pub parse_only: bool,
+}
+
+pub enum StatusNotification {}
+
+#[serde(rename_all = "camelCase")]
+#[derive(Serialize, Deserialize)]
+pub enum Status {
+    Loading,
+    Ready,
+    NeedsReload,
+    Invalid,
+}
+
+impl Notification for StatusNotification {
+    type Params = Status;
+    const METHOD: &'static str = "rust-analyzer/status";
 }
 
 pub enum CodeActionRequest {}

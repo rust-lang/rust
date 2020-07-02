@@ -130,6 +130,7 @@ pub struct ClientCapsConfig {
     pub code_action_group: bool,
     pub resolve_code_action: bool,
     pub hover_actions: bool,
+    pub status_notification: bool,
 }
 
 impl Config {
@@ -365,6 +366,7 @@ impl Config {
             self.client_caps.code_action_group = get_bool("codeActionGroup");
             self.client_caps.resolve_code_action = get_bool("resolveCodeAction");
             self.client_caps.hover_actions = get_bool("hoverActions");
+            self.client_caps.status_notification = get_bool("statusNotification");
         }
     }
 }

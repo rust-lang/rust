@@ -169,16 +169,16 @@ impl GlobalState {
                 }
                 vfs::loader::Message::Progress { n_total, n_done } => {
                     if n_total == 0 {
-                        self.status = Status::Ready;
+                        self.transition(Status::Invalid);
                     } else {
                         let state = if n_done == 0 {
-                            self.status = Status::Loading;
+                            self.transition(Status::Loading);
                             Progress::Begin
                         } else if n_done < n_total {
                             Progress::Report
                         } else {
                             assert_eq!(n_done, n_total);
-                            self.status = Status::Ready;
+                            self.transition(Status::Ready);
                             Progress::End
                         };
                         self.report_progress(
@@ -272,6 +272,18 @@ impl GlobalState {
             }
         }
         Ok(())
+    }
+
+    fn transition(&mut self, new_status: Status) {
+        self.status = Status::Ready;
+        if self.config.client_caps.status_notification {
+            let lsp_status = match new_status {
+                Status::Loading => lsp_ext::Status::Loading,
+                Status::Ready => lsp_ext::Status::Ready,
+                Status::Invalid => lsp_ext::Status::Invalid,
+            };
+            self.send_notification::<lsp_ext::StatusNotification>(lsp_status);
+        }
     }
 
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
