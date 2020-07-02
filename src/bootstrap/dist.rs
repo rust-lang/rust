@@ -1875,28 +1875,7 @@ impl Step for Extended {
                 prepare("rust-mingw");
             }
 
-            builder.install(&xform(&etc.join("exe/rust.iss")), &exe, 0o644);
-            builder.install(&etc.join("exe/modpath.iss"), &exe, 0o644);
-            builder.install(&etc.join("exe/upgrade.iss"), &exe, 0o644);
             builder.install(&etc.join("gfx/rust-logo.ico"), &exe, 0o644);
-            builder.create(&exe.join("LICENSE.txt"), &license);
-
-            // Generate exe installer
-            builder.info("building `exe` installer with `iscc`");
-            let mut cmd = Command::new("iscc");
-            cmd.arg("rust.iss").arg("/Q").current_dir(&exe);
-            if target.contains("windows-gnu") {
-                cmd.arg("/dMINGW");
-            }
-            add_env(builder, &mut cmd, target);
-            let time = timeit(builder);
-            builder.run(&mut cmd);
-            drop(time);
-            builder.install(
-                &exe.join(format!("{}-{}.exe", pkgname(builder, "rust"), target)),
-                &distdir(builder),
-                0o755,
-            );
 
             // Generate msi installer
             let wix = PathBuf::from(env::var_os("WIX").unwrap());
