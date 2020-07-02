@@ -306,7 +306,7 @@ Caused by:
 failed to run: ~/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo build --manifest-path ~/rust/src/bootstrap/Cargo.toml
 ```
 
-The [`\[patch\]`][patchsec] section of `Cargo.toml` can be very useful for
+The [`[patch]`][patchsec] section of `Cargo.toml` can be very useful for
 testing. In addition to that, you should read the [Overriding
 dependencies][overriding] section of the documentation.
 
@@ -320,7 +320,7 @@ reveals what the problem is:
 
 > Next up we need to ensure that our lock file is updated to use this new
 > version of uuid so our project uses the locally checked out copy instead of
-> one from crates.io. The way `\[patch\]` works is that it'll load the dependency
+> one from crates.io. The way `[patch]` works is that it'll load the dependency
 > at ../path/to/uuid and then whenever crates.io is queried for versions of
 > uuid it'll also return the local version.
 >
@@ -363,12 +363,12 @@ You can find documentation style guidelines in [RFC 1574][rfc1574].
 
 In many cases, you don't need a full `./x.py doc`, which will build the entire
 stage 2 compiler and compile the various books published on
-[doc.rust-lang.org]. When updating documentation for the standard library,
+[doc.rust-lang.org][docs]. When updating documentation for the standard library,
 first try `./x.py doc --stage 0 src/libstd`. If that fails, or if you need to
 see the output from the latest version of `rustdoc`, use `--stage 1` instead of
 `--stage 0`. Results should appear in `build/$TARGET/crate-docs`.
 
-[doc.rust-lang.org]: htts://doc.rust-lang.org
+[docs]: https://doc.rust-lang.org
 
 You can also use `rustdoc` directly to check small fixes. For example,
 `rustdoc src/doc/reference.md` will render reference to `doc/reference.html`.
