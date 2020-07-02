@@ -310,6 +310,7 @@ fn test_iter_mixed() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)] // FIXME: fails in Miri <https://github.com/rust-lang/rust/issues/73915>
 fn test_iter_min_max() {
     let mut a = BTreeMap::new();
     assert_eq!(a.iter().min(), None);
