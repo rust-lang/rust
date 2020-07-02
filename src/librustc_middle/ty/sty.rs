@@ -2278,7 +2278,7 @@ impl<'tcx> Const<'tcx> {
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }
             _ => ty::ConstKind::Unevaluated(
-                def.did.to_def_id(),
+                def.to_global(),
                 InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                 None,
             ),
@@ -2347,7 +2347,7 @@ impl<'tcx> Const<'tcx> {
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> &Const<'tcx> {
-        if let ConstKind::Unevaluated(did, substs, promoted) = self.val {
+        if let ConstKind::Unevaluated(def, substs, promoted) = self.val {
             use crate::mir::interpret::ErrorHandled;
 
             let param_env_and_substs = param_env.with_reveal_all().and(substs);
@@ -2363,7 +2363,7 @@ impl<'tcx> Const<'tcx> {
             // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
             // we can call `infcx.const_eval_resolve` which handles inference variables.
             let param_env_and_substs = if param_env_and_substs.needs_infer() {
-                tcx.param_env(did).and(InternalSubsts::identity_for_item(tcx, did))
+                tcx.param_env(def.did).and(InternalSubsts::identity_for_item(tcx, def.did))
             } else {
                 param_env_and_substs
             };
@@ -2373,7 +2373,7 @@ impl<'tcx> Const<'tcx> {
             let (param_env, substs) = param_env_and_substs.into_parts();
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            match tcx.const_eval_resolve(param_env, did, substs, promoted, None) {
+            match tcx.const_eval_resolve(param_env, def.did, substs, promoted, None) {
                 // NOTE(eddyb) `val` contains no lifetimes/types/consts,
                 // and we use the original type, so nothing from `substs`
                 // (which may be identity substs, see above),
@@ -2433,7 +2433,7 @@ pub enum ConstKind<'tcx> {
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
     /// variants when the code is monomorphic enough for that.
-    Unevaluated(DefId, SubstsRef<'tcx>, Option<Promoted>),
+    Unevaluated(ty::WithOptParam<DefId>, SubstsRef<'tcx>, Option<Promoted>),
 
     /// Used to hold computed value.
     Value(ConstValue<'tcx>),

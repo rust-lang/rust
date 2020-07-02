@@ -359,13 +359,13 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
                 GenericArgKind::Const(constant) => {
                     match constant.val {
-                        ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
+                        ty::ConstKind::Unevaluated(def, substs, promoted) => {
                             assert!(promoted.is_none());
 
-                            let obligations = self.nominal_obligations(def_id, substs);
+                            let obligations = self.nominal_obligations(def.did, substs);
                             self.out.extend(obligations);
 
-                            let predicate = ty::PredicateKind::ConstEvaluatable(def_id, substs)
+                            let predicate = ty::PredicateKind::ConstEvaluatable(def.did, substs)
                                 .to_predicate(self.tcx());
                             let cause = self.cause(traits::MiscObligation);
                             self.out.push(traits::Obligation::new(

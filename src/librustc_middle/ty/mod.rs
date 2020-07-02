@@ -1586,12 +1586,24 @@ impl<T> WithOptParam<T> {
 }
 
 impl WithOptParam<LocalDefId> {
+    pub fn to_global(self) -> WithOptParam<DefId> {
+        WithOptParam { did: self.did.to_def_id(), param_did: self.param_did }
+    }
+
     pub fn ty_def_id(self) -> DefId {
         if let Some(did) = self.param_did { did } else { self.did.to_def_id() }
     }
 }
 
 impl WithOptParam<DefId> {
+    pub fn as_local(self) -> Option<WithOptParam<LocalDefId>> {
+        self.did.as_local().map(|did| WithOptParam { did, param_did: self.param_did })
+    }
+
+    pub fn is_local(self) -> bool {
+        self.did.is_local()
+    }
+
     pub fn ty_def_id(self) -> DefId {
         self.param_did.unwrap_or(self.did)
     }
