@@ -78,7 +78,7 @@ impl GlobalState {
                     .collect(),
             };
             let registration = lsp_types::Registration {
-                id: "file-watcher".to_string(),
+                id: "workspace/didChangeWatchedFiles".to_string(),
                 method: "workspace/didChangeWatchedFiles".to_string(),
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };

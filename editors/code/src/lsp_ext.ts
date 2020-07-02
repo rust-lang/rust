@@ -6,6 +6,9 @@ import * as lc from "vscode-languageclient";
 
 export const analyzerStatus = new lc.RequestType<null, string, void>("rust-analyzer/analyzerStatus");
 
+export type Status = "loading" | "ready" | "invalid" | "needsReload";
+export const status = new lc.NotificationType<Status>("rust-analyzer/status");
+
 export const reloadWorkspace = new lc.RequestType<null, null, void>("rust-analyzer/reloadWorkspace");
 
 export interface SyntaxTreeParams {

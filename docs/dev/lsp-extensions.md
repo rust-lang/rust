@@ -399,6 +399,18 @@ Returns internal status message, mostly for debugging purposes.
 
 Reloads project information (that is, re-executes `cargo metadata`).
 
+## Status Notification
+
+**Client Capability:** `{ "statusNotification": boolean }`
+
+**Method:** `rust-analyzer/status`
+
+**Notification:** `"loading" | "ready" | "invalid" | "needsReload"`
+
+This notification is sent from server to client.
+The client can use it to display persistent status to the user (in modline).
+For `needsReload` state, the client can provide a context-menu action to run `rust-analyzer/reloadWorkspace` request.
+
 ## Syntax Tree
 
 **Method:** `rust-analyzer/syntaxTree`

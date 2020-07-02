@@ -111,6 +111,35 @@ impl GlobalState {
     }
 
     fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
+        let registration_options = lsp_types::TextDocumentRegistrationOptions {
+            document_selector: Some(vec![
+                lsp_types::DocumentFilter {
+                    language: None,
+                    scheme: None,
+                    pattern: Some("**/*.rs".into()),
+                },
+                lsp_types::DocumentFilter {
+                    language: None,
+                    scheme: None,
+                    pattern: Some("**/Cargo.toml".into()),
+                },
+                lsp_types::DocumentFilter {
+                    language: None,
+                    scheme: None,
+                    pattern: Some("**/Cargo.lock".into()),
+                },
+            ]),
+        };
+        let registration = lsp_types::Registration {
+            id: "textDocument/didSave".to_string(),
+            method: "textDocument/didSave".to_string(),
+            register_options: Some(serde_json::to_value(registration_options).unwrap()),
+        };
+        self.send_request::<lsp_types::request::RegisterCapability>(
+            lsp_types::RegistrationParams { registrations: vec![registration] },
+            |_, _| (),
+        );
+
         self.reload();
 
         while let Some(event) = self.next_event(&inbox) {
@@ -169,16 +198,16 @@ impl GlobalState {
                 }
                 vfs::loader::Message::Progress { n_total, n_done } => {
                     if n_total == 0 {
-                        self.status = Status::Ready;
+                        self.transition(Status::Invalid);
                     } else {
                         let state = if n_done == 0 {
-                            self.status = Status::Loading;
+                            self.transition(Status::Loading);
                             Progress::Begin
                         } else if n_done < n_total {
                             Progress::Report
                         } else {
                             assert_eq!(n_done, n_total);
-                            self.status = Status::Ready;
+                            self.transition(Status::Ready);
                             Progress::End
                         };
                         self.report_progress(
@@ -272,6 +301,19 @@ impl GlobalState {
             }
         }
         Ok(())
+    }
+
+    fn transition(&mut self, new_status: Status) {
+        self.status = Status::Ready;
+        if self.config.client_caps.status_notification {
+            let lsp_status = match new_status {
+                Status::Loading => lsp_ext::Status::Loading,
+                Status::Ready => lsp_ext::Status::Ready,
+                Status::Invalid => lsp_ext::Status::Invalid,
+                Status::NeedsReload => lsp_ext::Status::NeedsReload,
+            };
+            self.send_notification::<lsp_ext::StatusNotification>(lsp_status);
+        }
     }
 
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
@@ -383,9 +425,15 @@ impl GlobalState {
                 );
                 Ok(())
             })?
-            .on::<lsp_types::notification::DidSaveTextDocument>(|this, _params| {
+            .on::<lsp_types::notification::DidSaveTextDocument>(|this, params| {
                 if let Some(flycheck) = &this.flycheck {
                     flycheck.handle.update();
+                }
+                let uri = params.text_document.uri.as_str();
+                if uri.ends_with("Cargo.toml") || uri.ends_with("Cargo.lock") {
+                    if matches!(this.status, Status::Ready | Status::Invalid) {
+                        this.transition(Status::NeedsReload);
+                    }
                 }
                 Ok(())
             })?
