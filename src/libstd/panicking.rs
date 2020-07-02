@@ -264,10 +264,11 @@ pub mod panic_count {
             // (including the current one) will have `LOCAL_PANIC_COUNT`
             // equal to zero, so TLS access can be avoided.
             //
-            // A relaxed atomic load is equivalent to a normal aligned memory read
-            // (e.g., a `mov` instruction in x86), while a TLS access might require
-            // calling a non-inlinable function (such as `__tls_get_addr` when using
-            // the GD TLS model).
+            // In terms of performance, a relaxed atomic load is similar to a normal
+            // aligned memory read (e.g., a mov instruction in x86), but with some
+            // compiler optimization restrictions. On the other hand, a TLS access
+            // might require calling a non-inlinable function (such as `__tls_get_addr`
+            // when using the GD TLS model).
             true
         } else {
             is_zero_slow_path()
