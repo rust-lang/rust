@@ -61,7 +61,7 @@ use std::collections::BTreeSet;
 use std::{cmp, fmt, iter, ptr};
 
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
-use diagnostics::{ImportSuggestion, Suggestion};
+use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use imports::{Import, ImportKind, ImportResolver, NameResolution};
 use late::{HasGenericParams, PathSource, Rib, RibKind::*};
 use macros::{MacroRulesBinding, MacroRulesScope};
@@ -197,7 +197,7 @@ enum ResolutionError<'a> {
     /// Error E0416: identifier is bound more than once in the same pattern.
     IdentifierBoundMoreThanOnceInSamePattern(&'a str),
     /// Error E0426: use of undeclared label.
-    UndeclaredLabel(&'a str, Option<Symbol>),
+    UndeclaredLabel { name: &'a str, suggestion: Option<LabelSuggestion> },
     /// Error E0429: `self` imports are only allowed within a `{ }` list.
     SelfImportsOnlyAllowedWithin { root: bool, span_with_rename: Span },
     /// Error E0430: `self` import can only appear once in the list.
@@ -216,6 +216,8 @@ enum ResolutionError<'a> {
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
+    /// Error E0767: use of unreachable label
+    UnreachableLabel { name: &'a str, definition_span: Span, suggestion: Option<LabelSuggestion> },
 }
 
 enum VisResolutionError<'a> {
@@ -2453,6 +2455,7 @@ impl<'a> Resolver<'a> {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind
+                        | ClosureOrAsyncRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
                         | ForwardTyParamBanRibKind => {
@@ -2488,6 +2491,7 @@ impl<'a> Resolver<'a> {
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
                         NormalRibKind
+                        | ClosureOrAsyncRibKind
                         | AssocItemRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)

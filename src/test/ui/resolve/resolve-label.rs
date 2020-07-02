@@ -2,7 +2,7 @@ fn f() {
     'l: loop {
         fn g() {
             loop {
-                break 'l; //~ ERROR use of undeclared label
+                break 'l; //~ ERROR use of unreachable label
             }
         }
     }

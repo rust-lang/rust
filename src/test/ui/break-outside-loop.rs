@@ -27,7 +27,9 @@ fn main() {
     // not the `loop`, which failed in the call to `find_breakable`. (#65383)
     'lab: loop {
         || {
-            break 'lab; //~ ERROR `break` inside of a closure
+            break 'lab;
+            //~^ ERROR use of unreachable label `'lab`
+            //~| ERROR `break` inside of a closure
         };
     }
 }
