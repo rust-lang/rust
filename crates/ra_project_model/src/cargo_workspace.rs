@@ -45,7 +45,7 @@ impl ops::Index<Target> for CargoWorkspace {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CargoConfig {
     /// Do not activate the `default` feature.
     pub no_default_features: bool,
@@ -62,18 +62,6 @@ pub struct CargoConfig {
 
     /// rustc target
     pub target: Option<String>,
-}
-
-impl Default for CargoConfig {
-    fn default() -> Self {
-        CargoConfig {
-            no_default_features: false,
-            all_features: false,
-            features: Vec::new(),
-            load_out_dirs_from_check: false,
-            target: None,
-        }
-    }
 }
 
 pub type Package = Idx<PackageData>;
