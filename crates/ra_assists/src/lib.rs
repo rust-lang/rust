@@ -34,8 +34,6 @@ pub enum AssistKind {
     RefactorExtract,
     RefactorInline,
     RefactorRewrite,
-    Source,
-    OrganizeImports,
 }
 
 /// Unique identifier of the assist, should not be shown to the user

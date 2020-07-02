@@ -635,8 +635,6 @@ pub(crate) fn code_action_kind(kind: AssistKind) -> String {
         AssistKind::RefactorExtract => lsp_types::code_action_kind::REFACTOR_EXTRACT,
         AssistKind::RefactorInline => lsp_types::code_action_kind::REFACTOR_INLINE,
         AssistKind::RefactorRewrite => lsp_types::code_action_kind::REFACTOR_REWRITE,
-        AssistKind::Source => lsp_types::code_action_kind::SOURCE,
-        AssistKind::OrganizeImports => lsp_types::code_action_kind::SOURCE_ORGANIZE_IMPORTS,
     }
     .to_string()
 }
