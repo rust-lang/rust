@@ -21,6 +21,7 @@ use crate::{
     lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
     Result,
 };
+use ra_project_model::ProjectWorkspace;
 
 pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     log::info!("initial config: {:#?}", config);
@@ -58,6 +59,7 @@ enum Event {
 pub(crate) enum Task {
     Response(Response),
     Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    Workspaces(Vec<anyhow::Result<ProjectWorkspace>>),
     Unit,
 }
 
@@ -111,6 +113,14 @@ impl GlobalState {
     }
 
     fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
+        if self.config.linked_projects.is_empty() && self.config.notifications.cargo_toml_not_found
+        {
+            self.show_message(
+                lsp_types::MessageType::Error,
+                "rust-analyzer failed to discover workspace".to_string(),
+            );
+        };
+
         let registration_options = lsp_types::TextDocumentRegistrationOptions {
             document_selector: Some(vec![
                 lsp_types::DocumentFilter {
@@ -140,7 +150,7 @@ impl GlobalState {
             |_, _| (),
         );
 
-        self.reload();
+        self.fetch_workspaces();
 
         while let Some(event) = self.next_event(&inbox) {
             if let Event::Lsp(lsp_server::Message::Notification(not)) = &event {
@@ -182,6 +192,7 @@ impl GlobalState {
                             self.diagnostics.set_native_diagnostics(file_id, diagnostics)
                         }
                     }
+                    Task::Workspaces(workspaces) => self.switch_workspaces(workspaces),
                     Task::Unit => (),
                 }
                 self.analysis_host.maybe_collect_garbage();
@@ -320,7 +331,7 @@ impl GlobalState {
         self.register_request(&req, request_received);
 
         RequestDispatcher { req: Some(req), global_state: self }
-            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.reload()))?
+            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.fetch_workspaces()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
             .on_sync::<lsp_types::request::Shutdown>(|_, ()| Ok(()))?

@@ -150,7 +150,7 @@ impl ProjectManifest {
 impl ProjectWorkspace {
     pub fn load(
         manifest: ProjectManifest,
-        cargo_features: &CargoConfig,
+        cargo_config: &CargoConfig,
         with_sysroot: bool,
     ) -> Result<ProjectWorkspace> {
         let res = match manifest {
@@ -166,7 +166,7 @@ impl ProjectWorkspace {
                 ProjectWorkspace::Json { project }
             }
             ProjectManifest::CargoToml(cargo_toml) => {
-                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_features)
+                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_config)
                     .with_context(|| {
                         format!(
                             "Failed to read Cargo metadata from Cargo.toml file {}",
