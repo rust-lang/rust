@@ -131,10 +131,6 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/install-wix.sh
         <<: *step
 
-      - name: install InnoSetup
-        run: src/ci/scripts/install-innosetup.sh
-        <<: *step
-
       - name: ensure the build happens on a partition with enough space
         run: src/ci/scripts/symlink-build-dir.sh
         <<: *step
