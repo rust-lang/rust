@@ -973,7 +973,7 @@ impl<'a> Builder<'a> {
         // we're gated on RUSTC_RPATH here.
         //
         // Ok, so the astute might be wondering "why isn't `-C rpath` used
-        // here?" and that is indeed a good question to task. This codegen
+        // here?" and that is indeed a good question to ask. This codegen
         // option is the compiler's current interface to generating an rpath.
         // Unfortunately it doesn't quite suffice for us. The flag currently
         // takes no value as an argument, so the compiler calculates what it
