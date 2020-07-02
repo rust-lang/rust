@@ -39,8 +39,8 @@ pub struct RedundantPubCrate {
 
 impl_lint_pass!(RedundantPubCrate => [REDUNDANT_PUB_CRATE]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPubCrate {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'tcx>) {
+impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let VisibilityKind::Crate { .. } = item.vis.node {
             if !cx.access_levels.is_exported(item.hir_id) {
                 if let Some(false) = self.is_exported.last() {
@@ -70,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPubCrate {
         }
     }
 
-    fn check_item_post(&mut self, _cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'tcx>) {
+    fn check_item_post(&mut self, _cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let ItemKind::Mod { .. } = item.kind {
             self.is_exported.pop().expect("unbalanced check_item/check_item_post");
         }

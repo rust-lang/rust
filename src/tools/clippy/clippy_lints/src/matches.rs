@@ -430,8 +430,8 @@ impl_lint_pass!(Matches => [
     REST_PAT_IN_FULLY_BOUND_STRUCTS
 ]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for Matches {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
@@ -455,7 +455,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
         if_chain! {
             if !in_external_macro(cx.sess(), local.span);
             if !in_macro(local.span);
@@ -491,7 +491,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
         }
     }
 
-    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
+    fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
         if_chain! {
             if !in_external_macro(cx.sess(), pat.span);
             if !in_macro(pat.span);
@@ -518,7 +518,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 }
 
 #[rustfmt::skip]
-fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
         if in_macro(expr.span) {
             // Don't lint match expressions present in
@@ -549,7 +549,7 @@ fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
 }
 
 fn check_single_match_single_pattern(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     ex: &Expr<'_>,
     arms: &[Arm<'_>],
     expr: &Expr<'_>,
@@ -561,7 +561,7 @@ fn check_single_match_single_pattern(
 }
 
 fn report_single_match_single_pattern(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     ex: &Expr<'_>,
     arms: &[Arm<'_>],
     expr: &Expr<'_>,
@@ -590,7 +590,7 @@ fn report_single_match_single_pattern(
 }
 
 fn check_single_match_opt_like(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     ex: &Expr<'_>,
     arms: &[Arm<'_>],
     expr: &Expr<'_>,
@@ -630,7 +630,7 @@ fn check_single_match_opt_like(
     }
 }
 
-fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+fn check_match_bool(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     // Type of expression is `bool`.
     if cx.tables().expr_ty(ex).kind == ty::Bool {
         span_lint_and_then(
@@ -694,7 +694,7 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
     }
 }
 
-fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
+fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
     if arms.len() >= 2 && cx.tables().expr_ty(ex).is_integral() {
         let ranges = all_ranges(cx, arms, cx.tables().expr_ty(ex));
         let type_ranges = type_ranges(&ranges);
@@ -713,7 +713,7 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'
     }
 }
 
-fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
+fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ex_ty = walk_ptrs_ty(cx.tables().expr_ty(ex));
     if is_type_diagnostic_item(cx, ex_ty, sym!(result_type)) {
         for arm in arms {
@@ -754,7 +754,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
     }
 }
 
-fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
+fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ty = cx.tables().expr_ty(ex);
     if !ty.is_enum() {
         // If there isn't a nice closed set of possible values that can be conveniently enumerated,
@@ -884,7 +884,7 @@ fn is_panic_block(block: &Block<'_>) -> bool {
     }
 }
 
-fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+fn check_match_ref_pats(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if has_only_ref_pats(arms) {
         let mut suggs = Vec::with_capacity(arms.len() + 1);
         let (title, msg) = if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, ref inner) = ex.kind {
@@ -919,7 +919,7 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>
     }
 }
 
-fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+fn check_match_as_ref(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
         let arm_ref: Option<BindingAnnotation> = if is_none_arm(&arms[0]) {
             is_ref_some_arm(&arms[1])
@@ -971,7 +971,7 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
     }
 }
 
-fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
+fn check_wild_in_or_pats(cx: &LateContext<'_>, arms: &[Arm<'_>]) {
     for arm in arms {
         if let PatKind::Or(ref fields) = arm.pat.kind {
             // look for multiple fields in this arm that contains at least one Wild pattern
@@ -989,7 +989,7 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
     }
 }
 
-fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if in_macro(expr.span) || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
     }
@@ -1085,7 +1085,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms:
 }
 
 /// Returns true if the `ex` match expression is in a local (`let`) statement
-fn opt_parent_let<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>) -> Option<&'a Local<'a>> {
+fn opt_parent_let<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<&'a Local<'a>> {
     if_chain! {
         let map = &cx.tcx.hir();
         if let Some(Node::Expr(parent_arm_expr)) = map.find(map.get_parent_node(ex.hir_id));
@@ -1098,11 +1098,7 @@ fn opt_parent_let<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>) -> Option<&'a Loc
 }
 
 /// Gets all arms that are unbounded `PatRange`s.
-fn all_ranges<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    arms: &'tcx [Arm<'_>],
-    ty: Ty<'tcx>,
-) -> Vec<SpannedRange<Constant>> {
+fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>) -> Vec<SpannedRange<Constant>> {
     arms.iter()
         .flat_map(|arm| {
             if let Arm {

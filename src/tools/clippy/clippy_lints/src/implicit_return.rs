@@ -44,7 +44,7 @@ declare_lint_pass!(ImplicitReturn => [IMPLICIT_RETURN]);
 static LINT_BREAK: &str = "change `break` to `return` as shown";
 static LINT_RETURN: &str = "add `return` as shown";
 
-fn lint(cx: &LateContext<'_, '_>, outer_span: Span, inner_span: Span, msg: &str) {
+fn lint(cx: &LateContext<'_>, outer_span: Span, inner_span: Span, msg: &str) {
     let outer_span = outer_span.source_callsite();
     let inner_span = inner_span.source_callsite();
 
@@ -60,7 +60,7 @@ fn lint(cx: &LateContext<'_, '_>, outer_span: Span, inner_span: Span, msg: &str)
     });
 }
 
-fn expr_match(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+fn expr_match(cx: &LateContext<'_>, expr: &Expr<'_>) {
     match expr.kind {
         // loops could be using `break` instead of `return`
         ExprKind::Block(block, ..) | ExprKind::Loop(block, ..) => {
@@ -122,10 +122,10 @@ fn expr_match(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
+impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,

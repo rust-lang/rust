@@ -67,8 +67,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessBool => [NEEDLESS_BOOL]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use self::Expression::{Bool, RetBool};
         if let Some((ref pred, ref then_block, Some(ref else_expr))) = higher::if_block(&e) {
             let reduce = |ret, not| {
@@ -127,8 +127,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
 
 declare_lint_pass!(BoolComparison => [BOOL_COMPARISON]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for BoolComparison {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
             return;
         }
@@ -218,7 +218,7 @@ fn one_side_is_unary_not<'tcx>(left_side: &'tcx Expr<'_>, right_side: &'tcx Expr
 }
 
 fn check_comparison<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+    cx: &LateContext<'tcx>,
     e: &'tcx Expr<'_>,
     left_true: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
     left_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
@@ -285,7 +285,7 @@ fn check_comparison<'a, 'tcx>(
 }
 
 fn suggest_bool_comparison<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+    cx: &LateContext<'tcx>,
     e: &'tcx Expr<'_>,
     expr: &Expr<'_>,
     mut applicability: Applicability,

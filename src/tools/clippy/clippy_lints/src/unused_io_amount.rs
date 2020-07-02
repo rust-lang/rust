@@ -32,8 +32,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnusedIoAmount => [UNUSED_IO_AMOUNT]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
+    fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
         let expr = match s.kind {
             hir::StmtKind::Semi(ref expr) | hir::StmtKind::Expr(ref expr) => &**expr,
             _ => return,
@@ -64,7 +64,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
     }
 }
 
-fn check_method_call(cx: &LateContext<'_, '_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
+fn check_method_call(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
     if let hir::ExprKind::MethodCall(ref path, _, _, _) = call.kind {
         let symbol = &*path.ident.as_str();
         let read_trait = match_trait_method(cx, call, &paths::IO_READ);

@@ -45,8 +45,8 @@ impl LargeConstArrays {
 
 impl_lint_pass!(LargeConstArrays => [LARGE_CONST_ARRAYS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeConstArrays {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if_chain! {
             if !item.span.from_expansion();
             if let ItemKind::Const(hir_ty, _) = &item.kind;

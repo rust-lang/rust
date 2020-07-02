@@ -36,7 +36,7 @@ use rustc_hir_pretty::id_to_string;
 use rustc_hir_pretty::{bounds_to_string, path_segment_to_string, path_to_string, ty_to_string};
 use rustc_span::symbol::{Ident, Symbol};
 
-pub fn item_signature(item: &hir::Item<'_>, scx: &SaveContext<'_, '_>) -> Option<Signature> {
+pub fn item_signature(item: &hir::Item<'_>, scx: &SaveContext<'_>) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
@@ -45,7 +45,7 @@ pub fn item_signature(item: &hir::Item<'_>, scx: &SaveContext<'_, '_>) -> Option
 
 pub fn foreign_item_signature(
     item: &hir::ForeignItem<'_>,
-    scx: &SaveContext<'_, '_>,
+    scx: &SaveContext<'_>,
 ) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
@@ -55,10 +55,7 @@ pub fn foreign_item_signature(
 
 /// Signature for a struct or tuple field declaration.
 /// Does not include a trailing comma.
-pub fn field_signature(
-    field: &hir::StructField<'_>,
-    scx: &SaveContext<'_, '_>,
-) -> Option<Signature> {
+pub fn field_signature(field: &hir::StructField<'_>, scx: &SaveContext<'_>) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
@@ -66,10 +63,7 @@ pub fn field_signature(
 }
 
 /// Does not include a trailing comma.
-pub fn variant_signature(
-    variant: &hir::Variant<'_>,
-    scx: &SaveContext<'_, '_>,
-) -> Option<Signature> {
+pub fn variant_signature(variant: &hir::Variant<'_>, scx: &SaveContext<'_>) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
@@ -81,7 +75,7 @@ pub fn method_signature(
     ident: Ident,
     generics: &hir::Generics<'_>,
     m: &hir::FnSig<'_>,
-    scx: &SaveContext<'_, '_>,
+    scx: &SaveContext<'_>,
 ) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
@@ -94,7 +88,7 @@ pub fn assoc_const_signature(
     ident: Symbol,
     ty: &hir::Ty<'_>,
     default: Option<&hir::Expr<'_>>,
-    scx: &SaveContext<'_, '_>,
+    scx: &SaveContext<'_>,
 ) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
@@ -107,7 +101,7 @@ pub fn assoc_type_signature(
     ident: Ident,
     bounds: Option<hir::GenericBounds<'_>>,
     default: Option<&hir::Ty<'_>>,
-    scx: &SaveContext<'_, '_>,
+    scx: &SaveContext<'_>,
 ) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
@@ -118,7 +112,7 @@ pub fn assoc_type_signature(
 type Result = std::result::Result<Signature, &'static str>;
 
 trait Sig {
-    fn make(&self, offset: usize, id: Option<hir::HirId>, scx: &SaveContext<'_, '_>) -> Result;
+    fn make(&self, offset: usize, id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result;
 }
 
 fn extend_sig(
@@ -154,12 +148,7 @@ fn text_sig(text: String) -> Signature {
 }
 
 impl<'hir> Sig for hir::Ty<'hir> {
-    fn make(
-        &self,
-        offset: usize,
-        _parent_id: Option<hir::HirId>,
-        scx: &SaveContext<'_, '_>,
-    ) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let id = Some(self.hir_id);
         match self.kind {
             hir::TyKind::Slice(ref ty) => {
@@ -334,12 +323,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
 }
 
 impl<'hir> Sig for hir::Item<'hir> {
-    fn make(
-        &self,
-        offset: usize,
-        _parent_id: Option<hir::HirId>,
-        scx: &SaveContext<'_, '_>,
-    ) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let id = Some(self.hir_id);
 
         match self.kind {
@@ -574,7 +558,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 }
 
 impl<'hir> Sig for hir::Path<'hir> {
-    fn make(&self, offset: usize, id: Option<hir::HirId>, scx: &SaveContext<'_, '_>) -> Result {
+    fn make(&self, offset: usize, id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let res = scx.get_path_res(id.ok_or("Missing id for Path")?);
 
         let (name, start, end) = match res {
@@ -608,12 +592,7 @@ impl<'hir> Sig for hir::Path<'hir> {
 
 // This does not cover the where clause, which must be processed separately.
 impl<'hir> Sig for hir::Generics<'hir> {
-    fn make(
-        &self,
-        offset: usize,
-        _parent_id: Option<hir::HirId>,
-        scx: &SaveContext<'_, '_>,
-    ) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         if self.params.is_empty() {
             return Ok(text_sig(String::new()));
         }
@@ -671,12 +650,7 @@ impl<'hir> Sig for hir::Generics<'hir> {
 }
 
 impl<'hir> Sig for hir::StructField<'hir> {
-    fn make(
-        &self,
-        offset: usize,
-        _parent_id: Option<hir::HirId>,
-        scx: &SaveContext<'_, '_>,
-    ) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let mut text = String::new();
 
         text.push_str(&self.ident.to_string());
@@ -696,12 +670,7 @@ impl<'hir> Sig for hir::StructField<'hir> {
 }
 
 impl<'hir> Sig for hir::Variant<'hir> {
-    fn make(
-        &self,
-        offset: usize,
-        parent_id: Option<hir::HirId>,
-        scx: &SaveContext<'_, '_>,
-    ) -> Result {
+    fn make(&self, offset: usize, parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let mut text = self.ident.to_string();
         match self.data {
             hir::VariantData::Struct(fields, r) => {
@@ -760,12 +729,7 @@ impl<'hir> Sig for hir::Variant<'hir> {
 }
 
 impl<'hir> Sig for hir::ForeignItem<'hir> {
-    fn make(
-        &self,
-        offset: usize,
-        _parent_id: Option<hir::HirId>,
-        scx: &SaveContext<'_, '_>,
-    ) -> Result {
+    fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let id = Some(self.hir_id);
         match self.kind {
             hir::ForeignItemKind::Fn(decl, _, ref generics) => {
@@ -839,7 +803,7 @@ fn name_and_generics(
     generics: &hir::Generics<'_>,
     id: hir::HirId,
     name: Ident,
-    scx: &SaveContext<'_, '_>,
+    scx: &SaveContext<'_>,
 ) -> Result {
     let name = name.to_string();
     let def = SigElement {
@@ -859,7 +823,7 @@ fn make_assoc_type_signature(
     ident: Ident,
     bounds: Option<hir::GenericBounds<'_>>,
     default: Option<&hir::Ty<'_>>,
-    scx: &SaveContext<'_, '_>,
+    scx: &SaveContext<'_>,
 ) -> Result {
     let mut text = "type ".to_owned();
     let name = ident.to_string();
@@ -891,7 +855,7 @@ fn make_assoc_const_signature(
     ident: Symbol,
     ty: &hir::Ty<'_>,
     default: Option<&hir::Expr<'_>>,
-    scx: &SaveContext<'_, '_>,
+    scx: &SaveContext<'_>,
 ) -> Result {
     let mut text = "const ".to_owned();
     let name = ident.to_string();
@@ -922,7 +886,7 @@ fn make_method_signature(
     ident: Ident,
     generics: &hir::Generics<'_>,
     m: &hir::FnSig<'_>,
-    scx: &SaveContext<'_, '_>,
+    scx: &SaveContext<'_>,
 ) -> Result {
     // FIXME code dup with function signature
     let mut text = String::new();

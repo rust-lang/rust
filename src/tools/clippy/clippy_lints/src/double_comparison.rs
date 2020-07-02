@@ -37,9 +37,9 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DoubleComparisons => [DOUBLE_COMPARISONS]);
 
-impl<'a, 'tcx> DoubleComparisons {
+impl<'tcx> DoubleComparisons {
     #[allow(clippy::similar_names)]
-    fn check_binop(cx: &LateContext<'a, 'tcx>, op: BinOpKind, lhs: &'tcx Expr<'_>, rhs: &'tcx Expr<'_>, span: Span) {
+    fn check_binop(cx: &LateContext<'tcx>, op: BinOpKind, lhs: &'tcx Expr<'_>, rhs: &'tcx Expr<'_>, span: Span) {
         let (lkind, llhs, lrhs, rkind, rlhs, rrhs) = match (&lhs.kind, &rhs.kind) {
             (ExprKind::Binary(lb, llhs, lrhs), ExprKind::Binary(rb, rlhs, rrhs)) => {
                 (lb.node, llhs, lrhs, rb.node, rlhs, rrhs)
@@ -86,8 +86,8 @@ impl<'a, 'tcx> DoubleComparisons {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DoubleComparisons {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for DoubleComparisons {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = expr.kind {
             Self::check_binop(cx, kind.node, lhs, rhs, expr.span);
         }

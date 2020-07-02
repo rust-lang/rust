@@ -26,7 +26,7 @@ macro_rules! fake_lint_pass {
             }
         }
 
-        impl<'a, 'tcx> LateLintPass<'a, 'tcx> for $struct {
+        impl LateLintPass<'_> for $struct {
             fn check_crate(&mut self, cx: &LateContext, krate: &rustc_hir::Crate) {
                 $(
                     if !attr::contains_name(&krate.item.attrs, $attr) {

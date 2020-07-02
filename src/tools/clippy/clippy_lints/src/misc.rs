@@ -260,10 +260,10 @@ declare_lint_pass!(MiscLints => [
     FLOAT_CMP_CONST
 ]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
+impl<'tcx> LateLintPass<'tcx> for MiscLints {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         k: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
@@ -287,7 +287,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
         }
     }
 
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if_chain! {
             if let StmtKind::Local(ref local) = stmt.kind;
             if let PatKind::Binding(an, .., name, None) = local.pat.kind;
@@ -360,7 +360,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
         };
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
             ExprKind::Cast(ref e, ref ty) => {
                 check_cast(cx, expr.span, e, ty);
@@ -493,7 +493,7 @@ fn get_lint_and_message(
     }
 }
 
-fn check_nan(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
+fn check_nan(cx: &LateContext<'_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
     if_chain! {
         if !in_constant(cx, cmp_expr.hir_id);
         if let Some((value, _)) = constant(cx, cx.tables(), expr);
@@ -516,7 +516,7 @@ fn check_nan(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
     }
 }
 
-fn is_named_constant<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> bool {
+fn is_named_constant<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
     if let Some((_, res)) = constant(cx, cx.tables(), expr) {
         res
     } else {
@@ -524,7 +524,7 @@ fn is_named_constant<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>)
     }
 }
 
-fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> bool {
+fn is_allowed<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
     match constant(cx, cx.tables(), expr) {
         Some((Constant::F32(f), _)) => f == 0.0 || f.is_infinite(),
         Some((Constant::F64(f), _)) => f == 0.0 || f.is_infinite(),
@@ -538,7 +538,7 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> boo
 }
 
 // Return true if `expr` is the result of `signum()` invoked on a float value.
-fn is_signum(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     // The negation of a signum is still a signum
     if let ExprKind::Unary(UnOp::UnNeg, ref child_expr) = expr.kind {
         return is_signum(cx, &child_expr);
@@ -556,7 +556,7 @@ fn is_signum(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     false
 }
 
-fn is_float(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn is_float(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let value = &walk_ptrs_ty(cx.tables().expr_ty(expr)).kind;
 
     if let ty::Array(arr_ty, _) = value {
@@ -566,11 +566,11 @@ fn is_float(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     matches!(value, ty::Float(_))
 }
 
-fn is_array(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn is_array(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     matches!(&walk_ptrs_ty(cx.tables().expr_ty(expr)).kind, ty::Array(_, _))
 }
 
-fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr<'_>, other: &Expr<'_>) {
+fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>) {
     let (arg_ty, snip) = match expr.kind {
         ExprKind::MethodCall(.., ref args, _) if args.len() == 1 => {
             if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
@@ -655,7 +655,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr<'_>, other: &Expr<'_>) {
 /// Heuristic to see if an expression is used. Should be compatible with
 /// `unused_variables`'s idea
 /// of what it means for an expression to be "used".
-fn is_used(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn is_used(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
         match parent.kind {
             ExprKind::Assign(_, ref rhs, _) | ExprKind::AssignOp(_, _, ref rhs) => {
@@ -686,7 +686,7 @@ fn in_attributes_expansion(expr: &Expr<'_>) -> bool {
 }
 
 /// Tests whether `res` is a variable defined outside a macro.
-fn non_macro_local(cx: &LateContext<'_, '_>, res: def::Res) -> bool {
+fn non_macro_local(cx: &LateContext<'_>, res: def::Res) -> bool {
     if let def::Res::Local(id) = res {
         !cx.tcx.hir().span(id).from_expansion()
     } else {
@@ -694,7 +694,7 @@ fn non_macro_local(cx: &LateContext<'_, '_>, res: def::Res) -> bool {
     }
 }
 
-fn check_cast(cx: &LateContext<'_, '_>, span: Span, e: &Expr<'_>, ty: &Ty<'_>) {
+fn check_cast(cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &Ty<'_>) {
     if_chain! {
         if let TyKind::Ptr(ref mut_ty) = ty.kind;
         if let ExprKind::Lit(ref lit) = e.kind;

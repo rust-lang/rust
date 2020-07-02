@@ -43,9 +43,9 @@ impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
     #[allow(clippy::cast_possible_truncation)]
-    fn check<'a, 'tcx>(
+    fn check<'tcx>(
         &mut self,
-        cx: &'a LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
@@ -112,10 +112,10 @@ impl CognitiveComplexity {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CognitiveComplexity {
+impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
@@ -128,10 +128,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CognitiveComplexity {
         }
     }
 
-    fn enter_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
+    fn enter_lint_attrs(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
         self.limit.push_attrs(cx.sess(), attrs, "cognitive_complexity");
     }
-    fn exit_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
+    fn exit_lint_attrs(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
         self.limit.pop_attrs(cx.sess(), attrs, "cognitive_complexity");
     }
 }

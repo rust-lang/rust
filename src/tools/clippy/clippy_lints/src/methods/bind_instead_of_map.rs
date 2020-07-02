@@ -77,7 +77,7 @@ pub(crate) trait BindInsteadOfMap {
     }
 
     fn lint_closure_autofixable(
-        cx: &LateContext<'_, '_>,
+        cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
         args: &[hir::Expr<'_>],
         closure_expr: &hir::Expr<'_>,
@@ -120,7 +120,7 @@ pub(crate) trait BindInsteadOfMap {
         }
     }
 
-    fn lint_closure(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, closure_expr: &hir::Expr<'_>) {
+    fn lint_closure(cx: &LateContext<'_>, expr: &hir::Expr<'_>, closure_expr: &hir::Expr<'_>) {
         let mut suggs = Vec::new();
         let can_sugg = find_all_ret_expressions(cx, closure_expr, |ret_expr| {
             if_chain! {
@@ -156,7 +156,7 @@ pub(crate) trait BindInsteadOfMap {
     }
 
     /// Lint use of `_.and_then(|x| Some(y))` for `Option`s
-    fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+    fn lint(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
         if !match_type(cx, cx.tables().expr_ty(&args[0]), Self::TYPE_QPATH) {
             return;
         }
@@ -216,7 +216,7 @@ fn contains_try(expr: &hir::Expr<'_>) -> bool {
     visitor.found
 }
 
-fn find_all_ret_expressions<'hir, F>(_cx: &LateContext<'_, '_>, expr: &'hir hir::Expr<'hir>, callback: F) -> bool
+fn find_all_ret_expressions<'hir, F>(_cx: &LateContext<'_>, expr: &'hir hir::Expr<'hir>, callback: F) -> bool
 where
     F: FnMut(&'hir hir::Expr<'hir>) -> bool,
 {

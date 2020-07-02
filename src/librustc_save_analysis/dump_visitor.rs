@@ -72,12 +72,12 @@ macro_rules! access_from_vis {
     };
 }
 
-pub struct DumpVisitor<'l, 'tcx> {
-    pub save_ctxt: SaveContext<'l, 'tcx>,
+pub struct DumpVisitor<'tcx> {
+    pub save_ctxt: SaveContext<'tcx>,
     tcx: TyCtxt<'tcx>,
     dumper: Dumper,
 
-    span: SpanUtils<'l>,
+    span: SpanUtils<'tcx>,
     // Set of macro definition (callee) spans, and the set
     // of macro use (callsite) spans. We store these to ensure
     // we only write one macro def per unique macro definition, and
@@ -86,8 +86,8 @@ pub struct DumpVisitor<'l, 'tcx> {
     // macro_calls: FxHashSet<Span>,
 }
 
-impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
-    pub fn new(save_ctxt: SaveContext<'l, 'tcx>) -> DumpVisitor<'l, 'tcx> {
+impl<'tcx> DumpVisitor<'tcx> {
+    pub fn new(save_ctxt: SaveContext<'tcx>) -> DumpVisitor<'tcx> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
         let dumper = Dumper::new(save_ctxt.config.clone());
         DumpVisitor {
@@ -1160,7 +1160,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     }
 }
 
-impl<'l, 'tcx> Visitor<'tcx> for DumpVisitor<'l, 'tcx> {
+impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {

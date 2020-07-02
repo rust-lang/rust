@@ -9,7 +9,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 
 /// Checks for the `INEFFICIENT_TO_STRING` lint
-pub fn lint<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'tcx>) {
+pub fn lint<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'tcx>) {
     if_chain! {
         if let Some(to_string_meth_did) = cx.tables().type_dependent_def_id(expr.hir_id);
         if match_def_path(cx, to_string_meth_did, &paths::TO_STRING_METHOD);
@@ -45,7 +45,7 @@ pub fn lint<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>, arg: &hir::E
 
 /// Returns whether `ty` specializes `ToString`.
 /// Currently, these are `str`, `String`, and `Cow<'_, str>`.
-fn specializes_tostring(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
+fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     if let ty::Str = ty.kind {
         return true;
     }

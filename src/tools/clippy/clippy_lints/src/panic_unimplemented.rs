@@ -91,8 +91,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(PanicUnimplemented => [PANIC_PARAMS, UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Block(ref block, _) = expr.kind;
             if let Some(ref ex) = block.expr;
@@ -136,7 +136,7 @@ fn get_outer_span(expr: &Expr<'_>) -> Span {
     }
 }
 
-fn match_panic(params: &[Expr<'_>], expr: &Expr<'_>, cx: &LateContext<'_, '_>) {
+fn match_panic(params: &[Expr<'_>], expr: &Expr<'_>, cx: &LateContext<'_>) {
     if_chain! {
         if let ExprKind::Lit(ref lit) = params[0].kind;
         if is_direct_expn_of(expr.span, "panic").is_some();

@@ -110,8 +110,8 @@ impl BitMask {
 
 impl_lint_pass!(BitMask => [BAD_BIT_MASK, INEFFECTIVE_BIT_MASK, VERBOSE_BIT_MASK]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for BitMask {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Binary(cmp, left, right) = &e.kind {
             if cmp.node.is_comparison() {
                 if let Some(cmp_opt) = fetch_int_literal(cx, right) {
@@ -164,7 +164,7 @@ fn invert_cmp(cmp: BinOpKind) -> BinOpKind {
     }
 }
 
-fn check_compare(cx: &LateContext<'_, '_>, bit_op: &Expr<'_>, cmp_op: BinOpKind, cmp_value: u128, span: Span) {
+fn check_compare(cx: &LateContext<'_>, bit_op: &Expr<'_>, cmp_op: BinOpKind, cmp_value: u128, span: Span) {
     if let ExprKind::Binary(op, left, right) = &bit_op.kind {
         if op.node != BinOpKind::BitAnd && op.node != BinOpKind::BitOr {
             return;
@@ -177,7 +177,7 @@ fn check_compare(cx: &LateContext<'_, '_>, bit_op: &Expr<'_>, cmp_op: BinOpKind,
 
 #[allow(clippy::too_many_lines)]
 fn check_bit_mask(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     bit_op: BinOpKind,
     cmp_op: BinOpKind,
     mask_value: u128,
@@ -290,7 +290,7 @@ fn check_bit_mask(
     }
 }
 
-fn check_ineffective_lt(cx: &LateContext<'_, '_>, span: Span, m: u128, c: u128, op: &str) {
+fn check_ineffective_lt(cx: &LateContext<'_>, span: Span, m: u128, c: u128, op: &str) {
     if c.is_power_of_two() && m < c {
         span_lint(
             cx,
@@ -304,7 +304,7 @@ fn check_ineffective_lt(cx: &LateContext<'_, '_>, span: Span, m: u128, c: u128, 
     }
 }
 
-fn check_ineffective_gt(cx: &LateContext<'_, '_>, span: Span, m: u128, c: u128, op: &str) {
+fn check_ineffective_gt(cx: &LateContext<'_>, span: Span, m: u128, c: u128, op: &str) {
     if (c + 1).is_power_of_two() && m <= c {
         span_lint(
             cx,
@@ -318,7 +318,7 @@ fn check_ineffective_gt(cx: &LateContext<'_, '_>, span: Span, m: u128, c: u128, 
     }
 }
 
-fn fetch_int_literal(cx: &LateContext<'_, '_>, lit: &Expr<'_>) -> Option<u128> {
+fn fetch_int_literal(cx: &LateContext<'_>, lit: &Expr<'_>) -> Option<u128> {
     match constant(cx, cx.tables(), lit)?.0 {
         Constant::Int(n) => Some(n),
         _ => None,

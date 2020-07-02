@@ -42,7 +42,7 @@ declare_clippy_lint! {
     "outer expressions with no effect"
 }
 
-fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if expr.span.from_expansion() {
         return false;
     }
@@ -87,8 +87,8 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
 
 declare_lint_pass!(NoEffect => [NO_EFFECT, UNNECESSARY_OPERATION]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoEffect {
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for NoEffect {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Semi(ref expr) = stmt.kind {
             if has_no_effect(cx, expr) {
                 span_lint(cx, NO_EFFECT, stmt.span, "statement with no effect");
@@ -119,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoEffect {
     }
 }
 
-fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<Vec<&'a Expr<'a>>> {
+fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec<&'a Expr<'a>>> {
     if expr.span.from_expansion() {
         return None;
     }

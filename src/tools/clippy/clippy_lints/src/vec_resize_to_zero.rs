@@ -28,8 +28,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(VecResizeToZero => [VEC_RESIZE_TO_ZERO]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VecResizeToZero {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for VecResizeToZero {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let hir::ExprKind::MethodCall(path_segment, _, ref args, _) = expr.kind;
             if let Some(method_def_id) = cx.tables().type_dependent_def_id(expr.hir_id);

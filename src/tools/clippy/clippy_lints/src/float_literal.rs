@@ -58,8 +58,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FloatLiteral => [EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatLiteral {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             let ty = cx.tables().expr_ty(expr);
             if let ty::Float(fty) = ty.kind;

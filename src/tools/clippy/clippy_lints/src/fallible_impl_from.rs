@@ -52,8 +52,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FallibleImplFrom => [FALLIBLE_IMPL_FROM]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         // check for `impl From<???> for ..`
         let impl_def_id = cx.tcx.hir().local_def_id(item.hir_id);
         if_chain! {
@@ -67,12 +67,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
     }
 }
 
-fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef<'_>]) {
+fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef<'_>]) {
     use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
     use rustc_hir::{Expr, ExprKind, ImplItemKind, QPath};
 
     struct FindPanicUnwrap<'a, 'tcx> {
-        lcx: &'a LateContext<'a, 'tcx>,
+        lcx: &'a LateContext<'tcx>,
         tables: &'tcx ty::TypeckTables<'tcx>,
         result: Vec<Span>,
     }

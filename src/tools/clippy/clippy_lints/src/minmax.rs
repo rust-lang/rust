@@ -27,8 +27,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MinMaxPass => [MIN_MAX]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MinMaxPass {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Some((outer_max, outer_c, oe)) = min_max(cx, expr) {
             if let Some((inner_max, inner_c, ie)) = min_max(cx, oe) {
                 if outer_max == inner_max {
@@ -59,7 +59,7 @@ enum MinMax {
     Max,
 }
 
-fn min_max<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
+fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
     if let ExprKind::Call(ref path, ref args) = expr.kind {
         if let ExprKind::Path(ref qpath) = path.kind {
             cx.tables()
@@ -82,11 +82,7 @@ fn min_max<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<(MinMax, 
     }
 }
 
-fn fetch_const<'a>(
-    cx: &LateContext<'_, '_>,
-    args: &'a [Expr<'a>],
-    m: MinMax,
-) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
+fn fetch_const<'a>(cx: &LateContext<'_>, args: &'a [Expr<'a>], m: MinMax) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
     if args.len() != 2 {
         return None;
     }
