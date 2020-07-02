@@ -446,10 +446,10 @@ pub struct Rustc {
 impl Step for Rustc {
     type Output = ();
     const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
+    const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("rustc-main")
+        run.path("src/rustc")
     }
 
     fn make_run(run: RunConfig<'_>) {
