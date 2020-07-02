@@ -2705,7 +2705,7 @@ impl<T> Iterator for IntoIter<T> {
                     // purposefully don't use 'ptr.offset' because for
                     // vectors with 0-size elements this would return the
                     // same pointer.
-                    self.ptr = arith_offset(self.ptr as *const i8, 1) as *mut T;
+                    self.ptr = arith_offset(self.ptr as *const T, 1) as *mut T;
 
                     // Make up a value of this ZST.
                     Some(mem::zeroed())
