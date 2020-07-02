@@ -21,7 +21,7 @@ indexmap = "1.0.2"
 cfg-if = "0.1.10"
 
 [dependencies.object]
-version = "0.19.0"
+version = "0.20.0"
 default-features = false
 features = ["read", "std", "write"] # We don't need WASM support
 
