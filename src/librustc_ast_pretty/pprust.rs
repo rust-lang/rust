@@ -9,7 +9,7 @@ use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::util::{classify, comments};
 use rustc_span::edition::Edition;
@@ -305,7 +305,7 @@ pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
         token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(e, is_raw).to_string(),
         token::NtLifetime(e) => e.to_string(),
         token::NtLiteral(ref e) => expr_to_string(e),
-        token::NtTT(ref tree) => tt_to_string(tree.clone()),
+        token::NtTT(ref tree) => tt_to_string(tree),
         token::NtVis(ref e) => vis_to_string(e),
     }
 }
@@ -326,11 +326,11 @@ pub fn expr_to_string(e: &ast::Expr) -> String {
     to_string(|s| s.print_expr(e))
 }
 
-pub fn tt_to_string(tt: tokenstream::TokenTree) -> String {
+pub fn tt_to_string(tt: &TokenTree) -> String {
     to_string(|s| s.print_tt(tt, false))
 }
 
-pub fn tts_to_string(tokens: TokenStream) -> String {
+pub fn tts_to_string(tokens: &TokenStream) -> String {
     to_string(|s| s.print_tts(tokens, false))
 }
 
@@ -597,7 +597,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 false,
                 None,
                 delim.to_token(),
-                tokens.clone(),
+                tokens,
                 true,
                 span,
             ),
@@ -606,7 +606,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 if let MacArgs::Eq(_, tokens) = &item.args {
                     self.space();
                     self.word_space("=");
-                    self.print_tts(tokens.clone(), true);
+                    self.print_tts(tokens, true);
                 }
             }
         }
@@ -647,9 +647,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     /// appropriate macro, transcribe back into the grammar we just parsed from,
     /// and then pretty-print the resulting AST nodes (so, e.g., we print
     /// expression arguments as expressions). It can be done! I think.
-    fn print_tt(&mut self, tt: tokenstream::TokenTree, convert_dollar_crate: bool) {
+    fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) {
         match tt {
-            TokenTree::Token(ref token) => {
+            TokenTree::Token(token) => {
                 self.word(token_to_string_ext(&token, convert_dollar_crate));
                 if let token::DocComment(..) = token.kind {
                     self.hardbreak()
@@ -660,7 +660,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     None,
                     false,
                     None,
-                    delim,
+                    *delim,
                     tts,
                     convert_dollar_crate,
                     dspan.entire(),
@@ -669,14 +669,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn print_tts(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
-        let mut iter = tts.into_trees().peekable();
+    fn print_tts(&mut self, tts: &TokenStream, convert_dollar_crate: bool) {
+        let mut iter = tts.trees().peekable();
         while let Some(tt) = iter.next() {
-            let show_space =
-                if let Some(next) = iter.peek() { tt_prepend_space(next, &tt) } else { false };
-            self.print_tt(tt, convert_dollar_crate);
-            if show_space {
-                self.space();
+            self.print_tt(&tt, convert_dollar_crate);
+            if let Some(next) = iter.peek() {
+                if tt_prepend_space(next, &tt) {
+                    self.space();
+                }
             }
         }
     }
@@ -687,7 +687,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         has_bang: bool,
         ident: Option<Ident>,
         delim: DelimToken,
-        tts: TokenStream,
+        tts: &TokenStream,
         convert_dollar_crate: bool,
         span: Span,
     ) {
@@ -1265,7 +1265,7 @@ impl<'a> State<'a> {
                     has_bang,
                     Some(item.ident),
                     macro_def.body.delim(),
-                    macro_def.body.inner_tokens(),
+                    &macro_def.body.inner_tokens(),
                     true,
                     item.span,
                 );
@@ -1589,7 +1589,7 @@ impl<'a> State<'a> {
             true,
             None,
             m.args.delim(),
-            m.args.inner_tokens(),
+            &m.args.inner_tokens(),
             true,
             m.span(),
         );

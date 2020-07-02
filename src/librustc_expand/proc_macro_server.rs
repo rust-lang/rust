@@ -408,7 +408,7 @@ impl server::TokenStream for Rustc<'_> {
         )
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
-        pprust::tts_to_string(stream.clone())
+        pprust::tts_to_string(stream)
     }
     fn from_token_tree(
         &mut self,
