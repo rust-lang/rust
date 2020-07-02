@@ -734,7 +734,7 @@ impl Config {
 
         let with_defaults = |debuginfo_level_specific: Option<u32>| {
             debuginfo_level_specific.or(debuginfo_level).unwrap_or(if debug == Some(true) {
-                2
+                1
             } else {
                 0
             })
