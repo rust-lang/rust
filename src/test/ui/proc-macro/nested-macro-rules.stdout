@@ -1,0 +1,26 @@
+PRINT-BANG INPUT (DISPLAY): FirstStruct
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "FirstStruct",
+                span: $DIR/auxiliary/nested-macro-rules.rs:15:14: 15:25 (#3),
+            },
+        ],
+        span: $DIR/auxiliary/nested-macro-rules.rs:9:27: 9:32 (#3),
+    },
+]
+PRINT-BANG INPUT (DISPLAY): SecondStruct
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "SecondStruct",
+                span: $DIR/nested-macro-rules.rs:18:38: 18:50 (#9),
+            },
+        ],
+        span: $DIR/auxiliary/nested-macro-rules.rs:9:27: 9:32 (#8),
+    },
+]
