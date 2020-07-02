@@ -239,6 +239,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         syms
     }
+
+    crate_extern_paths => { cdata.source().paths().cloned().collect() }
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

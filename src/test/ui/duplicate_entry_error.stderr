@@ -1,5 +1,5 @@
 error[E0152]: found duplicate lang item `panic_impl`
-  --> $DIR/duplicate_entry_error.rs:10:1
+  --> $DIR/duplicate_entry_error.rs:11:1
    |
 LL | / fn panic_impl(info: &PanicInfo) -> ! {
 LL | |
@@ -8,6 +8,8 @@ LL | | }
    | |_^
    |
    = note: the lang item is first defined in crate `std` (which `duplicate_entry_error` depends on)
+   = note: first definition in `std` loaded from SYSROOT/libstd-*.rlib
+   = note: second definition in the local crate (`duplicate_entry_error`)
 
 error: aborting due to previous error
 
