@@ -28,14 +28,14 @@ mod mod3 {
 
     #[rustc_clean(label="hir_owner", cfg="rpass2")]
     #[rustc_clean(label="hir_owner_nodes", cfg="rpass2")]
-    #[rustc_dirty(label="typeck_tables_of", cfg="rpass2")]
+    #[rustc_dirty(label="typeck", cfg="rpass2")]
     fn bar() {
         ().method();
     }
 
     #[rustc_clean(label="hir_owner", cfg="rpass2")]
     #[rustc_clean(label="hir_owner_nodes", cfg="rpass2")]
-    #[rustc_clean(label="typeck_tables_of", cfg="rpass2")]
+    #[rustc_clean(label="typeck", cfg="rpass2")]
     fn baz() {
         22; // no method call, traits in scope don't matter
     }

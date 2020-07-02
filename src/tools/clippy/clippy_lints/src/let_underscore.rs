@@ -60,11 +60,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK]);
 
-const SYNC_GUARD_PATHS: [&[&str]; 3] = [
-    &paths::MUTEX_GUARD,
-    &paths::RWLOCK_READ_GUARD,
-    &paths::RWLOCK_WRITE_GUARD,
-];
+const SYNC_GUARD_PATHS: [&[&str]; 3] =
+    [&paths::MUTEX_GUARD, &paths::RWLOCK_READ_GUARD, &paths::RWLOCK_WRITE_GUARD];
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
     fn check_local(&mut self, cx: &LateContext<'_, '_>, local: &Local<'_>) {
@@ -76,7 +73,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
             if let PatKind::Wild = local.pat.kind;
             if let Some(ref init) = local.init;
             then {
-                let init_ty = cx.tables().expr_ty(init);
+                let init_ty = cx.typeck_results().expr_ty(init);
                 let contains_sync_guard = init_ty.walk().any(|inner| match inner.unpack() {
                     GenericArgKind::Type(inner_ty) => {
                         SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path))
@@ -94,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
                         "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`"
                     )
-                } else if is_must_use_ty(cx, cx.tables().expr_ty(init)) {
+                } else if is_must_use_ty(cx, cx.typeck_results().expr_ty(init)) {
                     span_lint_and_help(
                         cx,
                         LET_UNDERSCORE_MUST_USE,

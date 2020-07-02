@@ -63,7 +63,7 @@ fn method_might_be_inlined(
 struct ReachableContext<'a, 'tcx> {
     // The type context.
     tcx: TyCtxt<'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
+    typeck_results: &'a ty::TypeckResults<'tcx>,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: HirIdSet,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
@@ -81,18 +81,20 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let old_tables = self.tables;
-        self.tables = self.tcx.body_tables(body);
+        let old_typeck_results = self.typeck_results;
+        self.typeck_results = self.tcx.typeck_body(body);
         let body = self.tcx.hir().body(body);
         self.visit_body(body);
-        self.tables = old_tables;
+        self.typeck_results = old_typeck_results;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let res = match expr.kind {
-            hir::ExprKind::Path(ref qpath) => Some(self.tables.qpath_res(qpath, expr.hir_id)),
+            hir::ExprKind::Path(ref qpath) => {
+                Some(self.typeck_results.qpath_res(qpath, expr.hir_id))
+            }
             hir::ExprKind::MethodCall(..) => self
-                .tables
+                .typeck_results
                 .type_dependent_def(expr.hir_id)
                 .map(|(kind, def_id)| Res::Def(kind, def_id)),
             _ => None,
@@ -381,7 +383,7 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet
         });
     let mut reachable_context = ReachableContext {
         tcx,
-        tables: &ty::TypeckTables::empty(None),
+        typeck_results: &ty::TypeckResults::empty(None),
         reachable_symbols: Default::default(),
         worklist: Vec::new(),
         any_library,

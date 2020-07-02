@@ -7,8 +7,8 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    higher, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet_with_applicability,
-    span_lint_and_sugg, SpanlessEq,
+    higher, is_type_diagnostic_item, match_def_path, match_qpath, paths,
+    snippet_with_applicability, span_lint_and_sugg, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -135,13 +135,13 @@ impl QuestionMark {
     }
 
     fn moves_by_default(cx: &LateContext<'_, '_>, expression: &Expr<'_>) -> bool {
-        let expr_ty = cx.tables().expr_ty(expression);
+        let expr_ty = cx.typeck_results().expr_ty(expression);
 
         !expr_ty.is_copy_modulo_regions(cx.tcx.at(expression.span), cx.param_env)
     }
 
     fn is_option(cx: &LateContext<'_, '_>, expression: &Expr<'_>) -> bool {
-        let expr_ty = cx.tables().expr_ty(expression);
+        let expr_ty = cx.typeck_results().expr_ty(expression);
 
         is_type_diagnostic_item(cx, expr_ty, sym!(option_type))
     }
@@ -154,17 +154,17 @@ impl QuestionMark {
                 }
 
                 false
-            },
+            }
             ExprKind::Ret(Some(ref expr)) => Self::expression_returns_none(cx, expr),
             ExprKind::Path(ref qp) => {
                 if let Res::Def(DefKind::Ctor(def::CtorOf::Variant, def::CtorKind::Const), def_id) =
-                    cx.tables().qpath_res(qp, expression.hir_id)
+                    cx.typeck_results().qpath_res(qp, expression.hir_id)
                 {
                     return match_def_path(cx, def_id, &paths::OPTION_NONE);
                 }
 
                 false
-            },
+            }
             _ => false,
         }
     }

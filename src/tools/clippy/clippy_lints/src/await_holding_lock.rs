@@ -55,17 +55,19 @@ impl LateLintPass<'_, '_> for AwaitHoldingLock {
     fn check_body(&mut self, cx: &LateContext<'_, '_>, body: &'_ Body<'_>) {
         use AsyncGeneratorKind::{Block, Closure, Fn};
         if let Some(GeneratorKind::Async(Block | Closure | Fn)) = body.generator_kind {
-            let body_id = BodyId {
-                hir_id: body.value.hir_id,
-            };
+            let body_id = BodyId { hir_id: body.value.hir_id };
             let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-            let tables = cx.tcx.typeck_tables_of(def_id);
+            let tables = cx.tcx.typeck(def_id);
             check_interior_types(cx, &tables.generator_interior_types, body.value.span);
         }
     }
 }
 
-fn check_interior_types(cx: &LateContext<'_, '_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
+fn check_interior_types(
+    cx: &LateContext<'_, '_>,
+    ty_causes: &[GeneratorInteriorTypeCause<'_>],
+    span: Span,
+) {
     for ty_cause in ty_causes {
         if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind {
             if is_mutex_guard(cx, adt.did) {

@@ -112,7 +112,7 @@ declare_lint_pass!(FloatingPointArithmetic => [
 // Returns the specialized log method for a given base if base is constant
 // and is one of 2, 10 and e
 fn get_specialized_log_method(cx: &LateContext<'_, '_>, base: &Expr<'_>) -> Option<&'static str> {
-    if let Some((value, _)) = constant(cx, cx.tables(), base) {
+    if let Some((value, _)) = constant(cx, cx.typeck_results(), base) {
         if F32(2.0) == value || F64(2.0) == value {
             return Some("log2");
         } else if F32(10.0) == value || F64(10.0) == value {
@@ -136,7 +136,7 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_, '_>, mut expr: &'a Expr<'a>) -
     if_chain! {
         // if the expression is a float literal and it is unsuffixed then
         // add a suffix so the suggestion is valid and unambiguous
-        if let ty::Float(float_ty) = cx.tables().expr_ty(expr).kind;
+        if let ty::Float(float_ty) = cx.typeck_results().expr_ty(expr).kind;
         if let ExprKind::Lit(lit) = &expr.kind;
         if let ast::LitKind::Float(sym, ast::LitFloatType::Unsuffixed) = lit.node;
         then {
@@ -180,15 +180,11 @@ fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) 
 // TODO: Lint expressions of the form `(x + y).ln()` where y > 1 and
 // suggest usage of `(x + (y - 1)).ln_1p()` instead
 fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
-    if let ExprKind::Binary(
-        Spanned {
-            node: BinOpKind::Add, ..
-        },
-        lhs,
-        rhs,
-    ) = &args[0].kind
-    {
-        let recv = match (constant(cx, cx.tables(), lhs), constant(cx, cx.tables(), rhs)) {
+    if let ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, lhs, rhs) = &args[0].kind {
+        let recv = match (
+            constant(cx, cx.typeck_results(), lhs),
+            constant(cx, cx.typeck_results(), rhs),
+        ) {
             (Some((value, _)), _) if F32(1.0) == value || F64(1.0) == value => rhs,
             (_, Some((value, _))) if F32(1.0) == value || F64(1.0) == value => lhs,
             _ => return,
@@ -219,21 +215,21 @@ fn get_integer_from_float_constant(value: &Constant) -> Option<i32> {
             } else {
                 None
             }
-        },
+        }
         F64(num) if num.fract() == 0.0 => {
             if (-2_147_483_648.0..2_147_483_648.0).contains(num) {
                 Some(num.round() as i32)
             } else {
                 None
             }
-        },
+        }
         _ => None,
     }
 }
 
 fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     // Check receiver
-    if let Some((value, _)) = constant(cx, cx.tables(), &args[0]) {
+    if let Some((value, _)) = constant(cx, cx.typeck_results(), &args[0]) {
         let method = if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
             "exp"
         } else if F32(2.0) == value || F64(2.0) == value {
@@ -254,7 +250,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     }
 
     // Check argument
-    if let Some((value, _)) = constant(cx, cx.tables(), &args[1]) {
+    if let Some((value, _)) = constant(cx, cx.typeck_results(), &args[1]) {
         let (lint, help, suggestion) = if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
             (
                 SUBOPTIMAL_FLOPS,
@@ -298,11 +294,11 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, ref lhs, ref rhs) = expr.kind;
-        if cx.tables().expr_ty(lhs).is_floating_point();
-        if let Some((value, _)) = constant(cx, cx.tables(), rhs);
+        if cx.typeck_results().expr_ty(lhs).is_floating_point();
+        if let Some((value, _)) = constant(cx, cx.typeck_results(), rhs);
         if F32(1.0) == value || F64(1.0) == value;
         if let ExprKind::MethodCall(ref path, _, ref method_args, _) = lhs.kind;
-        if cx.tables().expr_ty(&method_args[0]).is_floating_point();
+        if cx.typeck_results().expr_ty(&method_args[0]).is_floating_point();
         if path.ident.name.as_str() == "exp";
         then {
             span_lint_and_sugg(
@@ -321,11 +317,14 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
-fn is_float_mul_expr<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<(&'a Expr<'a>, &'a Expr<'a>)> {
+fn is_float_mul_expr<'a>(
+    cx: &LateContext<'_, '_>,
+    expr: &'a Expr<'a>,
+) -> Option<(&'a Expr<'a>, &'a Expr<'a>)> {
     if_chain! {
         if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref lhs, ref rhs) = &expr.kind;
-        if cx.tables().expr_ty(lhs).is_floating_point();
-        if cx.tables().expr_ty(rhs).is_floating_point();
+        if cx.typeck_results().expr_ty(lhs).is_floating_point();
+        if cx.typeck_results().expr_ty(rhs).is_floating_point();
         then {
             return Some((lhs, rhs));
         }
@@ -336,14 +335,7 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option
 
 // TODO: Fix rust-lang/rust-clippy#4735
 fn check_mul_add(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
-    if let ExprKind::Binary(
-        Spanned {
-            node: BinOpKind::Add, ..
-        },
-        lhs,
-        rhs,
-    ) = &expr.kind
-    {
+    if let ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, lhs, rhs) = &expr.kind {
         let (recv, arg1, arg2) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs) {
             (inner_lhs, inner_rhs, rhs)
         } else if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs) {
@@ -404,7 +396,7 @@ fn are_exprs_equal(cx: &LateContext<'_, '_>, expr1: &Expr<'_>, expr2: &Expr<'_>)
 
 /// Returns true iff expr is some zero literal
 fn is_zero(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
-    match constant_simple(cx, cx.tables(), expr) {
+    match constant_simple(cx, cx.typeck_results(), expr) {
         Some(Constant::Int(i)) => i == 0,
         Some(Constant::F32(f)) => f == 0.0,
         Some(Constant::F64(f)) => f == 0.0,
@@ -418,7 +410,11 @@ fn is_zero(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
 /// one of the two expressions
 /// If the two expressions are not negations of each other, then it
 /// returns None.
-fn are_negated<'a>(cx: &LateContext<'_, '_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
+fn are_negated<'a>(
+    cx: &LateContext<'_, '_>,
+    expr1: &'a Expr<'a>,
+    expr2: &'a Expr<'a>,
+) -> Option<(bool, &'a Expr<'a>)> {
     if let ExprKind::Unary(UnOp::UnNeg, expr1_negated) = &expr1.kind {
         if are_exprs_equal(cx, expr1_negated, expr2) {
             return Some((false, expr2));
@@ -482,14 +478,14 @@ fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, args, _) = &expr.kind {
-            let recv_ty = cx.tables().expr_ty(&args[0]);
+            let recv_ty = cx.typeck_results().expr_ty(&args[0]);
 
             if recv_ty.is_floating_point() {
                 match &*path.ident.name.as_str() {
                     "ln" => check_ln1p(cx, expr, args),
                     "log" => check_log_base(cx, expr, args),
                     "powf" => check_powf(cx, expr, args),
-                    _ => {},
+                    _ => {}
                 }
             }
         } else {

@@ -240,7 +240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // some cases applied on the RHS, on top of which we need
                         // to autoref, which is not allowed by apply_adjustments.
                         // self.apply_adjustments(rhs_expr, vec![autoref]);
-                        self.tables
+                        self.typeck_results
                             .borrow_mut()
                             .adjustments_mut()
                             .entry(rhs_expr.hir_id)
@@ -496,14 +496,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(span, ty.to_string());
         if let FnDef(def_id, _) = ty.kind {
             let source_map = self.tcx.sess.source_map();
-            if !self.tcx.has_typeck_tables(def_id) {
+            if !self.tcx.has_typeck_results(def_id) {
                 return false;
             }
             // We're emitting a suggestion, so we can just ignore regions
             let fn_sig = self.tcx.fn_sig(def_id).skip_binder();
 
             let other_ty = if let FnDef(def_id, _) = other_ty.kind {
-                if !self.tcx.has_typeck_tables(def_id) {
+                if !self.tcx.has_typeck_results(def_id) {
                     return false;
                 }
                 // We're emitting a suggestion, so we can just ignore regions

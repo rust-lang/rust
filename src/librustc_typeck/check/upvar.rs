@@ -135,13 +135,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
 
-                self.tables.borrow_mut().upvar_capture_map.insert(upvar_id, capture_kind);
+                self.typeck_results.borrow_mut().upvar_capture_map.insert(upvar_id, capture_kind);
             }
             // Add the vector of upvars to the map keyed with the closure id.
             // This gives us an easier access to them without having to call
             // tcx.upvars again..
             if !closure_captures.is_empty() {
-                self.tables.borrow_mut().closure_captures.insert(closure_def_id, closure_captures);
+                self.typeck_results
+                    .borrow_mut()
+                    .closure_captures
+                    .insert(closure_def_id, closure_captures);
             }
         }
 
@@ -159,7 +162,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &self.infcx,
             body_owner_def_id,
             self.param_env,
-            &self.tables.borrow(),
+            &self.typeck_results.borrow(),
         )
         .consume_body(body);
 
@@ -172,11 +175,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If we have an origin, store it.
             if let Some(origin) = delegate.current_origin {
-                self.tables.borrow_mut().closure_kind_origins_mut().insert(closure_hir_id, origin);
+                self.typeck_results
+                    .borrow_mut()
+                    .closure_kind_origins_mut()
+                    .insert(closure_hir_id, origin);
             }
         }
 
-        self.tables.borrow_mut().upvar_capture_map.extend(delegate.adjust_upvar_captures);
+        self.typeck_results.borrow_mut().upvar_capture_map.extend(delegate.adjust_upvar_captures);
 
         // Now that we've analyzed the closure, we know how each
         // variable is borrowed, and we know what traits the closure
@@ -227,7 +233,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         var_path: ty::UpvarPath { hir_id: var_hir_id },
                         closure_expr_id: closure_def_id,
                     };
-                    let capture = self.tables.borrow().upvar_capture(upvar_id);
+                    let capture = self.typeck_results.borrow().upvar_capture(upvar_id);
 
                     debug!("var_id={:?} upvar_ty={:?} capture={:?}", var_hir_id, upvar_ty, capture);
 
@@ -392,7 +398,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             .adjust_upvar_captures
             .get(&upvar_id)
             .copied()
-            .unwrap_or_else(|| self.fcx.tables.borrow().upvar_capture(upvar_id));
+            .unwrap_or_else(|| self.fcx.typeck_results.borrow().upvar_capture(upvar_id));
         debug!(
             "adjust_upvar_borrow_kind(upvar_id={:?}, upvar_capture={:?}, kind={:?})",
             upvar_id, upvar_capture, kind

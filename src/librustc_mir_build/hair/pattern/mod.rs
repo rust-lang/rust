@@ -349,7 +349,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 crate struct PatCtxt<'a, 'tcx> {
     crate tcx: TyCtxt<'tcx>,
     crate param_env: ty::ParamEnv<'tcx>,
-    crate tables: &'a ty::TypeckTables<'tcx>,
+    crate typeck_results: &'a ty::TypeckResults<'tcx>,
     crate errors: Vec<PatternError>,
     include_lint_checks: bool,
 }
@@ -358,10 +358,10 @@ impl<'a, 'tcx> Pat<'tcx> {
     crate fn from_hir(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        tables: &'a ty::TypeckTables<'tcx>,
+        typeck_results: &'a ty::TypeckResults<'tcx>,
         pat: &'tcx hir::Pat<'tcx>,
     ) -> Self {
-        let mut pcx = PatCtxt::new(tcx, param_env, tables);
+        let mut pcx = PatCtxt::new(tcx, param_env, typeck_results);
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
             let msg = format!("encountered errors lowering pattern: {:?}", pcx.errors);
@@ -376,9 +376,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        tables: &'a ty::TypeckTables<'tcx>,
+        typeck_results: &'a ty::TypeckResults<'tcx>,
     ) -> Self {
-        PatCtxt { tcx, param_env, tables, errors: vec![], include_lint_checks: false }
+        PatCtxt { tcx, param_env, typeck_results, errors: vec![], include_lint_checks: false }
     }
 
     crate fn include_lint_checks(&mut self) -> &mut Self {
@@ -407,7 +407,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // adjustments in *reverse order* (last-in-first-out, so that the last `Deref` inserted
         // gets the least-dereferenced type).
         let unadjusted_pat = self.lower_pattern_unadjusted(pat);
-        self.tables.pat_adjustments().get(pat.hir_id).unwrap_or(&vec![]).iter().rev().fold(
+        self.typeck_results.pat_adjustments().get(pat.hir_id).unwrap_or(&vec![]).iter().rev().fold(
             unadjusted_pat,
             |pat, ref_ty| {
                 debug!("{:?}: wrapping pattern with type {:?}", pat, ref_ty);
@@ -507,7 +507,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     }
 
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
-        let mut ty = self.tables.node_type(pat.hir_id);
+        let mut ty = self.typeck_results.node_type(pat.hir_id);
 
         if let ty::Error(_) = ty.kind {
             // Avoid ICEs (e.g., #50577 and #50585).
@@ -573,8 +573,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Binding(_, id, ident, ref sub) => {
-                let bm =
-                    *self.tables.pat_binding_modes().get(pat.hir_id).expect("missing binding mode");
+                let bm = *self
+                    .typeck_results
+                    .pat_binding_modes()
+                    .get(pat.hir_id)
+                    .expect("missing binding mode");
                 let (mutability, mode) = match bm {
                     ty::BindByValue(mutbl) => (mutbl, BindingMode::ByValue),
                     ty::BindByReference(hir::Mutability::Mut) => (
@@ -609,7 +612,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::TupleStruct(ref qpath, ref pats, ddpos) => {
-                let res = self.tables.qpath_res(qpath, pat.hir_id);
+                let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let adt_def = match ty.kind {
                     ty::Adt(adt_def, _) => adt_def,
                     _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty),
@@ -620,11 +623,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Struct(ref qpath, ref fields, _) => {
-                let res = self.tables.qpath_res(qpath, pat.hir_id);
+                let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let subpatterns = fields
                     .iter()
                     .map(|field| FieldPat {
-                        field: Field::new(self.tcx.field_index(field.hir_id, self.tables)),
+                        field: Field::new(self.tcx.field_index(field.hir_id, self.typeck_results)),
                         pattern: self.lower_pattern(&field.pat),
                     })
                     .collect();
@@ -764,8 +767,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// it to `const_to_pat`. Any other path (like enum variants without fields)
     /// is converted to the corresponding pattern via `lower_variant_or_leaf`.
     fn lower_path(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) -> Pat<'tcx> {
-        let ty = self.tables.node_type(id);
-        let res = self.tables.qpath_res(qpath, id);
+        let ty = self.typeck_results.node_type(id);
+        let res = self.typeck_results.qpath_res(qpath, id);
 
         let pat_from_kind = |kind| Pat { span, ty, kind: Box::new(kind) };
 
@@ -779,7 +782,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // Use `Reveal::All` here because patterns are always monomorphic even if their function
         // isn't.
         let param_env_reveal_all = self.param_env.with_reveal_all();
-        let substs = self.tables.node_substs(id);
+        let substs = self.typeck_results.node_substs(id);
         let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, substs) {
             Ok(Some(i)) => i,
             Ok(None) => {
@@ -806,7 +809,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         match self.tcx.const_eval_instance(param_env_reveal_all, instance, Some(span)) {
             Ok(value) => {
-                let const_ = ty::Const::from_value(self.tcx, value, self.tables.node_type(id));
+                let const_ =
+                    ty::Const::from_value(self.tcx, value, self.typeck_results.node_type(id));
 
                 let pattern = self.const_to_pat(&const_, id, span, mir_structural_match_violation);
 
@@ -814,7 +818,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     return pattern;
                 }
 
-                let user_provided_types = self.tables().user_provided_types();
+                let user_provided_types = self.typeck_results().user_provided_types();
                 if let Some(u_ty) = user_provided_types.get(id) {
                     let user_ty = PatTyProj::from_user_type(*u_ty);
                     Pat {
@@ -862,7 +866,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 _ => span_bug!(expr.span, "not a literal: {:?}", expr),
             };
 
-            let lit_input = LitToConstInput { lit: &lit.node, ty: self.tables.expr_ty(expr), neg };
+            let lit_input =
+                LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
             match self.tcx.at(expr.span).lit_to_const(lit_input) {
                 Ok(val) => *self.const_to_pat(val, expr.hir_id, lit.span, false).kind,
                 Err(LitToConstError::UnparseableFloat) => {
@@ -881,8 +886,8 @@ impl<'tcx> UserAnnotatedTyHelpers<'tcx> for PatCtxt<'_, 'tcx> {
         self.tcx
     }
 
-    fn tables(&self) -> &ty::TypeckTables<'tcx> {
-        self.tables
+    fn typeck_results(&self) -> &ty::TypeckResults<'tcx> {
+        self.typeck_results
     }
 }
 

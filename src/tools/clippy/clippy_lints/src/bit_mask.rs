@@ -102,9 +102,7 @@ pub struct BitMask {
 impl BitMask {
     #[must_use]
     pub fn new(verbose_bit_mask_threshold: u64) -> Self {
-        Self {
-            verbose_bit_mask_threshold,
-        }
+        Self { verbose_bit_mask_threshold }
     }
 }
 
@@ -164,7 +162,13 @@ fn invert_cmp(cmp: BinOpKind) -> BinOpKind {
     }
 }
 
-fn check_compare(cx: &LateContext<'_, '_>, bit_op: &Expr<'_>, cmp_op: BinOpKind, cmp_value: u128, span: Span) {
+fn check_compare(
+    cx: &LateContext<'_, '_>,
+    bit_op: &Expr<'_>,
+    cmp_op: BinOpKind,
+    cmp_value: u128,
+    span: Span,
+) {
     if let ExprKind::Binary(op, left, right) = &bit_op.kind {
         if op.node != BinOpKind::BitAnd && op.node != BinOpKind::BitOr {
             return;
@@ -202,7 +206,7 @@ fn check_bit_mask(
                 } else if mask_value == 0 {
                     span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
                 }
-            },
+            }
             BinOpKind::BitOr => {
                 if mask_value | cmp_value != cmp_value {
                     span_lint(
@@ -215,7 +219,7 @@ fn check_bit_mask(
                         ),
                     );
                 }
-            },
+            }
             _ => (),
         },
         BinOpKind::Lt | BinOpKind::Ge => match bit_op {
@@ -233,7 +237,7 @@ fn check_bit_mask(
                 } else if mask_value == 0 {
                     span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
                 }
-            },
+            }
             BinOpKind::BitOr => {
                 if mask_value >= cmp_value {
                     span_lint(
@@ -248,7 +252,7 @@ fn check_bit_mask(
                 } else {
                     check_ineffective_lt(cx, span, mask_value, cmp_value, "|");
                 }
-            },
+            }
             BinOpKind::BitXor => check_ineffective_lt(cx, span, mask_value, cmp_value, "^"),
             _ => (),
         },
@@ -267,7 +271,7 @@ fn check_bit_mask(
                 } else if mask_value == 0 {
                     span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
                 }
-            },
+            }
             BinOpKind::BitOr => {
                 if mask_value > cmp_value {
                     span_lint(
@@ -282,7 +286,7 @@ fn check_bit_mask(
                 } else {
                     check_ineffective_gt(cx, span, mask_value, cmp_value, "|");
                 }
-            },
+            }
             BinOpKind::BitXor => check_ineffective_gt(cx, span, mask_value, cmp_value, "^"),
             _ => (),
         },
@@ -319,7 +323,7 @@ fn check_ineffective_gt(cx: &LateContext<'_, '_>, span: Span, m: u128, c: u128, 
 }
 
 fn fetch_int_literal(cx: &LateContext<'_, '_>, lit: &Expr<'_>) -> Option<u128> {
-    match constant(cx, cx.tables(), lit)?.0 {
+    match constant(cx, cx.typeck_results(), lit)?.0 {
         Constant::Int(n) => Some(n),
         _ => None,
     }
