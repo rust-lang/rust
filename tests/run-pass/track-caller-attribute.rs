@@ -1,4 +1,4 @@
-#![feature(track_caller, core_intrinsics)]
+#![feature(core_intrinsics)]
 
 use std::panic::Location;
 
