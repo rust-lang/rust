@@ -327,7 +327,7 @@ pub fn search_dependencies<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_db::TestDB;
+    use crate::{test_db::TestDB, AssocContainerId, Lookup};
     use insta::assert_snapshot;
     use itertools::Itertools;
     use ra_db::fixture::WithFixture;
@@ -370,6 +370,7 @@ mod tests {
                     ItemInNs::Values(_) => "v",
                     ItemInNs::Macros(_) => "m",
                 };
+                let item = assoc_to_trait(&db, item);
                 item.krate(db.upcast()).map(|krate| {
                     let map = db.import_map(krate);
                     let path = map.path_of(item).unwrap();
@@ -382,6 +383,29 @@ mod tests {
                 })
             })
             .join("\n")
+    }
+
+    fn assoc_to_trait(db: &dyn DefDatabase, item: ItemInNs) -> ItemInNs {
+        let assoc: AssocItemId = match item {
+            ItemInNs::Types(it) | ItemInNs::Values(it) => match it {
+                ModuleDefId::TypeAliasId(it) => it.into(),
+                ModuleDefId::FunctionId(it) => it.into(),
+                ModuleDefId::ConstId(it) => it.into(),
+                _ => return item,
+            },
+            _ => return item,
+        };
+
+        let container = match assoc {
+            AssocItemId::FunctionId(it) => it.lookup(db).container,
+            AssocItemId::ConstId(it) => it.lookup(db).container,
+            AssocItemId::TypeAliasId(it) => it.lookup(db).container,
+        };
+
+        match container {
+            AssocContainerId::TraitId(it) => ItemInNs::Types(it.into()),
+            _ => item,
+        }
     }
 
     #[test]
@@ -641,6 +665,7 @@ mod tests {
         dep::Fmt (m)
         dep::fmt::Display (t)
         dep::format (v)
+        dep::fmt::Display (t)
         "###);
 
         let res = search_dependencies_of(ra_fixture, "main", Query::new("fmt").anchor_end());
@@ -649,6 +674,7 @@ mod tests {
         dep::Fmt (t)
         dep::Fmt (v)
         dep::Fmt (m)
+        dep::fmt::Display (t)
         "###);
     }
 
