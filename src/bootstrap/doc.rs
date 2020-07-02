@@ -518,8 +518,7 @@ impl Step for Rustc {
         let out = builder.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        // Get the correct compiler for this stage.
-        let compiler = builder.compiler_for(stage, builder.config.build, target);
+        let compiler = builder.compiler(stage, builder.config.build);
 
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
@@ -599,8 +598,7 @@ impl Step for Rustdoc {
         let out = builder.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        // Get the correct compiler for this stage.
-        let compiler = builder.compiler_for(stage, builder.config.build, target);
+        let compiler = builder.compiler(stage, builder.config.build);
 
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
@@ -639,9 +637,10 @@ impl Step for Rustdoc {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
-    target: Interned<String>,
+    pub compiler: Compiler,
+    pub target: Interned<String>,
 }
 
 impl Step for ErrorIndex {
@@ -655,25 +654,25 @@ impl Step for ErrorIndex {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(ErrorIndex { target: run.target });
+        let target = run.target;
+        // error_index_generator depends on librustdoc. Use the compiler that
+        // is normally used to build rustdoc for other documentation so that
+        // it shares the same artifacts.
+        let compiler =
+            run.builder.compiler_for(run.builder.top_stage, run.builder.config.build, target);
+        run.builder.ensure(ErrorIndex { compiler, target });
     }
 
     /// Generates the HTML rendered error-index by running the
     /// `error_index_generator` tool.
     fn run(self, builder: &Builder<'_>) {
-        let target = self.target;
-
-        builder.info(&format!("Documenting error index ({})", target));
-        let out = builder.doc_out(target);
+        builder.info(&format!("Documenting error index ({})", self.target));
+        let out = builder.doc_out(self.target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(2, builder.config.build);
-        let mut index = tool::ErrorIndex::command(builder, compiler);
+        let mut index = tool::ErrorIndex::command(builder, self.compiler);
         index.arg("html");
         index.arg(out.join("error-index.html"));
         index.arg(crate::channel::CFG_RELEASE_NUM);
-
-        // FIXME: shouldn't have to pass this env var
-        index.env("CFG_BUILD", &builder.config.build);
 
         builder.run(&mut index);
     }
