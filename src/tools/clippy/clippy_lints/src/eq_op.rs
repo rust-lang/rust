@@ -52,9 +52,9 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EqOp => [EQ_OP, OP_REF]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
+impl<'tcx> LateLintPass<'tcx> for EqOp {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Binary(op, ref left, ref right) = e.kind {
             if e.span.from_expansion() {
                 return;

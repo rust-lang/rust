@@ -44,8 +44,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MatchOnVecItems => [MATCH_ON_VEC_ITEMS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchOnVecItems {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) {
+impl<'tcx> LateLintPass<'tcx> for MatchOnVecItems {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
             if !in_external_macro(cx.sess(), expr.span);
             if let ExprKind::Match(ref match_expr, _, MatchSource::Normal) = expr.kind;
@@ -73,7 +73,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchOnVecItems {
     }
 }
 
-fn is_vec_indexing<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+fn is_vec_indexing<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     if_chain! {
         if let ExprKind::Index(ref array, ref index) = expr.kind;
         if is_vector(cx, array);
@@ -87,13 +87,13 @@ fn is_vec_indexing<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>)
     None
 }
 
-fn is_vector(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn is_vector(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.tables().expr_ty(expr);
     let ty = walk_ptrs_ty(ty);
     is_type_diagnostic_item(cx, ty, sym!(vec_type))
 }
 
-fn is_full_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn is_full_range(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.tables().expr_ty(expr);
     let ty = walk_ptrs_ty(ty);
     match_type(cx, ty, &utils::paths::RANGE_FULL)

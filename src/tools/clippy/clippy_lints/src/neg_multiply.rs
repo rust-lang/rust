@@ -26,8 +26,8 @@ declare_clippy_lint! {
 declare_lint_pass!(NegMultiply => [NEG_MULTIPLY]);
 
 #[allow(clippy::match_same_arms)]
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for NegMultiply {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref op, ref left, ref right) = e.kind {
             if BinOpKind::Mul == op.node {
                 match (&left.kind, &right.kind) {
@@ -41,7 +41,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
     }
 }
 
-fn check_mul(cx: &LateContext<'_, '_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
+fn check_mul(cx: &LateContext<'_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Lit(ref l) = lit.kind;
         if let Constant::Int(1) = consts::lit_to_constant(&l.node, cx.tables().expr_ty_opt(lit));

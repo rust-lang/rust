@@ -43,8 +43,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(GetLastWithLen => [GET_LAST_WITH_LEN]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for GetLastWithLen {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // Is a method call
             if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;

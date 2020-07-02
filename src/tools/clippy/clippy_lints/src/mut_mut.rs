@@ -28,12 +28,12 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MutMut => [MUT_MUT]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutMut {
-    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MutMut {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
         intravisit::walk_block(&mut MutVisitor { cx }, block);
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'a, 'tcx>, ty: &'tcx hir::Ty<'_>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_>) {
         use rustc_hir::intravisit::Visitor;
 
         MutVisitor { cx }.visit_ty(ty);
@@ -41,7 +41,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutMut {
 }
 
 pub struct MutVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {

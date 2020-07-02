@@ -47,8 +47,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(RedundantPatternMatching => [REDUNDANT_PATTERN_MATCHING]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPatternMatching {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for RedundantPatternMatching {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Match(op, arms, ref match_source) = &expr.kind {
             match match_source {
                 MatchSource::Normal => find_sugg_for_match(cx, expr, op, arms),
@@ -60,14 +60,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPatternMatching {
     }
 }
 
-fn find_sugg_for_if_let<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn find_sugg_for_if_let<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
     op: &Expr<'_>,
     arms: &[Arm<'_>],
     keyword: &'static str,
 ) {
-    fn find_suggestion(cx: &LateContext<'_, '_>, hir_id: HirId, path: &QPath<'_>) -> Option<&'static str> {
+    fn find_suggestion(cx: &LateContext<'_>, hir_id: HirId, path: &QPath<'_>) -> Option<&'static str> {
         if match_qpath(path, &paths::RESULT_OK) && can_suggest(cx, hir_id, sym!(result_type), "is_ok") {
             return Some("is_ok()");
         }
@@ -138,7 +138,7 @@ fn find_sugg_for_if_let<'a, 'tcx>(
     );
 }
 
-fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
+fn find_sugg_for_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
     if arms.len() == 2 {
         let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
 
@@ -237,7 +237,7 @@ fn find_good_method_for_match<'a>(
     }
 }
 
-fn can_suggest(cx: &LateContext<'_, '_>, hir_id: HirId, diag_item: Symbol, name: &str) -> bool {
+fn can_suggest(cx: &LateContext<'_>, hir_id: HirId, diag_item: Symbol, name: &str) -> bool {
     if !in_constant(cx, hir_id) {
         return true;
     }

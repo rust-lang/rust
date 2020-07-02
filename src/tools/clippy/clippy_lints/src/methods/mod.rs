@@ -1357,9 +1357,9 @@ declare_lint_pass!(Methods => [
     OPTION_AS_REF_DEREF,
 ]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
+impl<'tcx> LateLintPass<'tcx> for Methods {
     #[allow(clippy::too_many_lines)]
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if in_macro(expr.span) {
             return;
         }
@@ -1471,7 +1471,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         if in_external_macro(cx.sess(), impl_item.span) {
             return;
         }
@@ -1585,8 +1585,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
 
 /// Checks for the `OR_FUN_CALL` lint.
 #[allow(clippy::too_many_lines)]
-fn lint_or_fun_call<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_or_fun_call<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &hir::Expr<'_>,
     method_span: Span,
     name: &str,
@@ -1594,7 +1594,7 @@ fn lint_or_fun_call<'a, 'tcx>(
 ) {
     // Searches an expression for method calls or function calls that aren't ctors
     struct FunCallFinder<'a, 'tcx> {
-        cx: &'a LateContext<'a, 'tcx>,
+        cx: &'a LateContext<'tcx>,
         found: bool,
     }
 
@@ -1625,7 +1625,7 @@ fn lint_or_fun_call<'a, 'tcx>(
 
     /// Checks for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
     fn check_unwrap_or_default(
-        cx: &LateContext<'_, '_>,
+        cx: &LateContext<'_>,
         name: &str,
         fun: &hir::Expr<'_>,
         self_expr: &hir::Expr<'_>,
@@ -1667,8 +1667,8 @@ fn lint_or_fun_call<'a, 'tcx>(
 
     /// Checks for `*or(foo())`.
     #[allow(clippy::too_many_arguments)]
-    fn check_general_case<'a, 'tcx>(
-        cx: &LateContext<'a, 'tcx>,
+    fn check_general_case<'tcx>(
+        cx: &LateContext<'tcx>,
         name: &str,
         method_span: Span,
         fun_span: Span,
@@ -1769,7 +1769,7 @@ fn lint_or_fun_call<'a, 'tcx>(
 /// Checks for the `EXPECT_FUN_CALL` lint.
 #[allow(clippy::too_many_lines)]
 fn lint_expect_fun_call(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
     method_span: Span,
     name: &str,
@@ -1777,7 +1777,7 @@ fn lint_expect_fun_call(
 ) {
     // Strip `&`, `as_ref()` and `as_str()` off `arg` until we're left with either a `String` or
     // `&str`
-    fn get_arg_root<'a>(cx: &LateContext<'_, '_>, arg: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
+    fn get_arg_root<'a>(cx: &LateContext<'_>, arg: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
         let mut arg_root = arg;
         loop {
             arg_root = match &arg_root.kind {
@@ -1804,7 +1804,7 @@ fn lint_expect_fun_call(
 
     // Only `&'static str` or `String` can be used directly in the `panic!`. Other types should be
     // converted to string.
-    fn requires_to_string(cx: &LateContext<'_, '_>, arg: &hir::Expr<'_>) -> bool {
+    fn requires_to_string(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
         let arg_ty = cx.tables().expr_ty(arg);
         if is_type_diagnostic_item(cx, arg_ty, sym!(string_type)) {
             return false;
@@ -1819,7 +1819,7 @@ fn lint_expect_fun_call(
 
     // Check if an expression could have type `&'static str`, knowing that it
     // has type `&str` for some lifetime.
-    fn can_be_static_str(cx: &LateContext<'_, '_>, arg: &hir::Expr<'_>) -> bool {
+    fn can_be_static_str(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
         match arg.kind {
             hir::ExprKind::Lit(_) => true,
             hir::ExprKind::Call(fun, _) => {
@@ -1853,7 +1853,7 @@ fn lint_expect_fun_call(
     }
 
     fn generate_format_arg_snippet(
-        cx: &LateContext<'_, '_>,
+        cx: &LateContext<'_>,
         a: &hir::Expr<'_>,
         applicability: &mut Applicability,
     ) -> Vec<String> {
@@ -1956,7 +1956,7 @@ fn lint_expect_fun_call(
 }
 
 /// Checks for the `CLONE_ON_COPY` lint.
-fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'_>) {
+fn lint_clone_on_copy(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'_>) {
     let ty = cx.tables().expr_ty(expr);
     if let ty::Ref(_, inner, _) = arg_ty.kind {
         if let ty::Ref(_, innermost, _) = inner.kind {
@@ -2050,7 +2050,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
     }
 }
 
-fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
+fn lint_clone_on_ref_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
     let obj_ty = walk_ptrs_ty(cx.tables().expr_ty(arg));
 
     if let ty::Adt(_, subst) = obj_ty.kind {
@@ -2081,7 +2081,7 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &h
     }
 }
 
-fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+fn lint_string_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let arg = &args[1];
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
@@ -2112,14 +2112,14 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hi
     }
 }
 
-fn lint_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+fn lint_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let obj_ty = walk_ptrs_ty(cx.tables().expr_ty(&args[0]));
     if is_type_diagnostic_item(cx, obj_ty, sym!(string_type)) {
         lint_string_extend(cx, expr, args);
     }
 }
 
-fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, source: &hir::Expr<'_>, unwrap: &hir::Expr<'_>) {
+fn lint_cstring_as_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, source: &hir::Expr<'_>, unwrap: &hir::Expr<'_>) {
     if_chain! {
         let source_type = cx.tables().expr_ty(source);
         if let ty::Adt(def, substs) = source_type.kind;
@@ -2139,11 +2139,7 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, source: &
     }
 }
 
-fn lint_iter_cloned_collect<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &hir::Expr<'_>,
-    iter_args: &'tcx [hir::Expr<'_>],
-) {
+fn lint_iter_cloned_collect<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
     if_chain! {
         if is_type_diagnostic_item(cx, cx.tables().expr_ty(expr), sym!(vec_type));
         if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables().expr_ty(&iter_args[0]));
@@ -2164,9 +2160,9 @@ fn lint_iter_cloned_collect<'a, 'tcx>(
     }
 }
 
-fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, fold_args: &[hir::Expr<'_>], fold_span: Span) {
+fn lint_unnecessary_fold(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: &[hir::Expr<'_>], fold_span: Span) {
     fn check_fold_with_op(
-        cx: &LateContext<'_, '_>,
+        cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
         fold_args: &[hir::Expr<'_>],
         fold_span: Span,
@@ -2251,7 +2247,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, fold_ar
     }
 }
 
-fn lint_step_by<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>, args: &'tcx [hir::Expr<'_>]) {
+fn lint_step_by<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, args: &'tcx [hir::Expr<'_>]) {
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         if let Some((Constant::Int(0), _)) = constant(cx, cx.tables(), &args[1]) {
             span_lint(
@@ -2264,7 +2260,7 @@ fn lint_step_by<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>, args
     }
 }
 
-fn lint_iter_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
+fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
     let caller_expr = &iter_args[0];
 
     // Skip lint if the `iter().next()` expression is a for loop argument,
@@ -2318,8 +2314,8 @@ fn lint_iter_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_
     }
 }
 
-fn lint_iter_nth<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_iter_nth<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &hir::Expr<'_>,
     nth_and_iter_args: &[&'tcx [hir::Expr<'tcx>]],
     is_mut: bool,
@@ -2348,7 +2344,7 @@ fn lint_iter_nth<'a, 'tcx>(
     );
 }
 
-fn lint_iter_nth_zero<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>, nth_args: &'tcx [hir::Expr<'_>]) {
+fn lint_iter_nth_zero<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, nth_args: &'tcx [hir::Expr<'_>]) {
     if_chain! {
         if match_trait_method(cx, expr, &paths::ITERATOR);
         if let Some((Constant::Int(0), _)) = constant(cx, cx.tables(), &nth_args[1]);
@@ -2367,12 +2363,7 @@ fn lint_iter_nth_zero<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr<'_>
     }
 }
 
-fn lint_get_unwrap<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &hir::Expr<'_>,
-    get_args: &'tcx [hir::Expr<'_>],
-    is_mut: bool,
-) {
+fn lint_get_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args: &'tcx [hir::Expr<'_>], is_mut: bool) {
     // Note: we don't want to lint `get_mut().unwrap` for `HashMap` or `BTreeMap`,
     // because they do not implement `IndexMut`
     let mut applicability = Applicability::MachineApplicable;
@@ -2445,7 +2436,7 @@ fn lint_get_unwrap<'a, 'tcx>(
     );
 }
 
-fn lint_iter_skip_next(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
+fn lint_iter_skip_next(cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
     // lint if caller of skip is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         span_lint_and_help(
@@ -2459,12 +2450,12 @@ fn lint_iter_skip_next(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
     }
 }
 
-fn derefs_to_slice<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn derefs_to_slice<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<&'tcx hir::Expr<'tcx>> {
-    fn may_slice<'a>(cx: &LateContext<'_, 'a>, ty: Ty<'a>) -> bool {
+    fn may_slice<'a>(cx: &LateContext<'a>, ty: Ty<'a>) -> bool {
         match ty.kind {
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
@@ -2504,7 +2495,7 @@ fn derefs_to_slice<'a, 'tcx>(
 }
 
 /// lint use of `unwrap()` for `Option`s and `Result`s
-fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hir::Expr<'_>]) {
+fn lint_unwrap(cx: &LateContext<'_>, expr: &hir::Expr<'_>, unwrap_args: &[hir::Expr<'_>]) {
     let obj_ty = walk_ptrs_ty(cx.tables().expr_ty(&unwrap_args[0]));
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
@@ -2532,7 +2523,7 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
 }
 
 /// lint use of `expect()` for `Option`s and `Result`s
-fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hir::Expr<'_>]) {
+fn lint_expect(cx: &LateContext<'_>, expr: &hir::Expr<'_>, expect_args: &[hir::Expr<'_>]) {
     let obj_ty = walk_ptrs_ty(cx.tables().expr_ty(&expect_args[0]));
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
@@ -2556,7 +2547,7 @@ fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hi
 }
 
 /// lint use of `ok().expect()` for `Result`s
-fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, ok_args: &[hir::Expr<'_>]) {
+fn lint_ok_expect(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ok_args: &[hir::Expr<'_>]) {
     if_chain! {
         // lint if the caller of `ok()` is a `Result`
         if is_type_diagnostic_item(cx, cx.tables().expr_ty(&ok_args[0]), sym!(result_type));
@@ -2578,7 +2569,7 @@ fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, ok_args: &[hir
 }
 
 /// lint use of `map().flatten()` for `Iterators` and 'Options'
-fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>, map_args: &'tcx [hir::Expr<'_>]) {
+fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map_args: &'tcx [hir::Expr<'_>]) {
     // lint if caller of `.map().flatten()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `map(..).flatten()` on an `Iterator`. \
@@ -2617,8 +2608,8 @@ fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<
 }
 
 /// lint use of `map().unwrap_or_else()` for `Option`s and `Result`s
-fn lint_map_unwrap_or_else<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_map_unwrap_or_else<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     map_args: &'tcx [hir::Expr<'_>],
     unwrap_args: &'tcx [hir::Expr<'_>],
@@ -2674,11 +2665,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
 }
 
 /// lint use of `_.map_or(None, _)` for `Option`s and `Result`s
-fn lint_map_or_none<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    map_or_args: &'tcx [hir::Expr<'_>],
-) {
+fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map_or_args: &'tcx [hir::Expr<'_>]) {
     let is_option = is_type_diagnostic_item(cx, cx.tables().expr_ty(&map_or_args[0]), sym!(option_type));
     let is_result = is_type_diagnostic_item(cx, cx.tables().expr_ty(&map_or_args[0]), sym!(result_type));
 
@@ -2748,11 +2735,7 @@ fn lint_map_or_none<'a, 'tcx>(
 }
 
 /// lint use of `filter().next()` for `Iterators`
-fn lint_filter_next<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    filter_args: &'tcx [hir::Expr<'_>],
-) {
+fn lint_filter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, filter_args: &'tcx [hir::Expr<'_>]) {
     // lint if caller of `.filter().next()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling \
@@ -2775,8 +2758,8 @@ fn lint_filter_next<'a, 'tcx>(
 }
 
 /// lint use of `skip_while().next()` for `Iterators`
-fn lint_skip_while_next<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_skip_while_next<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     _skip_while_args: &'tcx [hir::Expr<'_>],
 ) {
@@ -2794,8 +2777,8 @@ fn lint_skip_while_next<'a, 'tcx>(
 }
 
 /// lint use of `filter().map()` for `Iterators`
-fn lint_filter_map<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_filter_map<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     _filter_args: &'tcx [hir::Expr<'_>],
     _map_args: &'tcx [hir::Expr<'_>],
@@ -2809,11 +2792,7 @@ fn lint_filter_map<'a, 'tcx>(
 }
 
 /// lint use of `filter_map().next()` for `Iterators`
-fn lint_filter_map_next<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    filter_args: &'tcx [hir::Expr<'_>],
-) {
+fn lint_filter_map_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, filter_args: &'tcx [hir::Expr<'_>]) {
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).next()` on an `Iterator`. This is more succinctly expressed by calling \
                    `.find_map(p)` instead.";
@@ -2834,8 +2813,8 @@ fn lint_filter_map_next<'a, 'tcx>(
 }
 
 /// lint use of `find().map()` for `Iterators`
-fn lint_find_map<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_find_map<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     _find_args: &'tcx [hir::Expr<'_>],
     map_args: &'tcx [hir::Expr<'_>],
@@ -2849,8 +2828,8 @@ fn lint_find_map<'a, 'tcx>(
 }
 
 /// lint use of `filter_map().map()` for `Iterators`
-fn lint_filter_map_map<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_filter_map_map<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     _filter_args: &'tcx [hir::Expr<'_>],
     _map_args: &'tcx [hir::Expr<'_>],
@@ -2864,8 +2843,8 @@ fn lint_filter_map_map<'a, 'tcx>(
 }
 
 /// lint use of `filter().flat_map()` for `Iterators`
-fn lint_filter_flat_map<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_filter_flat_map<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     _filter_args: &'tcx [hir::Expr<'_>],
     _map_args: &'tcx [hir::Expr<'_>],
@@ -2880,8 +2859,8 @@ fn lint_filter_flat_map<'a, 'tcx>(
 }
 
 /// lint use of `filter_map().flat_map()` for `Iterators`
-fn lint_filter_map_flat_map<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_filter_map_flat_map<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     _filter_args: &'tcx [hir::Expr<'_>],
     _map_args: &'tcx [hir::Expr<'_>],
@@ -2896,8 +2875,8 @@ fn lint_filter_map_flat_map<'a, 'tcx>(
 }
 
 /// lint use of `flat_map` for `Iterators` where `flatten` would be sufficient
-fn lint_flat_map_identity<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_flat_map_identity<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     flat_map_args: &'tcx [hir::Expr<'_>],
     flat_map_span: Span,
@@ -2945,8 +2924,8 @@ fn lint_flat_map_identity<'a, 'tcx>(
 }
 
 /// lint searching an Iterator followed by `is_some()`
-fn lint_search_is_some<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_search_is_some<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     search_method: &str,
     search_args: &'tcx [hir::Expr<'_>],
@@ -3010,7 +2989,7 @@ struct BinaryExprInfo<'a> {
 }
 
 /// Checks for the `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints.
-fn lint_binary_expr_with_method_call(cx: &LateContext<'_, '_>, info: &mut BinaryExprInfo<'_>) {
+fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExprInfo<'_>) {
     macro_rules! lint_with_both_lhs_and_rhs {
         ($func:ident, $cx:expr, $info:ident) => {
             if !$func($cx, $info) {
@@ -3030,7 +3009,7 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_, '_>, info: &mut Binary
 
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints.
 fn lint_chars_cmp(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     info: &BinaryExprInfo<'_>,
     chain_methods: &[&str],
     lint: &'static Lint,
@@ -3073,12 +3052,12 @@ fn lint_chars_cmp(
 }
 
 /// Checks for the `CHARS_NEXT_CMP` lint.
-fn lint_chars_next_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
+fn lint_chars_next_cmp<'tcx>(cx: &LateContext<'tcx>, info: &BinaryExprInfo<'_>) -> bool {
     lint_chars_cmp(cx, info, &["chars", "next"], CHARS_NEXT_CMP, "starts_with")
 }
 
 /// Checks for the `CHARS_LAST_CMP` lint.
-fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
+fn lint_chars_last_cmp<'tcx>(cx: &LateContext<'tcx>, info: &BinaryExprInfo<'_>) -> bool {
     if lint_chars_cmp(cx, info, &["chars", "last"], CHARS_LAST_CMP, "ends_with") {
         true
     } else {
@@ -3087,8 +3066,8 @@ fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprIn
 }
 
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints with `unwrap()`.
-fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_chars_cmp_with_unwrap<'tcx>(
+    cx: &LateContext<'tcx>,
     info: &BinaryExprInfo<'_>,
     chain_methods: &[&str],
     lint: &'static Lint,
@@ -3122,12 +3101,12 @@ fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
 }
 
 /// Checks for the `CHARS_NEXT_CMP` lint with `unwrap()`.
-fn lint_chars_next_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
+fn lint_chars_next_cmp_with_unwrap<'tcx>(cx: &LateContext<'tcx>, info: &BinaryExprInfo<'_>) -> bool {
     lint_chars_cmp_with_unwrap(cx, info, &["chars", "next", "unwrap"], CHARS_NEXT_CMP, "starts_with")
 }
 
 /// Checks for the `CHARS_LAST_CMP` lint with `unwrap()`.
-fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
+fn lint_chars_last_cmp_with_unwrap<'tcx>(cx: &LateContext<'tcx>, info: &BinaryExprInfo<'_>) -> bool {
     if lint_chars_cmp_with_unwrap(cx, info, &["chars", "last", "unwrap"], CHARS_LAST_CMP, "ends_with") {
         true
     } else {
@@ -3136,11 +3115,7 @@ fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &
 }
 
 /// lint for length-1 `str`s for methods in `PATTERN_METHODS`
-fn lint_single_char_pattern<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    _expr: &'tcx hir::Expr<'_>,
-    arg: &'tcx hir::Expr<'_>,
-) {
+fn lint_single_char_pattern<'tcx>(cx: &LateContext<'tcx>, _expr: &'tcx hir::Expr<'_>, arg: &'tcx hir::Expr<'_>) {
     if_chain! {
         if let hir::ExprKind::Lit(lit) = &arg.kind;
         if let ast::LitKind::Str(r, style) = lit.node;
@@ -3171,7 +3146,7 @@ fn lint_single_char_pattern<'a, 'tcx>(
 }
 
 /// Checks for the `USELESS_ASREF` lint.
-fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, call_name: &str, as_ref_args: &[hir::Expr<'_>]) {
+fn lint_asref(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str, as_ref_args: &[hir::Expr<'_>]) {
     // when we get here, we've already checked that the call name is "as_ref" or "as_mut"
     // check if the call is to the actual `AsRef` or `AsMut` trait
     if match_trait_method(cx, expr, &paths::ASREF_TRAIT) || match_trait_method(cx, expr, &paths::ASMUT_TRAIT) {
@@ -3206,7 +3181,7 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, call_name: &str, a
     }
 }
 
-fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: Ty<'_>) -> Option<(&'static str, &'static str)> {
+fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(&'static str, &'static str)> {
     has_iter_method(cx, self_ref_ty).map(|ty_name| {
         let mutbl = match self_ref_ty.kind {
             ty::Ref(_, _, mutbl) => mutbl,
@@ -3220,7 +3195,7 @@ fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: Ty<'_>) -> Option<(
     })
 }
 
-fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, self_ref_ty: Ty<'_>, method_span: Span) {
+fn lint_into_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, self_ref_ty: Ty<'_>, method_span: Span) {
     if !match_trait_method(cx, expr, &paths::INTO_ITERATOR) {
         return;
     }
@@ -3241,7 +3216,7 @@ fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, self_ref_ty: T
 }
 
 /// lint for `MaybeUninit::uninit().assume_init()` (we already have the latter)
-fn lint_maybe_uninit(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, outer: &hir::Expr<'_>) {
+fn lint_maybe_uninit(cx: &LateContext<'_>, expr: &hir::Expr<'_>, outer: &hir::Expr<'_>) {
     if_chain! {
         if let hir::ExprKind::Call(ref callee, ref args) = expr.kind;
         if args.is_empty();
@@ -3259,7 +3234,7 @@ fn lint_maybe_uninit(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, outer: &hir
     }
 }
 
-fn is_maybe_uninit_ty_valid(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
+fn is_maybe_uninit_ty_valid(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     match ty.kind {
         ty::Array(ref component, _) => is_maybe_uninit_ty_valid(cx, component),
         ty::Tuple(ref types) => types.types().all(|ty| is_maybe_uninit_ty_valid(cx, ty)),
@@ -3268,7 +3243,7 @@ fn is_maybe_uninit_ty_valid(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
     }
 }
 
-fn lint_suspicious_map(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
+fn lint_suspicious_map(cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
     span_lint_and_help(
         cx,
         SUSPICIOUS_MAP,
@@ -3280,8 +3255,8 @@ fn lint_suspicious_map(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) {
 }
 
 /// lint use of `_.as_ref().map(Deref::deref)` for `Option`s
-fn lint_option_as_ref_deref<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_option_as_ref_deref<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &hir::Expr<'_>,
     as_ref_args: &[hir::Expr<'_>],
     map_args: &[hir::Expr<'_>],
@@ -3376,7 +3351,7 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
 }
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
-fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
+fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     match ty.kind {
         ty::Adt(_, substs) if is_type_diagnostic_item(cx, ty, sym!(result_type)) => substs.types().nth(1),
         _ => None,
@@ -3384,7 +3359,7 @@ fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
 }
 
 /// This checks whether a given type is known to implement Debug.
-fn has_debug_impl<'a, 'b>(ty: Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
+fn has_debug_impl<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
     cx.tcx
         .get_diagnostic_item(sym::debug_trait)
         .map_or(false, |debug| implements_trait(cx, ty, debug, &[]))
@@ -3477,8 +3452,8 @@ enum SelfKind {
 }
 
 impl SelfKind {
-    fn matches<'a>(self, cx: &LateContext<'_, 'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
-        fn matches_value<'a>(cx: &LateContext<'_, 'a>, parent_ty: Ty<'_>, ty: Ty<'_>) -> bool {
+    fn matches<'a>(self, cx: &LateContext<'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
+        fn matches_value<'a>(cx: &LateContext<'a>, parent_ty: Ty<'_>, ty: Ty<'_>) -> bool {
             if ty == parent_ty {
                 true
             } else if ty.is_box() {
@@ -3494,12 +3469,7 @@ impl SelfKind {
             }
         }
 
-        fn matches_ref<'a>(
-            cx: &LateContext<'_, 'a>,
-            mutability: hir::Mutability,
-            parent_ty: Ty<'a>,
-            ty: Ty<'a>,
-        ) -> bool {
+        fn matches_ref<'a>(cx: &LateContext<'a>, mutability: hir::Mutability, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
             if let ty::Ref(_, t, m) = ty.kind {
                 return m == mutability && t == parent_ty;
             }
@@ -3563,7 +3533,7 @@ enum OutType {
 }
 
 impl OutType {
-    fn matches(self, cx: &LateContext<'_, '_>, ty: &hir::FnRetTy<'_>) -> bool {
+    fn matches(self, cx: &LateContext<'_>, ty: &hir::FnRetTy<'_>) -> bool {
         let is_unit = |ty: &hir::Ty<'_>| SpanlessEq::new(cx).eq_ty_kind(&ty.kind, &hir::TyKind::Tup(&[]));
         match (self, ty) {
             (Self::Unit, &hir::FnRetTy::DefaultReturn(_)) => true,
@@ -3614,7 +3584,7 @@ fn contains_return(expr: &hir::Expr<'_>) -> bool {
     visitor.found
 }
 
-fn check_pointer_offset(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+fn check_pointer_offset(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     if_chain! {
         if args.len() == 2;
         if let ty::RawPtr(ty::TypeAndMut { ref ty, .. }) = cx.tables().expr_ty(&args[0]).kind;
@@ -3626,7 +3596,7 @@ fn check_pointer_offset(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[
     }
 }
 
-fn lint_filetype_is_file(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+fn lint_filetype_is_file(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let ty = cx.tables().expr_ty(&args[0]);
 
     if !match_type(cx, ty, &paths::FILE_TYPE) {

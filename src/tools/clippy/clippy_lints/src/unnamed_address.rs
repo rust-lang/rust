@@ -55,8 +55,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnnamedAddress => [FN_ADDRESS_COMPARISONS, VTABLE_ADDRESS_COMPARISONS]);
 
-impl LateLintPass<'_, '_> for UnnamedAddress {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+impl LateLintPass<'_> for UnnamedAddress {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         fn is_comparison(binop: BinOpKind) -> bool {
             match binop {
                 BinOpKind::Eq | BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ne | BinOpKind::Ge | BinOpKind::Gt => true,
@@ -64,14 +64,14 @@ impl LateLintPass<'_, '_> for UnnamedAddress {
             }
         }
 
-        fn is_trait_ptr(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+        fn is_trait_ptr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             match cx.tables().expr_ty_adjusted(expr).kind {
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) => ty.is_trait(),
                 _ => false,
             }
         }
 
-        fn is_fn_def(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+        fn is_fn_def(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             if let ty::FnDef(..) = cx.tables().expr_ty(expr).kind {
                 true
             } else {

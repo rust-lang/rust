@@ -27,8 +27,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ZeroDiv => [ZERO_DIVIDED_BY_ZERO]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ZeroDiv {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // check for instances of 0.0/0.0
         if_chain! {
             if let ExprKind::Binary(ref op, ref left, ref right) = expr.kind;

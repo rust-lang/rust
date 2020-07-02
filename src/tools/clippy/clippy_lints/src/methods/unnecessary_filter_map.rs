@@ -11,7 +11,7 @@ use if_chain::if_chain;
 
 use super::UNNECESSARY_FILTER_MAP;
 
-pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+pub(super) fn lint(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     if !match_trait_method(cx, expr, &paths::ITERATOR) {
         return;
     }
@@ -52,11 +52,7 @@ pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::
 }
 
 // returns (found_mapping, found_filtering)
-fn check_expression<'a, 'tcx>(
-    cx: &'a LateContext<'a, 'tcx>,
-    arg_id: hir::HirId,
-    expr: &'tcx hir::Expr<'_>,
-) -> (bool, bool) {
+fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> (bool, bool) {
     match &expr.kind {
         hir::ExprKind::Call(ref func, ref args) => {
             if_chain! {
@@ -104,7 +100,7 @@ fn check_expression<'a, 'tcx>(
 }
 
 struct ReturnVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     arg_id: hir::HirId,
     // Found a non-None return that isn't Some(input)
     found_mapping: bool,
@@ -113,7 +109,7 @@ struct ReturnVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ReturnVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'a, 'tcx>, arg_id: hir::HirId) -> ReturnVisitor<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'tcx>, arg_id: hir::HirId) -> ReturnVisitor<'a, 'tcx> {
         ReturnVisitor {
             cx,
             arg_id,

@@ -68,7 +68,7 @@ declare_clippy_lint! {
 /// Visitor that keeps track of which variables are unwrappable.
 struct UnwrappableVariablesVisitor<'a, 'tcx> {
     unwrappables: Vec<UnwrapInfo<'tcx>>,
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 /// Contains information about whether a variable can be unwrapped.
 #[derive(Copy, Clone, Debug)]
@@ -85,17 +85,17 @@ struct UnwrapInfo<'tcx> {
 
 /// Collects the information about unwrappable variables from an if condition
 /// The `invert` argument tells us whether the condition is negated.
-fn collect_unwrap_info<'a, 'tcx>(
-    cx: &'a LateContext<'a, 'tcx>,
+fn collect_unwrap_info<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
     branch: &'tcx Expr<'_>,
     invert: bool,
 ) -> Vec<UnwrapInfo<'tcx>> {
-    fn is_relevant_option_call(cx: &LateContext<'_, '_>, ty: Ty<'_>, method_name: &str) -> bool {
+    fn is_relevant_option_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: &str) -> bool {
         is_type_diagnostic_item(cx, ty, sym!(option_type)) && ["is_some", "is_none"].contains(&method_name)
     }
 
-    fn is_relevant_result_call(cx: &LateContext<'_, '_>, ty: Ty<'_>, method_name: &str) -> bool {
+    fn is_relevant_result_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: &str) -> bool {
         is_type_diagnostic_item(cx, ty, sym!(result_type)) && ["is_ok", "is_err"].contains(&method_name)
     }
 
@@ -209,10 +209,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
 
 declare_lint_pass!(Unwrap => [PANICKING_UNWRAP, UNNECESSARY_UNWRAP]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unwrap {
+impl<'tcx> LateLintPass<'tcx> for Unwrap {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,

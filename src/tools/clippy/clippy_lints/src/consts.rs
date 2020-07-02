@@ -172,9 +172,9 @@ pub fn lit_to_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
     }
 }
 
-pub fn constant<'c, 'cc>(
-    lcx: &LateContext<'c, 'cc>,
-    tables: &'c ty::TypeckTables<'cc>,
+pub fn constant<'tcx>(
+    lcx: &LateContext<'tcx>,
+    tables: &ty::TypeckTables<'tcx>,
     e: &Expr<'_>,
 ) -> Option<(Constant, bool)> {
     let mut cx = ConstEvalLateContext {
@@ -187,19 +187,19 @@ pub fn constant<'c, 'cc>(
     cx.expr(e).map(|cst| (cst, cx.needed_resolution))
 }
 
-pub fn constant_simple<'c, 'cc>(
-    lcx: &LateContext<'c, 'cc>,
-    tables: &'c ty::TypeckTables<'cc>,
+pub fn constant_simple<'tcx>(
+    lcx: &LateContext<'tcx>,
+    tables: &ty::TypeckTables<'tcx>,
     e: &Expr<'_>,
 ) -> Option<Constant> {
     constant(lcx, tables, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
 
 /// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckTables`.
-pub fn constant_context<'c, 'cc>(
-    lcx: &'c LateContext<'c, 'cc>,
-    tables: &'c ty::TypeckTables<'cc>,
-) -> ConstEvalLateContext<'c, 'cc> {
+pub fn constant_context<'a, 'tcx>(
+    lcx: &'a LateContext<'tcx>,
+    tables: &'a ty::TypeckTables<'tcx>,
+) -> ConstEvalLateContext<'a, 'tcx> {
     ConstEvalLateContext {
         lcx,
         tables,
@@ -210,14 +210,14 @@ pub fn constant_context<'c, 'cc>(
 }
 
 pub struct ConstEvalLateContext<'a, 'tcx> {
-    lcx: &'a LateContext<'a, 'tcx>,
+    lcx: &'a LateContext<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     needed_resolution: bool,
     substs: SubstsRef<'tcx>,
 }
 
-impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
+impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     /// Simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr<'_>) -> Option<Constant> {
         if let Some((ref cond, ref then, otherwise)) = higher::if_block(&e) {
@@ -318,7 +318,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     }
 
     /// Lookup a possibly constant expression from a `ExprKind::Path`.
-    fn fetch_path(&mut self, qpath: &QPath<'_>, id: HirId, ty: Ty<'cc>) -> Option<Constant> {
+    fn fetch_path(&mut self, qpath: &QPath<'_>, id: HirId, ty: Ty<'tcx>) -> Option<Constant> {
         let res = self.tables.qpath_res(qpath, id);
         match res {
             Res::Def(DefKind::Const | DefKind::AssocConst, def_id) => {

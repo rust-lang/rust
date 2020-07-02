@@ -44,12 +44,12 @@ macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
 }) }
 
-struct LateContextAndPass<'a, 'tcx, T: LateLintPass<'a, 'tcx>> {
-    context: LateContext<'a, 'tcx>,
+struct LateContextAndPass<'tcx, T: LateLintPass<'tcx>> {
+    context: LateContext<'tcx>,
     pass: T,
 }
 
-impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
+impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
     /// Merge the lints specified by any lint attributes into the
     /// current lint context, call the provided function, then reset the
     /// lints in effect to their previous state.
@@ -93,9 +93,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
     }
 }
 
-impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
-    for LateContextAndPass<'a, 'tcx, T>
-{
+impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPass<'tcx, T> {
     type Map = Map<'tcx>;
 
     /// Because lints are scoped lexically, we want to walk nested
@@ -348,8 +346,8 @@ impl LintPass for LateLintPassObjects<'_> {
 }
 
 macro_rules! expand_late_lint_pass_impl_methods {
-    ([$a:tt, $hir:tt], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(fn $name(&mut self, context: &LateContext<$a, $hir>, $($param: $arg),*) {
+    ([$hir:tt], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
+        $(fn $name(&mut self, context: &LateContext<$hir>, $($param: $arg),*) {
             for obj in self.lints.iter_mut() {
                 obj.$name(context, $($param),*);
             }
@@ -358,16 +356,16 @@ macro_rules! expand_late_lint_pass_impl_methods {
 }
 
 macro_rules! late_lint_pass_impl {
-    ([], [$hir:tt], $methods:tt) => (
-        impl<'a, $hir> LateLintPass<'a, $hir> for LateLintPassObjects<'_> {
-            expand_late_lint_pass_impl_methods!(['a, $hir], $methods);
+    ([], [$hir:tt], $methods:tt) => {
+        impl<$hir> LateLintPass<$hir> for LateLintPassObjects<'_> {
+            expand_late_lint_pass_impl_methods!([$hir], $methods);
         }
-    )
+    };
 }
 
 crate::late_lint_methods!(late_lint_pass_impl, [], ['tcx]);
 
-fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
+fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
     tcx: TyCtxt<'tcx>,
     module_def_id: LocalDefId,
     pass: T,
@@ -397,7 +395,7 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     }
 }
 
-pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
+pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
     tcx: TyCtxt<'tcx>,
     module_def_id: LocalDefId,
     builtin_lints: T,
@@ -417,7 +415,7 @@ pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     }
 }
 
-fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
+fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let krate = tcx.hir().krate();
@@ -448,7 +446,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
     })
 }
 
-fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
+fn late_lint_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
     let mut passes = unerased_lint_store(tcx).late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
 
     if !tcx.sess.opts.debugging_opts.no_interleave_lints {
@@ -478,7 +476,7 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
 }
 
 /// Performs lint checking on a crate.
-pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
+pub fn check_crate<'tcx, T: LateLintPass<'tcx>>(
     tcx: TyCtxt<'tcx>,
     builtin_lints: impl FnOnce() -> T + Send,
 ) {

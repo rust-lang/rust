@@ -86,8 +86,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for StringAdd {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), e.span) {
             return;
         }
@@ -133,11 +133,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
     }
 }
 
-fn is_string(cx: &LateContext<'_, '_>, e: &Expr<'_>) -> bool {
+fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     is_type_diagnostic_item(cx, walk_ptrs_ty(cx.tables().expr_ty(e)), sym!(string_type))
 }
 
-fn is_add(cx: &LateContext<'_, '_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
+fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
     match src.kind {
         ExprKind::Binary(
             Spanned {
@@ -158,8 +158,8 @@ const MAX_LENGTH_BYTE_STRING_LIT: usize = 32;
 
 declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use crate::utils::{snippet, snippet_with_applicability};
         use rustc_ast::ast::LitKind;
 

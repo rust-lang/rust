@@ -517,6 +517,7 @@ symbols! {
         None,
         non_exhaustive,
         non_modrs_mods,
+        nontrapping_fptoint: "nontrapping-fptoint",
         noreturn,
         no_niche,
         no_sanitize,

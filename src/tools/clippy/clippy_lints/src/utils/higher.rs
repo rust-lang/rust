@@ -47,7 +47,7 @@ pub struct Range<'a> {
 }
 
 /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
-pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr<'_>) -> Option<Range<'b>> {
+pub fn range<'a, 'tcx>(cx: &LateContext<'tcx>, expr: &'a hir::Expr<'_>) -> Option<Range<'a>> {
     /// Finds the field named `name` in the field. Always return `Some` for
     /// convenience.
     fn get_field<'c>(name: &str, fields: &'c [hir::Field<'_>]) -> Option<&'c hir::Expr<'c>> {
@@ -257,7 +257,7 @@ pub enum VecArgs<'a> {
 
 /// Returns the arguments of the `vec!` macro if this expression was expanded
 /// from `vec!`.
-pub fn vec_macro<'e>(cx: &LateContext<'_, '_>, expr: &'e hir::Expr<'_>) -> Option<VecArgs<'e>> {
+pub fn vec_macro<'e>(cx: &LateContext<'_>, expr: &'e hir::Expr<'_>) -> Option<VecArgs<'e>> {
     if_chain! {
         if let hir::ExprKind::Call(ref fun, ref args) = expr.kind;
         if let hir::ExprKind::Path(ref qpath) = fun.kind;

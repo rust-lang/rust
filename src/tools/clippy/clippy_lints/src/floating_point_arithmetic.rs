@@ -111,7 +111,7 @@ declare_lint_pass!(FloatingPointArithmetic => [
 
 // Returns the specialized log method for a given base if base is constant
 // and is one of 2, 10 and e
-fn get_specialized_log_method(cx: &LateContext<'_, '_>, base: &Expr<'_>) -> Option<&'static str> {
+fn get_specialized_log_method(cx: &LateContext<'_>, base: &Expr<'_>) -> Option<&'static str> {
     if let Some((value, _)) = constant(cx, cx.tables(), base) {
         if F32(2.0) == value || F64(2.0) == value {
             return Some("log2");
@@ -126,7 +126,7 @@ fn get_specialized_log_method(cx: &LateContext<'_, '_>, base: &Expr<'_>) -> Opti
 }
 
 // Adds type suffixes and parenthesis to method receivers if necessary
-fn prepare_receiver_sugg<'a>(cx: &LateContext<'_, '_>, mut expr: &'a Expr<'a>) -> Sugg<'a> {
+fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Sugg<'a> {
     let mut suggestion = Sugg::hir(cx, expr, "..");
 
     if let ExprKind::Unary(UnOp::UnNeg, inner_expr) = &expr.kind {
@@ -163,7 +163,7 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_, '_>, mut expr: &'a Expr<'a>) -
     suggestion.maybe_par()
 }
 
-fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
+fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     if let Some(method) = get_specialized_log_method(cx, &args[1]) {
         span_lint_and_sugg(
             cx,
@@ -179,7 +179,7 @@ fn check_log_base(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) 
 
 // TODO: Lint expressions of the form `(x + y).ln()` where y > 1 and
 // suggest usage of `(x + (y - 1)).ln_1p()` instead
-fn check_ln1p(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
+fn check_ln1p(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     if let ExprKind::Binary(
         Spanned {
             node: BinOpKind::Add, ..
@@ -231,7 +231,7 @@ fn get_integer_from_float_constant(value: &Constant) -> Option<i32> {
     }
 }
 
-fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
+fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     // Check receiver
     if let Some((value, _)) = constant(cx, cx.tables(), &args[0]) {
         let method = if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
@@ -295,7 +295,7 @@ fn check_powf(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 
 // TODO: Lint expressions of the form `x.exp() - y` where y > 1
 // and suggest usage of `x.exp_m1() - (y - 1)` instead
-fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, ref lhs, ref rhs) = expr.kind;
         if cx.tables().expr_ty(lhs).is_floating_point();
@@ -321,7 +321,7 @@ fn check_expm1(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
-fn is_float_mul_expr<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<(&'a Expr<'a>, &'a Expr<'a>)> {
+fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'a Expr<'a>, &'a Expr<'a>)> {
     if_chain! {
         if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref lhs, ref rhs) = &expr.kind;
         if cx.tables().expr_ty(lhs).is_floating_point();
@@ -335,7 +335,7 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option
 }
 
 // TODO: Fix rust-lang/rust-clippy#4735
-fn check_mul_add(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Binary(
         Spanned {
             node: BinOpKind::Add, ..
@@ -373,7 +373,7 @@ fn check_mul_add(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 /// test is positive or an expression which tests whether or not test
 /// is nonnegative.
 /// Used for check-custom-abs function below
-fn is_testing_positive(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
+fn is_testing_positive(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
             BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, right) && are_exprs_equal(cx, left, test),
@@ -386,7 +386,7 @@ fn is_testing_positive(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_
 }
 
 /// See [`is_testing_positive`]
-fn is_testing_negative(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
+fn is_testing_negative(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
             BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, left) && are_exprs_equal(cx, right, test),
@@ -398,12 +398,12 @@ fn is_testing_negative(cx: &LateContext<'_, '_>, expr: &Expr<'_>, test: &Expr<'_
     }
 }
 
-fn are_exprs_equal(cx: &LateContext<'_, '_>, expr1: &Expr<'_>, expr2: &Expr<'_>) -> bool {
+fn are_exprs_equal(cx: &LateContext<'_>, expr1: &Expr<'_>, expr2: &Expr<'_>) -> bool {
     SpanlessEq::new(cx).ignore_fn().eq_expr(expr1, expr2)
 }
 
 /// Returns true iff expr is some zero literal
-fn is_zero(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match constant_simple(cx, cx.tables(), expr) {
         Some(Constant::Int(i)) => i == 0,
         Some(Constant::F32(f)) => f == 0.0,
@@ -418,7 +418,7 @@ fn is_zero(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
 /// one of the two expressions
 /// If the two expressions are not negations of each other, then it
 /// returns None.
-fn are_negated<'a>(cx: &LateContext<'_, '_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
+fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
     if let ExprKind::Unary(UnOp::UnNeg, expr1_negated) = &expr1.kind {
         if are_exprs_equal(cx, expr1_negated, expr2) {
             return Some((false, expr2));
@@ -432,7 +432,7 @@ fn are_negated<'a>(cx: &LateContext<'_, '_>, expr1: &'a Expr<'a>, expr2: &'a Exp
     None
 }
 
-fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         if let Some((cond, body, Some(else_body))) = higher::if_block(&expr);
         if let ExprKind::Block(block, _) = body.kind;
@@ -479,8 +479,8 @@ fn check_custom_abs(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatingPointArithmetic {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, args, _) = &expr.kind {
             let recv_ty = cx.tables().expr_ty(&args[0]);
 

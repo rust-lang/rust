@@ -11,7 +11,7 @@ use rustc_span::symbol::{Ident, Symbol};
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
-pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &'a LateContext<'a, 'tcx>) -> Option<FxHashSet<HirId>> {
+pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> Option<FxHashSet<HirId>> {
     let mut delegate = MutVarsDelegate {
         used_mutably: FxHashSet::default(),
         skip: false,
@@ -27,11 +27,7 @@ pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &'a LateContext<'a,
     Some(delegate.used_mutably)
 }
 
-pub fn is_potentially_mutated<'a, 'tcx>(
-    variable: &'tcx Path<'_>,
-    expr: &'tcx Expr<'_>,
-    cx: &'a LateContext<'a, 'tcx>,
-) -> bool {
+pub fn is_potentially_mutated<'tcx>(variable: &'tcx Path<'_>, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
     if let Res::Local(id) = variable.res {
         mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&id))
     } else {

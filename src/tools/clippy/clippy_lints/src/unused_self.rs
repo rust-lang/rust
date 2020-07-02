@@ -39,8 +39,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnusedSelf => [UNUSED_SELF]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &ImplItem<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &ImplItem<'_>) {
         if impl_item.span.from_expansion() {
             return;
         }
@@ -80,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
 }
 
 struct UnusedSelfVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     uses_self: bool,
     self_hir_id: &'a HirId,
 }

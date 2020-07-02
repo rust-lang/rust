@@ -55,8 +55,8 @@ impl TypeLimits {
 
 /// Attempts to special-case the overflowing literal lint when it occurs as a range endpoint.
 /// Returns `true` iff the lint was overridden.
-fn lint_overflowing_range_endpoint<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_overflowing_range_endpoint<'tcx>(
+    cx: &LateContext<'tcx>,
     lit: &hir::Lit,
     lit_val: u128,
     max: u128,
@@ -127,7 +127,7 @@ fn uint_ty_range(uint_ty: ast::UintTy) -> (u128, u128) {
     }
 }
 
-fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &hir::Lit) -> Option<String> {
+fn get_bin_hex_repr(cx: &LateContext<'_>, lit: &hir::Lit) -> Option<String> {
     let src = cx.sess().source_map().span_to_snippet(lit.span).ok()?;
     let firstch = src.chars().next()?;
 
@@ -142,7 +142,7 @@ fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &hir::Lit) -> Option<String> 
 }
 
 fn report_bin_hex_error(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
     ty: attr::IntType,
     repr_str: String,
@@ -233,8 +233,8 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static 
     }
 }
 
-fn lint_int_literal<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_int_literal<'tcx>(
+    cx: &LateContext<'tcx>,
     type_limits: &TypeLimits,
     e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
@@ -283,8 +283,8 @@ fn lint_int_literal<'a, 'tcx>(
     }
 }
 
-fn lint_uint_literal<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_uint_literal<'tcx>(
+    cx: &LateContext<'tcx>,
     e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
     t: ast::UintTy,
@@ -347,8 +347,8 @@ fn lint_uint_literal<'a, 'tcx>(
     }
 }
 
-fn lint_literal<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_literal<'tcx>(
+    cx: &LateContext<'tcx>,
     type_limits: &TypeLimits,
     e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
@@ -391,8 +391,8 @@ fn lint_literal<'a, 'tcx>(
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr<'tcx>) {
+impl<'tcx> LateLintPass<'tcx> for TypeLimits {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
@@ -436,7 +436,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         }
 
         fn check_limits(
-            cx: &LateContext<'_, '_>,
+            cx: &LateContext<'_>,
             binop: hir::BinOp,
             l: &hir::Expr<'_>,
             r: &hir::Expr<'_>,
@@ -515,7 +515,7 @@ enum ImproperCTypesMode {
 }
 
 struct ImproperCTypesVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     mode: ImproperCTypesMode,
 }
 
@@ -939,7 +939,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         struct ProhibitOpaqueTypes<'a, 'tcx> {
-            cx: &'a LateContext<'a, 'tcx>,
+            cx: &'a LateContext<'tcx>,
             ty: Option<Ty<'tcx>>,
         };
 
@@ -1050,8 +1050,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypesDeclarations {
-    fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem<'_>) {
+impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
+    fn check_foreign_item(&mut self, cx: &LateContext<'_>, it: &hir::ForeignItem<'_>) {
         let mut vis = ImproperCTypesVisitor { cx, mode: ImproperCTypesMode::Declarations };
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id);
 
@@ -1069,10 +1069,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypesDeclarations {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypesDefinitions {
+impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         kind: hir::intravisit::FnKind<'tcx>,
         decl: &'tcx hir::FnDecl<'_>,
         _: &'tcx hir::Body<'_>,
@@ -1096,8 +1096,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypesDefinitions {
 
 declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
+    fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
             let item_def_id = cx.tcx.hir().local_def_id(it.hir_id);
             let t = cx.tcx.type_of(item_def_id);

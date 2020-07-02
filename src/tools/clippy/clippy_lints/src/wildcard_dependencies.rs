@@ -28,8 +28,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(WildcardDependencies => [WILDCARD_DEPENDENCIES]);
 
-impl LateLintPass<'_, '_> for WildcardDependencies {
-    fn check_crate(&mut self, cx: &LateContext<'_, '_>, _: &Crate<'_>) {
+impl LateLintPass<'_> for WildcardDependencies {
+    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
         if !run_lints(cx, &[WILDCARD_DEPENDENCIES], CRATE_HIR_ID) {
             return;
         }

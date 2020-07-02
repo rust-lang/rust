@@ -36,7 +36,7 @@ declare_clippy_lint! {
     "common metadata is defined in `Cargo.toml`"
 }
 
-fn missing_warning(cx: &LateContext<'_, '_>, package: &cargo_metadata::Package, field: &str) {
+fn missing_warning(cx: &LateContext<'_>, package: &cargo_metadata::Package, field: &str) {
     let message = format!("package `{}` is missing `{}` metadata", package.name, field);
     span_lint(cx, CARGO_COMMON_METADATA, DUMMY_SP, &message);
 }
@@ -56,8 +56,8 @@ fn is_empty_vec(value: &[String]) -> bool {
 
 declare_lint_pass!(CargoCommonMetadata => [CARGO_COMMON_METADATA]);
 
-impl LateLintPass<'_, '_> for CargoCommonMetadata {
-    fn check_crate(&mut self, cx: &LateContext<'_, '_>, _: &Crate<'_>) {
+impl LateLintPass<'_> for CargoCommonMetadata {
+    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
         if !run_lints(cx, &[CARGO_COMMON_METADATA], CRATE_HIR_ID) {
             return;
         }

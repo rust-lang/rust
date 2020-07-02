@@ -101,8 +101,8 @@ impl WildcardImports {
 
 impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
-impl LateLintPass<'_, '_> for WildcardImports {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &Item<'_>) {
+impl LateLintPass<'_> for WildcardImports {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if is_test_module_or_function(item) {
             self.test_modules_deep = self.test_modules_deep.saturating_add(1);
         }
@@ -180,7 +180,7 @@ impl LateLintPass<'_, '_> for WildcardImports {
         }
     }
 
-    fn check_item_post(&mut self, _: &LateContext<'_, '_>, item: &Item<'_>) {
+    fn check_item_post(&mut self, _: &LateContext<'_>, item: &Item<'_>) {
         if is_test_module_or_function(item) {
             self.test_modules_deep = self.test_modules_deep.saturating_sub(1);
         }

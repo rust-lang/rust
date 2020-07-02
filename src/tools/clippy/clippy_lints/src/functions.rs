@@ -190,10 +190,10 @@ impl_lint_pass!(Functions => [
     MUST_USE_CANDIDATE,
 ]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
+impl<'tcx> LateLintPass<'tcx> for Functions {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         kind: intravisit::FnKind<'tcx>,
         decl: &'tcx hir::FnDecl<'_>,
         body: &'tcx hir::Body<'_>,
@@ -230,7 +230,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         self.check_line_number(cx, span, body);
     }
 
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let attr = must_use_attr(&item.attrs);
         if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
             if let Some(attr) = attr {
@@ -255,7 +255,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem<'_>) {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
             let attr = must_use_attr(&item.attrs);
             if let Some(attr) = attr {
@@ -278,7 +278,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'_>) {
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         if let hir::TraitItemKind::Fn(ref sig, ref eid) = item.kind {
             // don't lint extern functions decls, it's not their fault
             if sig.header.abi == Abi::Rust {
@@ -310,8 +310,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
     }
 }
 
-impl<'a, 'tcx> Functions {
-    fn check_arg_number(self, cx: &LateContext<'_, '_>, decl: &hir::FnDecl<'_>, fn_span: Span) {
+impl<'tcx> Functions {
+    fn check_arg_number(self, cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, fn_span: Span) {
         let args = decl.inputs.len() as u64;
         if args > self.threshold {
             span_lint(
@@ -323,7 +323,7 @@ impl<'a, 'tcx> Functions {
         }
     }
 
-    fn check_line_number(self, cx: &LateContext<'_, '_>, span: Span, body: &'tcx hir::Body<'_>) {
+    fn check_line_number(self, cx: &LateContext<'_>, span: Span, body: &'tcx hir::Body<'_>) {
         if in_external_macro(cx.sess(), span) {
             return;
         }
@@ -378,7 +378,7 @@ impl<'a, 'tcx> Functions {
     }
 
     fn check_raw_ptr(
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         unsafety: hir::Unsafety,
         decl: &'tcx hir::FnDecl<'_>,
         body: &'tcx hir::Body<'_>,
@@ -406,7 +406,7 @@ impl<'a, 'tcx> Functions {
 }
 
 fn check_needless_must_use(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     decl: &hir::FnDecl<'_>,
     item_id: hir::HirId,
     item_span: Span,
@@ -443,8 +443,8 @@ fn check_needless_must_use(
     }
 }
 
-fn check_must_use_candidate<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn check_must_use_candidate<'tcx>(
+    cx: &LateContext<'tcx>,
     decl: &'tcx hir::FnDecl<'_>,
     body: &'tcx hir::Body<'_>,
     item_span: Span,
@@ -484,12 +484,12 @@ fn returns_unit(decl: &hir::FnDecl<'_>) -> bool {
     }
 }
 
-fn has_mutable_arg(cx: &LateContext<'_, '_>, body: &hir::Body<'_>) -> bool {
+fn has_mutable_arg(cx: &LateContext<'_>, body: &hir::Body<'_>) -> bool {
     let mut tys = FxHashSet::default();
     body.params.iter().any(|param| is_mutable_pat(cx, &param.pat, &mut tys))
 }
 
-fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<DefId>) -> bool {
+fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<DefId>) -> bool {
     if let hir::PatKind::Wild = pat.kind {
         return false; // ignore `_` patterns
     }
@@ -508,7 +508,7 @@ fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, tys: &mut FxHash
 
 static KNOWN_WRAPPER_TYS: &[&[&str]] = &[&["alloc", "rc", "Rc"], &["std", "sync", "Arc"]];
 
-fn is_mutable_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut FxHashSet<DefId>) -> bool {
+fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut FxHashSet<DefId>) -> bool {
     match ty.kind {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
@@ -537,7 +537,7 @@ fn raw_ptr_arg(arg: &hir::Param<'_>, ty: &hir::Ty<'_>) -> Option<hir::HirId> {
 }
 
 struct DerefVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     ptrs: FxHashSet<hir::HirId>,
     tables: &'a ty::TypeckTables<'tcx>,
 }
@@ -596,7 +596,7 @@ impl<'a, 'tcx> DerefVisitor<'a, 'tcx> {
 }
 
 struct StaticMutVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     mutates_static: bool,
 }
 
@@ -641,7 +641,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
     }
 }
 
-fn is_mutated_static(cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) -> bool {
+fn is_mutated_static(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
     use hir::ExprKind::{Field, Index, Path};
 
     match e.kind {
@@ -657,7 +657,7 @@ fn is_mutated_static(cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) -> bool {
     }
 }
 
-fn mutates_static<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, body: &'tcx hir::Body<'_>) -> bool {
+fn mutates_static<'tcx>(cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) -> bool {
     let mut v = StaticMutVisitor {
         cx,
         mutates_static: false,

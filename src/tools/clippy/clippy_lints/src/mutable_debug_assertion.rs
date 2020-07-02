@@ -35,8 +35,8 @@ declare_lint_pass!(DebugAssertWithMutCall => [DEBUG_ASSERT_WITH_MUT_CALL]);
 
 const DEBUG_MACRO_NAMES: [&str; 3] = ["debug_assert", "debug_assert_eq", "debug_assert_ne"];
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DebugAssertWithMutCall {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for DebugAssertWithMutCall {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         for dmn in &DEBUG_MACRO_NAMES {
             if is_direct_expn_of(e.span, dmn).is_some() {
                 if let Some(span) = extract_call(cx, e) {
@@ -53,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DebugAssertWithMutCall {
 }
 
 //HACK(hellow554): remove this when #4694 is implemented
-fn extract_call<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) -> Option<Span> {
+fn extract_call<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<Span> {
     if_chain! {
         if let ExprKind::Block(ref block, _) = e.kind;
         if block.stmts.len() == 1;
@@ -102,13 +102,13 @@ fn extract_call<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) -> O
 }
 
 struct MutArgVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     expr_span: Option<Span>,
     found: bool,
 }
 
 impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
+    fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
             expr_span: None,

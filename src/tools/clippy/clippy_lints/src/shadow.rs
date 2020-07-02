@@ -96,10 +96,10 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Shadow => [SHADOW_SAME, SHADOW_REUSE, SHADOW_UNRELATED]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Shadow {
+impl<'tcx> LateLintPass<'tcx> for Shadow {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         _: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
@@ -113,7 +113,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Shadow {
     }
 }
 
-fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl<'_>, body: &'tcx Body<'_>) {
+fn check_fn<'tcx>(cx: &LateContext<'tcx>, decl: &'tcx FnDecl<'_>, body: &'tcx Body<'_>) {
     let mut bindings = Vec::with_capacity(decl.inputs.len());
     for arg in iter_input_pats(decl, body) {
         if let PatKind::Binding(.., ident, _) = arg.pat.kind {
@@ -123,7 +123,7 @@ fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl<'_>, body: 
     check_expr(cx, &body.value, &mut bindings);
 }
 
-fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block<'_>, bindings: &mut Vec<(Name, Span)>) {
+fn check_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'_>, bindings: &mut Vec<(Name, Span)>) {
     let len = bindings.len();
     for stmt in block.stmts {
         match stmt.kind {
@@ -138,7 +138,7 @@ fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block<'_>, bin
     bindings.truncate(len);
 }
 
-fn check_local<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>, bindings: &mut Vec<(Name, Span)>) {
+fn check_local<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx.sess(), local.span) {
         return;
     }
@@ -163,7 +163,7 @@ fn check_local<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>, bin
     }
 }
 
-fn is_binding(cx: &LateContext<'_, '_>, pat_id: HirId) -> bool {
+fn is_binding(cx: &LateContext<'_>, pat_id: HirId) -> bool {
     let var_ty = cx.tables().node_type_opt(pat_id);
     if let Some(var_ty) = var_ty {
         match var_ty.kind {
@@ -175,8 +175,8 @@ fn is_binding(cx: &LateContext<'_, '_>, pat_id: HirId) -> bool {
     }
 }
 
-fn check_pat<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn check_pat<'tcx>(
+    cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
     init: Option<&'tcx Expr<'_>>,
     span: Span,
@@ -259,8 +259,8 @@ fn check_pat<'a, 'tcx>(
     }
 }
 
-fn lint_shadow<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_shadow<'tcx>(
+    cx: &LateContext<'tcx>,
     name: Name,
     span: Span,
     pattern_span: Span,
@@ -326,7 +326,7 @@ fn lint_shadow<'a, 'tcx>(
     }
 }
 
-fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, bindings: &mut Vec<(Name, Span)>) {
+fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx.sess(), expr.span) {
         return;
     }
@@ -362,7 +362,7 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, bindin
     }
 }
 
-fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty<'_>, bindings: &mut Vec<(Name, Span)>) {
+fn check_ty<'tcx>(cx: &LateContext<'tcx>, ty: &'tcx Ty<'_>, bindings: &mut Vec<(Name, Span)>) {
     match ty.kind {
         TyKind::Slice(ref sty) => check_ty(cx, sty, bindings),
         TyKind::Array(ref fty, ref anon_const) => {

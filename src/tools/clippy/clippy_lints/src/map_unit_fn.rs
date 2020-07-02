@@ -100,7 +100,7 @@ fn is_unit_type(ty: Ty<'_>) -> bool {
     }
 }
 
-fn is_unit_function(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> bool {
+fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     let ty = cx.tables().expr_ty(expr);
 
     if let ty::FnDef(id, _) = ty.kind {
@@ -111,7 +111,7 @@ fn is_unit_function(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> bool {
     false
 }
 
-fn is_unit_expression(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> bool {
+fn is_unit_expression(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     is_unit_type(cx.tables().expr_ty(expr))
 }
 
@@ -119,7 +119,7 @@ fn is_unit_expression(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> bool {
 /// semicolons, which causes problems when generating a suggestion. Given an
 /// expression that evaluates to '()' or '!', recursively remove useless braces
 /// and semi-colons until is suitable for including in the suggestion template
-fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr<'_>) -> Option<Span> {
+fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> Option<Span> {
     if !is_unit_expression(cx, expr) {
         return None;
     }
@@ -161,7 +161,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr<'_>)
 }
 
 fn unit_closure<'tcx>(
-    cx: &LateContext<'_, 'tcx>,
+    cx: &LateContext<'tcx>,
     expr: &hir::Expr<'_>,
 ) -> Option<(&'tcx hir::Param<'tcx>, &'tcx hir::Expr<'tcx>)> {
     if let hir::ExprKind::Closure(_, ref decl, inner_expr_id, _, _) = expr.kind {
@@ -186,7 +186,7 @@ fn unit_closure<'tcx>(
 /// `y` => `_y`
 ///
 /// Anything else will return `a`.
-fn let_binding_name(cx: &LateContext<'_, '_>, var_arg: &hir::Expr<'_>) -> String {
+fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
     match &var_arg.kind {
         hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
         hir::ExprKind::Path(_) => format!("_{}", snippet(cx, var_arg.span, "")),
@@ -202,7 +202,7 @@ fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     )
 }
 
-fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr<'_>, map_args: &[hir::Expr<'_>]) {
+fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr<'_>, map_args: &[hir::Expr<'_>]) {
     let var_arg = &map_args[0];
 
     let (map_type, variant, lint) = if is_type_diagnostic_item(cx, cx.tables().expr_ty(var_arg), sym!(option_type)) {
@@ -258,8 +258,8 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapUnit {
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MapUnit {
+    fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
         if stmt.span.from_expansion() {
             return;
         }

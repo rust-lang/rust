@@ -127,8 +127,8 @@ declare_lint_pass!(Ranges => [
     REVERSED_EMPTY_RANGES,
 ]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for Ranges {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind {
             let name = path.ident.as_str();
             if name == "zip" && args.len() == 2 {
@@ -166,7 +166,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
 }
 
 // exclusive range plus one: `x..(y+1)`
-fn check_exclusive_range_plus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         if let Some(higher::Range {
             start,
@@ -215,7 +215,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 }
 
 // inclusive range minus one: `x..=(y-1)`
-fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(cx, expr);
         if let Some(y) = y_minus_one(cx, end);
@@ -240,8 +240,8 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
-fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
-    fn inside_indexing_expr(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    fn inside_indexing_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         matches!(
             get_parent_expr(cx, expr),
             Some(Expr {
@@ -251,7 +251,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         )
     }
 
-    fn is_for_loop_arg(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+    fn is_for_loop_arg(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         let mut cur_expr = expr;
         while let Some(parent_expr) = get_parent_expr(cx, cur_expr) {
             match higher::for_loop(parent_expr) {
@@ -320,7 +320,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
-fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
+fn y_plus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
     match expr.kind {
         ExprKind::Binary(
             Spanned {
@@ -341,7 +341,7 @@ fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr<'_>) -> Option<&'t Ex
     }
 }
 
-fn y_minus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
+fn y_minus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'t>> {
     match expr.kind {
         ExprKind::Binary(
             Spanned {

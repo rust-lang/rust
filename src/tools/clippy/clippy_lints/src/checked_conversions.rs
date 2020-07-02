@@ -41,8 +41,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CheckedConversions {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, item: &Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
+    fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
         let result = if_chain! {
             if !in_external_macro(cx.sess(), item.span);
             if let ExprKind::Binary(op, ref left, ref right) = &item.kind;
@@ -83,7 +83,7 @@ fn single_check<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
 }
 
 /// Searches for a combination of upper & lower bound checks
-fn double_check<'a>(cx: &LateContext<'_, '_>, left: &'a Expr<'_>, right: &'a Expr<'_>) -> Option<Conversion<'a>> {
+fn double_check<'a>(cx: &LateContext<'_>, left: &'a Expr<'_>, right: &'a Expr<'_>) -> Option<Conversion<'a>> {
     let upper_lower = |l, r| {
         let upper = check_upper_bound(l);
         let lower = check_lower_bound(r);
@@ -112,7 +112,7 @@ enum ConversionType {
 
 impl<'a> Conversion<'a> {
     /// Combine multiple conversions if the are compatible
-    pub fn combine(self, other: Self, cx: &LateContext<'_, '_>) -> Option<Conversion<'a>> {
+    pub fn combine(self, other: Self, cx: &LateContext<'_>) -> Option<Conversion<'a>> {
         if self.is_compatible(&other, cx) {
             // Prefer a Conversion that contains a type-constraint
             Some(if self.to_type.is_some() { self } else { other })
@@ -123,7 +123,7 @@ impl<'a> Conversion<'a> {
 
     /// Checks if two conversions are compatible
     /// same type of conversion, same 'castee' and same 'to type'
-    pub fn is_compatible(&self, other: &Self, cx: &LateContext<'_, '_>) -> bool {
+    pub fn is_compatible(&self, other: &Self, cx: &LateContext<'_>) -> bool {
         (self.cvt == other.cvt)
             && (SpanlessEq::new(cx).eq_expr(self.expr_to_cast, other.expr_to_cast))
             && (self.has_compatible_to_type(other))
