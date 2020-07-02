@@ -7,6 +7,8 @@ standard library, and documentation.
 
 [Rust]: https://www.rust-lang.org
 
+**Note: this README is for _users_ rather than _contributors_.**
+
 ## Quick Start
 
 Read ["Installation"] from [The Book].
@@ -16,13 +18,15 @@ Read ["Installation"] from [The Book].
 
 ## Installing from Source
 
-_Note: If you wish to contribute to the compiler, you should read [this
-chapter][rustcguidebuild] of the rustc-dev-guide instead of this section._
+**Note: If you wish to _contribute_ to the compiler, you should read the
+[Getting Started][gettingstarted] of the rustc-dev-guide instead of this
+section.**
 
 The Rust build system uses a Python script called `x.py` to build the compiler,
 which manages the bootstrapping process. More information about it can be found 
 by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
 
+[gettingstarted]: https://rustc-dev-guide.rust-lang.org/getting-started.md
 [rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 
 ### Building on a Unix-like system
@@ -225,10 +229,6 @@ Snapshot binaries are currently built and tested on several platforms:
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.
 
-There is more advice about hacking on Rust in [CONTRIBUTING.md].
-
-[CONTRIBUTING.md]: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md
-
 ## Getting Help
 
 The Rust community congregates in a few places:
@@ -243,21 +243,8 @@ The Rust community congregates in a few places:
 
 ## Contributing
 
-To contribute to Rust, please see [CONTRIBUTING](CONTRIBUTING.md).
-
-Most real-time collaboration happens in a variety of channels on the
-[Rust Discord server][rust-discord], with channels dedicated for getting help,
-community, documentation, and all major contribution areas in the Rust ecosystem.
-A good place to ask for help would be the #help channel.
-
-The [rustc dev guide] might be a good place to start if you want to find out how
-various parts of the compiler work.
-
-Also, you may find the [rustdocs for the compiler itself][rustdocs] useful.
-
-[rust-discord]: https://discord.gg/rust-lang
-[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
-[rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
+If you are interested in contributing to the Rust project, please take a look
+at the [Getting Started][gettingstarted] guide in the [rustc-dev-guide].
 
 ## License
 
