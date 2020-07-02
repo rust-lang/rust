@@ -5,6 +5,7 @@ use std::{cmp::Ordering, fmt, hash::BuildHasherDefault, sync::Arc};
 use fst::{self, Streamer};
 use indexmap::{map::Entry, IndexMap};
 use ra_db::CrateId;
+use ra_syntax::SmolStr;
 use rustc_hash::{FxHashMap, FxHasher};
 use smallvec::SmallVec;
 
@@ -50,7 +51,7 @@ pub struct ImportMap {
 
     /// Maps names of associated items to the item's ID. Only includes items whose defining trait is
     /// exported.
-    assoc_map: FxHashMap<String, SmallVec<[AssocItemId; 1]>>,
+    assoc_map: FxHashMap<SmolStr, SmallVec<[AssocItemId; 1]>>,
 }
 
 impl ImportMap {
@@ -162,7 +163,7 @@ impl ImportMap {
     fn collect_trait_methods(&mut self, db: &dyn DefDatabase, tr: TraitId) {
         let data = db.trait_data(tr);
         for (name, item) in data.items.iter() {
-            self.assoc_map.entry(name.to_string()).or_default().push(*item);
+            self.assoc_map.entry(name.to_string().into()).or_default().push(*item);
         }
     }
 }
@@ -310,7 +311,7 @@ pub fn search_dependencies<'a>(
 
     // Add all exported associated items whose names match the query (exactly).
     for map in &import_maps {
-        if let Some(v) = map.assoc_map.get(&query.query) {
+        if let Some(v) = map.assoc_map.get(&*query.query) {
             res.extend(v.iter().map(|&assoc| {
                 ItemInNs::Types(match assoc {
                     AssocItemId::FunctionId(it) => it.into(),
