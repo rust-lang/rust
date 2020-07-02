@@ -100,8 +100,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
 
     let target = if_expr.syntax().text_range();
     acc.add(
-        AssistId("convert_to_guarded_return"),
-        AssistKind::RefactorRewrite,
+        AssistId("convert_to_guarded_return", AssistKind::RefactorRewrite),
         "Convert to guarded return",
         target,
         |edit| {

@@ -57,8 +57,7 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
 
     let target = tree.syntax().text_range();
     acc.add(
-        AssistId("merge_imports"),
-        AssistKind::RefactorRewrite,
+        AssistId("merge_imports", AssistKind::RefactorRewrite),
         "Merge imports",
         target,
         |builder| {

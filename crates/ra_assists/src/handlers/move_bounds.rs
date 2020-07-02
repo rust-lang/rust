@@ -51,8 +51,7 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
 
     let target = type_param_list.syntax().text_range();
     acc.add(
-        AssistId("move_bounds_to_where_clause"),
-        AssistKind::RefactorRewrite,
+        AssistId("move_bounds_to_where_clause", AssistKind::RefactorRewrite),
         "Move to where clause",
         target,
         |edit| {

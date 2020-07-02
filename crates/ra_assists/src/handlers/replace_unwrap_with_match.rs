@@ -47,8 +47,7 @@ pub(crate) fn replace_unwrap_with_match(acc: &mut Assists, ctx: &AssistContext) 
     let happy_variant = TryEnum::from_ty(&ctx.sema, &ty)?.happy_case();
     let target = method_call.syntax().text_range();
     acc.add(
-        AssistId("replace_unwrap_with_match"),
-        AssistKind::RefactorRewrite,
+        AssistId("replace_unwrap_with_match", AssistKind::RefactorRewrite),
         "Replace unwrap with match",
         target,
         |builder| {

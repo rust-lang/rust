@@ -35,8 +35,7 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
     let block_expr = &fn_def.body()?;
 
     acc.add(
-        AssistId("change_return_type_to_result"),
-        AssistKind::RefactorRewrite,
+        AssistId("change_return_type_to_result", AssistKind::RefactorRewrite),
         "Change return type to Result",
         type_ref.syntax().text_range(),
         |builder| {

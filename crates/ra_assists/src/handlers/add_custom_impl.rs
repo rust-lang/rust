@@ -52,7 +52,7 @@ pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<
         format!("Add custom impl `{}` for `{}`", trait_token.text().as_str(), annotated_name);
 
     let target = attr.syntax().text_range();
-    acc.add(AssistId("add_custom_impl"), AssistKind::Refactor, label, target, |builder| {
+    acc.add(AssistId("add_custom_impl", AssistKind::Refactor), label, target, |builder| {
         let new_attr_input = input
             .syntax()
             .descendants_with_tokens()

@@ -46,8 +46,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         return None;
     }
     acc.add(
-        AssistId("add_turbo_fish"),
-        AssistKind::RefactorRewrite,
+        AssistId("add_turbo_fish", AssistKind::RefactorRewrite),
         "Add `::<>`",
         ident.text_range(),
         |builder| match ctx.config.snippet_cap {

@@ -29,8 +29,7 @@ pub(crate) fn flip_comma(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     }
 
     acc.add(
-        AssistId("flip_comma"),
-        AssistKind::RefactorRewrite,
+        AssistId("flip_comma", AssistKind::RefactorRewrite),
         "Flip comma",
         comma.text_range(),
         |edit| {

@@ -43,8 +43,7 @@ fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
     let target = record.syntax().text_range();
     acc.add(
-        AssistId("reorder_fields"),
-        AssistKind::RefactorRewrite,
+        AssistId("reorder_fields", AssistKind::RefactorRewrite),
         "Reorder record fields",
         target,
         |edit| {

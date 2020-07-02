@@ -27,8 +27,7 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let name = nominal.name()?;
     let target = nominal.syntax().text_range();
     acc.add(
-        AssistId("add_impl"),
-        AssistKind::Refactor,
+        AssistId("add_impl", AssistKind::Refactor),
         format!("Implement {}", name.text().as_str()),
         target,
         |edit| {

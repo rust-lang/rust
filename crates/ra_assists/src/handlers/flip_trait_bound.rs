@@ -34,8 +34,7 @@ pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext) -> Option
 
     let target = plus.text_range();
     acc.add(
-        AssistId("flip_trait_bound"),
-        AssistKind::RefactorRewrite,
+        AssistId("flip_trait_bound", AssistKind::RefactorRewrite),
         "Flip trait bounds",
         target,
         |edit| {

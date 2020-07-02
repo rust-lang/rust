@@ -27,8 +27,7 @@ pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let value = token.value()?;
     let target = token.syntax().text_range();
     acc.add(
-        AssistId("make_raw_string"),
-        AssistKind::RefactorRewrite,
+        AssistId("make_raw_string", AssistKind::RefactorRewrite),
         "Rewrite as raw string",
         target,
         |edit| {
@@ -65,8 +64,7 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Optio
     let value = token.value()?;
     let target = token.syntax().text_range();
     acc.add(
-        AssistId("make_usual_string"),
-        AssistKind::RefactorRewrite,
+        AssistId("make_usual_string", AssistKind::RefactorRewrite),
         "Rewrite as regular string",
         target,
         |edit| {
@@ -95,7 +93,7 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Optio
 pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     let target = token.text_range();
-    acc.add(AssistId("add_hash"), AssistKind::Refactor, "Add # to raw string", target, |edit| {
+    acc.add(AssistId("add_hash", AssistKind::Refactor), "Add # to raw string", target, |edit| {
         edit.insert(token.text_range().start() + TextSize::of('r'), "#");
         edit.insert(token.text_range().end(), "#");
     })
@@ -125,8 +123,7 @@ pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     }
     let target = token.text_range();
     acc.add(
-        AssistId("remove_hash"),
-        AssistKind::RefactorRewrite,
+        AssistId("remove_hash", AssistKind::RefactorRewrite),
         "Remove hash from raw string",
         target,
         |edit| {

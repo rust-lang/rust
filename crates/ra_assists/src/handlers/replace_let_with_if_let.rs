@@ -45,8 +45,7 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
 
     let target = let_kw.text_range();
     acc.add(
-        AssistId("replace_let_with_if_let"),
-        AssistKind::RefactorRewrite,
+        AssistId("replace_let_with_if_let", AssistKind::RefactorRewrite),
         "Replace with if-let",
         target,
         |edit| {

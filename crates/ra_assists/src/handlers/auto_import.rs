@@ -48,8 +48,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     for import in proposed_imports {
         acc.add_group(
             &group,
-            AssistId("auto_import"),
-            AssistKind::QuickFix,
+            AssistId("auto_import", AssistKind::QuickFix),
             format!("Import `{}`", &import),
             range,
             |builder| {

@@ -104,8 +104,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
 
     let target = match_expr.syntax().text_range();
     acc.add(
-        AssistId("fill_match_arms"),
-        AssistKind::QuickFix,
+        AssistId("fill_match_arms", AssistKind::QuickFix),
         "Fill match arms",
         target,
         |builder| {

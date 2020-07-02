@@ -111,8 +111,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
 
     let target = bind_pat.syntax().text_range();
     acc.add(
-        AssistId("inline_local_variable"),
-        AssistKind::RefactorInline,
+        AssistId("inline_local_variable", AssistKind::RefactorInline),
         "Inline variable",
         target,
         move |builder| {

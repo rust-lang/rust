@@ -19,7 +19,7 @@ use ra_text_edit::TextEditBuilder;
 
 use crate::{
     assist_config::{AssistConfig, SnippetCap},
-    Assist, AssistId, AssistKind, GroupLabel, ResolvedAssist,
+    Assist, AssistId, GroupLabel, ResolvedAssist,
 };
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
@@ -135,24 +135,22 @@ impl Assists {
     pub(crate) fn add(
         &mut self,
         id: AssistId,
-        kind: AssistKind,
         label: impl Into<String>,
         target: TextRange,
         f: impl FnOnce(&mut AssistBuilder),
     ) -> Option<()> {
-        let label = Assist::new(id, kind, label.into(), None, target);
+        let label = Assist::new(id, label.into(), None, target);
         self.add_impl(label, f)
     }
     pub(crate) fn add_group(
         &mut self,
         group: &GroupLabel,
         id: AssistId,
-        kind: AssistKind,
         label: impl Into<String>,
         target: TextRange,
         f: impl FnOnce(&mut AssistBuilder),
     ) -> Option<()> {
-        let label = Assist::new(id, kind, label.into(), Some(group.clone()), target);
+        let label = Assist::new(id, label.into(), Some(group.clone()), target);
         self.add_impl(label, f)
     }
     fn add_impl(&mut self, label: Assist, f: impl FnOnce(&mut AssistBuilder)) -> Option<()> {

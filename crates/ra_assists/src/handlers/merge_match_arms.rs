@@ -60,8 +60,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
     }
 
     acc.add(
-        AssistId("merge_match_arms"),
-        AssistKind::RefactorRewrite,
+        AssistId("merge_match_arms", AssistKind::RefactorRewrite),
         "Merge match arms",
         current_text_range,
         |edit| {

@@ -44,8 +44,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
     }
     let target = expr.syntax().text_range();
     acc.add(
-        AssistId("extract_variable"),
-        AssistKind::RefactorExtract,
+        AssistId("extract_variable", AssistKind::RefactorExtract),
         "Extract into variable",
         target,
         move |edit| {

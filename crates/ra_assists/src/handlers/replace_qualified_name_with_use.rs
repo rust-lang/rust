@@ -37,8 +37,7 @@ pub(crate) fn replace_qualified_name_with_use(
 
     let target = path.syntax().text_range();
     acc.add(
-        AssistId("replace_qualified_name_with_use"),
-        AssistKind::RefactorRewrite,
+        AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
         "Replace qualified path with use",
         target,
         |builder| {

@@ -49,8 +49,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
 
     let target = if_expr.syntax().text_range();
     acc.add(
-        AssistId("replace_if_let_with_match"),
-        AssistKind::RefactorRewrite,
+        AssistId("replace_if_let_with_match", AssistKind::RefactorRewrite),
         "Replace with match",
         target,
         move |edit| {

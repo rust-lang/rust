@@ -27,7 +27,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let assist_id = AssistId("unwrap_block");
+    let assist_id = AssistId("unwrap_block", AssistKind::RefactorRewrite);
     let assist_label = "Unwrap block";
 
     let l_curly_token = ctx.find_token_at_offset(T!['{'])?;
@@ -50,47 +50,35 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
                     let ancestor_then_branch = ancestor.then_branch()?;
 
                     let target = then_branch.syntax().text_range();
-                    return acc.add(
-                        assist_id,
-                        AssistKind::Refactor,
-                        assist_label,
-                        target,
-                        |edit| {
-                            let range_to_del_else_if = TextRange::new(
-                                ancestor_then_branch.syntax().text_range().end(),
-                                l_curly_token.text_range().start(),
-                            );
-                            let range_to_del_rest = TextRange::new(
-                                then_branch.syntax().text_range().end(),
-                                if_expr.syntax().text_range().end(),
-                            );
+                    return acc.add(assist_id, assist_label, target, |edit| {
+                        let range_to_del_else_if = TextRange::new(
+                            ancestor_then_branch.syntax().text_range().end(),
+                            l_curly_token.text_range().start(),
+                        );
+                        let range_to_del_rest = TextRange::new(
+                            then_branch.syntax().text_range().end(),
+                            if_expr.syntax().text_range().end(),
+                        );
 
-                            edit.delete(range_to_del_rest);
-                            edit.delete(range_to_del_else_if);
-                            edit.replace(
-                                target,
-                                update_expr_string(then_branch.to_string(), &[' ', '{']),
-                            );
-                        },
-                    );
+                        edit.delete(range_to_del_rest);
+                        edit.delete(range_to_del_else_if);
+                        edit.replace(
+                            target,
+                            update_expr_string(then_branch.to_string(), &[' ', '{']),
+                        );
+                    });
                 }
             } else {
                 let target = block.syntax().text_range();
-                return acc.add(
-                    assist_id,
-                    AssistKind::RefactorRewrite,
-                    assist_label,
-                    target,
-                    |edit| {
-                        let range_to_del = TextRange::new(
-                            then_branch.syntax().text_range().end(),
-                            l_curly_token.text_range().start(),
-                        );
+                return acc.add(assist_id, assist_label, target, |edit| {
+                    let range_to_del = TextRange::new(
+                        then_branch.syntax().text_range().end(),
+                        l_curly_token.text_range().start(),
+                    );
 
-                        edit.delete(range_to_del);
-                        edit.replace(target, update_expr_string(block.to_string(), &[' ', '{']));
-                    },
-                );
+                    edit.delete(range_to_del);
+                    edit.replace(target, update_expr_string(block.to_string(), &[' ', '{']));
+                });
             }
         }
         _ => return None,
@@ -98,7 +86,7 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     let unwrapped = unwrap_trivial_block(block);
     let target = unwrapped.syntax().text_range();
-    acc.add(assist_id, AssistKind::RefactorRewrite, assist_label, target, |builder| {
+    acc.add(assist_id, assist_label, target, |builder| {
         builder.replace(
             parent.syntax().text_range(),
             update_expr_string(unwrapped.to_string(), &[' ', '{', '\n']),

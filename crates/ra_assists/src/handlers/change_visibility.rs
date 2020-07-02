@@ -63,8 +63,7 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     };
 
     acc.add(
-        AssistId("change_visibility"),
-        AssistKind::RefactorRewrite,
+        AssistId("change_visibility", AssistKind::RefactorRewrite),
         "Change visibility to pub(crate)",
         target,
         |edit| {
@@ -77,8 +76,7 @@ fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
     if vis.syntax().text() == "pub" {
         let target = vis.syntax().text_range();
         return acc.add(
-            AssistId("change_visibility"),
-            AssistKind::RefactorRewrite,
+            AssistId("change_visibility", AssistKind::RefactorRewrite),
             "Change Visibility to pub(crate)",
             target,
             |edit| {
@@ -89,8 +87,7 @@ fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
     if vis.syntax().text() == "pub(crate)" {
         let target = vis.syntax().text_range();
         return acc.add(
-            AssistId("change_visibility"),
-            AssistKind::RefactorRewrite,
+            AssistId("change_visibility", AssistKind::RefactorRewrite),
             "Change visibility to pub",
             target,
             |edit| {

@@ -45,8 +45,7 @@ pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> 
 
     let target = variant.syntax().text_range();
     acc.add(
-        AssistId("add_from_impl_for_enum"),
-        AssistKind::Refactor,
+        AssistId("add_from_impl_for_enum", AssistKind::Refactor),
         "Add From impl for this enum variant",
         target,
         |edit| {

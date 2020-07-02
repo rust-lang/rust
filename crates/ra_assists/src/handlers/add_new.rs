@@ -43,8 +43,7 @@ pub(crate) fn add_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
     let target = strukt.syntax().text_range();
     acc.add(
-        AssistId("add_new"),
-        AssistKind::Refactor,
+        AssistId("add_new", AssistKind::Refactor),
         "Add default constructor",
         target,
         |builder| {

@@ -63,8 +63,7 @@ pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     let target = call.syntax().text_range();
     acc.add(
-        AssistId("add_function"),
-        AssistKind::RefactorExtract,
+        AssistId("add_function", AssistKind::RefactorExtract),
         "Add function",
         target,
         |builder| {

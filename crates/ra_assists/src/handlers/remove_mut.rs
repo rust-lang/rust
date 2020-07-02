@@ -27,8 +27,7 @@ pub(crate) fn remove_mut(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
     let target = mut_token.text_range();
     acc.add(
-        AssistId("remove_mut"),
-        AssistKind::Refactor,
+        AssistId("remove_mut", AssistKind::Refactor),
         "Remove `mut` keyword",
         target,
         |builder| {

@@ -40,8 +40,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let not_rhs = invert_boolean_expression(rhs);
 
     acc.add(
-        AssistId("apply_demorgan"),
-        AssistKind::RefactorRewrite,
+        AssistId("apply_demorgan", AssistKind::RefactorRewrite),
         "Apply De Morgan's law",
         op_range,
         |edit| {
