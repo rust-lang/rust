@@ -1571,6 +1571,32 @@ pub type PlaceholderType = Placeholder<BoundVar>;
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
 
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, HashStable)]
+pub struct WithOptParam<T> {
+    pub did: T,
+    pub param_did: Option<DefId>,
+}
+
+impl<T> WithOptParam<T> {
+    pub fn dummy(did: T) -> WithOptParam<T> {
+        WithOptParam { did, param_did: None }
+    }
+}
+
+impl WithOptParam<LocalDefId> {
+    pub fn ty_def_id(self) -> DefId {
+        if let Some(did) = self.param_did { did } else { self.did.to_def_id() }
+    }
+}
+
+impl WithOptParam<DefId> {
+    pub fn ty_def_id(self) -> DefId {
+        self.param_did.unwrap_or(self.did)
+    }
+}
+
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.

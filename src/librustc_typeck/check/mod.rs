@@ -3542,6 +3542,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         c
     }
 
+    pub fn const_arg_to_const(
+        &self,
+        ast_c: &hir::AnonConst,
+        param_def_id: DefId,
+    ) -> &'tcx ty::Const<'tcx> {
+        let const_def = ty::WithOptParam {
+            did: self.tcx.hir().local_def_id(ast_c.hir_id),
+            param_did: Some(param_def_id),
+        };
+        let c = ty::Const::const_arg_from_anon_const(self.tcx, const_def);
+        self.register_wf_obligation(
+            c.into(),
+            self.tcx.hir().span(ast_c.hir_id),
+            ObligationCauseCode::MiscObligation,
+        );
+        c
+    }
+
     // If the type given by the user has free regions, save it for later, since
     // NLL would like to enforce those. Also pass in types that involve
     // projections, since those can resolve to `'static` bounds (modulo #54940,
@@ -5655,7 +5673,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.to_ty(ty).into()
                     }
                     (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                        self.to_const(&ct.value).into()
+                        self.const_arg_to_const(&ct.value, param.def_id).into()
                     }
                     _ => unreachable!(),
                 },

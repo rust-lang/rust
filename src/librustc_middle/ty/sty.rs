@@ -2210,21 +2210,28 @@ impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
-        debug!("Const::from_anon_const(id={:?})", def_id);
+        Self::const_arg_from_anon_const(tcx, ty::WithOptParam::dummy(def_id))
+    }
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    pub fn const_arg_from_anon_const(
+        tcx: TyCtxt<'tcx>,
+        def: ty::WithOptParam<LocalDefId>,
+    ) -> &'tcx Self {
+        debug!("Const::from_anon_const(def={:?})", def);
+
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
 
         let body_id = match tcx.hir().get(hir_id) {
             hir::Node::AnonConst(ac) => ac.body,
             _ => span_bug!(
-                tcx.def_span(def_id.to_def_id()),
+                tcx.def_span(def.did.to_def_id()),
                 "from_anon_const can only process anonymous constants"
             ),
         };
 
         let expr = &tcx.hir().body(body_id).value;
 
-        let ty = tcx.type_of(def_id.to_def_id());
+        let ty = tcx.type_of(def.ty_def_id());
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
@@ -2271,8 +2278,8 @@ impl<'tcx> Const<'tcx> {
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }
             _ => ty::ConstKind::Unevaluated(
-                def_id.to_def_id(),
-                InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
+                def.did.to_def_id(),
+                InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                 None,
             ),
         };
