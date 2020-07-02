@@ -19,6 +19,16 @@ let ctx: Ctx | undefined;
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
 export async function activate(context: vscode.ExtensionContext) {
+    // For some reason vscode not always shows pop-up error notifications
+    // when an extension fails to activate, so we do it explicitly by ourselves.
+    // FIXME: remove this bit of code once vscode fixes this issue: https://github.com/microsoft/vscode/issues/101242
+    await tryActivate(context).catch(err => {
+        void vscode.window.showErrorMessage(`Cannot activate rust-analyzer: ${err.message}`);
+        throw err;
+    });
+}
+
+async function tryActivate(context: vscode.ExtensionContext) {
     // Register a "dumb" onEnter command for the case where server fails to
     // start.
     //
@@ -58,9 +68,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (workspaceFolder === undefined) {
-        const err = "Cannot activate rust-analyzer when no folder is opened";
-        void vscode.window.showErrorMessage(err);
-        throw new Error(err);
+        throw new Error("no folder is opened");
     }
 
     // Note: we try to start the server before we activate type hints so that it
