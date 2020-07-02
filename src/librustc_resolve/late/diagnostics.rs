@@ -1,4 +1,4 @@
-use crate::diagnostics::{ImportSuggestion, TypoSuggestion};
+use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::lifetimes::{ElisionFailureInfo, LifetimeContext};
 use crate::late::{LateResolutionVisitor, RibKind};
 use crate::path_names_to_string;
@@ -991,6 +991,32 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             _ => {}
         }
         None
+    }
+
+    /// Given the target `label`, search the `rib_index`th label rib for similarly named labels,
+    /// optionally returning the closest match and whether it is reachable.
+    crate fn suggestion_for_label_in_rib(
+        &self,
+        rib_index: usize,
+        label: Ident,
+    ) -> Option<LabelSuggestion> {
+        // Are ribs from this `rib_index` within scope?
+        let within_scope = self.is_label_valid_from_rib(rib_index);
+
+        let rib = &self.label_ribs[rib_index];
+        let names = rib
+            .bindings
+            .iter()
+            .filter(|(id, _)| id.span.ctxt() == label.span.ctxt())
+            .map(|(id, _)| &id.name);
+
+        find_best_match_for_name(names, &label.as_str(), None).map(|symbol| {
+            // Upon finding a similar name, get the ident that it was from - the span
+            // contained within helps make a useful diagnostic. In addition, determine
+            // whether this candidate is within scope.
+            let (ident, _) = rib.bindings.iter().find(|(ident, _)| ident.name == symbol).unwrap();
+            (*ident, within_scope)
+        })
     }
 }
 

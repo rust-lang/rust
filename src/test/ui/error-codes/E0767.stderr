@@ -1,11 +1,11 @@
-error[E0767]: use of unreachable label `'l`
-  --> $DIR/resolve-label.rs:5:23
+error[E0767]: use of unreachable label `'a`
+  --> $DIR/E0767.rs:4:26
    |
-LL |     'l: loop {
+LL |     'a: loop {
    |     -- unreachable label defined here
-...
-LL |                 break 'l;
-   |                       ^^ unreachable label `'l`
+LL |         || {
+LL |             loop { break 'a; }
+   |                          ^^ unreachable label `'a`
    |
    = note: labels are unreachable through functions, closures, async blocks and modules
 
