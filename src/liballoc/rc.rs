@@ -1706,7 +1706,7 @@ impl<T> Weak<T> {
     /// ```
     ///
     /// [`null`]: ../../std/ptr/fn.null.html
-    #[stable(feature = "weak_into_raw", since = "1.45.0")]
+    #[stable(feature = "rc_as_ptr", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
         let offset = data_offset_sized::<T>();
         let ptr = self.ptr.cast::<u8>().as_ptr().wrapping_offset(offset);
