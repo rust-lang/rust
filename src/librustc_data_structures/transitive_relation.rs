@@ -391,14 +391,12 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
 /// - Input: `[a, x, b, y]`. Output: `[a, x]`.
 fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix<usize, usize>) {
     let mut i = 0;
-    while i < candidates.len() {
-        let candidate_i = candidates[i];
+    while let Some(&candidate_i) = candidates.get(i) {
         i += 1;
 
         let mut j = i;
         let mut dead = 0;
-        while j < candidates.len() {
-            let candidate_j = candidates[j];
+        while let Some(&candidate_j) = candidates.get(j) {
             if closure.contains(candidate_i, candidate_j) {
                 // If `i` can reach `j`, then we can remove `j`. So just
                 // mark it as dead and move on; subsequent indices will be

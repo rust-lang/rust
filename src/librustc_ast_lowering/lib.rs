@@ -39,8 +39,8 @@ use rustc_ast::ast;
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::token::{self, Nonterminal, Token};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast_pretty::pprust;
@@ -1027,9 +1027,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_token(&mut self, token: Token) -> TokenStream {
         match token.kind {
-            token::Interpolated(nt, _) => {
+            token::Interpolated(nt) => {
                 let tts = (self.nt_to_tokenstream)(&nt, &self.sess.parse_sess, token.span);
-                self.lower_token_stream(tts)
+                TokenTree::Delimited(
+                    DelimSpan::from_single(token.span),
+                    DelimToken::NoDelim,
+                    self.lower_token_stream(tts),
+                )
+                .into()
             }
             _ => TokenTree::Token(token).into(),
         }

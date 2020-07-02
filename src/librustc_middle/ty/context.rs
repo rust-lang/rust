@@ -1049,6 +1049,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 Some(attr) => attr,
                 None => return Bound::Unbounded,
             };
+            debug!("layout_scalar_valid_range: attr={:?}", attr);
             for meta in attr.meta_item_list().expect("rustc_layout_scalar_valid_range takes args") {
                 match meta.literal().expect("attribute takes lit").kind {
                     ast::LitKind::Int(a, _) => return Bound::Included(a),
@@ -1169,7 +1170,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ty_error_with_message(DUMMY_SP, "TyKind::Error constructed but no error reported")
     }
 
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg to
+    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
     /// ensure it gets used.
     #[track_caller]
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {

@@ -500,7 +500,6 @@ fn test_debugging_options_tracking_hash() {
     untracked!(print_link_args, true);
     untracked!(print_llvm_passes, true);
     untracked!(print_mono_items, Some(String::from("abc")));
-    untracked!(print_region_graph, true);
     untracked!(print_type_sizes, true);
     untracked!(query_dep_graph, true);
     untracked!(query_stats, true);

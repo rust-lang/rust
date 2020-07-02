@@ -9,7 +9,7 @@ use rustc_ast::ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, 
 use rustc_ast::ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
-use rustc_ast::ast::{FnHeader, ForeignItem, PathSegment, Visibility, VisibilityKind};
+use rustc_ast::ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast::ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
@@ -1262,6 +1262,25 @@ impl<'a> Parser<'a> {
                     sp,
                     &format!("expected `,`, or `}}`, found {}", super::token_descr(&self.token)),
                 );
+
+                // Try to recover extra trailing angle brackets
+                let mut recovered = false;
+                if let TyKind::Path(_, Path { segments, .. }) = &a_var.ty.kind {
+                    if let Some(last_segment) = segments.last() {
+                        recovered = self.check_trailing_angle_brackets(
+                            last_segment,
+                            &[&token::Comma, &token::CloseDelim(token::Brace)],
+                        );
+                        if recovered {
+                            // Handle a case like `Vec<u8>>,` where we can continue parsing fields
+                            // after the comma
+                            self.eat(&token::Comma);
+                            // `check_trailing_angle_brackets` already emitted a nicer error
+                            err.cancel();
+                        }
+                    }
+                }
+
                 if self.token.is_ident() {
                     // This is likely another field; emit the diagnostic and keep going
                     err.span_suggestion(
@@ -1271,6 +1290,14 @@ impl<'a> Parser<'a> {
                         Applicability::MachineApplicable,
                     );
                     err.emit();
+                    recovered = true;
+                }
+
+                if recovered {
+                    // Make sure an error was emitted (either by recovering an angle bracket,
+                    // or by finding an identifier as the next token), since we're
+                    // going to continue parsing
+                    assert!(self.sess.span_diagnostic.has_errors());
                 } else {
                     return Err(err);
                 }
@@ -1780,7 +1807,7 @@ impl<'a> Parser<'a> {
 
     fn is_named_param(&self) -> bool {
         let offset = match self.token.kind {
-            token::Interpolated(ref nt, _) => match **nt {
+            token::Interpolated(ref nt) => match **nt {
                 token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
                 _ => 0,
             },

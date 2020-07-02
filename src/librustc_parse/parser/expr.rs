@@ -26,7 +26,7 @@ use std::mem;
 /// `token::Interpolated` tokens.
 macro_rules! maybe_whole_expr {
     ($p:expr) => {
-        if let token::Interpolated(nt, _) = &$p.token.kind {
+        if let token::Interpolated(nt) = &$p.token.kind {
             match &**nt {
                 token::NtExpr(e) | token::NtLiteral(e) => {
                     let e = e.clone();
@@ -867,7 +867,7 @@ impl<'a> Parser<'a> {
 
         let fn_span_lo = self.token.span;
         let segment = self.parse_path_segment(PathStyle::Expr)?;
-        self.check_trailing_angle_brackets(&segment, token::OpenDelim(token::Paren));
+        self.check_trailing_angle_brackets(&segment, &[&token::OpenDelim(token::Paren)]);
 
         if self.check(&token::OpenDelim(token::Paren)) {
             // Method call `expr.f()`

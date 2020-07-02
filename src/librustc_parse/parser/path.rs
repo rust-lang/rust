@@ -169,7 +169,7 @@ impl<'a> Parser<'a> {
                 // `PathStyle::Expr` is only provided at the root invocation and never in
                 // `parse_path_segment` to recurse and therefore can be checked to maintain
                 // this invariant.
-                self.check_trailing_angle_brackets(&segment, token::ModSep);
+                self.check_trailing_angle_brackets(&segment, &[&token::ModSep]);
             }
             segments.push(segment);
 
