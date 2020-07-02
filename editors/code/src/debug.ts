@@ -93,7 +93,7 @@ async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<v
     }
 
     const executable = await getDebugExecutable(runnable);
-    const env = prepareEnv(runnable, ctx.config);
+    const env = prepareEnv(runnable, ctx.config.runnableEnv);
     const debugConfig = knownEngines[debugEngine.id](runnable, simplifyPath(executable), env, debugOptions.sourceFileMap);
     if (debugConfig.type in debugOptions.engineSettings) {
         const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];

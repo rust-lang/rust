@@ -5,7 +5,7 @@ import * as tasks from './tasks';
 
 import { Ctx } from './ctx';
 import { makeDebugConfig } from './debug';
-import { Config } from './config';
+import { Config, RunnableEnvCfg } from './config';
 
 const quickPickButtons = [{ iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configurtation." }];
 
@@ -96,22 +96,22 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
     }
 }
 
-export function prepareEnv(runnable: ra.Runnable, config: Config): Record<string, string> {
+export function prepareEnv(runnable: ra.Runnable, runnableEnvCfg: RunnableEnvCfg): Record<string, string> {
     const env: Record<string, string> = { "RUST_BACKTRACE": "short" };
 
     if (runnable.args.expectTest) {
         env["UPDATE_EXPECT"] = "1";
     }
 
-    if (config.runnableEnv) {
-        if (Array.isArray(config.runnableEnv)) {
-            for (const it of config.runnableEnv) {
+    if (runnableEnvCfg) {
+        if (Array.isArray(runnableEnvCfg)) {
+            for (const it of runnableEnvCfg) {
                 if (!it.mask || new RegExp(it.mask).test(runnable.label)) {
                     Object.assign(env, it.env);
                 }
             }
         } else {
-            Object.assign(env, config.runnableEnv as Record<string, string>);
+            Object.assign(env, runnableEnvCfg as Record<string, string>);
         }
     }
 
@@ -136,7 +136,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         command: args[0], // run, test, etc...
         args: args.slice(1),
         cwd: runnable.args.workspaceRoot,
-        env: prepareEnv(runnable, config),
+        env: prepareEnv(runnable, config.runnableEnv),
     };
 
     const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()

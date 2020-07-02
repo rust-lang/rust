@@ -5,7 +5,7 @@ export type UpdatesChannel = "stable" | "nightly";
 
 export const NIGHTLY_TAG = "nightly";
 
-export type RunnableEnvCfg = Record<string, string> | [{ mask?: string, env: Record<string, string>; }]
+export type RunnableEnvCfg = undefined | Record<string, string> | { mask?: string, env: Record<string, string>; }[];
 
 export class Config {
     readonly extensionId = "matklad.rust-analyzer";
@@ -117,7 +117,7 @@ export class Config {
     }
 
     get runnableEnv() {
-        return this.get<RunnableEnvCfg | undefined>("runnableEnv");
+        return this.get<RunnableEnvCfg>("runnableEnv");
     }
 
     get debug() {
