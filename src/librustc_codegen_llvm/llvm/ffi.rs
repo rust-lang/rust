@@ -1,6 +1,8 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+use super::coverageinfo::{SmallVectorCounterExpression, SmallVectorCounterMappingRegion};
+
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DINameSpace, DISPFlags, DIScope,
@@ -649,6 +651,16 @@ pub struct Linker<'a>(InvariantOpaque<'a>);
 
 pub type DiagnosticHandler = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
+
+pub mod coverageinfo {
+    use super::InvariantOpaque;
+
+    #[repr(C)]
+    pub struct SmallVectorCounterExpression<'a>(InvariantOpaque<'a>);
+
+    #[repr(C)]
+    pub struct SmallVectorCounterMappingRegion<'a>(InvariantOpaque<'a>);
+}
 
 pub mod debuginfo {
     use super::{InvariantOpaque, Metadata};
@@ -1365,7 +1377,7 @@ extern "C" {
 
     // Miscellaneous instructions
     pub fn LLVMBuildPhi(B: &Builder<'a>, Ty: &'a Type, Name: *const c_char) -> &'a Value;
-    pub fn LLVMRustGetInstrprofIncrementIntrinsic(M: &Module) -> &'a Value;
+    pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &'a Value;
     pub fn LLVMRustBuildCall(
         B: &Builder<'a>,
         Fn: &'a Value,
@@ -1633,6 +1645,58 @@ extern "C" {
         ConstraintsLen: size_t,
     ) -> bool;
 
+    pub fn LLVMRustCoverageSmallVectorCounterExpressionCreate()
+    -> &'a mut SmallVectorCounterExpression<'a>;
+    pub fn LLVMRustCoverageSmallVectorCounterExpressionDispose(
+        Container: &'a mut SmallVectorCounterExpression<'a>,
+    );
+    pub fn LLVMRustCoverageSmallVectorCounterExpressionAdd(
+        Container: &mut SmallVectorCounterExpression<'a>,
+        Kind: rustc_codegen_ssa::coverageinfo::CounterOp,
+        LeftIndex: c_uint,
+        RightIndex: c_uint,
+    );
+
+    pub fn LLVMRustCoverageSmallVectorCounterMappingRegionCreate()
+    -> &'a mut SmallVectorCounterMappingRegion<'a>;
+    pub fn LLVMRustCoverageSmallVectorCounterMappingRegionDispose(
+        Container: &'a mut SmallVectorCounterMappingRegion<'a>,
+    );
+    pub fn LLVMRustCoverageSmallVectorCounterMappingRegionAdd(
+        Container: &mut SmallVectorCounterMappingRegion<'a>,
+        Index: c_uint,
+        FileID: c_uint,
+        LineStart: c_uint,
+        ColumnStart: c_uint,
+        LineEnd: c_uint,
+        ColumnEnd: c_uint,
+    );
+
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustCoverageWriteFilenamesSectionToBuffer(
+        Filenames: *const *const c_char,
+        FilenamesLen: size_t,
+        BufferOut: &RustString,
+    );
+
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustCoverageWriteMappingToBuffer(
+        VirtualFileMappingIDs: *const c_uint,
+        NumVirtualFileMappingIDs: c_uint,
+        Expressions: *const SmallVectorCounterExpression<'_>,
+        MappingRegions: *const SmallVectorCounterMappingRegion<'_>,
+        BufferOut: &RustString,
+    );
+
+    pub fn LLVMRustCoverageComputeHash(Name: *const c_char) -> u64;
+
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustCoverageWriteSectionNameToString(M: &Module, Str: &RustString);
+
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustCoverageWriteMappingVarNameToString(Str: &RustString);
+
+    pub fn LLVMRustCoverageMappingVersion() -> u32;
     pub fn LLVMRustDebugMetadataVersion() -> u32;
     pub fn LLVMRustVersionMajor() -> u32;
     pub fn LLVMRustVersionMinor() -> u32;

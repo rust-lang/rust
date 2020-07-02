@@ -400,13 +400,11 @@ pub struct DestructuredConst<'tcx> {
 /// `InstrumentCoverage` MIR pass and can be retrieved via the `coverageinfo` query.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct CoverageInfo {
-    /// A hash value that can be used by the consumer of the coverage profile data to detect
-    /// changes to the instrumented source of the associated MIR body (typically, for an
-    /// individual function).
-    pub hash: u64,
-
     /// The total number of coverage region counters added to the MIR `Body`.
     pub num_counters: u32,
+
+    /// The total number of coverage region counter expressions added to the MIR `Body`.
+    pub num_expressions: u32,
 }
 
 impl<'tcx> TyCtxt<'tcx> {

@@ -6,35 +6,41 @@
       let mut _1: ();                      // in scope 0 at $DIR/instrument_coverage.rs:9:1: 15:2
       let mut _2: bool;                    // in scope 0 at $DIR/instrument_coverage.rs:11:12: 11:17
       let mut _3: !;                       // in scope 0 at $DIR/instrument_coverage.rs:11:18: 13:10
-+     let mut _4: ();                      // in scope 0 at $DIR/instrument_coverage.rs:9:1: 15:2
++     let mut _4: ();                      // in scope 0 at $DIR/instrument_coverage.rs:9:11: 9:11
   
       bb0: {
 -         falseUnwind -> [real: bb1, cleanup: bb2]; // scope 0 at $DIR/instrument_coverage.rs:10:5: 14:6
-+         StorageLive(_4);                 // scope 0 at $DIR/instrument_coverage.rs:9:1: 15:2
-+         _4 = const std::intrinsics::count_code_region(const 0_u32, const 387_u32, const 465_u32) -> bb7; // scope 0 at $DIR/instrument_coverage.rs:9:1: 15:2
++         StorageLive(_4);                 // scope 0 at $DIR/instrument_coverage.rs:9:11: 9:11
++         _4 = const std::intrinsics::count_code_region(const 16004455475339839479_u64, const 0_u32, const 397_u32, const 465_u32) -> bb7; // scope 0 at $DIR/instrument_coverage.rs:9:11: 9:11
 +                                          // ty::Const
-+                                          // + ty: unsafe extern "rust-intrinsic" fn(u32, u32, u32) {std::intrinsics::count_code_region}
++                                          // + ty: unsafe extern "rust-intrinsic" fn(u64, u32, u32, u32) {std::intrinsics::count_code_region}
 +                                          // + val: Value(Scalar(<ZST>))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:9:1: 9:1
-+                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32, u32, u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
++                                          // + span: $DIR/instrument_coverage.rs:9:11: 9:11
++                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u64, u32, u32, u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
++                                          // ty::Const
++                                          // + ty: u64
++                                          // + val: Value(Scalar(0xde1b3f75a72fc7f7))
++                                          // mir::Constant
++                                          // + span: $DIR/instrument_coverage.rs:9:11: 9:11
++                                          // + literal: Const { ty: u64, val: Value(Scalar(0xde1b3f75a72fc7f7)) }
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000000))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:9:1: 9:1
++                                          // + span: $DIR/instrument_coverage.rs:9:11: 9:11
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
 +                                          // ty::Const
 +                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x00000183))
++                                          // + val: Value(Scalar(0x0000018d))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:9:1: 9:1
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000183)) }
++                                          // + span: $DIR/instrument_coverage.rs:9:11: 9:11
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000018d)) }
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x000001d1))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:9:1: 9:1
++                                          // + span: $DIR/instrument_coverage.rs:9:11: 9:11
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x000001d1)) }
       }
   

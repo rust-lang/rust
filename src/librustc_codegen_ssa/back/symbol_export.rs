@@ -203,6 +203,17 @@ fn exported_symbols_provider_local(
         }));
     }
 
+    if tcx.sess.opts.debugging_opts.instrument_coverage {
+        // Similar to PGO profiling, preserve symbols used by LLVM InstrProf coverage profiling.
+        const COVERAGE_WEAK_SYMBOLS: [&str; 3] =
+            ["__llvm_profile_filename", "__llvm_coverage_mapping", "__llvm_covmap"];
+
+        symbols.extend(COVERAGE_WEAK_SYMBOLS.iter().map(|sym| {
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
+            (exported_symbol, SymbolExportLevel::C)
+        }));
+    }
+
     if tcx.sess.opts.debugging_opts.sanitizer.contains(SanitizerSet::MEMORY) {
         // Similar to profiling, preserve weak msan symbol during LTO.
         const MSAN_WEAK_SYMBOLS: [&str; 2] = ["__msan_track_origins", "__msan_keep_going"];

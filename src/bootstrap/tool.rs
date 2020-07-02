@@ -361,6 +361,7 @@ bootstrap_tool!(
     Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
+    RustDemangler, "src/tools/rust-demangler", "rust-demangler";
     RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
