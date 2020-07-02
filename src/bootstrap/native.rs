@@ -175,6 +175,17 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
+        // Are we compiling for iOS/tvOS?
+        if target.contains("apple-ios") || target.contains("apple-tvos") {
+            // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
+            cfg.define("CMAKE_OSX_SYSROOT", "/");
+            cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");
+            // Prevent cmake from adding -bundle to CFLAGS automatically, which leads to a compiler error because "-bitcode_bundle" also gets added.
+            cfg.define("LLVM_ENABLE_PLUGINS", "OFF");
+            // Zlib fails to link properly, leading to a compiler error.
+            cfg.define("LLVM_ENABLE_ZLIB", "OFF");
+        }
+
         if builder.config.llvm_thin_lto {
             cfg.define("LLVM_ENABLE_LTO", "Thin");
             if !target.contains("apple") {
@@ -411,6 +422,14 @@ fn configure_cmake(
     let mut cflags = builder.cflags(target, GitRepo::Llvm).join(" ");
     if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push_str(&format!(" {}", s));
+    }
+    // Some compiler features used by LLVM (such as thread locals) will not work on a min version below iOS 10.
+    if target.contains("apple-ios") {
+        if target.contains("86-") {
+            cflags.push_str(" -miphonesimulator-version-min=10.0");
+        } else {
+            cflags.push_str(" -miphoneos-version-min=10.0");
+        }
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
