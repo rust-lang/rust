@@ -61,7 +61,7 @@ declare_lint_pass!(FloatLiteral => [EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatLiteral {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
-            let ty = cx.tables().expr_ty(expr);
+            let ty = cx.typeck_results().expr_ty(expr);
             if let ty::Float(fty) = ty.kind;
             if let hir::ExprKind::Lit(ref lit) = expr.kind;
             if let LitKind::Float(sym, lit_float_ty) = lit.node;
@@ -140,17 +140,13 @@ fn max_digits(fty: FloatTy) -> u32 {
 #[must_use]
 fn count_digits(s: &str) -> usize {
     // Note that s does not contain the f32/64 suffix, and underscores have been stripped
-    s.chars()
-        .filter(|c| *c != '-' && *c != '.')
-        .take_while(|c| *c != 'e' && *c != 'E')
-        .fold(0, |count, c| {
+    s.chars().filter(|c| *c != '-' && *c != '.').take_while(|c| *c != 'e' && *c != 'E').fold(
+        0,
+        |count, c| {
             // leading zeros
-            if c == '0' && count == 0 {
-                count
-            } else {
-                count + 1
-            }
-        })
+            if c == '0' && count == 0 { count } else { count + 1 }
+        },
+    )
 }
 
 enum FloatFormat {

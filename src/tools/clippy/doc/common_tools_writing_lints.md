@@ -31,7 +31,7 @@ Example of use:
 impl LateLintPass<'_, '_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         // Get type of `expr`
-        let ty = cx.tables().expr_ty(expr);
+        let ty = cx.typeck_results().expr_ty(expr);
         // Match its kind to enter its type
         match ty.kind {
             ty::Adt(adt_def, _) if adt_def.is_struct() => println!("Our `expr` is a struct!"),
@@ -87,7 +87,7 @@ impl LateLintPass<'_, '_> for MyStructLint {
         }
 
         // 2. Using type context `TyCtxt`
-        let ty = cx.tables().expr_ty(expr);
+        let ty = cx.typeck_results().expr_ty(expr);
         if cx.tcx.lang_items()
             // we are looking for the `DefId` of `Drop` trait in lang items
             .drop_trait()

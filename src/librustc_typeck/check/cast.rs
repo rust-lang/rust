@@ -565,7 +565,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 Ok(()) => {
                     self.trivial_cast_lint(fcx);
                     debug!(" -> CoercionCast");
-                    fcx.tables.borrow_mut().set_coercion_cast(self.expr.hir_id.local_id);
+                    fcx.typeck_results.borrow_mut().set_coercion_cast(self.expr.hir_id.local_id);
                 }
                 Err(ty::error::TypeError::ObjectUnsafeCoercion(did)) => {
                     self.report_object_unsafe_cast(&fcx, did);
@@ -695,7 +695,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         m_cast: ty::TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
         debug!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}", m_expr, m_cast);
-        // ptr-ptr cast. vtables must match.
+        // ptr-ptr cast. vtypeck_results must match.
 
         let expr_kind = fcx.pointer_kind(m_expr.ty, self.span)?;
         let cast_kind = fcx.pointer_kind(m_cast.ty, self.span)?;

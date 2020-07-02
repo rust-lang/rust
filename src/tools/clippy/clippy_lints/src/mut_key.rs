@@ -76,21 +76,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableKeyType {
         if let hir::PatKind::Wild = local.pat.kind {
             return;
         }
-        check_ty(cx, local.span, cx.tables().pat_ty(&*local.pat));
+        check_ty(cx, local.span, cx.typeck_results().pat_ty(&*local.pat));
     }
 }
 
-fn check_sig<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item_hir_id: hir::HirId, decl: &hir::FnDecl<'_>) {
+fn check_sig<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    item_hir_id: hir::HirId,
+    decl: &hir::FnDecl<'_>,
+) {
     let fn_def_id = cx.tcx.hir().local_def_id(item_hir_id);
     let fn_sig = cx.tcx.fn_sig(fn_def_id);
     for (hir_ty, ty) in decl.inputs.iter().zip(fn_sig.inputs().skip_binder().iter()) {
         check_ty(cx, hir_ty.span, ty);
     }
-    check_ty(
-        cx,
-        decl.output.span(),
-        cx.tcx.erase_late_bound_regions(&fn_sig.output()),
-    );
+    check_ty(cx, decl.output.span(), cx.tcx.erase_late_bound_regions(&fn_sig.output()));
 }
 
 // We want to lint 1. sets or maps with 2. not immutable key types and 3. no unerased
@@ -112,13 +112,17 @@ fn is_mutable_type<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, span: Spa
     match ty.kind {
         RawPtr(TypeAndMut { ty: inner_ty, mutbl }) | Ref(_, inner_ty, mutbl) => {
             mutbl == hir::Mutability::Mut || is_mutable_type(cx, inner_ty, span)
-        },
+        }
         Slice(inner_ty) => is_mutable_type(cx, inner_ty, span),
         Array(inner_ty, size) => {
-            size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0) && is_mutable_type(cx, inner_ty, span)
-        },
+            size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0)
+                && is_mutable_type(cx, inner_ty, span)
+        }
         Tuple(..) => ty.tuple_fields().any(|ty| is_mutable_type(cx, ty, span)),
-        Adt(..) => cx.tcx.layout_of(cx.param_env.and(ty)).is_ok() && !ty.is_freeze(cx.tcx.at(span), cx.param_env),
+        Adt(..) => {
+            cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
+                && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
+        }
         _ => false,
     }
 }

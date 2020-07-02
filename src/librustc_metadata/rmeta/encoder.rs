@@ -1369,9 +1369,9 @@ impl EncodeContext<'tcx> {
         debug!("EncodeContext::encode_info_for_closure({:?})", def_id);
 
         // NOTE(eddyb) `tcx.type_of(def_id)` isn't used because it's fully generic,
-        // including on the signature, which is inferred in `typeck_tables_of.
+        // including on the signature, which is inferred in `typeck.
         let hir_id = self.tcx.hir().as_local_hir_id(def_id);
-        let ty = self.tcx.typeck_tables_of(def_id).node_type(hir_id);
+        let ty = self.tcx.typeck(def_id).node_type(hir_id);
 
         record!(self.tables.kind[def_id.to_def_id()] <- match ty.kind {
             ty::Generator(..) => {

@@ -2,17 +2,20 @@
 
 use crate::reexport::Name;
 use crate::utils::{
-    first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, without_block_comments,
+    first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint,
+    span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
+    Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem,
+    TraitItemKind,
 };
-use rustc_lint::{CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_lint::{
+    CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
+};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -258,8 +261,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                 match &*ident.as_str() {
                     "allow" | "warn" | "deny" | "forbid" => {
                         check_clippy_lint_names(cx, items);
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
                 if items.is_empty() || !attr.check_name(sym!(deprecated)) {
                     return;
@@ -284,7 +287,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
         }
         match item.kind {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
-                let skip_unused_imports = item.attrs.iter().any(|attr| attr.check_name(sym!(macro_use)));
+                let skip_unused_imports =
+                    item.attrs.iter().any(|attr| attr.check_name(sym!(macro_use)));
 
                 for attr in item.attrs {
                     if in_external_macro(cx.sess(), attr.span) {
@@ -306,16 +310,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                                                 {
                                                     return;
                                                 }
-                                            },
+                                            }
                                             ItemKind::ExternCrate(..) => {
-                                                if is_word(lint, sym!(unused_imports)) && skip_unused_imports {
+                                                if is_word(lint, sym!(unused_imports))
+                                                    && skip_unused_imports
+                                                {
                                                     return;
                                                 }
                                                 if is_word(lint, sym!(unused_extern_crates)) {
                                                     return;
                                                 }
-                                            },
-                                            _ => {},
+                                            }
+                                            _ => {}
                                         }
                                     }
                                     let line_span = first_line_of_span(cx, attr.span);
@@ -339,14 +345,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                                             );
                                         }
                                     }
-                                },
-                                _ => {},
+                                }
+                                _ => {}
                             }
                         }
                     }
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
@@ -418,7 +424,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
 
 fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item<'_>) -> bool {
     if let ItemKind::Fn(_, _, eid) = item.kind {
-        is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
+        is_relevant_expr(cx, cx.tcx.typeck_body(eid), &cx.tcx.hir().body(eid).value)
     } else {
         true
     }
@@ -426,7 +432,9 @@ fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item<'_>) -> bool {
 
 fn is_relevant_impl(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) -> bool {
     match item.kind {
-        ImplItemKind::Fn(_, eid) => is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value),
+        ImplItemKind::Fn(_, eid) => {
+            is_relevant_expr(cx, cx.tcx.typeck_body(eid), &cx.tcx.hir().body(eid).value)
+        }
         _ => false,
     }
 }
@@ -435,32 +443,43 @@ fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem<'_>) -> bool {
     match item.kind {
         TraitItemKind::Fn(_, TraitFn::Required(_)) => true,
         TraitItemKind::Fn(_, TraitFn::Provided(eid)) => {
-            is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
-        },
+            is_relevant_expr(cx, cx.tcx.typeck_body(eid), &cx.tcx.hir().body(eid).value)
+        }
         _ => false,
     }
 }
 
-fn is_relevant_block(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, block: &Block<'_>) -> bool {
+fn is_relevant_block(
+    cx: &LateContext<'_, '_>,
+    typeck_results: &ty::TypeckResults<'_>,
+    block: &Block<'_>,
+) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match &stmt.kind {
             StmtKind::Local(_) => true,
-            StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, tables, expr),
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
+                is_relevant_expr(cx, typeck_results, expr)
+            }
             _ => false,
         }
     } else {
-        block.expr.as_ref().map_or(false, |e| is_relevant_expr(cx, tables, e))
+        block.expr.as_ref().map_or(false, |e| is_relevant_expr(cx, typeck_results, e))
     }
 }
 
-fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr<'_>) -> bool {
+fn is_relevant_expr(
+    cx: &LateContext<'_, '_>,
+    typeck_results: &ty::TypeckResults<'_>,
+    expr: &Expr<'_>,
+) -> bool {
     match &expr.kind {
-        ExprKind::Block(block, _) => is_relevant_block(cx, tables, block),
-        ExprKind::Ret(Some(e)) => is_relevant_expr(cx, tables, e),
+        ExprKind::Block(block, _) => is_relevant_block(cx, typeck_results, block),
+        ExprKind::Ret(Some(e)) => is_relevant_expr(cx, typeck_results, e),
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
         ExprKind::Call(path_expr, _) => {
             if let ExprKind::Path(qpath) = &path_expr.kind {
-                if let Some(fun_id) = tables.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
+                if let Some(fun_id) = typeck_results.qpath_res(qpath, path_expr.hir_id).opt_def_id()
+                {
                     !match_def_path(cx, fun_id, &paths::BEGIN_PANIC)
                 } else {
                     true
@@ -468,7 +487,7 @@ fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, exp
             } else {
                 true
             }
-        },
+        }
         _ => true,
     }
 }
@@ -603,11 +622,7 @@ fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute) {
 
 fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
     fn find_os(name: &str) -> Option<&'static str> {
-        UNIX_SYSTEMS
-            .iter()
-            .chain(NON_UNIX_SYSTEMS.iter())
-            .find(|&&os| os == name)
-            .copied()
+        UNIX_SYSTEMS.iter().chain(NON_UNIX_SYSTEMS.iter()).find(|&&os| os == name).copied()
     }
 
     fn is_unix(name: &str) -> bool {
@@ -622,7 +637,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                 match &meta.kind {
                     MetaItemKind::List(list) => {
                         mismatched.extend(find_mismatched_target_os(&list));
-                    },
+                    }
                     MetaItemKind::Word => {
                         if_chain! {
                             if let Some(ident) = meta.ident();
@@ -631,8 +646,8 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                                 mismatched.push((os, ident.span));
                             }
                         }
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
         }
