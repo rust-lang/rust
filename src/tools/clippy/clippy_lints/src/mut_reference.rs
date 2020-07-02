@@ -37,17 +37,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
                     check_arguments(
                         cx,
                         arguments,
-                        cx.tables().expr_ty(fn_expr),
-                        &rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false)),
+                        cx.typeck_results().expr_ty(fn_expr),
+                        &rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+                            s.print_qpath(path, false)
+                        }),
                     );
                 }
-            },
+            }
             ExprKind::MethodCall(ref path, _, ref arguments, _) => {
-                let def_id = cx.tables().type_dependent_def_id(e.hir_id).unwrap();
-                let substs = cx.tables().node_substs(e.hir_id);
+                let def_id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
+                let substs = cx.typeck_results().node_substs(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
                 check_arguments(cx, arguments, method_type, &path.ident.as_str())
-            },
+            }
             _ => (),
         }
     }
@@ -65,22 +67,24 @@ fn check_arguments<'a, 'tcx>(
             for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
                 match parameter.kind {
                     ty::Ref(_, _, Mutability::Not)
-                    | ty::RawPtr(ty::TypeAndMut {
-                        mutbl: Mutability::Not, ..
-                    }) => {
-                        if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) = argument.kind {
+                    | ty::RawPtr(ty::TypeAndMut { mutbl: Mutability::Not, .. }) => {
+                        if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) = argument.kind
+                        {
                             span_lint(
                                 cx,
                                 UNNECESSARY_MUT_PASSED,
                                 argument.span,
-                                &format!("The function/method `{}` doesn't need a mutable reference", name),
+                                &format!(
+                                    "The function/method `{}` doesn't need a mutable reference",
+                                    name
+                                ),
                             );
                         }
-                    },
+                    }
                     _ => (),
                 }
             }
-        },
+        }
         _ => (),
     }
 }

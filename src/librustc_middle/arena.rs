@@ -14,7 +14,7 @@ macro_rules! arena_types {
             [] layouts: rustc_target::abi::Layout, rustc_target::abi::Layout;
             // AdtDef are interned and compared by address
             [] adt_def: rustc_middle::ty::AdtDef, rustc_middle::ty::AdtDef;
-            [decode] tables: rustc_middle::ty::TypeckTables<$tcx>, rustc_middle::ty::TypeckTables<'_x>;
+            [decode] typeck_results: rustc_middle::ty::TypeckResults<$tcx>, rustc_middle::ty::TypeckResults<'_x>;
             [] const_allocs: rustc_middle::mir::interpret::Allocation, rustc_middle::mir::interpret::Allocation;
             // Required for the incremental on-disk cache
             [few, decode] mir_keys: rustc_hir::def_id::DefIdSet, rustc_hir::def_id::DefIdSet;

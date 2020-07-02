@@ -42,8 +42,10 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
     }
 
     fn node_ty_contains_target(&mut self, hir_id: HirId) -> Option<Ty<'tcx>> {
-        let ty_opt =
-            self.infcx.in_progress_tables.and_then(|tables| tables.borrow().node_type_opt(hir_id));
+        let ty_opt = self
+            .infcx
+            .in_progress_typeck_results
+            .and_then(|typeck_results| typeck_results.borrow().node_type_opt(hir_id));
         match ty_opt {
             Some(ty) => {
                 let ty = self.infcx.resolve_vars_if_possible(&ty);
@@ -123,8 +125,11 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
         if let ExprKind::MethodCall(_, call_span, exprs, _) = expr.kind {
             if call_span == self.target_span
                 && Some(self.target)
-                    == self.infcx.in_progress_tables.and_then(|tables| {
-                        tables.borrow().node_type_opt(exprs.first().unwrap().hir_id).map(Into::into)
+                    == self.infcx.in_progress_typeck_results.and_then(|typeck_results| {
+                        typeck_results
+                            .borrow()
+                            .node_type_opt(exprs.first().unwrap().hir_id)
+                            .map(Into::into)
                     })
             {
                 self.found_exact_method_call = Some(&expr);
@@ -580,8 +585,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         e: &Expr<'_>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
-        if let (Some(tables), None) = (self.in_progress_tables, &segment.args) {
-            let borrow = tables.borrow();
+        if let (Some(typeck_results), None) = (self.in_progress_typeck_results, &segment.args) {
+            let borrow = typeck_results.borrow();
             if let Some((DefKind::AssocFn, did)) = borrow.type_dependent_def(e.hir_id) {
                 let generics = self.tcx.generics_of(did);
                 if !generics.params.is_empty() {

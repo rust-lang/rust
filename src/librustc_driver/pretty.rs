@@ -80,8 +80,9 @@ where
         PpmTyped => {
             abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
 
-            let empty_tables = ty::TypeckTables::empty(None);
-            let annotation = TypedAnnotation { tcx, tables: Cell::new(&empty_tables) };
+            let empty_typeck_results = ty::TypeckResults::empty(None);
+            let annotation =
+                TypedAnnotation { tcx, typeck_results: Cell::new(&empty_typeck_results) };
             tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
         }
         _ => panic!("Should use call_with_pp_support"),
@@ -306,7 +307,7 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
 
 struct TypedAnnotation<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    tables: Cell<&'a ty::TypeckTables<'tcx>>,
+    typeck_results: Cell<&'a ty::TypeckResults<'tcx>>,
 }
 
 impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
@@ -329,13 +330,13 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
 
 impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        let old_tables = self.tables.get();
+        let old_typeck_results = self.typeck_results.get();
         if let pprust_hir::Nested::Body(id) = nested {
-            self.tables.set(self.tcx.body_tables(id));
+            self.typeck_results.set(self.tcx.typeck_body(id));
         }
         let pp_ann = &(&self.tcx.hir() as &dyn hir::intravisit::Map<'_>);
         pprust_hir::PpAnn::nested(pp_ann, state, nested);
-        self.tables.set(old_tables);
+        self.typeck_results.set(old_typeck_results);
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
         if let pprust_hir::AnnNode::Expr(_) = node {
@@ -347,7 +348,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
             s.s.space();
             s.s.word("as");
             s.s.space();
-            s.s.word(self.tables.get().expr_ty(expr).to_string());
+            s.s.word(self.typeck_results.get().expr_ty(expr).to_string());
             s.pclose();
         }
     }

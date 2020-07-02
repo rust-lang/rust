@@ -49,10 +49,10 @@ use log::{debug, error, info};
 
 pub struct SaveContext<'l, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    tables: &'l ty::TypeckTables<'tcx>,
-    /// Used as a fallback when nesting the typeck tables during item processing
+    typeck_results: &'l ty::TypeckResults<'tcx>,
+    /// Used as a fallback when nesting the typeck typeck_results during item processing
     /// (if these are not available for that item, e.g. don't own a body)
-    empty_tables: &'l ty::TypeckTables<'tcx>,
+    empty_typeck_results: &'l ty::TypeckResults<'tcx>,
     access_levels: &'l AccessLevels,
     span_utils: SpanUtils<'tcx>,
     config: Config,
@@ -477,7 +477,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     None => {
                         debug!("could not find container for method {} at {:?}", hir_id, span);
                         // This is not necessarily a bug, if there was a compilation error,
-                        // the tables we need might not exist.
+                        // the typeck_results we need might not exist.
                         return None;
                     }
                 },
@@ -518,13 +518,13 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &hir::Expr<'_>) -> Option<Data> {
-        let ty = self.tables.expr_ty_adjusted_opt(expr)?;
+        let ty = self.typeck_results.expr_ty_adjusted_opt(expr)?;
         if matches!(ty.kind, ty::Error(_)) {
             return None;
         }
         match expr.kind {
             hir::ExprKind::Field(ref sub_ex, ident) => {
-                match self.tables.expr_ty_adjusted(&sub_ex).kind {
+                match self.typeck_results.expr_ty_adjusted(&sub_ex).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
                         filter!(self.span_utils, ident.span);
@@ -569,7 +569,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 }
             }
             hir::ExprKind::MethodCall(ref seg, ..) => {
-                let method_id = match self.tables.type_dependent_def_id(expr.hir_id) {
+                let method_id = match self.typeck_results.type_dependent_def_id(expr.hir_id) {
                     Some(id) => id,
                     None => {
                         debug!("could not resolve method id for {:?}", expr);
@@ -618,7 +618,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             },
 
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Struct(ref qpath, ..), .. }) => {
-                self.tables.qpath_res(qpath, hir_id)
+                self.typeck_results.qpath_res(qpath, hir_id)
             }
 
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Path(ref qpath), .. })
@@ -630,7 +630,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 ..
             })
             | Node::Ty(&hir::Ty { kind: hir::TyKind::Path(ref qpath), .. }) => {
-                self.tables.qpath_res(qpath, hir_id)
+                self.typeck_results.qpath_res(qpath, hir_id)
             }
 
             Node::Binding(&hir::Pat {
@@ -1001,8 +1001,8 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
 
         let save_ctxt = SaveContext {
             tcx,
-            tables: &ty::TypeckTables::empty(None),
-            empty_tables: &ty::TypeckTables::empty(None),
+            typeck_results: &ty::TypeckResults::empty(None),
+            empty_typeck_results: &ty::TypeckResults::empty(None),
             access_levels: &access_levels,
             span_utils: SpanUtils::new(&tcx.sess),
             config: find_config(config),

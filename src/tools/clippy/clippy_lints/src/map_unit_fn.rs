@@ -1,4 +1,6 @@
-use crate::utils::{is_type_diagnostic_item, iter_input_pats, method_chain_args, snippet, span_lint_and_then};
+use crate::utils::{
+    is_type_diagnostic_item, iter_input_pats, method_chain_args, snippet, span_lint_and_then,
+};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -101,7 +103,7 @@ fn is_unit_type(ty: Ty<'_>) -> bool {
 }
 
 fn is_unit_function(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> bool {
-    let ty = cx.tables().expr_ty(expr);
+    let ty = cx.typeck_results().expr_ty(expr);
 
     if let ty::FnDef(id, _) = ty.kind {
         if let Some(fn_type) = cx.tcx.fn_sig(id).no_bound_vars() {
@@ -112,7 +114,7 @@ fn is_unit_function(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> bool {
 }
 
 fn is_unit_expression(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> bool {
-    is_unit_type(cx.tables().expr_ty(expr))
+    is_unit_type(cx.typeck_results().expr_ty(expr))
 }
 
 /// The expression inside a closure may or may not have surrounding braces and
@@ -128,14 +130,14 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr<'_>)
         hir::ExprKind::Call(_, _) | hir::ExprKind::MethodCall(_, _, _, _) => {
             // Calls can't be reduced any more
             Some(expr.span)
-        },
+        }
         hir::ExprKind::Block(ref block, _) => {
             match (&block.stmts[..], block.expr.as_ref()) {
                 (&[], Some(inner_expr)) => {
                     // If block only contains an expression,
                     // reduce `{ X }` to `X`
                     reduce_unit_expression(cx, inner_expr)
-                },
+                }
                 (&[ref inner_stmt], None) => {
                     // If block only contains statements,
                     // reduce `{ X; }` to `X` or `X;`
@@ -145,7 +147,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr<'_>)
                         hir::StmtKind::Semi(..) => Some(inner_stmt.span),
                         hir::StmtKind::Item(..) => None,
                     }
-                },
+                }
                 _ => {
                     // For closures that contain multiple statements
                     // it's difficult to get a correct suggestion span
@@ -153,9 +155,9 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr<'_>)
                     //
                     // We do not attempt to build a suggestion for those right now.
                     None
-                },
+                }
             }
-        },
+        }
         _ => None,
     }
 }
@@ -202,16 +204,26 @@ fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     )
 }
 
-fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr<'_>, map_args: &[hir::Expr<'_>]) {
+fn lint_map_unit_fn(
+    cx: &LateContext<'_, '_>,
+    stmt: &hir::Stmt<'_>,
+    expr: &hir::Expr<'_>,
+    map_args: &[hir::Expr<'_>],
+) {
     let var_arg = &map_args[0];
 
-    let (map_type, variant, lint) = if is_type_diagnostic_item(cx, cx.tables().expr_ty(var_arg), sym!(option_type)) {
-        ("Option", "Some", OPTION_MAP_UNIT_FN)
-    } else if is_type_diagnostic_item(cx, cx.tables().expr_ty(var_arg), sym!(result_type)) {
-        ("Result", "Ok", RESULT_MAP_UNIT_FN)
-    } else {
-        return;
-    };
+    let (map_type, variant, lint) =
+        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym!(option_type)) {
+            ("Option", "Some", OPTION_MAP_UNIT_FN)
+        } else if is_type_diagnostic_item(
+            cx,
+            cx.typeck_results().expr_ty(var_arg),
+            sym!(result_type),
+        ) {
+            ("Result", "Ok", RESULT_MAP_UNIT_FN)
+        } else {
+            return;
+        };
     let fn_arg = &map_args[1];
 
     if is_unit_function(cx, fn_arg) {
@@ -225,7 +237,12 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::
         );
 
         span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
-            diag.span_suggestion(stmt.span, "try this", suggestion, Applicability::MachineApplicable);
+            diag.span_suggestion(
+                stmt.span,
+                "try this",
+                suggestion,
+                Applicability::MachineApplicable,
+            );
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
@@ -252,7 +269,12 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::
                     snippet(cx, binding.pat.span, "_"),
                     snippet(cx, var_arg.span, "_"),
                 );
-                diag.span_suggestion(stmt.span, "try this", suggestion, Applicability::HasPlaceholders);
+                diag.span_suggestion(
+                    stmt.span,
+                    "try this",
+                    suggestion,
+                    Applicability::HasPlaceholders,
+                );
             }
         });
     }

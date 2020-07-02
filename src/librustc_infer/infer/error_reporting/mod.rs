@@ -624,8 +624,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
                         let scrut_ty = if let hir::ExprKind::Call(_, args) = &scrut_expr.kind {
                             let arg_expr = args.first().expect("try desugaring call w/out arg");
-                            self.in_progress_tables
-                                .and_then(|tables| tables.borrow().expr_ty_opt(arg_expr))
+                            self.in_progress_typeck_results.and_then(|typeck_results| {
+                                typeck_results.borrow().expr_ty_opt(arg_expr)
+                            })
                         } else {
                             bug!("try desugaring w/out call expr as scrutinee");
                         };
@@ -1683,8 +1684,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let hir = &self.tcx.hir();
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
-        let generics =
-            self.in_progress_tables.and_then(|table| table.borrow().hir_owner).map(|table_owner| {
+        let generics = self
+            .in_progress_typeck_results
+            .and_then(|table| table.borrow().hir_owner)
+            .map(|table_owner| {
                 let hir_id = hir.as_local_hir_id(table_owner);
                 let parent_id = hir.get_parent_item(hir_id);
                 (

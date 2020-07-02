@@ -40,7 +40,7 @@ fn should_explore(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
 struct MarkSymbolVisitor<'a, 'tcx> {
     worklist: Vec<hir::HirId>,
     tcx: TyCtxt<'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
+    typeck_results: &'a ty::TypeckResults<'tcx>,
     live_symbols: FxHashSet<hir::HirId>,
     repr_has_repr_c: bool,
     in_pat: bool,
@@ -107,7 +107,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_method(&mut self, id: hir::HirId) {
-        if let Some(def_id) = self.tables.type_dependent_def_id(id) {
+        if let Some(def_id) = self.typeck_results.type_dependent_def_id(id) {
             self.check_def_id(def_id);
         } else {
             bug!("no type-dependent def for method");
@@ -115,9 +115,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr<'_>, hir_id: hir::HirId) {
-        match self.tables.expr_ty_adjusted(lhs).kind {
+        match self.typeck_results.expr_ty_adjusted(lhs).kind {
             ty::Adt(def, _) => {
-                let index = self.tcx.field_index(hir_id, self.tables);
+                let index = self.tcx.field_index(hir_id, self.typeck_results);
                 self.insert_def_id(def.non_enum_variant().fields[index].did);
             }
             ty::Tuple(..) => {}
@@ -131,7 +131,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         res: Res,
         pats: &[hir::FieldPat<'_>],
     ) {
-        let variant = match self.tables.node_type(lhs.hir_id).kind {
+        let variant = match self.typeck_results.node_type(lhs.hir_id).kind {
             ty::Adt(adt, _) => adt.variant_of_res(res),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern"),
         };
@@ -139,7 +139,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             if let PatKind::Wild = pat.pat.kind {
                 continue;
             }
-            let index = self.tcx.field_index(pat.hir_id, self.tables);
+            let index = self.tcx.field_index(pat.hir_id, self.typeck_results);
             self.insert_def_id(variant.fields[index].did);
         }
     }
@@ -204,7 +204,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn mark_as_used_if_union(&mut self, adt: &ty::AdtDef, fields: &[hir::Field<'_>]) {
         if adt.is_union() && adt.non_enum_variant().fields.len() > 1 && adt.did.is_local() {
             for field in fields {
-                let index = self.tcx.field_index(field.hir_id, self.tables);
+                let index = self.tcx.field_index(field.hir_id, self.typeck_results);
                 self.insert_def_id(adt.non_enum_variant().fields[index].did);
             }
         }
@@ -219,11 +219,11 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let old_tables = self.tables;
-        self.tables = self.tcx.body_tables(body);
+        let old_typeck_results = self.typeck_results;
+        self.typeck_results = self.tcx.typeck_body(body);
         let body = self.tcx.hir().body(body);
         self.visit_body(body);
-        self.tables = old_tables;
+        self.typeck_results = old_typeck_results;
     }
 
     fn visit_variant_data(
@@ -248,7 +248,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             hir::ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
-                let res = self.tables.qpath_res(qpath, expr.hir_id);
+                let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
                 self.handle_res(res);
             }
             hir::ExprKind::MethodCall(..) => {
@@ -258,9 +258,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
                 self.handle_field_access(&lhs, expr.hir_id);
             }
             hir::ExprKind::Struct(ref qpath, ref fields, _) => {
-                let res = self.tables.qpath_res(qpath, expr.hir_id);
+                let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
                 self.handle_res(res);
-                if let ty::Adt(ref adt, _) = self.tables.expr_ty(expr).kind {
+                if let ty::Adt(ref adt, _) = self.typeck_results.expr_ty(expr).kind {
                     self.mark_as_used_if_union(adt, fields);
                 }
             }
@@ -283,11 +283,11 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
         match pat.kind {
             PatKind::Struct(ref path, ref fields, _) => {
-                let res = self.tables.qpath_res(path, pat.hir_id);
+                let res = self.typeck_results.qpath_res(path, pat.hir_id);
                 self.handle_field_pattern_match(pat, res, fields);
             }
             PatKind::Path(ref qpath) => {
-                let res = self.tables.qpath_res(qpath, pat.hir_id);
+                let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 self.handle_res(res);
             }
             _ => (),
@@ -473,7 +473,7 @@ fn find_live<'tcx>(
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
-        tables: &ty::TypeckTables::empty(None),
+        typeck_results: &ty::TypeckResults::empty(None),
         live_symbols: Default::default(),
         repr_has_repr_c: false,
         in_pat: false,
