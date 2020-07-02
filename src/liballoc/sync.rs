@@ -267,6 +267,7 @@ pub struct Weak<T: ?Sized> {
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
     // to allocate space on the heap.  That's not a value a real pointer
     // will ever have because RcBox has alignment at least 2.
+    // This is only possible when `T: Sized`; unsized `T` never dangle.
     ptr: NonNull<ArcInner<T>>,
 }
 
