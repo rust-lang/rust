@@ -28,7 +28,7 @@ pub(crate) fn split_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     }
 
     let target = colon_colon.text_range();
-    acc.add(AssistId("split_import"), AssistKind::RefactorExtract, "Split import", target, |edit| {
+    acc.add(AssistId("split_import"), AssistKind::RefactorRewrite, "Split import", target, |edit| {
         edit.replace_ast(use_tree, new_tree);
     })
 }

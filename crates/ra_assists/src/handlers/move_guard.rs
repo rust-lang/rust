@@ -42,7 +42,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
     let target = guard.syntax().text_range();
     acc.add(
         AssistId("move_guard_to_arm_body"),
-        AssistKind::RefactorExtract,
+        AssistKind::RefactorRewrite,
         "Move guard to arm body",
         target,
         |edit| {
