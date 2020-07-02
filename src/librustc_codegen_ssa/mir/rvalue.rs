@@ -774,11 +774,16 @@ fn cast_float_to_int<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     float_ty: Bx::Type,
     int_ty: Bx::Type,
 ) -> Bx::Value {
-    let fptosui_result = if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
-
     if let Some(false) = bx.cx().sess().opts.debugging_opts.saturating_float_casts {
-        return fptosui_result;
+        return if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
     }
+
+    let try_sat_result = if signed { bx.fptosi_sat(x, int_ty) } else { bx.fptoui_sat(x, int_ty) };
+    if let Some(try_sat_result) = try_sat_result {
+        return try_sat_result;
+    }
+
+    let fptosui_result = if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
 
     let int_width = bx.cx().int_width(int_ty);
     let float_width = bx.cx().float_width(float_ty);
