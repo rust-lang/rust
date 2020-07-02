@@ -1246,15 +1246,15 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 }
 
 #[derive(Clone, Debug)]
-crate enum Usefulness<'tcx, 'p> {
+crate enum Usefulness<'tcx> {
     /// Carries a list of unreachable subpatterns. Used only in the presence of or-patterns.
-    Useful(Vec<&'p Pat<'tcx>>),
+    Useful(Vec<Span>),
     /// Carries a list of witnesses of non-exhaustiveness.
     UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful,
 }
 
-impl<'tcx, 'p> Usefulness<'tcx, 'p> {
+impl<'tcx> Usefulness<'tcx> {
     fn new_useful(preference: WitnessPreference) -> Self {
         match preference {
             ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
@@ -1269,7 +1269,7 @@ impl<'tcx, 'p> Usefulness<'tcx, 'p> {
         }
     }
 
-    fn apply_constructor(
+    fn apply_constructor<'p>(
         self,
         cx: &MatchCheckCtxt<'p, 'tcx>,
         ctor: &Constructor<'tcx>,
@@ -1828,7 +1828,7 @@ crate fn is_useful<'p, 'tcx>(
     hir_id: HirId,
     is_under_guard: bool,
     is_top_level: bool,
-) -> Usefulness<'tcx, 'p> {
+) -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
@@ -1861,7 +1861,7 @@ crate fn is_useful<'p, 'tcx>(
                     any_is_useful = true;
                     unreachable_pats.extend(pats);
                 }
-                NotUseful => unreachable_pats.push(v.head()),
+                NotUseful => unreachable_pats.push(v.head().span),
                 UsefulWithWitness(_) => {
                     bug!("Encountered or-pat in `v` during exhaustiveness checking")
                 }
@@ -2014,7 +2014,7 @@ fn is_useful_specialized<'p, 'tcx>(
     witness_preference: WitnessPreference,
     hir_id: HirId,
     is_under_guard: bool,
-) -> Usefulness<'tcx, 'p> {
+) -> Usefulness<'tcx> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, ty);
 
     // We cache the result of `Fields::wildcards` because it is used a lot.
