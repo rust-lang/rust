@@ -1,4 +1,7 @@
+// run-rustfix
 // Make sure that invalid ranges generate an error during parsing, not an ICE
+
+#![allow(path_statements)]
 
 pub fn main() {
     ..;

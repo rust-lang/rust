@@ -1,3 +1,5 @@
+// run-rustfix
+
 #![deny(no_mangle_generic_items)]
 
 #[no_mangle]

@@ -1,0 +1,16 @@
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
+  --> $DIR/token-error-correct-4.rs:9:21
+   |
+LL |     setsuna(kazusa();
+   |            -        ^ help: `)` may belong here
+   |            |
+   |            unclosed delimiter
+
+error: expected expression, found `)`
+  --> $DIR/token-error-correct-4.rs:10:1
+   |
+LL | }
+   | ^ expected expression
+
+error: aborting due to 2 previous errors
+

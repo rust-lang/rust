@@ -1,8 +1,8 @@
 error: expected identifier, found `,`
-  --> $DIR/struct-duplicate-comma.rs:10:14
+  --> $DIR/struct-duplicate-comma.rs:11:14
    |
-LL |     let bar = Foo {
-   |               --- while parsing this struct
+LL |     let _ = Foo {
+   |             --- while parsing this struct
 LL |         a: 0,,
    |              ^
    |              |
