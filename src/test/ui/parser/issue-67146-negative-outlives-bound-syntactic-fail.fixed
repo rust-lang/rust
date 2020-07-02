@@ -6,9 +6,9 @@
 
 fn main() {}
 
-pub fn f1<T: !'static>() {}
+pub fn f1<T>() {}
 //~^ ERROR negative bounds are not supported
-pub fn f2<'a, T: Ord + !'a>() {}
+pub fn f2<'a, T: Ord>() {}
 //~^ ERROR negative bounds are not supported
-pub fn f3<'a, T: !'a + Ord>() {}
+pub fn f3<'a, T: Ord>() {}
 //~^ ERROR negative bounds are not supported
