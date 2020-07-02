@@ -37,7 +37,7 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
 
             let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
             sig.map_bound(|sig| tcx.mk_fn_sig(
-                std::iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                std::iter::once(env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
                 sig.output(),
                 sig.c_variadic,
                 sig.unsafety,
