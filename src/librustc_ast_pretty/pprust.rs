@@ -257,7 +257,7 @@ fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>)
         token::CloseDelim(token::Bracket) => "]".to_string(),
         token::OpenDelim(token::Brace) => "{".to_string(),
         token::CloseDelim(token::Brace) => "}".to_string(),
-        token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim) => " ".to_string(),
+        token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim) => "".to_string(),
         token::Pound => "#".to_string(),
         token::Dollar => "$".to_string(),
         token::Question => "?".to_string(),

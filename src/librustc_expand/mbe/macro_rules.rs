@@ -387,6 +387,7 @@ pub fn compile_declarative_macro(
     def: &ast::Item,
     edition: Edition,
 ) -> SyntaxExtension {
+    debug!("compile_declarative_macro: {:?}", def);
     let mk_syn_ext = |expander| {
         SyntaxExtension::new(
             sess,
