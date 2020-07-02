@@ -5,7 +5,27 @@ set -e
 export MSYS_NO_PATHCONV=1
 
 script=`cd $(dirname $0) && pwd`/`basename $0`
-image=$1
+
+image=""
+dev=0
+
+while [[ $# -gt 0 ]]
+do
+  case "$1" in
+    --dev)
+      dev=1
+      ;;
+    *)
+      if [ -n "$image" ]
+      then
+        echo "expected single argument for the image name"
+        exit 1
+      fi
+      image="$1"
+      ;;
+  esac
+  shift
+done
 
 docker_dir="`dirname $script`"
 ci_dir="`dirname $docker_dir`"
@@ -163,6 +183,15 @@ else
   args="$args --env LOCAL_USER_ID=`id -u`"
 fi
 
+if [ "$dev" = "1" ]
+then
+  # Interactive + TTY
+  args="$args -it"
+  command="/bin/bash"
+else
+  command="/checkout/src/ci/run.sh"
+fi
+
 docker \
   run \
   --workdir /checkout/obj \
@@ -183,7 +212,7 @@ docker \
   --init \
   --rm \
   rust-ci \
-  /checkout/src/ci/run.sh
+  $command
 
 if [ -f /.dockerenv ]; then
   rm -rf $objdir
