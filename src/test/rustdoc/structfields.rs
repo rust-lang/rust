@@ -1,7 +1,3 @@
-// compile-flags:-Z unstable-options --generate-redirect-pages
-
-// @has structfields/Foo.t.html
-// @has - struct.Foo.html
 // @has structfields/struct.Foo.html
 pub struct Foo {
     // @has - //pre "pub a: ()"
@@ -16,8 +12,6 @@ pub struct Foo {
     pub d: usize,
 }
 
-// @has structfields/Bar.t.html
-// @has - struct.Bar.html
 // @has structfields/struct.Bar.html
 pub struct Bar {
     // @has - //pre "pub a: ()"
@@ -25,8 +19,6 @@ pub struct Bar {
     // @!has - //pre "// some fields omitted"
 }
 
-// @has structfields/Qux.t.html
-// @has - enum.Qux.html
 // @has structfields/enum.Qux.html
 pub enum Qux {
     Quz {

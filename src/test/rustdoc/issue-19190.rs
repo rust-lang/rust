@@ -1,5 +1,3 @@
-// compile-flags:-Z unstable-options --generate-redirect-pages
-
 use std::ops::Deref;
 
 pub struct Foo;
@@ -15,7 +13,6 @@ impl Deref for Bar {
     fn deref(&self) -> &Foo { loop {} }
 }
 
-// @has issue_19190/Bar.t.html
 // @has issue_19190/struct.Bar.html
 // @has - '//*[@id="method.foo"]//code' 'fn foo(&self)'
 // @has - '//*[@id="method.foo"]' 'fn foo(&self)'

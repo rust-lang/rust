@@ -13,7 +13,6 @@ fn main() {
     let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");
     let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
-    let mut has_unstable = false;
 
     use std::str::FromStr;
 
@@ -56,21 +55,9 @@ fn main() {
     }
 
     // Needed to be able to run all rustdoc tests.
-    if env::var_os("RUSTDOC_GENERATE_REDIRECT_PAGES").is_some() {
-        // This "unstable-options" can be removed when `--generate-redirect-pages` is stabilized
-        if !has_unstable {
-            cmd.arg("-Z").arg("unstable-options");
-        }
-        cmd.arg("--generate-redirect-pages");
-        has_unstable = true;
-    }
-
-    // Needed to be able to run all rustdoc tests.
     if let Some(ref x) = env::var_os("RUSTDOC_RESOURCE_SUFFIX") {
         // This "unstable-options" can be removed when `--resource-suffix` is stabilized
-        if !has_unstable {
-            cmd.arg("-Z").arg("unstable-options");
-        }
+        cmd.arg("-Z").arg("unstable-options");
         cmd.arg("--resource-suffix").arg(x);
     }
 

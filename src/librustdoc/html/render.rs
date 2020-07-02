@@ -195,8 +195,6 @@ crate struct SharedContext {
     /// Optional path string to be used to load static files on output pages. If not set, uses
     /// combinations of `../` to reach the documentation root.
     pub static_root_path: Option<String>,
-    /// Option disabled by default to generate files used by RLS and some other tools.
-    pub generate_redirect_pages: bool,
     /// The fs handle we are working with.
     pub fs: DocFS,
     /// The default edition used to parse doctests.
@@ -468,7 +466,6 @@ pub fn run(
         resource_suffix,
         static_root_path,
         generate_search_filter,
-        generate_redirect_pages,
         document_private,
         ..
     } = options;
@@ -536,7 +533,6 @@ pub fn run(
         themes,
         resource_suffix,
         static_root_path,
-        generate_redirect_pages,
         fs: DocFS::new(&errors),
         edition,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
@@ -1555,14 +1551,6 @@ impl Context {
 
                 if !self.render_redirect_pages {
                     all.append(full_path(self, &item), &item_type);
-                }
-                if self.shared.generate_redirect_pages {
-                    // Redirect from a sane URL using the namespace to Rustdoc's
-                    // URL for the page.
-                    let redir_name = format!("{}.{}.html", name, item_type.name_space());
-                    let redir_dst = self.dst.join(redir_name);
-                    let v = layout::redirect(file_name);
-                    self.shared.fs.write(&redir_dst, v.as_bytes())?;
                 }
                 // If the item is a macro, redirect from the old macro URL (with !)
                 // to the new one (without).
