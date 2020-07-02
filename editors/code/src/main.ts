@@ -152,13 +152,17 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
         return;
     };
 
-    const lastCheck = state.lastCheck;
     const now = Date.now();
+    if (config.package.releaseTag === NIGHTLY_TAG) {
+        // Check if we should poll github api for the new nightly version
+        // if we haven't done it during the past hour
+        const lastCheck = state.lastCheck;
 
-    const anHour = 60 * 60 * 1000;
-    const shouldDownloadNightly = state.releaseId === undefined || (now - (lastCheck ?? 0)) > anHour;
+        const anHour = 60 * 60 * 1000;
+        const shouldCheckForNewNightly = state.releaseId === undefined || (now - (lastCheck ?? 0)) > anHour;
 
-    if (!shouldDownloadNightly) return;
+        if (!shouldCheckForNewNightly) return;
+    }
 
     const release = await fetchRelease("nightly").catch((e) => {
         log.error(e);
