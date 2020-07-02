@@ -1,5 +1,6 @@
 use crate::{MatchFinder, SsrRule};
 use ra_db::{FileId, SourceDatabaseExt};
+use test_utils::mark;
 
 fn parse_error_text(query: &str) -> String {
     format!("{}", query.parse::<SsrRule>().unwrap_err())
@@ -299,6 +300,22 @@ fn match_path() {
 #[test]
 fn match_pattern() {
     assert_matches("Some($a)", "fn f() {if let Some(x) = foo() {}}", &["Some(x)"]);
+}
+
+#[test]
+fn literal_constraint() {
+    mark::check!(literal_constraint);
+    let code = r#"
+        fn f1() {
+            let x1 = Some(42);
+            let x2 = Some("foo");
+            let x3 = Some(x1);
+            let x4 = Some(40 + 2);
+            let x5 = Some(true);
+        }
+        "#;
+    assert_matches("Some(${a:kind(literal)})", code, &["Some(42)", "Some(\"foo\")", "Some(true)"]);
+    assert_matches("Some(${a:not(kind(literal))})", code, &["Some(x1)", "Some(40 + 2)"]);
 }
 
 #[test]

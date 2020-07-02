@@ -10,6 +10,18 @@ use ra_ssr::{MatchFinder, SsrError, SsrRule};
 // The syntax for a structural search replace command is `<search_pattern> ==>> <replace_pattern>`.
 // A `$<name>` placeholder in the search pattern will match any AST node and `$<name>` will reference it in the replacement.
 // Within a macro call, a placeholder will match up until whatever token follows the placeholder.
+//
+// Placeholders may be given constraints by writing them as `${<name>:<constraint1>:<constraint2>...}`.
+//
+// Supported constraints:
+//
+// |===
+// | Constraint    | Restricts placeholder
+//
+// | kind(literal) | Is a literal (e.g. `42` or `"forty two"`)
+// | not(a)        | Negates the constraint `a`
+// |===
+//
 // Available via the command `rust-analyzer.ssr`.
 //
 // ```rust

@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_syntax::ast;
+use ra_syntax::{ast, SyntaxKind};
 
 use crate::completion::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
@@ -37,6 +37,10 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
 }
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
+    if ctx.token.kind() == SyntaxKind::COMMENT {
+        return;
+    }
+
     let has_trait_or_impl_parent = ctx.has_impl_parent || ctx.has_trait_parent;
     if ctx.trait_as_prev_sibling || ctx.impl_as_prev_sibling {
         add_keyword(ctx, acc, "where", "where ");
