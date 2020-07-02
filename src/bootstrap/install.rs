@@ -14,46 +14,47 @@ use crate::dist::{self, pkgname, sanitize_sh, tmpdir};
 use crate::Compiler;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::cache::Interned;
-use crate::config::Config;
+use crate::config::{Config, TargetSelection};
 
-pub fn install_docs(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+pub fn install_docs(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
     install_sh(builder, "docs", "rust-docs", stage, Some(host));
 }
 
-pub fn install_std(builder: &Builder<'_>, stage: u32, target: Interned<String>) {
+pub fn install_std(builder: &Builder<'_>, stage: u32, target: TargetSelection) {
     install_sh(builder, "std", "rust-std", stage, Some(target));
 }
 
-pub fn install_cargo(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+pub fn install_cargo(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
     install_sh(builder, "cargo", "cargo", stage, Some(host));
 }
 
-pub fn install_rls(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+pub fn install_rls(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
     install_sh(builder, "rls", "rls", stage, Some(host));
 }
-pub fn install_rust_analyzer(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+
+pub fn install_rust_analyzer(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
     install_sh(builder, "rust-analyzer", "rust-analyzer", stage, Some(host));
 }
-pub fn install_clippy(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+
+pub fn install_clippy(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
     install_sh(builder, "clippy", "clippy", stage, Some(host));
 }
-pub fn install_miri(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+pub fn install_miri(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
     install_sh(builder, "miri", "miri", stage, Some(host));
 }
 
-pub fn install_rustfmt(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+pub fn install_rustfmt(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
     install_sh(builder, "rustfmt", "rustfmt", stage, Some(host));
 }
 
-pub fn install_analysis(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+pub fn install_analysis(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
     install_sh(builder, "analysis", "rust-analysis", stage, Some(host));
 }
 
 pub fn install_src(builder: &Builder<'_>, stage: u32) {
     install_sh(builder, "src", "rust-src", stage, None);
 }
-pub fn install_rustc(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+pub fn install_rustc(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
     install_sh(builder, "rustc", "rustc", stage, Some(host));
 }
 
@@ -62,7 +63,7 @@ fn install_sh(
     package: &str,
     name: &str,
     stage: u32,
-    host: Option<Interned<String>>,
+    host: Option<TargetSelection>,
 ) {
     builder.info(&format!("Install {} stage{} ({:?})", package, stage, host));
 
@@ -150,7 +151,7 @@ macro_rules! install {
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
             pub compiler: Compiler,
-            pub target: Interned<String>,
+            pub target: TargetSelection,
         }
 
         impl $name {
