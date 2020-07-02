@@ -501,16 +501,7 @@ impl<'a> Builder<'a> {
             _ => return None,
         };
 
-        let builder = Builder {
-            build,
-            top_stage: build.config.stage.unwrap_or(2),
-            kind,
-            cache: Cache::new(),
-            stack: RefCell::new(Vec::new()),
-            time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
-            paths: vec![],
-        };
-
+        let builder = Self::new_internal(build, kind, vec![]);
         let builder = &builder;
         let mut should_run = ShouldRun::new(builder);
         for desc in Builder::get_step_descriptions(builder.kind) {
@@ -535,6 +526,18 @@ impl<'a> Builder<'a> {
         Some(help)
     }
 
+    fn new_internal(build: &Build, kind: Kind, paths: Vec<PathBuf>) -> Builder<'_> {
+        Builder {
+            build,
+            top_stage: build.config.stage.unwrap_or(2),
+            kind,
+            cache: Cache::new(),
+            stack: RefCell::new(Vec::new()),
+            time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
+            paths,
+        }
+    }
+
     pub fn new(build: &Build) -> Builder<'_> {
         let (kind, paths) = match build.config.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
@@ -550,15 +553,7 @@ impl<'a> Builder<'a> {
             Subcommand::Format { .. } | Subcommand::Clean { .. } => panic!(),
         };
 
-        Builder {
-            build,
-            top_stage: build.config.stage.unwrap_or(2),
-            kind,
-            cache: Cache::new(),
-            stack: RefCell::new(Vec::new()),
-            time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
-            paths: paths.to_owned(),
-        }
+        Self::new_internal(build, kind, paths.to_owned())
     }
 
     pub fn execute_cli(&self) {
