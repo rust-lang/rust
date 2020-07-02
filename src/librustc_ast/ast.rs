@@ -511,6 +511,9 @@ pub struct Block {
     pub span: Span,
 }
 
+/// A match pattern.
+///
+/// Patterns appear in match statements and some other contexts, such as `let` and `if let`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Pat {
     pub id: NodeId,
