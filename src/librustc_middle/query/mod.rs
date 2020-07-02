@@ -1042,6 +1042,10 @@ rustc_queries! {
             eval_always
             desc { "looking up the extra filename for a crate" }
         }
+        query crate_extern_paths(_: CrateNum) -> Vec<PathBuf> {
+            eval_always
+            desc { "looking up the paths for extern crates" }
+        }
     }
 
     TypeChecking {

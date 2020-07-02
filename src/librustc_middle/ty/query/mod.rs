@@ -57,6 +57,7 @@ use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[macro_use]
