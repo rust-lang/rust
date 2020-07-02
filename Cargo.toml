@@ -30,6 +30,7 @@ members = [
   "src/tools/expand-yaml-anchors",
 ]
 exclude = [
+  "silicon",
   "build",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
