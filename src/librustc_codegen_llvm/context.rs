@@ -1,5 +1,6 @@
 use crate::attributes;
 use crate::callee::get_fn;
+use crate::coverageinfo;
 use crate::debuginfo;
 use crate::llvm;
 use crate::llvm_util;
@@ -77,6 +78,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     pub isize_ty: &'ll Type,
 
+    pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'tcx>>,
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
@@ -256,6 +258,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
+        let coverage_cx = if tcx.sess.opts.debugging_opts.instrument_coverage {
+            let covctx = coverageinfo::CrateCoverageContext::new();
+            Some(covctx)
+        } else {
+            None
+        };
+
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CrateDebugContext::new(llmod);
             debuginfo::metadata::compile_unit_metadata(tcx, &codegen_unit.name().as_str(), &dctx);
@@ -285,6 +294,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             scalar_lltypes: Default::default(),
             pointee_infos: Default::default(),
             isize_ty,
+            coverage_cx,
             dbg_cx,
             eh_personality: Cell::new(None),
             rust_try_fn: Cell::new(None),
@@ -295,6 +305,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
     crate fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
         &self.statics_to_rauw
+    }
+
+    #[inline]
+    pub fn coverage_context(&'a self) -> &'a coverageinfo::CrateCoverageContext<'tcx> {
+        self.coverage_cx.as_ref().unwrap()
     }
 }
 
@@ -749,8 +764,6 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, i8p) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, i8p) -> void);
 
-        ifn!("llvm.instrprof.increment", fn(i8p, t_i64, t_i32, t_i32) -> void);
-
         ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
         ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);
         ifn!("llvm.localescape", fn(...) -> void);
@@ -764,6 +777,10 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.va_start", fn(i8p) -> void);
         ifn!("llvm.va_end", fn(i8p) -> void);
         ifn!("llvm.va_copy", fn(i8p, i8p) -> void);
+
+        if self.sess().opts.debugging_opts.instrument_coverage {
+            ifn!("llvm.instrprof.increment", fn(i8p, t_i64, t_i32, t_i32) -> void);
+        }
 
         if self.sess().opts.debuginfo != DebugInfo::None {
             ifn!("llvm.dbg.declare", fn(self.type_metadata(), self.type_metadata()) -> void);

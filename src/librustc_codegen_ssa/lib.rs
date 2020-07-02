@@ -34,6 +34,7 @@ use std::path::{Path, PathBuf};
 pub mod back;
 pub mod base;
 pub mod common;
+pub mod coverageinfo;
 pub mod debuginfo;
 pub mod glue;
 pub mod meth;
