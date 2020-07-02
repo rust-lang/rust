@@ -447,6 +447,7 @@ version = \"0.0.0\"
 ",
     )
     .server();
+    server.wait_until_workspace_is_loaded();
 
     server.request::<OnEnter>(
         TextDocumentPositionParams {

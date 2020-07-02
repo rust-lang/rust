@@ -11,6 +11,7 @@ use vfs::{file_set::FileSetConfig, AbsPath};
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
     global_state::{GlobalState, Handle},
+    main_loop::Task,
 };
 
 impl GlobalState {
@@ -20,51 +21,51 @@ impl GlobalState {
             self.analysis_host.update_lru_capacity(old_config.lru_capacity);
         }
         if self.config.linked_projects != old_config.linked_projects {
-            self.reload()
+            self.fetch_workspaces()
         } else if self.config.flycheck != old_config.flycheck {
             self.reload_flycheck();
         }
     }
-    pub(crate) fn reload(&mut self) {
-        log::info!("reloading projects: {:?}", self.config.linked_projects);
-        if self.config.linked_projects.is_empty() && self.config.notifications.cargo_toml_not_found
-        {
-            self.show_message(
-                lsp_types::MessageType::Error,
-                "rust-analyzer failed to discover workspace".to_string(),
-            );
-        };
-
-        let workspaces = {
-            self.config
-                .linked_projects
-                .iter()
-                .map(|project| match project {
-                    LinkedProject::ProjectManifest(manifest) => {
-                        ra_project_model::ProjectWorkspace::load(
-                            manifest.clone(),
-                            &self.config.cargo,
-                            self.config.with_sysroot,
-                        )
-                    }
-                    LinkedProject::InlineJsonProject(it) => {
-                        Ok(ra_project_model::ProjectWorkspace::Json { project: it.clone() })
-                    }
-                })
-                .collect::<Vec<_>>()
-                .into_iter()
-                .filter_map(|res| {
-                    res.map_err(|err| {
-                        log::error!("failed to load workspace: {:#}", err);
-                        self.show_message(
-                            lsp_types::MessageType::Error,
-                            format!("rust-analyzer failed to load workspace: {:#}", err),
-                        );
+    pub(crate) fn fetch_workspaces(&mut self) {
+        self.task_pool.handle.spawn({
+            let linked_projects = self.config.linked_projects.clone();
+            let cargo_config = self.config.cargo.clone();
+            let with_sysroot = self.config.with_sysroot.clone();
+            move || {
+                let workspaces = linked_projects
+                    .iter()
+                    .map(|project| match project {
+                        LinkedProject::ProjectManifest(manifest) => {
+                            ra_project_model::ProjectWorkspace::load(
+                                manifest.clone(),
+                                &cargo_config,
+                                with_sysroot,
+                            )
+                        }
+                        LinkedProject::InlineJsonProject(it) => {
+                            Ok(ra_project_model::ProjectWorkspace::Json { project: it.clone() })
+                        }
                     })
-                    .ok()
+                    .collect::<Vec<_>>();
+                Task::Workspaces(workspaces)
+            }
+        });
+    }
+    pub(crate) fn switch_workspaces(&mut self, workspaces: Vec<anyhow::Result<ProjectWorkspace>>) {
+        log::info!("reloading projects: {:?}", self.config.linked_projects);
+        let workspaces = workspaces
+            .into_iter()
+            .filter_map(|res| {
+                res.map_err(|err| {
+                    log::error!("failed to load workspace: {:#}", err);
+                    self.show_message(
+                        lsp_types::MessageType::Error,
+                        format!("rust-analyzer failed to load workspace: {:#}", err),
+                    );
                 })
-                .collect::<Vec<_>>()
-        };
+                .ok()
+            })
+            .collect::<Vec<_>>();
 
         if let FilesWatcher::Client = self.config.files.watcher {
             let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
