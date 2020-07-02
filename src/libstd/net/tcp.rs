@@ -1,3 +1,4 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 use crate::io::prelude::*;
 
 use crate::fmt;
@@ -583,7 +584,8 @@ impl Read for TcpStream {
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        // SAFETY: Read is guaranteed to work on uninitialized memory
+        unsafe { Initializer::nop() }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -622,7 +624,8 @@ impl Read for &TcpStream {
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        // SAFETY: Read is guaranteed to work on uninitialized memory
+        unsafe { Initializer::nop() }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
