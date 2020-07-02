@@ -17,29 +17,141 @@ use rustc_trait_selection::traits;
 use super::ItemCtxt;
 use super::{bad_placeholder_type, is_suggestable_infer_ty};
 
+/// Computes the relevant generic parameter for a potential generic const argument.
+///
+/// This should be called using the query `tcx.opt_const_param_of`.
+pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DefId> {
+    use hir::*;
+
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
+
+    if let Node::AnonConst(_) = tcx.hir().get(hir_id) {
+        let parent_node_id = tcx.hir().get_parent_node(hir_id);
+        let parent_node = tcx.hir().get(parent_node_id);
+
+        match parent_node {
+            Node::Expr(&Expr {
+                kind:
+                    ExprKind::MethodCall(segment, ..) | ExprKind::Path(QPath::TypeRelative(_, segment)),
+                ..
+            }) => {
+                let body_owner = tcx.hir().local_def_id(tcx.hir().enclosing_body_owner(hir_id));
+                let tables = tcx.typeck_tables_of(body_owner);
+                // This may fail in case the method/path does not actually exist.
+                // As there is no relevant param for `def_id`, we simply return
+                // `None` here.
+                let type_dependent_def = tables.type_dependent_def_id(parent_node_id)?;
+                let idx = segment
+                    .args
+                    .and_then(|args| {
+                        args.args
+                            .iter()
+                            .filter(|arg| arg.is_const())
+                            .position(|arg| arg.id() == hir_id)
+                    })
+                    .unwrap_or_else(|| {
+                        bug!("no arg matching AnonConst in segment");
+                    });
+
+                tcx.generics_of(type_dependent_def)
+                    .params
+                    .iter()
+                    .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Const))
+                    .nth(idx)
+                    .map(|param| param.def_id)
+            }
+
+            Node::Ty(&Ty { kind: TyKind::Path(_), .. })
+            | Node::Expr(&Expr { kind: ExprKind::Struct(..), .. })
+            | Node::Expr(&Expr { kind: ExprKind::Path(_), .. })
+            | Node::TraitRef(..) => {
+                let path = match parent_node {
+                    Node::Ty(&Ty { kind: TyKind::Path(QPath::Resolved(_, path)), .. })
+                    | Node::TraitRef(&TraitRef { path, .. }) => &*path,
+                    Node::Expr(&Expr {
+                        kind:
+                            ExprKind::Path(QPath::Resolved(_, path))
+                            | ExprKind::Struct(&QPath::Resolved(_, path), ..),
+                        ..
+                    }) => {
+                        let body_owner =
+                            tcx.hir().local_def_id(tcx.hir().enclosing_body_owner(hir_id));
+                        let _tables = tcx.typeck_tables_of(body_owner);
+                        &*path
+                    }
+                    _ => span_bug!(DUMMY_SP, "unexpected const parent path {:?}", parent_node),
+                };
+
+                // We've encountered an `AnonConst` in some path, so we need to
+                // figure out which generic parameter it corresponds to and return
+                // the relevant type.
+
+                let (arg_index, segment) = path
+                    .segments
+                    .iter()
+                    .filter_map(|seg| seg.args.map(|args| (args.args, seg)))
+                    .find_map(|(args, seg)| {
+                        args.iter()
+                            .filter(|arg| arg.is_const())
+                            .position(|arg| arg.id() == hir_id)
+                            .map(|index| (index, seg))
+                    })
+                    .unwrap_or_else(|| {
+                        bug!("no arg matching AnonConst in path");
+                    });
+
+                // Try to use the segment resolution if it is valid, otherwise we
+                // default to the path resolution.
+                let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
+                let generics = match res {
+                    Res::Def(DefKind::Ctor(..), def_id) => {
+                        tcx.generics_of(tcx.parent(def_id).unwrap())
+                    }
+                    Res::Def(_, def_id) => tcx.generics_of(def_id),
+                    Res::Err => {
+                        tcx.sess.delay_span_bug(tcx.def_span(def_id), "anon const with Res::Err");
+                        return None;
+                    }
+                    _ => span_bug!(
+                        DUMMY_SP,
+                        "unexpected anon const res {:?} in path: {:?}",
+                        res,
+                        path,
+                    ),
+                };
+
+                generics
+                    .params
+                    .iter()
+                    .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Const))
+                    .nth(arg_index)
+                    .map(|param| param.def_id)
+            }
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
+
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
+    let def_id = def_id.expect_local();
     use rustc_hir::*;
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
 
-    let icx = ItemCtxt::new(tcx, def_id);
+    let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
     match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Fn(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                tcx.mk_fn_def(def_id, substs)
+                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
             TraitItemKind::Const(ref ty, body_id) => body_id
                 .and_then(|body_id| {
                     if is_suggestable_infer_ty(ty) {
-                        Some(infer_placeholder_type(
-                            tcx,
-                            def_id.expect_local(),
-                            body_id,
-                            ty.span,
-                            item.ident,
-                        ))
+                        Some(infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident))
                     } else {
                         None
                     }
@@ -53,12 +165,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::ImplItem(item) => match item.kind {
             ImplItemKind::Fn(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                tcx.mk_fn_def(def_id, substs)
+                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
             ImplItemKind::Const(ref ty, body_id) => {
                 if is_suggestable_infer_ty(ty) {
-                    infer_placeholder_type(tcx, def_id.expect_local(), body_id, ty.span, item.ident)
+                    infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                 } else {
                     icx.to_ty(ty)
                 }
@@ -76,13 +188,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             match item.kind {
                 ItemKind::Static(ref ty, .., body_id) | ItemKind::Const(ref ty, body_id) => {
                     if is_suggestable_infer_ty(ty) {
-                        infer_placeholder_type(
-                            tcx,
-                            def_id.expect_local(),
-                            body_id,
-                            ty.span,
-                            item.ident,
-                        )
+                        infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident)
                     } else {
                         icx.to_ty(ty)
                     }
@@ -91,26 +197,26 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     icx.to_ty(self_ty)
                 }
                 ItemKind::Fn(..) => {
-                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                    tcx.mk_fn_def(def_id, substs)
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                    tcx.mk_fn_def(def_id.to_def_id(), substs)
                 }
                 ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
                     let def = tcx.adt_def(def_id);
-                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
                     tcx.mk_adt(def, substs)
                 }
                 ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::Binding, .. }) => {
-                    let_position_impl_trait_type(tcx, def_id.expect_local())
+                    let_position_impl_trait_type(tcx, def_id)
                 }
                 ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }) => {
-                    find_opaque_ty_constraints(tcx, def_id.expect_local())
+                    find_opaque_ty_constraints(tcx, def_id)
                 }
                 // Opaque types desugared from `impl Trait`.
                 ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: Some(owner), .. }) => {
                     let concrete_ty = tcx
                         .mir_borrowck(owner.expect_local())
                         .concrete_opaque_types
-                        .get(&def_id)
+                        .get(&def_id.to_def_id())
                         .map(|opaque| opaque.concrete_type)
                         .unwrap_or_else(|| {
                             tcx.sess.delay_span_bug(
@@ -132,8 +238,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 // resolves to itself. Return the non-revealed
                                 // type, which should result in E0720.
                                 tcx.mk_opaque(
-                                    def_id,
-                                    InternalSubsts::identity_for_item(tcx, def_id),
+                                    def_id.to_def_id(),
+                                    InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
                                 )
                             }
                         });
@@ -158,11 +264,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
             ForeignItemKind::Fn(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                tcx.mk_fn_def(def_id, substs)
+                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
             ForeignItemKind::Static(ref t, _) => icx.to_ty(t),
-            ForeignItemKind::Type => tcx.mk_foreign(def_id),
+            ForeignItemKind::Type => tcx.mk_foreign(def_id.to_def_id()),
         },
 
         Node::Ctor(&ref def) | Node::Variant(Variant { data: ref def, .. }) => match *def {
@@ -170,23 +276,29 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 tcx.type_of(tcx.hir().get_parent_did(hir_id).to_def_id())
             }
             VariantData::Tuple(..) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                tcx.mk_fn_def(def_id, substs)
+                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                tcx.mk_fn_def(def_id.to_def_id(), substs)
             }
         },
 
         Node::Field(field) => icx.to_ty(&field.ty),
 
         Node::Expr(&Expr { kind: ExprKind::Closure(.., gen), .. }) => {
-            let substs = InternalSubsts::identity_for_item(tcx, def_id);
+            let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
             if let Some(movability) = gen {
-                tcx.mk_generator(def_id, substs, movability)
+                tcx.mk_generator(def_id.to_def_id(), substs, movability)
             } else {
-                tcx.mk_closure(def_id, substs)
+                tcx.mk_closure(def_id.to_def_id(), substs)
             }
         }
 
         Node::AnonConst(_) => {
+            if let Some(param) = tcx.opt_const_param_of(def_id) {
+                // We defer to `type_of` of the corresponding parameter
+                // for generic arguments.
+                return tcx.type_of(param);
+            }
+
             let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
             match parent_node {
                 Node::Ty(&Ty { kind: TyKind::Array(_, ref constant), .. })
@@ -202,94 +314,6 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     .repr
                     .discr_type()
                     .to_ty(tcx),
-
-                Node::Ty(&Ty { kind: TyKind::Path(_), .. })
-                | Node::Expr(&Expr { kind: ExprKind::Struct(..) | ExprKind::Path(_), .. })
-                | Node::TraitRef(..) => {
-                    let path = match parent_node {
-                        Node::Ty(&Ty { kind: TyKind::Path(QPath::Resolved(_, path)), .. })
-                        | Node::Expr(&Expr {
-                            kind:
-                                ExprKind::Path(QPath::Resolved(_, path))
-                                | ExprKind::Struct(&QPath::Resolved(_, path), ..),
-                            ..
-                        })
-                        | Node::TraitRef(&TraitRef { path, .. }) => &*path,
-                        _ => {
-                            return tcx.ty_error_with_message(
-                                DUMMY_SP,
-                                &format!("unexpected const parent path {:?}", parent_node),
-                            );
-                        }
-                    };
-
-                    // We've encountered an `AnonConst` in some path, so we need to
-                    // figure out which generic parameter it corresponds to and return
-                    // the relevant type.
-
-                    let (arg_index, segment) = path
-                        .segments
-                        .iter()
-                        .filter_map(|seg| seg.args.as_ref().map(|args| (args.args, seg)))
-                        .find_map(|(args, seg)| {
-                            args.iter()
-                                .filter(|arg| arg.is_const())
-                                .enumerate()
-                                .filter(|(_, arg)| arg.id() == hir_id)
-                                .map(|(index, _)| (index, seg))
-                                .next()
-                        })
-                        .unwrap_or_else(|| {
-                            bug!("no arg matching AnonConst in path");
-                        });
-
-                    // Try to use the segment resolution if it is valid, otherwise we
-                    // default to the path resolution.
-                    let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
-                    let generics = match res {
-                        Res::Def(DefKind::Ctor(..), def_id) => {
-                            tcx.generics_of(tcx.parent(def_id).unwrap())
-                        }
-                        Res::Def(_, def_id) => tcx.generics_of(def_id),
-                        res => {
-                            return tcx.ty_error_with_message(
-                                DUMMY_SP,
-                                &format!(
-                                    "unexpected anon const res {:?} in path: {:?}",
-                                    res, path,
-                                ),
-                                );
-                        }
-                    };
-
-                    let ty = generics
-                        .params
-                        .iter()
-                        .filter(|param| {
-                            if let ty::GenericParamDefKind::Const = param.kind {
-                                true
-                            } else {
-                                false
-                            }
-                        })
-                        .nth(arg_index)
-                        .map(|param| tcx.type_of(param.def_id));
-
-                    if let Some(ty) = ty {
-                        ty
-                    } else {
-                        // This is no generic parameter associated with the arg. This is
-                        // probably from an extra arg where one is not needed.
-                        tcx.ty_error_with_message(
-                            DUMMY_SP,
-                            &format!(
-                                "missing generic parameter for `AnonConst`, \
-                                 parent: {:?}, res: {:?}",
-                                parent_node, res
-                            ),
-                        )
-                    }
-                }
 
                 x => tcx.ty_error_with_message(
                     DUMMY_SP,
