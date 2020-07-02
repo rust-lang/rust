@@ -344,6 +344,35 @@
                     "default": null,
                     "description": "Custom cargo runner extension ID."
                 },
+                "rust-analyzer.runnableEnv": {
+                    "anyOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "mask": {
+                                        "type": "string",
+                                        "description": "Runnable name mask"
+                                    },
+                                    "env": {
+                                        "type": "object",
+                                        "description": "Variables in form of { \"key\": \"value\"}"
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "description": "Variables in form of { \"key\": \"value\"}"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Environment variables passed to the runnable launched using `Test ` or `Debug` lens or `rust-analyzer.run` command."
+                },
                 "rust-analyzer.inlayHints.enable": {
                     "type": "boolean",
                     "default": true,

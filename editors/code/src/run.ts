@@ -96,6 +96,28 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
     }
 }
 
+export function prepareEnv(runnable: ra.Runnable, config: Config): Record<string, string> {
+    const env: Record<string, string> = { "RUST_BACKTRACE": "short" };
+
+    if (runnable.args.expectTest) {
+        env["UPDATE_EXPECT"] = "1";
+    }
+
+    if (config.runnableEnv) {
+        if (Array.isArray(config.runnableEnv)) {
+            for (const it of config.runnableEnv) {
+                if (!it.mask || new RegExp(it.mask).test(runnable.label)) {
+                    Object.assign(env, it.env);
+                }
+            }
+        } else {
+            Object.assign(env, config.runnableEnv as Record<string, string>);
+        }
+    }
+
+    return env;
+}
+
 export async function createTask(runnable: ra.Runnable, config: Config): Promise<vscode.Task> {
     if (runnable.kind !== "cargo") {
         // rust-analyzer supports only one kind, "cargo"
@@ -108,16 +130,13 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
     if (runnable.args.executableArgs.length > 0) {
         args.push('--', ...runnable.args.executableArgs);
     }
-    const env: { [key: string]: string } = { "RUST_BACKTRACE": "short" };
-    if (runnable.args.expectTest) {
-        env["UPDATE_EXPECT"] = "1";
-    }
+
     const definition: tasks.CargoTaskDefinition = {
         type: tasks.TASK_TYPE,
         command: args[0], // run, test, etc...
         args: args.slice(1),
         cwd: runnable.args.workspaceRoot,
-        env: Object.assign({}, process.env as { [key: string]: string }, env),
+        env: prepareEnv(runnable, config),
     };
 
     const target = vscode.workspace.workspaceFolders![0]; // safe, see main activate()
