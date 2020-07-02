@@ -515,7 +515,7 @@ impl<'a> Parser<'a> {
         self.recover_additional_muts();
 
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
-        if let token::Interpolated(ref nt, _) = self.token.kind {
+        if let token::Interpolated(ref nt) = self.token.kind {
             if let token::NtPat(_) = **nt {
                 self.expected_ident_found().emit();
             }
