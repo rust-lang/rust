@@ -405,6 +405,11 @@ fn place_location<'tcx>(
                 AttributeValue::Exprloc(Expression::new())
             }
         }
+        CPlaceInner::VarPair(_, _, _) => {
+            // FIXME implement this
+
+            AttributeValue::Exprloc(Expression::new())
+        }
         CPlaceInner::Addr(_, _) => {
             // FIXME implement this (used by arguments and returns)
 

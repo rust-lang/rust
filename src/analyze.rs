@@ -11,7 +11,8 @@ pub(crate) enum SsaKind {
 
 pub(crate) fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> IndexVec<Local, SsaKind> {
     let mut flag_map = fx.mir.local_decls.iter().map(|local_decl| {
-        if fx.clif_type(fx.monomorphize(&local_decl.ty)).is_some() {
+        let ty = fx.monomorphize(&local_decl.ty);
+        if fx.clif_type(ty).is_some() || fx.clif_pair_type(ty).is_some() {
             SsaKind::Ssa
         } else {
             SsaKind::NotSsa

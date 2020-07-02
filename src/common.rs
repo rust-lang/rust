@@ -67,6 +67,19 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
     })
 }
 
+fn clif_pair_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<(types::Type, types::Type)> {
+    Some(match ty.kind {
+        ty::Tuple(substs) if substs.len() == 2 => {
+            let mut types = substs.types();
+            (
+                clif_type_from_ty(tcx, types.next().unwrap())?,
+                clif_type_from_ty(tcx, types.next().unwrap())?,
+            )
+        }
+        _ => return None,
+    })
+}
+
 /// Is a pointer to this type a fat ptr?
 pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     let ptr_ty = tcx.mk_ptr(TypeAndMut { ty, mutbl: rustc_hir::Mutability::Not });
@@ -319,6 +332,10 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
 
     pub(crate) fn clif_type(&self, ty: Ty<'tcx>) -> Option<Type> {
         clif_type_from_ty(self.tcx, ty)
+    }
+
+    pub(crate) fn clif_pair_type(&self, ty: Ty<'tcx>) -> Option<(Type, Type)> {
+        clif_pair_type_from_ty(self.tcx, ty)
     }
 
     pub(crate) fn get_block(&self, bb: BasicBlock) -> Block {
