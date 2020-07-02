@@ -1,4 +1,4 @@
-#![feature(track_caller, stmt_expr_attributes)]
+#![feature(stmt_expr_attributes)]
 use std::fmt::Debug;
 
 // Helper function to avoid promotion so that this tests "run-time" casts, not CTFE.
