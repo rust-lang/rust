@@ -72,8 +72,8 @@ impl EarlyLintPass for UnnestedOrPatterns {
 }
 
 fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
-    if !cx.sess.opts.unstable_features.is_nightly_build() {
-        // User cannot do `#![feature(or_patterns)]`, so bail.
+    if !cx.sess.features_untracked().or_patterns {
+        // Do not suggest nesting the patterns if the feature `or_patterns` is not enabled.
         return;
     }
 

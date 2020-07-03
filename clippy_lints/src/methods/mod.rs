@@ -2044,7 +2044,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Exp
         }
         span_lint_and_then(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type", |diag| {
             if let Some((text, snip)) = snip {
-                diag.span_suggestion(expr.span, text, snip, Applicability::Unspecified);
+                diag.span_suggestion(expr.span, text, snip, Applicability::MachineApplicable);
             }
         });
     }

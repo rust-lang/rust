@@ -229,6 +229,7 @@ mod main_recursion;
 mod manual_async_fn;
 mod manual_non_exhaustive;
 mod map_clone;
+mod map_identity;
 mod map_unit_fn;
 mod match_on_vec_items;
 mod matches;
@@ -459,7 +460,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     );
     store.register_removed(
         "clippy::replace_consts",
-        "associated-constants `MIN`/`MAX` of integers are prefer to `{min,max}_value()` and module constants",
+        "associated-constants `MIN`/`MAX` of integers are prefered to `{min,max}_value()` and module constants",
+    );
+    store.register_removed(
+        "clippy::regex_macro",
+        "the regex! macro has been removed from the regex crate in 2018",
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
@@ -473,6 +478,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &assign_ops::ASSIGN_OP_PATTERN,
         &assign_ops::MISREFACTORED_ASSIGN_OP,
         &atomic_ordering::INVALID_ATOMIC_ORDERING,
+        &attrs::BLANKET_CLIPPY_RESTRICTION_LINTS,
         &attrs::DEPRECATED_CFG_ATTR,
         &attrs::DEPRECATED_SEMVER,
         &attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
@@ -608,6 +614,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &manual_async_fn::MANUAL_ASYNC_FN,
         &manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
         &map_clone::MAP_CLONE,
+        &map_identity::MAP_IDENTITY,
         &map_unit_fn::OPTION_MAP_UNIT_FN,
         &map_unit_fn::RESULT_MAP_UNIT_FN,
         &match_on_vec_items::MATCH_ON_VEC_ITEMS,
@@ -752,7 +759,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &reference::DEREF_ADDROF,
         &reference::REF_IN_DEREF,
         &regex::INVALID_REGEX,
-        &regex::REGEX_MACRO,
         &regex::TRIVIAL_REGEX,
         &returns::NEEDLESS_RETURN,
         &returns::UNUSED_UNIT,
@@ -1057,6 +1063,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_early_pass(|| box unnested_or_patterns::UnnestedOrPatterns);
     store.register_late_pass(|| box macro_use::MacroUseImports::default());
+    store.register_late_pass(|| box map_identity::MapIdentity);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1186,6 +1193,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&assign_ops::ASSIGN_OP_PATTERN),
         LintId::of(&assign_ops::MISREFACTORED_ASSIGN_OP),
         LintId::of(&atomic_ordering::INVALID_ATOMIC_ORDERING),
+        LintId::of(&attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
         LintId::of(&attrs::DEPRECATED_CFG_ATTR),
         LintId::of(&attrs::DEPRECATED_SEMVER),
         LintId::of(&attrs::MISMATCHED_TARGET_OS),
@@ -1273,6 +1281,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&manual_async_fn::MANUAL_ASYNC_FN),
         LintId::of(&manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
         LintId::of(&map_clone::MAP_CLONE),
+        LintId::of(&map_identity::MAP_IDENTITY),
         LintId::of(&map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(&map_unit_fn::RESULT_MAP_UNIT_FN),
         LintId::of(&matches::INFALLIBLE_DESTRUCTURING_MATCH),
@@ -1374,7 +1383,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&reference::DEREF_ADDROF),
         LintId::of(&reference::REF_IN_DEREF),
         LintId::of(&regex::INVALID_REGEX),
-        LintId::of(&regex::REGEX_MACRO),
         LintId::of(&regex::TRIVIAL_REGEX),
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
@@ -1437,6 +1445,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::style", Some("clippy_style"), vec![
         LintId::of(&assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
         LintId::of(&assign_ops::ASSIGN_OP_PATTERN),
+        LintId::of(&attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
         LintId::of(&attrs::UNKNOWN_CLIPPY_LINTS),
         LintId::of(&bit_mask::VERBOSE_BIT_MASK),
         LintId::of(&blacklisted_name::BLACKLISTED_NAME),
@@ -1510,7 +1519,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(&redundant_pattern_matching::REDUNDANT_PATTERN_MATCHING),
         LintId::of(&redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
-        LintId::of(&regex::REGEX_MACRO),
         LintId::of(&regex::TRIVIAL_REGEX),
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
@@ -1550,6 +1558,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::EXPLICIT_COUNTER_LOOP),
         LintId::of(&loops::MUT_RANGE_BOUND),
         LintId::of(&loops::WHILE_LET_LOOP),
+        LintId::of(&map_identity::MAP_IDENTITY),
         LintId::of(&map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(&map_unit_fn::RESULT_MAP_UNIT_FN),
         LintId::of(&matches::MATCH_AS_REF),
