@@ -191,12 +191,10 @@ impl RootDatabase {
 
             // AstDatabase
             hir::db::AstIdMapQuery
-            hir::db::InternMacroQuery
             hir::db::MacroArgQuery
             hir::db::MacroDefQuery
             hir::db::ParseMacroQuery
             hir::db::MacroExpandQuery
-            hir::db::InternEagerExpansionQuery
 
             // DefDatabase
             hir::db::ItemTreeQuery
@@ -221,17 +219,6 @@ impl RootDatabase {
             hir::db::DocumentationQuery
             hir::db::ImportMapQuery
 
-            // InternDatabase
-            hir::db::InternFunctionQuery
-            hir::db::InternStructQuery
-            hir::db::InternUnionQuery
-            hir::db::InternEnumQuery
-            hir::db::InternConstQuery
-            hir::db::InternStaticQuery
-            hir::db::InternTraitQuery
-            hir::db::InternTypeAliasQuery
-            hir::db::InternImplQuery
-
             // HirDatabase
             hir::db::InferQueryQuery
             hir::db::TyQuery
@@ -246,10 +233,6 @@ impl RootDatabase {
             hir::db::InherentImplsInCrateQuery
             hir::db::TraitImplsInCrateQuery
             hir::db::TraitImplsInDepsQuery
-            hir::db::InternTypeCtorQuery
-            hir::db::InternTypeParamIdQuery
-            hir::db::InternChalkImplQuery
-            hir::db::InternAssocTyValueQuery
             hir::db::AssociatedTyDataQuery
             hir::db::TraitDatumQuery
             hir::db::StructDatumQuery
@@ -264,6 +247,36 @@ impl RootDatabase {
             // LineIndexDatabase
             crate::LineIndexQuery
         ];
+
+        // To collect interned data, we need to bump the revision counter by performing a synthetic
+        // write.
+        // We do this after collecting the non-interned queries to correctly attribute memory used
+        // by interned data.
+        self.runtime.synthetic_write(Durability::HIGH);
+
+        sweep_each_query![
+            // AstDatabase
+            hir::db::InternMacroQuery
+            hir::db::InternEagerExpansionQuery
+
+            // InternDatabase
+            hir::db::InternFunctionQuery
+            hir::db::InternStructQuery
+            hir::db::InternUnionQuery
+            hir::db::InternEnumQuery
+            hir::db::InternConstQuery
+            hir::db::InternStaticQuery
+            hir::db::InternTraitQuery
+            hir::db::InternTypeAliasQuery
+            hir::db::InternImplQuery
+
+            // HirDatabase
+            hir::db::InternTypeCtorQuery
+            hir::db::InternTypeParamIdQuery
+            hir::db::InternChalkImplQuery
+            hir::db::InternAssocTyValueQuery
+        ];
+
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));
         acc
     }
