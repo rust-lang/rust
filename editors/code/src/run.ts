@@ -103,6 +103,8 @@ export function prepareEnv(runnable: ra.Runnable, runnableEnvCfg: RunnableEnvCfg
         env["UPDATE_EXPECT"] = "1";
     }
 
+    Object.assign(env, process.env as { [key: string]: string });
+
     if (runnableEnvCfg) {
         if (Array.isArray(runnableEnvCfg)) {
             for (const it of runnableEnvCfg) {
@@ -135,7 +137,7 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
         type: tasks.TASK_TYPE,
         command: args[0], // run, test, etc...
         args: args.slice(1),
-        cwd: runnable.args.workspaceRoot,
+        cwd: runnable.args.workspaceRoot || ".",
         env: prepareEnv(runnable, config.runnableEnv),
     };
 
