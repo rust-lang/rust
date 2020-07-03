@@ -38,10 +38,10 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ManualAsyncFn => [MANUAL_ASYNC_FN]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ManualAsyncFn {
+impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ManualAsyncFn {
     }
 }
 
-fn future_trait_ref<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &'tcx Ty<'tcx>) -> Option<&'tcx TraitRef<'tcx>> {
+fn future_trait_ref<'tcx>(cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) -> Option<&'tcx TraitRef<'tcx>> {
     if_chain! {
         if let TyKind::OpaqueDef(item_id, _) = ty.kind;
         let item = cx.tcx.hir().item(item_id.id);
@@ -129,7 +129,7 @@ fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'t
     None
 }
 
-fn desugared_async_block<'tcx>(cx: &LateContext<'_, 'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {
+fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {
     if_chain! {
         if let Some(block_expr) = block.expr;
         if let Some(args) = match_function_call(cx, block_expr, &FUTURE_FROM_GENERATOR);
@@ -145,7 +145,7 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'_, 'tcx>, block: &'tcx Block<'t
     None
 }
 
-fn suggested_ret(cx: &LateContext<'_, '_>, output: &Ty<'_>) -> Option<(&'static str, String)> {
+fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str, String)> {
     match output.kind {
         TyKind::Tup(tys) if tys.is_empty() => {
             let sugg = "remove the return type";

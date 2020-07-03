@@ -38,8 +38,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DurationSubsec => [DURATION_SUBSEC]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for DurationSubsec {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Binary(Spanned { node: BinOpKind::Div, .. }, ref left, ref right) = expr.kind;
             if let ExprKind::MethodCall(ref method_path, _ , ref args, _) = left.kind;

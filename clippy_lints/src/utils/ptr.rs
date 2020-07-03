@@ -7,7 +7,7 @@ use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 
 pub fn get_spans(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     opt_body_id: Option<BodyId>,
     idx: usize,
     replacements: &[(&'static str, &'static str)],
@@ -22,8 +22,8 @@ pub fn get_spans(
     }
 }
 
-fn extract_clone_suggestions<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn extract_clone_suggestions<'tcx>(
+    cx: &LateContext<'tcx>,
     name: Symbol,
     replace: &[(&'static str, &'static str)],
     body: &'tcx Body<'_>,
@@ -44,7 +44,7 @@ fn extract_clone_suggestions<'a, 'tcx>(
 }
 
 struct PtrCloneVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     name: Symbol,
     replace: &'a [(&'static str, &'static str)],
     spans: Vec<(Span, Cow<'static, str>)>,

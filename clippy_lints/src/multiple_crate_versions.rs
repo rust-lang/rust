@@ -36,8 +36,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MultipleCrateVersions => [MULTIPLE_CRATE_VERSIONS]);
 
-impl LateLintPass<'_, '_> for MultipleCrateVersions {
-    fn check_crate(&mut self, cx: &LateContext<'_, '_>, _: &Crate<'_>) {
+impl LateLintPass<'_> for MultipleCrateVersions {
+    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
         if !run_lints(cx, &[MULTIPLE_CRATE_VERSIONS], CRATE_HIR_ID) {
             return;
         }

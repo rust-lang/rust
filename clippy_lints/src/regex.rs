@@ -54,13 +54,13 @@ pub struct Regex {
 
 impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for Regex {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Call(ref fun, ref args) = expr.kind;
             if let ExprKind::Path(ref qpath) = fun.kind;
             if args.len() == 1;
-            if let Some(def_id) = cx.tables().qpath_res(qpath, fun.hir_id).opt_def_id();
+            if let Some(def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
             then {
                 if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
                    match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
@@ -88,7 +88,7 @@ fn str_span(base: Span, c: regex_syntax::ast::Span, offset: u16) -> Span {
     Span::new(start, end, base.ctxt())
 }
 
-fn const_str<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) -> Option<String> {
+fn const_str<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<String> {
     constant(cx, cx.tables(), e).and_then(|(c, _)| match c {
         Constant::Str(s) => Some(s),
         _ => None,
@@ -134,7 +134,7 @@ fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
     }
 }
 
-fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
+fn check_set<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
     if_chain! {
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref expr) = expr.kind;
         if let ExprKind::Array(exprs) = expr.kind;
@@ -146,7 +146,7 @@ fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8: b
     }
 }
 
-fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
+fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
     let mut parser = regex_syntax::ParserBuilder::new()
         .unicode(utf8)
         .allow_invalid_utf8(!utf8)

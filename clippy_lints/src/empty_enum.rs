@@ -38,8 +38,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EmptyEnum => [EMPTY_ENUM]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for EmptyEnum {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         let did = cx.tcx.hir().local_def_id(item.hir_id);
         if let ItemKind::Enum(..) = item.kind {
             let ty = cx.tcx.type_of(did);

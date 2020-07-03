@@ -25,9 +25,9 @@ declare_clippy_lint! {
 
 declare_lint_pass!(OverflowCheckConditional => [OVERFLOW_CHECK_CONDITIONAL]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
+impl<'tcx> LateLintPass<'tcx> for OverflowCheckConditional {
     // a + b < a, a > a + b, a < a - b, a - b > a
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let eq = |l, r| SpanlessEq::new(cx).eq_path_segment(l, r);
         if_chain! {
             if let ExprKind::Binary(ref op, ref first, ref second) = expr.kind;

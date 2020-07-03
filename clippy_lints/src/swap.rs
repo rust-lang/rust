@@ -65,15 +65,15 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Swap => [MANUAL_SWAP, ALMOST_SWAPPED]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Swap {
-    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block<'_>) {
+impl<'tcx> LateLintPass<'tcx> for Swap {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         check_manual_swap(cx, block);
         check_suspicious_swap(cx, block);
     }
 }
 
 /// Implementation of the `MANUAL_SWAP` lint.
-fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block<'_>) {
+fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     for w in block.stmts.windows(3) {
         if_chain! {
             // let t = foo();
@@ -190,7 +190,7 @@ enum Slice<'a> {
 }
 
 /// Checks if both expressions are index operations into "slice-like" types.
-fn check_for_slice<'a>(cx: &LateContext<'_, '_>, lhs1: &'a Expr<'_>, lhs2: &'a Expr<'_>) -> Slice<'a> {
+fn check_for_slice<'a>(cx: &LateContext<'_>, lhs1: &'a Expr<'_>, lhs2: &'a Expr<'_>) -> Slice<'a> {
     if let ExprKind::Index(ref lhs1, ref idx1) = lhs1.kind {
         if let ExprKind::Index(ref lhs2, ref idx2) = lhs2.kind {
             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
@@ -213,7 +213,7 @@ fn check_for_slice<'a>(cx: &LateContext<'_, '_>, lhs1: &'a Expr<'_>, lhs2: &'a E
 }
 
 /// Implementation of the `ALMOST_SWAPPED` lint.
-fn check_suspicious_swap(cx: &LateContext<'_, '_>, block: &Block<'_>) {
+fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
     for w in block.stmts.windows(2) {
         if_chain! {
             if let StmtKind::Semi(ref first) = w[0].kind;

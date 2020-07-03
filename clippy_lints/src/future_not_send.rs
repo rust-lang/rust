@@ -47,10 +47,10 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FutureNotSend => [FUTURE_NOT_SEND]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FutureNotSend {
+impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'tcx>,
         _: &'tcx Body<'tcx>,

@@ -40,8 +40,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(IfLetMutex => [IF_LET_MUTEX]);
 
-impl LateLintPass<'_, '_> for IfLetMutex {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, ex: &'_ Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, ex: &'tcx Expr<'tcx>) {
         let mut arm_visit = ArmVisitor {
             mutex_lock_called: false,
             found_mutex: None,
@@ -82,13 +82,13 @@ impl LateLintPass<'_, '_> for IfLetMutex {
 }
 
 /// Checks if `Mutex::lock` is called in the `if let _ = expr.
-pub struct OppVisitor<'tcx, 'l> {
+pub struct OppVisitor<'a, 'tcx> {
     mutex_lock_called: bool,
     found_mutex: Option<&'tcx Expr<'tcx>>,
-    cx: &'tcx LateContext<'tcx, 'l>,
+    cx: &'a LateContext<'tcx>,
 }
 
-impl<'tcx, 'l> Visitor<'tcx> for OppVisitor<'tcx, 'l> {
+impl<'tcx> Visitor<'tcx> for OppVisitor<'_, 'tcx> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
@@ -109,13 +109,13 @@ impl<'tcx, 'l> Visitor<'tcx> for OppVisitor<'tcx, 'l> {
 }
 
 /// Checks if `Mutex::lock` is called in any of the branches.
-pub struct ArmVisitor<'tcx, 'l> {
+pub struct ArmVisitor<'a, 'tcx> {
     mutex_lock_called: bool,
     found_mutex: Option<&'tcx Expr<'tcx>>,
-    cx: &'tcx LateContext<'tcx, 'l>,
+    cx: &'a LateContext<'tcx>,
 }
 
-impl<'tcx, 'l> Visitor<'tcx> for ArmVisitor<'tcx, 'l> {
+impl<'tcx> Visitor<'tcx> for ArmVisitor<'_, 'tcx> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
@@ -135,8 +135,8 @@ impl<'tcx, 'l> Visitor<'tcx> for ArmVisitor<'tcx, 'l> {
     }
 }
 
-impl<'tcx, 'l> ArmVisitor<'tcx, 'l> {
-    fn same_mutex(&self, cx: &LateContext<'_, '_>, op_mutex: &Expr<'_>) -> bool {
+impl<'tcx> ArmVisitor<'_, 'tcx> {
+    fn same_mutex(&self, cx: &LateContext<'_>, op_mutex: &Expr<'_>) -> bool {
         if let Some(arm_mutex) = self.found_mutex {
             SpanlessEq::new(cx).eq_expr(op_mutex, arm_mutex)
         } else {
@@ -145,7 +145,7 @@ impl<'tcx, 'l> ArmVisitor<'tcx, 'l> {
     }
 }
 
-fn is_mutex_lock_call<'a>(cx: &LateContext<'a, '_>, expr: &'a Expr<'_>) -> Option<&'a Expr<'a>> {
+fn is_mutex_lock_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if_chain! {
         if let ExprKind::MethodCall(path, _span, args, _) = &expr.kind;
         if path.ident.to_string() == "lock";

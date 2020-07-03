@@ -70,8 +70,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for LenZero {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if item.span.from_expansion() {
             return;
         }
@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }
@@ -118,8 +118,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     }
 }
 
-fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item<'_>, trait_items: &[TraitItemRef]) {
-    fn is_named_self(cx: &LateContext<'_, '_>, item: &TraitItemRef, name: &str) -> bool {
+fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items: &[TraitItemRef]) {
+    fn is_named_self(cx: &LateContext<'_>, item: &TraitItemRef, name: &str) -> bool {
         item.ident.name.as_str() == name
             && if let AssocItemKind::Fn { has_self } = item.kind {
                 has_self && {
@@ -132,7 +132,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item<'_>, trait_i
     }
 
     // fill the set with current and super traits
-    fn fill_trait_set(traitt: DefId, set: &mut FxHashSet<DefId>, cx: &LateContext<'_, '_>) {
+    fn fill_trait_set(traitt: DefId, set: &mut FxHashSet<DefId>, cx: &LateContext<'_>) {
         if set.insert(traitt) {
             for supertrait in rustc_trait_selection::traits::supertrait_def_ids(cx.tcx, traitt) {
                 fill_trait_set(supertrait, set, cx);
@@ -169,8 +169,8 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item<'_>, trait_i
     }
 }
 
-fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item<'_>, impl_items: &[ImplItemRef<'_>]) {
-    fn is_named_self(cx: &LateContext<'_, '_>, item: &ImplItemRef<'_>, name: &str) -> bool {
+fn check_impl_items(cx: &LateContext<'_>, item: &Item<'_>, impl_items: &[ImplItemRef<'_>]) {
+    fn is_named_self(cx: &LateContext<'_>, item: &ImplItemRef<'_>, name: &str) -> bool {
         item.ident.name.as_str() == name
             && if let AssocItemKind::Fn { has_self } = item.kind {
                 has_self && {
@@ -210,7 +210,7 @@ fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item<'_>, impl_items: &[Imp
     }
 }
 
-fn check_cmp(cx: &LateContext<'_, '_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>, op: &str, compare_to: u32) {
+fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>, op: &str, compare_to: u32) {
     if let (&ExprKind::MethodCall(ref method_path, _, ref args, _), &ExprKind::Lit(ref lit)) = (&method.kind, &lit.kind)
     {
         // check if we are in an is_empty() method
@@ -225,7 +225,7 @@ fn check_cmp(cx: &LateContext<'_, '_>, span: Span, method: &Expr<'_>, lit: &Expr
 }
 
 fn check_len(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     span: Span,
     method_name: Symbol,
     args: &[Expr<'_>],
@@ -259,9 +259,9 @@ fn check_len(
 }
 
 /// Checks if this type has an `is_empty` method.
-fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Special case ranges until `range_is_empty` is stabilized. See issue 3807.
-    fn should_skip_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+    fn should_skip_range(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         higher::range(cx, expr).map_or(false, |_| {
             !cx.tcx
                 .features()
@@ -272,7 +272,7 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     }
 
     /// Gets an `AssocItem` and return true if it matches `is_empty(self)`.
-    fn is_is_empty(cx: &LateContext<'_, '_>, item: &ty::AssocItem) -> bool {
+    fn is_is_empty(cx: &LateContext<'_>, item: &ty::AssocItem) -> bool {
         if let ty::AssocKind::Fn = item.kind {
             if item.ident.name.as_str() == "is_empty" {
                 let sig = cx.tcx.fn_sig(item.def_id);
@@ -287,7 +287,7 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     }
 
     /// Checks the inherent impl's items for an `is_empty(self)` method.
-    fn has_is_empty_impl(cx: &LateContext<'_, '_>, id: DefId) -> bool {
+    fn has_is_empty_impl(cx: &LateContext<'_>, id: DefId) -> bool {
         cx.tcx.inherent_impls(id).iter().any(|imp| {
             cx.tcx
                 .associated_items(*imp)

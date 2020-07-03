@@ -65,8 +65,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Unicode => [ZERO_WIDTH_SPACE, NON_ASCII_LITERAL, UNICODE_NOT_NFC]);
 
-impl LateLintPass<'_, '_> for Unicode {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &'_ Expr<'_>) {
+impl LateLintPass<'_> for Unicode {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Lit(ref lit) = expr.kind {
             if let LitKind::Str(_, _) = lit.node {
                 check_str(cx, lit.span, expr.hir_id)
@@ -89,7 +89,7 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
     result
 }
 
-fn check_str(cx: &LateContext<'_, '_>, span: Span, id: HirId) {
+fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
     let string = snippet(cx, span, "");
     if string.contains('\u{200B}') {
         span_lint_and_sugg(

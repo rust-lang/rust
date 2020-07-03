@@ -33,8 +33,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MapIdentity => [MAP_IDENTITY]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapIdentity {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MapIdentity {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }
@@ -59,7 +59,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapIdentity {
 
 /// Returns the arguments passed into map() if the expression is a method call to
 /// map(). Otherwise, returns None.
-fn get_map_argument<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<&'a [Expr<'a>]> {
+fn get_map_argument<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a [Expr<'a>]> {
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
         if args.len() == 2 && method.ident.as_str() == "map";
@@ -77,7 +77,7 @@ fn get_map_argument<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<
 
 /// Checks if an expression represents the identity function
 /// Only examines closures and `std::convert::identity`
-fn is_expr_identity_function(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Closure(_, _, body_id, _, _) => is_body_identity_function(cx, cx.tcx.hir().body(body_id)),
         ExprKind::Path(QPath::Resolved(_, ref path)) => match_path(path, &paths::STD_CONVERT_IDENTITY),
@@ -88,7 +88,7 @@ fn is_expr_identity_function(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool 
 /// Checks if a function's body represents the identity function
 /// Looks for bodies of the form `|x| x`, `|x| return x`, `|x| { return x }` or `|x| {
 /// return x; }`
-fn is_body_identity_function(cx: &LateContext<'_, '_>, func: &Body<'_>) -> bool {
+fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
     let params = func.params;
     let body = remove_blocks(&func.value);
 
@@ -117,9 +117,9 @@ fn is_body_identity_function(cx: &LateContext<'_, '_>, func: &Body<'_>) -> bool 
 }
 
 /// Returns true iff an expression returns the same thing as a parameter's pattern
-fn match_expr_param(cx: &LateContext<'_, '_>, expr: &Expr<'_>, pat: &Pat<'_>) -> bool {
+fn match_expr_param(cx: &LateContext<'_>, expr: &Expr<'_>, pat: &Pat<'_>) -> bool {
     if let PatKind::Binding(_, _, ident, _) = pat.kind {
-        match_var(expr, ident.name) && !(cx.tables().hir_owner == Some(expr.hir_id.owner) && is_adjusted(cx, expr))
+        match_var(expr, ident.name) && !(cx.tables().hir_owner == expr.hir_id.owner && is_adjusted(cx, expr))
     } else {
         false
     }

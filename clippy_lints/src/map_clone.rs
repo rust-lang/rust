@@ -42,8 +42,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MapClone => [MAP_CLONE]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MapClone {
+    fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
         if e.span.from_expansion() {
             return;
         }
@@ -106,7 +106,7 @@ fn ident_eq(name: Ident, path: &hir::Expr<'_>) -> bool {
     }
 }
 
-fn lint_needless_cloning(cx: &LateContext<'_, '_>, root: Span, receiver: Span) {
+fn lint_needless_cloning(cx: &LateContext<'_>, root: Span, receiver: Span) {
     span_lint_and_sugg(
         cx,
         MAP_CLONE,
@@ -118,7 +118,7 @@ fn lint_needless_cloning(cx: &LateContext<'_, '_>, root: Span, receiver: Span) {
     )
 }
 
-fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span, copied: bool) {
+fn lint(cx: &LateContext<'_>, replace: Span, root: Span, copied: bool) {
     let mut applicability = Applicability::MachineApplicable;
     if copied {
         span_lint_and_sugg(

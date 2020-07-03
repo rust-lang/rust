@@ -57,7 +57,7 @@ declare_lint_pass!(UseSelf => [USE_SELF]);
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
-fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path<'_>, last_segment: Option<&PathSegment<'_>>) {
+fn span_use_self_lint(cx: &LateContext<'_>, path: &Path<'_>, last_segment: Option<&PathSegment<'_>>) {
     let last_segment = last_segment.unwrap_or_else(|| path.segments.last().expect(SEGMENTS_MSG));
 
     // Path segments only include actual path, no methods or fields.
@@ -83,7 +83,7 @@ fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path<'_>, last_segment: O
 
 // FIXME: always use this (more correct) visitor, not just in method signatures.
 struct SemanticUseSelfVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     self_ty: Ty<'tcx>,
 }
 
@@ -110,8 +110,8 @@ impl<'a, 'tcx> Visitor<'tcx> for SemanticUseSelfVisitor<'a, 'tcx> {
     }
 }
 
-fn check_trait_method_impl_decl<'a, 'tcx>(
-    cx: &'a LateContext<'a, 'tcx>,
+fn check_trait_method_impl_decl<'tcx>(
+    cx: &LateContext<'tcx>,
     impl_item: &ImplItem<'_>,
     impl_decl: &'tcx FnDecl<'_>,
     impl_trait_ref: ty::TraitRef<'tcx>,
@@ -157,8 +157,8 @@ fn check_trait_method_impl_decl<'a, 'tcx>(
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UseSelf {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if in_external_macro(cx.sess(), item.span) {
             return;
         }
@@ -211,7 +211,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
 
 struct UseSelfVisitor<'a, 'tcx> {
     item_path: &'a Path<'a>,
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {

@@ -35,8 +35,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ByteCount => [NAIVE_BYTECOUNT]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for ByteCount {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(ref count, _, ref count_args, _) = expr.kind;
             if count.ident.name == sym!(count);

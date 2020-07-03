@@ -67,15 +67,15 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EvalOrderDependence => [EVAL_ORDER_DEPENDENCE, DIVERGING_SUB_EXPRESSION]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Find a write to a local variable.
         match expr.kind {
             ExprKind::Assign(ref lhs, ..) | ExprKind::AssignOp(_, ref lhs, _) => {
                 if let ExprKind::Path(ref qpath) = lhs.kind {
                     if let QPath::Resolved(_, ref path) = *qpath {
                         if path.segments.len() == 1 {
-                            if let def::Res::Local(var) = cx.tables().qpath_res(qpath, lhs.hir_id) {
+                            if let def::Res::Local(var) = cx.qpath_res(qpath, lhs.hir_id) {
                                 let mut visitor = ReadVisitor {
                                     cx,
                                     var,
@@ -91,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
             _ => {},
         }
     }
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
             StmtKind::Local(ref local) => {
                 if let Local { init: Some(ref e), .. } = **local {
@@ -105,7 +105,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
 }
 
 struct DivergenceVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 
 impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
@@ -285,7 +285,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt<'_>) -
 
 /// A visitor that looks for reads from a variable.
 struct ReadVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     /// The ID of the variable we're looking for.
     var: HirId,
     /// The expressions where the write to the variable occurred (for reporting
@@ -309,7 +309,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
                 if_chain! {
                     if let QPath::Resolved(None, ref path) = *qpath;
                     if path.segments.len() == 1;
-                    if let def::Res::Local(local_id) = self.cx.tables().qpath_res(qpath, expr.hir_id);
+                    if let def::Res::Local(local_id) = self.cx.qpath_res(qpath, expr.hir_id);
                     if local_id == self.var;
                     // Check that this is a read, not a write.
                     if !is_in_assignment_position(self.cx, expr);
@@ -354,7 +354,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 }
 
 /// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
-fn is_in_assignment_position(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn is_in_assignment_position(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
         if let ExprKind::Assign(ref lhs, ..) = parent.kind {
             return lhs.hir_id == expr.hir_id;

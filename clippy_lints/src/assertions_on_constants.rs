@@ -29,8 +29,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         let lint_true = |is_debug: bool| {
             span_lint_and_help(
                 cx,
@@ -114,7 +114,7 @@ enum AssertKind {
 /// ```
 ///
 /// where `message` is any expression and `c` is a constant bool.
-fn match_assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> Option<AssertKind> {
+fn match_assert_with_message<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<AssertKind> {
     if_chain! {
         if let ExprKind::Match(ref expr, ref arms, _) = expr.kind;
         // matches { let _t = expr; _t }

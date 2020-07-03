@@ -28,8 +28,8 @@ that gives you access to the underlying structure [`TyS`][TyS].
 
 Example of use:
 ```rust
-impl LateLintPass<'_, '_> for MyStructLint {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+impl LateLintPass<'_> for MyStructLint {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         // Get type of `expr`
         let ty = cx.tables().expr_ty(expr);
         // Match its kind to enter its type
@@ -56,8 +56,8 @@ Two noticeable items here:
 Starting with an `expr`, you can check whether it is calling a specific method `some_method`:
 
 ```rust
-impl LateLintPass<'_, '_> for MyStructLint {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+impl LateLintPass<'_> for MyStructLint {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             // Check our expr is calling a method
             if let hir::ExprKind::MethodCall(path, _, _args) = &expr.kind;
@@ -78,8 +78,8 @@ There are two ways to do this, depending if the target trait is part of lang ite
 ```rust
 use crate::utils::{implements_trait, match_trait_method, paths};
 
-impl LateLintPass<'_, '_> for MyStructLint {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+impl LateLintPass<'_> for MyStructLint {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         // 1. Using expression and Clippy's convenient method
         // we use `match_trait_method` function from Clippy's toolbox
         if match_trait_method(cx, expr, &paths::INTO) {
@@ -112,8 +112,8 @@ To check if our type defines a method called `some_method`:
 ```rust
 use crate::utils::{is_type_diagnostic_item, return_ty};
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MyTypeImpl {
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         if_chain! {
             // Check if item is a method/function
             if let ImplItemKind::Fn(ref signature, _) = impl_item.kind;

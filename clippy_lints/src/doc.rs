@@ -146,12 +146,12 @@ impl DocMarkdown {
 
 impl_lint_pass!(DocMarkdown => [DOC_MARKDOWN, MISSING_SAFETY_DOC, MISSING_ERRORS_DOC, NEEDLESS_DOCTEST_MAIN]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
-    fn check_crate(&mut self, cx: &LateContext<'a, 'tcx>, krate: &'tcx hir::Crate<'_>) {
+impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>, krate: &'tcx hir::Crate<'_>) {
         check_attrs(cx, &self.valid_idents, &krate.item.attrs);
     }
 
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
@@ -171,13 +171,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
         }
     }
 
-    fn check_item_post(&mut self, _cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
+    fn check_item_post(&mut self, _cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         if let hir::ItemKind::Impl { .. } = item.kind {
             self.in_trait_impl = false;
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'_>) {
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
@@ -186,7 +186,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem<'_>) {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
             return;
@@ -197,8 +197,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
     }
 }
 
-fn lint_for_missing_headers<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_for_missing_headers<'tcx>(
+    cx: &LateContext<'tcx>,
     hir_id: hir::HirId,
     span: impl Into<MultiSpan> + Copy,
     sig: &hir::FnSig<'_>,
@@ -313,7 +313,7 @@ struct DocHeaders {
     errors: bool,
 }
 
-fn check_attrs<'a>(cx: &LateContext<'_, '_>, valid_idents: &FxHashSet<String>, attrs: &'a [Attribute]) -> DocHeaders {
+fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &'a [Attribute]) -> DocHeaders {
     let mut doc = String::new();
     let mut spans = vec![];
 
@@ -370,7 +370,7 @@ fn check_attrs<'a>(cx: &LateContext<'_, '_>, valid_idents: &FxHashSet<String>, a
 const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail", "edition2018"];
 
 fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     valid_idents: &FxHashSet<String>,
     events: Events,
     spans: &[(usize, Span)],
@@ -442,13 +442,13 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 
 static LEAVE_MAIN_PATTERNS: &[&str] = &["static", "fn main() {}", "extern crate", "async fn main() {"];
 
-fn check_code(cx: &LateContext<'_, '_>, text: &str, span: Span) {
+fn check_code(cx: &LateContext<'_>, text: &str, span: Span) {
     if text.contains("fn main() {") && !LEAVE_MAIN_PATTERNS.iter().any(|p| text.contains(p)) {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }
 
-fn check_text(cx: &LateContext<'_, '_>, valid_idents: &FxHashSet<String>, text: &str, span: Span) {
+fn check_text(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, text: &str, span: Span) {
     for word in text.split(|c: char| c.is_whitespace() || c == '\'') {
         // Trim punctuation as in `some comment (see foo::bar).`
         //                                                   ^^
@@ -471,7 +471,7 @@ fn check_text(cx: &LateContext<'_, '_>, valid_idents: &FxHashSet<String>, text: 
     }
 }
 
-fn check_word(cx: &LateContext<'_, '_>, word: &str, span: Span) {
+fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
     /// Checks if a string is camel-case, i.e., contains at least two uppercase
     /// letters (`Clippy` is ok) and one lower-case letter (`NASA` is ok).
     /// Plurals are also excluded (`IDs` is ok).

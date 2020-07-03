@@ -51,8 +51,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(AwaitHoldingLock => [AWAIT_HOLDING_LOCK]);
 
-impl LateLintPass<'_, '_> for AwaitHoldingLock {
-    fn check_body(&mut self, cx: &LateContext<'_, '_>, body: &'_ Body<'_>) {
+impl LateLintPass<'_> for AwaitHoldingLock {
+    fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
         use AsyncGeneratorKind::{Block, Closure, Fn};
         if let Some(GeneratorKind::Async(Block | Closure | Fn)) = body.generator_kind {
             let body_id = BodyId {
@@ -65,7 +65,7 @@ impl LateLintPass<'_, '_> for AwaitHoldingLock {
     }
 }
 
-fn check_interior_types(cx: &LateContext<'_, '_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
+fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
     for ty_cause in ty_causes {
         if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind {
             if is_mutex_guard(cx, adt.did) {
@@ -82,7 +82,7 @@ fn check_interior_types(cx: &LateContext<'_, '_>, ty_causes: &[GeneratorInterior
     }
 }
 
-fn is_mutex_guard(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
+fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {
     match_def_path(cx, def_id, &paths::MUTEX_GUARD)
         || match_def_path(cx, def_id, &paths::RWLOCK_READ_GUARD)
         || match_def_path(cx, def_id, &paths::RWLOCK_WRITE_GUARD)
