@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
 use ra_syntax::{ast, SyntaxKind};
+use test_utils::mark;
 
 use crate::completion::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
@@ -38,6 +39,7 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.token.kind() == SyntaxKind::COMMENT {
+        mark::hit!(no_keyword_completion_in_comments);
         return;
     }
 
@@ -180,6 +182,7 @@ mod tests {
         test_utils::{check_edit, completion_list},
         CompletionKind,
     };
+    use test_utils::mark;
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Keyword);
@@ -457,6 +460,34 @@ fn quux() -> i32 {
             expect![[r#"
                 kw where
             "#]],
+        );
+    }
+
+    #[test]
+    fn no_keyword_completion_in_comments() {
+        mark::check!(no_keyword_completion_in_comments);
+        check(
+            r#"
+fn test() {
+    let x = 2; // A comment<|>
+}
+"#,
+            expect![[""]],
+        );
+        check(
+            r#"
+/*
+Some multi-line comment<|>
+*/
+"#,
+            expect![[""]],
+        );
+        check(
+            r#"
+/// Some doc comment
+/// let test<|> = 1
+"#,
+            expect![[""]],
         );
     }
 }

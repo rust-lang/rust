@@ -57,10 +57,19 @@ pub(crate) fn completion_list_with_options(
 }
 
 pub(crate) fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+    check_edit_with_config(what, ra_fixture_before, ra_fixture_after, &CompletionConfig::default())
+}
+
+pub(crate) fn check_edit_with_config(
+    what: &str,
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+    config: &CompletionConfig,
+) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
     let (analysis, position) = analysis_and_position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
-        analysis.completions(&CompletionConfig::default(), position).unwrap().unwrap().into();
+        analysis.completions(config, position).unwrap().unwrap().into();
     let (completion,) = completions
         .iter()
         .filter(|it| it.lookup() == what)

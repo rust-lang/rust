@@ -383,12 +383,14 @@ impl Builder {
             return self;
         }
         if ctx.use_item_syntax.is_some() || ctx.is_call {
+            mark::hit!(no_parens_in_use_item);
             return self;
         }
 
         // Don't add parentheses if the expected type is some function reference.
         if let Some(ty) = &ctx.expected_type {
             if ty.is_fn() {
+                mark::hit!(no_call_parens_if_fn_ptr_needed);
                 return self;
             }
         }
@@ -413,7 +415,10 @@ impl Builder {
                         .sep_by(", ");
                     format!("{}({})$0", name, function_params_snippet)
                 }
-                _ => format!("{}($0)", name),
+                _ => {
+                    mark::hit!(suppress_arg_snippets);
+                    format!("{}($0)", name)
+                }
             };
 
             (snippet, format!("{}(…)", name))
@@ -460,19 +465,12 @@ mod tests {
     use test_utils::mark;
 
     use crate::completion::{
-        test_utils::{check_edit, do_completion, do_completion_with_options},
+        test_utils::{check_edit, check_edit_with_config, do_completion},
         CompletionConfig, CompletionItem, CompletionKind,
     };
 
     fn do_reference_completion(ra_fixture: &str) -> Vec<CompletionItem> {
         do_completion(ra_fixture, CompletionKind::Reference)
-    }
-
-    fn do_reference_completion_with_options(
-        ra_fixture: &str,
-        options: CompletionConfig,
-    ) -> Vec<CompletionItem> {
-        do_completion_with_options(ra_fixture, CompletionKind::Reference, &options)
     }
 
     #[test]
@@ -647,6 +645,7 @@ fn no_args() {}
 fn main() { no_args()$0 }
 "#,
         );
+
         check_edit(
             "with_args",
             r#"
@@ -658,6 +657,7 @@ fn with_args(x: i32, y: String) {}
 fn main() { with_args(${1:x}, ${2:y})$0 }
 "#,
         );
+
         check_edit(
             "foo",
             r#"
@@ -674,6 +674,45 @@ impl S {
 }
 fn bar(s: &S) { s.foo()$0 }
 "#,
+        );
+
+        check_edit(
+            "foo",
+            r#"
+struct S {}
+impl S {
+    fn foo(&self, x: i32) {}
+}
+fn bar(s: &S) {
+    s.f<|>
+}
+"#,
+            r#"
+struct S {}
+impl S {
+    fn foo(&self, x: i32) {}
+}
+fn bar(s: &S) {
+    s.foo(${1:x})$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn suppress_arg_snippets() {
+        mark::check!(suppress_arg_snippets);
+        check_edit_with_config(
+            "with_args",
+            r#"
+fn with_args(x: i32, y: String) {}
+fn main() { with_<|> }
+"#,
+            r#"
+fn with_args(x: i32, y: String) {}
+fn main() { with_args($0) }
+"#,
+            &CompletionConfig { add_call_argument_snippets: false, ..CompletionConfig::default() },
         );
     }
 
@@ -694,294 +733,111 @@ fn main() { foo(${1:foo}, ${2:bar}, ${3:ho_ge_})$0 }
 
     #[test]
     fn inserts_parens_for_tuple_enums() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                enum Option<T> { Some(T), None }
-                use Option::*;
-                fn main() -> Option<i32> {
-                    Som<|>
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "None",
-                source_range: 79..82,
-                delete: 79..82,
-                insert: "None",
-                kind: EnumVariant,
-                detail: "()",
-            },
-            CompletionItem {
-                label: "Option",
-                source_range: 79..82,
-                delete: 79..82,
-                insert: "Option",
-                kind: Enum,
-            },
-            CompletionItem {
-                label: "Some(…)",
-                source_range: 79..82,
-                delete: 79..82,
-                insert: "Some($0)",
-                kind: EnumVariant,
-                lookup: "Some",
-                detail: "(T)",
-                trigger_call_info: true,
-            },
-            CompletionItem {
-                label: "main()",
-                source_range: 79..82,
-                delete: 79..82,
-                insert: "main()$0",
-                kind: Function,
-                lookup: "main",
-                detail: "fn main() -> Option<i32>",
-            },
-        ]
-        "###
+        check_edit(
+            "Some",
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+fn main() -> Option<i32> {
+    Som<|>
+}
+"#,
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+fn main() -> Option<i32> {
+    Some($0)
+}
+"#,
         );
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                enum Option<T> { Some(T), None }
-                use Option::*;
-                fn main(value: Option<i32>) {
-                    match value {
-                        Som<|>
-                    }
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "None",
-                source_range: 104..107,
-                delete: 104..107,
-                insert: "None",
-                kind: EnumVariant,
-                detail: "()",
-            },
-            CompletionItem {
-                label: "Option",
-                source_range: 104..107,
-                delete: 104..107,
-                insert: "Option",
-                kind: Enum,
-            },
-            CompletionItem {
-                label: "Some(…)",
-                source_range: 104..107,
-                delete: 104..107,
-                insert: "Some($0)",
-                kind: EnumVariant,
-                lookup: "Some",
-                detail: "(T)",
-                trigger_call_info: true,
-            },
-        ]
-        "###
+        check_edit(
+            "Some",
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+fn main(value: Option<i32>) {
+    match value {
+        Som<|>
+    }
+}
+"#,
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+fn main(value: Option<i32>) {
+    match value {
+        Some($0)
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn no_call_parens_if_fn_ptr_needed() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                fn somefn(with: u8, a: u8, lot: u8, of: u8, args: u8) {}
+        mark::check!(no_call_parens_if_fn_ptr_needed);
+        check_edit(
+            "foo",
+            r#"
+fn foo(foo: u8, bar: u8) {}
+struct ManualVtable { f: fn(u8, u8) }
 
-                struct ManualVtable {
-                    method: fn(u8, u8, u8, u8, u8),
-                }
+fn main() -> ManualVtable {
+    ManualVtable { f: f<|> }
+}
+"#,
+            r#"
+fn foo(foo: u8, bar: u8) {}
+struct ManualVtable { f: fn(u8, u8) }
 
-                fn main() -> ManualVtable {
-                    ManualVtable {
-                        method: some<|>
-                    }
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "ManualVtable",
-                source_range: 182..186,
-                delete: 182..186,
-                insert: "ManualVtable",
-                kind: Struct,
-            },
-            CompletionItem {
-                label: "main",
-                source_range: 182..186,
-                delete: 182..186,
-                insert: "main",
-                kind: Function,
-                detail: "fn main() -> ManualVtable",
-            },
-            CompletionItem {
-                label: "somefn",
-                source_range: 182..186,
-                delete: 182..186,
-                insert: "somefn",
-                kind: Function,
-                detail: "fn somefn(with: u8, a: u8, lot: u8, of: u8, args: u8)",
-            },
-        ]
-        "###
+fn main() -> ManualVtable {
+    ManualVtable { f: foo }
+}
+"#,
         );
     }
 
     #[test]
-    fn arg_snippets_for_method_call() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                struct S {}
-                impl S {
-                    fn foo(&self, x: i32) {}
-                }
-                fn bar(s: &S) {
-                    s.f<|>
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "foo(…)",
-                source_range: 74..75,
-                delete: 74..75,
-                insert: "foo(${1:x})$0",
-                kind: Method,
-                lookup: "foo",
-                detail: "fn foo(&self, x: i32)",
-                trigger_call_info: true,
-            },
-        ]
-        "###
-        )
-    }
-
-    #[test]
-    fn no_arg_snippets_for_method_call() {
-        assert_debug_snapshot!(
-            do_reference_completion_with_options(
-                r"
-                struct S {}
-                impl S {
-                    fn foo(&self, x: i32) {}
-                }
-                fn bar(s: &S) {
-                    s.f<|>
-                }
-                ",
-                CompletionConfig {
-                    add_call_argument_snippets: false,
-                    .. Default::default()
-                }
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "foo(…)",
-                source_range: 74..75,
-                delete: 74..75,
-                insert: "foo($0)",
-                kind: Method,
-                lookup: "foo",
-                detail: "fn foo(&self, x: i32)",
-                trigger_call_info: true,
-            },
-        ]
-        "###
-        )
-    }
-
-    #[test]
-    fn dont_render_function_parens_in_use_item() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                mod m { pub fn foo() {} }
-                use crate::m::f<|>;
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "foo",
-                source_range: 40..41,
-                delete: 40..41,
-                insert: "foo",
-                kind: Function,
-                detail: "pub fn foo()",
-            },
-        ]
-        "###
+    fn no_parens_in_use_item() {
+        mark::check!(no_parens_in_use_item);
+        check_edit(
+            "foo",
+            r#"
+mod m { pub fn foo() {} }
+use crate::m::f<|>;
+"#,
+            r#"
+mod m { pub fn foo() {} }
+use crate::m::foo;
+"#,
         );
     }
 
     #[test]
-    fn dont_render_function_parens_if_already_call() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                fn frobnicate() {}
-                fn main() {
-                    frob<|>();
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "frobnicate",
-                source_range: 35..39,
-                delete: 35..39,
-                insert: "frobnicate",
-                kind: Function,
-                detail: "fn frobnicate()",
-            },
-            CompletionItem {
-                label: "main",
-                source_range: 35..39,
-                delete: 35..39,
-                insert: "main",
-                kind: Function,
-                detail: "fn main()",
-            },
-        ]
-        "###
+    fn no_parens_in_call() {
+        check_edit(
+            "foo",
+            r#"
+fn foo(x: i32) {}
+fn main() { f<|>(); }
+"#,
+            r#"
+fn foo(x: i32) {}
+fn main() { foo(); }
+"#,
         );
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                struct Foo {}
-                impl Foo { fn new() -> Foo {} }
-                fn main() {
-                    Foo::ne<|>();
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "new",
-                source_range: 67..69,
-                delete: 67..69,
-                insert: "new",
-                kind: Function,
-                detail: "fn new() -> Foo",
-            },
-        ]
-        "###
+        check_edit(
+            "foo",
+            r#"
+struct Foo;
+impl Foo { fn foo(&self){} }
+fn f(foo: &Foo) { foo.f<|>(); }
+"#,
+            r#"
+struct Foo;
+impl Foo { fn foo(&self){} }
+fn f(foo: &Foo) { foo.foo(); }
+"#,
         );
     }
 
@@ -1448,56 +1304,6 @@ fn main() { foo(${1:foo}, ${2:bar}, ${3:ho_ge_})$0 }
             },
         ]
         "###
-        );
-    }
-
-    #[test]
-    fn no_keyword_autocompletion_on_line_comments() {
-        assert_debug_snapshot!(
-        do_completion(
-                r"
-                    fn test() {
-                        let x = 2; // A comment<|>
-                    }
-                    ",
-                CompletionKind::Keyword
-        ),
-            @r###"
-            []
-            "###
-        );
-    }
-
-    #[test]
-    fn no_keyword_autocompletion_on_multi_line_comments() {
-        assert_debug_snapshot!(
-        do_completion(
-                r"
-                    /*
-                    Some multi-line comment<|>
-                    */
-                    ",
-                CompletionKind::Keyword
-        ),
-            @r###"
-            []
-            "###
-        );
-    }
-
-    #[test]
-    fn no_keyword_autocompletion_on_doc_comments() {
-        assert_debug_snapshot!(
-        do_completion(
-                r"
-                    /// Some doc comment
-                    /// let test<|> = 1
-                    ",
-                CompletionKind::Keyword
-        ),
-            @r###"
-            []
-            "###
         );
     }
 }
