@@ -146,12 +146,7 @@ enum DerefPossible {
     Impossible,
 }
 
-fn apply_lint<'tcx>(
-    cx: &LateContext<'tcx>,
-    pat: &Pat<'_>,
-    expr_ty: Ty<'tcx>,
-    deref_possible: DerefPossible,
-) -> bool {
+fn apply_lint<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, expr_ty: Ty<'tcx>, deref_possible: DerefPossible) -> bool {
     let maybe_mismatch = find_first_mismatch(cx, pat, expr_ty, Level::Top);
     if let Some((span, mutability, level)) = maybe_mismatch {
         span_lint_and_help(
