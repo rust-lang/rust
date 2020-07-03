@@ -174,289 +174,281 @@ fn complete_return(
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{test_utils::completion_list, CompletionKind};
-    use insta::assert_snapshot;
+    use expect::{expect, Expect};
 
-    fn get_keyword_completions(code: &str) -> String {
-        completion_list(code, CompletionKind::Keyword)
+    use crate::completion::{test_utils::completion_list, CompletionKind};
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        let actual = completion_list(ra_fixture, CompletionKind::Keyword);
+        expect.assert_eq(&actual)
     }
 
     #[test]
     fn test_keywords_in_use_stmt() {
-        assert_snapshot!(
-            get_keyword_completions(r"use <|>"),
-            @r###"
-            kw crate::
-            kw self
-            kw super::
-        "###
+        check(
+            r"use <|>",
+            expect![[r#"
+                kw crate::
+                kw self
+                kw super::
+            "#]],
         );
 
-        assert_snapshot!(
-            get_keyword_completions(r"use a::<|>"),
-            @r###"
+        check(
+            r"use a::<|>",
+            expect![[r#"
             kw self
             kw super::
-        "###
+        "#]],
         );
 
-        assert_snapshot!(
-            get_keyword_completions(r"use a::{b, <|>}"),
-            @r###"
+        check(
+            r"use a::{b, <|>}",
+            expect![[r#"
             kw self
             kw super::
-        "###
+        "#]],
         );
     }
 
     #[test]
     fn test_keywords_at_source_file_level() {
-        assert_snapshot!(
-            get_keyword_completions(r"m<|>"),
-            @r###"
-            kw const
-            kw enum
-            kw extern
-            kw fn
-            kw impl
-            kw mod
-            kw pub
-            kw static
-            kw struct
-            kw trait
-            kw type
-            kw union
-            kw unsafe
-            kw use
-        "###
+        check(
+            r"m<|>",
+            expect![[r#"
+                kw const
+                kw enum
+                kw extern
+                kw fn
+                kw impl
+                kw mod
+                kw pub
+                kw static
+                kw struct
+                kw trait
+                kw type
+                kw union
+                kw unsafe
+                kw use
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_in_function() {
-        assert_snapshot!(
-            get_keyword_completions(r"fn quux() { <|> }"),
-            @r###"
-            kw const
-            kw extern
-            kw fn
-            kw if
-            kw if let
-            kw impl
-            kw let
-            kw loop
-            kw match
-            kw mod
-            kw return
-            kw static
-            kw trait
-            kw type
-            kw unsafe
-            kw use
-            kw while
-        "###
+        check(
+            r"fn quux() { <|> }",
+            expect![[r#"
+                kw const
+                kw extern
+                kw fn
+                kw if
+                kw if let
+                kw impl
+                kw let
+                kw loop
+                kw match
+                kw mod
+                kw return
+                kw static
+                kw trait
+                kw type
+                kw unsafe
+                kw use
+                kw while
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_inside_block() {
-        assert_snapshot!(
-            get_keyword_completions(r"fn quux() { if true { <|> } }"),
-            @r###"
-            kw const
-            kw extern
-            kw fn
-            kw if
-            kw if let
-            kw impl
-            kw let
-            kw loop
-            kw match
-            kw mod
-            kw return
-            kw static
-            kw trait
-            kw type
-            kw unsafe
-            kw use
-            kw while
-        "###
+        check(
+            r"fn quux() { if true { <|> } }",
+            expect![[r#"
+                kw const
+                kw extern
+                kw fn
+                kw if
+                kw if let
+                kw impl
+                kw let
+                kw loop
+                kw match
+                kw mod
+                kw return
+                kw static
+                kw trait
+                kw type
+                kw unsafe
+                kw use
+                kw while
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_after_if() {
-        assert_snapshot!(
-            get_keyword_completions(
-                r"
-                fn quux() {
-                    if true {
-                        ()
-                    } <|>
-                }
-                ",
-            ),
-            @r###"
-            kw const
-            kw else
-            kw else if
-            kw extern
-            kw fn
-            kw if
-            kw if let
-            kw impl
-            kw let
-            kw loop
-            kw match
-            kw mod
-            kw return
-            kw static
-            kw trait
-            kw type
-            kw unsafe
-            kw use
-            kw while
-        "###
+        check(
+            r#"fn quux() { if true { () } <|> }"#,
+            expect![[r#"
+                kw const
+                kw else
+                kw else if
+                kw extern
+                kw fn
+                kw if
+                kw if let
+                kw impl
+                kw let
+                kw loop
+                kw match
+                kw mod
+                kw return
+                kw static
+                kw trait
+                kw type
+                kw unsafe
+                kw use
+                kw while
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_in_match_arm() {
-        assert_snapshot!(
-            get_keyword_completions(
-                r"
-                fn quux() -> i32 {
-                    match () {
-                        () => <|>
-                    }
-                }
-                ",
-            ),
-            @r###"
-            kw if
-            kw if let
-            kw loop
-            kw match
-            kw return
-            kw unsafe
-        "###
+        check(
+            r#"
+fn quux() -> i32 {
+    match () {
+        () => <|>
+    }
+}
+"#,
+            expect![[r#"
+                kw if
+                kw if let
+                kw loop
+                kw match
+                kw return
+                kw unsafe
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_in_trait_def() {
-        assert_snapshot!(
-            get_keyword_completions(r"trait My { <|> }"),
-            @r###"
-            kw const
-            kw fn
-            kw type
-            kw unsafe
-        "###
+        check(
+            r"trait My { <|> }",
+            expect![[r#"
+                kw const
+                kw fn
+                kw type
+                kw unsafe
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_in_impl_def() {
-        assert_snapshot!(
-            get_keyword_completions(r"impl My { <|> }"),
-            @r###"
-            kw const
-            kw fn
-            kw pub
-            kw type
-            kw unsafe
-        "###
+        check(
+            r"impl My { <|> }",
+            expect![[r#"
+                kw const
+                kw fn
+                kw pub
+                kw type
+                kw unsafe
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_in_loop() {
-        assert_snapshot!(
-            get_keyword_completions(r"fn my() { loop { <|> } }"),
-            @r###"
-            kw break
-            kw const
-            kw continue
-            kw extern
-            kw fn
-            kw if
-            kw if let
-            kw impl
-            kw let
-            kw loop
-            kw match
-            kw mod
-            kw return
-            kw static
-            kw trait
-            kw type
-            kw unsafe
-            kw use
-            kw while
-        "###
+        check(
+            r"fn my() { loop { <|> } }",
+            expect![[r#"
+                kw break
+                kw const
+                kw continue
+                kw extern
+                kw fn
+                kw if
+                kw if let
+                kw impl
+                kw let
+                kw loop
+                kw match
+                kw mod
+                kw return
+                kw static
+                kw trait
+                kw type
+                kw unsafe
+                kw use
+                kw while
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_after_unsafe_in_item_list() {
-        assert_snapshot!(
-            get_keyword_completions(r"unsafe <|>"),
-            @r###"
-            kw fn
-            kw impl
-            kw trait
-        "###
+        check(
+            r"unsafe <|>",
+            expect![[r#"
+                kw fn
+                kw impl
+                kw trait
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_after_unsafe_in_block_expr() {
-        assert_snapshot!(
-            get_keyword_completions(r"fn my_fn() { unsafe <|> }"),
-            @r###"
-            kw fn
-            kw impl
-            kw trait
-        "###
+        check(
+            r"fn my_fn() { unsafe <|> }",
+            expect![[r#"
+                kw fn
+                kw impl
+                kw trait
+            "#]],
         );
     }
 
     #[test]
     fn test_mut_in_ref_and_in_fn_parameters_list() {
-        assert_snapshot!(
-            get_keyword_completions(r"fn my_fn(&<|>) {}"),
-            @r###"
-            kw mut
-        "###
+        check(
+            r"fn my_fn(&<|>) {}",
+            expect![[r#"
+                kw mut
+            "#]],
         );
-        assert_snapshot!(
-            get_keyword_completions(r"fn my_fn(<|>) {}"),
-            @r###"
-            kw mut
-        "###
+        check(
+            r"fn my_fn(<|>) {}",
+            expect![[r#"
+                kw mut
+            "#]],
         );
-        assert_snapshot!(
-            get_keyword_completions(r"fn my_fn() { let &<|> }"),
-            @r###"
-            kw mut
-        "###
+        check(
+            r"fn my_fn() { let &<|> }",
+            expect![[r#"
+                kw mut
+            "#]],
         );
     }
 
     #[test]
     fn test_where_keyword() {
-        assert_snapshot!(
-            get_keyword_completions(r"trait A <|>"),
-            @r###"
-            kw where
-        "###
+        check(
+            r"trait A <|>",
+            expect![[r#"
+                kw where
+            "#]],
         );
-        assert_snapshot!(
-            get_keyword_completions(r"impl A <|>"),
-            @r###"
-            kw where
-        "###
+        check(
+            r"impl A <|>",
+            expect![[r#"
+                kw where
+            "#]],
         );
     }
 }
