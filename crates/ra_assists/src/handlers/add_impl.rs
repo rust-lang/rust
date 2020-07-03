@@ -1,7 +1,7 @@
 use ra_syntax::ast::{self, AstNode, NameOwner, TypeParamsOwner};
 use stdx::{format_to, SepBy};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: add_impl
 //
@@ -26,38 +26,45 @@ pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;
     let target = nominal.syntax().text_range();
-    acc.add(AssistId("add_impl"), format!("Implement {}", name.text().as_str()), target, |edit| {
-        let type_params = nominal.type_param_list();
-        let start_offset = nominal.syntax().text_range().end();
-        let mut buf = String::new();
-        buf.push_str("\n\nimpl");
-        if let Some(type_params) = &type_params {
-            format_to!(buf, "{}", type_params.syntax());
-        }
-        buf.push_str(" ");
-        buf.push_str(name.text().as_str());
-        if let Some(type_params) = type_params {
-            let lifetime_params = type_params
-                .lifetime_params()
-                .filter_map(|it| it.lifetime_token())
-                .map(|it| it.text().clone());
-            let type_params =
-                type_params.type_params().filter_map(|it| it.name()).map(|it| it.text().clone());
+    acc.add(
+        AssistId("add_impl", AssistKind::Refactor),
+        format!("Implement {}", name.text().as_str()),
+        target,
+        |edit| {
+            let type_params = nominal.type_param_list();
+            let start_offset = nominal.syntax().text_range().end();
+            let mut buf = String::new();
+            buf.push_str("\n\nimpl");
+            if let Some(type_params) = &type_params {
+                format_to!(buf, "{}", type_params.syntax());
+            }
+            buf.push_str(" ");
+            buf.push_str(name.text().as_str());
+            if let Some(type_params) = type_params {
+                let lifetime_params = type_params
+                    .lifetime_params()
+                    .filter_map(|it| it.lifetime_token())
+                    .map(|it| it.text().clone());
+                let type_params = type_params
+                    .type_params()
+                    .filter_map(|it| it.name())
+                    .map(|it| it.text().clone());
 
-            let generic_params = lifetime_params.chain(type_params).sep_by(", ");
-            format_to!(buf, "<{}>", generic_params)
-        }
-        match ctx.config.snippet_cap {
-            Some(cap) => {
-                buf.push_str(" {\n    $0\n}");
-                edit.insert_snippet(cap, start_offset, buf);
+                let generic_params = lifetime_params.chain(type_params).sep_by(", ");
+                format_to!(buf, "<{}>", generic_params)
             }
-            None => {
-                buf.push_str(" {\n}");
-                edit.insert(start_offset, buf);
+            match ctx.config.snippet_cap {
+                Some(cap) => {
+                    buf.push_str(" {\n    $0\n}");
+                    edit.insert_snippet(cap, start_offset, buf);
+                }
+                None => {
+                    buf.push_str(" {\n}");
+                    edit.insert(start_offset, buf);
+                }
             }
-        }
-    })
+        },
+    )
 }
 
 #[cfg(test)]

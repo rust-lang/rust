@@ -9,7 +9,7 @@ use ra_syntax::{
 use stdx::format_to;
 use test_utils::mark;
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: extract_variable
 //
@@ -43,80 +43,85 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         return None;
     }
     let target = expr.syntax().text_range();
-    acc.add(AssistId("extract_variable"), "Extract into variable", target, move |edit| {
-        let field_shorthand = match expr.syntax().parent().and_then(ast::RecordField::cast) {
-            Some(field) => field.name_ref(),
-            None => None,
-        };
+    acc.add(
+        AssistId("extract_variable", AssistKind::RefactorExtract),
+        "Extract into variable",
+        target,
+        move |edit| {
+            let field_shorthand = match expr.syntax().parent().and_then(ast::RecordField::cast) {
+                Some(field) => field.name_ref(),
+                None => None,
+            };
 
-        let mut buf = String::new();
+            let mut buf = String::new();
 
-        let var_name = match &field_shorthand {
-            Some(it) => it.to_string(),
-            None => "var_name".to_string(),
-        };
-        let expr_range = match &field_shorthand {
-            Some(it) => it.syntax().text_range().cover(expr.syntax().text_range()),
-            None => expr.syntax().text_range(),
-        };
+            let var_name = match &field_shorthand {
+                Some(it) => it.to_string(),
+                None => "var_name".to_string(),
+            };
+            let expr_range = match &field_shorthand {
+                Some(it) => it.syntax().text_range().cover(expr.syntax().text_range()),
+                None => expr.syntax().text_range(),
+            };
 
-        if wrap_in_block {
-            format_to!(buf, "{{ let {} = ", var_name);
-        } else {
-            format_to!(buf, "let {} = ", var_name);
-        };
-        format_to!(buf, "{}", expr.syntax());
+            if wrap_in_block {
+                format_to!(buf, "{{ let {} = ", var_name);
+            } else {
+                format_to!(buf, "let {} = ", var_name);
+            };
+            format_to!(buf, "{}", expr.syntax());
 
-        let full_stmt = ast::ExprStmt::cast(anchor_stmt.clone());
-        let is_full_stmt = if let Some(expr_stmt) = &full_stmt {
-            Some(expr.syntax().clone()) == expr_stmt.expr().map(|e| e.syntax().clone())
-        } else {
-            false
-        };
-        if is_full_stmt {
-            mark::hit!(test_extract_var_expr_stmt);
-            if full_stmt.unwrap().semicolon_token().is_none() {
-                buf.push_str(";");
+            let full_stmt = ast::ExprStmt::cast(anchor_stmt.clone());
+            let is_full_stmt = if let Some(expr_stmt) = &full_stmt {
+                Some(expr.syntax().clone()) == expr_stmt.expr().map(|e| e.syntax().clone())
+            } else {
+                false
+            };
+            if is_full_stmt {
+                mark::hit!(test_extract_var_expr_stmt);
+                if full_stmt.unwrap().semicolon_token().is_none() {
+                    buf.push_str(";");
+                }
+                match ctx.config.snippet_cap {
+                    Some(cap) => {
+                        let snip = buf
+                            .replace(&format!("let {}", var_name), &format!("let $0{}", var_name));
+                        edit.replace_snippet(cap, expr_range, snip)
+                    }
+                    None => edit.replace(expr_range, buf),
+                }
+                return;
             }
+
+            buf.push_str(";");
+
+            // We want to maintain the indent level,
+            // but we do not want to duplicate possible
+            // extra newlines in the indent block
+            let text = indent.text();
+            if text.starts_with('\n') {
+                buf.push_str("\n");
+                buf.push_str(text.trim_start_matches('\n'));
+            } else {
+                buf.push_str(text);
+            }
+
+            edit.replace(expr_range, var_name.clone());
+            let offset = anchor_stmt.text_range().start();
             match ctx.config.snippet_cap {
                 Some(cap) => {
                     let snip =
                         buf.replace(&format!("let {}", var_name), &format!("let $0{}", var_name));
-                    edit.replace_snippet(cap, expr_range, snip)
+                    edit.insert_snippet(cap, offset, snip)
                 }
-                None => edit.replace(expr_range, buf),
+                None => edit.insert(offset, buf),
             }
-            return;
-        }
 
-        buf.push_str(";");
-
-        // We want to maintain the indent level,
-        // but we do not want to duplicate possible
-        // extra newlines in the indent block
-        let text = indent.text();
-        if text.starts_with('\n') {
-            buf.push_str("\n");
-            buf.push_str(text.trim_start_matches('\n'));
-        } else {
-            buf.push_str(text);
-        }
-
-        edit.replace(expr_range, var_name.clone());
-        let offset = anchor_stmt.text_range().start();
-        match ctx.config.snippet_cap {
-            Some(cap) => {
-                let snip =
-                    buf.replace(&format!("let {}", var_name), &format!("let $0{}", var_name));
-                edit.insert_snippet(cap, offset, snip)
+            if wrap_in_block {
+                edit.insert(anchor_stmt.text_range().end(), " }");
             }
-            None => edit.insert(offset, buf),
-        }
-
-        if wrap_in_block {
-            edit.insert(anchor_stmt.text_range().end(), " }");
-        }
-    })
+        },
+    )
 }
 
 /// Check whether the node is a valid expression which can be extracted to a variable.

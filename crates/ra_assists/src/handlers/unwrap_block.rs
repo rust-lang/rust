@@ -7,7 +7,7 @@ use ra_syntax::{
     AstNode, TextRange, T,
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: unwrap_block
 //
@@ -27,7 +27,7 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // ```
 pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let assist_id = AssistId("unwrap_block");
+    let assist_id = AssistId("unwrap_block", AssistKind::RefactorRewrite);
     let assist_label = "Unwrap block";
 
     let l_curly_token = ctx.find_token_at_offset(T!['{'])?;

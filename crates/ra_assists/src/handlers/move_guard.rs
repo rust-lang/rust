@@ -3,7 +3,7 @@ use ra_syntax::{
     SyntaxKind::WHITESPACE,
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: move_guard_to_arm_body
 //
@@ -40,17 +40,22 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
     let buf = format!("if {} {{ {} }}", guard_conditions.syntax().text(), arm_expr.syntax().text());
 
     let target = guard.syntax().text_range();
-    acc.add(AssistId("move_guard_to_arm_body"), "Move guard to arm body", target, |edit| {
-        match space_before_guard {
-            Some(element) if element.kind() == WHITESPACE => {
-                edit.delete(element.text_range());
-            }
-            _ => (),
-        };
+    acc.add(
+        AssistId("move_guard_to_arm_body", AssistKind::RefactorRewrite),
+        "Move guard to arm body",
+        target,
+        |edit| {
+            match space_before_guard {
+                Some(element) if element.kind() == WHITESPACE => {
+                    edit.delete(element.text_range());
+                }
+                _ => (),
+            };
 
-        edit.delete(guard.syntax().text_range());
-        edit.replace_node_and_indent(arm_expr.syntax(), buf);
-    })
+            edit.delete(guard.syntax().text_range());
+            edit.replace_node_and_indent(arm_expr.syntax(), buf);
+        },
+    )
 }
 
 // Assist: move_arm_cond_to_match_guard
@@ -100,7 +105,7 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
 
     let target = if_expr.syntax().text_range();
     acc.add(
-        AssistId("move_arm_cond_to_match_guard"),
+        AssistId("move_arm_cond_to_match_guard", AssistKind::RefactorRewrite),
         "Move condition to match guard",
         target,
         |edit| {

@@ -26,10 +26,20 @@ pub(crate) use crate::assist_context::{AssistContext, Assists};
 
 pub use assist_config::AssistConfig;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AssistKind {
+    None,
+    QuickFix,
+    Refactor,
+    RefactorExtract,
+    RefactorInline,
+    RefactorRewrite,
+}
+
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AssistId(pub &'static str);
+pub struct AssistId(pub &'static str, pub AssistKind);
 
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);

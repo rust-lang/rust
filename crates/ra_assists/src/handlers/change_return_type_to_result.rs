@@ -3,7 +3,7 @@ use ra_syntax::{
     AstNode, SyntaxNode,
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 use test_utils::mark;
 
 // Assist: change_return_type_to_result
@@ -35,7 +35,7 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
     let block_expr = &fn_def.body()?;
 
     acc.add(
-        AssistId("change_return_type_to_result"),
+        AssistId("change_return_type_to_result", AssistKind::RefactorRewrite),
         "Change return type to Result",
         type_ref.syntax().text_range(),
         |builder| {

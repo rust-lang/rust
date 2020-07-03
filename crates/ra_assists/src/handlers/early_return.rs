@@ -15,7 +15,7 @@ use ra_syntax::{
 use crate::{
     assist_context::{AssistContext, Assists},
     utils::invert_boolean_expression,
-    AssistId,
+    AssistId, AssistKind,
 };
 
 // Assist: convert_to_guarded_return
@@ -99,86 +99,92 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == R_CURLY)?;
 
     let target = if_expr.syntax().text_range();
-    acc.add(AssistId("convert_to_guarded_return"), "Convert to guarded return", target, |edit| {
-        let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
-        let new_block = match if_let_pat {
-            None => {
-                // If.
-                let new_expr = {
-                    let then_branch =
-                        make::block_expr(once(make::expr_stmt(early_expression).into()), None);
-                    let cond = invert_boolean_expression(cond_expr);
-                    make::expr_if(make::condition(cond, None), then_branch).indent(if_indent_level)
-                };
-                replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
-            }
-            Some((path, bound_ident)) => {
-                // If-let.
-                let match_expr = {
-                    let happy_arm = {
-                        let pat = make::tuple_struct_pat(
-                            path,
-                            once(make::bind_pat(make::name("it")).into()),
-                        );
-                        let expr = {
-                            let name_ref = make::name_ref("it");
-                            let segment = make::path_segment(name_ref);
-                            let path = make::path_unqualified(segment);
-                            make::expr_path(path)
+    acc.add(
+        AssistId("convert_to_guarded_return", AssistKind::RefactorRewrite),
+        "Convert to guarded return",
+        target,
+        |edit| {
+            let if_indent_level = IndentLevel::from_node(&if_expr.syntax());
+            let new_block = match if_let_pat {
+                None => {
+                    // If.
+                    let new_expr = {
+                        let then_branch =
+                            make::block_expr(once(make::expr_stmt(early_expression).into()), None);
+                        let cond = invert_boolean_expression(cond_expr);
+                        make::expr_if(make::condition(cond, None), then_branch)
+                            .indent(if_indent_level)
+                    };
+                    replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
+                }
+                Some((path, bound_ident)) => {
+                    // If-let.
+                    let match_expr = {
+                        let happy_arm = {
+                            let pat = make::tuple_struct_pat(
+                                path,
+                                once(make::bind_pat(make::name("it")).into()),
+                            );
+                            let expr = {
+                                let name_ref = make::name_ref("it");
+                                let segment = make::path_segment(name_ref);
+                                let path = make::path_unqualified(segment);
+                                make::expr_path(path)
+                            };
+                            make::match_arm(once(pat.into()), expr)
                         };
-                        make::match_arm(once(pat.into()), expr)
+
+                        let sad_arm = make::match_arm(
+                            // FIXME: would be cool to use `None` or `Err(_)` if appropriate
+                            once(make::placeholder_pat().into()),
+                            early_expression,
+                        );
+
+                        make::expr_match(cond_expr, make::match_arm_list(vec![happy_arm, sad_arm]))
                     };
 
-                    let sad_arm = make::match_arm(
-                        // FIXME: would be cool to use `None` or `Err(_)` if appropriate
-                        once(make::placeholder_pat().into()),
-                        early_expression,
+                    let let_stmt = make::let_stmt(
+                        make::bind_pat(make::name(&bound_ident.syntax().to_string())).into(),
+                        Some(match_expr),
                     );
+                    let let_stmt = let_stmt.indent(if_indent_level);
+                    replace(let_stmt.syntax(), &then_block, &parent_block, &if_expr)
+                }
+            };
+            edit.replace_ast(parent_block, ast::BlockExpr::cast(new_block).unwrap());
 
-                    make::expr_match(cond_expr, make::match_arm_list(vec![happy_arm, sad_arm]))
-                };
-
-                let let_stmt = make::let_stmt(
-                    make::bind_pat(make::name(&bound_ident.syntax().to_string())).into(),
-                    Some(match_expr),
+            fn replace(
+                new_expr: &SyntaxNode,
+                then_block: &ast::BlockExpr,
+                parent_block: &ast::BlockExpr,
+                if_expr: &ast::IfExpr,
+            ) -> SyntaxNode {
+                let then_block_items = then_block.dedent(IndentLevel(1));
+                let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
+                let end_of_then =
+                    if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
+                        end_of_then.prev_sibling_or_token().unwrap()
+                    } else {
+                        end_of_then
+                    };
+                let mut then_statements = new_expr.children_with_tokens().chain(
+                    then_block_items
+                        .syntax()
+                        .children_with_tokens()
+                        .skip(1)
+                        .take_while(|i| *i != end_of_then),
                 );
-                let let_stmt = let_stmt.indent(if_indent_level);
-                replace(let_stmt.syntax(), &then_block, &parent_block, &if_expr)
+                replace_children(
+                    &parent_block.syntax(),
+                    RangeInclusive::new(
+                        if_expr.clone().syntax().clone().into(),
+                        if_expr.syntax().clone().into(),
+                    ),
+                    &mut then_statements,
+                )
             }
-        };
-        edit.replace_ast(parent_block, ast::BlockExpr::cast(new_block).unwrap());
-
-        fn replace(
-            new_expr: &SyntaxNode,
-            then_block: &ast::BlockExpr,
-            parent_block: &ast::BlockExpr,
-            if_expr: &ast::IfExpr,
-        ) -> SyntaxNode {
-            let then_block_items = then_block.dedent(IndentLevel(1));
-            let end_of_then = then_block_items.syntax().last_child_or_token().unwrap();
-            let end_of_then =
-                if end_of_then.prev_sibling_or_token().map(|n| n.kind()) == Some(WHITESPACE) {
-                    end_of_then.prev_sibling_or_token().unwrap()
-                } else {
-                    end_of_then
-                };
-            let mut then_statements = new_expr.children_with_tokens().chain(
-                then_block_items
-                    .syntax()
-                    .children_with_tokens()
-                    .skip(1)
-                    .take_while(|i| *i != end_of_then),
-            );
-            replace_children(
-                &parent_block.syntax(),
-                RangeInclusive::new(
-                    if_expr.clone().syntax().clone().into(),
-                    if_expr.syntax().clone().into(),
-                ),
-                &mut then_statements,
-            )
-        }
-    })
+        },
+    )
 }
 
 #[cfg(test)]

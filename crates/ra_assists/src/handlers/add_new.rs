@@ -7,7 +7,7 @@ use ra_syntax::{
 };
 use stdx::{format_to, SepBy};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: add_new
 //
@@ -42,7 +42,7 @@ pub(crate) fn add_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let impl_def = find_struct_impl(&ctx, &strukt)?;
 
     let target = strukt.syntax().text_range();
-    acc.add(AssistId("add_new"), "Add default constructor", target, |builder| {
+    acc.add(AssistId("add_new", AssistKind::None), "Add default constructor", target, |builder| {
         let mut buf = String::with_capacity(512);
 
         if impl_def.is_some() {

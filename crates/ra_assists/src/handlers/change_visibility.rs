@@ -6,7 +6,7 @@ use ra_syntax::{
 };
 use test_utils::mark;
 
-use crate::{utils::vis_offset, AssistContext, AssistId, Assists};
+use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: change_visibility
 //
@@ -62,16 +62,21 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         return None;
     };
 
-    acc.add(AssistId("change_visibility"), "Change visibility to pub(crate)", target, |edit| {
-        edit.insert(offset, "pub(crate) ");
-    })
+    acc.add(
+        AssistId("change_visibility", AssistKind::RefactorRewrite),
+        "Change visibility to pub(crate)",
+        target,
+        |edit| {
+            edit.insert(offset, "pub(crate) ");
+        },
+    )
 }
 
 fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
     if vis.syntax().text() == "pub" {
         let target = vis.syntax().text_range();
         return acc.add(
-            AssistId("change_visibility"),
+            AssistId("change_visibility", AssistKind::RefactorRewrite),
             "Change Visibility to pub(crate)",
             target,
             |edit| {
@@ -82,7 +87,7 @@ fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
     if vis.syntax().text() == "pub(crate)" {
         let target = vis.syntax().text_range();
         return acc.add(
-            AssistId("change_visibility"),
+            AssistId("change_visibility", AssistKind::RefactorRewrite),
             "Change visibility to pub",
             target,
             |edit| {

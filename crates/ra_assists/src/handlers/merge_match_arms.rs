@@ -6,7 +6,7 @@ use ra_syntax::{
     Direction,
 };
 
-use crate::{AssistContext, AssistId, Assists, TextRange};
+use crate::{AssistContext, AssistId, AssistKind, Assists, TextRange};
 
 // Assist: merge_match_arms
 //
@@ -59,25 +59,30 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
         return None;
     }
 
-    acc.add(AssistId("merge_match_arms"), "Merge match arms", current_text_range, |edit| {
-        let pats = if arms_to_merge.iter().any(contains_placeholder) {
-            "_".into()
-        } else {
-            arms_to_merge
-                .iter()
-                .filter_map(ast::MatchArm::pat)
-                .map(|x| x.syntax().to_string())
-                .collect::<Vec<String>>()
-                .join(" | ")
-        };
+    acc.add(
+        AssistId("merge_match_arms", AssistKind::RefactorRewrite),
+        "Merge match arms",
+        current_text_range,
+        |edit| {
+            let pats = if arms_to_merge.iter().any(contains_placeholder) {
+                "_".into()
+            } else {
+                arms_to_merge
+                    .iter()
+                    .filter_map(ast::MatchArm::pat)
+                    .map(|x| x.syntax().to_string())
+                    .collect::<Vec<String>>()
+                    .join(" | ")
+            };
 
-        let arm = format!("{} => {}", pats, current_expr.syntax().text());
+            let arm = format!("{} => {}", pats, current_expr.syntax().text());
 
-        let start = arms_to_merge.first().unwrap().syntax().text_range().start();
-        let end = arms_to_merge.last().unwrap().syntax().text_range().end();
+            let start = arms_to_merge.first().unwrap().syntax().text_range().start();
+            let end = arms_to_merge.last().unwrap().syntax().text_range().end();
 
-        edit.replace(TextRange::new(start, end), arm);
-    })
+            edit.replace(TextRange::new(start, end), arm);
+        },
+    )
 }
 
 fn contains_placeholder(a: &ast::MatchArm) -> bool {

@@ -6,7 +6,7 @@ use ra_syntax::{
 use crate::{
     assist_context::{AssistContext, Assists},
     utils::invert_boolean_expression,
-    AssistId,
+    AssistId, AssistKind,
 };
 
 // Assist: invert_if
@@ -54,7 +54,7 @@ pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let else_node = else_block.syntax();
     let else_range = else_node.text_range();
     let then_range = then_node.text_range();
-    acc.add(AssistId("invert_if"), "Invert if", if_range, |edit| {
+    acc.add(AssistId("invert_if", AssistKind::RefactorRewrite), "Invert if", if_range, |edit| {
         edit.replace(cond_range, flip_cond.syntax().text());
         edit.replace(else_range, then_node.text());
         edit.replace(then_range, else_node.text());

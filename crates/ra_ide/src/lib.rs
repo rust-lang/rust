@@ -76,7 +76,7 @@ pub use crate::{
 };
 
 pub use hir::{Documentation, Semantics};
-pub use ra_assists::{Assist, AssistConfig, AssistId, ResolvedAssist};
+pub use ra_assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,
     SourceRootId,

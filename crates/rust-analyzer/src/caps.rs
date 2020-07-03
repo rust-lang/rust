@@ -112,8 +112,6 @@ fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProvi
                     lsp_types::code_action_kind::REFACTOR_EXTRACT.to_string(),
                     lsp_types::code_action_kind::REFACTOR_INLINE.to_string(),
                     lsp_types::code_action_kind::REFACTOR_REWRITE.to_string(),
-                    lsp_types::code_action_kind::SOURCE.to_string(),
-                    lsp_types::code_action_kind::SOURCE_ORGANIZE_IMPORTS.to_string(),
                 ]),
                 work_done_progress_options: Default::default(),
             })

@@ -4,7 +4,7 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: add_explicit_type
 //
@@ -59,7 +59,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
 
     let inferred_type = ty.display_source_code(ctx.db(), module.into()).ok()?;
     acc.add(
-        AssistId("add_explicit_type"),
+        AssistId("add_explicit_type", AssistKind::RefactorRewrite),
         format!("Insert explicit type `{}`", inferred_type),
         pat_range,
         |builder| match ascribed_ty {
