@@ -37,17 +37,36 @@ where
 }
 
 // Generic distinction (see #4323)
-pub struct Foo<A>(A);
-pub struct Bar<A, B> {
-    a: Foo<A>,
-    b: Foo<B>,
+mod issue4323 {
+    pub struct Foo<A>(A);
+    pub struct Bar<A, B> {
+        a: Foo<A>,
+        b: Foo<B>,
+    }
+
+    impl<A, B> Unpin for Bar<A, B>
+    where
+        Foo<A>: Unpin,
+        Foo<B>: Unpin,
+    {
+    }
 }
 
-impl<A, B> Unpin for Bar<A, B>
-where
-    Foo<A>: Unpin,
-    Foo<B>: Unpin,
-{
+// Extern macros shouldn't lint (see #4326)
+extern crate serde;
+mod issue4326 {
+    use serde::{Deserialize, Serialize};
+
+    trait Foo {}
+    impl Foo for String {}
+
+    #[derive(Debug, Serialize, Deserialize)]
+    struct Bar<S>
+    where
+        S: Foo,
+    {
+        foo: S,
+    }
 }
 
 fn main() {}
