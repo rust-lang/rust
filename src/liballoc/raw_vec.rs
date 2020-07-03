@@ -170,10 +170,21 @@ impl<T, A: AllocRef> RawVec<T, A> {
         if mem::size_of::<T>() == 0 {
             Self::new_in(alloc)
         } else {
-            let layout = Layout::array::<T>(capacity).unwrap_or_else(|_| capacity_overflow());
-            alloc_guard(layout.size()).unwrap_or_else(|_| capacity_overflow());
+            // We avoid `unwrap_or_else` here because it bloats the amount of
+            // LLVM IR generated.
+            let layout = match Layout::array::<T>(capacity) {
+                Ok(layout) => layout,
+                Err(_) => capacity_overflow(),
+            };
+            match alloc_guard(layout.size()) {
+                Ok(_) => {}
+                Err(_) => capacity_overflow(),
+            }
+            let memory = match alloc.alloc(layout, init) {
+                Ok(memory) => memory,
+                Err(_) => handle_alloc_error(layout),
+            };
 
-            let memory = alloc.alloc(layout, init).unwrap_or_else(|_| handle_alloc_error(layout));
             Self {
                 ptr: unsafe { Unique::new_unchecked(memory.ptr.cast().as_ptr()) },
                 cap: Self::capacity_from_bytes(memory.size),
