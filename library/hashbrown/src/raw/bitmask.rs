@@ -25,6 +25,13 @@ impl BitMask {
         BitMask(self.0 ^ BITMASK_MASK)
     }
 
+    /// Unset the bit in the mask for the entry at the given index.
+    #[inline]
+    #[allow(clippy::cast_ptr_alignment)]
+    pub unsafe fn unset(&mut self, index: usize) {
+        self.0 &= !(1 << (index * BITMASK_STRIDE));
+    }
+
     /// Returns a new `BitMask` with the lowest bit removed.
     #[inline]
     #[must_use]

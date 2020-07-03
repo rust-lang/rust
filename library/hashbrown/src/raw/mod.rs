@@ -1422,6 +1422,78 @@ pub struct RawIter<T> {
     items: usize,
 }
 
+impl<T> RawIter<T> {
+    /// Refresh the iterator so that it reflects the removal of the given bucket.
+    ///
+    /// For the iterator to remain valid after removals, this method must be called once for each
+    /// removal before `next` is called again.
+    #[cfg(feature = "raw")]
+    pub fn reflect_removal(&mut self, b: &Bucket<T>) {
+        unsafe {
+            if b.as_ptr() > self.iter.data.as_ptr() {
+                // The iterator has already passed the bucket's group.
+                // So the removal isn't relevant to this iterator.
+                return;
+            }
+
+            if b.as_ptr() <= self.iter.data.next_n(Group::WIDTH).as_ptr() {
+                // The iterator has not yet reached the bucket's group.
+                // We don't need to reload anything, but the item count does go down.
+                self.items -= 1;
+                return;
+            }
+
+            // The iterator is at the bucket group that the removed bucket is in.
+            // We need to do two things:
+            //
+            //  - Determine if the iterator already yielded the removed bucket.
+            //    If it did, we're done.
+            //  - Otherwise, update the iterator cached group so that it won't
+            //    yield the removed bucket, and decrement the item count.
+            if let Some(index) = self.iter.current_group.lowest_set_bit() {
+                let next_bucket = self.iter.data.next_n(index);
+                use core::cmp::Ordering;
+                match b.as_ptr().cmp(&next_bucket.as_ptr()) {
+                    Ordering::Greater => {
+                        // The removed bucket is "before" the bucket the iterator would yield next.
+                        // We therefore don't need to do anything --- the iterator has already
+                        // passed the bucket in question.
+                        //
+                        // The item count must already be correct, because if the removed bucket
+                        // had not yet been yielded, it would be the lowest set bit in the cached
+                        // group.
+                    }
+                    Ordering::Equal => {
+                        // The removed bucket was coming up next, so we just skip it.
+                        self.items -= 1;
+                        self.iter.current_group = self.iter.current_group.remove_lowest_bit();
+                    }
+                    Ordering::Less => {
+                        // The removed bucket is an upcoming bucket. We need to make sure it does
+                        // _not_ get yielded, and also that it's no longer included in the item
+                        // count.
+                        self.items -= 1;
+                        // NOTE: We can't just reload the group here, both since that might reflect
+                        // inserts too (you'd need to bitwise-&), and because that might
+                        // inadvertently unset the bits for _other_ removals. If we do that, we'd
+                        // have to also decrement the item count for those other bits that we
+                        // unset. But the presumably subsequent call to reflect_removal for those
+                        // buckets might _also_ decrement items. Instead, we _just_ flip the bit
+                        // for the particular bucket the caller asked us to reflect.
+                        let our_bit = offset_from(self.iter.data.as_ptr(), b.as_ptr());
+                        self.iter.current_group.unset(our_bit);
+
+                        // The command above should not have unset the bit for the next bucket.
+                        debug_assert_eq!(self.iter.current_group.lowest_set_bit(), Some(index));
+                    }
+                }
+            } else {
+                // We must have already iterated past the removed item.
+            }
+        }
+    }
+}
+
 impl<T> Clone for RawIter<T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
