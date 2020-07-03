@@ -42,7 +42,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let impl_def = find_struct_impl(&ctx, &strukt)?;
 
     let target = strukt.syntax().text_range();
-    acc.add(AssistId("generate_new", AssistKind::None), "Generate `new`", target, |builder| {
+    acc.add(AssistId("generate_new", AssistKind::Generate), "Generate `new`", target, |builder| {
         let mut buf = String::with_capacity(512);
 
         if impl_def.is_some() {

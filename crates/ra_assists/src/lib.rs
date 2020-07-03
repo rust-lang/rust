@@ -30,6 +30,7 @@ pub use assist_config::AssistConfig;
 pub enum AssistKind {
     None,
     QuickFix,
+    Generate,
     Refactor,
     RefactorExtract,
     RefactorInline,

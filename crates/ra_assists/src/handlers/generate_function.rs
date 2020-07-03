@@ -63,7 +63,7 @@ pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Optio
 
     let target = call.syntax().text_range();
     acc.add(
-        AssistId("generate_function", AssistKind::None),
+        AssistId("generate_function", AssistKind::Generate),
         format!("Generate `{}` function", function_builder.fn_name),
         target,
         |builder| {

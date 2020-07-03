@@ -629,7 +629,7 @@ pub(crate) fn call_hierarchy_item(
 
 pub(crate) fn code_action_kind(kind: AssistKind) -> String {
     match kind {
-        AssistKind::None => lsp_types::code_action_kind::EMPTY,
+        AssistKind::None | AssistKind::Generate => lsp_types::code_action_kind::EMPTY,
         AssistKind::QuickFix => lsp_types::code_action_kind::QUICKFIX,
         AssistKind::Refactor => lsp_types::code_action_kind::REFACTOR,
         AssistKind::RefactorExtract => lsp_types::code_action_kind::REFACTOR_EXTRACT,

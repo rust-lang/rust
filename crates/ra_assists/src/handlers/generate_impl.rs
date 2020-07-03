@@ -27,7 +27,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()
     let name = nominal.name()?;
     let target = nominal.syntax().text_range();
     acc.add(
-        AssistId("generate_impl", AssistKind::Refactor),
+        AssistId("generate_impl", AssistKind::Generate),
         format!("Generate impl for `{}`", name),
         target,
         |edit| {

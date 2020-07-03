@@ -29,27 +29,32 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext) -> Option<
     let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let node_start = derive_insertion_offset(&nominal)?;
     let target = nominal.syntax().text_range();
-    acc.add(AssistId("generate_derive", AssistKind::None), "Add `#[derive]`", target, |builder| {
-        let derive_attr = nominal
-            .attrs()
-            .filter_map(|x| x.as_simple_call())
-            .filter(|(name, _arg)| name == "derive")
-            .map(|(_name, arg)| arg)
-            .next();
-        match derive_attr {
-            None => {
-                builder.insert_snippet(cap, node_start, "#[derive($0)]\n");
-            }
-            Some(tt) => {
-                // Just move the cursor.
-                builder.insert_snippet(
-                    cap,
-                    tt.syntax().text_range().end() - TextSize::of(')'),
-                    "$0",
-                )
-            }
-        };
-    })
+    acc.add(
+        AssistId("generate_derive", AssistKind::Generate),
+        "Add `#[derive]`",
+        target,
+        |builder| {
+            let derive_attr = nominal
+                .attrs()
+                .filter_map(|x| x.as_simple_call())
+                .filter(|(name, _arg)| name == "derive")
+                .map(|(_name, arg)| arg)
+                .next();
+            match derive_attr {
+                None => {
+                    builder.insert_snippet(cap, node_start, "#[derive($0)]\n");
+                }
+                Some(tt) => {
+                    // Just move the cursor.
+                    builder.insert_snippet(
+                        cap,
+                        tt.syntax().text_range().end() - TextSize::of(')'),
+                        "$0",
+                    )
+                }
+            };
+        },
+    )
 }
 
 // Insert `derive` after doc comments.

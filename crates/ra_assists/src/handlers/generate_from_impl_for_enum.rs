@@ -45,7 +45,7 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
 
     let target = variant.syntax().text_range();
     acc.add(
-        AssistId("generate_from_impl_for_enum", AssistKind::Refactor),
+        AssistId("generate_from_impl_for_enum", AssistKind::Generate),
         "Generate `From` impl for this enum variant",
         target,
         |edit| {
