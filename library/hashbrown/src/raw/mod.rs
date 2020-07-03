@@ -1020,17 +1020,15 @@ impl<T> RawTable<T> {
     /// Iteration starts at the provided iterator's current location.
     ///
     /// This method panics if the given iterator does not cover all items remaining in the table.
-    pub unsafe fn into_iter_from(self, iter: RawIter<T>) -> Option<RawIntoIter<T>> {
-        if iter.len() != self.len() {
-            return None;
-        }
+    pub unsafe fn into_iter_from(self, iter: RawIter<T>) -> RawIntoIter<T> {
+        debug_assert_eq!(iter.len(), self.len());
 
         let alloc = self.into_alloc();
-        Some(RawIntoIter {
+        RawIntoIter {
             iter,
             alloc,
             marker: PhantomData,
-        })
+        }
     }
 
     /// Converts the table into a raw allocation. The contents of the table
@@ -1269,7 +1267,6 @@ impl<T> IntoIterator for RawTable<T> {
         unsafe {
             let iter = self.iter();
             self.into_iter_from(iter)
-                .unwrap_or_else(|| hint::unreachable_unchecked())
         }
     }
 }
