@@ -94,12 +94,12 @@ COMMAND="$1"
 # <https://github.com/rust-lang/cargo/issues/6992>.
 case "$COMMAND" in
 *-debug)
-    CARGO_INSTALL_FLAGS="--debug $CARGO_EXTRA_FLAGS"
-    CARGO_BUILD_FLAGS="$CARGO_EXTRA_FLAGS"
+    CARGO_INSTALL_FLAGS="--target $TARGET --debug $CARGO_EXTRA_FLAGS"
+    CARGO_BUILD_FLAGS="--target $TARGET $CARGO_EXTRA_FLAGS"
     ;;
 *)
-    CARGO_INSTALL_FLAGS="$CARGO_EXTRA_FLAGS"
-    CARGO_BUILD_FLAGS="--release $CARGO_EXTRA_FLAGS"
+    CARGO_INSTALL_FLAGS="--target $TARGET $CARGO_EXTRA_FLAGS"
+    CARGO_BUILD_FLAGS="--target $TARGET --release $CARGO_EXTRA_FLAGS"
     ;;
 esac
 
