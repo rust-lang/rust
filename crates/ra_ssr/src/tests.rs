@@ -91,6 +91,18 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, result: &str) {
     }
 }
 
+fn print_match_debug_info(match_finder: &MatchFinder, file_id: FileId, snippet: &str) {
+    let debug_info = match_finder.debug_where_text_equal(file_id, snippet);
+    println!(
+        "Match debug info: {} nodes had text exactly equal to '{}'",
+        debug_info.len(),
+        snippet
+    );
+    for (index, d) in debug_info.iter().enumerate() {
+        println!("Node #{}\n{:#?}\n", index, d);
+    }
+}
+
 fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     let (db, file_id) = single_file(code);
     let mut match_finder = MatchFinder::new(&db);
@@ -103,17 +115,20 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
         .map(|m| m.matched_text())
         .collect();
     if matched_strings != expected && !expected.is_empty() {
-        let debug_info = match_finder.debug_where_text_equal(file_id, &expected[0]);
-        eprintln!("Test is about to fail. Some possibly useful info: {} nodes had text exactly equal to '{}'", debug_info.len(), &expected[0]);
-        for d in debug_info {
-            eprintln!("{:#?}", d);
-        }
+        print_match_debug_info(&match_finder, file_id, &expected[0]);
     }
     assert_eq!(matched_strings, expected);
 }
 
 fn assert_no_match(pattern: &str, code: &str) {
-    assert_matches(pattern, code, &[]);
+    let (db, file_id) = single_file(code);
+    let mut match_finder = MatchFinder::new(&db);
+    match_finder.add_search_pattern(pattern.parse().unwrap());
+    let matches = match_finder.find_matches_in_file(file_id).flattened().matches;
+    if !matches.is_empty() {
+        print_match_debug_info(&match_finder, file_id, &matches[0].matched_text());
+        panic!("Got {} matches when we expected none: {:#?}", matches.len(), matches);
+    }
 }
 
 fn assert_match_failure_reason(pattern: &str, code: &str, snippet: &str, expected_reason: &str) {

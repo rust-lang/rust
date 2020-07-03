@@ -201,9 +201,8 @@ impl<'db> MatchFinder<'db> {
                         );
                     }
                 }
-            } else {
-                self.output_debug_for_nodes_at_range(&node, range, restrict_range, out);
             }
+            self.output_debug_for_nodes_at_range(&node, range, restrict_range, out);
         }
     }
 }
@@ -218,25 +217,26 @@ pub struct MatchDebugInfo {
 
 impl std::fmt::Debug for MatchDebugInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "========= PATTERN ==========\n")?;
-        match &self.pattern {
-            Ok(pattern) => {
-                write!(f, "{:#?}", pattern)?;
-            }
-            Err(err) => {
-                write!(f, "{}", err.reason)?;
-            }
+        match &self.matched {
+            Ok(_) => writeln!(f, "Node matched")?,
+            Err(reason) => writeln!(f, "Node failed to match because: {}", reason.reason)?,
         }
-        write!(
+        writeln!(
             f,
-            "\n============ AST ===========\n\
-            {:#?}\n============================\n",
+            "============ AST ===========\n\
+            {:#?}",
             self.node
         )?;
-        match &self.matched {
-            Ok(_) => write!(f, "Node matched")?,
-            Err(reason) => write!(f, "Node failed to match because: {}", reason.reason)?,
+        writeln!(f, "========= PATTERN ==========")?;
+        match &self.pattern {
+            Ok(pattern) => {
+                writeln!(f, "{:#?}", pattern)?;
+            }
+            Err(err) => {
+                writeln!(f, "{}", err.reason)?;
+            }
         }
+        writeln!(f, "============================")?;
         Ok(())
     }
 }
