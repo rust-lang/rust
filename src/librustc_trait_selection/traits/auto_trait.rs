@@ -281,8 +281,8 @@ impl AutoTraitFinder<'tcx> {
             },
         }));
 
-        let computed_preds = param_env.caller_bounds.iter();
-        let mut user_computed_preds: FxHashSet<_> = user_env.caller_bounds.iter().collect();
+        let computed_preds = param_env.caller_bounds().iter();
+        let mut user_computed_preds: FxHashSet<_> = user_env.caller_bounds().iter().collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -368,12 +368,12 @@ impl AutoTraitFinder<'tcx> {
             )
             .map(|o| o.predicate);
             new_env =
-                ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal, None);
+                ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal(), None);
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_predicates(user_computed_preds.into_iter()),
-            user_env.reveal,
+            user_env.reveal(),
             None,
         );
         debug!(

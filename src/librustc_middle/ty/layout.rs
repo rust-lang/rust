@@ -1588,7 +1588,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Ignore layouts that are done with non-empty environments or
         // non-monomorphic layouts, as the user only wants to see the stuff
         // resulting from the final codegen session.
-        if layout.ty.has_param_types_or_consts() || !self.param_env.caller_bounds.is_empty() {
+        if layout.ty.has_param_types_or_consts() || !self.param_env.caller_bounds().is_empty() {
             return;
         }
 

@@ -521,11 +521,8 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::Binder<T> {
 impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
     type Lifted = ty::ParamEnv<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.caller_bounds).map(|caller_bounds| ty::ParamEnv {
-            reveal: self.reveal,
-            caller_bounds,
-            def_id: self.def_id,
-        })
+        tcx.lift(&self.caller_bounds())
+            .map(|caller_bounds| ty::ParamEnv::new(caller_bounds, self.reveal(), self.def_id))
     }
 }
 

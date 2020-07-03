@@ -326,7 +326,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // (*)
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
-                match self.param_env.reveal {
+                match self.param_env.reveal() {
                     Reveal::UserFacing => ty,
 
                     Reveal::All => {
@@ -869,7 +869,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         obligation_trait_ref,
         candidate_set,
         ProjectionTyCandidate::ParamEnv,
-        obligation.param_env.caller_bounds.iter(),
+        obligation.param_env.caller_bounds().iter(),
     );
 }
 
@@ -1028,7 +1028,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // and the obligation is monomorphic, otherwise passes such as
                     // transmute checking and polymorphic MIR optimizations could
                     // get a result which isn't correct for all monomorphizations.
-                    if obligation.param_env.reveal == Reveal::All {
+                    if obligation.param_env.reveal() == Reveal::All {
                         // NOTE(eddyb) inference variables can resolve to parameters, so
                         // assume `poly_trait_ref` isn't monomorphic, if it contains any.
                         let poly_trait_ref =
