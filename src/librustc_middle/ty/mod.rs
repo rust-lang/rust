@@ -1621,8 +1621,9 @@ impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
 
 impl<'tcx> Hash for ParamEnv<'tcx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.caller_bounds().hash(state);
-        self.reveal().hash(state);
+        // List hashes as the raw pointer, so we can skip splitting into the
+        // pointer and the enum.
+        self.packed_data.hash(state);
         self.def_id.hash(state);
     }
 }
