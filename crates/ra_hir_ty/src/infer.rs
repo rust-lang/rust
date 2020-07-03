@@ -28,8 +28,8 @@ use hir_def::{
     path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
-    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, TraitId, TypeAliasId,
-    VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, Lookup, TraitId,
+    TypeAliasId, VariantId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
@@ -376,17 +376,21 @@ impl<'a> InferenceContext<'a> {
     ) -> Ty {
         match assoc_ty {
             Some(res_assoc_ty) => {
+                let trait_ = match res_assoc_ty.lookup(self.db.upcast()).container {
+                    hir_def::AssocContainerId::TraitId(trait_) => trait_,
+                    _ => panic!("resolve_associated_type called with non-associated type"),
+                };
                 let ty = self.table.new_type_var();
-                let builder = Substs::build_for_def(self.db, res_assoc_ty)
+                let substs = Substs::build_for_def(self.db, res_assoc_ty)
                     .push(inner_ty)
-                    .fill(params.iter().cloned());
+                    .fill(params.iter().cloned())
+                    .build();
+                let trait_ref = TraitRef { trait_, substs: substs.clone() };
                 let projection = ProjectionPredicate {
                     ty: ty.clone(),
-                    projection_ty: ProjectionTy {
-                        associated_ty: res_assoc_ty,
-                        parameters: builder.build(),
-                    },
+                    projection_ty: ProjectionTy { associated_ty: res_assoc_ty, parameters: substs },
                 };
+                self.obligations.push(Obligation::Trait(trait_ref));
                 self.obligations.push(Obligation::Projection(projection));
                 self.resolve_ty_as_possible(ty)
             }
