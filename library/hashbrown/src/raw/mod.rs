@@ -1491,46 +1491,42 @@ impl<T> RawIter<T> {
             if let Some(index) = self.iter.current_group.lowest_set_bit() {
                 let next_bucket = self.iter.data.next_n(index);
                 use core::cmp::Ordering;
-                match b.as_ptr().cmp(&next_bucket.as_ptr()) {
-                    Ordering::Greater => {
-                        // The toggled bucket is "before" the bucket the iterator would yield next.
-                        // We therefore don't need to do anything --- the iterator has already
-                        // passed the bucket in question.
-                        //
-                        // The item count must already be correct, since a removal or insert
-                        // "prior" to the iterator's position wouldn't affect the item count.
-                    }
-                    Ordering::Equal => {
-                        // The toggled bucket was coming up next, so we just skip it.
-                        self.iter.current_group = self.iter.current_group.remove_lowest_bit();
-                        // It must be a removal, since its bit was set.
+                if b.as_ptr() > next_bucket.as_ptr() {
+                    // The toggled bucket is "before" the bucket the iterator would yield next. We
+                    // therefore don't need to do anything --- the iterator has already passed the
+                    // bucket in question.
+                    //
+                    // The item count must already be correct, since a removal or insert "prior" to
+                    // the iterator's position wouldn't affect the item count.
+                } else {
+                    // The removed bucket is an upcoming bucket. We need to make sure it does _not_
+                    // get yielded, and also that it's no longer included in the item count.
+                    //
+                    // NOTE: We can't just reload the group here, both since that might reflect
+                    // inserts we've already passed, and because that might inadvertently unset the
+                    // bits for _other_ removals. If we do that, we'd have to also decrement the
+                    // item count for those other bits that we unset. But the presumably subsequent
+                    // call to reflect for those buckets might _also_ decrement the item count.
+                    // Instead, we _just_ flip the bit for the particular bucket the caller asked
+                    // us to reflect.
+                    let our_bit = offset_from(self.iter.data.as_ptr(), b.as_ptr());
+                    let was_full = self.iter.current_group.flip(our_bit);
+                    debug_assert_ne!(was_full, is_insert);
+
+                    if is_insert {
+                        self.items += 1;
+                    } else {
                         self.items -= 1;
-                        debug_assert!(!is_insert);
                     }
-                    Ordering::Less => {
-                        // The removed bucket is an upcoming bucket. We need to make sure it does
-                        // _not_ get yielded, and also that it's no longer included in the item
-                        // count.
-                        //
-                        // NOTE: We can't just reload the group here, both since that might reflect
-                        // inserts we've already passed, and because that might inadvertently unset
-                        // the bits for _other_ removals. If we do that, we'd have to also
-                        // decrement the item count for those other bits that we unset. But the
-                        // presumably subsequent call to reflect for those buckets might _also_
-                        // decrement the item count. Instead, we _just_ flip the bit for the
-                        // particular bucket the caller asked us to reflect.
-                        let our_bit = offset_from(self.iter.data.as_ptr(), b.as_ptr());
-                        let was_full = self.iter.current_group.flip(our_bit);
-                        debug_assert_ne!(was_full, is_insert);
 
-                        if is_insert {
-                            self.items += 1;
+                    if cfg!(debug_assertions) {
+                        if b.as_ptr() == next_bucket.as_ptr() {
+                            // The removed bucket should no longer be next
+                            debug_assert_ne!(self.iter.current_group.lowest_set_bit(), Some(index));
                         } else {
-                            self.items -= 1;
+                            // We should not have changed what bucket comes next.
+                            debug_assert_eq!(self.iter.current_group.lowest_set_bit(), Some(index));
                         }
-
-                        // We should not have changed what bucket comes next.
-                        debug_assert_eq!(self.iter.current_group.lowest_set_bit(), Some(index));
                     }
                 }
             } else {
