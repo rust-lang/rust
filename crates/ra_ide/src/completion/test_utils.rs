@@ -3,7 +3,7 @@
 use hir::Semantics;
 use itertools::Itertools;
 use ra_syntax::{AstNode, NodeOrToken, SyntaxElement};
-use stdx::format_to;
+use stdx::{format_to, trim_indent};
 use test_utils::assert_eq_text;
 
 use crate::{
@@ -57,14 +57,18 @@ pub(crate) fn completion_list_with_options(
 }
 
 pub(crate) fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+    let ra_fixture_after = trim_indent(ra_fixture_after);
     let (analysis, position) = analysis_and_position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
         analysis.completions(&CompletionConfig::default(), position).unwrap().unwrap().into();
-    let (completion,) =
-        completions.into_iter().filter(|it| it.label() == what).collect_tuple().unwrap();
+    let (completion,) = completions
+        .iter()
+        .filter(|it| it.lookup() == what)
+        .collect_tuple()
+        .unwrap_or_else(|| panic!("can't find {:?} completion in {:#?}", what, completions));
     let mut actual = analysis.file_text(position.file_id).unwrap().to_string();
     completion.text_edit().apply(&mut actual);
-    assert_eq_text!(ra_fixture_after, &actual)
+    assert_eq_text!(&ra_fixture_after, &actual)
 }
 
 pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -> bool) {
