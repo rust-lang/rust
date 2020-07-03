@@ -271,7 +271,7 @@ fn rename_reference(
 
 #[cfg(test)]
 mod tests {
-    use insta::assert_debug_snapshot;
+    use expect::{expect, Expect};
     use ra_text_edit::TextEditBuilder;
     use stdx::trim_indent;
     use test_utils::{assert_eq_text, mark};
@@ -295,6 +295,12 @@ mod tests {
         let mut result = analysis.file_text(file_id.unwrap()).unwrap().to_string();
         text_edit_builder.finish().apply(&mut result);
         assert_eq_text!(ra_fixture_after, &*result);
+    }
+
+    fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
+        let (analysis, position) = analysis_and_position(ra_fixture);
+        let source_change = analysis.rename(position, new_name).unwrap().unwrap();
+        expect.assert_debug_eq(&source_change)
     }
 
     #[test]
@@ -650,7 +656,8 @@ fn baz(j: i32) -> Self {
 
     #[test]
     fn test_rename_mod() {
-        let (analysis, position) = analysis_and_position(
+        check_expect(
+            "foo2",
             r#"
 //- /lib.rs
 mod bar;
@@ -659,53 +666,49 @@ mod bar;
 mod foo<|>;
 
 //- /bar/foo.rs
-// emtpy
-            "#,
-        );
-        let new_name = "foo2";
-        let source_change = analysis.rename(position, new_name).unwrap();
-        assert_debug_snapshot!(&source_change,
-@r###"
-        Some(
-            RangeInfo {
-                range: 4..7,
-                info: SourceChange {
-                    source_file_edits: [
-                        SourceFileEdit {
-                            file_id: FileId(
-                                2,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
+// empty
+"#,
+            expect![[r#"
+                RangeInfo {
+                    range: 4..7,
+                    info: SourceChange {
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    2,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "foo2",
+                                            delete: 4..7,
+                                        },
+                                    ],
+                                },
                             },
-                        },
-                    ],
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                3,
-                            ),
-                            anchor: FileId(
-                                2,
-                            ),
-                            dst: "foo2.rs",
-                        },
-                    ],
-                    is_snippet: false,
-                },
-            },
-        )
-        "###);
+                        ],
+                        file_system_edits: [
+                            MoveFile {
+                                src: FileId(
+                                    3,
+                                ),
+                                anchor: FileId(
+                                    2,
+                                ),
+                                dst: "foo2.rs",
+                            },
+                        ],
+                        is_snippet: false,
+                    },
+                }
+            "#]],
+        );
     }
 
     #[test]
     fn test_rename_mod_in_use_tree() {
-        let (analysis, position) = analysis_and_position(
+        check_expect(
+            "quux",
             r#"
 //- /main.rs
 pub mod foo;
@@ -717,112 +720,23 @@ pub struct FooContent;
 
 //- /bar.rs
 use crate::foo<|>::FooContent;
-            "#,
+"#,
+            expect![[]],
         );
-        let new_name = "qux";
-        let source_change = analysis.rename(position, new_name).unwrap();
-        assert_debug_snapshot!(&source_change,
-@r###"
-        Some(
-            RangeInfo {
-                range: 11..14,
-                info: SourceChange {
-                    source_file_edits: [
-                        SourceFileEdit {
-                            file_id: FileId(
-                                1,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "qux",
-                                        delete: 8..11,
-                                    },
-                                ],
-                            },
-                        },
-                        SourceFileEdit {
-                            file_id: FileId(
-                                3,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "qux",
-                                        delete: 11..14,
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                2,
-                            ),
-                            anchor: FileId(
-                                3,
-                            ),
-                            dst: "qux.rs",
-                        },
-                    ],
-                    is_snippet: false,
-                },
-            },
-        )
-        "###);
     }
 
     #[test]
     fn test_rename_mod_in_dir() {
-        let (analysis, position) = analysis_and_position(
+        check_expect(
+            "foo2",
             r#"
 //- /lib.rs
 mod fo<|>o;
 //- /foo/mod.rs
 // emtpy
-            "#,
+"#,
+            expect![[]],
         );
-        let new_name = "foo2";
-        let source_change = analysis.rename(position, new_name).unwrap();
-        assert_debug_snapshot!(&source_change,
-        @r###"
-        Some(
-            RangeInfo {
-                range: 4..7,
-                info: SourceChange {
-                    source_file_edits: [
-                        SourceFileEdit {
-                            file_id: FileId(
-                                1,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                2,
-                            ),
-                            anchor: FileId(
-                                1,
-                            ),
-                            dst: "../foo2/mod.rs",
-                        },
-                    ],
-                    is_snippet: false,
-                },
-            },
-        )
-        "###
-               );
     }
 
     #[test]
@@ -852,7 +766,8 @@ fn main() {
 
     #[test]
     fn test_rename_mod_filename_and_path() {
-        let (analysis, position) = analysis_and_position(
+        check_expect(
+            "foo2",
             r#"
 //- /lib.rs
 mod bar;
@@ -865,60 +780,9 @@ pub mod foo<|>;
 
 //- /bar/foo.rs
 // pub fn fun() {}
-            "#,
+"#,
+            expect![[]],
         );
-        let new_name = "foo2";
-        let source_change = analysis.rename(position, new_name).unwrap();
-        assert_debug_snapshot!(&source_change,
-@r###"
-        Some(
-            RangeInfo {
-                range: 8..11,
-                info: SourceChange {
-                    source_file_edits: [
-                        SourceFileEdit {
-                            file_id: FileId(
-                                2,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 8..11,
-                                    },
-                                ],
-                            },
-                        },
-                        SourceFileEdit {
-                            file_id: FileId(
-                                1,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 27..30,
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                3,
-                            ),
-                            anchor: FileId(
-                                2,
-                            ),
-                            dst: "foo2.rs",
-                        },
-                    ],
-                    is_snippet: false,
-                },
-            },
-        )
-        "###);
     }
 
     #[test]
