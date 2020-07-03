@@ -1698,6 +1698,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "path_buf_push_overwrite",
     },
     Lint {
+        name: "pattern_type_mismatch",
+        group: "restriction",
+        desc: "type of pattern does not match the expression type",
+        deprecation: None,
+        module: "pattern_type_mismatch",
+    },
+    Lint {
         name: "possible_missing_comma",
         group: "correctness",
         desc: "possible missing comma in array",
