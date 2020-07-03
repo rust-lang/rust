@@ -3916,18 +3916,28 @@ mod test_map {
             let mut removed = Vec::new();
             loop {
                 // occasionally remove some elements
-                if rng.gen_bool(0.1) {
-                    let mut hasher = hasher.build_hasher();
-                    i.hash(&mut hasher);
-                    let hash = hasher.finish();
+                if i < n && rng.gen_bool(0.1) {
+                    let mut hsh = hasher.build_hasher();
+                    i.hash(&mut hsh);
+                    let hash = hsh.finish();
 
                     unsafe {
                         let e = m.table.find(hash, |q| q.0.eq(&i));
                         if let Some(e) = e {
-                            it.reflect_removal(&e);
+                            it.reflect_remove(&e);
                             let t = m.table.remove(e);
                             removed.push(t);
                             left -= 1;
+                        } else {
+                            assert!(removed.contains(&(i, 2 * i)), "{} not in {:?}", i, removed);
+                            let e = m
+                                .table
+                                .insert(hash, (i, 2 * i), |x| super::make_hash(&hasher, &x.0));
+                            it.reflect_insert(&e);
+                            if let Some(p) = removed.iter().position(|e| e == &(i, 2 * i)) {
+                                removed.swap_remove(p);
+                            }
+                            left += 1;
                         }
                     }
                 }
@@ -3936,6 +3946,7 @@ mod test_map {
                 if e.is_none() {
                     break;
                 }
+                assert!(i < n);
                 let t = unsafe { e.unwrap().as_ref() };
                 assert!(!removed.contains(t));
                 let (k, v) = t;

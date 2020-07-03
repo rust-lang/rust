@@ -1423,67 +1423,115 @@ pub struct RawIter<T> {
 }
 
 impl<T> RawIter<T> {
-    /// Refresh the iterator so that it reflects the removal of the given bucket.
+    /// Refresh the iterator so that it reflects a removal from the given bucket.
     ///
-    /// For the iterator to remain valid after removals, this method must be called once for each
-    /// removal before `next` is called again.
+    /// For the iterator to remain valid, this method must be called once
+    /// for each removed bucket before `next` is called again.
+    ///
+    /// This method should be called _before_ the removal is made.
     #[cfg(feature = "raw")]
-    pub fn reflect_removal(&mut self, b: &Bucket<T>) {
+    pub fn reflect_remove(&mut self, b: &Bucket<T>) {
+        self.reflect_toggle_full(b, false);
+    }
+
+    /// Refresh the iterator so that it reflects an insertion into the given bucket.
+    ///
+    /// For the iterator to remain valid, this method must be called once
+    /// for each insert before `next` is called again.
+    ///
+    /// This method does not guarantee that an insertion of a bucket witha greater
+    /// index than the last one yielded will be reflected in the iterator.
+    ///
+    /// This method should be called _after_ the given insert is made.
+    #[cfg(feature = "raw")]
+    pub fn reflect_insert(&mut self, b: &Bucket<T>) {
+        self.reflect_toggle_full(b, true);
+    }
+
+    /// Refresh the iterator so that it reflects a change to the state of the given bucket.
+    #[cfg(feature = "raw")]
+    fn reflect_toggle_full(&mut self, b: &Bucket<T>, is_insert: bool) {
         unsafe {
             if b.as_ptr() > self.iter.data.as_ptr() {
                 // The iterator has already passed the bucket's group.
-                // So the removal isn't relevant to this iterator.
+                // So the toggle isn't relevant to this iterator.
                 return;
             }
 
             if b.as_ptr() <= self.iter.data.next_n(Group::WIDTH).as_ptr() {
                 // The iterator has not yet reached the bucket's group.
-                // We don't need to reload anything, but the item count does go down.
-                self.items -= 1;
+                // We don't need to reload anything, but we do need to adjust the item count.
+
+                if cfg!(debug_assertions) {
+                    // Double-check that the user isn't lying to us by checking the bucket state.
+                    // To do that, we need to find its control byte. We know that self.iter.data is
+                    // at self.iter.next_ctrl - Group::WIDTH, so we work from there:
+                    let offset = offset_from(self.iter.data.as_ptr(), b.as_ptr());
+                    let ctrl = self.iter.next_ctrl.sub(Group::WIDTH).add(offset);
+                    // This method should be called _before_ a removal, or _after_ an insert,
+                    // so in both cases the ctrl byte should indicate that the bucket is full.
+                    assert!(is_full(*ctrl));
+                }
+
+                if is_insert {
+                    self.items += 1;
+                } else {
+                    self.items -= 1;
+                }
+
                 return;
             }
 
-            // The iterator is at the bucket group that the removed bucket is in.
+            // The iterator is at the bucket group that the toggled bucket is in.
             // We need to do two things:
             //
-            //  - Determine if the iterator already yielded the removed bucket.
+            //  - Determine if the iterator already yielded the toggled bucket.
             //    If it did, we're done.
             //  - Otherwise, update the iterator cached group so that it won't
-            //    yield the removed bucket, and decrement the item count.
+            //    yield a to-be-removed bucket, or _will_ yield a to-be-added bucket.
+            //    We'll also need ot update the item count accordingly.
             if let Some(index) = self.iter.current_group.lowest_set_bit() {
                 let next_bucket = self.iter.data.next_n(index);
                 use core::cmp::Ordering;
                 match b.as_ptr().cmp(&next_bucket.as_ptr()) {
                     Ordering::Greater => {
-                        // The removed bucket is "before" the bucket the iterator would yield next.
+                        // The toggled bucket is "before" the bucket the iterator would yield next.
                         // We therefore don't need to do anything --- the iterator has already
                         // passed the bucket in question.
                         //
-                        // The item count must already be correct, because if the removed bucket
-                        // had not yet been yielded, it would be the lowest set bit in the cached
-                        // group.
+                        // The item count must already be correct, since a removal or insert
+                        // "prior" to the iterator's position wouldn't affect the item count.
                     }
                     Ordering::Equal => {
-                        // The removed bucket was coming up next, so we just skip it.
-                        self.items -= 1;
+                        // The toggled bucket was coming up next, so we just skip it.
                         self.iter.current_group = self.iter.current_group.remove_lowest_bit();
+                        // It must be a removal, since its bit was set.
+                        self.items -= 1;
+                        debug_assert!(!is_insert);
                     }
                     Ordering::Less => {
                         // The removed bucket is an upcoming bucket. We need to make sure it does
                         // _not_ get yielded, and also that it's no longer included in the item
                         // count.
-                        self.items -= 1;
+                        //
                         // NOTE: We can't just reload the group here, both since that might reflect
-                        // inserts too (you'd need to bitwise-&), and because that might
-                        // inadvertently unset the bits for _other_ removals. If we do that, we'd
-                        // have to also decrement the item count for those other bits that we
-                        // unset. But the presumably subsequent call to reflect_removal for those
-                        // buckets might _also_ decrement items. Instead, we _just_ flip the bit
-                        // for the particular bucket the caller asked us to reflect.
+                        // inserts we've already passed, and because that might inadvertently unset
+                        // the bits for _other_ removals. If we do that, we'd have to also
+                        // decrement the item count for those other bits that we unset. But the
+                        // presumably subsequent call to reflect for those buckets might _also_
+                        // decrement the item count. Instead, we _just_ flip the bit for the
+                        // particular bucket the caller asked us to reflect.
                         let our_bit = offset_from(self.iter.data.as_ptr(), b.as_ptr());
-                        self.iter.current_group.unset(our_bit);
+                        let was_full = self.iter.current_group.flip(our_bit);
+                        debug_assert_ne!(was_full, is_insert);
 
-                        // The command above should not have unset the bit for the next bucket.
+                        if is_insert {
+                            self.items += 1;
+                        } else {
+                            self.items -= 1;
+                        }
+
+                        // We should not have changed what bucket comes next.
                         debug_assert_eq!(self.iter.current_group.lowest_set_bit(), Some(index));
                     }
                 }
