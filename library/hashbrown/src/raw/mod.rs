@@ -1007,8 +1007,23 @@ impl<T> RawTable<T> {
     /// on the `RawDrain`, we have to make the `drain` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn drain(&mut self) -> RawDrain<'_, T> {
+        let iter = self.iter();
+        self.drain_iter_from(iter)
+    }
+
+    /// Returns an iterator which removes all elements from the table without
+    /// freeing the memory. It is up to the caller to ensure that the `RawTable`
+    /// outlives the `RawDrain`. Because we cannot make the `next` method unsafe
+    /// on the `RawDrain`, we have to make the `drain` method unsafe.
+    ///
+    /// Iteration starts at the provided iterator's current location.
+    ///
+    /// This method panics if the given iterator does not cover all items remaining in the table.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub unsafe fn drain_iter_from(&mut self, iter: RawIter<T>) -> RawDrain<'_, T> {
+        debug_assert_eq!(iter.len(), self.len());
         RawDrain {
-            iter: self.iter(),
+            iter,
             table: ManuallyDrop::new(mem::replace(self, Self::new())),
             orig_table: NonNull::from(self),
             marker: PhantomData,
