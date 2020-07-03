@@ -1370,7 +1370,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// we still evaluate them eagerly.
     #[inline]
     pub fn lazy_normalization(self) -> bool {
-        self.features().const_generics
+        self.features().const_generics || self.features().lazy_normalization_consts
     }
 
     #[inline]
