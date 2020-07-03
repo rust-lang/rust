@@ -46,7 +46,7 @@ error: hexadecimal float literal is not supported
 LL |     0x9.0e-9;
    |     ^^^^^^^^
 
-error: no valid digits found for number
+error[E0768]: no valid digits found for number
   --> $DIR/lex-bad-numeric-literals.rs:11:5
    |
 LL |     0o;
@@ -64,31 +64,31 @@ error: hexadecimal float literal is not supported
 LL |     0x539.0;
    |     ^^^^^^^
 
-error: no valid digits found for number
+error[E0768]: no valid digits found for number
   --> $DIR/lex-bad-numeric-literals.rs:18:5
    |
 LL |     0x;
    |     ^^
 
-error: no valid digits found for number
+error[E0768]: no valid digits found for number
   --> $DIR/lex-bad-numeric-literals.rs:19:5
    |
 LL |     0xu32;
    |     ^^
 
-error: no valid digits found for number
+error[E0768]: no valid digits found for number
   --> $DIR/lex-bad-numeric-literals.rs:20:5
    |
 LL |     0ou32;
    |     ^^
 
-error: no valid digits found for number
+error[E0768]: no valid digits found for number
   --> $DIR/lex-bad-numeric-literals.rs:21:5
    |
 LL |     0bu32;
    |     ^^
 
-error: no valid digits found for number
+error[E0768]: no valid digits found for number
   --> $DIR/lex-bad-numeric-literals.rs:22:5
    |
 LL |     0b;
@@ -138,3 +138,4 @@ LL |     0b101f64;
 
 error: aborting due to 23 previous errors
 
+For more information about this error, try `rustc --explain E0768`.
