@@ -2880,7 +2880,13 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
     pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
         match instance {
-            ty::InstanceDef::Item(def) => self.optimized_mir(def.did),
+            ty::InstanceDef::Item(def) => {
+                if let Some(def) = def.as_local() {
+                    self.optimized_mir_of_const_arg(def)
+                } else {
+                    self.optimized_mir(def.did)
+                }
+            }
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::Intrinsic(..)

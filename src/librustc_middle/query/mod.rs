@@ -244,10 +244,12 @@ rustc_queries! {
 
         /// MIR after our optimization passes have run. This is MIR that is ready
         /// for codegen. This is also the only query that can fetch non-local MIR, at present.
-        query optimized_mir(key: DefId) -> mir::Body<'tcx> {
+        query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {
             desc { |tcx| "optimizing MIR for `{}`", tcx.def_path_str(key) }
-            storage(ArenaCacheSelector<'tcx>)
             cache_on_disk_if { key.is_local() }
+        }
+        query optimized_mir_of_const_arg(key: ty::WithOptParam<LocalDefId>) -> &'tcx mir::Body<'tcx> {
+            desc { |tcx| "optimizing MIR for `{}`", tcx.def_path_str(key.did.to_def_id()) }
         }
 
         /// Returns coverage summary info for a function, after executing the `InstrumentCoverage`

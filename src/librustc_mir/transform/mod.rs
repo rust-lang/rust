@@ -52,6 +52,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         mir_validated,
         mir_drops_elaborated_and_const_checked,
         optimized_mir,
+        optimized_mir_of_const_arg,
         is_mir_available,
         promoted_mir,
         ..*providers
@@ -424,19 +425,41 @@ fn run_optimization_passes<'tcx>(
     );
 }
 
-fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
-    if tcx.is_constructor(def_id) {
+fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx Body<'tcx> {
+    let did = did.expect_local();
+    if let param_did @ Some(_) = tcx.opt_const_param_of(did) {
+        tcx.optimized_mir_of_const_arg(ty::WithOptParam { did, param_did })
+    } else {
+        tcx.arena.alloc(inner_optimized_mir(tcx, ty::WithOptParam::dummy(did)))
+    }
+}
+
+fn optimized_mir_of_const_arg<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::WithOptParam<LocalDefId>,
+) -> &'tcx Body<'tcx> {
+    if def.param_did.is_none() {
+        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
+            tcx.optimized_mir_of_const_arg(ty::WithOptParam { param_did, ..def })
+        } else {
+            tcx.optimized_mir(def.did)
+        }
+    } else {
+        tcx.arena.alloc(inner_optimized_mir(tcx, def))
+    }
+}
+
+fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptParam<LocalDefId>) -> Body<'_> {
+    if tcx.is_constructor(def.did.to_def_id()) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
         // qualification and borrow checking the trouble of special casing
         // constructors.
-        return shim::build_adt_ctor(tcx, def_id);
+        return shim::build_adt_ctor(tcx, def.did.to_def_id());
     }
 
-    let def_id = def_id.expect_local();
-
-    let mut body = tcx.mir_drops_elaborated_and_const_checked(def_id).steal();
-    run_optimization_passes(tcx, &mut body, def_id, None);
+    let mut body = tcx.mir_drops_elaborated_and_const_checked(def.did).steal();
+    run_optimization_passes(tcx, &mut body, def.did, None);
 
     debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
 
