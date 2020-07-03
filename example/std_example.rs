@@ -103,6 +103,14 @@ fn main() {
     Box::pin(move |mut _task_context| {
         yield ();
     }).as_mut().resume(0);
+
+    #[derive(Copy, Clone)]
+    enum Nums {
+        NegOne = -1,
+    }
+
+    let kind = Nums::NegOne;
+    assert_eq!(-1i128, kind as i128);
 }
 
 #[target_feature(enable = "sse2")]

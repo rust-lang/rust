@@ -689,6 +689,9 @@ fn trans_stmt<'tcx>(
                 asm_str_style: _,
             } = asm;
             match &*asm_code.as_str() {
+                "" => {
+                    // Black box
+                }
                 cpuid if cpuid.contains("cpuid") => {
                     crate::trap::trap_unimplemented(
                         fx,

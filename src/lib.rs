@@ -234,6 +234,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> Result<(), ErrorReported> {
         use rustc_codegen_ssa::back::link::link_binary;
 
+        sess.abort_if_errors();
+
         let codegen_results = *res
             .downcast::<CodegenResults>()
             .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");

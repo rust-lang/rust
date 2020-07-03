@@ -406,6 +406,10 @@ impl<'tcx> CPlace<'tcx> {
             to_ty: Ty<'tcx>,
         ) {
             match (&from_ty.kind, &to_ty.kind) {
+                (ty::Ref(_, a, _), ty::Ref(_, b, _))
+                | (ty::RawPtr(TypeAndMut { ty: a, mutbl: _}), ty::RawPtr(TypeAndMut { ty: b, mutbl: _})) => {
+                    assert_assignable(fx, a, b);
+                }
                 (ty::FnPtr(_), ty::FnPtr(_)) => {
                     let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
                         ParamEnv::reveal_all(),

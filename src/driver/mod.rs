@@ -109,7 +109,7 @@ fn trans_mono_item<'tcx, B: Backend + 'static>(
 }
 
 fn time<R>(tcx: TyCtxt<'_>, name: &'static str, f: impl FnOnce() -> R) -> R {
-    if std::env::var("CG_CLIF_DISPLAY_CG_TIME").is_ok() {
+    if std::env::var("CG_CLIF_DISPLAY_CG_TIME").as_ref().map(|val| &**val) == Ok("1") {
         println!("[{:<30}: {}] start", tcx.crate_name(LOCAL_CRATE), name);
         let before = std::time::Instant::now();
         let res = tcx.sess.time(name, f);

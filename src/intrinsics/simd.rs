@@ -21,6 +21,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_cast, (c a) {
+            validate_simd_type!(fx, intrinsic, span, a.layout().ty);
             simd_for_each_lane(fx, a, ret, |fx, lane_layout, ret_lane_layout, lane| {
                 let ret_lane_ty = fx.clif_type(ret_lane_layout.ty).unwrap();
 
@@ -33,26 +34,34 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_eq, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_cmp!(fx, Equal(x, y) -> ret);
         };
         simd_ne, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_cmp!(fx, NotEqual(x, y) -> ret);
         };
         simd_lt, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_cmp!(fx, UnsignedLessThan|SignedLessThan(x, y) -> ret);
         };
         simd_le, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_cmp!(fx, UnsignedLessThanOrEqual|SignedLessThanOrEqual(x, y) -> ret);
         };
         simd_gt, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_cmp!(fx, UnsignedGreaterThan|SignedGreaterThan(x, y) -> ret);
         };
         simd_ge, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_cmp!(fx, UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual(x, y) -> ret);
         };
 
         // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U
         _ if intrinsic.starts_with("simd_shuffle"), (c x, c y, o idx) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
+
             let n: u16 = intrinsic["simd_shuffle".len()..].parse().unwrap();
 
             assert_eq!(x.layout(), y.layout());
@@ -105,6 +114,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_insert, (c base, o idx, v _val) {
+            // FIXME validate
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
             } else {
@@ -132,6 +142,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_extract, (c v, o idx) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
             } else {
@@ -155,34 +166,44 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_add, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_int_flt_binop!(fx, iadd|fadd(x, y) -> ret);
         };
         simd_sub, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_int_flt_binop!(fx, isub|fsub(x, y) -> ret);
         };
         simd_mul, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_int_flt_binop!(fx, imul|fmul(x, y) -> ret);
         };
         simd_div, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_int_flt_binop!(fx, udiv|sdiv|fdiv(x, y) -> ret);
         };
         simd_shl, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_int_binop!(fx, ishl(x, y) -> ret);
         };
         simd_shr, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_int_binop!(fx, ushr|sshr(x, y) -> ret);
         };
         simd_and, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_int_binop!(fx, band(x, y) -> ret);
         };
         simd_or, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_int_binop!(fx, bor(x, y) -> ret);
         };
         simd_xor, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_int_binop!(fx, bxor(x, y) -> ret);
         };
 
         simd_fma, (c a, c b, c c) {
+            validate_simd_type!(fx, intrinsic, span, a.layout().ty);
             assert_eq!(a.layout(), b.layout());
             assert_eq!(a.layout(), c.layout());
             let layout = a.layout();
@@ -205,9 +226,11 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_fmin, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_flt_binop!(fx, fmin(x, y) -> ret);
         };
         simd_fmax, (c x, c y) {
+            validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_flt_binop!(fx, fmax(x, y) -> ret);
         };
     }
