@@ -116,8 +116,7 @@ fn rename_mod(
             } else {
                 format!("{}.rs", new_name)
             };
-            let move_file =
-                FileSystemEdit::MoveFile { src: file_id, anchor: position.file_id, dst };
+            let move_file = FileSystemEdit::MoveFile { src: file_id, anchor: file_id, dst };
             file_system_edits.push(move_file);
         }
         ModuleSource::Module(..) => {}
@@ -271,790 +270,14 @@ fn rename_reference(
 
 #[cfg(test)]
 mod tests {
-    use insta::assert_debug_snapshot;
+    use expect::{expect, Expect};
     use ra_text_edit::TextEditBuilder;
     use stdx::trim_indent;
     use test_utils::{assert_eq_text, mark};
 
     use crate::{mock_analysis::analysis_and_position, FileId};
 
-    #[test]
-    fn test_rename_to_underscore() {
-        test_rename(
-            r#"
-    fn main() {
-        let i<|> = 1;
-    }"#,
-            "_",
-            r#"
-    fn main() {
-        let _ = 1;
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_to_raw_identifier() {
-        test_rename(
-            r#"
-    fn main() {
-        let i<|> = 1;
-    }"#,
-            "r#fn",
-            r#"
-    fn main() {
-        let r#fn = 1;
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_to_invalid_identifier() {
-        let (analysis, position) = analysis_and_position(
-            "
-    fn main() {
-        let i<|> = 1;
-    }",
-        );
-        let new_name = "invalid!";
-        let source_change = analysis.rename(position, new_name).unwrap();
-        assert!(source_change.is_none());
-    }
-
-    #[test]
-    fn test_rename_for_local() {
-        test_rename(
-            r#"
-    fn main() {
-        let mut i = 1;
-        let j = 1;
-        i = i<|> + j;
-
-        {
-            i = 0;
-        }
-
-        i = 5;
-    }"#,
-            "k",
-            r#"
-    fn main() {
-        let mut k = 1;
-        let j = 1;
-        k = k + j;
-
-        {
-            k = 0;
-        }
-
-        k = 5;
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_for_macro_args() {
-        test_rename(
-            r#"
-    macro_rules! foo {($i:ident) => {$i} }
-    fn main() {
-        let a<|> = "test";
-        foo!(a);
-    }"#,
-            "b",
-            r#"
-    macro_rules! foo {($i:ident) => {$i} }
-    fn main() {
-        let b = "test";
-        foo!(b);
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_for_macro_args_rev() {
-        test_rename(
-            r#"
-    macro_rules! foo {($i:ident) => {$i} }
-    fn main() {
-        let a = "test";
-        foo!(a<|>);
-    }"#,
-            "b",
-            r#"
-    macro_rules! foo {($i:ident) => {$i} }
-    fn main() {
-        let b = "test";
-        foo!(b);
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_for_macro_define_fn() {
-        test_rename(
-            r#"
-    macro_rules! define_fn {($id:ident) => { fn $id{} }}
-    define_fn!(foo);
-    fn main() {
-        fo<|>o();
-    }"#,
-            "bar",
-            r#"
-    macro_rules! define_fn {($id:ident) => { fn $id{} }}
-    define_fn!(bar);
-    fn main() {
-        bar();
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_for_macro_define_fn_rev() {
-        test_rename(
-            r#"
-    macro_rules! define_fn {($id:ident) => { fn $id{} }}
-    define_fn!(fo<|>o);
-    fn main() {
-        foo();
-    }"#,
-            "bar",
-            r#"
-    macro_rules! define_fn {($id:ident) => { fn $id{} }}
-    define_fn!(bar);
-    fn main() {
-        bar();
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_for_param_inside() {
-        test_rename(
-            r#"
-    fn foo(i : u32) -> u32 {
-        i<|>
-    }"#,
-            "j",
-            r#"
-    fn foo(j : u32) -> u32 {
-        j
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_refs_for_fn_param() {
-        test_rename(
-            r#"
-    fn foo(i<|> : u32) -> u32 {
-        i
-    }"#,
-            "new_name",
-            r#"
-    fn foo(new_name : u32) -> u32 {
-        new_name
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_for_mut_param() {
-        test_rename(
-            r#"
-    fn foo(mut i<|> : u32) -> u32 {
-        i
-    }"#,
-            "new_name",
-            r#"
-    fn foo(mut new_name : u32) -> u32 {
-        new_name
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_struct_field() {
-        test_rename(
-            r#"
-    struct Foo {
-        i<|>: i32,
-    }
-
-    impl Foo {
-        fn new(i: i32) -> Self {
-            Self { i: i }
-        }
-    }
-    "#,
-            "j",
-            r#"
-    struct Foo {
-        j: i32,
-    }
-
-    impl Foo {
-        fn new(i: i32) -> Self {
-            Self { j: i }
-        }
-    }
-    "#,
-        );
-    }
-
-    #[test]
-    fn test_rename_struct_field_for_shorthand() {
-        mark::check!(test_rename_struct_field_for_shorthand);
-        test_rename(
-            r#"
-    struct Foo {
-        i<|>: i32,
-    }
-
-    impl Foo {
-        fn new(i: i32) -> Self {
-            Self { i }
-        }
-    }
-    "#,
-            "j",
-            r#"
-    struct Foo {
-        j: i32,
-    }
-
-    impl Foo {
-        fn new(i: i32) -> Self {
-            Self { j: i }
-        }
-    }
-    "#,
-        );
-    }
-
-    #[test]
-    fn test_rename_local_for_field_shorthand() {
-        mark::check!(test_rename_local_for_field_shorthand);
-        test_rename(
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn new(i<|>: i32) -> Self {
-            Self { i }
-        }
-    }
-    "#,
-            "j",
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn new(j: i32) -> Self {
-            Self { i: j }
-        }
-    }
-    "#,
-        );
-    }
-
-    #[test]
-    fn test_field_shorthand_correct_struct() {
-        test_rename(
-            r#"
-    struct Foo {
-        i<|>: i32,
-    }
-
-    struct Bar {
-        i: i32,
-    }
-
-    impl Bar {
-        fn new(i: i32) -> Self {
-            Self { i }
-        }
-    }
-    "#,
-            "j",
-            r#"
-    struct Foo {
-        j: i32,
-    }
-
-    struct Bar {
-        i: i32,
-    }
-
-    impl Bar {
-        fn new(i: i32) -> Self {
-            Self { i }
-        }
-    }
-    "#,
-        );
-    }
-
-    #[test]
-    fn test_shadow_local_for_struct_shorthand() {
-        test_rename(
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    fn baz(i<|>: i32) -> Self {
-         let x = Foo { i };
-         {
-             let i = 0;
-             Foo { i }
-         }
-     }
-    "#,
-            "j",
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    fn baz(j: i32) -> Self {
-         let x = Foo { i: j };
-         {
-             let i = 0;
-             Foo { i }
-         }
-     }
-    "#,
-        );
-    }
-
-    #[test]
-    fn test_rename_mod() {
-        let (analysis, position) = analysis_and_position(
-            r#"
-//- /lib.rs
-mod bar;
-
-//- /bar.rs
-mod foo<|>;
-
-//- /bar/foo.rs
-// emtpy
-            "#,
-        );
-        let new_name = "foo2";
-        let source_change = analysis.rename(position, new_name).unwrap();
-        assert_debug_snapshot!(&source_change,
-@r###"
-        Some(
-            RangeInfo {
-                range: 4..7,
-                info: SourceChange {
-                    source_file_edits: [
-                        SourceFileEdit {
-                            file_id: FileId(
-                                2,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                3,
-                            ),
-                            anchor: FileId(
-                                2,
-                            ),
-                            dst: "foo2.rs",
-                        },
-                    ],
-                    is_snippet: false,
-                },
-            },
-        )
-        "###);
-    }
-
-    #[test]
-    fn test_rename_mod_in_use_tree() {
-        let (analysis, position) = analysis_and_position(
-            r#"
-//- /main.rs
-pub mod foo;
-pub mod bar;
-fn main() {}
-
-//- /foo.rs
-pub struct FooContent;
-
-//- /bar.rs
-use crate::foo<|>::FooContent;
-            "#,
-        );
-        let new_name = "qux";
-        let source_change = analysis.rename(position, new_name).unwrap();
-        assert_debug_snapshot!(&source_change,
-@r###"
-        Some(
-            RangeInfo {
-                range: 11..14,
-                info: SourceChange {
-                    source_file_edits: [
-                        SourceFileEdit {
-                            file_id: FileId(
-                                1,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "qux",
-                                        delete: 8..11,
-                                    },
-                                ],
-                            },
-                        },
-                        SourceFileEdit {
-                            file_id: FileId(
-                                3,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "qux",
-                                        delete: 11..14,
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                2,
-                            ),
-                            anchor: FileId(
-                                3,
-                            ),
-                            dst: "qux.rs",
-                        },
-                    ],
-                    is_snippet: false,
-                },
-            },
-        )
-        "###);
-    }
-
-    #[test]
-    fn test_rename_mod_in_dir() {
-        let (analysis, position) = analysis_and_position(
-            r#"
-//- /lib.rs
-mod fo<|>o;
-//- /foo/mod.rs
-// emtpy
-            "#,
-        );
-        let new_name = "foo2";
-        let source_change = analysis.rename(position, new_name).unwrap();
-        assert_debug_snapshot!(&source_change,
-        @r###"
-        Some(
-            RangeInfo {
-                range: 4..7,
-                info: SourceChange {
-                    source_file_edits: [
-                        SourceFileEdit {
-                            file_id: FileId(
-                                1,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                2,
-                            ),
-                            anchor: FileId(
-                                1,
-                            ),
-                            dst: "../foo2/mod.rs",
-                        },
-                    ],
-                    is_snippet: false,
-                },
-            },
-        )
-        "###
-               );
-    }
-
-    #[test]
-    fn test_module_rename_in_path() {
-        test_rename(
-            r#"
-    mod <|>foo {
-        pub fn bar() {}
-    }
-
-    fn main() {
-        foo::bar();
-    }"#,
-            "baz",
-            r#"
-    mod baz {
-        pub fn bar() {}
-    }
-
-    fn main() {
-        baz::bar();
-    }"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_mod_filename_and_path() {
-        let (analysis, position) = analysis_and_position(
-            r#"
-//- /lib.rs
-mod bar;
-fn f() {
-    bar::foo::fun()
-}
-
-//- /bar.rs
-pub mod foo<|>;
-
-//- /bar/foo.rs
-// pub fn fun() {}
-            "#,
-        );
-        let new_name = "foo2";
-        let source_change = analysis.rename(position, new_name).unwrap();
-        assert_debug_snapshot!(&source_change,
-@r###"
-        Some(
-            RangeInfo {
-                range: 8..11,
-                info: SourceChange {
-                    source_file_edits: [
-                        SourceFileEdit {
-                            file_id: FileId(
-                                2,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 8..11,
-                                    },
-                                ],
-                            },
-                        },
-                        SourceFileEdit {
-                            file_id: FileId(
-                                1,
-                            ),
-                            edit: TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 27..30,
-                                    },
-                                ],
-                            },
-                        },
-                    ],
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                3,
-                            ),
-                            anchor: FileId(
-                                2,
-                            ),
-                            dst: "foo2.rs",
-                        },
-                    ],
-                    is_snippet: false,
-                },
-            },
-        )
-        "###);
-    }
-
-    #[test]
-    fn test_enum_variant_from_module_1() {
-        test_rename(
-            r#"
-    mod foo {
-        pub enum Foo {
-            Bar<|>,
-        }
-    }
-
-    fn func(f: foo::Foo) {
-        match f {
-            foo::Foo::Bar => {}
-        }
-    }
-    "#,
-            "Baz",
-            r#"
-    mod foo {
-        pub enum Foo {
-            Baz,
-        }
-    }
-
-    fn func(f: foo::Foo) {
-        match f {
-            foo::Foo::Baz => {}
-        }
-    }
-    "#,
-        );
-    }
-
-    #[test]
-    fn test_enum_variant_from_module_2() {
-        test_rename(
-            r#"
-    mod foo {
-        pub struct Foo {
-            pub bar<|>: uint,
-        }
-    }
-
-    fn foo(f: foo::Foo) {
-        let _ = f.bar;
-    }
-    "#,
-            "baz",
-            r#"
-    mod foo {
-        pub struct Foo {
-            pub baz: uint,
-        }
-    }
-
-    fn foo(f: foo::Foo) {
-        let _ = f.baz;
-    }
-    "#,
-        );
-    }
-
-    #[test]
-    fn test_parameter_to_self() {
-        test_rename(
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn f(foo<|>: &mut Foo) -> i32 {
-            foo.i
-        }
-    }
-    "#,
-            "self",
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn f(&mut self) -> i32 {
-            self.i
-        }
-    }
-    "#,
-        );
-    }
-
-    #[test]
-    fn test_self_to_parameter() {
-        test_rename(
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn f(&mut <|>self) -> i32 {
-            self.i
-        }
-    }
-    "#,
-            "foo",
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn f(foo: &mut Foo) -> i32 {
-            foo.i
-        }
-    }
-    "#,
-        );
-    }
-
-    #[test]
-    fn test_self_in_path_to_parameter() {
-        test_rename(
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn f(&self) -> i32 {
-            let self_var = 1;
-            self<|>.i
-        }
-    }
-    "#,
-            "foo",
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn f(foo: &Foo) -> i32 {
-            let self_var = 1;
-            foo.i
-        }
-    }
-    "#,
-        );
-    }
-
-    fn test_rename(ra_fixture_before: &str, new_name: &str, ra_fixture_after: &str) {
+    fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = analysis_and_position(ra_fixture_before);
         let source_change = analysis.rename(position, new_name).unwrap();
@@ -1071,5 +294,717 @@ pub mod foo<|>;
         let mut result = analysis.file_text(file_id.unwrap()).unwrap().to_string();
         text_edit_builder.finish().apply(&mut result);
         assert_eq_text!(ra_fixture_after, &*result);
+    }
+
+    fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
+        let (analysis, position) = analysis_and_position(ra_fixture);
+        let source_change = analysis.rename(position, new_name).unwrap().unwrap();
+        expect.assert_debug_eq(&source_change)
+    }
+
+    #[test]
+    fn test_rename_to_underscore() {
+        check("_", r#"fn main() { let i<|> = 1; }"#, r#"fn main() { let _ = 1; }"#);
+    }
+
+    #[test]
+    fn test_rename_to_raw_identifier() {
+        check("r#fn", r#"fn main() { let i<|> = 1; }"#, r#"fn main() { let r#fn = 1; }"#);
+    }
+
+    #[test]
+    fn test_rename_to_invalid_identifier() {
+        let (analysis, position) = analysis_and_position(r#"fn main() { let i<|> = 1; }"#);
+        let new_name = "invalid!";
+        let source_change = analysis.rename(position, new_name).unwrap();
+        assert!(source_change.is_none());
+    }
+
+    #[test]
+    fn test_rename_for_local() {
+        check(
+            "k",
+            r#"
+fn main() {
+    let mut i = 1;
+    let j = 1;
+    i = i<|> + j;
+
+    { i = 0; }
+
+    i = 5;
+}
+"#,
+            r#"
+fn main() {
+    let mut k = 1;
+    let j = 1;
+    k = k + j;
+
+    { k = 0; }
+
+    k = 5;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_for_macro_args() {
+        check(
+            "b",
+            r#"
+macro_rules! foo {($i:ident) => {$i} }
+fn main() {
+    let a<|> = "test";
+    foo!(a);
+}
+"#,
+            r#"
+macro_rules! foo {($i:ident) => {$i} }
+fn main() {
+    let b = "test";
+    foo!(b);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_for_macro_args_rev() {
+        check(
+            "b",
+            r#"
+macro_rules! foo {($i:ident) => {$i} }
+fn main() {
+    let a = "test";
+    foo!(a<|>);
+}
+"#,
+            r#"
+macro_rules! foo {($i:ident) => {$i} }
+fn main() {
+    let b = "test";
+    foo!(b);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_for_macro_define_fn() {
+        check(
+            "bar",
+            r#"
+macro_rules! define_fn {($id:ident) => { fn $id{} }}
+define_fn!(foo);
+fn main() {
+    fo<|>o();
+}
+"#,
+            r#"
+macro_rules! define_fn {($id:ident) => { fn $id{} }}
+define_fn!(bar);
+fn main() {
+    bar();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_for_macro_define_fn_rev() {
+        check(
+            "bar",
+            r#"
+macro_rules! define_fn {($id:ident) => { fn $id{} }}
+define_fn!(fo<|>o);
+fn main() {
+    foo();
+}
+"#,
+            r#"
+macro_rules! define_fn {($id:ident) => { fn $id{} }}
+define_fn!(bar);
+fn main() {
+    bar();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_for_param_inside() {
+        check("j", r#"fn foo(i : u32) -> u32 { i<|> }"#, r#"fn foo(j : u32) -> u32 { j }"#);
+    }
+
+    #[test]
+    fn test_rename_refs_for_fn_param() {
+        check("j", r#"fn foo(i<|> : u32) -> u32 { i }"#, r#"fn foo(j : u32) -> u32 { j }"#);
+    }
+
+    #[test]
+    fn test_rename_for_mut_param() {
+        check("j", r#"fn foo(mut i<|> : u32) -> u32 { i }"#, r#"fn foo(mut j : u32) -> u32 { j }"#);
+    }
+
+    #[test]
+    fn test_rename_struct_field() {
+        check(
+            "j",
+            r#"
+struct Foo { i<|>: i32 }
+
+impl Foo {
+    fn new(i: i32) -> Self {
+        Self { i: i }
+    }
+}
+"#,
+            r#"
+struct Foo { j: i32 }
+
+impl Foo {
+    fn new(i: i32) -> Self {
+        Self { j: i }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_struct_field_for_shorthand() {
+        mark::check!(test_rename_struct_field_for_shorthand);
+        check(
+            "j",
+            r#"
+struct Foo { i<|>: i32 }
+
+impl Foo {
+    fn new(i: i32) -> Self {
+        Self { i }
+    }
+}
+"#,
+            r#"
+struct Foo { j: i32 }
+
+impl Foo {
+    fn new(i: i32) -> Self {
+        Self { j: i }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_local_for_field_shorthand() {
+        mark::check!(test_rename_local_for_field_shorthand);
+        check(
+            "j",
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn new(i<|>: i32) -> Self {
+        Self { i }
+    }
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn new(j: i32) -> Self {
+        Self { i: j }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_field_shorthand_correct_struct() {
+        check(
+            "j",
+            r#"
+struct Foo { i<|>: i32 }
+struct Bar { i: i32 }
+
+impl Bar {
+    fn new(i: i32) -> Self {
+        Self { i }
+    }
+}
+"#,
+            r#"
+struct Foo { j: i32 }
+struct Bar { i: i32 }
+
+impl Bar {
+    fn new(i: i32) -> Self {
+        Self { i }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_shadow_local_for_struct_shorthand() {
+        check(
+            "j",
+            r#"
+struct Foo { i: i32 }
+
+fn baz(i<|>: i32) -> Self {
+     let x = Foo { i };
+     {
+         let i = 0;
+         Foo { i }
+     }
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+fn baz(j: i32) -> Self {
+     let x = Foo { i: j };
+     {
+         let i = 0;
+         Foo { i }
+     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_mod() {
+        check_expect(
+            "foo2",
+            r#"
+//- /lib.rs
+mod bar;
+
+//- /bar.rs
+mod foo<|>;
+
+//- /bar/foo.rs
+// empty
+"#,
+            expect![[r#"
+                RangeInfo {
+                    range: 4..7,
+                    info: SourceChange {
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    2,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "foo2",
+                                            delete: 4..7,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        file_system_edits: [
+                            MoveFile {
+                                src: FileId(
+                                    3,
+                                ),
+                                anchor: FileId(
+                                    3,
+                                ),
+                                dst: "foo2.rs",
+                            },
+                        ],
+                        is_snippet: false,
+                    },
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_rename_mod_in_use_tree() {
+        check_expect(
+            "quux",
+            r#"
+//- /main.rs
+pub mod foo;
+pub mod bar;
+fn main() {}
+
+//- /foo.rs
+pub struct FooContent;
+
+//- /bar.rs
+use crate::foo<|>::FooContent;
+"#,
+            expect![[r#"
+                RangeInfo {
+                    range: 11..14,
+                    info: SourceChange {
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "quux",
+                                            delete: 8..11,
+                                        },
+                                    ],
+                                },
+                            },
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    3,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "quux",
+                                            delete: 11..14,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        file_system_edits: [
+                            MoveFile {
+                                src: FileId(
+                                    2,
+                                ),
+                                anchor: FileId(
+                                    2,
+                                ),
+                                dst: "quux.rs",
+                            },
+                        ],
+                        is_snippet: false,
+                    },
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_rename_mod_in_dir() {
+        check_expect(
+            "foo2",
+            r#"
+//- /lib.rs
+mod fo<|>o;
+//- /foo/mod.rs
+// emtpy
+"#,
+            expect![[r#"
+                RangeInfo {
+                    range: 4..7,
+                    info: SourceChange {
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "foo2",
+                                            delete: 4..7,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        file_system_edits: [
+                            MoveFile {
+                                src: FileId(
+                                    2,
+                                ),
+                                anchor: FileId(
+                                    2,
+                                ),
+                                dst: "../foo2/mod.rs",
+                            },
+                        ],
+                        is_snippet: false,
+                    },
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_rename_unusually_nested_mod() {
+        check_expect(
+            "bar",
+            r#"
+//- /lib.rs
+mod outer { mod fo<|>o; }
+
+//- /outer/foo.rs
+// emtpy
+"#,
+            expect![[r#"
+                RangeInfo {
+                    range: 16..19,
+                    info: SourceChange {
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "bar",
+                                            delete: 16..19,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        file_system_edits: [
+                            MoveFile {
+                                src: FileId(
+                                    2,
+                                ),
+                                anchor: FileId(
+                                    2,
+                                ),
+                                dst: "bar.rs",
+                            },
+                        ],
+                        is_snippet: false,
+                    },
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_module_rename_in_path() {
+        check(
+            "baz",
+            r#"
+mod <|>foo { pub fn bar() {} }
+
+fn main() { foo::bar(); }
+"#,
+            r#"
+mod baz { pub fn bar() {} }
+
+fn main() { baz::bar(); }
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_mod_filename_and_path() {
+        check_expect(
+            "foo2",
+            r#"
+//- /lib.rs
+mod bar;
+fn f() {
+    bar::foo::fun()
+}
+
+//- /bar.rs
+pub mod foo<|>;
+
+//- /bar/foo.rs
+// pub fn fun() {}
+"#,
+            expect![[r#"
+                RangeInfo {
+                    range: 8..11,
+                    info: SourceChange {
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    2,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "foo2",
+                                            delete: 8..11,
+                                        },
+                                    ],
+                                },
+                            },
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "foo2",
+                                            delete: 27..30,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        file_system_edits: [
+                            MoveFile {
+                                src: FileId(
+                                    3,
+                                ),
+                                anchor: FileId(
+                                    3,
+                                ),
+                                dst: "foo2.rs",
+                            },
+                        ],
+                        is_snippet: false,
+                    },
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_enum_variant_from_module_1() {
+        check(
+            "Baz",
+            r#"
+mod foo {
+    pub enum Foo { Bar<|> }
+}
+
+fn func(f: foo::Foo) {
+    match f {
+        foo::Foo::Bar => {}
+    }
+}
+"#,
+            r#"
+mod foo {
+    pub enum Foo { Baz }
+}
+
+fn func(f: foo::Foo) {
+    match f {
+        foo::Foo::Baz => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_enum_variant_from_module_2() {
+        check(
+            "baz",
+            r#"
+mod foo {
+    pub struct Foo { pub bar<|>: uint }
+}
+
+fn foo(f: foo::Foo) {
+    let _ = f.bar;
+}
+"#,
+            r#"
+mod foo {
+    pub struct Foo { pub baz: uint }
+}
+
+fn foo(f: foo::Foo) {
+    let _ = f.baz;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_parameter_to_self() {
+        check(
+            "self",
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(foo<|>: &mut Foo) -> i32 {
+        foo.i
+    }
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(&mut self) -> i32 {
+        self.i
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_self_to_parameter() {
+        check(
+            "foo",
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(&mut <|>self) -> i32 {
+        self.i
+    }
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(foo: &mut Foo) -> i32 {
+        foo.i
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_self_in_path_to_parameter() {
+        check(
+            "foo",
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(&self) -> i32 {
+        let self_var = 1;
+        self<|>.i
+    }
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(foo: &Foo) -> i32 {
+        let self_var = 1;
+        foo.i
+    }
+}
+"#,
+        );
     }
 }
