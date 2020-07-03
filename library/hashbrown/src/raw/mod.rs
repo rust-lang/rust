@@ -1456,7 +1456,9 @@ impl<T> RawIter<T> {
                 return;
             }
 
-            if b.as_ptr() <= self.iter.data.next_n(Group::WIDTH).as_ptr() {
+            if self.iter.next_ctrl < self.iter.end
+                && b.as_ptr() <= self.iter.data.next_n(Group::WIDTH).as_ptr()
+            {
                 // The iterator has not yet reached the bucket's group.
                 // We don't need to reload anything, but we do need to adjust the item count.
 
