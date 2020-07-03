@@ -27,8 +27,9 @@ do
   shift
 done
 
-docker_dir="`dirname $script`"
-ci_dir="`dirname $docker_dir`"
+script_dir="`dirname $script`"
+docker_dir="${script_dir}/host-$(uname -m)"
+ci_dir="`dirname $script_dir`"
 src_dir="`dirname $ci_dir`"
 root_dir="`dirname $src_dir`"
 
@@ -51,10 +52,14 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       rm -f "$copied_files"
       for i in $(sed -n -e 's/^COPY \(.*\) .*$/\1/p' "$docker_dir/$image/Dockerfile"); do
         # List the file names
-        find "$docker_dir/$i" -type f >> $copied_files
+        find "$script_dir/$i" -type f >> $copied_files
       done
       # Sort the file names and cat the content into the hash key
       sort $copied_files | xargs cat >> $hash_key
+
+      # Include the architecture in the hash key, since our Linux CI does not
+      # only run in x86_64 machines.
+      uname -m >> $hash_key
 
       docker --version >> $hash_key
       cksum=$(sha512sum $hash_key | \
@@ -73,10 +78,10 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
 
     dockerfile="$docker_dir/$image/Dockerfile"
     if [ -x /usr/bin/cygpath ]; then
-        context="`cygpath -w $docker_dir`"
+        context="`cygpath -w $script_dir`"
         dockerfile="`cygpath -w $dockerfile`"
     else
-        context="$docker_dir"
+        context="$script_dir"
     fi
     retry docker \
       build \
@@ -122,6 +127,28 @@ elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
       -
 else
     echo Invalid image: $image
+
+    # Check whether the image exists for other architectures
+    for arch_dir in "${script_dir}"/host-*; do
+        # Avoid checking non-directories and the current host architecture directory
+        if ! [[ -d "${arch_dir}" ]]; then
+            continue
+        fi
+        if [[ "${arch_dir}" = "${docker_dir}" ]]; then
+            continue
+        fi
+
+        arch_name="$(basename "${arch_dir}" | sed 's/^host-//')"
+        if [[ -f "${arch_dir}/${image}/Dockerfile" ]]; then
+            echo "Note: the image exists for the ${arch_name} host architecture"
+        elif [[ -f "${arch_dir}/disabled/${image}/Dockerfile" ]]; then
+            echo "Note: the disabled image exists for the ${arch_name} host architecture"
+        else
+            continue
+        fi
+        echo "Note: the current host architecture is $(uname -m)"
+    done
+
     exit 1
 fi
 

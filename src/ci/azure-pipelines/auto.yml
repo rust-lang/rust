@@ -151,7 +151,7 @@ jobs:
         NO_LLVM_ASSERTIONS: 1
       # MSVC tools tests
       x86_64-msvc-tools:
-        SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py
+        SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py
         INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json
 
       # 32/64-bit MinGW builds.
