@@ -17,12 +17,12 @@ where
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         thread_local! {
-            static CACHE: RefCell<FxHashMap<(usize, usize), Fingerprint>> =
+            static CACHE: RefCell<FxHashMap<usize, Fingerprint>> =
                 RefCell::new(Default::default());
         }
 
         let hash = CACHE.with(|cache| {
-            let key = (self.as_ptr() as usize, self.len());
+            let key = *self as *const ty::List<T> as usize;
             if let Some(&hash) = cache.borrow().get(&key) {
                 return hash;
             }
