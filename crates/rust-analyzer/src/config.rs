@@ -9,13 +9,14 @@
 
 use std::{ffi::OsString, path::PathBuf};
 
-use crate::diagnostics::DiagnosticsConfig;
 use flycheck::FlycheckConfig;
 use lsp_types::ClientCapabilities;
 use ra_db::AbsPathBuf;
 use ra_ide::{AssistConfig, CompletionConfig, HoverConfig, InlayHintsConfig};
 use ra_project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
 use serde::Deserialize;
+
+use crate::diagnostics::DiagnosticsConfig;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -182,8 +183,10 @@ impl Config {
         log::info!("Config::update({:#})", value);
 
         let client_caps = self.client_caps.clone();
+        let linked_projects = self.linked_projects.clone();
         *self = Config::new(self.root_path.clone());
         self.client_caps = client_caps;
+        self.linked_projects = linked_projects;
 
         set(value, "/withSysroot", &mut self.with_sysroot);
         set(value, "/diagnostics/enable", &mut self.publish_diagnostics);
