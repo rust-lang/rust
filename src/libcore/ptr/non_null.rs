@@ -204,6 +204,26 @@ impl<T> NonNull<[T]> {
     pub const fn len(self) -> usize {
         self.as_ptr().len()
     }
+
+    /// Returns a non-null pointer to the slice's buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_ptr, nonnull_slice_from_raw_parts)]
+    ///
+    /// use std::ptr::NonNull;
+    ///
+    /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
+    /// assert_eq!(slice.as_non_null_ptr(), NonNull::new(1 as *mut i8).unwrap());
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_ptr_ptr", issue = "none")]
+    #[rustc_const_unstable(feature = "const_slice_ptr_ptr", issue = "none")]
+    pub const fn as_non_null_ptr(self) -> NonNull<T> {
+        // SAFETY: We know `self` is non-null.
+        unsafe { NonNull::new_unchecked(self.as_ptr().as_mut_ptr()) }
+    }
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]

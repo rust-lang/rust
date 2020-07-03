@@ -93,6 +93,7 @@
 #![feature(const_slice_ptr_len)]
 #![feature(const_type_name)]
 #![feature(const_likely)]
+#![feature(const_slice_ptr_ptr)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]

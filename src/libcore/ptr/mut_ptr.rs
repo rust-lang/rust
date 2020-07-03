@@ -1041,12 +1041,12 @@ impl<T> *mut [T] {
     /// use std::ptr;
     ///
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
-    /// assert_eq!(slice.as_ptr(), 0 as *mut i8);
+    /// assert_eq!(slice.as_mut_ptr(), 0 as *mut i8);
     /// ```
     #[inline]
     #[unstable(feature = "slice_ptr_ptr", issue = "none")]
     #[rustc_const_unstable(feature = "const_slice_ptr_ptr", issue = "none")]
-    pub const fn as_ptr(self) -> *mut T {
+    pub const fn as_mut_ptr(self) -> *mut T {
         self as *mut T
     }
 }
