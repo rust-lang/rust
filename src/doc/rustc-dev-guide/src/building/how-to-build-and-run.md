@@ -95,10 +95,11 @@ The result is that compiling `rustc` is done in stages:
     particular, the stage1 compiler itself was built by stage0 and
     hence not by the source in your working directory: this means that
     the symbol names used in the compiler source may not match the
-    symbol names that would have been made by the stage1 compiler.
-    This can be important when using dynamic linking (e.g., with
-    derives). Sometimes this means that some tests don't work when run
-    with stage1.
+    symbol names that would have been made by the stage1 compiler. This is
+    important when using dynamic linking and the lack of ABI compatibility
+    between versions. This primarily manifests when tests try to link with any
+    of the `rustc_*` crates or use the (now deprecated) plugin infrastructure.
+    These tests are marked with `ignore-stage1`.
 - **Stage 2:** we rebuild our stage1 compiler with itself to produce
   the stage2 compiler (i.e. it builds itself) to have all the _latest
   optimizations_. (By default, we copy the stage1 libraries for use by
