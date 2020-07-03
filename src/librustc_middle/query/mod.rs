@@ -211,8 +211,7 @@ rustc_queries! {
 
         /// Fetch the MIR for a given `DefId` right after it's built - this includes
         /// unreachable code.
-        query mir_built(key: LocalDefId) -> Steal<mir::Body<'tcx>> {
-            storage(ArenaCacheSelector<'tcx>)
+        query mir_built(key: LocalDefId) -> &'tcx Steal<mir::Body<'tcx>> {
             desc { |tcx| "building MIR for `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
@@ -220,24 +219,23 @@ rustc_queries! {
         /// ready for const qualification.
         ///
         /// See the README for the `mir` module for details.
-        query mir_const(key: DefId) -> Steal<mir::Body<'tcx>> {
-            desc { |tcx| "processing MIR for `{}`", tcx.def_path_str(key)  }
-            storage(ArenaCacheSelector<'tcx>)
+        query mir_const(key: DefId) -> &'tcx Steal<mir::Body<'tcx>> {
+            desc { |tcx| "processing MIR for `{}`", tcx.def_path_str(key) }
             no_hash
         }
 
-        query mir_drops_elaborated_and_const_checked(key: LocalDefId) -> Steal<mir::Body<'tcx>> {
-            storage(ArenaCacheSelector<'tcx>)
+        query mir_drops_elaborated_and_const_checked(
+            key: ty::WithOptParam<LocalDefId>
+        ) -> &'tcx Steal<mir::Body<'tcx>> {
             no_hash
-            desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.to_def_id()) }
+            desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.did.to_def_id()) }
         }
 
         query mir_validated(key: LocalDefId) ->
             (
-                Steal<mir::Body<'tcx>>,
-                Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
+                &'tcx Steal<mir::Body<'tcx>>,
+                &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
             ) {
-            storage(ArenaCacheSelector<'tcx>)
             no_hash
             desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
         }
@@ -249,7 +247,10 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
         query optimized_mir_of_const_arg(key: ty::WithOptParam<LocalDefId>) -> &'tcx mir::Body<'tcx> {
-            desc { |tcx| "optimizing MIR for `{}`", tcx.def_path_str(key.did.to_def_id()) }
+            desc {
+                |tcx| "optimizing MIR for the potential const argument `{}`",
+                tcx.def_path_str(key.did.to_def_id())
+            }
         }
 
         /// Returns coverage summary info for a function, after executing the `InstrumentCoverage`
@@ -599,7 +600,7 @@ rustc_queries! {
     BorrowChecking {
         /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
-        query mir_borrowck(key: LocalDefId) -> mir::BorrowCheckResult<'tcx> {
+        query mir_borrowck(key: LocalDefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
             storage(ArenaCacheSelector<'tcx>)
             desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if(tcx, opt_result) {

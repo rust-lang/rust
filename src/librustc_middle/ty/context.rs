@@ -980,15 +980,15 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> Steal<Body<'tcx>> {
-        Steal::new(mir)
+    pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
+        self.arena.alloc(Steal::new(mir))
     }
 
     pub fn alloc_steal_promoted(
         self,
         promoted: IndexVec<Promoted, Body<'tcx>>,
-    ) -> Steal<IndexVec<Promoted, Body<'tcx>>> {
-        Steal::new(promoted)
+    ) -> &'tcx Steal<IndexVec<Promoted, Body<'tcx>>> {
+        self.arena.alloc(Steal::new(promoted))
     }
 
     pub fn alloc_adt_def(

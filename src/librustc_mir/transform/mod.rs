@@ -235,7 +235,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
 }
 
 /// Make MIR ready for const evaluation. This is run on all MIR, not just on consts!
-fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> Steal<Body<'_>> {
+fn mir_const<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
     let def_id = def_id.expect_local();
 
     // Unsafety check uses the raw mir, so make sure it is run.
@@ -267,7 +267,7 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> Steal<Body<'_>> {
 fn mir_validated(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> (Steal<Body<'tcx>>, Steal<IndexVec<Promoted, Body<'tcx>>>) {
+) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
     let _ = tcx.mir_const_qualif(def_id.to_def_id());
@@ -305,17 +305,24 @@ fn mir_validated(
 
 fn mir_drops_elaborated_and_const_checked<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-) -> Steal<Body<'tcx>> {
+    def: ty::WithOptParam<LocalDefId>,
+) -> &'tcx Steal<Body<'tcx>> {
+    if def.param_did.is_none() {
+        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
+            return tcx
+                .mir_drops_elaborated_and_const_checked(ty::WithOptParam { param_did, ..def });
+        }
+    }
+
     // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
-    tcx.ensure().mir_borrowck(def_id);
+    tcx.ensure().mir_borrowck(def.did);
 
-    let (body, _) = tcx.mir_validated(def_id);
+    let (body, _) = tcx.mir_validated(def.did);
     let mut body = body.steal();
 
-    run_post_borrowck_cleanup_passes(tcx, &mut body, def_id, None);
-    check_consts::post_drop_elaboration::check_live_drops(tcx, def_id, &body);
+    run_post_borrowck_cleanup_passes(tcx, &mut body, def.did, None);
+    check_consts::post_drop_elaboration::check_live_drops(tcx, def.did, &body);
     tcx.alloc_steal_mir(body)
 }
 
@@ -458,7 +465,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptParam<LocalDefId>) -> Bo
         return shim::build_adt_ctor(tcx, def.did.to_def_id());
     }
 
-    let mut body = tcx.mir_drops_elaborated_and_const_checked(def.did).steal();
+    let mut body = tcx.mir_drops_elaborated_and_const_checked(def).steal();
     run_optimization_passes(tcx, &mut body, def.did, None);
 
     debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");

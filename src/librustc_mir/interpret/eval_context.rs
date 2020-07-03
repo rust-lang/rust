@@ -411,7 +411,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match instance {
             ty::InstanceDef::Item(def) => {
                 if self.tcx.is_mir_available(def.did) {
-                    Ok(self.tcx.optimized_mir(def.did))
+                    if let Some(def) = def.as_local() {
+                        Ok(self.tcx.optimized_mir_of_const_arg(def))
+                    } else {
+                        Ok(self.tcx.optimized_mir(def.did))
+                    }
                 } else {
                     throw_unsup!(NoMirFor(def.did))
                 }

@@ -21,7 +21,7 @@ use rustc_target::spec::PanicStrategy;
 
 use super::lints;
 
-crate fn mir_built(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::steal::Steal<Body<'_>> {
+crate fn mir_built<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::steal::Steal<Body<'tcx>> {
     tcx.alloc_steal_mir(mir_build(tcx, def_id))
 }
 
