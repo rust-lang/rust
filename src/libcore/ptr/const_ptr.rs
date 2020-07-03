@@ -826,6 +826,27 @@ impl<T> *const [T] {
         // Only `std` can make this guarantee.
         unsafe { Repr { rust: self }.raw }.len
     }
+
+    /// Returns a raw pointer to the slice's buffer.
+    ///
+    /// This is equivalent to casting `self` to `*const T`, but more type-safe.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_ptr)]
+    ///
+    /// use std::ptr;
+    ///
+    /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
+    /// assert_eq!(slice.as_ptr(), 0 as *const i8);
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_ptr_ptr", issue = "none")]
+    #[rustc_const_unstable(feature = "const_slice_ptr_ptr", issue = "none")]
+    pub const fn as_ptr(self) -> *const T {
+        self as *const T
+    }
 }
 
 // Equality for pointers
