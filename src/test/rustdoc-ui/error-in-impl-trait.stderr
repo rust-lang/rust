@@ -1,0 +1,39 @@
+error[E0433]: failed to resolve: could not resolve path `error::_in::impl_trait`
+  --> $DIR/error-in-impl-trait.rs:9:5
+   |
+LL |     error::_in::impl_trait()
+   |     ^^^^^^^^^^^^^^^^^^^^^^ could not resolve path `error::_in::impl_trait`
+   |
+   = note: this error was originally ignored because you are running `rustdoc`
+   = note: try running again with `rustc` and you may get a more detailed error
+
+error[E0433]: failed to resolve: could not resolve path `error::_in::impl_trait::alias`
+  --> $DIR/error-in-impl-trait.rs:15:5
+   |
+LL |     error::_in::impl_trait::alias();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ could not resolve path `error::_in::impl_trait::alias`
+   |
+   = note: this error was originally ignored because you are running `rustdoc`
+   = note: try running again with `rustc` and you may get a more detailed error
+
+error[E0433]: failed to resolve: could not resolve path `error::_in::impl_trait::alias::nested::closure`
+  --> $DIR/error-in-impl-trait.rs:17:9
+   |
+LL |     (|| error::_in::impl_trait::alias::nested::closure())()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ could not resolve path `error::_in::impl_trait::alias::nested::closure`
+   |
+   = note: this error was originally ignored because you are running `rustdoc`
+   = note: try running again with `rustc` and you may get a more detailed error
+
+error[E0433]: failed to resolve: could not resolve path `error::_in::async_fn`
+  --> $DIR/error-in-impl-trait.rs:26:5
+   |
+LL |     error::_in::async_fn()
+   |     ^^^^^^^^^^^^^^^^^^^^ could not resolve path `error::_in::async_fn`
+   |
+   = note: this error was originally ignored because you are running `rustdoc`
+   = note: try running again with `rustc` and you may get a more detailed error
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

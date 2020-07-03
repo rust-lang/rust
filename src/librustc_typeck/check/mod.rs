@@ -955,7 +955,7 @@ where
     val.fold_with(&mut FixupFolder { tcx })
 }
 
-fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckTables<'tcx> {
+pub fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckTables<'tcx> {
     let fallback = move || tcx.type_of(def_id.to_def_id());
     typeck_tables_of_with_fallback(tcx, def_id, fallback)
 }

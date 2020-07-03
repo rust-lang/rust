@@ -94,6 +94,7 @@ pub fn main() {
         32_000_000 // 32MB on other platforms
     };
     rustc_driver::set_sigpipe_handler();
+    rustc_driver::install_ice_hook();
     env_logger::init_from_env("RUSTDOC_LOG");
     let res = std::thread::Builder::new()
         .stack_size(thread_stack_size)

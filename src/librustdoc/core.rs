@@ -375,6 +375,15 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         override_queries: Some(|_sess, local_providers, external_providers| {
             local_providers.lint_mod = |_, _| {};
             external_providers.lint_mod = |_, _| {};
+            //let old_typeck = local_providers.typeck_tables_of;
+            local_providers.typeck_tables_of = move |tcx, def_id| {
+                let hir = tcx.hir();
+                let body = hir.body(hir.body_owned_by(hir.as_local_hir_id(def_id)));
+                debug!("visiting body for {:?}", def_id);
+                EmitIgnoredResolutionErrors::new(&tcx.sess).visit_body(body);
+                rustc_typeck::check::typeck_tables_of(tcx, def_id)
+                //DEFAULT_TYPECK.with(|typeck| typeck(tcx, def_id))
+            };
         }),
         registry: rustc_driver::diagnostics_registry(),
     };
@@ -570,6 +579,75 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             })
         })
     })
+}
+
+use rustc_hir::def::Res;
+use rustc_hir::{
+    intravisit::{NestedVisitorMap, Visitor},
+    Path,
+};
+use rustc_middle::hir::map::Map;
+
+/*
+thread_local!(static DEFAULT_TYPECK: for<'tcx> fn(rustc_middle::ty::TyCtxt<'tcx>, rustc_span::def_id::LocalDefId) -> &'tcx rustc_middle::ty::TypeckTables<'tcx> = {
+    let mut providers = rustc_middle::ty::query::Providers::default();
+    rustc_typeck::provide(&mut providers);
+    providers.typeck_tables_of
+});
+*/
+
+/// Due to https://github.com/rust-lang/rust/pull/73566,
+/// the name resolution pass may find errors that are never emitted.
+/// If typeck is called after this happens, then we'll get an ICE:
+/// 'Res::Error found but not reported'. To avoid this, emit the errors now.
+struct EmitIgnoredResolutionErrors<'a> {
+    session: &'a Session,
+}
+
+impl<'a> EmitIgnoredResolutionErrors<'a> {
+    fn new(session: &'a Session) -> Self {
+        Self { session }
+    }
+}
+
+impl<'a> Visitor<'a> for EmitIgnoredResolutionErrors<'_> {
+    type Map = Map<'a>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        // If we visit nested bodies, then we will report errors twice for e.g. nested closures
+        NestedVisitorMap::None
+    }
+
+    fn visit_path(&mut self, path: &'v Path<'v>, _id: HirId) {
+        log::debug!("visiting path {:?}", path);
+        if path.res == Res::Err {
+            // We have less context here than in rustc_resolve,
+            // so we can only emit the name and span.
+            // However we can give a hint that rustc_resolve will have more info.
+            // NOTE: this is a very rare case (only 4 out of several hundred thousand crates in a crater run)
+            // NOTE: so it's ok for it to be slow
+            let label = format!(
+                "could not resolve path `{}`",
+                path.segments
+                    .iter()
+                    .map(|segment| segment.ident.as_str().to_string())
+                    .collect::<Vec<_>>()
+                    .join("::")
+            );
+            let mut err = rustc_errors::struct_span_err!(
+                self.session,
+                path.span,
+                E0433,
+                "failed to resolve: {}",
+                label
+            );
+            err.span_label(path.span, label);
+            err.note("this error was originally ignored because you are running `rustdoc`");
+            err.note("try running again with `rustc` and you may get a more detailed error");
+            err.emit();
+        }
+        // NOTE: this does _not_ visit the path segments
+    }
 }
 
 /// `DefId` or parameter index (`ty::ParamTy.index`) of a synthetic type parameter
