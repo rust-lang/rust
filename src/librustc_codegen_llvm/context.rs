@@ -1,4 +1,5 @@
 use crate::attributes;
+use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::coverageinfo;
 use crate::debuginfo;
@@ -22,7 +23,7 @@ use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::{HasDataLayout, LayoutOf, PointeeInfo, Size, TargetDataLayout, VariantIdx};
-use rustc_target::spec::{CodeModel, HasTargetSpec, RelocModel, Target, TlsModel};
+use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
@@ -96,16 +97,6 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
         TlsModel::LocalDynamic => llvm::ThreadLocalMode::LocalDynamic,
         TlsModel::InitialExec => llvm::ThreadLocalMode::InitialExec,
         TlsModel::LocalExec => llvm::ThreadLocalMode::LocalExec,
-    }
-}
-
-fn to_llvm_code_model(code_model: CodeModel) -> llvm::CodeModel {
-    match code_model {
-        CodeModel::Tiny => llvm::CodeModel::Tiny,
-        CodeModel::Small => llvm::CodeModel::Small,
-        CodeModel::Kernel => llvm::CodeModel::Kernel,
-        CodeModel::Medium => llvm::CodeModel::Medium,
-        CodeModel::Large => llvm::CodeModel::Large,
     }
 }
 
@@ -191,9 +182,7 @@ pub unsafe fn create_module(
         }
     }
 
-    if let Some(code_model) = sess.code_model() {
-        llvm::LLVMRustSetModuleCodeModel(llmod, to_llvm_code_model(code_model));
-    }
+    llvm::LLVMRustSetModuleCodeModel(llmod, to_llvm_code_model(sess.code_model()));
 
     // If skipping the PLT is enabled, we need to add some module metadata
     // to ensure intrinsic calls don't use it.
