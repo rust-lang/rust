@@ -541,6 +541,42 @@ mod ops {
 }
 
 #[test]
+fn infer_ops_index_int() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:std
+struct Bar;
+struct Foo;
+
+impl std::ops::Index<u32> for Bar {
+    type Output = Foo;
+}
+
+struct Range;
+impl std::ops::Index<Range> for Bar {
+    type Output = Bar;
+}
+
+fn test() {
+    let a = Bar;
+    let b = a[1];
+    b;
+  //^ Foo
+}
+
+//- /std.rs crate:std
+#[prelude_import] use ops::*;
+mod ops {
+    #[lang = "index"]
+    pub trait Index<Idx> {
+        type Output;
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn infer_ops_index_autoderef() {
     check_types(
         r#"
