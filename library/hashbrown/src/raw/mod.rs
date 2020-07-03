@@ -1490,7 +1490,6 @@ impl<T> RawIter<T> {
             //    We'll also need ot update the item count accordingly.
             if let Some(index) = self.iter.current_group.lowest_set_bit() {
                 let next_bucket = self.iter.data.next_n(index);
-                use core::cmp::Ordering;
                 if b.as_ptr() > next_bucket.as_ptr() {
                     // The toggled bucket is "before" the bucket the iterator would yield next. We
                     // therefore don't need to do anything --- the iterator has already passed the
