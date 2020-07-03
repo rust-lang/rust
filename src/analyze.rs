@@ -23,7 +23,7 @@ pub(crate) fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> IndexVec<Local, 
         for stmt in bb.statements.iter() {
             match &stmt.kind {
                 Assign(place_and_rval) => match &place_and_rval.1 {
-                    Rvalue::Ref(_, _, place) => {
+                    Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place)=> {
                         not_ssa(&mut flag_map, place.local)
                     }
                     _ => {}
