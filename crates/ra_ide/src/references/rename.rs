@@ -278,43 +278,67 @@ mod tests {
 
     use crate::{mock_analysis::analysis_and_position, FileId};
 
+    fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+        let ra_fixture_after = &trim_indent(ra_fixture_after);
+        let (analysis, position) = analysis_and_position(ra_fixture_before);
+        let source_change = analysis.rename(position, new_name).unwrap();
+        let mut text_edit_builder = TextEditBuilder::default();
+        let mut file_id: Option<FileId> = None;
+        if let Some(change) = source_change {
+            for edit in change.info.source_file_edits {
+                file_id = Some(edit.file_id);
+                for indel in edit.edit.into_iter() {
+                    text_edit_builder.replace(indel.delete, indel.insert);
+                }
+            }
+        }
+        let mut result = analysis.file_text(file_id.unwrap()).unwrap().to_string();
+        text_edit_builder.finish().apply(&mut result);
+        assert_eq_text!(ra_fixture_after, &*result);
+    }
+
     #[test]
     fn test_rename_to_underscore() {
-        test_rename(
-            r#"
-    fn main() {
-        let i<|> = 1;
-    }"#,
+        check(
             "_",
             r#"
-    fn main() {
-        let _ = 1;
-    }"#,
+fn main() {
+    let i<|> = 1;
+}
+"#,
+            r#"
+fn main() {
+    let _ = 1;
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_to_raw_identifier() {
-        test_rename(
-            r#"
-    fn main() {
-        let i<|> = 1;
-    }"#,
+        check(
             "r#fn",
             r#"
-    fn main() {
-        let r#fn = 1;
-    }"#,
+fn main() {
+    let i<|> = 1;
+}
+"#,
+            r#"
+fn main() {
+    let r#fn = 1;
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_to_invalid_identifier() {
         let (analysis, position) = analysis_and_position(
-            "
-    fn main() {
-        let i<|> = 1;
-    }",
+            r#"
+fn main() {
+    let i<|> = 1;
+}
+"#,
         );
         let new_name = "invalid!";
         let source_change = analysis.rename(position, new_name).unwrap();
@@ -323,312 +347,304 @@ mod tests {
 
     #[test]
     fn test_rename_for_local() {
-        test_rename(
-            r#"
-    fn main() {
-        let mut i = 1;
-        let j = 1;
-        i = i<|> + j;
-
-        {
-            i = 0;
-        }
-
-        i = 5;
-    }"#,
+        check(
             "k",
             r#"
-    fn main() {
-        let mut k = 1;
-        let j = 1;
-        k = k + j;
+fn main() {
+    let mut i = 1;
+    let j = 1;
+    i = i<|> + j;
 
-        {
-            k = 0;
-        }
+    {
+        i = 0;
+    }
 
-        k = 5;
-    }"#,
+    i = 5;
+}
+"#,
+            r#"
+fn main() {
+    let mut k = 1;
+    let j = 1;
+    k = k + j;
+
+    {
+        k = 0;
+    }
+
+    k = 5;
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_for_macro_args() {
-        test_rename(
-            r#"
-    macro_rules! foo {($i:ident) => {$i} }
-    fn main() {
-        let a<|> = "test";
-        foo!(a);
-    }"#,
+        check(
             "b",
             r#"
-    macro_rules! foo {($i:ident) => {$i} }
-    fn main() {
-        let b = "test";
-        foo!(b);
-    }"#,
+macro_rules! foo {($i:ident) => {$i} }
+fn main() {
+    let a<|> = "test";
+    foo!(a);
+}
+"#,
+            r#"
+macro_rules! foo {($i:ident) => {$i} }
+fn main() {
+    let b = "test";
+    foo!(b);
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_for_macro_args_rev() {
-        test_rename(
-            r#"
-    macro_rules! foo {($i:ident) => {$i} }
-    fn main() {
-        let a = "test";
-        foo!(a<|>);
-    }"#,
+        check(
             "b",
             r#"
-    macro_rules! foo {($i:ident) => {$i} }
-    fn main() {
-        let b = "test";
-        foo!(b);
-    }"#,
+macro_rules! foo {($i:ident) => {$i} }
+fn main() {
+    let a = "test";
+    foo!(a<|>);
+}
+"#,
+            r#"
+macro_rules! foo {($i:ident) => {$i} }
+fn main() {
+    let b = "test";
+    foo!(b);
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_for_macro_define_fn() {
-        test_rename(
-            r#"
-    macro_rules! define_fn {($id:ident) => { fn $id{} }}
-    define_fn!(foo);
-    fn main() {
-        fo<|>o();
-    }"#,
+        check(
             "bar",
             r#"
-    macro_rules! define_fn {($id:ident) => { fn $id{} }}
-    define_fn!(bar);
-    fn main() {
-        bar();
-    }"#,
+macro_rules! define_fn {($id:ident) => { fn $id{} }}
+define_fn!(foo);
+fn main() {
+    fo<|>o();
+}
+"#,
+            r#"
+macro_rules! define_fn {($id:ident) => { fn $id{} }}
+define_fn!(bar);
+fn main() {
+    bar();
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_for_macro_define_fn_rev() {
-        test_rename(
-            r#"
-    macro_rules! define_fn {($id:ident) => { fn $id{} }}
-    define_fn!(fo<|>o);
-    fn main() {
-        foo();
-    }"#,
+        check(
             "bar",
             r#"
-    macro_rules! define_fn {($id:ident) => { fn $id{} }}
-    define_fn!(bar);
-    fn main() {
-        bar();
-    }"#,
+macro_rules! define_fn {($id:ident) => { fn $id{} }}
+define_fn!(fo<|>o);
+fn main() {
+    foo();
+}
+"#,
+            r#"
+macro_rules! define_fn {($id:ident) => { fn $id{} }}
+define_fn!(bar);
+fn main() {
+    bar();
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_for_param_inside() {
-        test_rename(
-            r#"
-    fn foo(i : u32) -> u32 {
-        i<|>
-    }"#,
+        check(
             "j",
             r#"
-    fn foo(j : u32) -> u32 {
-        j
-    }"#,
+fn foo(i : u32) -> u32 {
+    i<|>
+}
+"#,
+            r#"
+fn foo(j : u32) -> u32 {
+    j
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_refs_for_fn_param() {
-        test_rename(
-            r#"
-    fn foo(i<|> : u32) -> u32 {
-        i
-    }"#,
+        check(
             "new_name",
             r#"
-    fn foo(new_name : u32) -> u32 {
-        new_name
-    }"#,
+fn foo(i<|> : u32) -> u32 {
+    i
+}
+"#,
+            r#"
+fn foo(new_name : u32) -> u32 {
+    new_name
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_for_mut_param() {
-        test_rename(
-            r#"
-    fn foo(mut i<|> : u32) -> u32 {
-        i
-    }"#,
+        check(
             "new_name",
             r#"
-    fn foo(mut new_name : u32) -> u32 {
-        new_name
-    }"#,
+fn foo(mut i<|> : u32) -> u32 {
+    i
+}
+"#,
+            r#"
+fn foo(mut new_name : u32) -> u32 {
+    new_name
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_struct_field() {
-        test_rename(
-            r#"
-    struct Foo {
-        i<|>: i32,
-    }
-
-    impl Foo {
-        fn new(i: i32) -> Self {
-            Self { i: i }
-        }
-    }
-    "#,
+        check(
             "j",
             r#"
-    struct Foo {
-        j: i32,
-    }
+struct Foo { i<|>: i32 }
 
-    impl Foo {
-        fn new(i: i32) -> Self {
-            Self { j: i }
-        }
+impl Foo {
+    fn new(i: i32) -> Self {
+        Self { i: i }
     }
-    "#,
+}
+"#,
+            r#"
+struct Foo { j: i32 }
+
+impl Foo {
+    fn new(i: i32) -> Self {
+        Self { j: i }
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_struct_field_for_shorthand() {
         mark::check!(test_rename_struct_field_for_shorthand);
-        test_rename(
-            r#"
-    struct Foo {
-        i<|>: i32,
-    }
-
-    impl Foo {
-        fn new(i: i32) -> Self {
-            Self { i }
-        }
-    }
-    "#,
+        check(
             "j",
             r#"
-    struct Foo {
-        j: i32,
-    }
+struct Foo { i<|>: i32 }
 
-    impl Foo {
-        fn new(i: i32) -> Self {
-            Self { j: i }
-        }
+impl Foo {
+    fn new(i: i32) -> Self {
+        Self { i }
     }
-    "#,
+}
+"#,
+            r#"
+struct Foo { j: i32 }
+
+impl Foo {
+    fn new(i: i32) -> Self {
+        Self { j: i }
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn test_rename_local_for_field_shorthand() {
         mark::check!(test_rename_local_for_field_shorthand);
-        test_rename(
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn new(i<|>: i32) -> Self {
-            Self { i }
-        }
-    }
-    "#,
+        check(
             "j",
             r#"
-    struct Foo {
-        i: i32,
-    }
+struct Foo { i: i32 }
 
-    impl Foo {
-        fn new(j: i32) -> Self {
-            Self { i: j }
-        }
+impl Foo {
+    fn new(i<|>: i32) -> Self {
+        Self { i }
     }
-    "#,
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn new(j: i32) -> Self {
+        Self { i: j }
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn test_field_shorthand_correct_struct() {
-        test_rename(
-            r#"
-    struct Foo {
-        i<|>: i32,
-    }
-
-    struct Bar {
-        i: i32,
-    }
-
-    impl Bar {
-        fn new(i: i32) -> Self {
-            Self { i }
-        }
-    }
-    "#,
+        check(
             "j",
             r#"
-    struct Foo {
-        j: i32,
-    }
+struct Foo { i<|>: i32 }
 
-    struct Bar {
-        i: i32,
-    }
+struct Bar { i: i32 }
 
-    impl Bar {
-        fn new(i: i32) -> Self {
-            Self { i }
-        }
+impl Bar {
+    fn new(i: i32) -> Self {
+        Self { i }
     }
-    "#,
+}
+"#,
+            r#"
+struct Foo { j: i32 }
+
+struct Bar { i: i32 }
+
+impl Bar {
+    fn new(i: i32) -> Self {
+        Self { i }
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn test_shadow_local_for_struct_shorthand() {
-        test_rename(
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    fn baz(i<|>: i32) -> Self {
-         let x = Foo { i };
-         {
-             let i = 0;
-             Foo { i }
-         }
-     }
-    "#,
+        check(
             "j",
             r#"
-    struct Foo {
-        i: i32,
-    }
+struct Foo { i: i32 }
 
-    fn baz(j: i32) -> Self {
-         let x = Foo { i: j };
-         {
-             let i = 0;
-             Foo { i }
-         }
+fn baz(i<|>: i32) -> Self {
+     let x = Foo { i };
+     {
+         let i = 0;
+         Foo { i }
      }
-    "#,
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+fn baz(j: i32) -> Self {
+     let x = Foo { i: j };
+     {
+         let i = 0;
+         Foo { i }
+     }
+}
+"#,
         );
     }
 
@@ -811,24 +827,26 @@ mod fo<|>o;
 
     #[test]
     fn test_module_rename_in_path() {
-        test_rename(
-            r#"
-    mod <|>foo {
-        pub fn bar() {}
-    }
-
-    fn main() {
-        foo::bar();
-    }"#,
+        check(
             "baz",
             r#"
-    mod baz {
-        pub fn bar() {}
-    }
+mod <|>foo {
+    pub fn bar() {}
+}
 
-    fn main() {
-        baz::bar();
-    }"#,
+fn main() {
+    foo::bar();
+}
+"#,
+            r#"
+mod baz {
+    pub fn bar() {}
+}
+
+fn main() {
+    baz::bar();
+}
+"#,
         );
     }
 
@@ -905,171 +923,136 @@ pub mod foo<|>;
 
     #[test]
     fn test_enum_variant_from_module_1() {
-        test_rename(
-            r#"
-    mod foo {
-        pub enum Foo {
-            Bar<|>,
-        }
-    }
-
-    fn func(f: foo::Foo) {
-        match f {
-            foo::Foo::Bar => {}
-        }
-    }
-    "#,
+        check(
             "Baz",
             r#"
-    mod foo {
-        pub enum Foo {
-            Baz,
-        }
+mod foo {
+    pub enum Foo {
+        Bar<|>,
     }
+}
 
-    fn func(f: foo::Foo) {
-        match f {
-            foo::Foo::Baz => {}
-        }
+fn func(f: foo::Foo) {
+    match f {
+        foo::Foo::Bar => {}
     }
-    "#,
+}
+"#,
+            r#"
+mod foo {
+    pub enum Foo {
+        Baz,
+    }
+}
+
+fn func(f: foo::Foo) {
+    match f {
+        foo::Foo::Baz => {}
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn test_enum_variant_from_module_2() {
-        test_rename(
-            r#"
-    mod foo {
-        pub struct Foo {
-            pub bar<|>: uint,
-        }
-    }
-
-    fn foo(f: foo::Foo) {
-        let _ = f.bar;
-    }
-    "#,
+        check(
             "baz",
             r#"
-    mod foo {
-        pub struct Foo {
-            pub baz: uint,
-        }
-    }
+mod foo {
+    pub struct Foo { pub bar<|>: uint }
+}
 
-    fn foo(f: foo::Foo) {
-        let _ = f.baz;
-    }
-    "#,
+fn foo(f: foo::Foo) {
+    let _ = f.bar;
+}
+"#,
+            r#"
+mod foo {
+    pub struct Foo { pub baz: uint }
+}
+
+fn foo(f: foo::Foo) {
+    let _ = f.baz;
+}
+"#,
         );
     }
 
     #[test]
     fn test_parameter_to_self() {
-        test_rename(
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn f(foo<|>: &mut Foo) -> i32 {
-            foo.i
-        }
-    }
-    "#,
+        check(
             "self",
             r#"
-    struct Foo {
-        i: i32,
-    }
+struct Foo { i: i32 }
 
-    impl Foo {
-        fn f(&mut self) -> i32 {
-            self.i
-        }
+impl Foo {
+    fn f(foo<|>: &mut Foo) -> i32 {
+        foo.i
     }
-    "#,
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(&mut self) -> i32 {
+        self.i
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn test_self_to_parameter() {
-        test_rename(
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn f(&mut <|>self) -> i32 {
-            self.i
-        }
-    }
-    "#,
+        check(
             "foo",
             r#"
-    struct Foo {
-        i: i32,
-    }
+struct Foo { i: i32 }
 
-    impl Foo {
-        fn f(foo: &mut Foo) -> i32 {
-            foo.i
-        }
+impl Foo {
+    fn f(&mut <|>self) -> i32 {
+        self.i
     }
-    "#,
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(foo: &mut Foo) -> i32 {
+        foo.i
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn test_self_in_path_to_parameter() {
-        test_rename(
-            r#"
-    struct Foo {
-        i: i32,
-    }
-
-    impl Foo {
-        fn f(&self) -> i32 {
-            let self_var = 1;
-            self<|>.i
-        }
-    }
-    "#,
+        check(
             "foo",
             r#"
-    struct Foo {
-        i: i32,
-    }
+struct Foo { i: i32 }
 
-    impl Foo {
-        fn f(foo: &Foo) -> i32 {
-            let self_var = 1;
-            foo.i
-        }
+impl Foo {
+    fn f(&self) -> i32 {
+        let self_var = 1;
+        self<|>.i
     }
-    "#,
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(foo: &Foo) -> i32 {
+        let self_var = 1;
+        foo.i
+    }
+}
+"#,
         );
-    }
-
-    fn test_rename(ra_fixture_before: &str, new_name: &str, ra_fixture_after: &str) {
-        let ra_fixture_after = &trim_indent(ra_fixture_after);
-        let (analysis, position) = analysis_and_position(ra_fixture_before);
-        let source_change = analysis.rename(position, new_name).unwrap();
-        let mut text_edit_builder = TextEditBuilder::default();
-        let mut file_id: Option<FileId> = None;
-        if let Some(change) = source_change {
-            for edit in change.info.source_file_edits {
-                file_id = Some(edit.file_id);
-                for indel in edit.edit.into_iter() {
-                    text_edit_builder.replace(indel.delete, indel.insert);
-                }
-            }
-        }
-        let mut result = analysis.file_text(file_id.unwrap()).unwrap().to_string();
-        text_edit_builder.finish().apply(&mut result);
-        assert_eq_text!(ra_fixture_after, &*result);
     }
 }
