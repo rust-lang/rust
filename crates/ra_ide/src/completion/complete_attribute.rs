@@ -46,7 +46,7 @@ fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attr
             _ => {}
         }
 
-        if attribute.kind() == ast::AttrKind::Inner || !attr_completion.should_be_inner {
+        if attribute.kind() == ast::AttrKind::Inner || !attr_completion.prefer_inner {
             acc.add(item);
         }
     }
@@ -56,159 +56,72 @@ struct AttrCompletion {
     label: &'static str,
     lookup: Option<&'static str>,
     snippet: Option<&'static str>,
-    should_be_inner: bool,
+    prefer_inner: bool,
+}
+
+impl AttrCompletion {
+    const fn prefer_inner(self) -> AttrCompletion {
+        AttrCompletion { prefer_inner: true, ..self }
+    }
+}
+
+const fn attr(
+    label: &'static str,
+    lookup: Option<&'static str>,
+    snippet: Option<&'static str>,
+) -> AttrCompletion {
+    AttrCompletion { label, lookup, snippet, prefer_inner: false }
 }
 
 const ATTRIBUTES: &[AttrCompletion] = &[
-    AttrCompletion {
-        label: "allow(…)",
-        snippet: Some("allow(${0:lint})"),
-        should_be_inner: false,
-        lookup: Some("allow"),
-    },
-    AttrCompletion {
-        label: "cfg_attr(…)",
-        snippet: Some("cfg_attr(${1:predicate}, ${0:attr})"),
-        should_be_inner: false,
-        lookup: Some("cfg_attr"),
-    },
-    AttrCompletion {
-        label: "cfg(…)",
-        snippet: Some("cfg(${0:predicate})"),
-        should_be_inner: false,
-        lookup: Some("cfg"),
-    },
-    AttrCompletion {
-        label: "deny(…)",
-        snippet: Some("deny(${0:lint})"),
-        should_be_inner: false,
-        lookup: Some("deny"),
-    },
-    AttrCompletion {
-        label: r#"deprecated = "…""#,
-        snippet: Some(r#"deprecated = "${0:reason}""#),
-        should_be_inner: false,
-        lookup: Some("deprecated"),
-    },
-    AttrCompletion {
-        label: "derive(…)",
-        snippet: Some(r#"derive(${0:Debug})"#),
-        should_be_inner: false,
-        lookup: Some("derive"),
-    },
-    AttrCompletion {
-        label: r#"doc = "…""#,
-        snippet: Some(r#"doc = "${0:docs}""#),
-        should_be_inner: false,
-        lookup: Some("doc"),
-    },
-    AttrCompletion {
-        label: "feature(…)",
-        snippet: Some("feature(${0:flag})"),
-        should_be_inner: true,
-        lookup: Some("feature"),
-    },
-    AttrCompletion {
-        label: "forbid(…)",
-        snippet: Some("forbid(${0:lint})"),
-        should_be_inner: false,
-        lookup: Some("forbid"),
-    },
+    attr("allow(…)", Some("allow"), Some("allow(${0:lint})")),
+    attr("cfg_attr(…)", Some("cfg_attr"), Some("cfg_attr(${1:predicate}, ${0:attr})")),
+    attr("cfg(…)", Some("cfg"), Some("cfg(${0:predicate})")),
+    attr("deny(…)", Some("deny"), Some("deny(${0:lint})")),
+    attr(r#"deprecated = "…""#, Some("deprecated"), Some(r#"deprecated = "${0:reason}""#)),
+    attr("derive(…)", Some("derive"), Some(r#"derive(${0:Debug})"#)),
+    attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
+    attr("feature(…)", Some("feature"), Some("feature(${0:flag})")).prefer_inner(),
+    attr("forbid(…)", Some("forbid"), Some("forbid(${0:lint})")),
     // FIXME: resolve through macro resolution?
-    AttrCompletion {
-        label: "global_allocator",
-        snippet: None,
-        should_be_inner: true,
-        lookup: None,
-    },
-    AttrCompletion {
-        label: "ignore(…)",
-        snippet: Some("ignore(${0:lint})"),
-        should_be_inner: false,
-        lookup: Some("ignore"),
-    },
-    AttrCompletion {
-        label: "inline(…)",
-        snippet: Some("inline(${0:lint})"),
-        should_be_inner: false,
-        lookup: Some("inline"),
-    },
-    AttrCompletion {
-        label: r#"link_name = "…""#,
-        snippet: Some(r#"link_name = "${0:symbol_name}""#),
-        should_be_inner: false,
-        lookup: Some("link_name"),
-    },
-    AttrCompletion { label: "link", snippet: None, should_be_inner: false, lookup: None },
-    AttrCompletion { label: "macro_export", snippet: None, should_be_inner: false, lookup: None },
-    AttrCompletion { label: "macro_use", snippet: None, should_be_inner: false, lookup: None },
-    AttrCompletion {
-        label: r#"must_use = "…""#,
-        snippet: Some(r#"must_use = "${0:reason}""#),
-        should_be_inner: false,
-        lookup: Some("must_use"),
-    },
-    AttrCompletion { label: "no_mangle", snippet: None, should_be_inner: false, lookup: None },
-    AttrCompletion { label: "no_std", snippet: None, should_be_inner: true, lookup: None },
-    AttrCompletion { label: "non_exhaustive", snippet: None, should_be_inner: false, lookup: None },
-    AttrCompletion { label: "panic_handler", snippet: None, should_be_inner: true, lookup: None },
-    AttrCompletion {
-        label: "path = \"…\"",
-        snippet: Some("path =\"${0:path}\""),
-        should_be_inner: false,
-        lookup: Some("path"),
-    },
-    AttrCompletion { label: "proc_macro", snippet: None, should_be_inner: false, lookup: None },
-    AttrCompletion {
-        label: "proc_macro_attribute",
-        snippet: None,
-        should_be_inner: false,
-        lookup: None,
-    },
-    AttrCompletion {
-        label: "proc_macro_derive(…)",
-        snippet: Some("proc_macro_derive(${0:Trait})"),
-        should_be_inner: false,
-        lookup: Some("proc_macro_derive"),
-    },
-    AttrCompletion {
-        label: "recursion_limit = …",
-        snippet: Some("recursion_limit = ${0:128}"),
-        should_be_inner: true,
-        lookup: Some("recursion_limit"),
-    },
-    AttrCompletion {
-        label: "repr(…)",
-        snippet: Some("repr(${0:C})"),
-        should_be_inner: false,
-        lookup: Some("repr"),
-    },
-    AttrCompletion {
-        label: "should_panic(…)",
-        snippet: Some(r#"should_panic(expected = "${0:reason}")"#),
-        should_be_inner: false,
-        lookup: Some("should_panic"),
-    },
-    AttrCompletion {
-        label: r#"target_feature = "…""#,
-        snippet: Some("target_feature = \"${0:feature}\""),
-        should_be_inner: false,
-        lookup: Some("target_feature"),
-    },
-    AttrCompletion { label: "test", snippet: None, should_be_inner: false, lookup: None },
-    AttrCompletion { label: "used", snippet: None, should_be_inner: false, lookup: None },
-    AttrCompletion {
-        label: "warn(…)",
-        snippet: Some("warn(${0:lint})"),
-        should_be_inner: false,
-        lookup: Some("warn"),
-    },
-    AttrCompletion {
-        label: r#"windows_subsystem = "…""#,
-        snippet: Some(r#"windows_subsystem = "${0:subsystem}""#),
-        should_be_inner: true,
-        lookup: Some("windows_subsystem"),
-    },
+    attr("global_allocator", None, None).prefer_inner(),
+    attr("ignore(…)", Some("ignore"), Some("ignore(${0:lint})")),
+    attr("inline(…)", Some("inline"), Some("inline(${0:lint})")),
+    attr(r#"link_name = "…""#, Some("link_name"), Some(r#"link_name = "${0:symbol_name}""#)),
+    attr("link", None, None),
+    attr("macro_export", None, None),
+    attr("macro_use", None, None),
+    attr(r#"must_use = "…""#, Some("must_use"), Some(r#"must_use = "${0:reason}""#)),
+    attr("no_mangle", None, None),
+    attr("no_std", None, None).prefer_inner(),
+    attr("non_exhaustive", None, None),
+    attr("panic_handler", None, None).prefer_inner(),
+    attr("path = \"…\"", Some("path"), Some("path =\"${0:path}\"")),
+    attr("proc_macro", None, None),
+    attr("proc_macro_attribute", None, None),
+    attr("proc_macro_derive(…)", Some("proc_macro_derive"), Some("proc_macro_derive(${0:Trait})")),
+    attr("recursion_limit = …", Some("recursion_limit"), Some("recursion_limit = ${0:128}"))
+        .prefer_inner(),
+    attr("repr(…)", Some("repr"), Some("repr(${0:C})")),
+    attr(
+        "should_panic(…)",
+        Some("should_panic"),
+        Some(r#"should_panic(expected = "${0:reason}")"#),
+    ),
+    attr(
+        r#"target_feature = "…""#,
+        Some("target_feature"),
+        Some("target_feature = \"${0:feature}\""),
+    ),
+    attr("test", None, None),
+    attr("used", None, None),
+    attr("warn(…)", Some("warn"), Some("warn(${0:lint})")),
+    attr(
+        r#"windows_subsystem = "…""#,
+        Some("windows_subsystem"),
+        Some(r#"windows_subsystem = "${0:subsystem}""#),
+    )
+    .prefer_inner(),
 ];
 
 fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input: ast::TokenTree) {
