@@ -83,8 +83,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(PatternTypeMismatch => [PATTERN_TYPE_MISMATCH]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PatternTypeMismatch {
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Local(ref local) = stmt.kind {
             if let Some(init) = &local.init {
                 if let Some(init_ty) = cx.tables().node_type_opt(init.hir_id) {
@@ -102,7 +102,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PatternTypeMismatch {
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Match(ref expr, arms, source) = expr.kind {
             match source {
                 MatchSource::Normal | MatchSource::IfLetDesugar { .. } | MatchSource::WhileLetDesugar => {
@@ -125,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PatternTypeMismatch {
 
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         _: intravisit::FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
@@ -146,8 +146,8 @@ enum DerefPossible {
     Impossible,
 }
 
-fn apply_lint<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn apply_lint<'tcx>(
+    cx: &LateContext<'tcx>,
     pat: &Pat<'_>,
     expr_ty: Ty<'tcx>,
     deref_possible: DerefPossible,
@@ -185,8 +185,8 @@ enum Level {
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
-fn find_first_mismatch<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn find_first_mismatch<'tcx>(
+    cx: &LateContext<'tcx>,
     pat: &Pat<'_>,
     ty: Ty<'tcx>,
     level: Level,
@@ -259,8 +259,8 @@ fn get_variant<'a>(adt_def: &'a AdtDef, qpath: &QPath<'_>) -> Option<&'a Variant
     None
 }
 
-fn find_first_mismatch_in_tuple<'a, 'tcx, I>(
-    cx: &LateContext<'a, 'tcx>,
+fn find_first_mismatch_in_tuple<'tcx, I>(
+    cx: &LateContext<'tcx>,
     pats: &[&Pat<'_>],
     ty_iter_src: I,
 ) -> Option<(Span, Mutability, Level)>
@@ -284,8 +284,8 @@ where
     None
 }
 
-fn find_first_mismatch_in_struct<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn find_first_mismatch_in_struct<'tcx>(
+    cx: &LateContext<'tcx>,
     field_pats: &[FieldPat<'_>],
     field_defs: &[FieldDef],
     substs_ref: SubstsRef<'tcx>,
