@@ -1428,7 +1428,8 @@ impl<T> RawIter<T> {
     /// For the iterator to remain valid, this method must be called once
     /// for each removed bucket before `next` is called again.
     ///
-    /// This method should be called _before_ the removal is made.
+    /// This method should be called _before_ the removal is made. It is not necessary to call this
+    /// method if you are removing an item that this iterator yielded in the past.
     #[cfg(feature = "raw")]
     pub fn reflect_remove(&mut self, b: &Bucket<T>) {
         self.reflect_toggle_full(b, false);
