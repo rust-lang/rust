@@ -116,8 +116,7 @@ fn rename_mod(
             } else {
                 format!("{}.rs", new_name)
             };
-            let move_file =
-                FileSystemEdit::MoveFile { src: file_id, anchor: position.file_id, dst };
+            let move_file = FileSystemEdit::MoveFile { src: file_id, anchor: file_id, dst };
             file_system_edits.push(move_file);
         }
         ModuleSource::Module(..) => {}
@@ -621,7 +620,7 @@ mod foo<|>;
                                     3,
                                 ),
                                 anchor: FileId(
-                                    2,
+                                    3,
                                 ),
                                 dst: "foo2.rs",
                             },
@@ -687,7 +686,7 @@ use crate::foo<|>::FooContent;
                                     2,
                                 ),
                                 anchor: FileId(
-                                    3,
+                                    2,
                                 ),
                                 dst: "quux.rs",
                             },
@@ -734,9 +733,57 @@ mod fo<|>o;
                                     2,
                                 ),
                                 anchor: FileId(
-                                    1,
+                                    2,
                                 ),
                                 dst: "../foo2/mod.rs",
+                            },
+                        ],
+                        is_snippet: false,
+                    },
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_rename_unusually_nested_mod() {
+        check_expect(
+            "bar",
+            r#"
+//- /lib.rs
+mod outer { mod fo<|>o; }
+
+//- /outer/foo.rs
+// emtpy
+"#,
+            expect![[r#"
+                RangeInfo {
+                    range: 16..19,
+                    info: SourceChange {
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "bar",
+                                            delete: 16..19,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        file_system_edits: [
+                            MoveFile {
+                                src: FileId(
+                                    2,
+                                ),
+                                anchor: FileId(
+                                    2,
+                                ),
+                                dst: "bar.rs",
                             },
                         ],
                         is_snippet: false,
@@ -818,7 +865,7 @@ pub mod foo<|>;
                                     3,
                                 ),
                                 anchor: FileId(
-                                    2,
+                                    3,
                                 ),
                                 dst: "foo2.rs",
                             },
