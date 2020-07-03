@@ -290,7 +290,11 @@ fn local_place<'tcx>(
     is_ssa: bool,
 ) -> CPlace<'tcx> {
     let place = if is_ssa {
-        CPlace::new_var(fx, local, layout)
+        if let rustc_target::abi::Abi::ScalarPair(_, _) = layout.abi {
+            CPlace::new_var_pair(fx, local, layout)
+        } else {
+            CPlace::new_var(fx, local, layout)
+        }
     } else {
         CPlace::new_stack_slot(fx, layout)
     };
