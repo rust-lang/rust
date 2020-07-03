@@ -105,6 +105,17 @@ impl Key for DefId {
     }
 }
 
+impl Key for ty::WithOptParam<LocalDefId> {
+    type CacheSelector = DefaultCacheSelector;
+
+    fn query_crate(&self) -> CrateNum {
+        self.did.query_crate()
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.did.default_span(tcx)
+    }
+}
+
 impl Key for (DefId, DefId) {
     type CacheSelector = DefaultCacheSelector;
 

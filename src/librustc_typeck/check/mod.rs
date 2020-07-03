@@ -764,6 +764,7 @@ pub fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
         typeck_item_bodies,
+        typeck_tables_of_const_arg,
         typeck_tables_of,
         diagnostic_only_typeck_tables_of,
         has_typeck_tables,
@@ -955,9 +956,25 @@ where
     val.fold_with(&mut FixupFolder { tcx })
 }
 
+fn typeck_tables_of_const_arg<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::WithOptParam<LocalDefId>,
+) -> &ty::TypeckTables<'tcx> {
+    if let Some(param_did) = def.param_did {
+        let fallback = move || tcx.type_of(param_did);
+        typeck_tables_of_with_fallback(tcx, def.did, fallback)
+    } else {
+        tcx.typeck_tables_of(def.did)
+    }
+}
+
 fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckTables<'tcx> {
-    let fallback = move || tcx.type_of(def_id.to_def_id());
-    typeck_tables_of_with_fallback(tcx, def_id, fallback)
+    if let param_did @ Some(_) = tcx.opt_const_param_of(def_id) {
+        tcx.typeck_tables_of_const_arg(ty::WithOptParam { did: def_id, param_did })
+    } else {
+        let fallback = move || tcx.type_of(def_id.to_def_id());
+        typeck_tables_of_with_fallback(tcx, def_id, fallback)
+    }
 }
 
 /// Used only to get `TypeckTables` for type inference during error recovery.

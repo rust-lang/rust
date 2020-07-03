@@ -556,6 +556,14 @@ rustc_queries! {
             desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
         }
+        query typeck_tables_of_const_arg(
+            key: ty::WithOptParam<LocalDefId>
+        ) -> &'tcx ty::TypeckTables<'tcx> {
+            desc {
+                |tcx| "type-checking the potential const argument `{}`",
+                tcx.def_path_str(key.did.to_def_id()),
+            }
+        }
         query diagnostic_only_typeck_tables_of(key: LocalDefId) -> &'tcx ty::TypeckTables<'tcx> {
             desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
