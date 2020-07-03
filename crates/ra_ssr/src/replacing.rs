@@ -31,7 +31,11 @@ fn matches_to_edit_at_offset(
 
 fn render_replace(match_info: &Match, file_src: &str) -> String {
     let mut out = String::new();
-    for r in &match_info.template.tokens {
+    let template = match_info
+        .template
+        .as_ref()
+        .expect("You called MatchFinder::edits after calling MatchFinder::add_search_pattern");
+    for r in &template.tokens {
         match r {
             PatternElement::Token(t) => out.push_str(t.text.as_str()),
             PatternElement::Placeholder(p) => {

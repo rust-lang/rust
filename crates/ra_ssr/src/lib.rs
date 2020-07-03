@@ -13,35 +13,27 @@ mod tests;
 
 pub use crate::errors::SsrError;
 pub use crate::matching::Match;
-use crate::matching::{record_match_fails_reasons_scope, MatchFailureReason};
+use crate::matching::MatchFailureReason;
 use hir::Semantics;
+use parsing::SsrTemplate;
 use ra_db::{FileId, FileRange};
-use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, TextRange};
+use ra_syntax::{ast, AstNode, SyntaxNode, TextRange};
 use ra_text_edit::TextEdit;
-use rustc_hash::FxHashMap;
 
 // A structured search replace rule. Create by calling `parse` on a str.
 #[derive(Debug)]
 pub struct SsrRule {
     /// A structured pattern that we're searching for.
-    pattern: SsrPattern,
+    pattern: parsing::RawPattern,
     /// What we'll replace it with.
-    template: parsing::SsrTemplate,
+    template: SsrTemplate,
+    parsed_rules: Vec<parsing::ParsedRule>,
 }
 
 #[derive(Debug)]
 pub struct SsrPattern {
-    raw: parsing::RawSearchPattern,
-    /// Placeholders keyed by the stand-in ident that we use in Rust source code.
-    placeholders_by_stand_in: FxHashMap<SmolStr, parsing::Placeholder>,
-    // We store our search pattern, parsed as each different kind of thing we can look for. As we
-    // traverse the AST, we get the appropriate one of these for the type of node we're on. For many
-    // search patterns, only some of these will be present.
-    expr: Option<SyntaxNode>,
-    type_ref: Option<SyntaxNode>,
-    item: Option<SyntaxNode>,
-    path: Option<SyntaxNode>,
-    pattern: Option<SyntaxNode>,
+    raw: parsing::RawPattern,
+    parsed_rules: Vec<parsing::ParsedRule>,
 }
 
 #[derive(Debug, Default)]
@@ -53,7 +45,7 @@ pub struct SsrMatches {
 pub struct MatchFinder<'db> {
     /// Our source of information about the user's code.
     sema: Semantics<'db, ra_ide_db::RootDatabase>,
-    rules: Vec<SsrRule>,
+    rules: Vec<parsing::ParsedRule>,
 }
 
 impl<'db> MatchFinder<'db> {
@@ -61,14 +53,17 @@ impl<'db> MatchFinder<'db> {
         MatchFinder { sema: Semantics::new(db), rules: Vec::new() }
     }
 
+    /// Adds a rule to be applied. The order in which rules are added matters. Earlier rules take
+    /// precedence. If a node is matched by an earlier rule, then later rules won't be permitted to
+    /// match to it.
     pub fn add_rule(&mut self, rule: SsrRule) {
-        self.rules.push(rule);
+        self.add_parsed_rules(rule.parsed_rules);
     }
 
     /// Adds a search pattern. For use if you intend to only call `find_matches_in_file`. If you
     /// intend to do replacement, use `add_rule` instead.
     pub fn add_search_pattern(&mut self, pattern: SsrPattern) {
-        self.add_rule(SsrRule { pattern, template: "()".parse().unwrap() })
+        self.add_parsed_rules(pattern.parsed_rules);
     }
 
     pub fn edits_for_file(&self, file_id: FileId) -> Option<TextEdit> {
@@ -113,6 +108,14 @@ impl<'db> MatchFinder<'db> {
             base = end;
         }
         res
+    }
+
+    fn add_parsed_rules(&mut self, parsed_rules: Vec<parsing::ParsedRule>) {
+        // FIXME: This doesn't need to be a for loop, but does in a subsequent commit. Justify it
+        // being a for-loop.
+        for parsed_rule in parsed_rules {
+            self.rules.push(parsed_rule);
+        }
     }
 
     fn find_matches(
@@ -177,8 +180,13 @@ impl<'db> MatchFinder<'db> {
             }
             if node_range.range == range.range {
                 for rule in &self.rules {
-                    let pattern =
-                        rule.pattern.tree_for_kind_with_reason(node.kind()).map(|p| p.clone());
+                    // For now we ignore rules that have a different kind than our node, otherwise
+                    // we get lots of noise. If at some point we add support for restricting rules
+                    // to a particular kind of thing (e.g. only match type references), then we can
+                    // relax this.
+                    if rule.pattern.kind() != node.kind() {
+                        continue;
+                    }
                     out.push(MatchDebugInfo {
                         matched: matching::get_match(true, rule, &node, restrict_range, &self.sema)
                             .map_err(|e| MatchFailureReason {
@@ -186,7 +194,7 @@ impl<'db> MatchFinder<'db> {
                                     "Match failed, but no reason was given".to_owned()
                                 }),
                             }),
-                        pattern,
+                        pattern: rule.pattern.clone(),
                         node: node.clone(),
                     });
                 }
@@ -209,9 +217,8 @@ impl<'db> MatchFinder<'db> {
 
 pub struct MatchDebugInfo {
     node: SyntaxNode,
-    /// Our search pattern parsed as the same kind of syntax node as `node`. e.g. expression, item,
-    /// etc. Will be absent if the pattern can't be parsed as that kind.
-    pattern: Result<SyntaxNode, MatchFailureReason>,
+    /// Our search pattern parsed as an expression or item, etc
+    pattern: SyntaxNode,
     matched: Result<Match, MatchFailureReason>,
 }
 
@@ -228,26 +235,9 @@ impl std::fmt::Debug for MatchDebugInfo {
             self.node
         )?;
         writeln!(f, "========= PATTERN ==========")?;
-        match &self.pattern {
-            Ok(pattern) => {
-                writeln!(f, "{:#?}", pattern)?;
-            }
-            Err(err) => {
-                writeln!(f, "{}", err.reason)?;
-            }
-        }
+        writeln!(f, "{:#?}", self.pattern)?;
         writeln!(f, "============================")?;
         Ok(())
-    }
-}
-
-impl SsrPattern {
-    fn tree_for_kind_with_reason(
-        &self,
-        kind: SyntaxKind,
-    ) -> Result<&SyntaxNode, MatchFailureReason> {
-        record_match_fails_reasons_scope(true, || self.tree_for_kind(kind))
-            .map_err(|e| MatchFailureReason { reason: e.reason.unwrap() })
     }
 }
 

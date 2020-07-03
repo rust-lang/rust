@@ -2,8 +2,8 @@
 //! process of matching, placeholder values are recorded.
 
 use crate::{
-    parsing::{Constraint, NodeKind, Placeholder, SsrTemplate},
-    SsrMatches, SsrPattern, SsrRule,
+    parsing::{Constraint, NodeKind, ParsedRule, Placeholder, SsrTemplate},
+    SsrMatches,
 };
 use hir::Semantics;
 use ra_db::FileRange;
@@ -50,7 +50,7 @@ pub struct Match {
     pub(crate) ignored_comments: Vec<ast::Comment>,
     // A copy of the template for the rule that produced this match. We store this on the match for
     // if/when we do replacement.
-    pub(crate) template: SsrTemplate,
+    pub(crate) template: Option<SsrTemplate>,
 }
 
 /// Represents a `$var` in an SSR query.
@@ -86,7 +86,7 @@ pub(crate) struct MatchFailed {
 /// parent module, we don't populate nested matches.
 pub(crate) fn get_match(
     debug_active: bool,
-    rule: &SsrRule,
+    rule: &ParsedRule,
     code: &SyntaxNode,
     restrict_range: &Option<FileRange>,
     sema: &Semantics<ra_ide_db::RootDatabase>,
@@ -102,7 +102,7 @@ struct Matcher<'db, 'sema> {
     /// If any placeholders come from anywhere outside of this range, then the match will be
     /// rejected.
     restrict_range: Option<FileRange>,
-    rule: &'sema SsrRule,
+    rule: &'sema ParsedRule,
 }
 
 /// Which phase of matching we're currently performing. We do two phases because most attempted
@@ -117,15 +117,14 @@ enum Phase<'a> {
 
 impl<'db, 'sema> Matcher<'db, 'sema> {
     fn try_match(
-        rule: &'sema SsrRule,
+        rule: &ParsedRule,
         code: &SyntaxNode,
         restrict_range: &Option<FileRange>,
         sema: &'sema Semantics<'db, ra_ide_db::RootDatabase>,
     ) -> Result<Match, MatchFailed> {
         let match_state = Matcher { sema, restrict_range: restrict_range.clone(), rule };
-        let pattern_tree = rule.pattern.tree_for_kind(code.kind())?;
         // First pass at matching, where we check that node types and idents match.
-        match_state.attempt_match_node(&mut Phase::First, &pattern_tree, code)?;
+        match_state.attempt_match_node(&mut Phase::First, &rule.pattern, code)?;
         match_state.validate_range(&sema.original_range(code))?;
         let mut the_match = Match {
             range: sema.original_range(code),
@@ -136,7 +135,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         };
         // Second matching pass, where we record placeholder matches, ignored comments and maybe do
         // any other more expensive checks that we didn't want to do on the first pass.
-        match_state.attempt_match_node(&mut Phase::Second(&mut the_match), &pattern_tree, code)?;
+        match_state.attempt_match_node(&mut Phase::Second(&mut the_match), &rule.pattern, code)?;
         Ok(the_match)
     }
 
@@ -444,8 +443,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     }
 
     fn get_placeholder(&self, element: &SyntaxElement) -> Option<&Placeholder> {
-        only_ident(element.clone())
-            .and_then(|ident| self.rule.pattern.placeholders_by_stand_in.get(ident.text()))
+        only_ident(element.clone()).and_then(|ident| self.rule.get_placeholder(&ident))
     }
 }
 
@@ -507,28 +505,6 @@ impl PlaceholderMatch {
 
     fn from_range(range: FileRange) -> Self {
         Self { node: None, range, inner_matches: SsrMatches::default() }
-    }
-}
-
-impl SsrPattern {
-    pub(crate) fn tree_for_kind(&self, kind: SyntaxKind) -> Result<&SyntaxNode, MatchFailed> {
-        let (tree, kind_name) = if ast::Expr::can_cast(kind) {
-            (&self.expr, "expression")
-        } else if ast::TypeRef::can_cast(kind) {
-            (&self.type_ref, "type reference")
-        } else if ast::ModuleItem::can_cast(kind) {
-            (&self.item, "item")
-        } else if ast::Path::can_cast(kind) {
-            (&self.path, "path")
-        } else if ast::Pat::can_cast(kind) {
-            (&self.pattern, "pattern")
-        } else {
-            fail_match!("Matching nodes of kind {:?} is not supported", kind);
-        };
-        match tree {
-            Some(tree) => Ok(tree),
-            None => fail_match!("Pattern cannot be parsed as a {}", kind_name),
-        }
     }
 }
 
