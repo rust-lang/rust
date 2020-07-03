@@ -273,12 +273,22 @@ pub fn analysis_stats(
     println!("Total: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
 
     if memory_usage {
-        for (name, bytes) in host.per_query_memory_usage() {
-            println!("{:>8} {}", bytes, name)
-        }
+        let mut mem = host.per_query_memory_usage();
+
+        let before = ra_prof::memory_usage();
+        drop(vfs);
+        let vfs = before.allocated - ra_prof::memory_usage().allocated;
+        mem.push(("VFS".into(), vfs));
+
         let before = ra_prof::memory_usage();
         drop(host);
-        println!("leftover: {}", before.allocated - ra_prof::memory_usage().allocated)
+        mem.push(("Unaccounted".into(), before.allocated - ra_prof::memory_usage().allocated));
+
+        mem.push(("Remaining".into(), ra_prof::memory_usage().allocated));
+
+        for (name, bytes) in mem {
+            println!("{:>8} {}", bytes, name)
+        }
     }
 
     Ok(())
