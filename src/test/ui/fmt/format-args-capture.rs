@@ -1,4 +1,6 @@
 // run-pass
+// ignore-wasm32
+// ignore-wasm64
 #![feature(format_args_capture)]
 
 fn main() {
