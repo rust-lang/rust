@@ -606,6 +606,31 @@ mod tests {
         ]
         "###
         );
+
+        assert_debug_snapshot!(do_reference_completion(
+            r#"
+struct A {
+    #[deprecated]
+    the_field: u32,
+}
+fn foo() {
+   A { the<|> }
+}
+"#,
+        ),
+        @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: 69..72,
+                delete: 69..72,
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                deprecated: true,
+            },
+        ]
+        "###);
     }
 
     #[test]

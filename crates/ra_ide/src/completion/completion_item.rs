@@ -129,24 +129,24 @@ impl CompletionItemKind {
     #[cfg(test)]
     pub(crate) fn tag(&self) -> &'static str {
         match self {
-            CompletionItemKind::Snippet => "sn",
-            CompletionItemKind::Keyword => "kw",
-            CompletionItemKind::Module => "md",
-            CompletionItemKind::Function => "fn",
+            CompletionItemKind::Attribute => "at",
+            CompletionItemKind::Binding => "bn",
             CompletionItemKind::BuiltinType => "bt",
-            CompletionItemKind::Struct => "st",
+            CompletionItemKind::Const => "ct",
             CompletionItemKind::Enum => "en",
             CompletionItemKind::EnumVariant => "ev",
-            CompletionItemKind::Binding => "bn",
             CompletionItemKind::Field => "fd",
+            CompletionItemKind::Function => "fn",
+            CompletionItemKind::Keyword => "kw",
+            CompletionItemKind::Macro => "ma",
+            CompletionItemKind::Method => "me",
+            CompletionItemKind::Module => "md",
+            CompletionItemKind::Snippet => "sn",
             CompletionItemKind::Static => "sc",
-            CompletionItemKind::Const => "ct",
+            CompletionItemKind::Struct => "st",
             CompletionItemKind::Trait => "tt",
             CompletionItemKind::TypeAlias => "ta",
-            CompletionItemKind::Method => "me",
             CompletionItemKind::TypeParam => "tp",
-            CompletionItemKind::Macro => "ma",
-            CompletionItemKind::Attribute => "at",
         }
     }
 }

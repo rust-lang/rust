@@ -2,6 +2,7 @@
 
 use hir::Semantics;
 use ra_syntax::{AstNode, NodeOrToken, SyntaxElement};
+use stdx::format_to;
 
 use crate::{
     completion::{completion_item::CompletionKind, CompletionConfig},
@@ -42,7 +43,14 @@ pub(crate) fn completion_list_with_options(
     kind_completions.sort_by_key(|c| c.label().to_owned());
     kind_completions
         .into_iter()
-        .map(|it| format!("{} {}\n", it.kind().unwrap().tag(), it.label()))
+        .map(|it| {
+            let mut buf = format!("{} {}", it.kind().unwrap().tag(), it.label());
+            if let Some(detail) = it.detail() {
+                format_to!(buf, " {}", detail);
+            }
+            format_to!(buf, "\n");
+            buf
+        })
         .collect()
 }
 
