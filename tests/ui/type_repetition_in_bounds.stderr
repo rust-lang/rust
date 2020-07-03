@@ -12,7 +12,7 @@ LL | #![deny(clippy::type_repetition_in_bounds)]
    = help: consider combining the bounds: `T: Copy + Clone`
 
 error: this type has already been used as a bound predicate
-  --> $DIR/type_repetition_in_bounds.rs:24:5
+  --> $DIR/type_repetition_in_bounds.rs:25:5
    |
 LL |     Self: Copy + Default + Ord,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

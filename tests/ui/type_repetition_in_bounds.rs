@@ -18,6 +18,7 @@ where
     unimplemented!();
 }
 
+// Threshold test (see #4380)
 trait LintBounds
 where
     Self: Clone,
@@ -32,6 +33,20 @@ where
     Self: Clone + Copy + Default + Ord,
     Self: Add<Output = Self> + AddAssign + Sub<Output = Self> + SubAssign,
     Self: Mul<Output = Self> + MulAssign + Div<Output = Self> + DivAssign,
+{
+}
+
+// Generic distinction (see #4323)
+pub struct Foo<A>(A);
+pub struct Bar<A, B> {
+    a: Foo<A>,
+    b: Foo<B>,
+}
+
+impl<A, B> Unpin for Bar<A, B>
+where
+    Foo<A>: Unpin,
+    Foo<B>: Unpin,
 {
 }
 
