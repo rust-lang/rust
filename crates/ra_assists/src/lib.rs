@@ -30,6 +30,7 @@ pub use assist_config::AssistConfig;
 pub enum AssistKind {
     None,
     QuickFix,
+    Generate,
     Refactor,
     RefactorExtract,
     RefactorInline,
@@ -112,13 +113,8 @@ mod handlers {
     pub(crate) type Handler = fn(&mut Assists, &AssistContext) -> Option<()>;
 
     mod add_custom_impl;
-    mod add_derive;
     mod add_explicit_type;
-    mod add_from_impl_for_enum;
-    mod add_function;
-    mod add_impl;
     mod add_missing_impl_members;
-    mod add_new;
     mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
@@ -132,6 +128,11 @@ mod handlers {
     mod flip_binexpr;
     mod flip_comma;
     mod flip_trait_bound;
+    mod generate_derive;
+    mod generate_from_impl_for_enum;
+    mod generate_function;
+    mod generate_impl;
+    mod generate_new;
     mod inline_local_variable;
     mod introduce_named_lifetime;
     mod invert_if;
@@ -154,12 +155,7 @@ mod handlers {
         &[
             // These are alphabetic for the foolish consistency
             add_custom_impl::add_custom_impl,
-            add_derive::add_derive,
             add_explicit_type::add_explicit_type,
-            add_from_impl_for_enum::add_from_impl_for_enum,
-            add_function::add_function,
-            add_impl::add_impl,
-            add_new::add_new,
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
@@ -173,6 +169,11 @@ mod handlers {
             flip_binexpr::flip_binexpr,
             flip_comma::flip_comma,
             flip_trait_bound::flip_trait_bound,
+            generate_derive::generate_derive,
+            generate_from_impl_for_enum::generate_from_impl_for_enum,
+            generate_function::generate_function,
+            generate_impl::generate_impl,
+            generate_new::generate_new,
             inline_local_variable::inline_local_variable,
             introduce_named_lifetime::introduce_named_lifetime,
             invert_if::invert_if,

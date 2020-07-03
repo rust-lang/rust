@@ -9,7 +9,7 @@ use stdx::{format_to, SepBy};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: add_new
+// Assist: generate_new
 //
 // Adds a new inherent impl for a type.
 //
@@ -29,7 +29,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 //
 // ```
-pub(crate) fn add_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::StructDef>()?;
 
     // We want to only apply this to non-union structs with named fields
@@ -42,7 +42,7 @@ pub(crate) fn add_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let impl_def = find_struct_impl(&ctx, &strukt)?;
 
     let target = strukt.syntax().text_range();
-    acc.add(AssistId("add_new", AssistKind::None), "Add default constructor", target, |builder| {
+    acc.add(AssistId("generate_new", AssistKind::Generate), "Generate `new`", target, |builder| {
         let mut buf = String::with_capacity(512);
 
         if impl_def.is_some() {
@@ -181,10 +181,10 @@ mod tests {
 
     #[test]
     #[rustfmt::skip]
-    fn test_add_new() {
+    fn test_generate_new() {
         // Check output of generation
         check_assist(
-            add_new,
+            generate_new,
 "struct Foo {<|>}",
 "struct Foo {}
 
@@ -194,7 +194,7 @@ impl Foo {
 ",
         );
         check_assist(
-            add_new,
+            generate_new,
 "struct Foo<T: Clone> {<|>}",
 "struct Foo<T: Clone> {}
 
@@ -204,7 +204,7 @@ impl<T: Clone> Foo<T> {
 ",
         );
         check_assist(
-            add_new,
+            generate_new,
 "struct Foo<'a, T: Foo<'a>> {<|>}",
 "struct Foo<'a, T: Foo<'a>> {}
 
@@ -214,7 +214,7 @@ impl<'a, T: Foo<'a>> Foo<'a, T> {
 ",
         );
         check_assist(
-            add_new,
+            generate_new,
 "struct Foo { baz: String <|>}",
 "struct Foo { baz: String }
 
@@ -224,7 +224,7 @@ impl Foo {
 ",
         );
         check_assist(
-            add_new,
+            generate_new,
 "struct Foo { baz: String, qux: Vec<i32> <|>}",
 "struct Foo { baz: String, qux: Vec<i32> }
 
@@ -236,7 +236,7 @@ impl Foo {
 
         // Check that visibility modifiers don't get brought in for fields
         check_assist(
-            add_new,
+            generate_new,
 "struct Foo { pub baz: String, pub qux: Vec<i32> <|>}",
 "struct Foo { pub baz: String, pub qux: Vec<i32> }
 
@@ -248,7 +248,7 @@ impl Foo {
 
         // Check that it reuses existing impls
         check_assist(
-            add_new,
+            generate_new,
 "struct Foo {<|>}
 
 impl Foo {}
@@ -261,7 +261,7 @@ impl Foo {
 ",
         );
         check_assist(
-            add_new,
+            generate_new,
 "struct Foo {<|>}
 
 impl Foo {
@@ -279,7 +279,7 @@ impl Foo {
         );
 
         check_assist(
-            add_new,
+            generate_new,
 "struct Foo {<|>}
 
 impl Foo {
@@ -304,7 +304,7 @@ impl Foo {
 
         // Check visibility of new fn based on struct
         check_assist(
-            add_new,
+            generate_new,
 "pub struct Foo {<|>}",
 "pub struct Foo {}
 
@@ -314,7 +314,7 @@ impl Foo {
 ",
         );
         check_assist(
-            add_new,
+            generate_new,
 "pub(crate) struct Foo {<|>}",
 "pub(crate) struct Foo {}
 
@@ -326,9 +326,9 @@ impl Foo {
     }
 
     #[test]
-    fn add_new_not_applicable_if_fn_exists() {
+    fn generate_new_not_applicable_if_fn_exists() {
         check_assist_not_applicable(
-            add_new,
+            generate_new,
             "
 struct Foo {<|>}
 
@@ -340,7 +340,7 @@ impl Foo {
         );
 
         check_assist_not_applicable(
-            add_new,
+            generate_new,
             "
 struct Foo {<|>}
 
@@ -353,9 +353,9 @@ impl Foo {
     }
 
     #[test]
-    fn add_new_target() {
+    fn generate_new_target() {
         check_assist_target(
-            add_new,
+            generate_new,
             "
 struct SomeThingIrrelevant;
 /// Has a lifetime parameter
@@ -370,7 +370,7 @@ struct Foo<'a, T: Foo<'a>> {}",
     #[test]
     fn test_unrelated_new() {
         check_assist(
-            add_new,
+            generate_new,
             r##"
 pub struct AstId<N: AstNode> {
     file_id: HirFileId,
