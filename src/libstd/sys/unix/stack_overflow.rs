@@ -48,6 +48,7 @@ mod imp {
     use libc::{sigaltstack, SIGSTKSZ, SS_DISABLE};
     use libc::{MAP_ANON, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SIGSEGV};
 
+    use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
     use crate::sys::unix::os::page_size;
     use crate::sys_common::thread_info;
 
@@ -113,8 +114,8 @@ mod imp {
         }
     }
 
-    static mut MAIN_ALTSTACK: *mut libc::c_void = ptr::null_mut();
-    static mut NEED_ALTSTACK: bool = false;
+    static MAIN_ALTSTACK: AtomicPtr<libc::c_void> = AtomicPtr::new(ptr::null_mut());
+    static NEED_ALTSTACK: AtomicBool = AtomicBool::new(false);
 
     pub unsafe fn init() {
         let mut action: sigaction = mem::zeroed();
@@ -125,17 +126,17 @@ mod imp {
                 action.sa_flags = SA_SIGINFO | SA_ONSTACK;
                 action.sa_sigaction = signal_handler as sighandler_t;
                 sigaction(signal, &action, ptr::null_mut());
-                NEED_ALTSTACK = true;
+                NEED_ALTSTACK.store(true, Ordering::Relaxed);
             }
         }
 
         let handler = make_handler();
-        MAIN_ALTSTACK = handler._data;
+        MAIN_ALTSTACK.store(handler._data, Ordering::Relaxed);
         mem::forget(handler);
     }
 
     pub unsafe fn cleanup() {
-        Handler { _data: MAIN_ALTSTACK };
+        Handler { _data: MAIN_ALTSTACK.load(Ordering::Relaxed) };
     }
 
     unsafe fn get_stackp() -> *mut libc::c_void {
@@ -176,7 +177,7 @@ mod imp {
     }
 
     pub unsafe fn make_handler() -> Handler {
-        if !NEED_ALTSTACK {
+        if !NEED_ALTSTACK.load(Ordering::Relaxed) {
             return Handler::null();
         }
         let mut stack = mem::zeroed();
