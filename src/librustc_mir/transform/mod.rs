@@ -9,7 +9,7 @@ use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
-use rustc_middle::ty::{InstanceDef, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, InstanceDef, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 
@@ -116,7 +116,7 @@ pub struct MirSource<'tcx> {
 
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
-        MirSource { instance: InstanceDef::Item(def_id), promoted: None }
+        MirSource { instance: InstanceDef::Item(ty::WithOptParam::dummy(def_id)), promoted: None }
     }
 
     #[inline]
@@ -249,7 +249,7 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> Steal<Body<'_>> {
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(def_id.to_def_id()),
+        InstanceDef::Item(ty::WithOptParam::dummy(def_id.to_def_id())),
         None,
         MirPhase::Const,
         &[&[
@@ -284,7 +284,7 @@ fn mir_validated(
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(def_id.to_def_id()),
+        InstanceDef::Item(ty::WithOptParam::dummy(def_id.to_def_id())),
         None,
         MirPhase::Validated,
         &[&[
@@ -350,7 +350,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(
     run_passes(
         tcx,
         body,
-        InstanceDef::Item(def_id.to_def_id()),
+        InstanceDef::Item(ty::WithOptParam::dummy(def_id.to_def_id())),
         promoted,
         MirPhase::DropElab,
         &[post_borrowck_cleanup],
@@ -414,7 +414,7 @@ fn run_optimization_passes<'tcx>(
     run_passes(
         tcx,
         body,
-        InstanceDef::Item(def_id.to_def_id()),
+        InstanceDef::Item(ty::WithOptParam::dummy(def_id.to_def_id())),
         promoted,
         MirPhase::Optimized,
         &[

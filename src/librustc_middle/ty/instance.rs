@@ -29,7 +29,7 @@ pub enum InstanceDef<'tcx> {
     /// - `fn` items
     /// - closures
     /// - generators
-    Item(DefId),
+    Item(ty::WithOptParam<DefId>),
 
     /// An intrinsic `fn` item (with `"rust-intrinsic"` or `"platform-intrinsic"` ABI).
     ///
@@ -160,8 +160,8 @@ impl<'tcx> Instance<'tcx> {
         self.substs.non_erasable_generics().next()?;
 
         match self.def {
-            InstanceDef::Item(def_id) => tcx
-                .upstream_monomorphizations_for(def_id)
+            InstanceDef::Item(def) => tcx
+                .upstream_monomorphizations_for(def.did)
                 .and_then(|monos| monos.get(&self.substs).cloned()),
             InstanceDef::DropGlue(_, Some(_)) => tcx.upstream_drop_glue_for(self.substs),
             _ => None,
@@ -171,10 +171,10 @@ impl<'tcx> Instance<'tcx> {
 
 impl<'tcx> InstanceDef<'tcx> {
     #[inline]
-    pub fn def_id(&self) -> DefId {
-        match *self {
-            InstanceDef::Item(def_id)
-            | InstanceDef::VtableShim(def_id)
+    pub fn def_id(self) -> DefId {
+        match self {
+            InstanceDef::Item(def) => def.did,
+            InstanceDef::VtableShim(def_id)
             | InstanceDef::ReifyShim(def_id)
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
@@ -182,6 +182,21 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::ClosureOnceShim { call_once: def_id }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _) => def_id,
+        }
+    }
+
+    #[inline]
+    pub fn with_opt_param(self) -> ty::WithOptParam<DefId> {
+        match self {
+            InstanceDef::Item(def) => def,
+            InstanceDef::VtableShim(def_id)
+            | InstanceDef::ReifyShim(def_id)
+            | InstanceDef::FnPtrShim(def_id, _)
+            | InstanceDef::Virtual(def_id, _)
+            | InstanceDef::Intrinsic(def_id)
+            | InstanceDef::ClosureOnceShim { call_once: def_id }
+            | InstanceDef::DropGlue(def_id, _)
+            | InstanceDef::CloneShim(def_id, _) => ty::WithOptParam::dummy(def_id),
         }
     }
 
@@ -198,7 +213,7 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn requires_inline(&self, tcx: TyCtxt<'tcx>) -> bool {
         use rustc_hir::definitions::DefPathData;
         let def_id = match *self {
-            ty::InstanceDef::Item(def_id) => def_id,
+            ty::InstanceDef::Item(def) => def.did,
             ty::InstanceDef::DropGlue(_, Some(_)) => return false,
             _ => return true,
         };
@@ -244,8 +259,8 @@ impl<'tcx> InstanceDef<'tcx> {
 
     pub fn requires_caller_location(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
-            InstanceDef::Item(def_id) => {
-                tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+            InstanceDef::Item(def) => {
+                tcx.codegen_fn_attrs(def.did).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
             }
             _ => false,
         }
@@ -283,7 +298,7 @@ impl<'tcx> Instance<'tcx> {
             def_id,
             substs
         );
-        Instance { def: InstanceDef::Item(def_id), substs }
+        Instance { def: InstanceDef::Item(ty::WithOptParam::dummy(def_id)), substs }
     }
 
     pub fn mono(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
@@ -356,9 +371,9 @@ impl<'tcx> Instance<'tcx> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         Instance::resolve(tcx, param_env, def_id, substs).ok().flatten().map(|mut resolved| {
             match resolved.def {
-                InstanceDef::Item(def_id) if resolved.def.requires_caller_location(tcx) => {
+                InstanceDef::Item(def) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
-                    resolved.def = InstanceDef::ReifyShim(def_id);
+                    resolved.def = InstanceDef::ReifyShim(def.did);
                 }
                 InstanceDef::Virtual(def_id, _) => {
                     debug!(" => fn pointer created for virtual call");

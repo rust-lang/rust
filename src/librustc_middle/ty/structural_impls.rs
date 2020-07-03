@@ -838,7 +838,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         Self {
             substs: self.substs.fold_with(folder),
             def: match self.def {
-                Item(did) => Item(did.fold_with(folder)),
+                Item(def) => Item(def.fold_with(folder)),
                 VtableShim(did) => VtableShim(did.fold_with(folder)),
                 ReifyShim(did) => ReifyShim(did.fold_with(folder)),
                 Intrinsic(did) => Intrinsic(did.fold_with(folder)),
@@ -857,7 +857,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         use crate::ty::InstanceDef::*;
         self.substs.visit_with(visitor)
             || match self.def {
-                Item(did) | VtableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
+                Item(def) => def.visit_with(visitor),
+                VtableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
                     did.visit_with(visitor)
                 }
                 FnPtrShim(did, ty) | CloneShim(did, ty) => {

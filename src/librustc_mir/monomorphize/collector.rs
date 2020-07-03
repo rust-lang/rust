@@ -768,8 +768,8 @@ fn visit_instance_use<'tcx>(
 // need a mono item.
 fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) -> bool {
     let def_id = match instance.def {
-        ty::InstanceDef::Item(def_id) | ty::InstanceDef::DropGlue(def_id, Some(_)) => def_id,
-
+        ty::InstanceDef::Item(def) => def.did,
+        ty::InstanceDef::DropGlue(def_id, Some(_)) => def_id,
         ty::InstanceDef::VtableShim(..)
         | ty::InstanceDef::ReifyShim(..)
         | ty::InstanceDef::ClosureOnceShim { .. }

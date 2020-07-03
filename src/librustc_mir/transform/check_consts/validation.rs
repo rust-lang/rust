@@ -520,8 +520,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     let instance = Instance::resolve(self.tcx, self.param_env, def_id, substs);
                     debug!("Resolving ({:?}) -> {:?}", def_id, instance);
                     if let Ok(Some(func)) = instance {
-                        if let InstanceDef::Item(def_id) = func.def {
-                            if is_const_fn(self.tcx, def_id) {
+                        if let InstanceDef::Item(def) = func.def {
+                            if is_const_fn(self.tcx, def.did) {
                                 return;
                             }
                         }
