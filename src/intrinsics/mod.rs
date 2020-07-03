@@ -138,6 +138,27 @@ macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $
     crate::atomic_shim::unlock_global_lock($fx);
 }
 
+macro validate_atomic_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
+    match $ty.kind {
+        ty::Uint(_) | ty::Int(_) => {}
+        _ => {
+            $fx.tcx.sess.span_err($span, &format!("`{}` intrinsic: expected basic integer type, found `{:?}`", $intrinsic, $ty));
+            // Prevent verifier error
+            crate::trap::trap_unreachable($fx, "compilation should not have succeeded");
+            return;
+        }
+    }
+}
+
+macro validate_simd_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
+    if !$ty.is_simd() {
+        $fx.tcx.sess.span_err($span, &format!("invalid monomorphization of `{}` intrinsic: expected SIMD input type, found non-SIMD `{}`", $intrinsic, $ty));
+        // Prevent verifier error
+        crate::trap::trap_unreachable($fx, "compilation should not have succeeded");
+        return;
+    }
+}
+
 fn lane_type_and_count<'tcx>(
     tcx: TyCtxt<'tcx>,
     layout: TyAndLayout<'tcx>,
@@ -866,12 +887,15 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
+            validate_atomic_type!(fx, intrinsic, span, inner_layout.ty);
             let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
             ret.write_cvalue(fx, val);
 
             crate::atomic_shim::unlock_global_lock(fx);
         };
         _ if intrinsic.starts_with("atomic_store"), (v ptr, c val) {
+            validate_atomic_type!(fx, intrinsic, span, val.layout().ty);
+
             crate::atomic_shim::lock_global_lock(fx);
 
             let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
@@ -880,6 +904,8 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             crate::atomic_shim::unlock_global_lock(fx);
         };
         _ if intrinsic.starts_with("atomic_xchg"), <T> (v ptr, c src) {
+            validate_atomic_type!(fx, intrinsic, span, T);
+
             crate::atomic_shim::lock_global_lock(fx);
 
             // Read old
@@ -893,7 +919,12 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
             crate::atomic_shim::unlock_global_lock(fx);
         };
-        _ if intrinsic.starts_with("atomic_cxchg"), <T> (v ptr, v test_old, v new) { // both atomic_cxchg_* and atomic_cxchgweak_*
+        _ if intrinsic.starts_with("atomic_cxchg"), <T> (v ptr, c test_old, c new) { // both atomic_cxchg_* and atomic_cxchgweak_*
+            validate_atomic_type!(fx, intrinsic, span, T);
+
+            let test_old = test_old.load_scalar(fx);
+            let new = new.load_scalar(fx);
+
             crate::atomic_shim::lock_global_lock(fx);
 
             // Read old
@@ -913,16 +944,26 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             crate::atomic_shim::unlock_global_lock(fx);
         };
 
-        _ if intrinsic.starts_with("atomic_xadd"), <T> (v ptr, v amount) {
+        _ if intrinsic.starts_with("atomic_xadd"), <T> (v ptr, c amount) {
+            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+            let amount = amount.load_scalar(fx);
             atomic_binop_return_old! (fx, iadd<T>(ptr, amount) -> ret);
         };
-        _ if intrinsic.starts_with("atomic_xsub"), <T> (v ptr, v amount) {
+        _ if intrinsic.starts_with("atomic_xsub"), <T> (v ptr, c amount) {
+            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+            let amount = amount.load_scalar(fx);
             atomic_binop_return_old! (fx, isub<T>(ptr, amount) -> ret);
         };
-        _ if intrinsic.starts_with("atomic_and"), <T> (v ptr, v src) {
+        _ if intrinsic.starts_with("atomic_and"), <T> (v ptr, c src) {
+            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+            let src = src.load_scalar(fx);
             atomic_binop_return_old! (fx, band<T>(ptr, src) -> ret);
         };
-        _ if intrinsic.starts_with("atomic_nand"), <T> (v ptr, v src) {
+        _ if intrinsic.starts_with("atomic_nand"), <T> (v ptr, c src) {
+            validate_atomic_type!(fx, intrinsic, span, T);
+
+            let src = src.load_scalar(fx);
+
             crate::atomic_shim::lock_global_lock(fx);
 
             let clif_ty = fx.clif_type(T).unwrap();
@@ -934,23 +975,35 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
             crate::atomic_shim::unlock_global_lock(fx);
         };
-        _ if intrinsic.starts_with("atomic_or"), <T> (v ptr, v src) {
+        _ if intrinsic.starts_with("atomic_or"), <T> (v ptr, c src) {
+            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+            let src = src.load_scalar(fx);
             atomic_binop_return_old! (fx, bor<T>(ptr, src) -> ret);
         };
-        _ if intrinsic.starts_with("atomic_xor"), <T> (v ptr, v src) {
+        _ if intrinsic.starts_with("atomic_xor"), <T> (v ptr, c src) {
+            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+            let src = src.load_scalar(fx);
             atomic_binop_return_old! (fx, bxor<T>(ptr, src) -> ret);
         };
 
-        _ if intrinsic.starts_with("atomic_max"), <T> (v ptr, v src) {
+        _ if intrinsic.starts_with("atomic_max"), <T> (v ptr, c src) {
+            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+            let src = src.load_scalar(fx);
             atomic_minmax!(fx, IntCC::SignedGreaterThan, <T> (ptr, src) -> ret);
         };
-        _ if intrinsic.starts_with("atomic_umax"), <T> (v ptr, v src) {
+        _ if intrinsic.starts_with("atomic_umax"), <T> (v ptr, c src) {
+            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+            let src = src.load_scalar(fx);
             atomic_minmax!(fx, IntCC::UnsignedGreaterThan, <T> (ptr, src) -> ret);
         };
-        _ if intrinsic.starts_with("atomic_min"), <T> (v ptr, v src) {
+        _ if intrinsic.starts_with("atomic_min"), <T> (v ptr, c src) {
+            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+            let src = src.load_scalar(fx);
             atomic_minmax!(fx, IntCC::SignedLessThan, <T> (ptr, src) -> ret);
         };
-        _ if intrinsic.starts_with("atomic_umin"), <T> (v ptr, v src) {
+        _ if intrinsic.starts_with("atomic_umin"), <T> (v ptr, c src) {
+            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+            let src = src.load_scalar(fx);
             atomic_minmax!(fx, IntCC::UnsignedLessThan, <T> (ptr, src) -> ret);
         };
 
