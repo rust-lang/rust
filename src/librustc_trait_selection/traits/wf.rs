@@ -205,7 +205,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                 if let Some(impl_item_span) =
                     items.iter().find(|item| item.ident == trait_assoc_item.ident).map(fix_span)
                 {
-                    cause.make_mut().span = impl_item_span;
+                    cause.span = impl_item_span;
                 }
             }
         }
@@ -222,7 +222,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                         items.iter().find(|i| i.ident == trait_assoc_item.ident).map(fix_span)
                     })
                 {
-                    cause.make_mut().span = impl_item_span;
+                    cause.span = impl_item_span;
                 }
             }
         }
@@ -271,9 +271,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             if let Some(parent_trait_ref) = obligation.predicate.to_opt_poly_trait_ref() {
                 let derived_cause = traits::DerivedObligationCause {
                     parent_trait_ref,
-                    parent_code: Rc::new(obligation.cause.code.clone()),
+                    parent_code: Rc::new(obligation.cause.code().clone()),
                 };
-                cause.make_mut().code =
+                *cause.make_mut_code() =
                     traits::ObligationCauseCode::DerivedObligation(derived_cause);
             }
             extend_cause_with_original_assoc_item_obligation(

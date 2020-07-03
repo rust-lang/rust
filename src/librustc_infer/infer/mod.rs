@@ -1774,7 +1774,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
     where
         F: FnOnce() -> Self,
     {
-        match cause.code {
+        match *cause.code() {
             traits::ObligationCauseCode::ReferenceOutlivesReferent(ref_type) => {
                 SubregionOrigin::ReferenceOutlivesReferent(ref_type, cause.span)
             }

@@ -232,7 +232,8 @@ impl<'a, 'tcx> Lift<'tcx> for traits::DerivedObligationCause<'a> {
 impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCause<'a> {
     type Lifted = traits::ObligationCause<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.code).map(|code| traits::ObligationCause::new(self.span, self.body_id, code))
+        tcx.lift(self.code())
+            .map(|code| traits::ObligationCause::new(self.span, self.body_id, code))
     }
 }
 

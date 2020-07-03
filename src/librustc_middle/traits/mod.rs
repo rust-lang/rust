@@ -20,8 +20,7 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
 
 use std::borrow::Cow;
-use std::fmt;
-use std::ops::Deref;
+//use std::fmt; // njn: temp
 use std::rc::Rc;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
@@ -81,38 +80,14 @@ pub enum Reveal {
 
 /// The reason why we incurred this obligation; used for error reporting.
 ///
-/// As the happy path does not care about this struct, storing this on the heap
-/// ends up increasing performance.
+/// Non-dummy `ObligationCauseCode`s are stored on the heap. This gives best
+/// trade-off between keeping the type small (which makes copies cheaper) while
+/// not doing too many heap allocations.
 ///
 /// We do not want to intern this as there are a lot of obligation causes which
 /// only live for a short period of time.
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct ObligationCause<'tcx> {
-    /// `None` for `ObligationCause::dummy`, `Some` otherwise.
-    data: Option<Rc<ObligationCauseData<'tcx>>>,
-}
-
-const DUMMY_OBLIGATION_CAUSE_DATA: ObligationCauseData<'static> =
-    ObligationCauseData { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: MiscObligation };
-
-// Correctly format `ObligationCause::dummy`.
-impl<'tcx> fmt::Debug for ObligationCause<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ObligationCauseData::fmt(self, f)
-    }
-}
-
-impl Deref for ObligationCause<'tcx> {
-    type Target = ObligationCauseData<'tcx>;
-
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        self.data.as_deref().unwrap_or(&DUMMY_OBLIGATION_CAUSE_DATA)
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ObligationCauseData<'tcx> {
+pub struct ObligationCause<'tcx> {
     pub span: Span,
 
     /// The ID of the fn body that triggered this obligation. This is
@@ -123,17 +98,38 @@ pub struct ObligationCauseData<'tcx> {
     /// information.
     pub body_id: hir::HirId,
 
-    pub code: ObligationCauseCode<'tcx>,
+    /// `None` for `DUMMY_OBLIGATION_CAUSE_CODE` (a very common case), `Some`
+    /// otherwise.
+    code: Option<Rc<ObligationCauseCode<'tcx>>>,
 }
 
+const DUMMY_OBLIGATION_CAUSE_CODE: ObligationCauseCode<'static> = MiscObligation;
+
+// Correctly format `DUMMY_OBLIGATION_CAUSE_CODE`.
+// njn: fix this
+//impl<'tcx> fmt::Debug for ObligationCauseData<'tcx> {
+//    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//        ObligationCauseCode::fmt(&self.code2, f)
+//    }
+//}
+
 impl<'tcx> ObligationCause<'tcx> {
+    #[inline(always)]
+    pub fn code(&self) -> &ObligationCauseCode<'tcx> {
+        self.code.as_deref().unwrap_or(&DUMMY_OBLIGATION_CAUSE_CODE)
+    }
+
     #[inline]
     pub fn new(
         span: Span,
         body_id: hir::HirId,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause { data: Some(Rc::new(ObligationCauseData { span, body_id, code })) }
+        if code == DUMMY_OBLIGATION_CAUSE_CODE {
+            ObligationCause { span, body_id, code: None }
+        } else {
+            ObligationCause { span, body_id, code: Some(Rc::new(code)) }
+        }
     }
 
     pub fn misc(span: Span, body_id: hir::HirId) -> ObligationCause<'tcx> {
@@ -146,15 +142,15 @@ impl<'tcx> ObligationCause<'tcx> {
 
     #[inline(always)]
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { data: None }
+        ObligationCause { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: None }
     }
 
-    pub fn make_mut(&mut self) -> &mut ObligationCauseData<'tcx> {
-        Rc::make_mut(self.data.get_or_insert_with(|| Rc::new(DUMMY_OBLIGATION_CAUSE_DATA)))
+    pub fn make_mut_code(&mut self) -> &mut ObligationCauseCode<'tcx> {
+        Rc::make_mut(self.code.get_or_insert_with(|| Rc::new(DUMMY_OBLIGATION_CAUSE_CODE)))
     }
 
     pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
-        match self.code {
+        match *self.code() {
             ObligationCauseCode::CompareImplMethodObligation { .. }
             | ObligationCauseCode::MainFunctionType
             | ObligationCauseCode::StartFunctionType => {

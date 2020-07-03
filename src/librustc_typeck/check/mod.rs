@@ -4242,7 +4242,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
                     // We make sure that only *one* argument matches the obligation failure
                     // and we assign the obligation's span to its expression's.
-                    error.obligation.cause.make_mut().span = args[ref_in].span;
+                    error.obligation.cause.span = args[ref_in].span;
                     error.points_at_arg_span = true;
                 }
             }
@@ -4285,7 +4285,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         let ty = AstConv::ast_ty_to_ty(self, hir_ty);
                                         let ty = self.resolve_vars_if_possible(&ty);
                                         if ty == predicate.skip_binder().self_ty() {
-                                            error.obligation.cause.make_mut().span = hir_ty.span;
+                                            error.obligation.cause.span = hir_ty.span;
                                         }
                                     }
                                 }
@@ -5750,7 +5750,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // This makes the error point at the bound, but we want to point at the argument
             if let Some(span) = spans.get(i) {
-                obligation.cause.make_mut().code = traits::BindingObligation(def_id, *span);
+                *obligation.cause.make_mut_code() = traits::BindingObligation(def_id, *span);
             }
             self.register_predicate(obligation);
         }

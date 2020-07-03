@@ -476,7 +476,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let param_env = obligation.param_env;
         let body_id = obligation.cause.body_id;
         let span = obligation.cause.span;
-        let real_trait_ref = match &obligation.cause.code {
+        let real_trait_ref = match obligation.cause.code() {
             ObligationCauseCode::ImplDerivedObligation(cause)
             | ObligationCauseCode::DerivedObligation(cause)
             | ObligationCauseCode::BuiltinDerivedObligation(cause) => &cause.parent_trait_ref,
@@ -691,7 +691,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let param_env = obligation.param_env;
         let trait_ref = trait_ref.skip_binder();
 
-        if let ObligationCauseCode::ImplDerivedObligation(obligation) = &obligation.cause.code {
+        if let ObligationCauseCode::ImplDerivedObligation(obligation) = obligation.cause.code() {
             // Try to apply the original trait binding obligation by borrowing.
             let self_ty = trait_ref.self_ty();
             let found = self_ty.to_string();
@@ -951,7 +951,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     ) -> bool {
-        match obligation.cause.code.peel_derives() {
+        match obligation.cause.code().peel_derives() {
             // Only suggest `impl Trait` if the return type is unsized because it is `dyn Trait`.
             ObligationCauseCode::SizedReturnType => {}
             _ => return false,
@@ -1145,7 +1145,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        match obligation.cause.code.peel_derives() {
+        match obligation.cause.code().peel_derives() {
             ObligationCauseCode::SizedReturnType => {}
             _ => return,
         }
@@ -1339,7 +1339,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
         let mut generator = None;
         let mut outer_generator = None;
-        let mut next_code = Some(&obligation.cause.code);
+        let mut next_code = Some(obligation.cause.code());
         while let Some(code) = next_code {
             debug!("maybe_note_obligation_cause_for_async_await: code={:?}", code);
             match code {
