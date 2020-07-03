@@ -3900,8 +3900,13 @@ mod test_map {
     fn test_into_iter_refresh() {
         use core::hash::{BuildHasher, Hash, Hasher};
 
+        #[cfg(miri)]
+        const N: usize = 32;
+        #[cfg(not(miri))]
+        const N: usize = 128;
+
         let mut rng = rand::thread_rng();
-        for n in 0..128 {
+        for n in 0..N {
             let mut m = HashMap::new();
             for i in 0..n {
                 assert!(m.insert(i, 2 * i).is_none());
