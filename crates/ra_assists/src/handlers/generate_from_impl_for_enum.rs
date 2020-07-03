@@ -4,7 +4,7 @@ use test_utils::mark;
 
 use crate::{utils::FamousDefs, AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: add_from_impl_for_enum
+// Assist: generate_from_impl_for_enum
 //
 // Adds a From impl for an enum variant with one tuple field.
 //
@@ -21,7 +21,7 @@ use crate::{utils::FamousDefs, AssistContext, AssistId, AssistKind, Assists};
 //     }
 // }
 // ```
-pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::EnumVariant>()?;
     let variant_name = variant.name()?;
     let enum_name = variant.parent_enum().name()?;
@@ -45,8 +45,8 @@ pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> 
 
     let target = variant.syntax().text_range();
     acc.add(
-        AssistId("add_from_impl_for_enum", AssistKind::Refactor),
-        "Add From impl for this enum variant",
+        AssistId("generate_from_impl_for_enum", AssistKind::Refactor),
+        "Generate `From` impl for this enum variant",
         target,
         |edit| {
             let start_offset = variant.parent_enum().syntax().text_range().end();
@@ -97,9 +97,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_add_from_impl_for_enum() {
+    fn test_generate_from_impl_for_enum() {
         check_assist(
-            add_from_impl_for_enum,
+            generate_from_impl_for_enum,
             "enum A { <|>One(u32) }",
             r#"enum A { One(u32) }
 
@@ -112,9 +112,9 @@ impl From<u32> for A {
     }
 
     #[test]
-    fn test_add_from_impl_for_enum_complicated_path() {
+    fn test_generate_from_impl_for_enum_complicated_path() {
         check_assist(
-            add_from_impl_for_enum,
+            generate_from_impl_for_enum,
             r#"enum A { <|>One(foo::bar::baz::Boo) }"#,
             r#"enum A { One(foo::bar::baz::Boo) }
 
@@ -129,7 +129,7 @@ impl From<foo::bar::baz::Boo> for A {
     fn check_not_applicable(ra_fixture: &str) {
         let fixture =
             format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
-        check_assist_not_applicable(add_from_impl_for_enum, &fixture)
+        check_assist_not_applicable(generate_from_impl_for_enum, &fixture)
     }
 
     #[test]
@@ -166,7 +166,7 @@ impl From<u32> for A {
     #[test]
     fn test_add_from_impl_different_variant_impl_exists() {
         check_assist(
-            add_from_impl_for_enum,
+            generate_from_impl_for_enum,
             r#"enum A { <|>One(u32), Two(String), }
 
 impl From<String> for A {

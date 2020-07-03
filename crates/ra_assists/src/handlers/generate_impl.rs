@@ -3,7 +3,7 @@ use stdx::{format_to, SepBy};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: add_impl
+// Assist: generate_impl
 //
 // Adds a new inherent impl for a type.
 //
@@ -22,13 +22,13 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //     $0
 // }
 // ```
-pub(crate) fn add_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let name = nominal.name()?;
     let target = nominal.syntax().text_range();
     acc.add(
-        AssistId("add_impl", AssistKind::Refactor),
-        format!("Implement {}", name.text().as_str()),
+        AssistId("generate_impl", AssistKind::Refactor),
+        format!("Generate impl for `{}`", name),
         target,
         |edit| {
             let type_params = nominal.type_param_list();
@@ -75,14 +75,18 @@ mod tests {
 
     #[test]
     fn test_add_impl() {
-        check_assist(add_impl, "struct Foo {<|>}\n", "struct Foo {}\n\nimpl Foo {\n    $0\n}\n");
         check_assist(
-            add_impl,
+            generate_impl,
+            "struct Foo {<|>}\n",
+            "struct Foo {}\n\nimpl Foo {\n    $0\n}\n",
+        );
+        check_assist(
+            generate_impl,
             "struct Foo<T: Clone> {<|>}",
             "struct Foo<T: Clone> {}\n\nimpl<T: Clone> Foo<T> {\n    $0\n}",
         );
         check_assist(
-            add_impl,
+            generate_impl,
             "struct Foo<'a, T: Foo<'a>> {<|>}",
             "struct Foo<'a, T: Foo<'a>> {}\n\nimpl<'a, T: Foo<'a>> Foo<'a, T> {\n    $0\n}",
         );
@@ -91,7 +95,7 @@ mod tests {
     #[test]
     fn add_impl_target() {
         check_assist_target(
-            add_impl,
+            generate_impl,
             "
 struct SomeThingIrrelevant;
 /// Has a lifetime parameter

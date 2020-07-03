@@ -16,7 +16,7 @@ use crate::{
     AssistContext, AssistId, AssistKind, Assists,
 };
 
-// Assist: add_function
+// Assist: generate_function
 //
 // Adds a stub function with a signature matching the function under the cursor.
 //
@@ -41,7 +41,7 @@ use crate::{
 // }
 //
 // ```
-pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let path = path_expr.path()?;
@@ -62,15 +62,20 @@ pub(crate) fn add_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
 
     let target = call.syntax().text_range();
-    acc.add(AssistId("add_function", AssistKind::None), "Add function", target, |builder| {
-        let function_template = function_builder.render();
-        builder.edit_file(function_template.file);
-        let new_fn = function_template.to_string(ctx.config.snippet_cap);
-        match ctx.config.snippet_cap {
-            Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
-            None => builder.insert(function_template.insert_offset, new_fn),
-        }
-    })
+    acc.add(
+        AssistId("generate_function", AssistKind::None),
+        format!("Generate `{}` function", function_builder.fn_name),
+        target,
+        |builder| {
+            let function_template = function_builder.render();
+            builder.edit_file(function_template.file);
+            let new_fn = function_template.to_string(ctx.config.snippet_cap);
+            match ctx.config.snippet_cap {
+                Some(cap) => builder.insert_snippet(cap, function_template.insert_offset, new_fn),
+                None => builder.insert(function_template.insert_offset, new_fn),
+            }
+        },
+    )
 }
 
 struct FunctionTemplate {
@@ -333,7 +338,7 @@ mod tests {
     #[test]
     fn add_function_with_no_args() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 fn foo() {
     bar<|>();
@@ -356,7 +361,7 @@ fn bar() {
         // This ensures that the function is correctly generated
         // in the next outer mod or file
         check_assist(
-            add_function,
+            generate_function,
             r"
 impl Foo {
     fn foo() {
@@ -382,7 +387,7 @@ fn bar() {
     fn add_function_directly_after_current_block() {
         // The new fn should not be created at the end of the file or module
         check_assist(
-            add_function,
+            generate_function,
             r"
 fn foo1() {
     bar<|>();
@@ -407,7 +412,7 @@ fn foo2() {}
     #[test]
     fn add_function_with_no_args_in_same_module() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 mod baz {
     fn foo() {
@@ -432,7 +437,7 @@ mod baz {
     #[test]
     fn add_function_with_function_call_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 struct Baz;
 fn baz() -> Baz { todo!() }
@@ -457,7 +462,7 @@ fn bar(baz: Baz) {
     #[test]
     fn add_function_with_method_call_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 struct Baz;
 impl Baz {
@@ -490,7 +495,7 @@ fn bar(baz: Baz) {
     #[test]
     fn add_function_with_string_literal_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r#"
 fn foo() {
     <|>bar("bar")
@@ -511,7 +516,7 @@ fn bar(arg: &str) {
     #[test]
     fn add_function_with_char_literal_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r#"
 fn foo() {
     <|>bar('x')
@@ -532,7 +537,7 @@ fn bar(arg: char) {
     #[test]
     fn add_function_with_int_literal_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 fn foo() {
     <|>bar(42)
@@ -553,7 +558,7 @@ fn bar(arg: i32) {
     #[test]
     fn add_function_with_cast_int_literal_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 fn foo() {
     <|>bar(42 as u8)
@@ -576,7 +581,7 @@ fn bar(arg: u8) {
         // Ensures that the name of the cast type isn't used
         // in the generated function signature.
         check_assist(
-            add_function,
+            generate_function,
             r"
 fn foo() {
     let x = 42;
@@ -599,7 +604,7 @@ fn bar(x: u8) {
     #[test]
     fn add_function_with_variable_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 fn foo() {
     let worble = ();
@@ -622,7 +627,7 @@ fn bar(worble: ()) {
     #[test]
     fn add_function_with_impl_trait_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 trait Foo {}
 fn foo() -> impl Foo {
@@ -651,7 +656,7 @@ fn bar(foo: impl Foo) {
     #[test]
     fn borrowed_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 struct Baz;
 fn baz() -> Baz { todo!() }
@@ -678,7 +683,7 @@ fn bar(baz: &Baz) {
     #[test]
     fn add_function_with_qualified_path_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 mod Baz {
     pub struct Bof;
@@ -709,7 +714,7 @@ fn bar(baz: Baz::Bof) {
     // FIXME fix printing the generics of a `Ty` to make this test pass
     fn add_function_with_generic_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 fn foo<T>(t: T) {
     <|>bar(t)
@@ -732,7 +737,7 @@ fn bar<T>(t: T) {
     // FIXME Fix function type printing to make this test pass
     fn add_function_with_fn_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 struct Baz;
 impl Baz {
@@ -763,7 +768,7 @@ fn bar(arg: fn() -> Baz) {
     // FIXME Fix closure type printing to make this test pass
     fn add_function_with_closure_arg() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 fn foo() {
     let closure = |x: i64| x - 1;
@@ -786,7 +791,7 @@ fn bar(closure: impl Fn(i64) -> i64) {
     #[test]
     fn unresolveable_types_default_to_unit() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 fn foo() {
     <|>bar(baz)
@@ -807,7 +812,7 @@ fn bar(baz: ()) {
     #[test]
     fn arg_names_dont_overlap() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 struct Baz;
 fn baz() -> Baz { Baz }
@@ -832,7 +837,7 @@ fn bar(baz_1: Baz, baz_2: Baz) {
     #[test]
     fn arg_name_counters_start_at_1_per_name() {
         check_assist(
-            add_function,
+            generate_function,
             r#"
 struct Baz;
 fn baz() -> Baz { Baz }
@@ -857,7 +862,7 @@ fn bar(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) {
     #[test]
     fn add_function_in_module() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 mod bar {}
 
@@ -885,7 +890,7 @@ fn foo() {
     // See https://github.com/rust-analyzer/rust-analyzer/issues/1165
     fn qualified_path_uses_correct_scope() {
         check_assist(
-            add_function,
+            generate_function,
             "
 mod foo {
     pub struct Foo;
@@ -916,7 +921,7 @@ fn baz(foo: foo::Foo) {
     #[test]
     fn add_function_in_module_containing_other_items() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 mod bar {
     fn something_else() {}
@@ -945,7 +950,7 @@ fn foo() {
     #[test]
     fn add_function_in_nested_module() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 mod bar {
     mod baz {}
@@ -974,7 +979,7 @@ fn foo() {
     #[test]
     fn add_function_in_another_file() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 //- /main.rs
 mod foo;
@@ -996,7 +1001,7 @@ pub(crate) fn bar() {
     #[test]
     fn add_function_not_applicable_if_function_already_exists() {
         check_assist_not_applicable(
-            add_function,
+            generate_function,
             r"
 fn foo() {
     bar<|>();
@@ -1013,7 +1018,7 @@ fn bar() {}
             // bar is resolved, but baz isn't.
             // The assist is only active if the cursor is on an unresolved path,
             // but the assist should only be offered if the path is a function call.
-            add_function,
+            generate_function,
             r"
 fn foo() {
     bar(b<|>az);
@@ -1028,7 +1033,7 @@ fn bar(baz: ()) {}
     #[ignore]
     fn create_method_with_no_args() {
         check_assist(
-            add_function,
+            generate_function,
             r"
 struct Foo;
 impl Foo {
