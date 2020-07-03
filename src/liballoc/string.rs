@@ -1187,7 +1187,7 @@ impl String {
 
     /// Removes a [`char`] from this `String` at a byte position and returns it.
     ///
-    /// This is an `O(n)` operation, as it requires copying every element in the
+    /// This is an *O*(*n*) operation, as it requires copying every element in the
     /// buffer.
     ///
     /// # Panics
@@ -1289,7 +1289,7 @@ impl String {
 
     /// Inserts a character into this `String` at a byte position.
     ///
-    /// This is an `O(n)` operation as it requires copying every element in the
+    /// This is an *O*(*n*) operation as it requires copying every element in the
     /// buffer.
     ///
     /// # Panics
@@ -1338,7 +1338,7 @@ impl String {
 
     /// Inserts a string slice into this `String` at a byte position.
     ///
-    /// This is an `O(n)` operation as it requires copying every element in the
+    /// This is an *O*(*n*) operation as it requires copying every element in the
     /// buffer.
     ///
     /// # Panics
@@ -1996,7 +1996,7 @@ impl hash::Hash for String {
 ///
 /// This consumes the `String` on the left-hand side and re-uses its buffer (growing it if
 /// necessary). This is done to avoid allocating a new `String` and copying the entire contents on
-/// every operation, which would lead to `O(n^2)` running time when building an `n`-byte string by
+/// every operation, which would lead to *O*(*n*^2) running time when building an *n*-byte string by
 /// repeated concatenation.
 ///
 /// The string on the right-hand side is only borrowed; its contents are copied into the returned

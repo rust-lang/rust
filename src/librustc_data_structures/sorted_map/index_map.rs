@@ -7,8 +7,8 @@ use std::iter::FromIterator;
 use crate::stable_hasher::{HashStable, StableHasher};
 use rustc_index::vec::{Idx, IndexVec};
 
-/// An indexed multi-map that preserves insertion order while permitting both `O(log n)` lookup of
-/// an item by key and `O(1)` lookup by index.
+/// An indexed multi-map that preserves insertion order while permitting both *O*(log *n*) lookup of
+/// an item by key and *O*(1) lookup by index.
 ///
 /// This data structure is a hybrid of an [`IndexVec`] and a [`SortedMap`]. Like `IndexVec`,
 /// `SortedIndexMultiMap` assigns a typed index to each item while preserving insertion order.
@@ -20,7 +20,7 @@ use rustc_index::vec::{Idx, IndexVec};
 /// items will be yielded in insertion order.
 ///
 /// Unlike a general-purpose map like `BTreeSet` or `HashSet`, `SortedMap` and
-/// `SortedIndexMultiMap` require `O(n)` time to insert a single item. This is because we may need
+/// `SortedIndexMultiMap` require *O*(*n*) time to insert a single item. This is because we may need
 /// to insert into the middle of the sorted array. Users should avoid mutating this data structure
 /// in-place.
 ///

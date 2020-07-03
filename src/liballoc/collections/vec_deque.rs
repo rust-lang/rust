@@ -1,7 +1,7 @@
 //! A double-ended queue implemented with a growable ring buffer.
 //!
-//! This queue has `O(1)` amortized inserts and removals from both ends of the
-//! container. It also has `O(1)` indexing like a vector. The contained elements
+//! This queue has *O*(1) amortized inserts and removals from both ends of the
+//! container. It also has *O*(1) indexing like a vector. The contained elements
 //! are not required to be copyable, and the queue will be sendable if the
 //! contained type is sendable.
 
@@ -1422,7 +1422,7 @@ impl<T> VecDeque<T> {
     /// Removes an element from anywhere in the `VecDeque` and returns it,
     /// replacing it with the first element.
     ///
-    /// This does not preserve ordering, but is `O(1)`.
+    /// This does not preserve ordering, but is *O*(1).
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
@@ -1457,7 +1457,7 @@ impl<T> VecDeque<T> {
     /// Removes an element from anywhere in the `VecDeque` and returns it, replacing it with the
     /// last element.
     ///
-    /// This does not preserve ordering, but is `O(1)`.
+    /// This does not preserve ordering, but is *O*(1).
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
@@ -2241,7 +2241,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Complexity
     ///
-    /// Takes `O(min(mid, len() - mid))` time and no extra space.
+    /// Takes `*O*(min(mid, len() - mid))` time and no extra space.
     ///
     /// # Examples
     ///
@@ -2284,7 +2284,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Complexity
     ///
-    /// Takes `O(min(k, len() - k))` time and no extra space.
+    /// Takes `*O*(min(k, len() - k))` time and no extra space.
     ///
     /// # Examples
     ///
@@ -2986,7 +2986,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
     /// [`Vec<T>`]: crate::vec::Vec
     /// [`VecDeque<T>`]: crate::collections::VecDeque
     ///
-    /// This never needs to re-allocate, but does need to do `O(n)` data movement if
+    /// This never needs to re-allocate, but does need to do *O*(*n*) data movement if
     /// the circular buffer doesn't happen to be at the beginning of the allocation.
     ///
     /// # Examples
@@ -2994,7 +2994,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// // This one is O(1).
+    /// // This one is *O*(1).
     /// let deque: VecDeque<_> = (1..5).collect();
     /// let ptr = deque.as_slices().0.as_ptr();
     /// let vec = Vec::from(deque);
