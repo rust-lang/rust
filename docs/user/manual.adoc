@@ -343,16 +343,14 @@ More about `when` clause contexts https://code.visualstudio.com/docs/getstarted/
 === Setting runnable environment variables
 You can use "rust-analyzer.runnableEnv" setting to define runnable environment-specific substitution variables.
 The simplest way for all runnables in a bunch:
-[source,jsonc]
----
+```jsonc
 "rust-analyzer.runnableEnv": {
     "RUN_SLOW_TESTS": "1"
 }
----
+```
 
 Or it is possible to specify vars more granularly:
-[source,jsonc]
----
+```jsonc
 "rust-analyzer.runnableEnv": [
     {
         // "mask": null, // null mask means that this rule will be applied for all runnables
@@ -368,6 +366,6 @@ Or it is possible to specify vars more granularly:
         }
     }
 ]
----
+```
 
 You can use any valid RegExp as a mask. Also note that a full runnable name is something like *run bin_or_example_name*, *test some::mod::test_name* or *test-mod some::mod*, so it is possible to distinguish binaries, single tests, and test modules with this masks: `"^run"`, `"^test "` (the trailing space matters!), and `"^test-mod"` respectively.
