@@ -460,7 +460,7 @@ mod tests {
     use test_utils::mark;
 
     use crate::completion::{
-        test_utils::{do_completion, do_completion_with_options},
+        test_utils::{check_edit, do_completion, do_completion_with_options},
         CompletionConfig, CompletionItem, CompletionKind,
     };
 
@@ -636,150 +636,59 @@ fn foo() {
     #[test]
     fn inserts_parens_for_function_calls() {
         mark::check!(inserts_parens_for_function_calls);
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                fn no_args() {}
-                fn main() { no_<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "main()",
-                source_range: 28..31,
-                delete: 28..31,
-                insert: "main()$0",
-                kind: Function,
-                lookup: "main",
-                detail: "fn main()",
-            },
-            CompletionItem {
-                label: "no_args()",
-                source_range: 28..31,
-                delete: 28..31,
-                insert: "no_args()$0",
-                kind: Function,
-                lookup: "no_args",
-                detail: "fn no_args()",
-            },
-        ]
-        "###
+        check_edit(
+            "no_args",
+            r#"
+fn no_args() {}
+fn main() { no_<|> }
+"#,
+            r#"
+fn no_args() {}
+fn main() { no_args()$0 }
+"#,
         );
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                fn with_args(x: i32, y: String) {}
-                fn main() { with_<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "main()",
-                source_range: 47..52,
-                delete: 47..52,
-                insert: "main()$0",
-                kind: Function,
-                lookup: "main",
-                detail: "fn main()",
-            },
-            CompletionItem {
-                label: "with_args(…)",
-                source_range: 47..52,
-                delete: 47..52,
-                insert: "with_args(${1:x}, ${2:y})$0",
-                kind: Function,
-                lookup: "with_args",
-                detail: "fn with_args(x: i32, y: String)",
-                trigger_call_info: true,
-            },
-        ]
-        "###
+        check_edit(
+            "with_args",
+            r#"
+fn with_args(x: i32, y: String) {}
+fn main() { with_<|> }
+"#,
+            r#"
+fn with_args(x: i32, y: String) {}
+fn main() { with_args(${1:x}, ${2:y})$0 }
+"#,
         );
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                fn with_ignored_args(_foo: i32, ___bar: bool, ho_ge_: String) {}
-                fn main() { with_<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "main()",
-                source_range: 77..82,
-                delete: 77..82,
-                insert: "main()$0",
-                kind: Function,
-                lookup: "main",
-                detail: "fn main()",
-            },
-            CompletionItem {
-                label: "with_ignored_args(…)",
-                source_range: 77..82,
-                delete: 77..82,
-                insert: "with_ignored_args(${1:foo}, ${2:bar}, ${3:ho_ge_})$0",
-                kind: Function,
-                lookup: "with_ignored_args",
-                detail: "fn with_ignored_args(_foo: i32, ___bar: bool, ho_ge_: String)",
-                trigger_call_info: true,
-            },
-        ]
-        "###
+        check_edit(
+            "foo",
+            r#"
+struct S;
+impl S {
+    fn foo(&self) {}
+}
+fn bar(s: &S) { s.f<|> }
+"#,
+            r#"
+struct S;
+impl S {
+    fn foo(&self) {}
+}
+fn bar(s: &S) { s.foo()$0 }
+"#,
         );
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                struct S {}
-                impl S {
-                    fn foo(&self) {}
-                }
-                fn bar(s: &S) {
-                    s.f<|>
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "foo()",
-                source_range: 66..67,
-                delete: 66..67,
-                insert: "foo()$0",
-                kind: Method,
-                lookup: "foo",
-                detail: "fn foo(&self)",
-            },
-        ]
-        "###
-        );
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                struct S {}
-                impl S {
-                    fn foo_ignored_args(&self, _a: bool, b: i32) {}
-                }
-                fn bar(s: &S) {
-                    s.f<|>
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "foo_ignored_args(…)",
-                source_range: 97..98,
-                delete: 97..98,
-                insert: "foo_ignored_args(${1:a}, ${2:b})$0",
-                kind: Method,
-                lookup: "foo_ignored_args",
-                detail: "fn foo_ignored_args(&self, _a: bool, b: i32)",
-                trigger_call_info: true,
-            },
-        ]
-        "###
+    }
+
+    #[test]
+    fn strips_underscores_from_args() {
+        check_edit(
+            "foo",
+            r#"
+fn foo(_foo: i32, ___bar: bool, ho_ge_: String) {}
+fn main() { f<|> }
+"#,
+            r#"
+fn foo(_foo: i32, ___bar: bool, ho_ge_: String) {}
+fn main() { foo(${1:foo}, ${2:bar}, ${3:ho_ge_})$0 }
+"#,
         );
     }
 
