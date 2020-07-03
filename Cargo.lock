@@ -208,20 +208,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crossbeam"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69323bff1fb41c635347b8ead484a5ca6c3f11914d784170b158d8449ab07f8e"
-dependencies = [
- "cfg-if",
- "crossbeam-channel",
- "crossbeam-deque",
- "crossbeam-epoch",
- "crossbeam-queue",
- "crossbeam-utils",
-]
-
-[[package]]
 name = "crossbeam-channel"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1504,12 +1490,13 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
 name = "salsa"
-version = "0.14.2"
+version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a976dce155e392af3f1aa540ca23a6fc7303a7fef425cb431c464deb263eb54"
+checksum = "4cd4f099cf7f1d6147aeb313d3fb093d2be1bf71a9fac0122d171c7593206af3"
 dependencies = [
- "crossbeam",
+ "crossbeam-utils",
  "indexmap",
+ "lock_api",
  "log",
  "parking_lot",
  "rand",
