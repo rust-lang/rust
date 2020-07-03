@@ -466,9 +466,9 @@ fn stdin_formatting_smoke_test() {
     }
 
     #[cfg(not(windows))]
-    assert_eq!(buf, "stdin:\n\nfn main() {}\n".as_bytes());
+    assert_eq!(buf, "<stdin>:\n\nfn main() {}\n".as_bytes());
     #[cfg(windows)]
-    assert_eq!(buf, "stdin:\n\nfn main() {}\r\n".as_bytes());
+    assert_eq!(buf, "<stdin>:\n\nfn main() {}\r\n".as_bytes());
 }
 
 #[test]
@@ -1013,5 +1013,5 @@ fn verify_check_l_works_with_stdin() {
         .wait_with_output()
         .expect("Failed to wait on rustfmt child");
     assert!(output.status.success());
-    assert_eq!(std::str::from_utf8(&output.stdout).unwrap(), "stdin\n");
+    assert_eq!(std::str::from_utf8(&output.stdout).unwrap(), "<stdin>\n");
 }
