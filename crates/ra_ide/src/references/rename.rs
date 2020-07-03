@@ -305,47 +305,17 @@ mod tests {
 
     #[test]
     fn test_rename_to_underscore() {
-        check(
-            "_",
-            r#"
-fn main() {
-    let i<|> = 1;
-}
-"#,
-            r#"
-fn main() {
-    let _ = 1;
-}
-"#,
-        );
+        check("_", r#"fn main() { let i<|> = 1; }"#, r#"fn main() { let _ = 1; }"#);
     }
 
     #[test]
     fn test_rename_to_raw_identifier() {
-        check(
-            "r#fn",
-            r#"
-fn main() {
-    let i<|> = 1;
-}
-"#,
-            r#"
-fn main() {
-    let r#fn = 1;
-}
-"#,
-        );
+        check("r#fn", r#"fn main() { let i<|> = 1; }"#, r#"fn main() { let r#fn = 1; }"#);
     }
 
     #[test]
     fn test_rename_to_invalid_identifier() {
-        let (analysis, position) = analysis_and_position(
-            r#"
-fn main() {
-    let i<|> = 1;
-}
-"#,
-        );
+        let (analysis, position) = analysis_and_position(r#"fn main() { let i<|> = 1; }"#);
         let new_name = "invalid!";
         let source_change = analysis.rename(position, new_name).unwrap();
         assert!(source_change.is_none());
@@ -361,9 +331,7 @@ fn main() {
     let j = 1;
     i = i<|> + j;
 
-    {
-        i = 0;
-    }
+    { i = 0; }
 
     i = 5;
 }
@@ -374,9 +342,7 @@ fn main() {
     let j = 1;
     k = k + j;
 
-    {
-        k = 0;
-    }
+    { k = 0; }
 
     k = 5;
 }
@@ -470,53 +436,17 @@ fn main() {
 
     #[test]
     fn test_rename_for_param_inside() {
-        check(
-            "j",
-            r#"
-fn foo(i : u32) -> u32 {
-    i<|>
-}
-"#,
-            r#"
-fn foo(j : u32) -> u32 {
-    j
-}
-"#,
-        );
+        check("j", r#"fn foo(i : u32) -> u32 { i<|> }"#, r#"fn foo(j : u32) -> u32 { j }"#);
     }
 
     #[test]
     fn test_rename_refs_for_fn_param() {
-        check(
-            "new_name",
-            r#"
-fn foo(i<|> : u32) -> u32 {
-    i
-}
-"#,
-            r#"
-fn foo(new_name : u32) -> u32 {
-    new_name
-}
-"#,
-        );
+        check("j", r#"fn foo(i<|> : u32) -> u32 { i }"#, r#"fn foo(j : u32) -> u32 { j }"#);
     }
 
     #[test]
     fn test_rename_for_mut_param() {
-        check(
-            "new_name",
-            r#"
-fn foo(mut i<|> : u32) -> u32 {
-    i
-}
-"#,
-            r#"
-fn foo(mut new_name : u32) -> u32 {
-    new_name
-}
-"#,
-        );
+        check("j", r#"fn foo(mut i<|> : u32) -> u32 { i }"#, r#"fn foo(mut j : u32) -> u32 { j }"#);
     }
 
     #[test]
@@ -602,7 +532,6 @@ impl Foo {
             "j",
             r#"
 struct Foo { i<|>: i32 }
-
 struct Bar { i: i32 }
 
 impl Bar {
@@ -613,7 +542,6 @@ impl Bar {
 "#,
             r#"
 struct Foo { j: i32 }
-
 struct Bar { i: i32 }
 
 impl Bar {
@@ -721,7 +649,53 @@ pub struct FooContent;
 //- /bar.rs
 use crate::foo<|>::FooContent;
 "#,
-            expect![[]],
+            expect![[r#"
+                RangeInfo {
+                    range: 11..14,
+                    info: SourceChange {
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "quux",
+                                            delete: 8..11,
+                                        },
+                                    ],
+                                },
+                            },
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    3,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "quux",
+                                            delete: 11..14,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        file_system_edits: [
+                            MoveFile {
+                                src: FileId(
+                                    2,
+                                ),
+                                anchor: FileId(
+                                    3,
+                                ),
+                                dst: "quux.rs",
+                            },
+                        ],
+                        is_snippet: false,
+                    },
+                }
+            "#]],
         );
     }
 
@@ -735,7 +709,40 @@ mod fo<|>o;
 //- /foo/mod.rs
 // emtpy
 "#,
-            expect![[]],
+            expect![[r#"
+                RangeInfo {
+                    range: 4..7,
+                    info: SourceChange {
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "foo2",
+                                            delete: 4..7,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        file_system_edits: [
+                            MoveFile {
+                                src: FileId(
+                                    2,
+                                ),
+                                anchor: FileId(
+                                    1,
+                                ),
+                                dst: "../foo2/mod.rs",
+                            },
+                        ],
+                        is_snippet: false,
+                    },
+                }
+            "#]],
         );
     }
 
@@ -744,22 +751,14 @@ mod fo<|>o;
         check(
             "baz",
             r#"
-mod <|>foo {
-    pub fn bar() {}
-}
+mod <|>foo { pub fn bar() {} }
 
-fn main() {
-    foo::bar();
-}
+fn main() { foo::bar(); }
 "#,
             r#"
-mod baz {
-    pub fn bar() {}
-}
+mod baz { pub fn bar() {} }
 
-fn main() {
-    baz::bar();
-}
+fn main() { baz::bar(); }
 "#,
         );
     }
@@ -781,7 +780,53 @@ pub mod foo<|>;
 //- /bar/foo.rs
 // pub fn fun() {}
 "#,
-            expect![[]],
+            expect![[r#"
+                RangeInfo {
+                    range: 8..11,
+                    info: SourceChange {
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    2,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "foo2",
+                                            delete: 8..11,
+                                        },
+                                    ],
+                                },
+                            },
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                edit: TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "foo2",
+                                            delete: 27..30,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        file_system_edits: [
+                            MoveFile {
+                                src: FileId(
+                                    3,
+                                ),
+                                anchor: FileId(
+                                    2,
+                                ),
+                                dst: "foo2.rs",
+                            },
+                        ],
+                        is_snippet: false,
+                    },
+                }
+            "#]],
         );
     }
 
@@ -791,9 +836,7 @@ pub mod foo<|>;
             "Baz",
             r#"
 mod foo {
-    pub enum Foo {
-        Bar<|>,
-    }
+    pub enum Foo { Bar<|> }
 }
 
 fn func(f: foo::Foo) {
@@ -804,9 +847,7 @@ fn func(f: foo::Foo) {
 "#,
             r#"
 mod foo {
-    pub enum Foo {
-        Baz,
-    }
+    pub enum Foo { Baz }
 }
 
 fn func(f: foo::Foo) {
