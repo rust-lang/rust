@@ -509,14 +509,14 @@ declare_lint! {
 
 declare_lint_pass!(ImproperCTypesDefinitions => [IMPROPER_CTYPES_DEFINITIONS]);
 
-enum ImproperCTypesMode {
+crate enum ImproperCTypesMode {
     Declarations,
     Definitions,
 }
 
-struct ImproperCTypesVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    mode: ImproperCTypesMode,
+crate struct ImproperCTypesVisitor<'a, 'tcx> {
+    crate cx: &'a LateContext<'tcx>,
+    crate mode: ImproperCTypesMode,
 }
 
 enum FfiResult<'tcx> {
@@ -562,17 +562,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    /// Check if this enum can be safely exported based on the "nullable pointer optimization".
-    /// Currently restricted to function pointers, boxes, references, `core::num::NonZero*`,
-    /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
-    fn is_repr_nullable_ptr(
+    /// Check if this enum can be safely exported based on the "nullable pointer optimization". If
+    /// the type is it is, return the known non-null field type, else None.  Currently restricted
+    /// to function pointers, boxes, references, `core::num::NonZero*`, `core::ptr::NonNull`, and
+    /// `#[repr(transparent)]` newtypes.
+    crate fn is_repr_nullable_ptr(
         &self,
         ty: Ty<'tcx>,
         ty_def: &'tcx ty::AdtDef,
         substs: SubstsRef<'tcx>,
-    ) -> bool {
+    ) -> Option<Ty<'tcx>> {
         if ty_def.variants.len() != 2 {
-            return false;
+            return None;
         }
 
         let get_variant_fields = |index| &ty_def.variants[VariantIdx::new(index)].fields;
@@ -582,16 +583,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         } else if variant_fields[1].is_empty() {
             &variant_fields[0]
         } else {
-            return false;
+            return None;
         };
 
         if fields.len() != 1 {
-            return false;
+            return None;
         }
 
         let field_ty = fields[0].ty(self.cx.tcx, substs);
         if !self.ty_is_known_nonnull(field_ty) {
-            return false;
+            return None;
         }
 
         // At this point, the field's type is known to be nonnull and the parent enum is
@@ -603,7 +604,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             bug!("improper_ctypes: Option nonnull optimization not applied?");
         }
 
-        true
+        Some(field_ty)
     }
 
     /// Check if the type is array and emit an unsafe type lint.
@@ -753,7 +754,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // discriminant.
                         if !def.repr.c() && !def.repr.transparent() && def.repr.int.is_none() {
                             // Special-case types like `Option<extern fn()>`.
-                            if !self.is_repr_nullable_ptr(ty, def, substs) {
+                            if self.is_repr_nullable_ptr(ty, def, substs).is_none() {
                                 return FfiUnsafe {
                                     ty,
                                     reason: "enum has no representation hint".into(),

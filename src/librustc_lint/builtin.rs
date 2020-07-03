@@ -2155,14 +2155,16 @@ impl ClashingExternDeclarations {
             let a_kind = &a.kind;
             let b_kind = &b.kind;
 
+            use rustc_target::abi::LayoutOf;
+            let compare_layouts = |a, b| {
+                let a_layout = &cx.layout_of(a).unwrap().layout.abi;
+                let b_layout = &cx.layout_of(b).unwrap().layout.abi;
+                let result = a_layout == b_layout;
+                result
+            };
+
             match (a_kind, b_kind) {
-                (Adt(..), Adt(..)) => {
-                    // Adts are pretty straightforward: just compare the layouts.
-                    use rustc_target::abi::LayoutOf;
-                    let a_layout = cx.layout_of(a).unwrap().layout;
-                    let b_layout = cx.layout_of(b).unwrap().layout;
-                    a_layout == b_layout
-                }
+                (Adt(..), Adt(..)) => compare_layouts(a, b),
                 (Array(a_ty, a_const), Array(b_ty, b_const)) => {
                     // For arrays, we also check the constness of the type.
                     a_const.val == b_const.val
@@ -2179,10 +2181,10 @@ impl ClashingExternDeclarations {
                     a_mut == b_mut && Self::structurally_same_type(cx, a_ty, b_ty)
                 }
                 (FnDef(..), FnDef(..)) => {
-                    // As we don't compare regions, skip_binder is fine.
                     let a_poly_sig = a.fn_sig(tcx);
                     let b_poly_sig = b.fn_sig(tcx);
 
+                    // As we don't compare regions, skip_binder is fine.
                     let a_sig = a_poly_sig.skip_binder();
                     let b_sig = b_poly_sig.skip_binder();
 
@@ -2210,7 +2212,56 @@ impl ClashingExternDeclarations {
                 | (Opaque(..), Opaque(..)) => false,
                 // These definitely should have been caught above.
                 (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
-                _ => false,
+
+                // Disjoint kinds.
+                (_, _) => {
+                    // First, check if the conversion is FFI-safe. This can be so if the type is an
+                    // enum with a non-null field (see improper_ctypes).
+                    let is_primitive_or_pointer =
+                        |ty: Ty<'tcx>| ty.is_primitive() || matches!(ty.kind, RawPtr(..));
+                    if (is_primitive_or_pointer(a) || is_primitive_or_pointer(b))
+                        && !(is_primitive_or_pointer(a) && is_primitive_or_pointer(b))
+                        && (matches!(a_kind, Adt(..)) || matches!(b_kind, Adt(..)))
+                    /* ie, 1 adt and 1 primitive */
+                    {
+                        let (primitive_ty, adt_ty) =
+                            if is_primitive_or_pointer(a) { (a, b) } else { (b, a) };
+                        // First, check that the Adt is FFI-safe to use.
+                        use crate::types::{ImproperCTypesMode, ImproperCTypesVisitor};
+                        let vis =
+                            ImproperCTypesVisitor { cx, mode: ImproperCTypesMode::Declarations };
+
+                        if let Adt(def, substs) = adt_ty.kind {
+                            let repr_nullable = vis.is_repr_nullable_ptr(adt_ty, def, substs);
+                            if let Some(safe_ty) = repr_nullable {
+                                let safe_ty_layout = &cx.layout_of(safe_ty).unwrap();
+                                let primitive_ty_layout = &cx.layout_of(primitive_ty).unwrap();
+
+                                use rustc_target::abi::Abi::*;
+                                match (&safe_ty_layout.abi, &primitive_ty_layout.abi) {
+                                    (Scalar(safe), Scalar(primitive)) => {
+                                        // The two types are safe to convert between if `safe` is
+                                        // the non-zero version of `primitive`.
+                                        use std::ops::RangeInclusive;
+
+                                        let safe_range: &RangeInclusive<_> = &safe.valid_range;
+                                        let primitive_range: &RangeInclusive<_> =
+                                            &primitive.valid_range;
+
+                                        return primitive_range.end() == safe_range.end()
+                                            // This check works for both signed and unsigned types due to wraparound.
+                                            && *safe_range.start() == 1
+                                            && *primitive_range.start() == 0;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    // Otherwise, just compare the layouts. This may be underapproximate, but at
+                    // the very least, will stop reads into uninitialised memory.
+                    compare_layouts(a, b)
+                }
             }
         }
     }
