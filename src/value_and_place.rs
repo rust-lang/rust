@@ -469,6 +469,30 @@ impl<'tcx> CPlace<'tcx> {
         #[cfg_attr(not(debug_assertions), allow(unused_variables))]
         method: &'static str,
     ) {
+        fn transmute_value<'tcx>(
+            fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+            var: Variable,
+            data: Value,
+            dst_ty: Type,
+        ) {
+            let src_ty = fx.bcx.func.dfg.value_type(data);
+            let data = match (src_ty, dst_ty) {
+                (_, _) if src_ty == dst_ty => data,
+
+                // This is a `write_cvalue_transmute`.
+                (types::I32, types::F32) | (types::F32, types::I32)
+                    | (types::I64, types::F64) | (types::F64, types::I64) => {
+                        fx.bcx.ins().bitcast(dst_ty, data)
+                }
+                _ if src_ty.is_vector() && dst_ty.is_vector() => {
+                    fx.bcx.ins().raw_bitcast(dst_ty, data)
+                }
+                _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty, dst_ty),
+            };
+            fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var.index()));
+            fx.bcx.def_var(var, data);
+        }
+
         assert_eq!(self.layout().size, from.layout().size);
 
         #[cfg(debug_assertions)]
@@ -488,62 +512,15 @@ impl<'tcx> CPlace<'tcx> {
         let to_ptr = match self.inner {
             CPlaceInner::Var(_local, var) => {
                 let data = CValue(from.0, dst_layout).load_scalar(fx);
-                let src_ty = fx.bcx.func.dfg.value_type(data);
                 let dst_ty = fx.clif_type(self.layout().ty).unwrap();
-                let data = match (src_ty, dst_ty) {
-                    (_, _) if src_ty == dst_ty => data,
-
-                    // This is a `write_cvalue_transmute`.
-                    (types::I32, types::F32) | (types::F32, types::I32)
-                    | (types::I64, types::F64) | (types::F64, types::I64) => {
-                        fx.bcx.ins().bitcast(dst_ty, data)
-                    }
-                    _ if src_ty.is_vector() && dst_ty.is_vector() => {
-                        fx.bcx.ins().raw_bitcast(dst_ty, data)
-                    }
-                    _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty, dst_ty),
-                };
-                fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var.index()));
-                fx.bcx.def_var(var, data);
+                transmute_value(fx, var, data, dst_ty);
                 return;
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
                 let (data1, data2) = CValue(from.0, dst_layout).load_scalar_pair(fx);
                 let (dst_ty1, dst_ty2) = fx.clif_pair_type(self.layout().ty).unwrap();
-
-                let src_ty1 = fx.bcx.func.dfg.value_type(data1);
-                let data = match (src_ty1, dst_ty1) {
-                    (_, _) if src_ty1 == dst_ty1 => data1,
-
-                    // This is a `write_cvalue_transmute`.
-                    (types::I32, types::F32) | (types::F32, types::I32)
-                    | (types::I64, types::F64) | (types::F64, types::I64) => {
-                        fx.bcx.ins().bitcast(dst_ty1, data1)
-                    }
-                    _ if src_ty1.is_vector() && dst_ty1.is_vector() => {
-                        fx.bcx.ins().raw_bitcast(dst_ty1, data1)
-                    }
-                    _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty1, dst_ty1),
-                };
-                fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var1.index()));
-                fx.bcx.def_var(var1, data);
-
-                let src_ty2 = fx.bcx.func.dfg.value_type(data2);
-                let data = match (src_ty2, dst_ty2) {
-                    (_, _) if src_ty2 == dst_ty2 => data2,
-
-                    // This is a `write_cvalue_transmute`.
-                    (types::I32, types::F32) | (types::F32, types::I32)
-                    | (types::I64, types::F64) | (types::F64, types::I64) => {
-                        fx.bcx.ins().bitcast(dst_ty2, data2)
-                    }
-                    _ if src_ty2.is_vector() && dst_ty2.is_vector() => {
-                        fx.bcx.ins().raw_bitcast(dst_ty2, data2)
-                    }
-                    _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty2, dst_ty2),
-                };
-                fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var2.index()));
-                fx.bcx.def_var(var2, data);
+                transmute_value(fx, var1, data1, dst_ty1);
+                transmute_value(fx, var2, data2, dst_ty2);
                 return;
             }
             CPlaceInner::Addr(ptr, None) => {
