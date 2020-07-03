@@ -340,7 +340,7 @@ You may use `inRustProject` context to configure keybindings for rust projects o
 ----
 More about `when` clause contexts https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts[here].
 
-=== Setting runnable environment variables
+==== Setting runnable environment variables
 You can use "rust-analyzer.runnableEnv" setting to define runnable environment-specific substitution variables.
 The simplest way for all runnables in a bunch:
 ```jsonc
