@@ -1,8 +1,10 @@
 //! Runs completion for testing purposes.
 
 use hir::Semantics;
+use itertools::Itertools;
 use ra_syntax::{AstNode, NodeOrToken, SyntaxElement};
 use stdx::format_to;
+use test_utils::assert_eq_text;
 
 use crate::{
     completion::{completion_item::CompletionKind, CompletionConfig},
@@ -52,6 +54,17 @@ pub(crate) fn completion_list_with_options(
             buf
         })
         .collect()
+}
+
+pub(crate) fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+    let (analysis, position) = analysis_and_position(ra_fixture_before);
+    let completions: Vec<CompletionItem> =
+        analysis.completions(&CompletionConfig::default(), position).unwrap().unwrap().into();
+    let (completion,) =
+        completions.into_iter().filter(|it| it.label() == what).collect_tuple().unwrap();
+    let mut actual = analysis.file_text(position.file_id).unwrap().to_string();
+    completion.text_edit().apply(&mut actual);
+    assert_eq_text!(ra_fixture_after, &actual)
 }
 
 pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -> bool) {

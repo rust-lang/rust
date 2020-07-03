@@ -176,7 +176,10 @@ fn complete_return(
 mod tests {
     use expect::{expect, Expect};
 
-    use crate::completion::{test_utils::completion_list, CompletionKind};
+    use crate::completion::{
+        test_utils::{check_edit, completion_list},
+        CompletionKind,
+    };
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Keyword);
@@ -311,6 +314,11 @@ mod tests {
                 kw use
                 kw while
             "#]],
+        );
+        check_edit(
+            "else",
+            r#"fn quux() { if true { () } <|> }"#,
+            r#"fn quux() { if true { () } else {$0} }"#,
         );
     }
 
