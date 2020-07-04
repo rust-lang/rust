@@ -57,6 +57,7 @@ mod freebsd_base;
 mod freestanding_base;
 mod fuchsia_base;
 mod haiku_base;
+mod harvey_base;
 mod hermit_base;
 mod hermit_kernel_base;
 mod illumos_base;
@@ -573,6 +574,8 @@ supported_targets! {
 
     ("i686-unknown-haiku", i686_unknown_haiku),
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
+
+    ("x86_64-unknown-harvey", x86_64_unknown_harvey),
 
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
