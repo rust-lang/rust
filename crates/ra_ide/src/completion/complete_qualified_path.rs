@@ -1189,6 +1189,7 @@ mod tests {
                 delete: 82..82,
                 insert: "foo!($0)",
                 kind: Macro,
+                lookup: "foo!",
                 detail: "#[macro_export]\nmacro_rules! foo",
             },
             CompletionItem {

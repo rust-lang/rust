@@ -785,6 +785,7 @@ mod tests {
                 delete: 256..256,
                 insert: "bar!($0)",
                 kind: Macro,
+                lookup: "bar!",
                 detail: "macro_rules! bar",
             },
             CompletionItem {
@@ -793,6 +794,7 @@ mod tests {
                 delete: 256..256,
                 insert: "baz!($0)",
                 kind: Macro,
+                lookup: "baz!",
                 detail: "#[macro_export]\nmacro_rules! baz",
             },
             CompletionItem {
@@ -801,6 +803,7 @@ mod tests {
                 delete: 256..256,
                 insert: "foo!($0)",
                 kind: Macro,
+                lookup: "foo!",
                 detail: "macro_rules! foo",
             },
             CompletionItem {
@@ -854,6 +857,7 @@ mod tests {
                 delete: 50..50,
                 insert: "foo!($0)",
                 kind: Macro,
+                lookup: "foo!",
                 detail: "macro_rules! foo",
             },
             CompletionItem {
@@ -893,6 +897,7 @@ mod tests {
                 delete: 58..58,
                 insert: "foo!($0)",
                 kind: Macro,
+                lookup: "foo!",
                 detail: "macro_rules! foo",
             },
             CompletionItem {
@@ -932,6 +937,7 @@ mod tests {
                 delete: 51..51,
                 insert: "foo!($0)",
                 kind: Macro,
+                lookup: "foo!",
                 detail: "macro_rules! foo",
             },
             CompletionItem {
@@ -1005,6 +1011,7 @@ mod tests {
                 delete: 80..80,
                 insert: "m!($0)",
                 kind: Macro,
+                lookup: "m!",
                 detail: "macro_rules! m",
             },
             CompletionItem {
@@ -1058,6 +1065,7 @@ mod tests {
                 delete: 80..81,
                 insert: "m!($0)",
                 kind: Macro,
+                lookup: "m!",
                 detail: "macro_rules! m",
             },
             CompletionItem {
@@ -1111,6 +1119,7 @@ mod tests {
                 delete: 80..81,
                 insert: "m!($0)",
                 kind: Macro,
+                lookup: "m!",
                 detail: "macro_rules! m",
             },
             CompletionItem {

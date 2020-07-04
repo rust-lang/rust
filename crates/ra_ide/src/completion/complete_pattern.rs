@@ -130,6 +130,7 @@ mod tests {
                 delete: 90..90,
                 insert: "m!($0)",
                 kind: Macro,
+                lookup: "m!",
                 detail: "macro_rules! m",
             },
         ]
