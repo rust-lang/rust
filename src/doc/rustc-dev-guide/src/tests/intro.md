@@ -266,7 +266,7 @@ emulation on Travis.  The following will take a look at how a target's tests
 are run under emulation.
 
 The Docker image for [armhf-gnu] includes [QEMU] to emulate the ARM CPU
-architecture.  Included in the Rust tree are the tools [remote-test-client]
+architecture. Included in the Rust tree are the tools [remote-test-client]
 and [remote-test-server] which are programs for sending test programs and
 libraries to the emulator, and running the tests within the emulator, and
 reading the results.  The Docker image is set up to launch
@@ -279,7 +279,7 @@ communicate with the server to coordinate running tests (see
 >
 > It's also unclear to me how the wasm or asm.js tests are run.
 
-[armhf-gnu]: https://github.com/rust-lang/rust/tree/master/src/ci/docker/armhf-gnu
+[armhf-gnu]: https://github.com/rust-lang/rust/tree/master/src/ci/docker/host-x86_64/armhf-gnu/Dockerfile
 [QEMU]: https://www.qemu.org/
 [remote-test-client]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-client
 [remote-test-server]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-server
