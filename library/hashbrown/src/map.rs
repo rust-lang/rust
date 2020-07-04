@@ -3894,4 +3894,74 @@ mod test_map {
         assert!(m.raw_entry().from_hash(1, |k| k.0 == 1).is_some());
         assert!(m.raw_entry().from_hash(2, |k| k.0 == 2).is_none());
     }
+
+    #[test]
+    #[cfg(feature = "raw")]
+    fn test_into_iter_refresh() {
+        use core::hash::{BuildHasher, Hash, Hasher};
+
+        #[cfg(miri)]
+        const N: usize = 32;
+        #[cfg(not(miri))]
+        const N: usize = 128;
+
+        let mut rng = rand::thread_rng();
+        for n in 0..N {
+            let mut m = HashMap::new();
+            for i in 0..n {
+                assert!(m.insert(i, 2 * i).is_none());
+            }
+            let hasher = m.hasher().clone();
+
+            let mut it = unsafe { m.table.iter() };
+            assert_eq!(it.len(), n);
+
+            let mut i = 0;
+            let mut left = n;
+            let mut removed = Vec::new();
+            loop {
+                // occasionally remove some elements
+                if i < n && rng.gen_bool(0.1) {
+                    let mut hsh = hasher.build_hasher();
+                    i.hash(&mut hsh);
+                    let hash = hsh.finish();
+
+                    unsafe {
+                        let e = m.table.find(hash, |q| q.0.eq(&i));
+                        if let Some(e) = e {
+                            it.reflect_remove(&e);
+                            let t = m.table.remove(e);
+                            removed.push(t);
+                            left -= 1;
+                        } else {
+                            assert!(removed.contains(&(i, 2 * i)), "{} not in {:?}", i, removed);
+                            let e = m
+                                .table
+                                .insert(hash, (i, 2 * i), |x| super::make_hash(&hasher, &x.0));
+                            it.reflect_insert(&e);
+                            if let Some(p) = removed.iter().position(|e| e == &(i, 2 * i)) {
+                                removed.swap_remove(p);
+                            }
+                            left += 1;
+                        }
+                    }
+                }
+
+                let e = it.next();
+                if e.is_none() {
+                    break;
+                }
+                assert!(i < n);
+                let t = unsafe { e.unwrap().as_ref() };
+                assert!(!removed.contains(t));
+                let (k, v) = t;
+                assert_eq!(*v, 2 * k);
+                i += 1;
+            }
+            assert!(i <= n);
+
+            // just for safety:
+            assert_eq!(m.table.len(), left);
+        }
+    }
 }

@@ -1002,15 +1002,52 @@ impl<T> RawTable<T> {
     }
 
     /// Returns an iterator which removes all elements from the table without
-    /// freeing the memory. It is up to the caller to ensure that the `RawTable`
-    /// outlives the `RawDrain`. Because we cannot make the `next` method unsafe
-    /// on the `RawDrain`, we have to make the `drain` method unsafe.
+    /// freeing the memory.
+    ///
+    /// It is up to the caller to ensure that the `RawTable` outlives the `RawDrain`.
+    /// Because we cannot make the `next` method unsafe on the `RawDrain`,
+    /// we have to make the `drain` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn drain(&mut self) -> RawDrain<'_, T> {
+        let iter = self.iter();
+        self.drain_iter_from(iter)
+    }
+
+    /// Returns an iterator which removes all elements from the table without
+    /// freeing the memory.
+    ///
+    /// It is up to the caller to ensure that the `RawTable` outlives the `RawDrain`.
+    /// Because we cannot make the `next` method unsafe on the `RawDrain`,
+    /// we have to make the `drain` method unsafe.
+    ///
+    /// Iteration starts at the provided iterator's current location.
+    /// You must ensure that the iterator covers all items that remain in the table.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub unsafe fn drain_iter_from(&mut self, iter: RawIter<T>) -> RawDrain<'_, T> {
+        debug_assert_eq!(iter.len(), self.len());
         RawDrain {
-            iter: self.iter(),
+            iter,
             table: ManuallyDrop::new(mem::replace(self, Self::new())),
             orig_table: NonNull::from(self),
+            marker: PhantomData,
+        }
+    }
+
+    /// Returns an iterator which consumes all elements from the table.
+    ///
+    /// It is up to the caller to ensure that the `RawTable` outlives the `RawIntoIter`.
+    /// Because we cannot make the `next` method unsafe on the `RawIntoIter`,
+    /// we have to make the `into_iter_from` method unsafe.
+    ///
+    /// Iteration starts at the provided iterator's current location.
+    /// You must ensure that the iterator covers all items that remain in the table.
+    pub unsafe fn into_iter_from(self, iter: RawIter<T>) -> RawIntoIter<T> {
+        debug_assert_eq!(iter.len(), self.len());
+
+        let alloc = self.into_alloc();
+        RawIntoIter {
+            iter,
+            alloc,
             marker: PhantomData,
         }
     }
@@ -1250,12 +1287,7 @@ impl<T> IntoIterator for RawTable<T> {
     fn into_iter(self) -> RawIntoIter<T> {
         unsafe {
             let iter = self.iter();
-            let alloc = self.into_alloc();
-            RawIntoIter {
-                iter,
-                alloc,
-                marker: PhantomData,
-            }
+            self.into_iter_from(iter)
         }
     }
 }
@@ -1406,6 +1438,124 @@ impl<T> FusedIterator for RawIterRange<T> {}
 pub struct RawIter<T> {
     pub(crate) iter: RawIterRange<T>,
     items: usize,
+}
+
+impl<T> RawIter<T> {
+    /// Refresh the iterator so that it reflects a removal from the given bucket.
+    ///
+    /// For the iterator to remain valid, this method must be called once
+    /// for each removed bucket before `next` is called again.
+    ///
+    /// This method should be called _before_ the removal is made. It is not necessary to call this
+    /// method if you are removing an item that this iterator yielded in the past.
+    #[cfg(feature = "raw")]
+    pub fn reflect_remove(&mut self, b: &Bucket<T>) {
+        self.reflect_toggle_full(b, false);
+    }
+
+    /// Refresh the iterator so that it reflects an insertion into the given bucket.
+    ///
+    /// For the iterator to remain valid, this method must be called once
+    /// for each insert before `next` is called again.
+    ///
+    /// This method does not guarantee that an insertion of a bucket witha greater
+    /// index than the last one yielded will be reflected in the iterator.
+    ///
+    /// This method should be called _after_ the given insert is made.
+    #[cfg(feature = "raw")]
+    pub fn reflect_insert(&mut self, b: &Bucket<T>) {
+        self.reflect_toggle_full(b, true);
+    }
+
+    /// Refresh the iterator so that it reflects a change to the state of the given bucket.
+    #[cfg(feature = "raw")]
+    fn reflect_toggle_full(&mut self, b: &Bucket<T>, is_insert: bool) {
+        unsafe {
+            if b.as_ptr() > self.iter.data.as_ptr() {
+                // The iterator has already passed the bucket's group.
+                // So the toggle isn't relevant to this iterator.
+                return;
+            }
+
+            if self.iter.next_ctrl < self.iter.end
+                && b.as_ptr() <= self.iter.data.next_n(Group::WIDTH).as_ptr()
+            {
+                // The iterator has not yet reached the bucket's group.
+                // We don't need to reload anything, but we do need to adjust the item count.
+
+                if cfg!(debug_assertions) {
+                    // Double-check that the user isn't lying to us by checking the bucket state.
+                    // To do that, we need to find its control byte. We know that self.iter.data is
+                    // at self.iter.next_ctrl - Group::WIDTH, so we work from there:
+                    let offset = offset_from(self.iter.data.as_ptr(), b.as_ptr());
+                    let ctrl = self.iter.next_ctrl.sub(Group::WIDTH).add(offset);
+                    // This method should be called _before_ a removal, or _after_ an insert,
+                    // so in both cases the ctrl byte should indicate that the bucket is full.
+                    assert!(is_full(*ctrl));
+                }
+
+                if is_insert {
+                    self.items += 1;
+                } else {
+                    self.items -= 1;
+                }
+
+                return;
+            }
+
+            // The iterator is at the bucket group that the toggled bucket is in.
+            // We need to do two things:
+            //
+            //  - Determine if the iterator already yielded the toggled bucket.
+            //    If it did, we're done.
+            //  - Otherwise, update the iterator cached group so that it won't
+            //    yield a to-be-removed bucket, or _will_ yield a to-be-added bucket.
+            //    We'll also need ot update the item count accordingly.
+            if let Some(index) = self.iter.current_group.lowest_set_bit() {
+                let next_bucket = self.iter.data.next_n(index);
+                if b.as_ptr() > next_bucket.as_ptr() {
+                    // The toggled bucket is "before" the bucket the iterator would yield next. We
+                    // therefore don't need to do anything --- the iterator has already passed the
+                    // bucket in question.
+                    //
+                    // The item count must already be correct, since a removal or insert "prior" to
+                    // the iterator's position wouldn't affect the item count.
+                } else {
+                    // The removed bucket is an upcoming bucket. We need to make sure it does _not_
+                    // get yielded, and also that it's no longer included in the item count.
+                    //
+                    // NOTE: We can't just reload the group here, both since that might reflect
+                    // inserts we've already passed, and because that might inadvertently unset the
+                    // bits for _other_ removals. If we do that, we'd have to also decrement the
+                    // item count for those other bits that we unset. But the presumably subsequent
+                    // call to reflect for those buckets might _also_ decrement the item count.
+                    // Instead, we _just_ flip the bit for the particular bucket the caller asked
+                    // us to reflect.
+                    let our_bit = offset_from(self.iter.data.as_ptr(), b.as_ptr());
+                    let was_full = self.iter.current_group.flip(our_bit);
+                    debug_assert_ne!(was_full, is_insert);
+
+                    if is_insert {
+                        self.items += 1;
+                    } else {
+                        self.items -= 1;
+                    }
+
+                    if cfg!(debug_assertions) {
+                        if b.as_ptr() == next_bucket.as_ptr() {
+                            // The removed bucket should no longer be next
+                            debug_assert_ne!(self.iter.current_group.lowest_set_bit(), Some(index));
+                        } else {
+                            // We should not have changed what bucket comes next.
+                            debug_assert_eq!(self.iter.current_group.lowest_set_bit(), Some(index));
+                        }
+                    }
+                }
+            } else {
+                // We must have already iterated past the removed item.
+            }
+        }
+    }
 }
 
 impl<T> Clone for RawIter<T> {

@@ -1,5 +1,5 @@
 use crate::raw::Bucket;
-use crate::raw::{RawIterRange, RawTable};
+use crate::raw::{RawIter, RawIterRange, RawTable};
 use crate::scopeguard::guard;
 use alloc::alloc::dealloc;
 use core::marker::PhantomData;
@@ -13,6 +13,12 @@ use rayon::iter::{
 /// Parallel iterator which returns a raw pointer to every full bucket in the table.
 pub struct RawParIter<T> {
     iter: RawIterRange<T>,
+}
+
+impl<T> From<RawIter<T>> for RawParIter<T> {
+    fn from(it: RawIter<T>) -> Self {
+        RawParIter { iter: it.iter }
+    }
 }
 
 impl<T> ParallelIterator for RawParIter<T> {
