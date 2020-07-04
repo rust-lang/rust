@@ -174,6 +174,7 @@ impl Completions {
                 builder
                     .insert_snippet(cap, format!("{}!{}$0{}", name, bra, ket))
                     .label(format!("{}!{}…{}", name, bra, ket))
+                    .lookup_by(format!("{}!", name))
             }
             None if needs_bang => builder.insert_text(format!("{}!", name)),
             _ => {
@@ -1078,5 +1079,58 @@ fn go(world: &WorldSnapshot) { go(w<|>) }
                 fn go(…) []
             "#]],
         );
+    }
+
+    #[test]
+    fn guesses_macro_braces() {
+        check_edit(
+            "vec!",
+            r#"
+/// Creates a [`Vec`] containing the arguments.
+///
+/// ```
+/// let v = vec![1, 2, 3];
+/// assert_eq!(v[0], 1);
+/// assert_eq!(v[1], 2);
+/// assert_eq!(v[2], 3);
+/// ```
+macro_rules! vec { () => {} }
+
+fn fn main() { v<|> }
+"#,
+            r#"
+/// Creates a [`Vec`] containing the arguments.
+///
+/// ```
+/// let v = vec![1, 2, 3];
+/// assert_eq!(v[0], 1);
+/// assert_eq!(v[1], 2);
+/// assert_eq!(v[2], 3);
+/// ```
+macro_rules! vec { () => {} }
+
+fn fn main() { vec![$0] }
+"#,
+        );
+
+        check_edit(
+            "foo!",
+            r#"
+/// Foo
+///
+/// Don't call `fooo!()` `fooo!()`, or `_foo![]` `_foo![]`,
+/// call as `let _=foo!  { hello world };`
+macro_rules! foo { () => {} }
+fn main() { <|> }
+"#,
+            r#"
+/// Foo
+///
+/// Don't call `fooo!()` `fooo!()`, or `_foo![]` `_foo![]`,
+/// call as `let _=foo!  { hello world };`
+macro_rules! foo { () => {} }
+fn main() { foo! {$0} }
+"#,
+        )
     }
 }
