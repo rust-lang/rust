@@ -694,7 +694,7 @@ mod impls {
 )]
 #[lang = "discriminant_kind"]
 pub trait DiscriminantKind {
-    /// The type of the dicriminant, which must satisfy the trait
+    /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
     type Discriminant: Clone + Copy + Debug + Eq + PartialEq + Hash + Send + Sync + Unpin;
 }

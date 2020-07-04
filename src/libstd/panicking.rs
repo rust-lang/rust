@@ -229,10 +229,10 @@ pub mod panic_count {
     thread_local! { static LOCAL_PANIC_COUNT: Cell<usize> = Cell::new(0) }
 
     // Sum of panic counts from all threads. The purpose of this is to have
-    // a fast path in `is_zero` (which is used by `panicking`). Access to
-    // this variable can be always be done with relaxed ordering because
-    // it is always guaranteed that, if `GLOBAL_PANIC_COUNT` is zero,
-    // `LOCAL_PANIC_COUNT` will be zero.
+    // a fast path in `is_zero` (which is used by `panicking`). In any particular
+    // thread, if that thread currently views `GLOBAL_PANIC_COUNT` as being zero,
+    // then `LOCAL_PANIC_COUNT` in that thread is zero. This invariant holds before
+    // and after increase and decrease, but not necessarily during their execution.
     static GLOBAL_PANIC_COUNT: AtomicUsize = AtomicUsize::new(0);
 
     pub fn increase() -> usize {
@@ -263,6 +263,12 @@ pub mod panic_count {
             // Fast path: if `GLOBAL_PANIC_COUNT` is zero, all threads
             // (including the current one) will have `LOCAL_PANIC_COUNT`
             // equal to zero, so TLS access can be avoided.
+            //
+            // In terms of performance, a relaxed atomic load is similar to a normal
+            // aligned memory read (e.g., a mov instruction in x86), but with some
+            // compiler optimization restrictions. On the other hand, a TLS access
+            // might require calling a non-inlinable function (such as `__tls_get_addr`
+            // when using the GD TLS model).
             true
         } else {
             is_zero_slow_path()

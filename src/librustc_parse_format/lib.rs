@@ -190,7 +190,7 @@ pub struct Parser<'a> {
     /// Whether the source string is comes from `println!` as opposed to `format!` or `print!`
     append_newline: bool,
     /// Whether this formatting string is a literal or it comes from a macro.
-    is_literal: bool,
+    pub is_literal: bool,
     /// Start position of the current line.
     cur_line_start: usize,
     /// Start and end byte offset of every line of the format string. Excludes

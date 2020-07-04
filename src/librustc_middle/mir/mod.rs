@@ -257,6 +257,18 @@ impl<'tcx> Body<'tcx> {
         (&mut self.basic_blocks, &mut self.local_decls)
     }
 
+    #[inline]
+    pub fn basic_blocks_local_decls_mut_and_var_debug_info(
+        &mut self,
+    ) -> (
+        &mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+        &mut LocalDecls<'tcx>,
+        &mut Vec<VarDebugInfo<'tcx>>,
+    ) {
+        self.predecessor_cache.invalidate();
+        (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
+    }
+
     /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
     /// `START_BLOCK`.
     pub fn is_cfg_cyclic(&self) -> bool {

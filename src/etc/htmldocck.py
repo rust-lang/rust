@@ -114,7 +114,10 @@ try:
     from html.parser import HTMLParser
 except ImportError:
     from HTMLParser import HTMLParser
-from xml.etree import cElementTree as ET
+try:
+    from xml.etree import cElementTree as ET
+except ImportError:
+    from xml.etree import ElementTree as ET
 
 try:
     from html.entities import name2codepoint
