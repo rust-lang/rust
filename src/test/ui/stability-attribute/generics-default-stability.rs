@@ -95,15 +95,12 @@ fn main() {
     //~^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
     //~^^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
     //~^^^ use of deprecated item 'unstable_generic_param::Struct5::field': test [deprecated]
-    //~^^^^ use of deprecated item 'unstable_generic_param::Struct5::A': test [deprecated]
     let _ = STRUCT5;
     let _: Struct5 = STRUCT5; //~ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
     let _: Struct5<usize> = STRUCT5; //~ ERROR use of unstable library feature 'unstable_default'
     //~^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
-    //~^^ use of deprecated item 'unstable_generic_param::Struct5::A': test [deprecated]
     let _: Struct5<isize> = Struct5 { field: 0 }; //~ ERROR use of unstable library feature 'unstable_default'
     //~^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
     //~^^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
     //~^^^ use of deprecated item 'unstable_generic_param::Struct5::field': test [deprecated]
-    //~^^^^ use of deprecated item 'unstable_generic_param::Struct5::A': test [deprecated]
 }
