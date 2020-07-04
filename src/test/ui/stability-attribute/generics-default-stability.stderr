@@ -73,25 +73,25 @@ LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |            ^^^^^^^^^^^^^^
 
 warning: use of deprecated item 'unstable_generic_param::Struct5': test
-  --> $DIR/generics-default-stability.rs:99:12
+  --> $DIR/generics-default-stability.rs:100:12
    |
 LL |     let _: Struct5 = STRUCT5;
    |            ^^^^^^^
 
 warning: use of deprecated item 'unstable_generic_param::Struct5': test
-  --> $DIR/generics-default-stability.rs:100:12
+  --> $DIR/generics-default-stability.rs:101:12
    |
 LL |     let _: Struct5<usize> = STRUCT5;
    |            ^^^^^^^^^^^^^^
 
 warning: use of deprecated item 'unstable_generic_param::Struct5': test
-  --> $DIR/generics-default-stability.rs:102:29
+  --> $DIR/generics-default-stability.rs:104:29
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    |                             ^^^^^^^
 
 warning: use of deprecated item 'unstable_generic_param::Struct5': test
-  --> $DIR/generics-default-stability.rs:102:12
+  --> $DIR/generics-default-stability.rs:104:12
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    |            ^^^^^^^^^^^^^^
@@ -144,6 +144,12 @@ LL |     let _: Struct3<usize, usize> = Struct3 { field1: 0, field2: 0 };
    |
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
+warning: use of deprecated item 'unstable_generic_param::Struct5::A': test
+  --> $DIR/generics-default-stability.rs:94:20
+   |
+LL |     let _: Struct5<isize> = Struct5 { field: 1 };
+   |                    ^^^^^
+
 error[E0658]: use of unstable library feature 'unstable_default'
   --> $DIR/generics-default-stability.rs:94:20
    |
@@ -152,16 +158,28 @@ LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
+warning: use of deprecated item 'unstable_generic_param::Struct5::A': test
+  --> $DIR/generics-default-stability.rs:101:20
+   |
+LL |     let _: Struct5<usize> = STRUCT5;
+   |                    ^^^^^
+
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:100:20
+  --> $DIR/generics-default-stability.rs:101:20
    |
 LL |     let _: Struct5<usize> = STRUCT5;
    |                    ^^^^^
    |
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
+warning: use of deprecated item 'unstable_generic_param::Struct5::A': test
+  --> $DIR/generics-default-stability.rs:104:20
+   |
+LL |     let _: Struct5<isize> = Struct5 { field: 0 };
+   |                    ^^^^^
+
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:102:20
+  --> $DIR/generics-default-stability.rs:104:20
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    |                    ^^^^^
@@ -187,11 +205,11 @@ LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |                                       ^^^^^^^^
 
 warning: use of deprecated item 'unstable_generic_param::Struct5::field': test
-  --> $DIR/generics-default-stability.rs:102:39
+  --> $DIR/generics-default-stability.rs:104:39
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    |                                       ^^^^^^^^
 
-error: aborting due to 12 previous errors; 16 warnings emitted
+error: aborting due to 12 previous errors; 19 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.
