@@ -234,7 +234,6 @@ use std::fs;
 use std::io::{self, Read};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 
 use flate2::read::DeflateDecoder;
 
@@ -940,19 +939,6 @@ impl<'a> CrateLocator<'a> {
     }
 }
 
-// Just a small wrapper to time how long reading metadata takes.
-fn get_metadata_section(
-    target: &Target,
-    flavor: CrateFlavor,
-    filename: &Path,
-    loader: &dyn MetadataLoader,
-) -> Result<MetadataBlob, String> {
-    let start = Instant::now();
-    let ret = get_metadata_section_imp(target, flavor, filename, loader);
-    info!("reading {:?} => {:?}", filename.file_name().unwrap(), start.elapsed());
-    ret
-}
-
 /// A trivial wrapper for `Mmap` that implements `StableDeref`.
 struct StableDerefMmap(memmap::Mmap);
 
@@ -966,7 +952,7 @@ impl Deref for StableDerefMmap {
 
 unsafe impl stable_deref_trait::StableDeref for StableDerefMmap {}
 
-fn get_metadata_section_imp(
+fn get_metadata_section(
     target: &Target,
     flavor: CrateFlavor,
     filename: &Path,
