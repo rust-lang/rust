@@ -58,6 +58,7 @@
     - [Profiling Queries](./queries/profiling.md)
     - [Salsa](./salsa.md)
 - [Memory Management in Rustc](./memory.md)
+- [Serialization in Rustc](./serialization.md)
 - [Parallel Compilation](./parallel-rustc.md)
 - [Rustdoc](./rustdoc-internals.md)
 
