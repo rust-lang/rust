@@ -1,6 +1,7 @@
-//! FIXME: write short doc here
+//! Completes references after dot (fields and method calls).
 
 use hir::{HasVisibility, Type};
+use rustc_hash::FxHashSet;
 
 use crate::{
     completion::{
@@ -9,7 +10,6 @@ use crate::{
     },
     CompletionItem,
 };
-use rustc_hash::FxHashSet;
 
 /// Complete dot accesses, i.e. fields or methods (and .await syntax).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {

@@ -1,4 +1,5 @@
 //! This modules takes care of rendering various definitions as completion items.
+//! It also handles scoring (sorting) completions.
 
 use hir::{Docs, HasAttrs, HasSource, HirDisplay, ModPath, ScopeDef, StructKind, Type};
 use ra_syntax::ast::NameOwner;
