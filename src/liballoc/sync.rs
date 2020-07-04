@@ -419,8 +419,7 @@ impl<T> Arc<T> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
-        // See `drop` for why all these atomics are like this
-        if this.inner().strong.compare_exchange(1, 0, Release, Relaxed).is_err() {
+        if this.inner().strong.compare_exchange(1, 0, Relaxed, Relaxed).is_err() {
             return Err(this);
         }
 
