@@ -1407,6 +1407,23 @@ impl<T> [T] {
         x.slice_contains(self)
     }
 
+    /// Returns `true` if the slice contains an element with the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [String::from("Hello"), String::from("world")];
+    /// assert!(v.contains_ref("Hello"));
+    /// assert!(!v.contains_ref("Rust"));
+    /// ```
+    #[unstable(feature = "contains_ref", issue = "none")]
+    pub fn contains_ref<U>(&self, x: &U) -> bool
+    where
+        T: PartialEq<U>,
+    {
+        self.iter().any(|e| e == x)
+    }
+
     /// Returns `true` if `needle` is a prefix of the slice.
     ///
     /// # Examples
