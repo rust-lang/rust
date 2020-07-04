@@ -554,7 +554,7 @@ E0770: include_str!("./error_codes/E0770.md"),
 //  E0420, merged into 532
 //  E0421, merged into 531
 //  E0427, merged into 530
-    E0456, // plugin `..` is not available for triple `..`
+//  E0456, // plugin `..` is not available for triple `..`
     E0457, // plugin `..` only found in rlib format, but must be available...
     E0460, // found possibly newer version of crate `..`
     E0461, // couldn't find crate `..` with expected target triple ..

@@ -1014,10 +1014,6 @@ pub fn find_plugin_registrar(
     name: Symbol,
 ) -> Option<(PathBuf, CrateDisambiguator)> {
     info!("find plugin registrar `{}`", name);
-    let target_triple = sess.opts.target_triple.clone();
-    let host_triple = TargetTriple::from_triple(config::host_triple());
-    let is_cross = target_triple != host_triple;
-    let mut target_only = false;
     let mut locator = CrateLocator::new(
         sess,
         metadata_loader,
@@ -1032,35 +1028,10 @@ pub fn find_plugin_registrar(
         None, // is_proc_macro
     );
 
-    let library = locator.maybe_load_library_crate().or_else(|| {
-        if !is_cross {
-            return None;
-        }
-        // Try loading from target crates. This will abort later if we
-        // try to load a plugin registrar function,
-        target_only = true;
-
-        locator.target = &sess.target.target;
-        locator.triple = target_triple;
-        locator.filesearch = sess.target_filesearch(PathKind::Crate);
-
-        locator.maybe_load_library_crate()
-    });
-    let library = match library {
-        Some(l) => l,
+    let library = match locator.maybe_load_library_crate() {
+        Some(library) => library,
         None => locator.report_errs(),
     };
-
-    if target_only {
-        let message = format!(
-            "plugin `{}` is not available for triple `{}` (only found {})",
-            name,
-            config::host_triple(),
-            sess.opts.target_triple
-        );
-        struct_span_err!(sess, span, E0456, "{}", &message).emit();
-        return None;
-    }
 
     match library.source.dylib {
         Some(dylib) => Some((dylib.0, library.metadata.get_root().disambiguator())),
