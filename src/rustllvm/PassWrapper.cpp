@@ -1163,12 +1163,6 @@ extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
   unwrap(M)->setPIELevel(PIELevel::Level::Large);
 }
 
-//  Linking object files with different code models is undefined behavior
-//  because the compiler would have to generate additional code (to span
-//  longer jumps) if a larger code model is used with a smaller one.
-//  Therefore we will treat attempts to mix code models as an error.
-//
-// See https://reviews.llvm.org/D52322 and https://reviews.llvm.org/D52323.
 extern "C" void LLVMRustSetModuleCodeModel(LLVMModuleRef M,
                                            LLVMRustCodeModel Model) {
   auto CM = fromRust(Model);
