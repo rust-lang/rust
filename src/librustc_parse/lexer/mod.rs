@@ -391,7 +391,14 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
                 return if empty_int {
-                    self.err_span_(start, suffix_start, "no valid digits found for number");
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_err_with_code(
+                            self.mk_sp(start, suffix_start),
+                            "no valid digits found for number",
+                            error_code!(E0768),
+                        )
+                        .emit();
                     (token::Integer, sym::integer(0))
                 } else {
                     self.validate_int_literal(base, start, suffix_start);

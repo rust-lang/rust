@@ -449,6 +449,7 @@ E0764: include_str!("./error_codes/E0764.md"),
 E0765: include_str!("./error_codes/E0765.md"),
 E0766: include_str!("./error_codes/E0766.md"),
 E0767: include_str!("./error_codes/E0767.md"),
+E0768: include_str!("./error_codes/E0768.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
