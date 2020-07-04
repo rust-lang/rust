@@ -92,58 +92,52 @@ pub(crate) fn get_match(
     sema: &Semantics<ra_ide_db::RootDatabase>,
 ) -> Result<Match, MatchFailed> {
     record_match_fails_reasons_scope(debug_active, || {
-        MatchState::try_match(rule, code, restrict_range, sema)
+        Matcher::try_match(rule, code, restrict_range, sema)
     })
 }
 
-/// Inputs to matching. This cannot be part of `MatchState`, since we mutate `MatchState` and in at
-/// least one case need to hold a borrow of a placeholder from the input pattern while calling a
-/// mutable `MatchState` method.
-struct MatchInputs<'pattern> {
-    ssr_pattern: &'pattern SsrPattern,
-}
-
-/// State used while attempting to match our search pattern against a particular node of the AST.
-struct MatchState<'db, 'sema> {
+/// Checks if our search pattern matches a particular node of the AST.
+struct Matcher<'db, 'sema> {
     sema: &'sema Semantics<'db, ra_ide_db::RootDatabase>,
     /// If any placeholders come from anywhere outside of this range, then the match will be
     /// rejected.
     restrict_range: Option<FileRange>,
-    /// The match that we're building. We do two passes for a successful match. On the first pass,
-    /// this is None so that we can avoid doing things like storing copies of what placeholders
-    /// matched to. If that pass succeeds, then we do a second pass where we collect those details.
-    /// This means that if we have a pattern like `$a.foo()` we won't do an insert into the
-    /// placeholders map for every single method call in the codebase. Instead we'll discard all the
-    /// method calls that aren't calls to `foo` on the first pass and only insert into the
-    /// placeholders map on the second pass. Likewise for ignored comments.
-    match_out: Option<Match>,
+    rule: &'sema SsrRule,
 }
 
-impl<'db, 'sema> MatchState<'db, 'sema> {
+/// Which phase of matching we're currently performing. We do two phases because most attempted
+/// matches will fail and it means we can defer more expensive checks to the second phase.
+enum Phase<'a> {
+    /// On the first phase, we perform cheap checks. No state is mutated and nothing is recorded.
+    First,
+    /// On the second phase, we construct the `Match`. Things like what placeholders bind to is
+    /// recorded.
+    Second(&'a mut Match),
+}
+
+impl<'db, 'sema> Matcher<'db, 'sema> {
     fn try_match(
-        rule: &SsrRule,
+        rule: &'sema SsrRule,
         code: &SyntaxNode,
         restrict_range: &Option<FileRange>,
         sema: &'sema Semantics<'db, ra_ide_db::RootDatabase>,
     ) -> Result<Match, MatchFailed> {
-        let mut match_state =
-            MatchState { sema, restrict_range: restrict_range.clone(), match_out: None };
-        let match_inputs = MatchInputs { ssr_pattern: &rule.pattern };
+        let match_state = Matcher { sema, restrict_range: restrict_range.clone(), rule };
         let pattern_tree = rule.pattern.tree_for_kind(code.kind())?;
         // First pass at matching, where we check that node types and idents match.
-        match_state.attempt_match_node(&match_inputs, &pattern_tree, code)?;
+        match_state.attempt_match_node(&mut Phase::First, &pattern_tree, code)?;
         match_state.validate_range(&sema.original_range(code))?;
-        match_state.match_out = Some(Match {
+        let mut the_match = Match {
             range: sema.original_range(code),
             matched_node: code.clone(),
             placeholder_values: FxHashMap::default(),
             ignored_comments: Vec::new(),
             template: rule.template.clone(),
-        });
+        };
         // Second matching pass, where we record placeholder matches, ignored comments and maybe do
         // any other more expensive checks that we didn't want to do on the first pass.
-        match_state.attempt_match_node(&match_inputs, &pattern_tree, code)?;
-        Ok(match_state.match_out.unwrap())
+        match_state.attempt_match_node(&mut Phase::Second(&mut the_match), &pattern_tree, code)?;
+        Ok(the_match)
     }
 
     /// Checks that `range` is within the permitted range if any. This is applicable when we're
@@ -161,27 +155,22 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
     }
 
     fn attempt_match_node(
-        &mut self,
-        match_inputs: &MatchInputs,
+        &self,
+        phase: &mut Phase,
         pattern: &SyntaxNode,
         code: &SyntaxNode,
     ) -> Result<(), MatchFailed> {
         // Handle placeholders.
-        if let Some(placeholder) =
-            match_inputs.get_placeholder(&SyntaxElement::Node(pattern.clone()))
-        {
+        if let Some(placeholder) = self.get_placeholder(&SyntaxElement::Node(pattern.clone())) {
             for constraint in &placeholder.constraints {
                 self.check_constraint(constraint, code)?;
             }
-            if self.match_out.is_none() {
-                return Ok(());
-            }
-            let original_range = self.sema.original_range(code);
-            // We validated the range for the node when we started the match, so the placeholder
-            // probably can't fail range validation, but just to be safe...
-            self.validate_range(&original_range)?;
-            if let Some(match_out) = &mut self.match_out {
-                match_out.placeholder_values.insert(
+            if let Phase::Second(matches_out) = phase {
+                let original_range = self.sema.original_range(code);
+                // We validated the range for the node when we started the match, so the placeholder
+                // probably can't fail range validation, but just to be safe...
+                self.validate_range(&original_range)?;
+                matches_out.placeholder_values.insert(
                     Var(placeholder.ident.to_string()),
                     PlaceholderMatch::new(code, original_range),
                 );
@@ -190,41 +179,47 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
         }
         // Non-placeholders.
         if pattern.kind() != code.kind() {
-            fail_match!("Pattern had a {:?}, code had {:?}", pattern.kind(), code.kind());
+            fail_match!(
+                "Pattern had a `{}` ({:?}), code had `{}` ({:?})",
+                pattern.text(),
+                pattern.kind(),
+                code.text(),
+                code.kind()
+            );
         }
         // Some kinds of nodes have special handling. For everything else, we fall back to default
         // matching.
         match code.kind() {
             SyntaxKind::RECORD_FIELD_LIST => {
-                self.attempt_match_record_field_list(match_inputs, pattern, code)
+                self.attempt_match_record_field_list(phase, pattern, code)
             }
-            SyntaxKind::TOKEN_TREE => self.attempt_match_token_tree(match_inputs, pattern, code),
-            _ => self.attempt_match_node_children(match_inputs, pattern, code),
+            SyntaxKind::TOKEN_TREE => self.attempt_match_token_tree(phase, pattern, code),
+            _ => self.attempt_match_node_children(phase, pattern, code),
         }
     }
 
     fn attempt_match_node_children(
-        &mut self,
-        match_inputs: &MatchInputs,
+        &self,
+        phase: &mut Phase,
         pattern: &SyntaxNode,
         code: &SyntaxNode,
     ) -> Result<(), MatchFailed> {
         self.attempt_match_sequences(
-            match_inputs,
+            phase,
             PatternIterator::new(pattern),
             code.children_with_tokens(),
         )
     }
 
     fn attempt_match_sequences(
-        &mut self,
-        match_inputs: &MatchInputs,
+        &self,
+        phase: &mut Phase,
         pattern_it: PatternIterator,
         mut code_it: SyntaxElementChildren,
     ) -> Result<(), MatchFailed> {
         let mut pattern_it = pattern_it.peekable();
         loop {
-            match self.next_non_trivial(&mut code_it) {
+            match phase.next_non_trivial(&mut code_it) {
                 None => {
                     if let Some(p) = pattern_it.next() {
                         fail_match!("Part of the pattern was unmatched: {:?}", p);
@@ -232,11 +227,11 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
                     return Ok(());
                 }
                 Some(SyntaxElement::Token(c)) => {
-                    self.attempt_match_token(&mut pattern_it, &c)?;
+                    self.attempt_match_token(phase, &mut pattern_it, &c)?;
                 }
                 Some(SyntaxElement::Node(c)) => match pattern_it.next() {
                     Some(SyntaxElement::Node(p)) => {
-                        self.attempt_match_node(match_inputs, &p, &c)?;
+                        self.attempt_match_node(phase, &p, &c)?;
                     }
                     Some(p) => fail_match!("Pattern wanted '{}', code has {}", p, c.text()),
                     None => fail_match!("Pattern reached end, code has {}", c.text()),
@@ -246,11 +241,12 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
     }
 
     fn attempt_match_token(
-        &mut self,
+        &self,
+        phase: &mut Phase,
         pattern: &mut Peekable<PatternIterator>,
         code: &ra_syntax::SyntaxToken,
     ) -> Result<(), MatchFailed> {
-        self.record_ignored_comments(code);
+        phase.record_ignored_comments(code);
         // Ignore whitespace and comments.
         if code.kind().is_trivia() {
             return Ok(());
@@ -317,8 +313,8 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
     /// We want to allow the records to match in any order, so we have special matching logic for
     /// them.
     fn attempt_match_record_field_list(
-        &mut self,
-        match_inputs: &MatchInputs,
+        &self,
+        phase: &mut Phase,
         pattern: &SyntaxNode,
         code: &SyntaxNode,
     ) -> Result<(), MatchFailed> {
@@ -334,11 +330,11 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
         for p in pattern.children_with_tokens() {
             if let SyntaxElement::Node(p) = p {
                 if let Some(name_element) = p.first_child_or_token() {
-                    if match_inputs.get_placeholder(&name_element).is_some() {
+                    if self.get_placeholder(&name_element).is_some() {
                         // If the pattern is using placeholders for field names then order
                         // independence doesn't make sense. Fall back to regular ordered
                         // matching.
-                        return self.attempt_match_node_children(match_inputs, pattern, code);
+                        return self.attempt_match_node_children(phase, pattern, code);
                     }
                     if let Some(ident) = only_ident(name_element) {
                         let code_record = fields_by_name.remove(ident.text()).ok_or_else(|| {
@@ -347,7 +343,7 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
                                 ident
                             )
                         })?;
-                        self.attempt_match_node(match_inputs, &p, &code_record)?;
+                        self.attempt_match_node(phase, &p, &code_record)?;
                     }
                 }
             }
@@ -367,16 +363,15 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
     /// pattern matches the macro invocation. For matches within the macro call, we'll already have
     /// expanded the macro.
     fn attempt_match_token_tree(
-        &mut self,
-        match_inputs: &MatchInputs,
+        &self,
+        phase: &mut Phase,
         pattern: &SyntaxNode,
         code: &ra_syntax::SyntaxNode,
     ) -> Result<(), MatchFailed> {
         let mut pattern = PatternIterator::new(pattern).peekable();
         let mut children = code.children_with_tokens();
         while let Some(child) = children.next() {
-            if let Some(placeholder) = pattern.peek().and_then(|p| match_inputs.get_placeholder(p))
-            {
+            if let Some(placeholder) = pattern.peek().and_then(|p| self.get_placeholder(p)) {
                 pattern.next();
                 let next_pattern_token = pattern
                     .peek()
@@ -402,7 +397,7 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
                                 if Some(first_token.to_string()) == next_pattern_token {
                                     if let Some(SyntaxElement::Node(p)) = pattern.next() {
                                         // We have a subtree that starts with the next token in our pattern.
-                                        self.attempt_match_token_tree(match_inputs, &p, &n)?;
+                                        self.attempt_match_token_tree(phase, &p, &n)?;
                                         break;
                                     }
                                 }
@@ -411,7 +406,7 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
                     };
                     last_matched_token = next;
                 }
-                if let Some(match_out) = &mut self.match_out {
+                if let Phase::Second(match_out) = phase {
                     match_out.placeholder_values.insert(
                         Var(placeholder.ident.to_string()),
                         PlaceholderMatch::from_range(FileRange {
@@ -427,11 +422,11 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
             // Match literal (non-placeholder) tokens.
             match child {
                 SyntaxElement::Token(token) => {
-                    self.attempt_match_token(&mut pattern, &token)?;
+                    self.attempt_match_token(phase, &mut pattern, &token)?;
                 }
                 SyntaxElement::Node(node) => match pattern.next() {
                     Some(SyntaxElement::Node(p)) => {
-                        self.attempt_match_token_tree(match_inputs, &p, &node)?;
+                        self.attempt_match_token_tree(phase, &p, &node)?;
                     }
                     Some(SyntaxElement::Token(p)) => fail_match!(
                         "Pattern has token '{}', code has subtree '{}'",
@@ -448,6 +443,13 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
         Ok(())
     }
 
+    fn get_placeholder(&self, element: &SyntaxElement) -> Option<&Placeholder> {
+        only_ident(element.clone())
+            .and_then(|ident| self.rule.pattern.placeholders_by_stand_in.get(ident.text()))
+    }
+}
+
+impl Phase<'_> {
     fn next_non_trivial(&mut self, code_it: &mut SyntaxElementChildren) -> Option<SyntaxElement> {
         loop {
             let c = code_it.next();
@@ -463,19 +465,12 @@ impl<'db, 'sema> MatchState<'db, 'sema> {
 
     fn record_ignored_comments(&mut self, token: &SyntaxToken) {
         if token.kind() == SyntaxKind::COMMENT {
-            if let Some(match_out) = &mut self.match_out {
+            if let Phase::Second(match_out) = self {
                 if let Some(comment) = ast::Comment::cast(token.clone()) {
                     match_out.ignored_comments.push(comment);
                 }
             }
         }
-    }
-}
-
-impl MatchInputs<'_> {
-    fn get_placeholder(&self, element: &SyntaxElement) -> Option<&Placeholder> {
-        only_ident(element.clone())
-            .and_then(|ident| self.ssr_pattern.placeholders_by_stand_in.get(ident.text()))
     }
 }
 
@@ -596,12 +591,12 @@ impl PatternIterator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::MatchFinder;
+    use crate::{MatchFinder, SsrRule};
 
     #[test]
     fn parse_match_replace() {
         let rule: SsrRule = "foo($x) ==>> bar($x)".parse().unwrap();
-        let input = "fn main() { foo(1+2); }";
+        let input = "fn foo() {} fn main() { foo(1+2); }";
 
         use ra_db::fixture::WithFixture;
         let (db, file_id) = ra_ide_db::RootDatabase::with_single_file(input);
@@ -623,6 +618,6 @@ mod tests {
         let edit = crate::replacing::matches_to_edit(&matches, input);
         let mut after = input.to_string();
         edit.apply(&mut after);
-        assert_eq!(after, "fn main() { bar(1+2); }");
+        assert_eq!(after, "fn foo() {} fn main() { bar(1+2); }");
     }
 }

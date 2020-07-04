@@ -6,9 +6,12 @@
 mod matching;
 mod parsing;
 mod replacing;
+#[macro_use]
+mod errors;
 #[cfg(test)]
 mod tests;
 
+pub use crate::errors::SsrError;
 pub use crate::matching::Match;
 use crate::matching::{record_match_fails_reasons_scope, MatchFailureReason};
 use hir::Semantics;
@@ -40,9 +43,6 @@ pub struct SsrPattern {
     path: Option<SyntaxNode>,
     pattern: Option<SyntaxNode>,
 }
-
-#[derive(Debug, PartialEq)]
-pub struct SsrError(String);
 
 #[derive(Debug, Default)]
 pub struct SsrMatches {
@@ -201,9 +201,8 @@ impl<'db> MatchFinder<'db> {
                         );
                     }
                 }
-            } else {
-                self.output_debug_for_nodes_at_range(&node, range, restrict_range, out);
             }
+            self.output_debug_for_nodes_at_range(&node, range, restrict_range, out);
         }
     }
 }
@@ -216,33 +215,28 @@ pub struct MatchDebugInfo {
     matched: Result<Match, MatchFailureReason>,
 }
 
-impl std::fmt::Display for SsrError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Parse error: {}", self.0)
-    }
-}
-
 impl std::fmt::Debug for MatchDebugInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "========= PATTERN ==========\n")?;
-        match &self.pattern {
-            Ok(pattern) => {
-                write!(f, "{:#?}", pattern)?;
-            }
-            Err(err) => {
-                write!(f, "{}", err.reason)?;
-            }
+        match &self.matched {
+            Ok(_) => writeln!(f, "Node matched")?,
+            Err(reason) => writeln!(f, "Node failed to match because: {}", reason.reason)?,
         }
-        write!(
+        writeln!(
             f,
-            "\n============ AST ===========\n\
-            {:#?}\n============================\n",
+            "============ AST ===========\n\
+            {:#?}",
             self.node
         )?;
-        match &self.matched {
-            Ok(_) => write!(f, "Node matched")?,
-            Err(reason) => write!(f, "Node failed to match because: {}", reason.reason)?,
+        writeln!(f, "========= PATTERN ==========")?;
+        match &self.pattern {
+            Ok(pattern) => {
+                writeln!(f, "{:#?}", pattern)?;
+            }
+            Err(err) => {
+                writeln!(f, "{}", err.reason)?;
+            }
         }
+        writeln!(f, "============================")?;
         Ok(())
     }
 }
