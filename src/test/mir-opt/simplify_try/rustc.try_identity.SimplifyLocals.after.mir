@@ -3,27 +3,22 @@
 fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i32> {
     debug x => _1;                       // in scope 0 at $DIR/simplify_try.rs:5:17: 5:18
     let mut _0: std::result::Result<u32, i32>; // return place in scope 0 at $DIR/simplify_try.rs:5:41: 5:57
-    let _2: u32;                         // in scope 0 at $DIR/simplify_try.rs:6:9: 6:10
-    let _3: i32;                         // in scope 0 at $DIR/simplify_try.rs:6:14: 6:15
-    let mut _4: i32;                     // in scope 0 at $DIR/simplify_try.rs:6:14: 6:15
-    let mut _5: i32;                     // in scope 0 at $DIR/simplify_try.rs:6:14: 6:15
-    let _6: u32;                         // in scope 0 at $DIR/simplify_try.rs:6:13: 6:15
     scope 1 {
-        debug y => _2;                   // in scope 1 at $DIR/simplify_try.rs:6:9: 6:10
+        debug y => ((_0 as Ok).0: u32);  // in scope 1 at $DIR/simplify_try.rs:6:9: 6:10
     }
     scope 2 {
-        debug err => _3;                 // in scope 2 at $DIR/simplify_try.rs:6:14: 6:15
+        debug err => ((_0 as Err).0: i32); // in scope 2 at $DIR/simplify_try.rs:6:14: 6:15
         scope 3 {
             scope 7 {
-                debug t => _5;           // in scope 7 at $SRC_DIR/libcore/convert/mod.rs:LL:COL
+                debug t => ((_0 as Err).0: i32); // in scope 7 at $SRC_DIR/libcore/convert/mod.rs:LL:COL
             }
             scope 8 {
-                debug v => _4;           // in scope 8 at $SRC_DIR/libcore/result.rs:LL:COL
+                debug v => ((_0 as Err).0: i32); // in scope 8 at $SRC_DIR/libcore/result.rs:LL:COL
             }
         }
     }
     scope 4 {
-        debug val => _6;                 // in scope 4 at $DIR/simplify_try.rs:6:13: 6:15
+        debug val => ((_0 as Ok).0: u32); // in scope 4 at $DIR/simplify_try.rs:6:13: 6:15
         scope 5 {
         }
     }
@@ -32,9 +27,7 @@ fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/simplify_try.rs:6:9: 6:10
         _0 = move _1;                    // scope 1 at $DIR/simplify_try.rs:7:5: 7:10
-        StorageDead(_2);                 // scope 0 at $DIR/simplify_try.rs:8:1: 8:2
         return;                          // scope 0 at $DIR/simplify_try.rs:8:2: 8:2
     }
 }
