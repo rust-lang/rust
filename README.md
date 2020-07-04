@@ -26,7 +26,7 @@ The Rust build system uses a Python script called `x.py` to build the compiler,
 which manages the bootstrapping process. More information about it can be found 
 by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
 
-[gettingstarted]: https://rustc-dev-guide.rust-lang.org/getting-started.md
+[gettingstarted]: https://rustc-dev-guide.rust-lang.org/getting-started.html
 [rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 
 ### Building on a Unix-like system
