@@ -245,7 +245,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{self, PhantomData, Unpin, Unsize};
-use core::mem::{self, align_of, align_of_val, forget, size_of_val};
+use core::mem::{self, align_of_val_raw, forget, size_of_val};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -591,17 +591,11 @@ impl<T: ?Sized> Rc<T> {
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut RcBox<T> = NonNull::as_ptr(this.ptr);
-        let fake_ptr = ptr as *mut T;
 
-        // SAFETY: This cannot go through Deref::deref.
-        // Instead, we manually offset the pointer rather than manifesting a reference.
-        // This is so that the returned pointer retains the same provenance as our pointer.
-        // This is required so that e.g. `get_mut` can write through the pointer
-        // after the Rc is recovered through `from_raw`.
-        unsafe {
-            let offset = data_offset(&(*ptr).value);
-            set_data_ptr(fake_ptr, (ptr as *mut u8).offset(offset))
-        }
+        // SAFETY: This cannot go through Deref::deref or Rc::inner because
+        // this is required to retain raw/mut provenance such that e.g. `get_mut` can
+        // write through the pointer after the Rc is recovered through `from_raw`.
+        unsafe { &raw const (*ptr).value }
     }
 
     /// Constructs an `Rc<T>` from a raw pointer.
@@ -1647,6 +1641,7 @@ pub struct Weak<T: ?Sized> {
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
     // to allocate space on the heap.  That's not a value a real pointer
     // will ever have because RcBox has alignment at least 2.
+    // This is only possible when `T: Sized`; unsized `T` never dangle.
     ptr: NonNull<RcBox<T>>,
 }
 
@@ -1708,9 +1703,18 @@ impl<T> Weak<T> {
     /// [`null`]: ../../std/ptr/fn.null.html
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
-        let offset = data_offset_sized::<T>();
-        let ptr = self.ptr.cast::<u8>().as_ptr().wrapping_offset(offset);
-        ptr as *const T
+        let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);
+
+        // SAFETY: we must offset the pointer manually, and said pointer may be
+        // a dangling weak (usize::MAX) if T is sized. data_offset is safe to call,
+        // because we know that a pointer to unsized T was derived from a real
+        // unsized T, as dangling weaks are only created for sized T. wrapping_offset
+        // is used so that we can use the same code path for the non-dangling
+        // unsized case and the potentially dangling sized case.
+        unsafe {
+            let offset = data_offset(ptr as *mut T);
+            set_data_ptr(ptr as *mut T, (ptr as *mut u8).wrapping_offset(offset))
+        }
     }
 
     /// Consumes the `Weak<T>` and turns it into a raw pointer.
@@ -2113,19 +2117,22 @@ impl<T: ?Sized> AsRef<T> for Rc<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Rc<T> {}
 
+/// Get the offset within an `ArcInner` for
+/// a payload of type described by a pointer.
+///
+/// # Safety
+///
+/// This has the same safety requirements as `align_of_val_raw`. In effect:
+///
+/// - This function is safe for any argument if `T` is sized, and
+/// - if `T` is unsized, the pointer must have appropriate pointer metadata
+///   aquired from the real instance that you are getting this offset for.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Align the unsized value to the end of the `RcBox`.
     // Because it is ?Sized, it will always be the last field in memory.
     // Note: This is a detail of the current implementation of the compiler,
     // and is not a guaranteed language detail. Do not rely on it outside of std.
-    unsafe { data_offset_align(align_of_val(&*ptr)) }
-}
-
-/// Computes the offset of the data field within `RcBox`.
-///
-/// Unlike [`data_offset`], this doesn't need the pointer, but it works only on `T: Sized`.
-fn data_offset_sized<T>() -> isize {
-    data_offset_align(align_of::<T>())
+    unsafe { data_offset_align(align_of_val_raw(ptr)) }
 }
 
 #[inline]
