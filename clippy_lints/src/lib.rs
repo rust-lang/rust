@@ -282,6 +282,7 @@ mod redundant_pub_crate;
 mod redundant_static_lifetimes;
 mod reference;
 mod regex;
+mod repeat_once;
 mod returns;
 mod serde_api;
 mod shadow;
@@ -764,6 +765,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &reference::REF_IN_DEREF,
         &regex::INVALID_REGEX,
         &regex::TRIVIAL_REGEX,
+        &repeat_once::REPEAT_ONCE,
         &returns::NEEDLESS_RETURN,
         &returns::UNUSED_UNIT,
         &serde_api::SERDE_API_MISUSE,
@@ -1071,6 +1073,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box macro_use::MacroUseImports::default());
     store.register_late_pass(|| box map_identity::MapIdentity);
     store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
+    store.register_late_pass(|| box repeat_once::RepeatOnce);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1393,6 +1396,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&reference::REF_IN_DEREF),
         LintId::of(&regex::INVALID_REGEX),
         LintId::of(&regex::TRIVIAL_REGEX),
+        LintId::of(&repeat_once::REPEAT_ONCE),
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
         LintId::of(&serde_api::SERDE_API_MISUSE),
@@ -1602,6 +1606,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&ranges::RANGE_ZIP_WITH_LEN),
         LintId::of(&reference::DEREF_ADDROF),
         LintId::of(&reference::REF_IN_DEREF),
+        LintId::of(&repeat_once::REPEAT_ONCE),
         LintId::of(&swap::MANUAL_SWAP),
         LintId::of(&temporary_assignment::TEMPORARY_ASSIGNMENT),
         LintId::of(&transmute::CROSSPOINTER_TRANSMUTE),
