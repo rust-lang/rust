@@ -13,15 +13,15 @@ use crate::{
 };
 
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
-    do_completion_with_options(code, kind, &CompletionConfig::default())
+    do_completion_with_config(code, kind, &CompletionConfig::default())
 }
 
-pub(crate) fn do_completion_with_options(
+pub(crate) fn do_completion_with_config(
     code: &str,
     kind: CompletionKind,
-    options: &CompletionConfig,
+    config: &CompletionConfig,
 ) -> Vec<CompletionItem> {
-    let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(code, options)
+    let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(code, config)
         .into_iter()
         .filter(|c| c.completion_kind == kind)
         .collect();
@@ -30,15 +30,15 @@ pub(crate) fn do_completion_with_options(
 }
 
 pub(crate) fn completion_list(code: &str, kind: CompletionKind) -> String {
-    completion_list_with_options(code, kind, &CompletionConfig::default())
+    completion_list_with_config(code, kind, &CompletionConfig::default())
 }
 
-pub(crate) fn completion_list_with_options(
+pub(crate) fn completion_list_with_config(
     code: &str,
     kind: CompletionKind,
-    options: &CompletionConfig,
+    config: &CompletionConfig,
 ) -> String {
-    let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(code, options)
+    let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(code, config)
         .into_iter()
         .filter(|c| c.completion_kind == kind)
         .collect();
