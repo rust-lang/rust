@@ -869,7 +869,7 @@ class RustBuild(object):
         # the rust git repository is updated. Normal development usually does
         # not use vendoring, so hopefully this isn't too much of a problem.
         if self.use_vendored_sources and not os.path.exists(vendor_dir):
-            run([self.cargo(), "vendor"],
+            run([self.cargo(), "vendor", "--sync=./src/tools/rust-analyzer/Cargo.toml"],
                 verbose=self.verbose, cwd=self.rust_root)
 
 

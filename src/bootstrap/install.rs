@@ -32,6 +32,9 @@ pub fn install_cargo(builder: &Builder<'_>, stage: u32, host: Interned<String>) 
 pub fn install_rls(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "rls", "rls", stage, Some(host));
 }
+pub fn install_rust_analyzer(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+    install_sh(builder, "rust-analyzer", "rust-analyzer", stage, Some(host));
+}
 pub fn install_clippy(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "clippy", "clippy", stage, Some(host));
 }
@@ -213,6 +216,16 @@ install!((self, builder, _config),
         } else {
             builder.info(
                 &format!("skipping Install RLS stage{} ({})", self.compiler.stage, self.target),
+            );
+        }
+    };
+    RustAnalyzer, "rust-analyzer", Self::should_build(_config), only_hosts: true, {
+        builder.ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target });
+        if Self::should_install(builder) {
+            install_rust_analyzer(builder, self.compiler.stage, self.target);
+        } else {
+            builder.info(
+                &format!("skipping Install rust-analyzer stage{} ({})", self.compiler.stage, self.target),
             );
         }
     };

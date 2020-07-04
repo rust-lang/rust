@@ -225,6 +225,7 @@ pub struct Build {
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
     rls_info: channel::GitInfo,
+    rust_analyzer_info: channel::GitInfo,
     clippy_info: channel::GitInfo,
     miri_info: channel::GitInfo,
     rustfmt_info: channel::GitInfo,
@@ -349,6 +350,8 @@ impl Build {
         let rust_info = channel::GitInfo::new(ignore_git, &src);
         let cargo_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/cargo"));
         let rls_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/rls"));
+        let rust_analyzer_info =
+            channel::GitInfo::new(ignore_git, &src.join("src/tools/rust-analyzer"));
         let clippy_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/clippy"));
         let miri_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/miri"));
         let rustfmt_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/rustfmt"));
@@ -405,6 +408,7 @@ impl Build {
             rust_info,
             cargo_info,
             rls_info,
+            rust_analyzer_info,
             clippy_info,
             miri_info,
             rustfmt_info,
@@ -1032,6 +1036,11 @@ impl Build {
     /// Returns the value of `package_vers` above for rls
     fn rls_package_vers(&self) -> String {
         self.package_vers(&self.release_num("rls"))
+    }
+
+    /// Returns the value of `package_vers` above for rust-analyzer
+    fn rust_analyzer_package_vers(&self) -> String {
+        self.package_vers(&self.release_num("rust-analyzer/crates/rust-analyzer"))
     }
 
     /// Returns the value of `package_vers` above for clippy

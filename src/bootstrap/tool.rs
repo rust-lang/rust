@@ -641,7 +641,7 @@ macro_rules! tool_extended {
     }
 }
 
-// Note: tools need to be also added to `Builder::get_step_descriptions` in `build.rs`
+// Note: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
 // to make `./x.py build <tool>` work.
 tool_extended!((self, builder),
     Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", stable=true, {};
@@ -658,6 +658,7 @@ tool_extended!((self, builder),
         self.extra_features.push("clippy".to_owned());
     };
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, {};
+    RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, {};
 );
 
 impl<'a> Builder<'a> {
