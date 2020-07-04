@@ -136,6 +136,19 @@ fn do_work<F: Fn(&Analysis) -> T, T>(host: &mut AnalysisHost, file_id: FileId, w
     }
     {
         let start = Instant::now();
+        eprint!("item change:    ");
+        {
+            let mut text = host.analysis().file_text(file_id).unwrap().to_string();
+            text.push_str("\npub fn _dummy() {}\n");
+            let mut change = AnalysisChange::new();
+            change.change_file(file_id, Some(Arc::new(text)));
+            host.apply_change(change);
+        }
+        work(&host.analysis());
+        eprintln!("{:?}", start.elapsed());
+    }
+    {
+        let start = Instant::now();
         eprint!("const change:   ");
         host.raw_database_mut().salsa_runtime_mut().synthetic_write(Durability::HIGH);
         let res = work(&host.analysis());
