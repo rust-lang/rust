@@ -49,7 +49,7 @@ If you're using the nightly channel, please check if the bug exists in the
 latest toolchain before filing your bug. It might be fixed already.
 
 If you have the chance, before reporting a bug, please [search existing
-issues](https://github.com/rust-lang/rust/search?q=&type=Issues&utf8=%E2%9C%93),
+issues](https://github.com/rust-lang/rust/issues?q=is%3Aissue),
 as it's possible that someone else has already reported your error. This doesn't
 always work, and sometimes it's hard to know what to search for, so consider this
 extra credit. We won't mind if you accidentally file a duplicate report.
@@ -62,7 +62,7 @@ An example could be: **"impossible case reached" on lifetime inference for impl
 Trait in return position**.
 
 Opening an issue is as easy as following [this
-link](https://github.com/rust-lang/rust/issues/new) and filling out the fields
+link](https://github.com/rust-lang/rust/issues/new/choose) and filling out the fields
 in the appropriate provided template.
 
 ## Pull Requests
