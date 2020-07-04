@@ -495,7 +495,6 @@ impl<'a> CrateLocator<'a> {
         };
 
         if !self.rejected_via_filename.is_empty() {
-            let dylibname = self.dylibname();
             let mismatches = self.rejected_via_filename.iter();
             for &CrateMismatch { ref path, .. } in mismatches {
                 err.note(&format!(
@@ -505,7 +504,7 @@ impl<'a> CrateLocator<'a> {
                 ))
                 .help(&format!(
                     "file name should be lib*.rlib or {}*.{}",
-                    dylibname.0, dylibname.1
+                    self.target.options.dll_prefix, self.target.options.dll_suffix
                 ));
             }
         }
@@ -520,13 +519,12 @@ impl<'a> CrateLocator<'a> {
         extra_prefix: &str,
         seen_paths: &mut FxHashSet<PathBuf>,
     ) -> Option<Library> {
-        let dypair = self.dylibname();
-        let staticpair = self.staticlibname();
-
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
-        let dylib_prefix = format!("{}{}{}", dypair.0, self.crate_name, extra_prefix);
+        let dylib_prefix =
+            format!("{}{}{}", self.target.options.dll_prefix, self.crate_name, extra_prefix);
         let rlib_prefix = format!("lib{}{}", self.crate_name, extra_prefix);
-        let staticlib_prefix = format!("{}{}{}", staticpair.0, self.crate_name, extra_prefix);
+        let staticlib_prefix =
+            format!("{}{}{}", self.target.options.staticlib_prefix, self.crate_name, extra_prefix);
 
         let mut candidates: FxHashMap<_, (FxHashMap<_, _>, FxHashMap<_, _>, FxHashMap<_, _>)> =
             Default::default();
@@ -554,10 +552,18 @@ impl<'a> CrateLocator<'a> {
                 (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
             } else if file.starts_with(&rlib_prefix) && file.ends_with(".rmeta") {
                 (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
-            } else if file.starts_with(&dylib_prefix) && file.ends_with(&dypair.1) {
-                (&file[(dylib_prefix.len())..(file.len() - dypair.1.len())], CrateFlavor::Dylib)
+            } else if file.starts_with(&dylib_prefix)
+                && file.ends_with(&self.target.options.dll_suffix)
+            {
+                (
+                    &file
+                        [(dylib_prefix.len())..(file.len() - self.target.options.dll_suffix.len())],
+                    CrateFlavor::Dylib,
+                )
             } else {
-                if file.starts_with(&staticlib_prefix) && file.ends_with(&staticpair.1) {
+                if file.starts_with(&staticlib_prefix)
+                    && file.ends_with(&self.target.options.staticlib_suffix)
+                {
                     staticlibs
                         .push(CrateMismatch { path: spf.path.clone(), got: "static".to_string() });
                 }
@@ -859,32 +865,19 @@ impl<'a> CrateLocator<'a> {
         Some(hash)
     }
 
-    // Returns the corresponding (prefix, suffix) that files need to have for
-    // dynamic libraries
-    fn dylibname(&self) -> (String, String) {
-        let t = &self.target;
-        (t.options.dll_prefix.clone(), t.options.dll_suffix.clone())
-    }
-
-    // Returns the corresponding (prefix, suffix) that files need to have for
-    // static libraries
-    fn staticlibname(&self) -> (String, String) {
-        let t = &self.target;
-        (t.options.staticlib_prefix.clone(), t.options.staticlib_suffix.clone())
-    }
-
     fn find_commandline_library(&mut self) -> Option<Library> {
         // First, filter out all libraries that look suspicious. We only accept
         // files which actually exist that have the correct naming scheme for
         // rlibs/dylibs.
         let sess = self.sess;
-        let dylibname = self.dylibname();
         let mut rlibs = FxHashMap::default();
         let mut rmetas = FxHashMap::default();
         let mut dylibs = FxHashMap::default();
         {
             let crate_name = self.crate_name;
             let rejected_via_filename = &mut self.rejected_via_filename;
+            let dll_prefix = &self.target.options.dll_prefix;
+            let dll_suffix = &self.target.options.dll_suffix;
             let locs = self.exact_paths.iter().filter(|loc| {
                 if !loc.exists() {
                     sess.err(&format!(
@@ -909,8 +902,7 @@ impl<'a> CrateLocator<'a> {
                 {
                     return true;
                 } else {
-                    let (ref prefix, ref suffix) = dylibname;
-                    if file.starts_with(&prefix[..]) && file.ends_with(&suffix[..]) {
+                    if file.starts_with(dll_prefix) && file.ends_with(dll_suffix) {
                         return true;
                     }
                 }
