@@ -61,7 +61,7 @@ fn foo() {
             expect![[r#"
                 st Bar
                 en E
-                ev X ()
+                ev X   ()
                 ct Z
                 md m
             "#]],

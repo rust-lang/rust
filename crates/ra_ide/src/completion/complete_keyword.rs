@@ -216,17 +216,17 @@ mod tests {
         check(
             r"use a::<|>",
             expect![[r#"
-            kw self
-            kw super::
-        "#]],
+                kw self
+                kw super::
+            "#]],
         );
 
         check(
             r"use a::{b, <|>}",
             expect![[r#"
-            kw self
-            kw super::
-        "#]],
+                kw self
+                kw super::
+            "#]],
         );
     }
 

@@ -683,6 +683,57 @@ impl S {
                     },
                 ]
             "#]],
+        );
+
+        check(
+            r#"
+use self::my<|>;
+
+/// mod docs
+mod my { }
+
+/// enum docs
+enum E {
+    /// variant docs
+    V
+}
+use self::E::*;
+"#,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "E",
+                        source_range: 10..12,
+                        delete: 10..12,
+                        insert: "E",
+                        kind: Enum,
+                        documentation: Documentation(
+                            "enum docs",
+                        ),
+                    },
+                    CompletionItem {
+                        label: "V",
+                        source_range: 10..12,
+                        delete: 10..12,
+                        insert: "V",
+                        kind: EnumVariant,
+                        detail: "()",
+                        documentation: Documentation(
+                            "variant docs",
+                        ),
+                    },
+                    CompletionItem {
+                        label: "my",
+                        source_range: 10..12,
+                        delete: 10..12,
+                        insert: "my",
+                        kind: Module,
+                        documentation: Documentation(
+                            "mod docs",
+                        ),
+                    },
+                ]
+            "#]],
         )
     }
 
