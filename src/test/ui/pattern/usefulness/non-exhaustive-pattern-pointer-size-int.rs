@@ -5,8 +5,7 @@ fn main() {
         //~^ ERROR non-exhaustive patterns
         //~| NOTE pattern `_` not covered
         //~| NOTE the matched value is of type `usize`
-        //~| NOTE for `usize` and `isize`, no assumptions about the maximum value are permitted
-        //~| NOTE to exhaustively match on either pointer-size integer type, wildcards must be used
+        //~| NOTE `usize` does not have a fixed maximum value
         0 ..= usize::MAX => {}
     }
 
@@ -14,8 +13,11 @@ fn main() {
         //~^ ERROR non-exhaustive patterns
         //~| NOTE pattern `_` not covered
         //~| NOTE the matched value is of type `isize`
-        //~| NOTE for `usize` and `isize`, no assumptions about the maximum value are permitted
-        //~| NOTE to exhaustively match on either pointer-size integer type, wildcards must be used
+        //~| NOTE `isize` does not have a fixed maximum value
         isize::MIN ..= isize::MAX => {}
     }
+
+    match 7usize {}
+    //~^ ERROR non-exhaustive patterns
+    //~| NOTE the matched value is of type `usize`
 }
