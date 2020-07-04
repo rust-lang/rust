@@ -2215,7 +2215,7 @@ impl ClashingExternDeclarations {
 
                 // Disjoint kinds.
                 (_, _) => {
-                    // First, check if the conversion is FFI-safe. This can be so if the type is an
+                    // First, check if the conversion is FFI-safe. This can happen if the type is an
                     // enum with a non-null field (see improper_ctypes).
                     let is_primitive_or_pointer =
                         |ty: Ty<'tcx>| ty.is_primitive() || matches!(ty.kind, RawPtr(..));

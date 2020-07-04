@@ -202,9 +202,9 @@ mod missing_return_type {
 
     mod b {
         extern "C" {
-            // This should warn, because we can't assume that the first declaration is the correct
-            // one -- if this one is the correct one, then calling the usize-returning version
-            // would allow reads into uninitialised memory.
+            // This should output a warning because we can't assume that the first declaration is
+            // the correct one -- if this one is the correct one, then calling the usize-returning
+            // version would allow reads into uninitialised memory.
             fn missing_return_type();
             //~^ WARN `missing_return_type` redeclared with a different signature
         }
@@ -220,7 +220,7 @@ mod non_zero_and_non_null {
     }
     mod b {
         extern "C" {
-            // For both of these cases, if there's a clash, you're either gaining an incorrect
+            // If there's a clash in either of these cases you're either gaining an incorrect
             // invariant that the value is non-zero, or you're missing out on that invariant. Both
             // cases are warning for, from both a caller-convenience and optimisation perspective.
             fn non_zero_usize() -> usize;

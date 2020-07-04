@@ -563,7 +563,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     /// Check if this enum can be safely exported based on the "nullable pointer optimization". If
-    /// the type is it is, return the known non-null field type, else None.  Currently restricted
+    /// it can, return the known non-null field type, otherwise return `None`. Currently restricted
     /// to function pointers, boxes, references, `core::num::NonZero*`, `core::ptr::NonNull`, and
     /// `#[repr(transparent)]` newtypes.
     crate fn is_repr_nullable_ptr(
