@@ -1206,6 +1206,45 @@ mod tests {
     }
 
     #[test]
+    fn test_super_super_completion() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                mod a {
+                    const A: usize = 0;
+
+                    mod b {
+                        const B: usize = 0;
+
+                        mod c {
+                            use super::super::<|>
+                        }
+                    }
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "A",
+                source_range: 120..120,
+                delete: 120..120,
+                insert: "A",
+                kind: Const,
+            },
+            CompletionItem {
+                label: "b",
+                source_range: 120..120,
+                delete: 120..120,
+                insert: "b",
+                kind: Module,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn completes_reexported_items_under_correct_name() {
         assert_debug_snapshot!(
             do_reference_completion(

@@ -95,7 +95,7 @@ impl fmt::Debug for CompletionItem {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum CompletionScore {
     /// If only type match
     TypeMatch,
