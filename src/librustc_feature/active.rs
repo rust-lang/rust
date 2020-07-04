@@ -570,6 +570,9 @@ declare_features! (
     /// Allows capturing variables in scope using format_args!
     (active, format_args_capture, "1.46.0", Some(67984), None),
 
+    /// Lazily evaluate constants. This allows constants to depend on type parameters.
+    (active, lazy_normalization_consts, "1.46.0", Some(72219), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -586,5 +589,6 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::raw_dylib,
     sym::const_trait_impl,
     sym::const_trait_bound_opt_out,
+    sym::lazy_normalization_consts,
     sym::specialization,
 ];
