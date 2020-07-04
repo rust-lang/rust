@@ -468,7 +468,6 @@ Section: Iterators
 
 /// An iterator over the [`char`]s of a string slice.
 ///
-/// [`char`]: ../../std/primitive.char.html
 ///
 /// This struct is created by the [`chars`] method on [`str`].
 /// See its documentation for more.
@@ -3012,7 +3011,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Examples
@@ -3039,7 +3037,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Examples
@@ -3065,7 +3062,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Examples
@@ -3094,8 +3090,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`None`]: option/enum.Option.html#variant.None
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Examples
@@ -3143,8 +3137,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`None`]: option/enum.Option.html#variant.None
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Examples
@@ -3190,7 +3182,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Iterator behavior
@@ -3312,7 +3303,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Examples
@@ -3352,7 +3342,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Iterator behavior
@@ -3406,7 +3395,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// Equivalent to [`split`], except that the trailing substring
@@ -3453,7 +3441,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// Equivalent to [`split`], except that the trailing substring is
@@ -3502,7 +3489,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Iterator behavior
@@ -3555,7 +3541,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Iterator behavior
@@ -3603,7 +3588,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Iterator behavior
@@ -3642,7 +3626,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Iterator behavior
@@ -3686,7 +3669,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Iterator behavior
@@ -3731,7 +3713,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Iterator behavior
@@ -3952,7 +3933,6 @@ impl str {
     /// The [pattern] can be a [`char`], a slice of [`char`]s, or a function
     /// or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Examples
@@ -4000,7 +3980,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Text directionality
@@ -4045,7 +4024,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Examples
@@ -4073,7 +4051,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Examples
@@ -4100,7 +4077,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Text directionality
@@ -4149,7 +4125,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Text directionality
@@ -4186,7 +4161,6 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [`char`]: primitive.char.html
     /// [pattern]: crate::str::pattern
     ///
     /// # Text directionality
