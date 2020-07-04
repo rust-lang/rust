@@ -844,189 +844,79 @@ fn f(foo: &Foo) { foo.foo(); }
     #[test]
     fn inserts_angle_brackets_for_generics() {
         mark::check!(inserts_angle_brackets_for_generics);
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                struct Vec<T> {}
-                fn foo(xs: Ve<|>)
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Vec<…>",
-                source_range: 28..30,
-                delete: 28..30,
-                insert: "Vec<$0>",
-                kind: Struct,
-                lookup: "Vec",
-            },
-            CompletionItem {
-                label: "foo(…)",
-                source_range: 28..30,
-                delete: 28..30,
-                insert: "foo(${1:xs})$0",
-                kind: Function,
-                lookup: "foo",
-                detail: "fn foo(xs: Ve)",
-                trigger_call_info: true,
-            },
-        ]
-        "###
+        check_edit(
+            "Vec",
+            r#"
+struct Vec<T> {}
+fn foo(xs: Ve<|>)
+"#,
+            r#"
+struct Vec<T> {}
+fn foo(xs: Vec<$0>)
+"#,
         );
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                type Vec<T> = (T,);
-                fn foo(xs: Ve<|>)
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Vec<…>",
-                source_range: 31..33,
-                delete: 31..33,
-                insert: "Vec<$0>",
-                kind: TypeAlias,
-                lookup: "Vec",
-            },
-            CompletionItem {
-                label: "foo(…)",
-                source_range: 31..33,
-                delete: 31..33,
-                insert: "foo(${1:xs})$0",
-                kind: Function,
-                lookup: "foo",
-                detail: "fn foo(xs: Ve)",
-                trigger_call_info: true,
-            },
-        ]
-        "###
+        check_edit(
+            "Vec",
+            r#"
+type Vec<T> = (T,);
+fn foo(xs: Ve<|>)
+"#,
+            r#"
+type Vec<T> = (T,);
+fn foo(xs: Vec<$0>)
+"#,
         );
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                struct Vec<T = i128> {}
-                fn foo(xs: Ve<|>)
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Vec",
-                source_range: 35..37,
-                delete: 35..37,
-                insert: "Vec",
-                kind: Struct,
-            },
-            CompletionItem {
-                label: "foo(…)",
-                source_range: 35..37,
-                delete: 35..37,
-                insert: "foo(${1:xs})$0",
-                kind: Function,
-                lookup: "foo",
-                detail: "fn foo(xs: Ve)",
-                trigger_call_info: true,
-            },
-        ]
-        "###
+        check_edit(
+            "Vec",
+            r#"
+struct Vec<T = i128> {}
+fn foo(xs: Ve<|>)
+"#,
+            r#"
+struct Vec<T = i128> {}
+fn foo(xs: Vec)
+"#,
         );
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                struct Vec<T> {}
-                fn foo(xs: Ve<|><i128>)
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Vec",
-                source_range: 28..30,
-                delete: 28..30,
-                insert: "Vec",
-                kind: Struct,
-            },
-            CompletionItem {
-                label: "foo(…)",
-                source_range: 28..30,
-                delete: 28..30,
-                insert: "foo(${1:xs})$0",
-                kind: Function,
-                lookup: "foo",
-                detail: "fn foo(xs: Ve<i128>)",
-                trigger_call_info: true,
-            },
-        ]
-        "###
+        check_edit(
+            "Vec",
+            r#"
+struct Vec<T> {}
+fn foo(xs: Ve<|><i128>)
+"#,
+            r#"
+struct Vec<T> {}
+fn foo(xs: Vec<i128>)
+"#,
         );
     }
 
     #[test]
     fn dont_insert_macro_call_parens_unncessary() {
         mark::check!(dont_insert_macro_call_parens_unncessary);
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                //- /main.rs
-                use foo::<|>;
-
-                //- /foo/lib.rs
-                #[macro_export]
-                macro_rules frobnicate {
-                    () => ()
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "frobnicate!",
-                source_range: 9..9,
-                delete: 9..9,
-                insert: "frobnicate",
-                kind: Macro,
-                detail: "#[macro_export]\nmacro_rules! frobnicate",
-            },
-        ]
-        "###
+        check_edit(
+            "frobnicate!",
+            r#"
+//- /main.rs
+use foo::<|>;
+//- /foo/lib.rs
+#[macro_export]
+macro_rules frobnicate { () => () }
+"#,
+            r#"
+use foo::frobnicate;
+"#,
         );
 
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                //- /main.rs
-                macro_rules frobnicate {
-                    () => ()
-                }
-                fn main() {
-                    frob<|>!();
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "frobnicate!",
-                source_range: 56..60,
-                delete: 56..60,
-                insert: "frobnicate",
-                kind: Macro,
-                detail: "macro_rules! frobnicate",
-            },
-            CompletionItem {
-                label: "main()",
-                source_range: 56..60,
-                delete: 56..60,
-                insert: "main()$0",
-                kind: Function,
-                lookup: "main",
-                detail: "fn main()",
-            },
-        ]
-        "###
+        check_edit(
+            "frobnicate!",
+            r#"
+macro_rules frobnicate { () => () }
+fn main() { frob<|>!(); }
+"#,
+            r#"
+macro_rules frobnicate { () => () }
+fn main() { frobnicate!(); }
+"#,
         );
     }
 
