@@ -86,18 +86,12 @@ fn fetch_const<'a>(cx: &LateContext<'_>, args: &'a [Expr<'a>], m: MinMax) -> Opt
     if args.len() != 2 {
         return None;
     }
-    constant_simple(cx, cx.tables, &args[0]).map_or_else(
-        || {
-            if let Some(c) = constant_simple(cx, cx.tables(), &args[1]) {
-                Some((m, c, &args[0]))
-            } else {
-                None
-            }
-        },
+    constant_simple(cx, cx.tables(), &args[0]).map_or_else(
+        || constant_simple(cx, cx.tables(), &args[1]).map(|c| (m, c, &args[0])),
         |c| {
-            if constant_simple(cx, cx.tables, &args[1]).is_none() {
+            if constant_simple(cx, cx.tables(), &args[1]).is_none() {
                 // otherwise ignore
-                Some((c, &args[1]))
+                Some((m, c, &args[1]))
             } else {
                 None
             }

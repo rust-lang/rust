@@ -70,9 +70,9 @@ declare_clippy_lint! {
 declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 
 /// Returns true iff the given expression is the result of calling `Result::ok`
-fn is_result_ok(cx: &LateContext<'_, '_>, expr: &'_ Expr<'_>) -> bool {
+fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
     if let ExprKind::MethodCall(ref path, _, &[ref receiver], _) = &expr.kind {
-        path.ident.name.to_ident_string() == "ok" && match_type(cx, &cx.tables.expr_ty(&receiver), &paths::RESULT)
+        path.ident.name.to_ident_string() == "ok" && match_type(cx, &cx.tables().expr_ty(&receiver), &paths::RESULT)
     } else {
         false
     }
@@ -157,7 +157,7 @@ fn extract_body_from_arm<'a>(arm: &'a Arm<'a>) -> Option<&'a Expr<'a>> {
 
 /// If this is the else body of an if/else expression, then we need to wrap
 /// it in curcly braces. Otherwise, we don't.
-fn should_wrap_in_braces(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn should_wrap_in_braces(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     utils::get_enclosing_block(cx, expr.hir_id).map_or(false, |parent| {
         if let Some(Expr {
             kind:
@@ -181,7 +181,7 @@ fn should_wrap_in_braces(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     })
 }
 
-fn format_option_in_sugg(cx: &LateContext<'_, '_>, cond_expr: &Expr<'_>, as_ref: bool, as_mut: bool) -> String {
+fn format_option_in_sugg(cx: &LateContext<'_>, cond_expr: &Expr<'_>, as_ref: bool, as_mut: bool) -> String {
     format!(
         "{}{}",
         Sugg::hir(cx, cond_expr, "..").maybe_par(),
@@ -198,7 +198,7 @@ fn format_option_in_sugg(cx: &LateContext<'_, '_>, cond_expr: &Expr<'_>, as_ref:
 /// If this expression is the option if let/else construct we're detecting, then
 /// this function returns an `OptionIfLetElseOccurence` struct with details if
 /// this construct is found, or None if this construct is not found.
-fn detect_option_if_let_else<'a>(cx: &LateContext<'_, 'a>, expr: &'a Expr<'a>) -> Option<OptionIfLetElseOccurence> {
+fn detect_option_if_let_else(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<OptionIfLetElseOccurence> {
     if_chain! {
         if !utils::in_macro(expr.span); // Don't lint macros, because it behaves weirdly
         if let ExprKind::Match(cond_expr, arms, MatchSource::IfLetDesugar{contains_else_clause: true}) = &expr.kind;
@@ -242,8 +242,8 @@ fn detect_option_if_let_else<'a>(cx: &LateContext<'_, 'a>, expr: &'a Expr<'a>) -
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OptionIfLetElse {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'a> LateLintPass<'a> for OptionIfLetElse {
+    fn check_expr(&mut self, cx: &LateContext<'a>, expr: &Expr<'_>) {
         if let Some(detection) = detect_option_if_let_else(cx, expr) {
             span_lint_and_sugg(
                 cx,

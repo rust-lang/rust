@@ -480,7 +480,7 @@ fn is_relevant_trait(cx: &LateContext<'_>, item: &TraitItem<'_>) -> bool {
     }
 }
 
-fn is_relevant_block(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, block: &Block<'_>) -> bool {
+fn is_relevant_block(cx: &LateContext<'_>, tables: &ty::TypeckTables<'_>, block: &Block<'_>) -> bool {
     block.stmts.first().map_or(
         block.expr.as_ref().map_or(false, |e| is_relevant_expr(cx, tables, e)),
         |stmt| match &stmt.kind {
