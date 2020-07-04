@@ -43,17 +43,30 @@ pub(crate) fn completion_list_with_config(
         .filter(|c| c.completion_kind == kind)
         .collect();
     kind_completions.sort_by_key(|c| c.label().to_owned());
+    let label_width = kind_completions
+        .iter()
+        .map(|it| monospace_width(it.label()))
+        .max()
+        .unwrap_or_default()
+        .min(16);
     kind_completions
         .into_iter()
         .map(|it| {
-            let mut buf = format!("{} {}", it.kind().unwrap().tag(), it.label());
+            let tag = it.kind().unwrap().tag();
+            let var_name = format!("{} {}", tag, it.label());
+            let mut buf = var_name;
             if let Some(detail) = it.detail() {
-                format_to!(buf, " {}", detail);
+                let width = label_width.saturating_sub(monospace_width(it.label()));
+                format_to!(buf, "{:width$} {}", "", detail, width = width);
             }
             format_to!(buf, "\n");
             buf
         })
         .collect()
+}
+
+fn monospace_width(s: &str) -> usize {
+    s.chars().count()
 }
 
 pub(crate) fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: &str) {

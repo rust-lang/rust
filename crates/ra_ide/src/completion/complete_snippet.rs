@@ -84,9 +84,9 @@ mod tests {
         check(
             r#"fn foo(x: i32) { <|> }"#,
             expect![[r#"
-            sn pd
-            sn ppd
-        "#]],
+                sn pd
+                sn ppd
+            "#]],
         );
     }
 

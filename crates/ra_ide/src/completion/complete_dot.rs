@@ -83,7 +83,7 @@ fn foo(s: S) { s.<|> }
 "#,
             expect![[r#"
                 me bar() fn bar(&self)
-                fd foo u32
+                fd foo   u32
             "#]],
         );
     }
@@ -98,7 +98,7 @@ impl S {
 }
 "#,
             expect![[r#"
-                me foo() fn foo(self)
+                me foo()     fn foo(self)
                 fd the_field (u32,)
             "#]],
         )
@@ -114,7 +114,7 @@ impl A {
 }
 "#,
             expect![[r#"
-                me foo() fn foo(&self)
+                me foo()     fn foo(&self)
                 fd the_field (u32, i32)
             "#]],
         )
@@ -148,7 +148,7 @@ fn foo(a: inner::A) { a.<|> }
 "#,
             expect![[r#"
                 fd crate_field u32
-                fd pub_field u32
+                fd pub_field   u32
                 fd super_field u32
             "#]],
         );
