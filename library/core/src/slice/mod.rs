@@ -1412,6 +1412,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(contains_ref)]
     /// let v = [String::from("Hello"), String::from("world")];
     /// assert!(v.contains_ref("Hello"));
     /// assert!(!v.contains_ref("Rust"));
@@ -1420,6 +1421,7 @@ impl<T> [T] {
     pub fn contains_ref<U>(&self, x: &U) -> bool
     where
         T: PartialEq<U>,
+        U: ?Sized,
     {
         self.iter().any(|e| e == x)
     }
