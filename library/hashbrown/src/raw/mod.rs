@@ -1002,9 +1002,11 @@ impl<T> RawTable<T> {
     }
 
     /// Returns an iterator which removes all elements from the table without
-    /// freeing the memory. It is up to the caller to ensure that the `RawTable`
-    /// outlives the `RawDrain`. Because we cannot make the `next` method unsafe
-    /// on the `RawDrain`, we have to make the `drain` method unsafe.
+    /// freeing the memory.
+    ///
+    /// It is up to the caller to ensure that the `RawTable` outlives the `RawDrain`.
+    /// Because we cannot make the `next` method unsafe on the `RawDrain`,
+    /// we have to make the `drain` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn drain(&mut self) -> RawDrain<'_, T> {
         let iter = self.iter();
@@ -1012,13 +1014,14 @@ impl<T> RawTable<T> {
     }
 
     /// Returns an iterator which removes all elements from the table without
-    /// freeing the memory. It is up to the caller to ensure that the `RawTable`
-    /// outlives the `RawDrain`. Because we cannot make the `next` method unsafe
-    /// on the `RawDrain`, we have to make the `drain` method unsafe.
+    /// freeing the memory.
+    ///
+    /// It is up to the caller to ensure that the `RawTable` outlives the `RawDrain`.
+    /// Because we cannot make the `next` method unsafe on the `RawDrain`,
+    /// we have to make the `drain` method unsafe.
     ///
     /// Iteration starts at the provided iterator's current location.
-    ///
-    /// This method panics if the given iterator does not cover all items remaining in the table.
+    /// You must ensure that the iterator covers all items that remain in the table.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn drain_iter_from(&mut self, iter: RawIter<T>) -> RawDrain<'_, T> {
         debug_assert_eq!(iter.len(), self.len());
@@ -1032,9 +1035,12 @@ impl<T> RawTable<T> {
 
     /// Returns an iterator which consumes all elements from the table.
     ///
-    /// Iteration starts at the provided iterator's current location.
+    /// It is up to the caller to ensure that the `RawTable` outlives the `RawIntoIter`.
+    /// Because we cannot make the `next` method unsafe on the `RawIntoIter`,
+    /// we have to make the `into_iter_from` method unsafe.
     ///
-    /// This method panics if the given iterator does not cover all items remaining in the table.
+    /// Iteration starts at the provided iterator's current location.
+    /// You must ensure that the iterator covers all items that remain in the table.
     pub unsafe fn into_iter_from(self, iter: RawIter<T>) -> RawIntoIter<T> {
         debug_assert_eq!(iter.len(), self.len());
 
