@@ -54,85 +54,81 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot;
+    use expect::{expect, Expect};
 
-    fn do_magic_completion(code: &str) -> Vec<CompletionItem> {
-        do_completion(code, CompletionKind::Magic)
+    use crate::completion::{test_utils::do_completion, CompletionKind};
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        let actual = do_completion(ra_fixture, CompletionKind::Magic);
+        expect.assert_debug_eq(&actual);
     }
 
     #[test]
     fn test_param_completion_last_param() {
-        assert_debug_snapshot!(
-        do_magic_completion(
-                r"
-                fn foo(file_id: FileId) {}
-                fn bar(file_id: FileId) {}
-                fn baz(file<|>) {}
-                ",
-        ),
-            @r###"
-        [
-            CompletionItem {
-                label: "file_id: FileId",
-                source_range: 61..65,
-                delete: 61..65,
-                insert: "file_id: FileId",
-                lookup: "file_id",
-            },
-        ]
-        "###
+        check(
+            r#"
+fn foo(file_id: FileId) {}
+fn bar(file_id: FileId) {}
+fn baz(file<|>) {}
+"#,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "file_id: FileId",
+                        source_range: 61..65,
+                        delete: 61..65,
+                        insert: "file_id: FileId",
+                        lookup: "file_id",
+                    },
+                ]
+            "#]],
         );
     }
 
     #[test]
     fn test_param_completion_nth_param() {
-        assert_debug_snapshot!(
-        do_magic_completion(
-                r"
-                fn foo(file_id: FileId) {}
-                fn bar(file_id: FileId) {}
-                fn baz(file<|>, x: i32) {}
-                ",
-        ),
-            @r###"
-        [
-            CompletionItem {
-                label: "file_id: FileId",
-                source_range: 61..65,
-                delete: 61..65,
-                insert: "file_id: FileId",
-                lookup: "file_id",
-            },
-        ]
-        "###
+        check(
+            r#"
+fn foo(file_id: FileId) {}
+fn bar(file_id: FileId) {}
+fn baz(file<|>, x: i32) {}
+"#,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "file_id: FileId",
+                        source_range: 61..65,
+                        delete: 61..65,
+                        insert: "file_id: FileId",
+                        lookup: "file_id",
+                    },
+                ]
+            "#]],
         );
     }
 
     #[test]
     fn test_param_completion_trait_param() {
-        assert_debug_snapshot!(
-        do_magic_completion(
-                r"
-                pub(crate) trait SourceRoot {
-                    pub fn contains(&self, file_id: FileId) -> bool;
-                    pub fn module_map(&self) -> &ModuleMap;
-                    pub fn lines(&self, file_id: FileId) -> &LineIndex;
-                    pub fn syntax(&self, file<|>)
-                }
-                ",
-        ),
-            @r###"
-        [
-            CompletionItem {
-                label: "file_id: FileId",
-                source_range: 208..212,
-                delete: 208..212,
-                insert: "file_id: FileId",
-                lookup: "file_id",
-            },
-        ]
-        "###
+        check(
+            r#"
+pub(crate) trait SourceRoot {
+    pub fn contains(&self, file_id: FileId) -> bool;
+    pub fn module_map(&self) -> &ModuleMap;
+    pub fn lines(&self, file_id: FileId) -> &LineIndex;
+    pub fn syntax(&self, file<|>)
+}
+"#,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "file_id: FileId",
+                        source_range: 208..212,
+                        delete: 208..212,
+                        insert: "file_id: FileId",
+                        lookup: "file_id",
+                    },
+                ]
+            "#]],
         );
     }
 }
