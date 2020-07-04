@@ -33,107 +33,56 @@ pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot;
+    use expect::{expect, Expect};
 
-    fn complete(code: &str) -> Vec<CompletionItem> {
-        do_completion(code, CompletionKind::Reference)
+    use crate::completion::{test_utils::completion_list, CompletionKind};
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        let actual = completion_list(ra_fixture, CompletionKind::Reference);
+        expect.assert_eq(&actual)
     }
 
     #[test]
     fn completes_enum_variants_and_modules() {
-        let completions = complete(
-            r"
-            enum E { X }
-            use self::E::X;
-            const Z: E = E::X;
-            mod m {}
+        check(
+            r#"
+enum E { X }
+use self::E::X;
+const Z: E = E::X;
+mod m {}
 
-            static FOO: E = E::X;
-            struct Bar { f: u32 }
+static FOO: E = E::X;
+struct Bar { f: u32 }
 
-            fn foo() {
-               match E::X {
-                   <|>
-               }
-            }
-            ",
+fn foo() {
+   match E::X { <|> }
+}
+"#,
+            expect![[r#"
+                st Bar
+                en E
+                ev X ()
+                ct Z
+                md m
+            "#]],
         );
-        assert_debug_snapshot!(completions, @r###"
-        [
-            CompletionItem {
-                label: "Bar",
-                source_range: 137..137,
-                delete: 137..137,
-                insert: "Bar",
-                kind: Struct,
-            },
-            CompletionItem {
-                label: "E",
-                source_range: 137..137,
-                delete: 137..137,
-                insert: "E",
-                kind: Enum,
-            },
-            CompletionItem {
-                label: "X",
-                source_range: 137..137,
-                delete: 137..137,
-                insert: "X",
-                kind: EnumVariant,
-                detail: "()",
-            },
-            CompletionItem {
-                label: "Z",
-                source_range: 137..137,
-                delete: 137..137,
-                insert: "Z",
-                kind: Const,
-            },
-            CompletionItem {
-                label: "m",
-                source_range: 137..137,
-                delete: 137..137,
-                insert: "m",
-                kind: Module,
-            },
-        ]
-        "###);
     }
 
     #[test]
     fn completes_in_simple_macro_call() {
-        let completions = complete(
-            r"
-            macro_rules! m { ($e:expr) => { $e } }
-            enum E { X }
+        check(
+            r#"
+macro_rules! m { ($e:expr) => { $e } }
+enum E { X }
 
-            fn foo() {
-               m!(match E::X {
-                   <|>
-               })
-            }
-            ",
+fn foo() {
+   m!(match E::X { <|> })
+}
+"#,
+            expect![[r#"
+                en E
+                ma m!(…) macro_rules! m
+            "#]],
         );
-        assert_debug_snapshot!(completions, @r###"
-        [
-            CompletionItem {
-                label: "E",
-                source_range: 90..90,
-                delete: 90..90,
-                insert: "E",
-                kind: Enum,
-            },
-            CompletionItem {
-                label: "m!(…)",
-                source_range: 90..90,
-                delete: 90..90,
-                insert: "m!($0)",
-                kind: Macro,
-                lookup: "m!",
-                detail: "macro_rules! m",
-            },
-        ]
-        "###);
     }
 }
