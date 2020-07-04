@@ -638,8 +638,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
                 return None;
             }
+            Rvalue::ThreadLocalRef(def_id) => {
+                trace!("skipping ThreadLocalRef({:?})", def_id);
 
-            _ => {}
+                return None;
+            }
+
+            // There's no other checking to do at this time.
+            Rvalue::Aggregate(..)
+            | Rvalue::Use(..)
+            | Rvalue::Repeat(..)
+            | Rvalue::Len(..)
+            | Rvalue::Cast(..)
+            | Rvalue::Discriminant(..)
+            | Rvalue::NullaryOp(..) => {}
         }
 
         // FIXME we need to revisit this for #67176
