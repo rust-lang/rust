@@ -3187,17 +3187,17 @@ extern "C" {
     #[link_name = "llvm.x86.avx.hsub.ps.256"]
     fn vhsubps(a: __m256, b: __m256) -> __m256;
     #[link_name = "llvm.x86.sse2.cmp.pd"]
-    fn vcmppd(a: __m128d, b: __m128d, imm8: u8) -> __m128d;
+    fn vcmppd(a: __m128d, b: __m128d, imm8: i8) -> __m128d;
     #[link_name = "llvm.x86.avx.cmp.pd.256"]
     fn vcmppd256(a: __m256d, b: __m256d, imm8: u8) -> __m256d;
     #[link_name = "llvm.x86.sse.cmp.ps"]
-    fn vcmpps(a: __m128, b: __m128, imm8: u8) -> __m128;
+    fn vcmpps(a: __m128, b: __m128, imm8: i8) -> __m128;
     #[link_name = "llvm.x86.avx.cmp.ps.256"]
     fn vcmpps256(a: __m256, b: __m256, imm8: u8) -> __m256;
     #[link_name = "llvm.x86.sse2.cmp.sd"]
-    fn vcmpsd(a: __m128d, b: __m128d, imm8: u8) -> __m128d;
+    fn vcmpsd(a: __m128d, b: __m128d, imm8: i8) -> __m128d;
     #[link_name = "llvm.x86.sse.cmp.ss"]
-    fn vcmpss(a: __m128, b: __m128, imm8: u8) -> __m128;
+    fn vcmpss(a: __m128, b: __m128, imm8: i8) -> __m128;
     #[link_name = "llvm.x86.avx.cvtdq2.ps.256"]
     fn vcvtdq2ps(a: i32x8) -> __m256;
     #[link_name = "llvm.x86.avx.cvt.pd2.ps.256"]

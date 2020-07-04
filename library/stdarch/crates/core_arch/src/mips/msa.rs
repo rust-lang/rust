@@ -161,13 +161,13 @@ extern "C" {
     fn msa_aver_s_w(a: v4i32, b: v4i32) -> v4i32;
     #[link_name = "llvm.mips.aver.s.d"]
     fn msa_aver_s_d(a: v2i64, b: v2i64) -> v2i64;
-    #[link_name = "llvm.mips.aver.s.b"]
+    #[link_name = "llvm.mips.aver.u.b"]
     fn msa_aver_u_b(a: v16u8, b: v16u8) -> v16u8;
-    #[link_name = "llvm.mips.aver.s.h"]
+    #[link_name = "llvm.mips.aver.u.h"]
     fn msa_aver_u_h(a: v8u16, b: v8u16) -> v8u16;
-    #[link_name = "llvm.mips.aver.s.w"]
+    #[link_name = "llvm.mips.aver.u.w"]
     fn msa_aver_u_w(a: v4u32, b: v4u32) -> v4u32;
-    #[link_name = "llvm.mips.aver.s.d"]
+    #[link_name = "llvm.mips.aver.u.d"]
     fn msa_aver_u_d(a: v2u64, b: v2u64) -> v2u64;
     #[link_name = "llvm.mips.bclr.b"]
     fn msa_bclr_b(a: v16u8, b: v16u8) -> v16u8;
@@ -415,7 +415,7 @@ extern "C" {
     fn msa_dpadd_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32;
     #[link_name = "llvm.mips.dpadd.s.d"]
     fn msa_dpadd_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64;
-    #[link_name = "llvm.mips.dpadd.s.h"]
+    #[link_name = "llvm.mips.dpadd.u.h"]
     fn msa_dpadd_u_h(a: v8u16, b: v16u8, c: v16u8) -> v8u16;
     #[link_name = "llvm.mips.dpadd.u.w"]
     fn msa_dpadd_u_w(a: v4u32, b: v8u16, c: v8u16) -> v4u32;
