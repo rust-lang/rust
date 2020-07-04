@@ -77,6 +77,7 @@ pub fn provide(providers: &mut Providers) {
         projection_ty_from_predicates,
         explicit_predicates_of,
         super_predicates_of,
+        trait_explicit_predicates_and_bounds,
         type_param_predicates,
         trait_def,
         adt_def,
@@ -1731,7 +1732,7 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
 
 /// Returns a list of user-specified type predicates for the definition with ID `def_id`.
 /// N.B., this does not include any implied/inferred constraints.
-fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
+fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
 
     debug!("explicit_predicates_of(def_id={:?})", def_id);
@@ -2114,6 +2115,71 @@ fn const_evaluatable_predicates_of<'tcx>(
     warn!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.preds);
 
     collector.preds
+}
+
+fn trait_explicit_predicates_and_bounds(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+) -> ty::GenericPredicates<'_> {
+    assert_eq!(tcx.def_kind(def_id), DefKind::Trait);
+    gather_explicit_predicates_of(tcx, def_id.to_def_id())
+}
+
+fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
+    if let DefKind::Trait = tcx.def_kind(def_id) {
+        // Remove bounds on associated types from the predicates, they will be
+        // returned by `explicit_item_bounds`.
+        let predicates_and_bounds = tcx.trait_explicit_predicates_and_bounds(def_id.expect_local());
+        let trait_identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
+
+        let is_assoc_item_ty = |ty: Ty<'_>| {
+            // For a predicate from a where clause to become a bound on an
+            // associated type:
+            // * It must use the identity substs of the item.
+            //     * Since any generic parameters on the item are not in scope,
+            //       this means that the item is not a GAT, and its identity substs
+            //       are the same as the trait's.
+            // * It must be an associated type for this trait (*not* a
+            //   supertrait).
+            if let ty::Projection(projection) = ty.kind {
+                if projection.substs == trait_identity_substs
+                    && tcx.associated_item(projection.item_def_id).container.id() == def_id
+                {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        };
+
+        let predicates: Vec<_> = predicates_and_bounds
+            .predicates
+            .iter()
+            .copied()
+            .filter(|(pred, _)| match pred.kind() {
+                ty::PredicateKind::Trait(tr, _) => !is_assoc_item_ty(tr.skip_binder().self_ty()),
+                ty::PredicateKind::Projection(proj) => {
+                    !is_assoc_item_ty(proj.skip_binder().projection_ty.self_ty())
+                }
+                ty::PredicateKind::TypeOutlives(outlives) => {
+                    !is_assoc_item_ty(outlives.skip_binder().0)
+                }
+                _ => true,
+            })
+            .collect();
+        if predicates.len() == predicates_and_bounds.predicates.len() {
+            predicates_and_bounds
+        } else {
+            ty::GenericPredicates {
+                parent: predicates_and_bounds.parent,
+                predicates: tcx.arena.alloc_slice(&predicates),
+            }
+        }
+    } else {
+        gather_explicit_predicates_of(tcx, def_id)
+    }
 }
 
 fn projection_ty_from_predicates(

@@ -34,7 +34,7 @@ fn associated_type_bounds<'tcx>(
     );
 
     let trait_def_id = tcx.associated_item(assoc_item_def_id).container.id();
-    let trait_predicates = tcx.predicates_of(trait_def_id);
+    let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id.expect_local());
 
     let bounds_from_parent =
         trait_predicates.predicates.iter().copied().filter(|(pred, _)| match pred.kind() {
