@@ -2770,7 +2770,7 @@ impl<T> [T] {
             // SAFETY:
             // When left < right, left <= mid < right.
             // Therefore left always increases and right always decreases,
-            // and eigher of them is selected.
+            // and either of them is selected.
             // In both cases left <= right is satisfied.
             // Therefore if left < right in a step,
             // left <= right is satisfied in the next step.
