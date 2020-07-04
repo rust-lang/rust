@@ -2,6 +2,9 @@ mod completion_config;
 mod completion_item;
 mod completion_context;
 mod presentation;
+mod patterns;
+#[cfg(test)]
+mod test_utils;
 
 mod complete_attribute;
 mod complete_dot;
@@ -15,9 +18,6 @@ mod complete_unqualified_path;
 mod complete_postfix;
 mod complete_macro_in_item_position;
 mod complete_trait_impl;
-mod patterns;
-#[cfg(test)]
-mod test_utils;
 
 use ra_ide_db::RootDatabase;
 

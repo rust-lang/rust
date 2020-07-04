@@ -147,1269 +147,588 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
 #[cfg(test)]
 mod tests {
+    use expect::{expect, Expect};
     use test_utils::mark;
 
-    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot;
+    use crate::completion::{
+        test_utils::{check_edit, completion_list},
+        CompletionKind,
+    };
 
-    fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
-        do_completion(code, CompletionKind::Reference)
+    fn check(ra_fixture: &str, expect: Expect) {
+        let actual = completion_list(ra_fixture, CompletionKind::Reference);
+        expect.assert_eq(&actual);
+    }
+
+    fn check_builtin(ra_fixture: &str, expect: Expect) {
+        let actual = completion_list(ra_fixture, CompletionKind::BuiltinType);
+        expect.assert_eq(&actual);
     }
 
     #[test]
     fn dont_complete_current_use() {
         mark::check!(dont_complete_current_use);
-        let completions = do_completion(r"use self::foo<|>;", CompletionKind::Reference);
-        assert!(completions.is_empty());
+        check(r#"use self::foo<|>;"#, expect![[""]]);
     }
 
     #[test]
     fn dont_complete_current_use_in_braces_with_glob() {
-        let completions = do_completion(
-            r"
-            mod foo { pub struct S; }
-            use self::{foo::*, bar<|>};
-            ",
-            CompletionKind::Reference,
+        check(
+            r#"
+mod foo { pub struct S; }
+use self::{foo::*, bar<|>};
+"#,
+            expect![[r#"
+                st S
+                md foo
+            "#]],
         );
-        assert_eq!(completions.len(), 2);
     }
 
     #[test]
     fn dont_complete_primitive_in_use() {
-        let completions = do_completion(r"use self::<|>;", CompletionKind::BuiltinType);
-        assert!(completions.is_empty());
+        check_builtin(r#"use self::<|>;"#, expect![[""]]);
     }
 
     #[test]
     fn dont_complete_primitive_in_module_scope() {
-        let completions = do_completion(r"fn foo() { self::<|> }", CompletionKind::BuiltinType);
-        assert!(completions.is_empty());
+        check_builtin(r#"fn foo() { self::<|> }"#, expect![[""]]);
     }
 
     #[test]
     fn completes_primitives() {
-        let completions =
-            do_completion(r"fn main() { let _: <|> = 92; }", CompletionKind::BuiltinType);
-        assert_eq!(completions.len(), 17);
-    }
-
-    #[test]
-    fn completes_mod_with_docs() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                use self::my<|>;
-
-                /// Some simple
-                /// docs describing `mod my`.
-                mod my {
-                    struct Bar;
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "my",
-                source_range: 10..12,
-                delete: 10..12,
-                insert: "my",
-                kind: Module,
-                documentation: Documentation(
-                    "Some simple\ndocs describing `mod my`.",
-                ),
-            },
-        ]
-        "###
+        check_builtin(
+            r#"fn main() { let _: <|> = 92; }"#,
+            expect![[r#"
+                bt bool
+                bt char
+                bt f32
+                bt f64
+                bt i128
+                bt i16
+                bt i32
+                bt i64
+                bt i8
+                bt isize
+                bt str
+                bt u128
+                bt u16
+                bt u32
+                bt u64
+                bt u8
+                bt usize
+            "#]],
         );
     }
 
     #[test]
     fn completes_mod_with_same_name_as_function() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                use self::my::<|>;
+        check(
+            r#"
+use self::my::<|>;
 
-                mod my {
-                    pub struct Bar;
-                }
-
-                fn my() {}
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Bar",
-                source_range: 14..14,
-                delete: 14..14,
-                insert: "Bar",
-                kind: Struct,
-            },
-        ]
-        "###
+mod my { pub struct Bar; }
+fn my() {}
+"#,
+            expect![[r#"
+                st Bar
+            "#]],
         );
     }
 
     #[test]
-    fn path_visibility() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                use self::my::<|>;
+    fn filters_visibility() {
+        check(
+            r#"
+use self::my::<|>;
 
-                mod my {
-                    struct Bar;
-                    pub struct Foo;
-                    pub use Bar as PublicBar;
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Foo",
-                source_range: 14..14,
-                delete: 14..14,
-                insert: "Foo",
-                kind: Struct,
-            },
-            CompletionItem {
-                label: "PublicBar",
-                source_range: 14..14,
-                delete: 14..14,
-                insert: "PublicBar",
-                kind: Struct,
-            },
-        ]
-        "###
+mod my {
+    struct Bar;
+    pub struct Foo;
+    pub use Bar as PublicBar;
+}
+"#,
+            expect![[r#"
+                st Foo
+                st PublicBar
+            "#]],
         );
     }
 
     #[test]
     fn completes_use_item_starting_with_self() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                use self::m::<|>;
+        check(
+            r#"
+use self::m::<|>;
 
-                mod m {
-                    pub struct Bar;
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Bar",
-                source_range: 13..13,
-                delete: 13..13,
-                insert: "Bar",
-                kind: Struct,
-            },
-        ]
-        "###
+mod m { pub struct Bar; }
+"#,
+            expect![[r#"
+                st Bar
+            "#]],
         );
     }
 
     #[test]
     fn completes_use_item_starting_with_crate() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                mod foo;
-                struct Spam;
-                //- /foo.rs
-                use crate::Sp<|>
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Spam",
-                source_range: 11..13,
-                delete: 11..13,
-                insert: "Spam",
-                kind: Struct,
-            },
-            CompletionItem {
-                label: "foo",
-                source_range: 11..13,
-                delete: 11..13,
-                insert: "foo",
-                kind: Module,
-            },
-        ]
-        "###
+        check(
+            r#"
+//- /lib.rs
+mod foo;
+struct Spam;
+//- /foo.rs
+use crate::Sp<|>
+"#,
+            expect![[r#"
+                st Spam
+                md foo
+            "#]],
         );
     }
 
     #[test]
     fn completes_nested_use_tree() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                mod foo;
-                struct Spam;
-                //- /foo.rs
-                use crate::{Sp<|>};
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Spam",
-                source_range: 12..14,
-                delete: 12..14,
-                insert: "Spam",
-                kind: Struct,
-            },
-            CompletionItem {
-                label: "foo",
-                source_range: 12..14,
-                delete: 12..14,
-                insert: "foo",
-                kind: Module,
-            },
-        ]
-        "###
+        check(
+            r#"
+//- /lib.rs
+mod foo;
+struct Spam;
+//- /foo.rs
+use crate::{Sp<|>};
+"#,
+            expect![[r#"
+                st Spam
+                md foo
+            "#]],
         );
     }
 
     #[test]
     fn completes_deeply_nested_use_tree() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                mod foo;
-                pub mod bar {
-                    pub mod baz {
-                        pub struct Spam;
-                    }
-                }
-                //- /foo.rs
-                use crate::{bar::{baz::Sp<|>}};
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Spam",
-                source_range: 23..25,
-                delete: 23..25,
-                insert: "Spam",
-                kind: Struct,
-            },
-        ]
-        "###
+        check(
+            r#"
+//- /lib.rs
+mod foo;
+pub mod bar {
+    pub mod baz {
+        pub struct Spam;
+    }
+}
+//- /foo.rs
+use crate::{bar::{baz::Sp<|>}};
+"#,
+            expect![[r#"
+                st Spam
+            "#]],
         );
     }
 
     #[test]
     fn completes_enum_variant() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                /// An enum
-                enum E {
-                    /// Foo Variant
-                    Foo,
-                    /// Bar Variant with i32
-                    Bar(i32)
-                }
-                fn foo() { let _ = E::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Bar(…)",
-                source_range: 116..116,
-                delete: 116..116,
-                insert: "Bar($0)",
-                kind: EnumVariant,
-                lookup: "Bar",
-                detail: "(i32)",
-                documentation: Documentation(
-                    "Bar Variant with i32",
-                ),
-                trigger_call_info: true,
-            },
-            CompletionItem {
-                label: "Foo",
-                source_range: 116..116,
-                delete: 116..116,
-                insert: "Foo",
-                kind: EnumVariant,
-                detail: "()",
-                documentation: Documentation(
-                    "Foo Variant",
-                ),
-            },
-        ]
-        "###
+        check(
+            r#"
+enum E { Foo, Bar(i32) }
+fn foo() { let _ = E::<|> }
+"#,
+            expect![[r#"
+                ev Bar(…) (i32)
+                ev Foo ()
+            "#]],
         );
     }
 
     #[test]
-    fn completes_enum_variant_with_details() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                struct S { field: u32 }
-                /// An enum
-                enum E {
-                    /// Foo Variant (empty)
-                    Foo,
-                    /// Bar Variant with i32 and u32
-                    Bar(i32, u32),
-                    ///
-                    S(S),
-                }
-                fn foo() { let _ = E::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Bar(…)",
-                source_range: 180..180,
-                delete: 180..180,
-                insert: "Bar($0)",
-                kind: EnumVariant,
-                lookup: "Bar",
-                detail: "(i32, u32)",
-                documentation: Documentation(
-                    "Bar Variant with i32 and u32",
-                ),
-                trigger_call_info: true,
-            },
-            CompletionItem {
-                label: "Foo",
-                source_range: 180..180,
-                delete: 180..180,
-                insert: "Foo",
-                kind: EnumVariant,
-                detail: "()",
-                documentation: Documentation(
-                    "Foo Variant (empty)",
-                ),
-            },
-            CompletionItem {
-                label: "S(…)",
-                source_range: 180..180,
-                delete: 180..180,
-                insert: "S($0)",
-                kind: EnumVariant,
-                lookup: "S",
-                detail: "(S)",
-                documentation: Documentation(
-                    "",
-                ),
-                trigger_call_info: true,
-            },
-        ]
-        "###
-        );
-    }
+    fn completes_struct_associated_items() {
+        check(
+            r#"
+//- /lib.rs
+struct S;
 
-    #[test]
-    fn completes_struct_associated_method() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                /// A Struct
-                struct S;
+impl S {
+    fn a() {}
+    fn b(&self) {}
+    const C: i32 = 42;
+    type T = i32;
+}
 
-                impl S {
-                    /// An associated method
-                    fn m() { }
-                }
-
-                fn foo() { let _ = S::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "m()",
-                source_range: 102..102,
-                delete: 102..102,
-                insert: "m()$0",
-                kind: Function,
-                lookup: "m",
-                detail: "fn m()",
-                documentation: Documentation(
-                    "An associated method",
-                ),
-            },
-        ]
-        "###
-        );
-    }
-
-    #[test]
-    fn completes_struct_associated_method_with_self() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                /// A Struct
-                struct S;
-
-                impl S {
-                    /// An associated method
-                    fn m(&self) { }
-                }
-
-                fn foo() { let _ = S::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "m()",
-                source_range: 107..107,
-                delete: 107..107,
-                insert: "m()$0",
-                kind: Method,
-                lookup: "m",
-                detail: "fn m(&self)",
-                documentation: Documentation(
-                    "An associated method",
-                ),
-            },
-        ]
-        "###
-        );
-    }
-
-    #[test]
-    fn completes_struct_associated_const() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                /// A Struct
-                struct S;
-
-                impl S {
-                    /// An associated const
-                    const C: i32 = 42;
-                }
-
-                fn foo() { let _ = S::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "C",
-                source_range: 109..109,
-                delete: 109..109,
-                insert: "C",
-                kind: Const,
-                detail: "const C: i32 = 42;",
-                documentation: Documentation(
-                    "An associated const",
-                ),
-            },
-        ]
-        "###
-        );
-    }
-
-    #[test]
-    fn completes_struct_associated_type() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                /// A Struct
-                struct S;
-
-                impl S {
-                    /// An associated type
-                    type T = i32;
-                }
-
-                fn foo() { let _ = S::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "T",
-                source_range: 103..103,
-                delete: 103..103,
-                insert: "T",
-                kind: TypeAlias,
-                detail: "type T = i32;",
-                documentation: Documentation(
-                    "An associated type",
-                ),
-            },
-        ]
-        "###
+fn foo() { let _ = S::<|> }
+"#,
+            expect![[r#"
+                ct C const C: i32 = 42;
+                ta T type T = i32;
+                fn a() fn a()
+                me b() fn b(&self)
+            "#]],
         );
     }
 
     #[test]
     fn associated_item_visibility() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                struct S;
+        check(
+            r#"
+struct S;
 
-                mod m {
-                    impl super::S {
-                        pub(super) fn public_method() { }
-                        fn private_method() { }
-                        pub(super) type PublicType = u32;
-                        type PrivateType = u32;
-                        pub(super) const PUBLIC_CONST: u32 = 1;
-                        const PRIVATE_CONST: u32 = 1;
-                    }
-                }
+mod m {
+    impl super::S {
+        pub(super) fn public_method() { }
+        fn private_method() { }
+        pub(super) type PublicType = u32;
+        type PrivateType = u32;
+        pub(super) const PUBLIC_CONST: u32 = 1;
+        const PRIVATE_CONST: u32 = 1;
+    }
+}
 
-                fn foo() { let _ = S::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "PUBLIC_CONST",
-                source_range: 304..304,
-                delete: 304..304,
-                insert: "PUBLIC_CONST",
-                kind: Const,
-                detail: "pub(super) const PUBLIC_CONST: u32 = 1;",
-            },
-            CompletionItem {
-                label: "PublicType",
-                source_range: 304..304,
-                delete: 304..304,
-                insert: "PublicType",
-                kind: TypeAlias,
-                detail: "pub(super) type PublicType = u32;",
-            },
-            CompletionItem {
-                label: "public_method()",
-                source_range: 304..304,
-                delete: 304..304,
-                insert: "public_method()$0",
-                kind: Function,
-                lookup: "public_method",
-                detail: "pub(super) fn public_method()",
-            },
-        ]
-        "###
+fn foo() { let _ = S::<|> }
+"#,
+            expect![[r#"
+                ct PUBLIC_CONST pub(super) const PUBLIC_CONST: u32 = 1;
+                ta PublicType pub(super) type PublicType = u32;
+                fn public_method() pub(super) fn public_method()
+            "#]],
         );
     }
 
     #[test]
     fn completes_enum_associated_method() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                /// An enum
-                enum S {};
+        check(
+            r#"
+enum E {};
+impl E { fn m() { } }
 
-                impl S {
-                    /// An associated method
-                    fn m() { }
-                }
-
-                fn foo() { let _ = S::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "m()",
-                source_range: 102..102,
-                delete: 102..102,
-                insert: "m()$0",
-                kind: Function,
-                lookup: "m",
-                detail: "fn m()",
-                documentation: Documentation(
-                    "An associated method",
-                ),
-            },
-        ]
-        "###
+fn foo() { let _ = E::<|> }
+        "#,
+            expect![[r#"
+                fn m() fn m()
+            "#]],
         );
     }
 
     #[test]
     fn completes_union_associated_method() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                /// A union
-                union U {};
+        check(
+            r#"
+union U {};
+impl U { fn m() { } }
 
-                impl U {
-                    /// An associated method
-                    fn m() { }
-                }
-
-                fn foo() { let _ = U::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "m()",
-                source_range: 103..103,
-                delete: 103..103,
-                insert: "m()$0",
-                kind: Function,
-                lookup: "m",
-                detail: "fn m()",
-                documentation: Documentation(
-                    "An associated method",
-                ),
-            },
-        ]
-        "###
+fn foo() { let _ = U::<|> }
+"#,
+            expect![[r#"
+                fn m() fn m()
+            "#]],
         );
     }
 
     #[test]
     fn completes_use_paths_across_crates() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /main.rs
-                use foo::<|>;
+        check(
+            r#"
+//- /main.rs
+use foo::<|>;
 
-                //- /foo/lib.rs
-                pub mod bar {
-                    pub struct S;
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "bar",
-                source_range: 9..9,
-                delete: 9..9,
-                insert: "bar",
-                kind: Module,
-            },
-        ]
-        "###
+//- /foo/lib.rs
+pub mod bar { pub struct S; }
+"#,
+            expect![[r#"
+                md bar
+            "#]],
         );
     }
 
     #[test]
     fn completes_trait_associated_method_1() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                trait Trait {
-                  /// A trait method
-                  fn m();
-                }
+        check(
+            r#"
+trait Trait { fn m(); }
 
-                fn foo() { let _ = Trait::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "m()",
-                source_range: 74..74,
-                delete: 74..74,
-                insert: "m()$0",
-                kind: Function,
-                lookup: "m",
-                detail: "fn m()",
-                documentation: Documentation(
-                    "A trait method",
-                ),
-            },
-        ]
-        "###
+fn foo() { let _ = Trait::<|> }
+"#,
+            expect![[r#"
+                fn m() fn m()
+            "#]],
         );
     }
 
     #[test]
     fn completes_trait_associated_method_2() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                trait Trait {
-                  /// A trait method
-                  fn m();
-                }
+        check(
+            r#"
+trait Trait { fn m(); }
 
-                struct S;
-                impl Trait for S {}
+struct S;
+impl Trait for S {}
 
-                fn foo() { let _ = S::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "m()",
-                source_range: 101..101,
-                delete: 101..101,
-                insert: "m()$0",
-                kind: Function,
-                lookup: "m",
-                detail: "fn m()",
-                documentation: Documentation(
-                    "A trait method",
-                ),
-            },
-        ]
-        "###
+fn foo() { let _ = S::<|> }
+"#,
+            expect![[r#"
+                fn m() fn m()
+            "#]],
         );
     }
 
     #[test]
     fn completes_trait_associated_method_3() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                trait Trait {
-                  /// A trait method
-                  fn m();
-                }
+        check(
+            r#"
+trait Trait { fn m(); }
 
-                struct S;
-                impl Trait for S {}
+struct S;
+impl Trait for S {}
 
-                fn foo() { let _ = <S as Trait>::<|> }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "m()",
-                source_range: 112..112,
-                delete: 112..112,
-                insert: "m()$0",
-                kind: Function,
-                lookup: "m",
-                detail: "fn m()",
-                documentation: Documentation(
-                    "A trait method",
-                ),
-            },
-        ]
-        "###
+fn foo() { let _ = <S as Trait>::<|> }
+"#,
+            expect![[r#"
+                fn m() fn m()
+            "#]],
         );
     }
 
     #[test]
     fn completes_ty_param_assoc_ty() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                trait Super {
-                    type Ty;
-                    const CONST: u8;
-                    fn func() {}
-                    fn method(&self) {}
-                }
+        check(
+            r#"
+trait Super {
+    type Ty;
+    const CONST: u8;
+    fn func() {}
+    fn method(&self) {}
+}
 
-                trait Sub: Super {
-                    type SubTy;
-                    const C2: ();
-                    fn subfunc() {}
-                    fn submethod(&self) {}
-                }
+trait Sub: Super {
+    type SubTy;
+    const C2: ();
+    fn subfunc() {}
+    fn submethod(&self) {}
+}
 
-                fn foo<T: Sub>() {
-                    T::<|>
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "C2",
-                source_range: 221..221,
-                delete: 221..221,
-                insert: "C2",
-                kind: Const,
-                detail: "const C2: ();",
-            },
-            CompletionItem {
-                label: "CONST",
-                source_range: 221..221,
-                delete: 221..221,
-                insert: "CONST",
-                kind: Const,
-                detail: "const CONST: u8;",
-            },
-            CompletionItem {
-                label: "SubTy",
-                source_range: 221..221,
-                delete: 221..221,
-                insert: "SubTy",
-                kind: TypeAlias,
-                detail: "type SubTy;",
-            },
-            CompletionItem {
-                label: "Ty",
-                source_range: 221..221,
-                delete: 221..221,
-                insert: "Ty",
-                kind: TypeAlias,
-                detail: "type Ty;",
-            },
-            CompletionItem {
-                label: "func()",
-                source_range: 221..221,
-                delete: 221..221,
-                insert: "func()$0",
-                kind: Function,
-                lookup: "func",
-                detail: "fn func()",
-            },
-            CompletionItem {
-                label: "method()",
-                source_range: 221..221,
-                delete: 221..221,
-                insert: "method()$0",
-                kind: Method,
-                lookup: "method",
-                detail: "fn method(&self)",
-            },
-            CompletionItem {
-                label: "subfunc()",
-                source_range: 221..221,
-                delete: 221..221,
-                insert: "subfunc()$0",
-                kind: Function,
-                lookup: "subfunc",
-                detail: "fn subfunc()",
-            },
-            CompletionItem {
-                label: "submethod()",
-                source_range: 221..221,
-                delete: 221..221,
-                insert: "submethod()$0",
-                kind: Method,
-                lookup: "submethod",
-                detail: "fn submethod(&self)",
-            },
-        ]
-        "###
+fn foo<T: Sub>() { T::<|> }
+"#,
+            expect![[r#"
+                ct C2 const C2: ();
+                ct CONST const CONST: u8;
+                ta SubTy type SubTy;
+                ta Ty type Ty;
+                fn func() fn func()
+                me method() fn method(&self)
+                fn subfunc() fn subfunc()
+                me submethod() fn submethod(&self)
+            "#]],
         );
     }
 
     #[test]
     fn completes_self_param_assoc_ty() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                //- /lib.rs
-                trait Super {
-                    type Ty;
-                    const CONST: u8 = 0;
-                    fn func() {}
-                    fn method(&self) {}
-                }
+        check(
+            r#"
+trait Super {
+    type Ty;
+    const CONST: u8 = 0;
+    fn func() {}
+    fn method(&self) {}
+}
 
-                trait Sub: Super {
-                    type SubTy;
-                    const C2: () = ();
-                    fn subfunc() {}
-                    fn submethod(&self) {}
-                }
+trait Sub: Super {
+    type SubTy;
+    const C2: () = ();
+    fn subfunc() {}
+    fn submethod(&self) {}
+}
 
-                struct Wrap<T>(T);
-                impl<T> Super for Wrap<T> {}
-                impl<T> Sub for Wrap<T> {
-                    fn subfunc() {
-                        // Should be able to assume `Self: Sub + Super`
-                        Self::<|>
-                    }
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "C2",
-                source_range: 367..367,
-                delete: 367..367,
-                insert: "C2",
-                kind: Const,
-                detail: "const C2: () = ();",
-            },
-            CompletionItem {
-                label: "CONST",
-                source_range: 367..367,
-                delete: 367..367,
-                insert: "CONST",
-                kind: Const,
-                detail: "const CONST: u8 = 0;",
-            },
-            CompletionItem {
-                label: "SubTy",
-                source_range: 367..367,
-                delete: 367..367,
-                insert: "SubTy",
-                kind: TypeAlias,
-                detail: "type SubTy;",
-            },
-            CompletionItem {
-                label: "Ty",
-                source_range: 367..367,
-                delete: 367..367,
-                insert: "Ty",
-                kind: TypeAlias,
-                detail: "type Ty;",
-            },
-            CompletionItem {
-                label: "func()",
-                source_range: 367..367,
-                delete: 367..367,
-                insert: "func()$0",
-                kind: Function,
-                lookup: "func",
-                detail: "fn func()",
-            },
-            CompletionItem {
-                label: "method()",
-                source_range: 367..367,
-                delete: 367..367,
-                insert: "method()$0",
-                kind: Method,
-                lookup: "method",
-                detail: "fn method(&self)",
-            },
-            CompletionItem {
-                label: "subfunc()",
-                source_range: 367..367,
-                delete: 367..367,
-                insert: "subfunc()$0",
-                kind: Function,
-                lookup: "subfunc",
-                detail: "fn subfunc()",
-            },
-            CompletionItem {
-                label: "submethod()",
-                source_range: 367..367,
-                delete: 367..367,
-                insert: "submethod()$0",
-                kind: Method,
-                lookup: "submethod",
-                detail: "fn submethod(&self)",
-            },
-        ]
-        "###
+struct Wrap<T>(T);
+impl<T> Super for Wrap<T> {}
+impl<T> Sub for Wrap<T> {
+    fn subfunc() {
+        // Should be able to assume `Self: Sub + Super`
+        Self::<|>
+    }
+}
+"#,
+            expect![[r#"
+                ct C2 const C2: () = ();
+                ct CONST const CONST: u8 = 0;
+                ta SubTy type SubTy;
+                ta Ty type Ty;
+                fn func() fn func()
+                me method() fn method(&self)
+                fn subfunc() fn subfunc()
+                me submethod() fn submethod(&self)
+            "#]],
         );
     }
 
     #[test]
     fn completes_type_alias() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                struct S;
-                impl S { fn foo() {} }
-                type T = S;
-                impl T { fn bar() {} }
+        check(
+            r#"
+struct S;
+impl S { fn foo() {} }
+type T = S;
+impl T { fn bar() {} }
 
-                fn main() {
-                    T::<|>;
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "bar()",
-                source_range: 88..88,
-                delete: 88..88,
-                insert: "bar()$0",
-                kind: Function,
-                lookup: "bar",
-                detail: "fn bar()",
-            },
-            CompletionItem {
-                label: "foo()",
-                source_range: 88..88,
-                delete: 88..88,
-                insert: "foo()$0",
-                kind: Function,
-                lookup: "foo",
-                detail: "fn foo()",
-            },
-        ]
-        "###
+fn main() { T::<|>; }
+"#,
+            expect![[r#"
+                fn bar() fn bar()
+                fn foo() fn foo()
+            "#]],
         );
     }
 
     #[test]
     fn completes_qualified_macros() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                "
-                #[macro_export]
-                macro_rules! foo {
-                    () => {}
-                }
+        check(
+            r#"
+#[macro_export]
+macro_rules! foo { () => {} }
 
-                fn main() {
-                    let _ = crate::<|>
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "foo!(…)",
-                source_range: 82..82,
-                delete: 82..82,
-                insert: "foo!($0)",
-                kind: Macro,
-                lookup: "foo!",
-                detail: "#[macro_export]\nmacro_rules! foo",
-            },
-            CompletionItem {
-                label: "main()",
-                source_range: 82..82,
-                delete: 82..82,
-                insert: "main()$0",
-                kind: Function,
-                lookup: "main",
-                detail: "fn main()",
-            },
-        ]
-        "###
+fn main() { let _ = crate::<|> }
+        "#,
+            expect![[r##"
+                ma foo!(…) #[macro_export]
+                macro_rules! foo
+                fn main() fn main()
+            "##]],
         );
     }
 
     #[test]
     fn test_super_super_completion() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                mod a {
-                    const A: usize = 0;
-
-                    mod b {
-                        const B: usize = 0;
-
-                        mod c {
-                            use super::super::<|>
-                        }
-                    }
-                }
-                ",
-        ),
-            @r###"
-        [
-            CompletionItem {
-                label: "A",
-                source_range: 120..120,
-                delete: 120..120,
-                insert: "A",
-                kind: Const,
-            },
-            CompletionItem {
-                label: "b",
-                source_range: 120..120,
-                delete: 120..120,
-                insert: "b",
-                kind: Module,
-            },
-        ]
-        "###
+        check(
+            r#"
+mod a {
+    const A: usize = 0;
+    mod b {
+        const B: usize = 0;
+        mod c { use super::super::<|> }
+    }
+}
+"#,
+            expect![[r#"
+                ct A
+                md b
+            "#]],
         );
     }
 
     #[test]
     fn completes_reexported_items_under_correct_name() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                fn foo() {
-                    self::m::<|>
-                }
+        check(
+            r#"
+fn foo() { self::m::<|> }
 
-                mod m {
-                    pub use super::p::wrong_fn as right_fn;
-                    pub use super::p::WRONG_CONST as RIGHT_CONST;
-                    pub use super::p::WrongType as RightType;
-                }
-                mod p {
-                    fn wrong_fn() {}
-                    const WRONG_CONST: u32 = 1;
-                    struct WrongType {};
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "RIGHT_CONST",
-                source_range: 24..24,
-                delete: 24..24,
-                insert: "RIGHT_CONST",
-                kind: Const,
-            },
-            CompletionItem {
-                label: "RightType",
-                source_range: 24..24,
-                delete: 24..24,
-                insert: "RightType",
-                kind: Struct,
-            },
-            CompletionItem {
-                label: "right_fn()",
-                source_range: 24..24,
-                delete: 24..24,
-                insert: "right_fn()$0",
-                kind: Function,
-                lookup: "right_fn",
-                detail: "fn wrong_fn()",
-            },
-        ]
-        "###
+mod m {
+    pub use super::p::wrong_fn as right_fn;
+    pub use super::p::WRONG_CONST as RIGHT_CONST;
+    pub use super::p::WrongType as RightType;
+}
+mod p {
+    fn wrong_fn() {}
+    const WRONG_CONST: u32 = 1;
+    struct WrongType {};
+}
+"#,
+            expect![[r#"
+                ct RIGHT_CONST
+                st RightType
+                fn right_fn() fn wrong_fn()
+            "#]],
+        );
+
+        check_edit(
+            "RightType",
+            r#"
+fn foo() { self::m::<|> }
+
+mod m {
+    pub use super::p::wrong_fn as right_fn;
+    pub use super::p::WRONG_CONST as RIGHT_CONST;
+    pub use super::p::WrongType as RightType;
+}
+mod p {
+    fn wrong_fn() {}
+    const WRONG_CONST: u32 = 1;
+    struct WrongType {};
+}
+"#,
+            r#"
+fn foo() { self::m::RightType }
+
+mod m {
+    pub use super::p::wrong_fn as right_fn;
+    pub use super::p::WRONG_CONST as RIGHT_CONST;
+    pub use super::p::WrongType as RightType;
+}
+mod p {
+    fn wrong_fn() {}
+    const WRONG_CONST: u32 = 1;
+    struct WrongType {};
+}
+"#,
         );
     }
 
     #[test]
     fn completes_in_simple_macro_call() {
-        let completions = do_reference_completion(
+        check(
             r#"
-                macro_rules! m { ($e:expr) => { $e } }
-                fn main() { m!(self::f<|>); }
-                fn foo() {}
-            "#,
+macro_rules! m { ($e:expr) => { $e } }
+fn main() { m!(self::f<|>); }
+fn foo() {}
+"#,
+            expect![[r#"
+                fn foo() fn foo()
+                fn main() fn main()
+            "#]],
         );
-        assert_debug_snapshot!(completions, @r###"
-        [
-            CompletionItem {
-                label: "foo()",
-                source_range: 60..61,
-                delete: 60..61,
-                insert: "foo()$0",
-                kind: Function,
-                lookup: "foo",
-                detail: "fn foo()",
-            },
-            CompletionItem {
-                label: "main()",
-                source_range: 60..61,
-                delete: 60..61,
-                insert: "main()$0",
-                kind: Function,
-                lookup: "main",
-                detail: "fn main()",
-            },
-        ]
-        "###);
     }
 
     #[test]
     fn function_mod_share_name() {
-        assert_debug_snapshot!(
-        do_reference_completion(
-                r"
-                fn foo() {
-                    self::m::<|>
-                }
+        check(
+            r#"
+fn foo() { self::m::<|> }
 
-                mod m {
-                    pub mod z {}
-                    pub fn z() {}
-                }
-                ",
-        ),
-            @r###"
-        [
-            CompletionItem {
-                label: "z",
-                source_range: 24..24,
-                delete: 24..24,
-                insert: "z",
-                kind: Module,
-            },
-            CompletionItem {
-                label: "z()",
-                source_range: 24..24,
-                delete: 24..24,
-                insert: "z()$0",
-                kind: Function,
-                lookup: "z",
-                detail: "pub fn z()",
-            },
-        ]
-        "###
+mod m {
+    pub mod z {}
+    pub fn z() {}
+}
+"#,
+            expect![[r#"
+                md z
+                fn z() pub fn z()
+            "#]],
         );
     }
 
     #[test]
     fn completes_hashmap_new() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                struct RandomState;
-                struct HashMap<K, V, S = RandomState> {}
+        check(
+            r#"
+struct RandomState;
+struct HashMap<K, V, S = RandomState> {}
 
-                impl<K, V> HashMap<K, V, RandomState> {
-                    pub fn new() -> HashMap<K, V, RandomState> { }
-                }
-                fn foo() {
-                    HashMap::<|>
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "new()",
-                source_range: 179..179,
-                delete: 179..179,
-                insert: "new()$0",
-                kind: Function,
-                lookup: "new",
-                detail: "pub fn new() -> HashMap<K, V, RandomState>",
-            },
-        ]
-        "###
+impl<K, V> HashMap<K, V, RandomState> {
+    pub fn new() -> HashMap<K, V, RandomState> { }
+}
+fn foo() {
+    HashMap::<|>
+}
+"#,
+            expect![[r#"
+                fn new() pub fn new() -> HashMap<K, V, RandomState>
+            "#]],
         );
     }
 
     #[test]
     fn dont_complete_attr() {
-        assert_debug_snapshot!(
-            do_reference_completion(
-                r"
-                mod foo { pub struct Foo; }
-                #[foo::<|>]
-                fn f() {}
-                "
-            ),
-            @r###"[]"###
-        )
+        check(
+            r#"
+mod foo { pub struct Foo; }
+#[foo::<|>]
+fn f() {}
+"#,
+            expect![[""]],
+        );
     }
 }
