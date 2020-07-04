@@ -699,7 +699,7 @@ impl<'a> Parser<'a> {
                                     // misses a separator.
                                     expect_err
                                         .span_suggestion_short(
-                                            sp,
+                                            self.sess.source_map().next_point(sp),
                                             &format!("missing `{}`", token_str),
                                             token_str,
                                             Applicability::MaybeIncorrect,

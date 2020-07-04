@@ -1,4 +1,5 @@
 // check-pass
+// run-rustfix
 //
 // rust-lang/rust#73592: borrow_mut through Deref should work.
 //

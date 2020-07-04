@@ -1,5 +1,5 @@
 error: expected item, found `;`
-  --> $DIR/issue-46186.rs:3:2
+  --> $DIR/issue-46186.rs:5:2
    |
 LL | };
    |  ^ help: remove this semicolon

@@ -1,4 +1,6 @@
+// run-rustfix
+
 fn main() {
-    for i 0..2 { //~ ERROR missing `in`
+    for _i 0..2 { //~ ERROR missing `in`
     }
 }

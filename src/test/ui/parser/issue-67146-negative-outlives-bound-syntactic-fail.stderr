@@ -1,20 +1,20 @@
 error: negative bounds are not supported
-  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:7:8
+  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:9:12
    |
-LL | fn f1<T: !'static>() {}
-   |        ^^^^^^^^^^ negative bounds are not supported
+LL | pub fn f1<T: !'static>() {}
+   |            ^^^^^^^^^^ negative bounds are not supported
 
 error: negative bounds are not supported
-  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:9:18
+  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:11:22
    |
-LL | fn f2<'a, T: Ord + !'a>() {}
-   |                  ^^^^^ negative bounds are not supported
+LL | pub fn f2<'a, T: Ord + !'a>() {}
+   |                      ^^^^^ negative bounds are not supported
 
 error: negative bounds are not supported
-  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:11:12
+  --> $DIR/issue-67146-negative-outlives-bound-syntactic-fail.rs:13:16
    |
-LL | fn f3<'a, T: !'a + Ord>() {}
-   |            ^^^^^ negative bounds are not supported
+LL | pub fn f3<'a, T: !'a + Ord>() {}
+   |                ^^^^^ negative bounds are not supported
 
 error: aborting due to 3 previous errors
 

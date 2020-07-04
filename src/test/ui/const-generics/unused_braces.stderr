@@ -1,23 +1,14 @@
-warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/unused_braces.rs:4:12
-   |
-LL | #![feature(const_generics)]
-   |            ^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-
 warning: unnecessary braces around const expression
-  --> $DIR/unused_braces.rs:11:14
+  --> $DIR/unused_braces.rs:13:14
    |
 LL |     let _: A<{ 7 }>;
    |              ^^^^^ help: remove these braces
    |
 note: the lint level is defined here
-  --> $DIR/unused_braces.rs:2:9
+  --> $DIR/unused_braces.rs:5:9
    |
 LL | #![warn(unused_braces)]
    |         ^^^^^^^^^^^^^
 
-warning: 2 warnings emitted
+warning: 1 warning emitted
 
