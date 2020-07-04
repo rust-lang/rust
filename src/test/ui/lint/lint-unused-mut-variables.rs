@@ -92,13 +92,16 @@ fn main() {
         mut x => {} //~ WARN: variable does not need to be mutable
 
     }
-    match (30, 2) {
-      (mut x, 1) | //~ WARN: variable does not need to be mutable
 
-      (mut x, 2) |
-      (mut x, 3) => {
-      }
-      _ => {}
+    match (30, 2) {
+        // FIXME: Here's a false positive,
+        // shouldn't be removed `mut` not to be bound with a different way.
+        (mut x, 1) | //~ WARN: variable does not need to be mutable
+
+        (mut x, 2) |
+        (mut x, 3) => {
+        }
+        _ => {}
     }
 
     let x = |mut y: isize| 10; //~ WARN: variable does not need to be mutable

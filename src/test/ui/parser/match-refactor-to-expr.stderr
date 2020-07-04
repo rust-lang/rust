@@ -1,13 +1,13 @@
 error: expected one of `.`, `?`, `{`, or an operator, found `;`
-  --> $DIR/match-refactor-to-expr.rs:6:9
+  --> $DIR/match-refactor-to-expr.rs:8:9
    |
 LL |         match
    |         -----
    |         |
    |         while parsing this match expression
    |         help: try removing this `match`
-LL |         Some(4).unwrap_or_else(5)
-   |                                  - expected one of `.`, `?`, `{`, or an operator
+LL |         Some(4).unwrap_or(5)
+   |                             - expected one of `.`, `?`, `{`, or an operator
 LL |
 LL |         ;
    |         ^ unexpected token
