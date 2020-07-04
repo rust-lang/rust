@@ -92,7 +92,10 @@ pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -
         .unwrap();
 }
 
-fn get_all_completion_items(code: &str, options: &CompletionConfig) -> Vec<CompletionItem> {
+pub(crate) fn get_all_completion_items(
+    code: &str,
+    options: &CompletionConfig,
+) -> Vec<CompletionItem> {
     let (analysis, position) = analysis_and_position(code);
     analysis.completions(options, position).unwrap().unwrap().into()
 }

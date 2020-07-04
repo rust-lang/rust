@@ -461,17 +461,47 @@ fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static s
 
 #[cfg(test)]
 mod tests {
+    use std::cmp::Reverse;
+
     use expect::{expect, Expect};
     use test_utils::mark;
 
-    use crate::completion::{
-        test_utils::{check_edit, check_edit_with_config, do_completion},
-        CompletionConfig, CompletionKind,
+    use crate::{
+        completion::{
+            test_utils::{
+                check_edit, check_edit_with_config, do_completion, get_all_completion_items,
+            },
+            CompletionConfig, CompletionKind,
+        },
+        CompletionScore,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = do_completion(ra_fixture, CompletionKind::Reference);
         expect.assert_debug_eq(&actual);
+    }
+
+    fn check_scores(ra_fixture: &str, expect: Expect) {
+        fn display_score(score: Option<CompletionScore>) -> &'static str {
+            match score {
+                Some(CompletionScore::TypeMatch) => "[type]",
+                Some(CompletionScore::TypeAndNameMatch) => "[type+name]",
+                None => "[]".into(),
+            }
+        }
+
+        let mut completions = get_all_completion_items(ra_fixture, &CompletionConfig::default());
+        completions.sort_by_key(|it| (Reverse(it.score()), it.label().to_string()));
+        let actual = completions
+            .into_iter()
+            .filter(|it| it.completion_kind == CompletionKind::Reference)
+            .map(|it| {
+                let tag = it.kind().unwrap().tag();
+                let score = display_score(it.score());
+                format!("{} {} {}\n", tag, it.label(), score)
+            })
+            .collect::<String>();
+        expect.assert_eq(&actual);
     }
 
     #[test]
@@ -902,132 +932,42 @@ fn main() { frobnicate!(); }
     }
 
     #[test]
-    fn active_param_type_match() {
+    fn active_param_score() {
         mark::check!(active_param_type_match);
-        check(
-            r#"
-struct S { foo: i64, bar: u32, baz: () }
-fn test(x: u32) { }
-fn foo(s: S) { test(s.<|>) }
-"#,
-            expect![[r#"
-                [
-                    CompletionItem {
-                        label: "bar",
-                        source_range: 83..83,
-                        delete: 83..83,
-                        insert: "bar",
-                        kind: Field,
-                        detail: "u32",
-                        score: TypeMatch,
-                    },
-                    CompletionItem {
-                        label: "baz",
-                        source_range: 83..83,
-                        delete: 83..83,
-                        insert: "baz",
-                        kind: Field,
-                        detail: "()",
-                    },
-                    CompletionItem {
-                        label: "foo",
-                        source_range: 83..83,
-                        delete: 83..83,
-                        insert: "foo",
-                        kind: Field,
-                        detail: "i64",
-                    },
-                ]
-            "#]],
-        );
-    }
-
-    #[test]
-    fn active_param_type_and_name_match() {
-        check(
+        check_scores(
             r#"
 struct S { foo: i64, bar: u32, baz: u32 }
 fn test(bar: u32) { }
 fn foo(s: S) { test(s.<|>) }
 "#,
             expect![[r#"
-                [
-                    CompletionItem {
-                        label: "bar",
-                        source_range: 86..86,
-                        delete: 86..86,
-                        insert: "bar",
-                        kind: Field,
-                        detail: "u32",
-                        score: TypeAndNameMatch,
-                    },
-                    CompletionItem {
-                        label: "baz",
-                        source_range: 86..86,
-                        delete: 86..86,
-                        insert: "baz",
-                        kind: Field,
-                        detail: "u32",
-                        score: TypeMatch,
-                    },
-                    CompletionItem {
-                        label: "foo",
-                        source_range: 86..86,
-                        delete: 86..86,
-                        insert: "foo",
-                        kind: Field,
-                        detail: "i64",
-                    },
-                ]
+                fd bar [type+name]
+                fd baz [type]
+                fd foo []
             "#]],
         );
     }
 
     #[test]
-    fn record_field_type_match() {
+    fn record_field_scores() {
         mark::check!(record_field_type_match);
-        check(
+        check_scores(
             r#"
 struct A { foo: i64, bar: u32, baz: u32 }
 struct B { x: (), y: f32, bar: u32 }
 fn foo(a: A) { B { bar: a.<|> }; }
 "#,
             expect![[r#"
-                [
-                    CompletionItem {
-                        label: "bar",
-                        source_range: 105..105,
-                        delete: 105..105,
-                        insert: "bar",
-                        kind: Field,
-                        detail: "u32",
-                        score: TypeAndNameMatch,
-                    },
-                    CompletionItem {
-                        label: "baz",
-                        source_range: 105..105,
-                        delete: 105..105,
-                        insert: "baz",
-                        kind: Field,
-                        detail: "u32",
-                        score: TypeMatch,
-                    },
-                    CompletionItem {
-                        label: "foo",
-                        source_range: 105..105,
-                        delete: 105..105,
-                        insert: "foo",
-                        kind: Field,
-                        detail: "i64",
-                    },
-                ]
+                fd bar [type+name]
+                fd baz [type]
+                fd foo []
             "#]],
         )
     }
 
     #[test]
-    fn record_field_type_match_and_fn_call() {
-        check(
+    fn record_field_and_call_scores() {
+        check_scores(
             r#"
 struct A { foo: i64, bar: u32, baz: u32 }
 struct B { x: (), y: f32, bar: u32 }
@@ -1035,36 +975,12 @@ fn f(foo: i64) {  }
 fn foo(a: A) { B { bar: f(a.<|>) }; }
 "#,
             expect![[r#"
-                [
-                    CompletionItem {
-                        label: "bar",
-                        source_range: 127..127,
-                        delete: 127..127,
-                        insert: "bar",
-                        kind: Field,
-                        detail: "u32",
-                    },
-                    CompletionItem {
-                        label: "baz",
-                        source_range: 127..127,
-                        delete: 127..127,
-                        insert: "baz",
-                        kind: Field,
-                        detail: "u32",
-                    },
-                    CompletionItem {
-                        label: "foo",
-                        source_range: 127..127,
-                        delete: 127..127,
-                        insert: "foo",
-                        kind: Field,
-                        detail: "i64",
-                        score: TypeAndNameMatch,
-                    },
-                ]
+                fd foo [type+name]
+                fd bar []
+                fd baz []
             "#]],
         );
-        check(
+        check_scores(
             r#"
 struct A { foo: i64, bar: u32, baz: u32 }
 struct B { x: (), y: f32, bar: u32 }
@@ -1072,74 +988,24 @@ fn f(foo: i64) {  }
 fn foo(a: A) { f(B { bar: a.<|> }); }
 "#,
             expect![[r#"
-                [
-                    CompletionItem {
-                        label: "bar",
-                        source_range: 127..127,
-                        delete: 127..127,
-                        insert: "bar",
-                        kind: Field,
-                        detail: "u32",
-                        score: TypeAndNameMatch,
-                    },
-                    CompletionItem {
-                        label: "baz",
-                        source_range: 127..127,
-                        delete: 127..127,
-                        insert: "baz",
-                        kind: Field,
-                        detail: "u32",
-                        score: TypeMatch,
-                    },
-                    CompletionItem {
-                        label: "foo",
-                        source_range: 127..127,
-                        delete: 127..127,
-                        insert: "foo",
-                        kind: Field,
-                        detail: "i64",
-                    },
-                ]
+                fd bar [type+name]
+                fd baz [type]
+                fd foo []
             "#]],
         );
     }
 
     #[test]
     fn prioritize_exact_ref_match() {
-        check(
+        check_scores(
             r#"
 struct WorldSnapshot { _f: () };
 fn go(world: &WorldSnapshot) { go(w<|>) }
 "#,
             expect![[r#"
-                [
-                    CompletionItem {
-                        label: "WorldSnapshot",
-                        source_range: 67..68,
-                        delete: 67..68,
-                        insert: "WorldSnapshot",
-                        kind: Struct,
-                    },
-                    CompletionItem {
-                        label: "go(…)",
-                        source_range: 67..68,
-                        delete: 67..68,
-                        insert: "go(${1:world})$0",
-                        kind: Function,
-                        lookup: "go",
-                        detail: "fn go(world: &WorldSnapshot)",
-                        trigger_call_info: true,
-                    },
-                    CompletionItem {
-                        label: "world",
-                        source_range: 67..68,
-                        delete: 67..68,
-                        insert: "world",
-                        kind: Binding,
-                        detail: "&WorldSnapshot",
-                        score: TypeAndNameMatch,
-                    },
-                ]
+                bn world [type+name]
+                st WorldSnapshot []
+                fn go(…) []
             "#]],
         );
     }
