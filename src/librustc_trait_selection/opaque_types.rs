@@ -108,7 +108,7 @@ pub enum GenerateMemberConstraints {
 pub trait InferCtxtExt<'tcx> {
     fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
-        parent_def_id: DefId,
+        parent_def_id: LocalDefId,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
@@ -184,7 +184,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// - `value_span` -- the span where the value came from, used in error reporting
     fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
-        parent_def_id: DefId,
+        parent_def_id: LocalDefId,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
@@ -986,7 +986,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
 struct Instantiator<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    parent_def_id: DefId,
+    parent_def_id: LocalDefId,
     body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     value_span: Span,
@@ -1043,8 +1043,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                         let parent_def_id = self.parent_def_id;
                         let def_scope_default = || {
                             let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
-                            parent_def_id
-                                == tcx.hir().local_def_id(opaque_parent_hir_id).to_def_id()
+                            parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
                         };
                         let (in_definition_scope, origin) = match tcx.hir().find(opaque_hir_id) {
                             Some(Node::Item(item)) => match item.kind {
@@ -1053,18 +1052,14 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                                     impl_trait_fn: Some(parent),
                                     origin,
                                     ..
-                                }) => (parent == self.parent_def_id, origin),
+                                }) => (parent == self.parent_def_id.to_def_id(), origin),
                                 // Named `type Foo = impl Bar;`
                                 hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                                     impl_trait_fn: None,
                                     origin,
                                     ..
                                 }) => (
-                                    may_define_opaque_type(
-                                        tcx,
-                                        self.parent_def_id.expect_local(),
-                                        opaque_hir_id,
-                                    ),
+                                    may_define_opaque_type(tcx, self.parent_def_id, opaque_hir_id),
                                     origin,
                                 ),
                                 _ => (def_scope_default(), hir::OpaqueTyOrigin::Misc),
