@@ -92,10 +92,7 @@ impl From<Infallible> for TryFromSliceError {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, const N: usize> AsRef<[T]> for [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> AsRef<[T]> for [T; N] {
     #[inline]
     fn as_ref(&self) -> &[T] {
         &self[..]
@@ -103,10 +100,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, const N: usize> AsMut<[T]> for [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> AsMut<[T]> for [T; N] {
     #[inline]
     fn as_mut(&mut self) -> &mut [T] {
         &mut self[..]
@@ -114,20 +108,14 @@ where
 }
 
 #[stable(feature = "array_borrow", since = "1.4.0")]
-impl<T, const N: usize> Borrow<[T]> for [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> Borrow<[T]> for [T; N] {
     fn borrow(&self) -> &[T] {
         self
     }
 }
 
 #[stable(feature = "array_borrow", since = "1.4.0")]
-impl<T, const N: usize> BorrowMut<[T]> for [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> BorrowMut<[T]> for [T; N] {
     fn borrow_mut(&mut self) -> &mut [T] {
         self
     }
