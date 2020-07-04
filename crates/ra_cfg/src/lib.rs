@@ -46,4 +46,14 @@ impl CfgOptions {
     pub fn insert_key_value(&mut self, key: SmolStr, value: SmolStr) {
         self.key_values.insert((key, value));
     }
+
+    pub fn append(&mut self, other: &CfgOptions) {
+        for atom in &other.atoms {
+            self.atoms.insert(atom.clone());
+        }
+
+        for (key, value) in &other.key_values {
+            self.key_values.insert((key.clone(), value.clone()));
+        }
+    }
 }
