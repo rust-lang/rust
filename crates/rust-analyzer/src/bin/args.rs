@@ -3,12 +3,13 @@
 //! If run started args, we run the LSP server loop. With a subcommand, we do a
 //! one-time batch processing.
 
+use std::{env, fmt::Write, path::PathBuf};
+
 use anyhow::{bail, Result};
 use pico_args::Arguments;
+use ra_db::AbsPathBuf;
 use ra_ssr::{SsrPattern, SsrRule};
 use rust_analyzer::cli::{BenchWhat, Position, Verbosity};
-
-use std::{fmt::Write, path::PathBuf};
 
 pub(crate) struct Args {
     pub(crate) verbosity: Verbosity,
@@ -240,7 +241,10 @@ ARGS:
                 let complete_path: Option<Position> = matches.opt_value_from_str("--complete")?;
                 let goto_def_path: Option<Position> = matches.opt_value_from_str("--goto-def")?;
                 let what = match (highlight_path, complete_path, goto_def_path) {
-                    (Some(path), None, None) => BenchWhat::Highlight { path: path.into() },
+                    (Some(path), None, None) => {
+                        let path = env::current_dir().unwrap().join(path);
+                        BenchWhat::Highlight { path: AbsPathBuf::assert(path) }
+                    }
                     (None, Some(position), None) => BenchWhat::Complete(position),
                     (None, None, Some(position)) => BenchWhat::GotoDef(position),
                     _ => panic!(
