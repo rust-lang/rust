@@ -267,7 +267,7 @@ impl ProjectWorkspace {
                             .clone()
                             .map(|it| proc_macro_client.by_dylib_path(&it));
 
-                        let target = krate.target.as_deref();
+                        let target = krate.target.as_deref().or(target);
                         let target_cfgs = target_cfg_map
                             .entry(target.clone())
                             .or_insert_with(|| get_rustc_cfg_options(target.as_deref()));
