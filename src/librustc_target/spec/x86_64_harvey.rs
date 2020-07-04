@@ -1,5 +1,6 @@
-// This defines the amd64 target for the Linux Kernel. See the linux-kernel-base module for
-// generic Linux kernel options.
+// This defines the x86_64 target for the Harvey Kernel. See the harvey-kernel-base module for
+// generic Harvey kernel options. Note that in Harvey, as in Plan 9 and Go, we call x86_64
+// amd64.
 
 use crate::spec::{CodeModel, LinkerFlavor, Target, TargetResult};
 
@@ -14,7 +15,6 @@ pub fn target() -> TargetResult {
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
 
     Ok(Target {
-        // FIXME: Some dispute, the linux-on-clang folks think this should use "Linux"
         llvm_target: "x86_64-elf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
