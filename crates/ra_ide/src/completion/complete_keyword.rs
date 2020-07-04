@@ -35,6 +35,19 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
         }
         _ => {}
     }
+
+    // Suggest .await syntax for types that implement Future trait
+    if let Some(receiver) = &ctx.dot_receiver {
+        if let Some(ty) = ctx.sema.type_of_expr(receiver) {
+            if ty.impls_future(ctx.db) {
+                CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await")
+                    .kind(CompletionItemKind::Keyword)
+                    .detail("expr.await")
+                    .insert_text("await")
+                    .add_to(acc);
+            }
+        };
+    }
 }
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
@@ -489,5 +502,27 @@ Some multi-line comment<|>
 "#,
             expect![[""]],
         );
+    }
+
+    #[test]
+    fn test_completion_await_impls_future() {
+        check(
+            r#"
+//- /main.rs
+use std::future::*;
+struct A {}
+impl Future for A {}
+fn foo(a: A) { a.<|> }
+
+//- /std/lib.rs
+pub mod future {
+    #[lang = "future_trait"]
+    pub trait Future {}
+}
+"#,
+            expect![[r#"
+                kw await expr.await
+            "#]],
+        )
     }
 }

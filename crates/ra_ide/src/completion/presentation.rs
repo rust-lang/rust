@@ -644,6 +644,75 @@ fn foo() { A { the<|> } }
     }
 
     #[test]
+    fn renders_docs() {
+        check(
+            r#"
+struct S {
+    /// Field docs
+    foo:
+}
+impl S {
+    /// Method docs
+    fn bar(self) { self.<|> }
+}"#,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "bar()",
+                        source_range: 94..94,
+                        delete: 94..94,
+                        insert: "bar()$0",
+                        kind: Method,
+                        lookup: "bar",
+                        detail: "fn bar(self)",
+                        documentation: Documentation(
+                            "Method docs",
+                        ),
+                    },
+                    CompletionItem {
+                        label: "foo",
+                        source_range: 94..94,
+                        delete: 94..94,
+                        insert: "foo",
+                        kind: Field,
+                        detail: "{unknown}",
+                        documentation: Documentation(
+                            "Field docs",
+                        ),
+                    },
+                ]
+            "#]],
+        )
+    }
+
+    #[test]
+    fn dont_render_attrs() {
+        check(
+            r#"
+struct S;
+impl S {
+    #[inline]
+    fn the_method(&self) { }
+}
+fn foo(s: S) { s.<|> }
+"#,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "the_method()",
+                        source_range: 81..81,
+                        delete: 81..81,
+                        insert: "the_method()$0",
+                        kind: Method,
+                        lookup: "the_method",
+                        detail: "fn the_method(&self)",
+                    },
+                ]
+            "#]],
+        )
+    }
+
+    #[test]
     fn inserts_parens_for_function_calls() {
         mark::check!(inserts_parens_for_function_calls);
         check_edit(
