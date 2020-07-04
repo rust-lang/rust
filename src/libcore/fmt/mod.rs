@@ -409,6 +409,41 @@ pub struct Arguments<'a> {
     args: &'a [ArgumentV1<'a>],
 }
 
+impl<'a> Arguments<'a> {
+    /// Get the formatted string, if it has no arguments to be formatted.
+    ///
+    /// This can be used to avoid allocations in the most trivial case.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(fmt_as_str)]
+    ///
+    /// use core::fmt::Arguments;
+    ///
+    /// fn write_str(_: &str) { /* ... */ }
+    ///
+    /// fn write_fmt(args: &Arguments) {
+    ///     if let Some(s) = args.as_str() {
+    ///         write_str(s)
+    ///     } else {
+    ///         write_str(&args.to_string());
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```rust
+    /// #![feature(fmt_as_str)]
+    ///
+    /// assert_eq!(format_args!("hello").as_str(), Some("hello"));
+    /// assert_eq!(format_args!("{}", 1).as_str(), None);
+    /// ```
+    #[unstable(feature = "fmt_as_str", issue = "none")]
+    pub fn as_str(&self) -> Option<&'a str> {
+        if self.args.is_empty() && self.pieces.len() == 1 { Some(self.pieces[0]) } else { None }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for Arguments<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
