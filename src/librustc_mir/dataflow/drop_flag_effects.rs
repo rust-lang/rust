@@ -1,6 +1,7 @@
 use crate::util::elaborate_drops::DropFlagState;
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_target::abi::VariantIdx;
 
 use super::indexes::MovePathIndex;
 use super::move_paths::{InitKind, LookupResult, MoveData};
@@ -225,6 +226,45 @@ pub(crate) fn for_location_inits<'tcx, F>(
                 callback(mpi);
             }
             InitKind::NonPanicPathOnly => (),
+        }
+    }
+}
+
+/// Calls `handle_inactive_variant` for each descendant move path of `enum_place` that contains a
+/// `Downcast` to a variant besides the `active_variant`.
+///
+/// NOTE: If there are no move paths corresponding to an inactive variant,
+/// `handle_inactive_variant` will not be called for that variant.
+pub(crate) fn on_all_inactive_variants<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mir::Body<'tcx>,
+    move_data: &MoveData<'tcx>,
+    enum_place: mir::Place<'tcx>,
+    active_variant: VariantIdx,
+    mut handle_inactive_variant: impl FnMut(MovePathIndex),
+) {
+    let enum_mpi = match move_data.rev_lookup.find(enum_place.as_ref()) {
+        LookupResult::Exact(mpi) => mpi,
+        LookupResult::Parent(_) => return,
+    };
+
+    let enum_path = &move_data.move_paths[enum_mpi];
+    for (variant_mpi, variant_path) in enum_path.children(&move_data.move_paths) {
+        // Because of the way we build the `MoveData` tree, each child should have exactly one more
+        // projection than `enum_place`. This additional projection must be a downcast since the
+        // base is an enum.
+        let (downcast, base_proj) = variant_path.place.projection.split_last().unwrap();
+        assert_eq!(enum_place.projection.len(), base_proj.len());
+
+        let variant_idx = match *downcast {
+            mir::ProjectionElem::Downcast(_, idx) => idx,
+            _ => unreachable!(),
+        };
+
+        if variant_idx != active_variant {
+            on_all_children_bits(tcx, body, move_data, variant_mpi, |mpi| {
+                handle_inactive_variant(mpi)
+            });
         }
     }
 }

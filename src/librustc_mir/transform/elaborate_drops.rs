@@ -48,6 +48,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 .into_results_cursor(body);
 
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
+                .mark_inactive_variants_as_uninit()
                 .into_engine(tcx, body, def_id)
                 .dead_unwinds(&dead_unwinds)
                 .iterate_to_fixpoint()
