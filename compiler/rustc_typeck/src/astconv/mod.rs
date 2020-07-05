@@ -362,7 +362,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 (GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
                     if *has_default {
-                        tcx.check_stability_internal(
+                        tcx.check_optional_stability(
                             param.def_id,
                             Some(arg.id()),
                             arg.span(),

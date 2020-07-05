@@ -395,7 +395,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This function will also check if the item is deprecated.
     /// If so, and `id` is not `None`, a deprecated lint attached to `id` will be emitted.
     pub fn check_stability(self, def_id: DefId, id: Option<HirId>, span: Span) {
-        self.check_stability_internal(def_id, id, span, |span, def_id| {
+        self.check_optional_stability(def_id, id, span, |span, def_id| {
             // The API could be uncallable for other reasons, for example when a private module
             // was referenced.
             self.sess.delay_span_bug(span, &format!("encountered unmarked API: {:?}", def_id));
@@ -409,7 +409,10 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// This function will also check if the item is deprecated.
     /// If so, and `id` is not `None`, a deprecated lint attached to `id` will be emitted.
-    pub fn check_stability_internal(
+    ///
+    /// The `unmarked` closure is called definitions without a stability annotation.
+    /// This is needed for generic parameters, since they may not be marked when used in a staged_api crate.
+    pub fn check_optional_stability(
         self,
         def_id: DefId,
         id: Option<HirId>,
