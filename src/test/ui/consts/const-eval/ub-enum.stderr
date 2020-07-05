@@ -2,7 +2,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-enum.rs:24:1
    |
 LL | const BAD_ENUM: Enum = unsafe { mem::transmute(1usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x00000001, but expected a valid enum tag
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x00000001 at .<enum-tag>, but expected a valid enum tag
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
@@ -26,7 +26,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-enum.rs:42:1
    |
 LL | const BAD_ENUM2: Enum2 = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x00000000, but expected a valid enum tag
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x00000000 at .<enum-tag>, but expected a valid enum tag
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
