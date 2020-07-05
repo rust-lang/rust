@@ -1144,7 +1144,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // When you have `let x: impl Foo = ...` in a closure,
                 // the resulting inferend values are stored with the
                 // def-id of the base function.
-                let parent_def_id = self.tcx().closure_base_def_id(self.mir_def_id.to_def_id());
+                let parent_def_id =
+                    self.tcx().closure_base_def_id(self.mir_def_id.to_def_id()).expect_local();
                 return self.eq_opaque_type_and_type(sub, sup, parent_def_id, locations, category);
             } else {
                 return Err(terr);
@@ -1208,7 +1209,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         revealed_ty: Ty<'tcx>,
         anon_ty: Ty<'tcx>,
-        anon_owner_def_id: DefId,
+        anon_owner_def_id: LocalDefId,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
@@ -1238,8 +1239,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = infcx.tcx;
         let param_env = self.param_env;
         let body = self.body;
-        let concrete_opaque_types =
-            &tcx.typeck_tables_of(anon_owner_def_id.expect_local()).concrete_opaque_types;
+        let concrete_opaque_types = &tcx.typeck_tables_of(anon_owner_def_id).concrete_opaque_types;
         let mut opaque_type_values = Vec::new();
 
         debug!("eq_opaque_type_and_type: mir_def_id={:?}", self.mir_def_id);

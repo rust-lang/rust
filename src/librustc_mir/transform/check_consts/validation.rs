@@ -56,7 +56,7 @@ impl Qualifs<'mir, 'tcx> {
             // without breaking stable code?
             MaybeMutBorrowedLocals::mut_borrows_only(tcx, &body, param_env)
                 .unsound_ignore_borrow_on_drop()
-                .into_engine(tcx, &body, def_id)
+                .into_engine(tcx, &body, def_id.to_def_id())
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -83,7 +83,7 @@ impl Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, def_id, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsDrop, ccx)
-                .into_engine(tcx, &body, def_id)
+                .into_engine(tcx, &body, def_id.to_def_id())
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -110,7 +110,7 @@ impl Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, def_id, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(HasMutInterior, ccx)
-                .into_engine(tcx, &body, def_id)
+                .into_engine(tcx, &body, def_id.to_def_id())
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -153,7 +153,7 @@ impl Qualifs<'mir, 'tcx> {
 
             hir::ConstContext::Const | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
-                    .into_engine(ccx.tcx, &ccx.body, ccx.def_id)
+                    .into_engine(ccx.tcx, &ccx.body, ccx.def_id.to_def_id())
                     .iterate_to_fixpoint()
                     .into_results_cursor(&ccx.body);
 
@@ -195,13 +195,13 @@ impl Validator<'mir, 'tcx> {
         let ConstCx { tcx, body, def_id, const_kind, .. } = *self.ccx;
 
         let use_min_const_fn_checks = (const_kind == Some(hir::ConstContext::ConstFn)
-            && crate::const_eval::is_min_const_fn(tcx, def_id))
+            && crate::const_eval::is_min_const_fn(tcx, def_id.to_def_id()))
             && !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
 
         if use_min_const_fn_checks {
             // Enforce `min_const_fn` for stable `const fn`s.
             use crate::transform::qualify_min_const_fn::is_min_const_fn;
-            if let Err((span, err)) = is_min_const_fn(tcx, def_id, &body) {
+            if let Err((span, err)) = is_min_const_fn(tcx, def_id.to_def_id(), &body) {
                 error_min_const_fn_violation(tcx, span, err);
                 return;
             }
@@ -212,10 +212,10 @@ impl Validator<'mir, 'tcx> {
         // Ensure that the end result is `Sync` in a non-thread local `static`.
         let should_check_for_sync = const_kind
             == Some(hir::ConstContext::Static(hir::Mutability::Not))
-            && !tcx.is_thread_local_static(def_id);
+            && !tcx.is_thread_local_static(def_id.to_def_id());
 
         if should_check_for_sync {
-            let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+            let hir_id = tcx.hir().as_local_hir_id(def_id);
             check_return_ty_is_sync(tcx, &body, hir_id);
         }
     }
@@ -535,7 +535,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     // `#[allow_internal_unstable]`.
                     use crate::transform::qualify_min_const_fn::lib_feature_allowed;
                     if !self.span.allows_unstable(feature)
-                        && !lib_feature_allowed(self.tcx, self.def_id, feature)
+                        && !lib_feature_allowed(self.tcx, self.def_id.to_def_id(), feature)
                     {
                         self.check_op(ops::FnCallUnstable(def_id, feature));
                     }
