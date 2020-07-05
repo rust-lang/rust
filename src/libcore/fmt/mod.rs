@@ -436,12 +436,17 @@ impl<'a> Arguments<'a> {
     /// #![feature(fmt_as_str)]
     ///
     /// assert_eq!(format_args!("hello").as_str(), Some("hello"));
+    /// assert_eq!(format_args!("").as_str(), Some(""));
     /// assert_eq!(format_args!("{}", 1).as_str(), None);
     /// ```
     #[unstable(feature = "fmt_as_str", issue = "none")]
     #[inline]
     pub fn as_str(&self) -> Option<&'a str> {
-        if self.args.is_empty() && self.pieces.len() == 1 { Some(self.pieces[0]) } else { None }
+        match (self.pieces, self.args) {
+            ([], []) => Some(""),
+            ([s], []) => Some(s),
+            _ => None,
+        }
     }
 }
 
