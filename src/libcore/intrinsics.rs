@@ -2004,12 +2004,6 @@ extern "rust-intrinsic" {
     pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
 }
 
-#[rustc_const_unstable(feature = "variant_count", issue = "73662")]
-#[cfg(bootstrap)]
-pub const fn variant_count<T>() -> usize {
-    0
-}
-
 // Some functions are defined here because they accidentally got made
 // available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
 // (`transmute` also falls into this category, but it cannot be wrapped due to the
