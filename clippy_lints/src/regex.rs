@@ -99,12 +99,7 @@ fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
     use regex_syntax::hir::Anchor::{EndText, StartText};
     use regex_syntax::hir::HirKind::{Alternation, Anchor, Concat, Empty, Literal};
 
-    let is_literal = |e: &[regex_syntax::hir::Hir]| {
-        e.iter().all(|e| match *e.kind() {
-            Literal(_) => true,
-            _ => false,
-        })
-    };
+    let is_literal = |e: &[regex_syntax::hir::Hir]| e.iter().all(|e| matches!(*e.kind(), Literal(_)));
 
     match *s.kind() {
         Empty | Anchor(_) => Some("the regex is unlikely to be useful as it is"),

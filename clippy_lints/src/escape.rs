@@ -105,10 +105,7 @@ fn is_argument(map: rustc_middle::hir::map::Map<'_>, id: HirId) -> bool {
         _ => return false,
     }
 
-    match map.find(map.get_parent_node(id)) {
-        Some(Node::Param(_)) => true,
-        _ => false,
-    }
+    matches!(map.find(map.get_parent_node(id)), Some(Node::Param(_)))
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {

@@ -694,12 +694,7 @@ fn in_attributes_expansion(expr: &Expr<'_>) -> bool {
     use rustc_span::hygiene::MacroKind;
     if expr.span.from_expansion() {
         let data = expr.span.ctxt().outer_expn_data();
-
-        if let ExpnKind::Macro(MacroKind::Attr, _) = data.kind {
-            true
-        } else {
-            false
-        }
+        matches!(data.kind, ExpnKind::Macro(MacroKind::Attr, _))
     } else {
         false
     }
