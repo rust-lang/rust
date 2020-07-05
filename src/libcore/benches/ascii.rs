@@ -74,8 +74,9 @@ macro_rules! benches {
                 #[bench]
                 fn $name(bencher: &mut Bencher) {
                     bencher.bytes = $input.len() as u64;
-                    let vec = $input.as_bytes().to_vec();
+                    let mut vec = $input.as_bytes().to_vec();
                     bencher.iter(|| {
+                        black_box(&mut vec);
                         let $arg = black_box(&vec[..]);
                         black_box($body)
                     })
@@ -278,6 +279,28 @@ benches! {
     fn is_ascii_slice_iter_all(bytes: &[u8]) {
         bytes.iter().all(|b| b.is_ascii())
     }
+
+    fn is_ascii_slice_align_to(bytes: &[u8]) {
+        is_ascii_align_to_impl(bytes)
+    }
+}
+
+// Separate since it's easier to debug errors if they don't go through macro
+// expansion first.
+fn is_ascii_align_to_impl(bytes: &[u8]) -> bool {
+    if bytes.len() < core::mem::size_of::<usize>() {
+        return bytes.iter().all(|b| b.is_ascii());
+    }
+    let (head, body, tail) = unsafe { bytes.align_to::<usize>() };
+    head.iter().all(|b| b.is_ascii()) &&
+    body.iter().all(|w| !contains_nonascii(*w)) &&
+    tail.iter().all(|b| b.is_ascii())
+}
+
+#[inline]
+fn contains_nonascii(v: usize) -> bool {
+    const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
+    (NONASCII_MASK & v) != 0
 }
 
 macro_rules! repeat {
