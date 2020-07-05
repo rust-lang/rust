@@ -1,3 +1,5 @@
+mod is_ascii;
+
 // Lower-case ASCII 'a' is the first byte that has its highest bit set
 // after wrap-adding 0x1F:
 //
@@ -54,48 +56,6 @@ macro_rules! benches {
                             black_box($body);
                         }
                         vec
-                    })
-                }
-            )+
-        }
-    };
-
-    // For some tests the vec allocation tends to dominate, so it can be avoided.
-    (@readonly $( fn $name: ident($arg: ident: &[u8]) $body: block )+) => {
-        benches!(@ro mod short_readonly SHORT $($name $arg $body)+);
-        benches!(@ro mod medium_readonly MEDIUM $($name $arg $body)+);
-        benches!(@ro mod long_readonly LONG $($name $arg $body)+);
-        // Add another `MEDIUM` bench, but trim the ends so that we can (try to)
-        // benchmark a case where the function has to handle misalignment.
-        mod medium_unaligned {
-            use super::*;
-            $(
-                #[bench]
-                fn $name(bencher: &mut Bencher) {
-                    bencher.bytes = MEDIUM.len() as u64 - 2;
-                    let mut vec = MEDIUM.as_bytes().to_vec();
-                    bencher.iter(|| {
-                        black_box(&mut vec);
-                        let $arg = black_box(&vec[1..(vec.len() - 1)]);
-                        black_box($body)
-                    })
-                }
-            )+
-        }
-    };
-    (@ro mod $mod_name: ident $input: ident $($name: ident $arg: ident $body: block)+) => {
-        mod $mod_name {
-            use super::*;
-
-            $(
-                #[bench]
-                fn $name(bencher: &mut Bencher) {
-                    bencher.bytes = $input.len() as u64;
-                    let mut vec = $input.as_bytes().to_vec();
-                    bencher.iter(|| {
-                        black_box(&mut vec);
-                        let $arg = black_box(&vec[..]);
-                        black_box($body)
                     })
                 }
             )+
@@ -285,40 +245,6 @@ benches! {
     is_ascii_graphic,
     is_ascii_whitespace,
     is_ascii_control,
-}
-
-benches! {
-    @readonly
-    fn is_ascii_slice_libcore(bytes: &[u8]) {
-        bytes.is_ascii()
-    }
-
-    fn is_ascii_slice_iter_all(bytes: &[u8]) {
-        bytes.iter().all(|b| b.is_ascii())
-    }
-
-    fn is_ascii_slice_align_to(bytes: &[u8]) {
-        is_ascii_align_to_impl(bytes)
-    }
-}
-
-// Separate since it's easier to debug errors if they don't go through macro
-// expansion first.
-fn is_ascii_align_to_impl(bytes: &[u8]) -> bool {
-    if bytes.len() < core::mem::size_of::<usize>() {
-        return bytes.iter().all(|b| b.is_ascii());
-    }
-    // SAFETY: transmuting a sequence of `u8` to `usize` is always fine
-    let (head, body, tail) = unsafe { bytes.align_to::<usize>() };
-    head.iter().all(|b| b.is_ascii())
-        && body.iter().all(|w| !contains_nonascii(*w))
-        && tail.iter().all(|b| b.is_ascii())
-}
-
-#[inline]
-fn contains_nonascii(v: usize) -> bool {
-    const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
-    (NONASCII_MASK & v) != 0
 }
 
 macro_rules! repeat {
