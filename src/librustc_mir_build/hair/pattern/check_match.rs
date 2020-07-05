@@ -393,8 +393,8 @@ fn check_arms<'p, 'tcx>(
                 }
             }
             Useful(unreachable_subpatterns) => {
-                for pat in unreachable_subpatterns {
-                    unreachable_pattern(cx.tcx, pat.span, id, None);
+                for span in unreachable_subpatterns {
+                    unreachable_pattern(cx.tcx, span, id, None);
                 }
             }
             UsefulWithWitness(_) => bug!(),

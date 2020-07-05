@@ -276,6 +276,7 @@ use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::vec::Idx;
 
 use super::{compare_const_vals, PatternFoldable, PatternFolder};
@@ -1246,15 +1247,15 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 }
 
 #[derive(Clone, Debug)]
-crate enum Usefulness<'tcx, 'p> {
+crate enum Usefulness<'tcx> {
     /// Carries a list of unreachable subpatterns. Used only in the presence of or-patterns.
-    Useful(Vec<&'p Pat<'tcx>>),
+    Useful(Vec<Span>),
     /// Carries a list of witnesses of non-exhaustiveness.
     UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful,
 }
 
-impl<'tcx, 'p> Usefulness<'tcx, 'p> {
+impl<'tcx> Usefulness<'tcx> {
     fn new_useful(preference: WitnessPreference) -> Self {
         match preference {
             ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
@@ -1269,7 +1270,7 @@ impl<'tcx, 'p> Usefulness<'tcx, 'p> {
         }
     }
 
-    fn apply_constructor(
+    fn apply_constructor<'p>(
         self,
         cx: &MatchCheckCtxt<'p, 'tcx>,
         ctor: &Constructor<'tcx>,
@@ -1828,7 +1829,7 @@ crate fn is_useful<'p, 'tcx>(
     hir_id: HirId,
     is_under_guard: bool,
     is_top_level: bool,
-) -> Usefulness<'tcx, 'p> {
+) -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
@@ -1852,16 +1853,35 @@ crate fn is_useful<'p, 'tcx>(
         // We need to push the already-seen patterns into the matrix in order to detect redundant
         // branches like `Some(_) | Some(0)`. We also keep track of the unreachable subpatterns.
         let mut matrix = matrix.clone();
-        let mut unreachable_pats = Vec::new();
+        // `Vec` of all the unreachable branches of the current or-pattern.
+        let mut unreachable_branches = Vec::new();
+        // Subpatterns that are unreachable from all branches. E.g. in the following case, the last
+        // `true` is unreachable only from one branch, so it is overall reachable.
+        // ```
+        // match (true, true) {
+        //     (true, true) => {}
+        //     (false | true, false | true) => {}
+        // }
+        // ```
+        let mut unreachable_subpats = FxHashSet::default();
+        // Whether any branch at all is useful.
         let mut any_is_useful = false;
+
         for v in vs {
             let res = is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
             match res {
                 Useful(pats) => {
-                    any_is_useful = true;
-                    unreachable_pats.extend(pats);
+                    if !any_is_useful {
+                        any_is_useful = true;
+                        // Initialize with the first set of unreachable subpatterns encountered.
+                        unreachable_subpats = pats.into_iter().collect();
+                    } else {
+                        // Keep the patterns unreachable from both this and previous branches.
+                        unreachable_subpats =
+                            pats.into_iter().filter(|p| unreachable_subpats.contains(p)).collect();
+                    }
                 }
-                NotUseful => unreachable_pats.push(v.head()),
+                NotUseful => unreachable_branches.push(v.head().span),
                 UsefulWithWitness(_) => {
                     bug!("Encountered or-pat in `v` during exhaustiveness checking")
                 }
@@ -1871,7 +1891,13 @@ crate fn is_useful<'p, 'tcx>(
                 matrix.push(v);
             }
         }
-        return if any_is_useful { Useful(unreachable_pats) } else { NotUseful };
+        if any_is_useful {
+            // Collect all the unreachable patterns.
+            unreachable_branches.extend(unreachable_subpats);
+            return Useful(unreachable_branches);
+        } else {
+            return NotUseful;
+        }
     }
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
@@ -2014,7 +2040,7 @@ fn is_useful_specialized<'p, 'tcx>(
     witness_preference: WitnessPreference,
     hir_id: HirId,
     is_under_guard: bool,
-) -> Usefulness<'tcx, 'p> {
+) -> Usefulness<'tcx> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, ty);
 
     // We cache the result of `Fields::wildcards` because it is used a lot.
