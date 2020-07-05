@@ -1513,6 +1513,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
     /// then this function would return a `exists T. T: Iterator` existential trait
     /// reference.
     pub fn trait_ref(&self, tcx: TyCtxt<'_>) -> ty::ExistentialTraitRef<'tcx> {
+        // FIXME(generic_associated_types): truncate substs to have the right length.
         let def_id = tcx.associated_item(self.item_def_id).container.id();
         ty::ExistentialTraitRef { def_id, substs: self.substs }
     }

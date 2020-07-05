@@ -1,0 +1,12 @@
+error[E0271]: type mismatch resolving `<i32 as Is>::T == i64`
+  --> $DIR/check-trait-object-bounds-5.rs:23:5
+   |
+LL | fn is_obj<T: ?Sized + Obj>(_: &T) {}
+   |                       --- required by this bound in `is_obj`
+...
+LL |     is_obj(x)
+   |     ^^^^^^ expected `i64`, found `i32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.
