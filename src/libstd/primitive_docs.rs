@@ -460,8 +460,7 @@ mod prim_pointer {}
 /// * A repeat expression `[x; N]`, which produces an array with `N` copies of `x`.
 ///   The type of `x` must be [`Copy`][copy].
 ///
-/// Arrays of sizes from 0 to 32 (inclusive) implement the following traits if
-/// the element type allows it:
+/// Arrays of *any* size implement the following traits if the element type allows it:
 ///
 /// - [`Debug`][debug]
 /// - [`IntoIterator`][intoiterator] (implemented for `&[T; N]` and `&mut [T; N]`)
@@ -469,12 +468,9 @@ mod prim_pointer {}
 /// - [`Hash`][hash]
 /// - [`AsRef`][asref], [`AsMut`][asmut]
 /// - [`Borrow`][borrow], [`BorrowMut`][borrowmut]
-/// - [`Default`][default]
 ///
-/// This limitation on the size `N` exists because Rust does not yet support
-/// code that is generic over the size of an array type. `[Foo; 3]` and `[Bar; 3]`
-/// are instances of same generic type `[T; 3]`, but `[Foo; 3]` and `[Foo; 5]` are
-/// entirely different types. As a stopgap, trait implementations are
+/// Arrays of sizes from 0 to 32 (inclusive) implement [`Default`][default] trait
+/// if the element type allows it. As a stopgap, trait implementations are
 /// statically generated up to size 32.
 ///
 /// Arrays of *any* size are [`Copy`][copy] if the element type is [`Copy`][copy]
@@ -521,8 +517,7 @@ mod prim_pointer {}
 /// for x in array.iter() { }
 /// ```
 ///
-/// If the array has 32 or fewer elements (see above), you can also use the
-/// array reference's [`IntoIterator`] implementation:
+/// You can also use the array reference's [`IntoIterator`] implementation:
 ///
 /// ```
 /// # let array: [i32; 3] = [0; 3];
