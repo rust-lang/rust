@@ -58,7 +58,31 @@ macro_rules! benches {
                 }
             )+
         }
-    }
+    };
+
+    // For some tests the vec allocation tends to dominate, so it can be avoided.
+    (@readonly $( fn $name: ident($arg: ident: &[u8]) $body: block )+) => {
+        benches!(@ro mod short_readonly SHORT $($name $arg $body)+);
+        benches!(@ro mod medium_readonly MEDIUM $($name $arg $body)+);
+        benches!(@ro mod long_readonly LONG $($name $arg $body)+);
+    };
+    (@ro mod $mod_name: ident $input: ident $($name: ident $arg: ident $body: block)+) => {
+        mod $mod_name {
+            use super::*;
+
+            $(
+                #[bench]
+                fn $name(bencher: &mut Bencher) {
+                    bencher.bytes = $input.len() as u64;
+                    let vec = $input.as_bytes().to_vec();
+                    bencher.iter(|| {
+                        let $arg = black_box(&vec[..]);
+                        black_box($body)
+                    })
+                }
+            )+
+        }
+    };
 }
 
 use test::black_box;
@@ -230,14 +254,6 @@ benches! {
         }
     }
 
-    fn is_ascii_slice_libcore(bytes: &mut [u8]) {
-        bytes.is_ascii()
-    }
-
-    fn is_ascii_slice_iter_all(bytes: &mut [u8]) {
-        bytes.iter().all(|b| b.is_ascii())
-    }
-
     @iter
 
     is_ascii,
@@ -251,6 +267,17 @@ benches! {
     is_ascii_graphic,
     is_ascii_whitespace,
     is_ascii_control,
+}
+
+benches! {
+    @readonly
+    fn is_ascii_slice_libcore(bytes: &[u8]) {
+        bytes.is_ascii()
+    }
+
+    fn is_ascii_slice_iter_all(bytes: &[u8]) {
+        bytes.iter().all(|b| b.is_ascii())
+    }
 }
 
 macro_rules! repeat {
