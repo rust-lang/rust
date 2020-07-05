@@ -125,7 +125,6 @@ impl<T, const N: usize> BorrowMut<[T]> for [T; N] {
 impl<T, const N: usize> TryFrom<&[T]> for [T; N]
 where
     T: Copy,
-    [T; N]: LengthAtMost32,
 {
     type Error = TryFromSliceError;
 
@@ -135,10 +134,7 @@ where
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
-impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     type Error = TryFromSliceError;
 
     fn try_from(slice: &[T]) -> Result<&[T; N], TryFromSliceError> {
@@ -153,10 +149,7 @@ where
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
-impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
     type Error = TryFromSliceError;
 
     fn try_from(slice: &mut [T]) -> Result<&mut [T; N], TryFromSliceError> {
@@ -171,30 +164,21 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Hash, const N: usize> Hash for [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T: Hash, const N: usize> Hash for [T; N] {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         Hash::hash(&self[..], state)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&&self[..], f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, const N: usize> IntoIterator for &'a [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<'a, T, const N: usize> IntoIterator for &'a [T; N] {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -204,10 +188,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N] {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
@@ -220,8 +201,6 @@ where
 impl<A, B, const N: usize> PartialEq<[B; N]> for [A; N]
 where
     A: PartialEq<B>,
-    [A; N]: LengthAtMost32,
-    [B; N]: LengthAtMost32,
 {
     #[inline]
     fn eq(&self, other: &[B; N]) -> bool {
@@ -237,7 +216,6 @@ where
 impl<A, B, const N: usize> PartialEq<[B]> for [A; N]
 where
     A: PartialEq<B>,
-    [A; N]: LengthAtMost32,
 {
     #[inline]
     fn eq(&self, other: &[B]) -> bool {
@@ -253,7 +231,6 @@ where
 impl<A, B, const N: usize> PartialEq<[A; N]> for [B]
 where
     B: PartialEq<A>,
-    [A; N]: LengthAtMost32,
 {
     #[inline]
     fn eq(&self, other: &[A; N]) -> bool {
@@ -269,7 +246,6 @@ where
 impl<'b, A, B, const N: usize> PartialEq<&'b [B]> for [A; N]
 where
     A: PartialEq<B>,
-    [A; N]: LengthAtMost32,
 {
     #[inline]
     fn eq(&self, other: &&'b [B]) -> bool {
@@ -285,7 +261,6 @@ where
 impl<'b, A, B, const N: usize> PartialEq<[A; N]> for &'b [B]
 where
     B: PartialEq<A>,
-    [A; N]: LengthAtMost32,
 {
     #[inline]
     fn eq(&self, other: &[A; N]) -> bool {
@@ -301,7 +276,6 @@ where
 impl<'b, A, B, const N: usize> PartialEq<&'b mut [B]> for [A; N]
 where
     A: PartialEq<B>,
-    [A; N]: LengthAtMost32,
 {
     #[inline]
     fn eq(&self, other: &&'b mut [B]) -> bool {
@@ -317,7 +291,6 @@ where
 impl<'b, A, B, const N: usize> PartialEq<[A; N]> for &'b mut [B]
 where
     B: PartialEq<A>,
-    [A; N]: LengthAtMost32,
 {
     #[inline]
     fn eq(&self, other: &[A; N]) -> bool {
@@ -334,13 +307,10 @@ where
 // __impl_slice_eq2! { [A; $N], &'b mut [B; $N] }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Eq, const N: usize> Eq for [T; N] where [T; N]: LengthAtMost32 {}
+impl<T: Eq, const N: usize> Eq for [T; N] {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialOrd, const N: usize> PartialOrd for [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T: PartialOrd, const N: usize> PartialOrd for [T; N] {
     #[inline]
     fn partial_cmp(&self, other: &[T; N]) -> Option<Ordering> {
         PartialOrd::partial_cmp(&&self[..], &&other[..])
@@ -365,10 +335,7 @@ where
 
 /// Implements comparison of arrays lexicographically.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord, const N: usize> Ord for [T; N]
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T: Ord, const N: usize> Ord for [T; N] {
     #[inline]
     fn cmp(&self, other: &[T; N]) -> Ordering {
         Ord::cmp(&&self[..], &&other[..])

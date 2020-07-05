@@ -130,7 +130,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::any::Any;
-use core::array::LengthAtMost32;
 use core::borrow;
 use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
@@ -871,10 +870,7 @@ impl From<Box<str>> for Box<[u8]> {
 }
 
 #[stable(feature = "box_from_array", since = "1.45.0")]
-impl<T, const N: usize> From<[T; N]> for Box<[T]>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> From<[T; N]> for Box<[T]> {
     /// Converts a `[T; N]` into a `Box<[T]>`
     ///
     /// This conversion moves the array to newly heap-allocated memory.
@@ -890,10 +886,7 @@ where
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     type Error = Box<[T]>;
 
     fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
