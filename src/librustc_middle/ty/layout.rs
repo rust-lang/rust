@@ -1233,7 +1233,21 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     size,
                 };
 
-                tcx.intern_layout(niche_filling_layout.unwrap_or(tagged_layout))
+                let best_layout = match (tagged_layout, niche_filling_layout) {
+                    (tagged_layout, Some(niche_filling_layout)) => {
+                        // Pick the smaller layout; otherwise,
+                        // pick the layout with the larger niche; otherwise,
+                        // pick tagged as it has simpler codegen.
+                        cmp::min_by_key(tagged_layout, niche_filling_layout, |layout| {
+                            let niche_size =
+                                layout.largest_niche.as_ref().map_or(0, |n| n.available(dl));
+                            (layout.size, cmp::Reverse(niche_size))
+                        })
+                    }
+                    (tagged_layout, None) => tagged_layout,
+                };
+
+                tcx.intern_layout(best_layout)
             }
 
             // Types with no meaningful known layout.
