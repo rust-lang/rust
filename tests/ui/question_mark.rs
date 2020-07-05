@@ -25,10 +25,7 @@ pub enum SeemsOption<T> {
 
 impl<T> SeemsOption<T> {
     pub fn is_none(&self) -> bool {
-        match *self {
-            SeemsOption::None => true,
-            SeemsOption::Some(_) => false,
-        }
+        matches!(*self, SeemsOption::None)
     }
 }
 

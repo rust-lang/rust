@@ -1,0 +1,32 @@
+// run-rustfix
+
+#![warn(clippy::match_like_matches_macro)]
+
+fn main() {
+    let x = Some(5);
+
+    // Lint
+    let _y = matches!(x, Some(0));
+
+    // Turn into is_none
+    let _z = x.is_none();
+
+    // Lint
+    let _z = !matches!(x, Some(r) if r == 0);
+
+    // Lint
+    let _zz = matches!(x, Some(5));
+
+    // No lint
+    let _a = match x {
+        Some(_) => false,
+        None => false,
+    };
+
+    // No lint
+    let _a = match x {
+        Some(0) => false,
+        Some(_) => true,
+        None => false,
+    };
+}

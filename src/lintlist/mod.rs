@@ -1180,6 +1180,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "matches",
     },
     Lint {
+        name: "match_like_matches_macro",
+        group: "style",
+        desc: "a match that could be written with the matches! macro",
+        deprecation: None,
+        module: "matches",
+    },
+    Lint {
         name: "match_on_vec_items",
         group: "pedantic",
         desc: "matching on vector elements can panic",
@@ -1856,7 +1863,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "use the proper utility function avoiding an `if let`",
         deprecation: None,
-        module: "redundant_pattern_matching",
+        module: "matches",
     },
     Lint {
         name: "redundant_pub_crate",
