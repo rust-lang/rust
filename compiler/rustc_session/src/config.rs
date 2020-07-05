@@ -1251,11 +1251,18 @@ pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
     }
 }
 
+/// Possible json config files
+pub struct JsonConfig {
+    pub json_rendered: HumanReadableErrorType,
+    pub json_artifact_notifications: bool,
+    pub json_unused_externs: bool,
+}
+
 /// Parse the `--json` flag.
 ///
 /// The first value returned is how to render JSON diagnostics, and the second
 /// is whether or not artifact notifications are enabled.
-pub fn parse_json(matches: &getopts::Matches) -> (HumanReadableErrorType, bool, bool) {
+pub fn parse_json(matches: &getopts::Matches) -> JsonConfig {
     let mut json_rendered: fn(ColorConfig) -> HumanReadableErrorType =
         HumanReadableErrorType::Default;
     let mut json_color = ColorConfig::Never;
@@ -1285,7 +1292,12 @@ pub fn parse_json(matches: &getopts::Matches) -> (HumanReadableErrorType, bool, 
             }
         }
     }
-    (json_rendered(json_color), json_artifact_notifications, json_unused_externs)
+
+    JsonConfig {
+        json_rendered: json_rendered(json_color),
+        json_artifact_notifications,
+        json_unused_externs,
+    }
 }
 
 /// Parses the `--error-format` flag.
@@ -1863,7 +1875,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let edition = parse_crate_edition(matches);
 
-    let (json_rendered, json_artifact_notifications, json_unused_externs) = parse_json(matches);
+    let JsonConfig { json_rendered, json_artifact_notifications, json_unused_externs } =
+        parse_json(matches);
 
     let error_format = parse_error_format(matches, color, json_rendered);
 

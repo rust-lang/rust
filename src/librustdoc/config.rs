@@ -323,7 +323,7 @@ impl Options {
         }
 
         let color = config::parse_color(&matches);
-        let (json_rendered, ..) = config::parse_json(&matches);
+        let config::JsonConfig { json_rendered, .. } = config::parse_json(&matches);
         let error_format = config::parse_error_format(&matches, color, json_rendered);
 
         let codegen_options = build_codegen_options(matches, error_format);
