@@ -459,6 +459,7 @@ symbols! {
         label_break_value,
         lang,
         lang_items,
+        lazy_normalization_consts,
         lateout,
         let_chains,
         lhs,
