@@ -120,8 +120,7 @@ fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Opti
     // Unfortunately we're not 100% full of valid links today to we need a few
     // whitelists to get this past `make check` today.
     // FIXME(#32129)
-    if file.ends_with("std/io/struct.IoSlice.html")
-    {
+    if file.ends_with("std/io/struct.IoSlice.html") {
         return None;
     }
     // FIXME(#32553)
