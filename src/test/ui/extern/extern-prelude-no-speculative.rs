@@ -1,6 +1,6 @@
 // run-pass
 #![allow(unused_variables)]
-// compile-flags: --extern LooksLikeExternCrate
+// compile-flags: --extern LooksLikeExternCrate=/path/to/nowhere
 
 mod m {
     pub struct LooksLikeExternCrate;

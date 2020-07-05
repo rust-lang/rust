@@ -859,9 +859,7 @@ impl<'a> Resolver<'a> {
                     // otherwise cause duplicate suggestions.
                     continue;
                 }
-                if let Some(crate_id) =
-                    self.crate_loader.maybe_process_path_extern(ident.name, ident.span)
-                {
+                if let Some(crate_id) = self.crate_loader.maybe_process_path_extern(ident.name) {
                     let crate_root =
                         self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                     suggestions.extend(self.lookup_import_candidates_from_module(
