@@ -134,12 +134,12 @@ impl PackageData {
 
 impl CargoWorkspace {
     pub fn from_cargo_metadata(
-        cargo_toml: &Path,
+        cargo_toml: &AbsPath,
         cargo_features: &CargoConfig,
     ) -> Result<CargoWorkspace> {
         let mut meta = MetadataCommand::new();
         meta.cargo_path(ra_toolchain::cargo());
-        meta.manifest_path(cargo_toml);
+        meta.manifest_path(cargo_toml.to_path_buf());
         if cargo_features.all_features {
             meta.features(CargoOpt::AllFeatures);
         } else if cargo_features.no_default_features {
@@ -150,7 +150,7 @@ impl CargoWorkspace {
             meta.features(CargoOpt::SomeFeatures(cargo_features.features.clone()));
         }
         if let Some(parent) = cargo_toml.parent() {
-            meta.current_dir(parent);
+            meta.current_dir(parent.to_path_buf());
         }
         if let Some(target) = cargo_features.target.as_ref() {
             meta.other_options(vec![String::from("--filter-platform"), target.clone()]);
