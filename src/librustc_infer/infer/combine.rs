@@ -112,7 +112,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
 
             // All other cases of inference are errors
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
-                Err(TypeError::Sorts(ty::relate::expected_found(relation, &a, &b)))
+                Err(TypeError::Sorts(ty::relate::expected_found(relation, a, b)))
             }
 
             _ => ty::relate::super_relate_tys(relation, a, b),
@@ -701,7 +701,7 @@ pub fn const_unification_error<'tcx>(
     a_is_expected: bool,
     (a, b): (&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>),
 ) -> TypeError<'tcx> {
-    TypeError::ConstMismatch(ty::relate::expected_found_bool(a_is_expected, &a, &b))
+    TypeError::ConstMismatch(ty::relate::expected_found_bool(a_is_expected, a, b))
 }
 
 fn int_unification_error<'tcx>(
@@ -709,7 +709,7 @@ fn int_unification_error<'tcx>(
     v: (ty::IntVarValue, ty::IntVarValue),
 ) -> TypeError<'tcx> {
     let (a, b) = v;
-    TypeError::IntMismatch(ty::relate::expected_found_bool(a_is_expected, &a, &b))
+    TypeError::IntMismatch(ty::relate::expected_found_bool(a_is_expected, a, b))
 }
 
 fn float_unification_error<'tcx>(
@@ -717,5 +717,5 @@ fn float_unification_error<'tcx>(
     v: (ty::FloatVarValue, ty::FloatVarValue),
 ) -> TypeError<'tcx> {
     let (ty::FloatVarValue(a), ty::FloatVarValue(b)) = v;
-    TypeError::FloatMismatch(ty::relate::expected_found_bool(a_is_expected, &a, &b))
+    TypeError::FloatMismatch(ty::relate::expected_found_bool(a_is_expected, a, b))
 }
