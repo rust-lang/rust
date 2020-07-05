@@ -1,6 +1,6 @@
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
-use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use crate::ty::{self, Region, Ty, TyCtxt};
 use rustc_ast::ast;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, DiagnosticBuilder};
@@ -31,7 +31,7 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Copy, Debug, TypeFoldable)]
 pub enum TypeError<'tcx> {
     Mismatch,
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
@@ -42,8 +42,8 @@ pub enum TypeError<'tcx> {
     ArgCount,
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
-    RegionsInsufficientlyPolymorphic(BoundRegion, Region<'tcx>),
-    RegionsOverlyPolymorphic(BoundRegion, Region<'tcx>),
+    RegionsInsufficientlyPolymorphic(Region<'tcx>, Region<'tcx>),
+    RegionsOverlyPolymorphic(Region<'tcx>, Region<'tcx>),
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<Ty<'tcx>>),
@@ -65,6 +65,9 @@ pub enum TypeError<'tcx> {
     /// Safe `#[target_feature]` functions are not assignable to safe function pointers.
     TargetFeatureCast(DefId),
 }
+
+// `TypeError` is used a lot. Make sure it doesn't unintentionally get bigger.
+static_assert_size!(TypeError<'_>, 24);
 
 pub enum UnconstrainedNumeric {
     UnconstrainedFloat,
@@ -92,11 +95,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 write!(f, "expected {}, found {}", expected, found)
             }
         }
-
-        let br_string = |br: ty::BoundRegion| match br {
-            ty::BrNamed(_, name) => format!(" {}", name),
-            _ => String::new(),
-        };
 
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
@@ -128,16 +126,12 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ),
             ArgCount => write!(f, "incorrect number of function parameters"),
             RegionsDoesNotOutlive(..) => write!(f, "lifetime mismatch"),
-            RegionsInsufficientlyPolymorphic(br, _) => write!(
-                f,
-                "expected bound lifetime parameter{}, found concrete lifetime",
-                br_string(br)
-            ),
-            RegionsOverlyPolymorphic(br, _) => write!(
-                f,
-                "expected concrete lifetime, found bound lifetime parameter{}",
-                br_string(br)
-            ),
+            RegionsInsufficientlyPolymorphic(br, _) => {
+                write!(f, "expected bound lifetime parameter `{}`, found concrete lifetime", br)
+            }
+            RegionsOverlyPolymorphic(br, _) => {
+                write!(f, "expected concrete lifetime, found bound lifetime parameter `{}`", br)
+            }
             RegionsPlaceholderMismatch => write!(f, "one type is more general than the other"),
             Sorts(values) => ty::tls::with(|tcx| {
                 report_maybe_different(
