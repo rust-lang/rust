@@ -1,8 +1,8 @@
 error: rustc_peek: bit not set
-  --> $DIR/indirect-mutation-offset.rs:41:14
+  --> $DIR/indirect-mutation-offset.rs:41:5
    |
-LL |     unsafe { rustc_peek(x) };
-   |              ^^^^^^^^^^^^^
+LL |     rustc_peek(x);
+   |     ^^^^^^^^^^^^^
 
 error: stop_after_dataflow ended compilation
 
