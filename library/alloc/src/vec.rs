@@ -2703,7 +2703,7 @@ impl<T> Iterator for IntoIter<T> {
             // purposefully don't use 'ptr.offset' because for
             // vectors with 0-size elements this would return the
             // same pointer.
-            self.ptr = unsafe { arith_offset(self.ptr as *const T, 1) as *mut T };
+            self.ptr = unsafe { arith_offset(self.ptr as *const i8, 1) as *mut T };
 
             // Make up a value of this ZST.
             Some(unsafe { mem::zeroed() })
@@ -2735,22 +2735,18 @@ impl<T> Iterator for IntoIter<T> {
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
-        unsafe {
-            if self.end == self.ptr {
-                None
-            } else {
-                if mem::size_of::<T>() == 0 {
-                    // See above for why 'ptr.offset' isn't used
-                    self.end = arith_offset(self.end as *const i8, -1) as *mut T;
+        if self.end == self.ptr {
+            None
+        } else if mem::size_of::<T>() == 0 {
+            // See above for why 'ptr.offset' isn't used
+            self.end = unsafe { arith_offset(self.end as *const i8, -1) as *mut T };
 
-                    // Make up a value of this ZST.
-                    Some(mem::zeroed())
-                } else {
-                    self.end = self.end.offset(-1);
+            // Make up a value of this ZST.
+            Some(unsafe { mem::zeroed() })
+        } else {
+            self.end = unsafe { self.end.offset(-1) };
 
-                    Some(ptr::read(self.end))
-                }
-            }
+            Some(unsafe { ptr::read(self.end) })
         }
     }
 }
