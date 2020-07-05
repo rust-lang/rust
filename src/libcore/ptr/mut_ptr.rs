@@ -1,6 +1,7 @@
 use super::*;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics;
+use crate::slice::SliceIndex;
 
 #[lang = "mut_ptr"]
 impl<T: ?Sized> *mut T {
@@ -1014,7 +1015,6 @@ impl<T> *mut [T] {
     ///
     /// ```rust
     /// #![feature(slice_ptr_len)]
-    ///
     /// use std::ptr;
     ///
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
@@ -1036,18 +1036,46 @@ impl<T> *mut [T] {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_ptr_ptr)]
-    ///
+    /// #![feature(slice_ptr_get)]
     /// use std::ptr;
     ///
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert_eq!(slice.as_mut_ptr(), 0 as *mut i8);
     /// ```
     #[inline]
-    #[unstable(feature = "slice_ptr_ptr", issue = "none")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_ptr", issue = "none")]
+    #[unstable(feature = "slice_ptr_get", issue = "none")]
+    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "none")]
     pub const fn as_mut_ptr(self) -> *mut T {
         self as *mut T
+    }
+
+    /// Returns a raw pointer to an element or subslice, without doing bounds
+    /// checking.
+    ///
+    /// Calling this method with an out-of-bounds index or when `self` is not dereferencable
+    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_ptr_get)]
+    ///
+    /// let x = &mut [1, 2, 4] as *mut [i32];
+    ///
+    /// unsafe {
+    ///     assert_eq!(x.get_unchecked_mut(1), x.as_mut_ptr().add(1));
+    /// }
+    /// ```
+    #[unstable(feature = "slice_ptr_get", issue = "none")]
+    #[inline]
+    pub unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
+    where
+        I: SliceIndex<[T]>,
+    {
+        // SAFETY: the caller ensures that `self` is dereferencable and `index` in-bounds.
+        unsafe { index.get_unchecked_mut(self) }
     }
 }
 
