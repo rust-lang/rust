@@ -366,7 +366,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let place = try_validation!(
             self.ecx.ref_to_mplace(value),
             self.path,
-            err_ub!(InvalidUninitBytes { .. }) => { "uninitialized {}", kind },
+            err_ub!(InvalidUninitBytes(None)) => { "uninitialized {}", kind },
         );
         if place.layout.is_unsized() {
             self.check_wide_ptr_meta(place.meta, place.layout)?;
@@ -477,7 +477,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 try_validation!(
                     value.to_bool(),
                     self.path,
-                    err_ub!(InvalidBool(..)) => { "{}", value } expected { "a boolean" },
+                    err_ub!(InvalidBool(..)) | err_ub!(InvalidUninitBytes(None)) =>
+                        { "{}", value } expected { "a boolean" },
                 );
                 Ok(true)
             }
@@ -486,7 +487,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 try_validation!(
                     value.to_char(),
                     self.path,
-                    err_ub!(InvalidChar(..)) => { "{}", value } expected { "a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)" },
+                    err_ub!(InvalidChar(..)) | err_ub!(InvalidUninitBytes(None)) =>
+                        { "{}", value } expected { "a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)" },
                 );
                 Ok(true)
             }
@@ -515,7 +517,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let place = try_validation!(
                     self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
                     self.path,
-                    err_ub!(InvalidUninitBytes { .. } ) => { "uninitialized raw pointer" },
+                    err_ub!(InvalidUninitBytes(None)) => { "uninitialized raw pointer" },
                 );
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
@@ -537,6 +539,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
                     err_ub!(InvalidFunctionPointer(..)) |
+                    err_ub!(InvalidUninitBytes(None)) |
                     err_unsup!(ReadBytesAsPointer) =>
                         { "{}", value } expected { "a function pointer" },
                 );
@@ -593,7 +596,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let value = try_validation!(
             value.not_undef(),
             self.path,
-            err_ub!(InvalidUninitBytes { .. }) => { "{}", value }
+            err_ub!(InvalidUninitBytes(None)) => { "{}", value }
                 expected { "something {}", wrapping_range_format(valid_range, max_hi) },
         );
         let bits = match value.to_bits_or_ptr(op.layout.size, self.ecx) {
@@ -699,6 +702,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             self.path,
             err_ub!(InvalidTag(val)) =>
                 { "{}", val } expected { "a valid enum tag" },
+            // `InvalidUninitBytes` can be caused by `read_discriminant` in Miri if all initialized tags are valid.
+            err_ub!(InvalidUninitBytes(None)) =>
+                { "uninitialized bytes" } expected { "a valid enum tag" },
             err_unsup!(ReadPointerAsBytes) =>
                 { "a pointer" } expected { "plain (non-pointer) bytes" },
         );
