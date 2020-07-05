@@ -342,31 +342,6 @@ impl<T: Ord, const N: usize> Ord for [T; N] {
     }
 }
 
-/// Implemented for lengths where trait impls are allowed on arrays in core/std
-#[rustc_on_unimplemented(message = "arrays only have std trait implementations for lengths 0..=32")]
-#[unstable(
-    feature = "const_generic_impls_guard",
-    issue = "none",
-    reason = "will never be stable, just a temporary step until const generics are stable"
-)]
-pub trait LengthAtMost32 {}
-
-macro_rules! array_impls {
-    ($($N:literal)+) => {
-        $(
-            #[unstable(feature = "const_generic_impls_guard", issue = "none")]
-            impl<T> LengthAtMost32 for [T; $N] {}
-        )+
-    }
-}
-
-array_impls! {
-     0  1  2  3  4  5  6  7  8  9
-    10 11 12 13 14 15 16 17 18 19
-    20 21 22 23 24 25 26 27 28 29
-    30 31 32
-}
-
 // The Default impls cannot be generated using the array_impls! macro because
 // they require array literals.
 
