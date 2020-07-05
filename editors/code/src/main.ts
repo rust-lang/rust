@@ -49,8 +49,6 @@ async function tryActivate(context: vscode.ExtensionContext) {
     );
     context.subscriptions.push(defaultOnEnter);
 
-    context.subscriptions.push(log);
-
     const config = new Config(context);
     const state = new PersistentState(context.globalState);
     const serverPath = await bootstrap(config, state).catch(err => {
