@@ -65,6 +65,23 @@ macro_rules! benches {
         benches!(@ro mod short_readonly SHORT $($name $arg $body)+);
         benches!(@ro mod medium_readonly MEDIUM $($name $arg $body)+);
         benches!(@ro mod long_readonly LONG $($name $arg $body)+);
+        // Add another `MEDIUM` bench, but trim the ends so that we can (try to)
+        // benchmark a case where the function has to handle misalignment.
+        mod medium_unaligned {
+            use super::*;
+            $(
+                #[bench]
+                fn $name(bencher: &mut Bencher) {
+                    bencher.bytes = MEDIUM.len() as u64 - 2;
+                    let mut vec = MEDIUM.as_bytes().to_vec();
+                    bencher.iter(|| {
+                        black_box(&mut vec);
+                        let $arg = black_box(&vec[1..(vec.len() - 1)]);
+                        black_box($body)
+                    })
+                }
+            )+
+        }
     };
     (@ro mod $mod_name: ident $input: ident $($name: ident $arg: ident $body: block)+) => {
         mod $mod_name {
@@ -291,10 +308,11 @@ fn is_ascii_align_to_impl(bytes: &[u8]) -> bool {
     if bytes.len() < core::mem::size_of::<usize>() {
         return bytes.iter().all(|b| b.is_ascii());
     }
+    // SAFETY: transmuting a sequence of `u8` to `usize` is always fine
     let (head, body, tail) = unsafe { bytes.align_to::<usize>() };
-    head.iter().all(|b| b.is_ascii()) &&
-    body.iter().all(|w| !contains_nonascii(*w)) &&
-    tail.iter().all(|b| b.is_ascii())
+    head.iter().all(|b| b.is_ascii())
+        && body.iter().all(|w| !contains_nonascii(*w))
+        && tail.iter().all(|b| b.is_ascii())
 }
 
 #[inline]
