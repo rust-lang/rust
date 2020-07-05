@@ -2195,9 +2195,8 @@ fn from_target_feature(
                         item.span(),
                         format!("`{}` is not valid for this target", feature),
                     );
-                    if feature.starts_with('+') {
-                        let valid = whitelist.contains_key(&feature[1..]);
-                        if valid {
+                    if let Some(feat) = feature.strip_prefix('+') {
+                        if whitelist.contains_key(feat) {
                             err.help("consider removing the leading `+` in the feature name");
                         }
                     }

@@ -111,6 +111,25 @@ enum Line<'a> {
 }
 
 impl<'a> Line<'a> {
+    fn from_str(s: &'a str) -> Self {
+        let trimmed = s.trim();
+        match trimmed.strip_prefix("#") {
+            Some(tail) => match tail.strip_prefix("#") {
+                // `##text` rendered as `#text`.
+                Some(_) => Line::Shown(tail.into()),
+                None => match tail.as_bytes() {
+                    // `#` will be hidden.
+                    [] => Line::Hidden(""),
+                    // `# text` will be hidden.
+                    [b' ' | b'\t', ..] => Line::Hidden(tail),
+                    // `#text` will be shown as it could be ``#[attr]`
+                    _ => Line::Shown(s.into()),
+                },
+            },
+            None => Line::Shown(s.into()),
+        }
+    }
+
     fn for_html(self) -> Option<Cow<'a, str>> {
         match self {
             Line::Shown(l) => Some(l),
@@ -123,26 +142,6 @@ impl<'a> Line<'a> {
             Line::Shown(l) => l,
             Line::Hidden(l) => Cow::Borrowed(l),
         }
-    }
-}
-
-// FIXME: There is a minor inconsistency here. For lines that start with ##, we
-// have no easy way of removing a potential single space after the hashes, which
-// is done in the single # case. This inconsistency seems okay, if non-ideal. In
-// order to fix it we'd have to iterate to find the first non-# character, and
-// then reallocate to remove it; which would make us return a String.
-fn map_line(s: &str) -> Line<'_> {
-    let trimmed = s.trim();
-    if trimmed.starts_with("##") {
-        Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
-    } else if trimmed.starts_with("# ") {
-        // # text
-        Line::Hidden(&trimmed[2..])
-    } else if trimmed == "#" {
-        // We cannot handle '#text' because it could be #[attr].
-        Line::Hidden("")
-    } else {
-        Line::Shown(Cow::Borrowed(s))
     }
 }
 
@@ -226,7 +225,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 _ => {}
             }
         }
-        let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
+        let lines = origtext.lines().filter_map(|l| Line::from_str(l).for_html());
         let text = lines.collect::<Vec<Cow<'_, str>>>().join("\n");
         // insert newline to clearly separate it from the
         // previous block so we can shorten the html output
@@ -239,7 +238,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             }
             let test = origtext
                 .lines()
-                .map(|l| map_line(l).for_code())
+                .map(|l| Line::from_str(l).for_code())
                 .collect::<Vec<Cow<'_, str>>>()
                 .join("\n");
             let krate = krate.as_ref().map(|s| &**s);
@@ -608,7 +607,7 @@ pub fn find_testable_code<T: test::Tester>(
                 }
                 let text = test_s
                     .lines()
-                    .map(|l| map_line(l).for_code())
+                    .map(|l| Line::from_str(l).for_code())
                     .collect::<Vec<Cow<'_, str>>>()
                     .join("\n");
 
@@ -737,6 +736,8 @@ impl LangString {
         data.original = string.to_owned();
         let tokens = string.split(|c: char| !(c == '_' || c == '-' || c.is_alphanumeric()));
 
+        // FIXME(#51114)
+        let mut suffix = None;
         for token in tokens {
             match token.trim() {
                 "" => {}
@@ -752,9 +753,13 @@ impl LangString {
                     data.ignore = Ignore::All;
                     seen_rust_tags = !seen_other_tags;
                 }
-                x if x.starts_with("ignore-") => {
+                x if {
+                    suffix = x.strip_prefix("ignore-");
+                    suffix.is_some()
+                } =>
+                {
                     if enable_per_target_ignores {
-                        ignores.push(x.trim_start_matches("ignore-").to_owned());
+                        ignores.push(suffix.unwrap().to_owned());
                         seen_rust_tags = !seen_other_tags;
                     }
                 }
@@ -775,11 +780,19 @@ impl LangString {
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
                 }
-                x if x.starts_with("edition") => {
-                    data.edition = x[7..].parse::<Edition>().ok();
+                x if {
+                    suffix = x.strip_prefix("edition");
+                    suffix.is_some()
+                } =>
+                {
+                    data.edition = suffix.unwrap().parse::<Edition>().ok();
                 }
-                x if allow_error_code_check && x.starts_with('E') && x.len() == 5 => {
-                    if x[1..].parse::<u32>().is_ok() {
+                x if allow_error_code_check && x.len() == 5 && {
+                    suffix = x.strip_prefix('E');
+                    suffix.is_some()
+                } =>
+                {
+                    if suffix.unwrap().parse::<u32>().is_ok() {
                         data.error_codes.push(x.to_owned());
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     } else {
@@ -787,49 +800,44 @@ impl LangString {
                     }
                 }
                 x if extra.is_some() => {
+                    let extra = extra.unwrap();
                     let s = x.to_lowercase();
-                    match if s == "compile-fail" || s == "compile_fail" || s == "compilefail" {
-                        Some((
+                    let unknown_error = |flag, help| {
+                        extra.error_invalid_codeblock_attr(
+                            &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
+                            help,
+                        );
+                    };
+                    if s == "compile-fail" || s == "compile_fail" || s == "compilefail" {
+                        unknown_error(
                             "compile_fail",
                             "the code block will either not be tested if not marked as a rust one \
                              or won't fail if it compiles successfully",
-                        ))
+                        );
                     } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
-                        Some((
+                        unknown_error(
                             "should_panic",
                             "the code block will either not be tested if not marked as a rust one \
                              or won't fail if it doesn't panic when running",
-                        ))
+                        );
                     } else if s == "no-run" || s == "no_run" || s == "norun" {
-                        Some((
+                        unknown_error(
                             "no_run",
                             "the code block will either not be tested if not marked as a rust one \
                              or will be run (which you might not want)",
-                        ))
+                        );
                     } else if s == "allow-fail" || s == "allow_fail" || s == "allowfail" {
-                        Some((
+                        unknown_error(
                             "allow_fail",
                             "the code block will either not be tested if not marked as a rust one \
                              or will be run (which you might not want)",
-                        ))
+                        );
                     } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
-                        Some((
+                        unknown_error(
                             "test_harness",
                             "the code block will either not be tested if not marked as a rust one \
                              or the code will be wrapped inside a main function",
-                        ))
-                    } else {
-                        None
-                    } {
-                        Some((flag, help)) => {
-                            if let Some(ref extra) = extra {
-                                extra.error_invalid_codeblock_attr(
-                                    &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
-                                    help,
-                                );
-                            }
-                        }
-                        None => {}
+                        );
                     }
                     seen_other_tags = true;
                 }

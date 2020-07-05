@@ -5068,17 +5068,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             None // do not suggest code that is already there (#53348)
                         } else {
                             let method_call_list = [".to_vec()", ".to_string()"];
-                            let sugg = if receiver.ends_with(".clone()")
-                                && method_call_list.contains(&method_call.as_str())
-                            {
-                                let max_len = receiver.rfind('.').unwrap();
-                                format!("{}{}", &receiver[..max_len], method_call)
-                            } else {
-                                if expr.precedence().order() < ExprPrecedence::MethodCall.order() {
+                            let contained = method_call_list.contains(&method_call.as_str());
+                            let sugg = match receiver.strip_suffix(".clone()") {
+                                Some(rx) if contained => format!("{}{}", rx, method_call),
+                                _ if expr.precedence().order()
+                                    < ExprPrecedence::MethodCall.order() =>
+                                {
                                     format!("({}){}", receiver, method_call)
-                                } else {
-                                    format!("{}{}", receiver, method_call)
                                 }
+                                _ => format!("{}{}", receiver, method_call),
                             };
                             Some(if is_struct_pat_shorthand_field {
                                 format!("{}: {}", receiver, sugg)

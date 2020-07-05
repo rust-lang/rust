@@ -1289,8 +1289,8 @@ fn generic_simd_intrinsic(
         ));
     }
 
-    if name.starts_with("simd_shuffle") {
-        let n: u64 = name["simd_shuffle".len()..].parse().unwrap_or_else(|_| {
+    if let Some(tail) = name.strip_prefix("simd_shuffle") {
+        let n: u64 = tail.parse().unwrap_or_else(|_| {
             span_bug!(span, "bad `simd_shuffle` instruction only caught in codegen?")
         });
 
@@ -1307,7 +1307,7 @@ fn generic_simd_intrinsic(
         require!(
             in_elem == ret_ty.simd_type(tcx),
             "expected return element type `{}` (element of input `{}`), \
-                  found `{}` with element type `{}`",
+             found `{}` with element type `{}`",
             in_elem,
             in_ty,
             ret_ty,

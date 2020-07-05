@@ -1171,12 +1171,15 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 });
                 for param in params {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span) {
-                        if snippet.starts_with('&') && !snippet.starts_with("&'") {
-                            introduce_suggestion
-                                .push((param.span, format!("&'a {}", &snippet[1..])));
-                        } else if snippet.starts_with("&'_ ") {
-                            introduce_suggestion
-                                .push((param.span, format!("&'a {}", &snippet[4..])));
+                        if let Some(snip) = snippet.strip_prefix("&") {
+                            let sugg = match snip.strip_prefix("'") {
+                                None => snip,
+                                Some(tail) => match tail.strip_prefix("_ ") {
+                                    Some(tail) => tail,
+                                    None => continue,
+                                },
+                            };
+                            introduce_suggestion.push((param.span, format!("&'a {}", sugg)));
                         }
                     }
                 }

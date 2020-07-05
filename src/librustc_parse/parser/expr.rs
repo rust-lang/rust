@@ -1305,7 +1305,10 @@ impl<'a> Parser<'a> {
     fn report_lit_error(&self, err: LitError, lit: token::Lit, span: Span) {
         // Checks if `s` looks like i32 or u1234 etc.
         fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
-            s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
+            s.len() > 1
+                && s.strip_prefix(first_chars)
+                    .map(|s| s.chars().all(|c| c.is_ascii_digit()))
+                    .unwrap_or(false)
         }
 
         let token::Lit { kind, suffix, .. } = lit;

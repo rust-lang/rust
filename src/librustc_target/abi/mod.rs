@@ -100,11 +100,18 @@ impl TargetDataLayout {
         for spec in target.data_layout.split('-') {
             let spec_parts = spec.split(':').collect::<Vec<_>>();
 
+            // FIXME(#51114)
+            let mut remnant;
+
             match &*spec_parts {
                 ["e"] => dl.endian = Endian::Little,
                 ["E"] => dl.endian = Endian::Big,
-                [p] if p.starts_with('P') => {
-                    dl.instruction_address_space = parse_address_space(&p[1..], "P")?
+                [p] if {
+                    remnant = p.strip_prefix('P');
+                    remnant.is_some()
+                } =>
+                {
+                    dl.instruction_address_space = parse_address_space(remnant.unwrap(), "P")?
                 }
                 ["a", ref a @ ..] => dl.aggregate_align = align(a, "a")?,
                 ["f32", ref a @ ..] => dl.f32_align = align(a, "f32")?,
@@ -113,8 +120,13 @@ impl TargetDataLayout {
                     dl.pointer_size = size(s, p)?;
                     dl.pointer_align = align(a, p)?;
                 }
-                [s, ref a @ ..] if s.starts_with('i') => {
-                    let bits = match s[1..].parse::<u64>() {
+                [s, ref a @ ..]
+                    if {
+                        remnant = s.strip_prefix('i');
+                        remnant.is_some()
+                    } =>
+                {
+                    let bits = match remnant.unwrap().parse::<u64>() {
                         Ok(bits) => bits,
                         Err(_) => {
                             size(&s[1..], "i")?; // For the user error.
@@ -137,8 +149,13 @@ impl TargetDataLayout {
                         dl.i128_align = a;
                     }
                 }
-                [s, ref a @ ..] if s.starts_with('v') => {
-                    let v_size = size(&s[1..], "v")?;
+                [s, ref a @ ..]
+                    if {
+                        remnant = s.strip_prefix('v');
+                        remnant.is_some()
+                    } =>
+                {
+                    let v_size = size(remnant.unwrap(), "v")?;
                     let a = align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
                         v.1 = a;

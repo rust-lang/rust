@@ -605,10 +605,11 @@ fn suggest_ampmut_self<'tcx>(
 // When we want to suggest a user change a local variable to be a `&mut`, there
 // are three potential "obvious" things to highlight:
 //
+// ```text
 // let ident [: Type] [= RightHandSideExpression];
 //     ^^^^^    ^^^^     ^^^^^^^^^^^^^^^^^^^^^^^
 //     (1.)     (2.)              (3.)
-//
+// ```
 // We can always fallback on highlighting the first. But chances are good that
 // the user experience will be better if we highlight one of the others if possible;
 // for example, if the RHS is present and the Type is not, then the type is going to
@@ -625,15 +626,13 @@ fn suggest_ampmut<'tcx>(
 ) -> (Span, String) {
     if let Some(assignment_rhs_span) = opt_assignment_rhs_span {
         if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
-            if let (true, Some(ws_pos)) =
-                (src.starts_with("&'"), src.find(|c: char| -> bool { c.is_whitespace() }))
+            if let Some((tail, idx)) =
+                src.strip_prefix("&'").and_then(|s| s.find(char::is_whitespace).map(|idx| (s, idx)))
             {
-                let lt_name = &src[1..ws_pos];
-                let ty = &src[ws_pos..];
-                return (assignment_rhs_span, format!("&{} mut {}", lt_name, ty));
-            } else if src.starts_with('&') {
-                let borrowed_expr = &src[1..];
-                return (assignment_rhs_span, format!("&mut {}", borrowed_expr));
+                let (lt_name, ty) = tail.split_at(idx);
+                return (assignment_rhs_span, format!("&'{} mut {}", lt_name, ty));
+            } else if let Some(tail) = src.strip_prefix("&") {
+                return (assignment_rhs_span, format!("&mut {}", tail));
             }
         }
     }
@@ -649,12 +648,11 @@ fn suggest_ampmut<'tcx>(
     };
 
     if let Ok(src) = tcx.sess.source_map().span_to_snippet(highlight_span) {
-        if let (true, Some(ws_pos)) =
-            (src.starts_with("&'"), src.find(|c: char| -> bool { c.is_whitespace() }))
-        {
-            let lt_name = &src[1..ws_pos];
-            let ty = &src[ws_pos..];
-            return (highlight_span, format!("&{} mut{}", lt_name, ty));
+        if let Some(tail) = src.strip_prefix("&'") {
+            if let Some(idx) = tail.find(char::is_whitespace) {
+                let (lt_name, ty) = tail.split_at(idx);
+                return (highlight_span, format!("&'{} mut{}", lt_name, ty));
+            }
         }
     }
 
@@ -726,10 +724,10 @@ fn annotate_struct_field(
 /// If possible, suggest replacing `ref` with `ref mut`.
 fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: Span) -> Option<String> {
     let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).ok()?;
-    if hi_src.starts_with("ref") && hi_src["ref".len()..].starts_with(rustc_lexer::is_whitespace) {
-        let replacement = format!("ref mut{}", &hi_src["ref".len()..]);
-        Some(replacement)
-    } else {
-        None
+    match hi_src.strip_prefix("ref") {
+        Some(tail) if tail.starts_with(rustc_lexer::is_whitespace) => {
+            Some(format!("ref mut{}", tail))
+        }
+        _ => None,
     }
 }

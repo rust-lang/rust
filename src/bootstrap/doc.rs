@@ -461,8 +461,8 @@ impl Step for Std {
 
             builder.run(&mut cargo.into());
         };
-        let krates = ["alloc", "core", "std", "proc_macro", "test"];
-        for krate in &krates {
+        static KRATES: &[&str] = &["alloc", "core", "std", "proc_macro", "test"];
+        for krate in KRATES {
             run_cargo_rustdoc_for(krate);
         }
         builder.cp_r(&my_out, &out);
@@ -470,13 +470,12 @@ impl Step for Std {
         // Look for src/libstd, src/libcore etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
         for path in builder.paths.iter().map(components_simplified) {
-            if path.get(0) == Some(&"src")
-                && path.get(1).map_or(false, |dir| dir.starts_with("lib"))
-            {
-                let requested_crate = &path[1][3..];
-                if krates.contains(&requested_crate) {
-                    let index = out.join(requested_crate).join("index.html");
-                    open(builder, &index);
+            if let ["src", path, ..] = path.as_slice() {
+                if let Some(krate) = path.strip_prefix("lib") {
+                    if KRATES.contains(&krate) {
+                        let index = out.join(krate).join("index.html");
+                        open(builder, &index);
+                    }
                 }
             }
         }

@@ -51,12 +51,11 @@ fn inject_deps_into_manifest(
 ) -> std::io::Result<()> {
     let extern_crates = lib_rs
         .lines()
-        // get the deps
-        .filter(|line| line.starts_with("extern crate"))
-        // we have something like "extern crate foo;", we only care about the "foo"
-        //              ↓          ↓
-        // extern crate rustc_middle;
-        .map(|s| &s[13..(s.len() - 1)]);
+        // Get the deps
+        //
+        // We have something like "extern crate foo;", we only care about the "foo".
+        // Also we don't trim the string cause we believe rustfmt did that for us.
+        .filter_map(|line| line.strip_prefix("extern crate ").map(|s| s.strip_suffix(';')));
 
     let new_deps = extern_crates.map(|dep| {
         // format the dependencies that are going to be put inside the Cargo.toml

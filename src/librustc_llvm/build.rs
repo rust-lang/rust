@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -188,10 +189,8 @@ fn main() {
     cmd.args(&components);
 
     for lib in output(&mut cmd).split_whitespace() {
-        let name = if lib.starts_with("-l") {
-            &lib[2..]
-        } else if lib.starts_with('-') {
-            &lib[1..]
+        let name = if let Some(tail) = lib.strip_prefix("-l").or_else(|| lib.strip_prefix('-')) {
+            tail
         } else if Path::new(lib).exists() {
             // On MSVC llvm-config will print the full name to libraries, but
             // we're only interested in the name part
@@ -227,18 +226,14 @@ fn main() {
     let mut cmd = Command::new(&llvm_config);
     cmd.arg(llvm_link_arg).arg("--ldflags");
     for lib in output(&mut cmd).split_whitespace() {
-        if is_crossed {
-            if lib.starts_with("-LIBPATH:") {
-                println!("cargo:rustc-link-search=native={}", lib[9..].replace(&host, &target));
-            } else if lib.starts_with("-L") {
-                println!("cargo:rustc-link-search=native={}", lib[2..].replace(&host, &target));
-            }
-        } else if lib.starts_with("-LIBPATH:") {
-            println!("cargo:rustc-link-search=native={}", &lib[9..]);
-        } else if lib.starts_with("-l") {
-            println!("cargo:rustc-link-lib={}", &lib[2..]);
-        } else if lib.starts_with("-L") {
-            println!("cargo:rustc-link-search=native={}", &lib[2..]);
+        if let Some(tail) = lib.strip_prefix("-LIBPATH:").or_else(|| lib.strip_prefix("-L")) {
+            let lib: Cow<'_, str> = match is_crossed {
+                true => tail.replace(&host, &target).into(),
+                false => tail.into(),
+            };
+            println!("cargo:rustc-link-search=native={}", lib);
+        } else if let Some(tail) = lib.strip_prefix("-l") {
+            println!("cargo:rustc-link-lib={}", tail);
         }
     }
 
@@ -249,10 +244,10 @@ fn main() {
     let llvm_linker_flags = env::var_os("LLVM_LINKER_FLAGS");
     if let Some(s) = llvm_linker_flags {
         for lib in s.into_string().unwrap().split_whitespace() {
-            if lib.starts_with("-l") {
-                println!("cargo:rustc-link-lib={}", &lib[2..]);
-            } else if lib.starts_with("-L") {
-                println!("cargo:rustc-link-search=native={}", &lib[2..]);
+            if let Some(tail) = lib.strip_prefix("-l") {
+                println!("cargo:rustc-link-lib={}", tail);
+            } else if let Some(tail) = lib.strip_prefix("-L") {
+                println!("cargo:rustc-link-search=native={}", tail);
             }
         }
     }

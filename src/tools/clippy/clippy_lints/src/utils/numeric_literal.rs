@@ -79,9 +79,11 @@ impl<'a> NumericLiteral<'a> {
             (Some(p), s)
         };
 
-        if suffix.is_some() && sans_prefix.ends_with('_') {
+        if suffix.is_some() {
             // The '_' before the suffix isn't part of the digits
-            sans_prefix = &sans_prefix[..sans_prefix.len() - 1];
+            if let Some(head) = sans_prefix.strip_suffix('_') {
+                sans_prefix = head;
+            }
         }
 
         let (integer, fraction, exponent) = Self::split_digit_parts(sans_prefix, float);

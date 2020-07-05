@@ -666,7 +666,10 @@ fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn
         return;
     }
 
-    let comment = if testfile.to_string_lossy().ends_with(".rs") { "//" } else { "#" };
+    let comment = match testfile.extension() {
+        Some(ext) if "rs" == ext => "//",
+        _ => "#",
+    };
 
     let mut rdr = BufReader::new(rdr);
     let mut ln = String::new();
@@ -683,23 +686,24 @@ fn iter_header<R: Read>(testfile: &Path, cfg: Option<&str>, rdr: R, it: &mut dyn
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
-        } else if ln.starts_with(comment) && ln[comment.len()..].trim_start().starts_with('[') {
-            // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find(']') {
-                let open_brace = ln.find('[').unwrap();
-                let lncfg = &ln[open_brace + 1..close_brace];
-                let matches = match cfg {
-                    Some(s) => s == &lncfg[..],
-                    None => false,
-                };
-                if matches {
-                    it(ln[(close_brace + 1)..].trim_start());
+        } else if let Some(tail) = ln.strip_prefix(comment).map(str::trim_start) {
+            if let Some(open) = tail.strip_prefix('[') {
+                // A comment like `//[foo]` is specific to revision `foo`
+                let mut v = open.split(']');
+                match (v.next(), v.next()) {
+                    (Some(lncfg), Some(after)) => {
+                        if cfg.map(|s| s == lncfg).unwrap_or(false) {
+                            it(after.trim_start());
+                        }
+                    }
+                    _ => panic!(
+                        "malformed condition directive: expected `{}[foo]`, found `{}`",
+                        comment, ln
+                    ),
                 }
             } else {
-                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
+                it(tail);
             }
-        } else if ln.starts_with(comment) {
-            it(ln[comment.len()..].trim_start());
         }
     }
     return;
@@ -893,27 +897,32 @@ impl Config {
         // returns whether this line contains this prefix or not. For prefix
         // "ignore", returns true if line says "ignore-x86_64", "ignore-arch",
         // "ignore-android" etc.
-        line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-')
+        if let Some(tail) = line.strip_prefix(prefix) {
+            if let [b'-', ..] = tail.as_bytes() {
+                return true;
+            }
+        }
+        false
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
         // Ensure the directive is a whole word. Do not match "ignore-x86" when
         // the line says "ignore-x86_64".
-        line.starts_with(directive)
-            && match line.as_bytes().get(directive.len()) {
-                None | Some(&b' ') | Some(&b':') => true,
-                _ => false,
+        if let Some(tail) = line.strip_prefix(directive) {
+            if let [] | [b' ', ..] | [b':', ..] = tail.as_bytes() {
+                return true;
             }
+        }
+        false
     }
 
     pub fn parse_name_value_directive(&self, line: &str, directive: &str) -> Option<String> {
-        let colon = directive.len();
-        if line.starts_with(directive) && line.as_bytes().get(colon) == Some(&b':') {
-            let value = line[(colon + 1)..].to_owned();
-            debug!("{}: {}", directive, value);
-            Some(expand_variables(value, self))
-        } else {
-            None
+        match line.strip_prefix(directive).and_then(|s| s.strip_prefix(':')) {
+            Some(value) => {
+                debug!("{}: {}", directive, value);
+                Some(expand_variables(value.to_owned(), self))
+            }
+            _ => None,
         }
     }
 

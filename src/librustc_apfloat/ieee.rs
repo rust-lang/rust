@@ -1191,21 +1191,24 @@ impl<S: Semantics> Float for IeeeFloat<S> {
         }
 
         // Handle a leading minus sign.
-        let minus = s.starts_with('-');
-        if minus || s.starts_with('+') {
-            s = &s[1..];
-            if s.is_empty() {
-                return Err(ParseError("String has no digits"));
+        let minus = {
+            let m = s.strip_prefix('-');
+            if let Some(remnant) = m.or_else(|| s.strip_prefix('+')) {
+                s = remnant;
+                if s.is_empty() {
+                    return Err(ParseError("String has no digits"));
+                }
             }
-        }
+            m.is_some()
+        };
 
         // Adjust the rounding mode for the absolute value below.
         if minus {
             round = -round;
         }
 
-        let r = if s.starts_with("0x") || s.starts_with("0X") {
-            s = &s[2..];
+        let r = if let Some(tail) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+            s = tail;
             if s.is_empty() {
                 return Err(ParseError("Invalid string"));
             }
