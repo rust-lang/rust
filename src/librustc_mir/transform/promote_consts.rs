@@ -60,15 +60,16 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
             return;
         }
 
-        let def_id = src.def_id();
+        let def_id = src.def_id().expect_local();
 
         let mut rpo = traversal::reverse_postorder(body);
-        let ccx = ConstCx::new(tcx, def_id.expect_local(), body);
+        let ccx = ConstCx::new(tcx, def_id, body);
         let (temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);
 
         let promotable_candidates = validate_candidates(&ccx, &temps, &all_candidates);
 
-        let promoted = promote_candidates(def_id, body, tcx, temps, promotable_candidates);
+        let promoted =
+            promote_candidates(def_id.to_def_id(), body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
     }
 }
@@ -724,7 +725,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             ty::FnDef(def_id, _) => {
                 is_const_fn(self.tcx, def_id)
                     || is_unstable_const_fn(self.tcx, def_id).is_some()
-                    || is_lang_panic_fn(self.tcx, self.def_id)
+                    || is_lang_panic_fn(self.tcx, self.def_id.to_def_id())
             }
             _ => false,
         };

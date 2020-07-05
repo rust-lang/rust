@@ -1521,7 +1521,7 @@ pub trait Iterator {
     ///
     /// let iter = a.iter();
     ///
-    /// let sum: i32 = iter.take(5).fold(0, |acc, i| acc + i );
+    /// let sum: i32 = iter.take(5).fold(0, |acc, i| acc + i);
     ///
     /// assert_eq!(sum, 6);
     ///
@@ -1535,7 +1535,7 @@ pub trait Iterator {
     /// let mut iter = a.iter();
     ///
     /// // instead, we add in a .by_ref()
-    /// let sum: i32 = iter.by_ref().take(2).fold(0, |acc, i| acc + i );
+    /// let sum: i32 = iter.by_ref().take(2).fold(0, |acc, i| acc + i);
     ///
     /// assert_eq!(sum, 3);
     ///

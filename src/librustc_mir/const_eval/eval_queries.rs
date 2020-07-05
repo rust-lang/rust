@@ -334,9 +334,9 @@ pub fn const_eval_raw_provider<'tcx>(
                 }
 
                 v
-            } else if def_id.is_local() {
+            } else if let Some(def_id) = def_id.as_local() {
                 // constant defined in this crate, we can figure out a lint level!
-                match tcx.def_kind(def_id) {
+                match tcx.def_kind(def_id.to_def_id()) {
                     // constants never produce a hard error at the definition site. Anything else is
                     // a backwards compatibility hazard (and will break old versions of winapi for
                     // sure)
@@ -346,7 +346,7 @@ pub fn const_eval_raw_provider<'tcx>(
                     // validation thus preventing such a hard error from being a backwards
                     // compatibility hazard
                     DefKind::Const | DefKind::AssocConst => {
-                        let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+                        let hir_id = tcx.hir().as_local_hir_id(def_id);
                         err.report_as_lint(
                             tcx.at(tcx.def_span(def_id)),
                             "any use of this value will cause an error",
@@ -369,7 +369,7 @@ pub fn const_eval_raw_provider<'tcx>(
                                 err.report_as_lint(
                                     tcx.at(span),
                                     "reaching this expression at runtime will panic or abort",
-                                    tcx.hir().as_local_hir_id(def_id.expect_local()),
+                                    tcx.hir().as_local_hir_id(def_id),
                                     Some(err.span),
                                 )
                             }

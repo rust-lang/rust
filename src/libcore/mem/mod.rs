@@ -1037,6 +1037,7 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// assert_eq!(mem::variant_count::<Result<!, !>>(), 2);
 /// ```
 #[inline(always)]
+#[cfg(not(bootstrap))]
 #[unstable(feature = "variant_count", issue = "73662")]
 #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
 pub const fn variant_count<T>() -> usize {

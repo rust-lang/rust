@@ -29,6 +29,9 @@ fn main() {
         (1, 4 | 5) => {} //~ ERROR unreachable pattern
         _ => {}
     }
+    match (true, true) {
+        (false | true, false | true) => (),
+    }
     match (Some(0u8),) {
         (None | Some(1 | 2),) => {}
         (Some(1),) => {} //~ ERROR unreachable pattern
@@ -66,5 +69,30 @@ fn main() {
         Some(0 //~ ERROR unreachable
              | 1) => {}
         _ => {}
+    }
+
+    // A subpattern that is only unreachable in one branch is overall reachable.
+    match (true, true) {
+        (true, true) => {}
+        (false | true, false | true) => {}
+    }
+    match (true, true) {
+        (true, false) => {}
+        (false, true) => {}
+        (false | true, false | true) => {}
+    }
+    // A subpattern that is unreachable in all branches is overall unreachable.
+    match (true, true) {
+        (false, true) => {}
+        (true, true) => {}
+        (false | true, false
+            | true) => {} //~ ERROR unreachable
+    }
+    match (true, true) {
+        (true, false) => {}
+        (true, true) => {}
+        (false
+            | true, //~ ERROR unreachable
+            false | true) => {}
     }
 }

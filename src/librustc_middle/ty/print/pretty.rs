@@ -282,26 +282,27 @@ pub trait PrettyPrinter<'tcx>:
             //    where there is no explicit `extern crate`, we just prepend
             //    the crate name.
             match self.tcx().extern_crate(def_id) {
-                Some(&ExternCrate {
-                    src: ExternCrateSource::Extern(def_id),
-                    dependency_of: LOCAL_CRATE,
-                    span,
-                    ..
-                }) => {
-                    debug!("try_print_visible_def_path: def_id={:?}", def_id);
-                    return Ok((
-                        if !span.is_dummy() {
-                            self.print_def_path(def_id, &[])?
-                        } else {
-                            self.path_crate(cnum)?
-                        },
-                        true,
-                    ));
-                }
+                Some(&ExternCrate { src, dependency_of, span, .. }) => match (src, dependency_of) {
+                    (ExternCrateSource::Extern(def_id), LOCAL_CRATE) => {
+                        debug!("try_print_visible_def_path: def_id={:?}", def_id);
+                        return Ok((
+                            if !span.is_dummy() {
+                                self.print_def_path(def_id, &[])?
+                            } else {
+                                self.path_crate(cnum)?
+                            },
+                            true,
+                        ));
+                    }
+                    (ExternCrateSource::Path, LOCAL_CRATE) => {
+                        debug!("try_print_visible_def_path: def_id={:?}", def_id);
+                        return Ok((self.path_crate(cnum)?, true));
+                    }
+                    _ => {}
+                },
                 None => {
                     return Ok((self.path_crate(cnum)?, true));
                 }
-                _ => {}
             }
         }
 

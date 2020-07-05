@@ -22,7 +22,7 @@ pub mod validation;
 pub struct ConstCx<'mir, 'tcx> {
     pub body: &'mir mir::Body<'tcx>,
     pub tcx: TyCtxt<'tcx>,
-    pub def_id: DefId,
+    pub def_id: LocalDefId,
     pub param_env: ty::ParamEnv<'tcx>,
     pub const_kind: Option<hir::ConstContext>,
 }
@@ -40,7 +40,7 @@ impl ConstCx<'mir, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
         let const_kind = tcx.hir().body_const_context(def_id);
-        ConstCx { body, tcx, def_id: def_id.to_def_id(), param_env, const_kind }
+        ConstCx { body, tcx, def_id: def_id, param_env, const_kind }
     }
 
     /// Returns the kind of const context this `Item` represents (`const`, `static`, etc.).

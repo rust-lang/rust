@@ -12,6 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{HirId, Pat};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::config::nightly_options;
 use rustc_session::lint::builtin::BINDINGS_WITH_VARIANT_NAME;
 use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS};
 use rustc_session::parse::feature_err;
@@ -392,8 +393,8 @@ fn check_arms<'p, 'tcx>(
                 }
             }
             Useful(unreachable_subpatterns) => {
-                for pat in unreachable_subpatterns {
-                    unreachable_pattern(cx.tcx, pat.span, id, None);
+                for span in unreachable_subpatterns {
+                    unreachable_pattern(cx.tcx, span, id, None);
                 }
             }
             UsefulWithWitness(_) => bug!(),
@@ -487,9 +488,27 @@ fn check_exhaustive<'p, 'tcx>(
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.help(
         "ensure that all possible cases are being handled, \
-         possibly by adding wildcards or more match arms",
+              possibly by adding wildcards or more match arms",
     );
     err.note(&format!("the matched value is of type `{}`", scrut_ty));
+    if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
+        && !is_empty_match
+        && witnesses.len() == 1
+        && witnesses[0].is_wildcard()
+    {
+        err.note(&format!(
+            "`{}` does not have a fixed maximum value, \
+                so a wildcard `_` is necessary to match exhaustively",
+            scrut_ty,
+        ));
+        if nightly_options::is_nightly_build() {
+            err.help(&format!(
+                "add `#![feature(precise_pointer_size_matching)]` \
+                    to the crate attributes to enable precise `{}` matching",
+                scrut_ty,
+            ));
+        }
+    }
     err.emit();
 }
 

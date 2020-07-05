@@ -29,13 +29,7 @@ pub fn check_live_drops(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mir::Body<
         return;
     }
 
-    let ccx = ConstCx {
-        body,
-        tcx,
-        def_id: def_id.to_def_id(),
-        const_kind,
-        param_env: tcx.param_env(def_id),
-    };
+    let ccx = ConstCx { body, tcx, def_id, const_kind, param_env: tcx.param_env(def_id) };
 
     let mut visitor = CheckLiveDrops { ccx: &ccx, qualifs: Qualifs::default() };
 
