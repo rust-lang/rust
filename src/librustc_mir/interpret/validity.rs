@@ -651,7 +651,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         &self.ecx
     }
 
-    fn read_discriminant(&mut self, op: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, VariantIdx> {
+    fn read_discriminant(
+        &mut self,
+        op: OpTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, VariantIdx> {
         self.with_elem(PathElem::EnumTag, move |this| {
             Ok(try_validation!(
                 this.ecx.read_discriminant(op),
@@ -662,7 +665,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     { "uninitialized bytes" } expected { "a valid enum tag" },
                 err_unsup!(ReadPointerAsBytes) =>
                     { "a pointer" } expected { "a valid enum tag" },
-            ).1)
+            )
+            .1)
         })
     }
 
@@ -829,8 +833,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
                                 throw_validation_failure!(self.path, { "uninitialized bytes" })
                             }
-                            err_unsup!(ReadPointerAsBytes) =>
-                                throw_validation_failure!(self.path, { "a pointer" } expected { "plain (non-pointer) bytes" }),
+                            err_unsup!(ReadPointerAsBytes) => {
+                                throw_validation_failure!(self.path, { "a pointer" } expected { "plain (non-pointer) bytes" })
+                            }
 
                             // Propagate upwards (that will also check for unexpected errors).
                             _ => return Err(err),
