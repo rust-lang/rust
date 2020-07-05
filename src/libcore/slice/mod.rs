@@ -310,8 +310,10 @@ impl<T> [T] {
     where
         I: SliceIndex<Self>,
     {
-        // SAFETY: the caller must uphold the safety requirements for `get_unchecked`.
-        unsafe { index.get_unchecked(self) }
+        // SAFETY: the caller must uphold most of the safety requirements for `get_unchecked`;
+        // the slice is dereferencable because `self` is a safe reference.
+        // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
+        unsafe { &*index.get_unchecked(self) }
     }
 
     /// Returns a mutable reference to an element or subslice, without doing
@@ -342,8 +344,10 @@ impl<T> [T] {
     where
         I: SliceIndex<Self>,
     {
-        // SAFETY: the caller must uphold the safety requirements for `get_unchecked_mut`.
-        unsafe { index.get_unchecked_mut(self) }
+        // SAFETY: the caller must uphold the safety requirements for `get_unchecked_mut`;
+        // the slice is dereferencable because `self` is a safe reference.
+        // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
+        unsafe { &mut *index.get_unchecked_mut(self) }
     }
 
     /// Returns a raw pointer to the slice's buffer.
@@ -2910,6 +2914,9 @@ mod private_slice_index {
 }
 
 /// A helper trait used for indexing operations.
+///
+/// Implementations of this trait have to promise that if the argument
+/// to `get_(mut_)unchecked` is a safe reference, then so is the result.
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 #[rustc_on_unimplemented(
     on(T = "str", label = "string indices are ranges of `usize`",),
@@ -2921,7 +2928,7 @@ see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#ind
     message = "the type `{T}` cannot be indexed by `{Self}`",
     label = "slice indices are of type `usize` or ranges of `usize`"
 )]
-pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
+pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// The output type returned by methods.
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     type Output: ?Sized;
@@ -2938,21 +2945,21 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
 
     /// Returns a shared reference to the output at this location, without
     /// performing any bounds checking.
-    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
-    /// even if the resulting reference is not used.
+    /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
+    /// is *[undefined behavior]* even if the resulting reference is not used.
     ///
     /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
-    unsafe fn get_unchecked(self, slice: &T) -> &Self::Output;
+    unsafe fn get_unchecked(self, slice: *const T) -> *const Self::Output;
 
     /// Returns a mutable reference to the output at this location, without
     /// performing any bounds checking.
-    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
-    /// even if the resulting reference is not used.
+    /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
+    /// is *[undefined behavior]* even if the resulting reference is not used.
     ///
     /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "none")]
-    unsafe fn get_unchecked_mut(self, slice: &mut T) -> &mut Self::Output;
+    unsafe fn get_unchecked_mut(self, slice: *mut T) -> *mut Self::Output;
 
     /// Returns a shared reference to the output at this location, panicking
     /// if out of bounds.
@@ -2968,33 +2975,32 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-impl<T> SliceIndex<[T]> for usize {
+unsafe impl<T> SliceIndex<[T]> for usize {
     type Output = T;
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&T> {
-        if self < slice.len() { unsafe { Some(self.get_unchecked(slice)) } } else { None }
+        if self < slice.len() { unsafe { Some(&*self.get_unchecked(slice)) } } else { None }
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut T> {
-        if self < slice.len() { unsafe { Some(self.get_unchecked_mut(slice)) } } else { None }
+        if self < slice.len() { unsafe { Some(&mut *self.get_unchecked_mut(slice)) } } else { None }
     }
 
     #[inline]
-    unsafe fn get_unchecked(self, slice: &[T]) -> &T {
-        // SAFETY: `slice` cannot be longer than `isize::MAX` and
-        // the caller guarantees that `self` is in bounds of `slice`
-        // so `self` cannot overflow an `isize`, so the call to `add` is safe.
-        // The obtained pointer comes from a reference which is guaranteed
-        // to be valid.
-        unsafe { &*slice.as_ptr().add(self) }
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
+        // SAFETY: the caller guarantees that `slice` is not dangling, so it
+        // cannot be longer than `isize::MAX`. They also guarantee that
+        // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
+        // so the call to `add` is safe.
+        unsafe { slice.as_ptr().add(self) }
     }
 
     #[inline]
-    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut T {
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut T {
         // SAFETY: see comments for `get_unchecked` above.
-        unsafe { &mut *slice.as_mut_ptr().add(self) }
+        unsafe { slice.as_mut_ptr().add(self) }
     }
 
     #[inline]
@@ -3011,7 +3017,7 @@ impl<T> SliceIndex<[T]> for usize {
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-impl<T> SliceIndex<[T]> for ops::Range<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     type Output = [T];
 
     #[inline]
@@ -3019,7 +3025,7 @@ impl<T> SliceIndex<[T]> for ops::Range<usize> {
         if self.start > self.end || self.end > slice.len() {
             None
         } else {
-            unsafe { Some(self.get_unchecked(slice)) }
+            unsafe { Some(&*self.get_unchecked(slice)) }
         }
     }
 
@@ -3028,24 +3034,25 @@ impl<T> SliceIndex<[T]> for ops::Range<usize> {
         if self.start > self.end || self.end > slice.len() {
             None
         } else {
-            unsafe { Some(self.get_unchecked_mut(slice)) }
+            unsafe { Some(&mut *self.get_unchecked_mut(slice)) }
         }
     }
 
     #[inline]
-    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        // SAFETY: `slice` cannot be longer than `isize::MAX` and
-        // the caller guarantees that `self` is in bounds of `slice`
-        // so `self` cannot overflow an `isize`, so the call to `add` is safe.
-        // Also, since the caller guarantees that `self` is in bounds of `slice`,
-        // `from_raw_parts` will give a subslice of `slice` which is always safe.
-        unsafe { from_raw_parts(slice.as_ptr().add(self.start), self.end - self.start) }
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        // SAFETY: the caller guarantees that `slice` is not dangling, so it
+        // cannot be longer than `isize::MAX`. They also guarantee that
+        // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
+        // so the call to `add` is safe.
+        unsafe { ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), self.end - self.start) }
     }
 
     #[inline]
-    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
         // SAFETY: see comments for `get_unchecked` above.
-        unsafe { from_raw_parts_mut(slice.as_mut_ptr().add(self.start), self.end - self.start) }
+        unsafe {
+            ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), self.end - self.start)
+        }
     }
 
     #[inline]
@@ -3055,7 +3062,7 @@ impl<T> SliceIndex<[T]> for ops::Range<usize> {
         } else if self.end > slice.len() {
             slice_index_len_fail(self.end, slice.len());
         }
-        unsafe { self.get_unchecked(slice) }
+        unsafe { &*self.get_unchecked(slice) }
     }
 
     #[inline]
@@ -3065,12 +3072,12 @@ impl<T> SliceIndex<[T]> for ops::Range<usize> {
         } else if self.end > slice.len() {
             slice_index_len_fail(self.end, slice.len());
         }
-        unsafe { self.get_unchecked_mut(slice) }
+        unsafe { &mut *self.get_unchecked_mut(slice) }
     }
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     type Output = [T];
 
     #[inline]
@@ -3084,13 +3091,13 @@ impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     }
 
     #[inline]
-    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
         // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
         unsafe { (0..self.end).get_unchecked(slice) }
     }
 
     #[inline]
-    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
         // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
         unsafe { (0..self.end).get_unchecked_mut(slice) }
     }
@@ -3107,7 +3114,7 @@ impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
     type Output = [T];
 
     #[inline]
@@ -3121,13 +3128,13 @@ impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
     }
 
     #[inline]
-    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
         // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
         unsafe { (self.start..slice.len()).get_unchecked(slice) }
     }
 
     #[inline]
-    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
         // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
         unsafe { (self.start..slice.len()).get_unchecked_mut(slice) }
     }
@@ -3144,7 +3151,7 @@ impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-impl<T> SliceIndex<[T]> for ops::RangeFull {
+unsafe impl<T> SliceIndex<[T]> for ops::RangeFull {
     type Output = [T];
 
     #[inline]
@@ -3158,12 +3165,12 @@ impl<T> SliceIndex<[T]> for ops::RangeFull {
     }
 
     #[inline]
-    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
         slice
     }
 
     #[inline]
-    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
         slice
     }
 
@@ -3179,7 +3186,7 @@ impl<T> SliceIndex<[T]> for ops::RangeFull {
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     type Output = [T];
 
     #[inline]
@@ -3197,13 +3204,13 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     }
 
     #[inline]
-    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
         // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
         unsafe { (*self.start()..self.end() + 1).get_unchecked(slice) }
     }
 
     #[inline]
-    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
         // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
         unsafe { (*self.start()..self.end() + 1).get_unchecked_mut(slice) }
     }
@@ -3226,7 +3233,7 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
+unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     type Output = [T];
 
     #[inline]
@@ -3240,13 +3247,13 @@ impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     }
 
     #[inline]
-    unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
         // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
         unsafe { (0..=self.end).get_unchecked(slice) }
     }
 
     #[inline]
-    unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
         // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
         unsafe { (0..=self.end).get_unchecked_mut(slice) }
     }
