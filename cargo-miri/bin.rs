@@ -257,7 +257,10 @@ fn setup(subcommand: MiriCommand) {
 
     // Determine where the rust sources are located.  `XARGO_RUST_SRC` env var trumps everything.
     let rust_src = match std::env::var_os("XARGO_RUST_SRC") {
-        Some(val) => PathBuf::from(val),
+        Some(val) => {
+            let val = PathBuf::from(val);
+            val.canonicalize().unwrap_or(val)
+        }
         None => {
             // Check for `rust-src` rustup component.
             let sysroot = miri()
