@@ -318,13 +318,32 @@ macro_rules! define_queries_inner {
             }
         }
 
+        #[allow(nonstandard_style)]
         pub mod queries {
             use std::marker::PhantomData;
 
-            $(#[allow(nonstandard_style)]
-            pub struct $name<$tcx> {
+            $(pub struct $name<$tcx> {
                 data: PhantomData<&$tcx ()>
             })*
+        }
+
+        // HACK(eddyb) this is like the `impl QueryConfig for queries::$name`
+        // below, but using type aliases instead of associated types, to bypass
+        // the limitations around normalizing under HRTB - for example, this:
+        // `for<'tcx> fn(...) -> <queries::$name<'tcx> as QueryConfig<TyCtxt<'tcx>>>::Value`
+        // doesn't currently normalize to `for<'tcx> fn(...) -> query_values::$name<'tcx>`.
+        // This is primarily used by the `provide!` macro in `rustc_metadata`.
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_keys {
+            use super::*;
+
+            $(pub type $name<$tcx> = $($K)*;)*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_values {
+            use super::*;
+
+            $(pub type $name<$tcx> = $V;)*
         }
 
         $(impl<$tcx> QueryConfig<TyCtxt<$tcx>> for queries::$name<$tcx> {
