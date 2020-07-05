@@ -1,7 +1,9 @@
 import * as lc from "vscode-languageclient";
+import * as fs from "fs";
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
 import { spawnSync } from "child_process";
+import { inspect } from "util";
 
 export function assert(condition: boolean, explanation: string): asserts condition {
     try {
@@ -14,21 +16,46 @@ export function assert(condition: boolean, explanation: string): asserts conditi
 
 export const log = new class {
     private enabled = true;
+    private readonly output = vscode.window.createOutputChannel("Rust Analyzer Client");
 
     setEnabled(yes: boolean): void {
         log.enabled = yes;
     }
 
-    debug(message?: any, ...optionalParams: any[]): void {
+    // Hint: the type [T, ...T[]] means a non-empty array
+    debug(...msg: [unknown, ...unknown[]]): void {
         if (!log.enabled) return;
-        // eslint-disable-next-line no-console
-        console.log(message, ...optionalParams);
+        log.write("DEBUG", ...msg);
+        log.output.toString();
     }
 
-    error(message?: any, ...optionalParams: any[]): void {
+    info(...msg: [unknown, ...unknown[]]): void {
+        log.write("INFO", ...msg);
+    }
+
+    warn(...msg: [unknown, ...unknown[]]): void {
         debugger;
-        // eslint-disable-next-line no-console
-        console.error(message, ...optionalParams);
+        log.write("WARN", ...msg);
+    }
+
+    error(...msg: [unknown, ...unknown[]]): void {
+        debugger;
+        log.write("ERROR", ...msg);
+        log.output.show(true);
+    }
+
+    private write(label: string, ...messageParts: unknown[]): void {
+        const message = messageParts.map(log.stringify).join(" ");
+        const dateTime = new Date().toLocaleString();
+        log.output.appendLine(`${label} [${dateTime}]: ${message}`);
+    }
+
+    private stringify(val: unknown): string {
+        if (typeof val === "string") return val;
+        return inspect(val, {
+            colors: false,
+            depth: 6, // heuristic
+        });
     }
 };
 
@@ -46,7 +73,7 @@ export async function sendRequestWithRetry<TParam, TRet>(
             );
         } catch (error) {
             if (delay === null) {
-                log.error("LSP request timed out", { method: reqType.method, param, error });
+                log.warn("LSP request timed out", { method: reqType.method, param, error });
                 throw error;
             }
 
@@ -55,7 +82,7 @@ export async function sendRequestWithRetry<TParam, TRet>(
             }
 
             if (error.code !== lc.ErrorCodes.ContentModified) {
-                log.error("LSP request failed", { method: reqType.method, param, error });
+                log.warn("LSP request failed", { method: reqType.method, param, error });
                 throw error;
             }
 
@@ -87,11 +114,15 @@ export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
 export function isValidExecutable(path: string): boolean {
     log.debug("Checking availability of a binary at", path);
 
+    if (!fs.existsSync(path)) return false;
+
     const res = spawnSync(path, ["--version"], { encoding: 'utf8' });
 
-    log.debug(res, "--version output:", res.output);
+    const isSuccess = res.status === 0;
+    const printOutput = isSuccess ? log.debug : log.warn;
+    printOutput(path, "--version:", res);
 
-    return res.status === 0;
+    return isSuccess;
 }
 
 /** Sets ['when'](https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts) clause contexts */

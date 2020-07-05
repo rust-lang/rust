@@ -59,8 +59,8 @@ async function tryActivate(context: vscode.ExtensionContext) {
             message += "you should close them and reload this window to retry. ";
         }
 
-        message += 'Open "Help > Toggle Developer Tools > Console" to see the logs ';
-        message += '(enable verbose logs with "rust-analyzer.trace.extension")';
+        message += 'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
+        message += 'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
 
         log.error("Bootstrap error", err);
         throw new Error(message);
@@ -214,7 +214,7 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
         );
     }
 
-    log.debug("Using server binary at", path);
+    log.info("Using server binary at", path);
 
     if (!isValidExecutable(path)) {
         throw new Error(`Failed to execute ${path} --version`);

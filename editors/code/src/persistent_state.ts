@@ -4,7 +4,7 @@ import { log } from './util';
 export class PersistentState {
     constructor(private readonly globalState: vscode.Memento) {
         const { lastCheck, releaseId, serverVersion } = this;
-        log.debug("PersistentState: ", { lastCheck, releaseId, serverVersion });
+        log.info("PersistentState:", { lastCheck, releaseId, serverVersion });
     }
 
     /**
