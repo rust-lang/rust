@@ -67,20 +67,20 @@ impl From<ProjectJson> for LinkedProject {
 pub struct LensConfig {
     pub run: bool,
     pub debug: bool,
-    pub impementations: bool,
+    pub implementations: bool,
 }
 
 impl Default for LensConfig {
     fn default() -> Self {
-        Self { run: true, debug: true, impementations: true }
+        Self { run: true, debug: true, implementations: true }
     }
 }
 
 impl LensConfig {
-    pub const NO_LENS: LensConfig = Self { run: false, debug: false, impementations: false };
+    pub const NO_LENS: LensConfig = Self { run: false, debug: false, implementations: false };
 
     pub fn any(&self) -> bool {
-        self.impementations || self.runnable()
+        self.implementations || self.runnable()
     }
 
     pub fn none(&self) -> bool {
@@ -272,7 +272,7 @@ impl Config {
         if lens_enabled {
             set(value, "/lens/run", &mut self.lens.run);
             set(value, "/lens/debug", &mut self.lens.debug);
-            set(value, "/lens/implementations", &mut self.lens.impementations);
+            set(value, "/lens/implementations", &mut self.lens.implementations);
         } else {
             self.lens = LensConfig::NO_LENS;
         }

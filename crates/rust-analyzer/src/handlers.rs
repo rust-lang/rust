@@ -865,7 +865,7 @@ pub(crate) fn handle_code_lens(
         }
     }
 
-    if snap.config.lens.impementations {
+    if snap.config.lens.implementations {
         // Handle impls
         lenses.extend(
             snap.analysis
