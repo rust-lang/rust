@@ -62,7 +62,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.parent_module_from_def_id = |tcx, id| {
         let hir = tcx.hir();
         hir.local_def_id(hir.get_module_parent_node(hir.as_local_hir_id(id)))

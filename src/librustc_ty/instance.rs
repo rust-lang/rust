@@ -243,6 +243,6 @@ fn resolve_associated_item<'tcx>(
     })
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { resolve_instance, ..*providers };
 }

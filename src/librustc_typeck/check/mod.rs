@@ -760,7 +760,7 @@ fn check_impl_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     wfcheck::check_impl_item(tcx, def_id);
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
         typeck_item_bodies,

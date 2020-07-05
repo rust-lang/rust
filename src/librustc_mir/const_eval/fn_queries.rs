@@ -156,7 +156,7 @@ fn const_fn_is_allowed_fn_ptr(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         && tcx.lookup_const_stability(def_id).map(|stab| stab.allow_const_fn_ptr).unwrap_or(false)
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         is_const_fn_raw,
         is_const_impl_raw: |tcx, def_id| is_const_impl_raw(tcx, def_id.expect_local()),

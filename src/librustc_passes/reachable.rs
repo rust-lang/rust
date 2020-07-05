@@ -425,6 +425,6 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet
     tcx.arena.alloc(reachable_context.reachable_symbols)
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers { reachable_set, ..*providers };
 }

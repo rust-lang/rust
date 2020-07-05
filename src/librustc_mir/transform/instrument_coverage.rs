@@ -25,7 +25,7 @@ pub struct InstrumentCoverage;
 
 /// The `query` provider for `CoverageInfo`, requested by `codegen_intrinsic_call()` when
 /// constructing the arguments for `llvm.instrprof.increment`.
-pub(crate) fn provide(providers: &mut Providers<'_>) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.coverageinfo = |tcx, def_id| coverageinfo_from_mir(tcx, def_id);
 }
 

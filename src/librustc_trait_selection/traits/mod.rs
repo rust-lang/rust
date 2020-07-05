@@ -550,7 +550,7 @@ fn type_implements_trait<'tcx>(
     tcx.infer_ctxt().enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     object_safety::provide(providers);
     structural_match::provide(providers);
     *providers = ty::query::Providers {
