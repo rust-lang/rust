@@ -230,6 +230,14 @@ benches! {
         }
     }
 
+    fn is_ascii_slice_libcore(bytes: &mut [u8]) {
+        bytes.is_ascii()
+    }
+
+    fn is_ascii_slice_iter_all(bytes: &mut [u8]) {
+        bytes.iter().all(|b| b.is_ascii())
+    }
+
     @iter
 
     is_ascii,
