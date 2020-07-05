@@ -5,6 +5,7 @@
 #![feature(never_type)]
 
 use std::mem::size_of;
+use std::num::NonZeroU8;
 
 struct t {a: u8, b: i8}
 struct u {a: u8, b: i8, c: u8}
@@ -102,6 +103,15 @@ enum Option2<A, B> {
     None
 }
 
+pub enum CanBeNicheFilledButShouldnt {
+    A(NonZeroU8, u32),
+    B
+}
+pub enum AlwaysTagged {
+    A(u8, u32),
+    B
+}
+
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -145,4 +155,11 @@ pub fn main() {
     assert_eq!(size_of::<Option<Option<(&(), bool)>>>(), size_of::<(bool, &())>());
     assert_eq!(size_of::<Option<Option2<bool, &()>>>(), size_of::<(bool, &())>());
     assert_eq!(size_of::<Option<Option2<&(), bool>>>(), size_of::<(bool, &())>());
+
+    assert_eq!(size_of::<CanBeNicheFilledButShouldnt>(), 8);
+    assert_eq!(size_of::<Option<CanBeNicheFilledButShouldnt>>(), 8);
+    assert_eq!(size_of::<Option<Option<CanBeNicheFilledButShouldnt>>>(), 8);
+    assert_eq!(size_of::<AlwaysTagged>(), 8);
+    assert_eq!(size_of::<Option<AlwaysTagged>>(), 8);
+    assert_eq!(size_of::<Option<Option<AlwaysTagged>>>(), 8);
 }
