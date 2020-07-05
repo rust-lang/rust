@@ -1,0 +1,40 @@
+name: Style check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - master
+
+jobs:
+  style_check:
+    strategy:
+      fail-fast: false
+
+    name: Shellcheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run tests
+        run: |
+          shellcheck --version
+          shellcheck ci/*.sh
+
+      - name: Update nightly
+        run: |
+          rustup update nightly
+
+      - name: rustfmt
+        run: |
+          if rustup component add rustfmt; then
+            cargo fmt --all -- --check
+          fi
+
+      - name: Clippy
+        run: |
+          if rustup component add clippy rustc-dev; then
+              cargo clippy --all
+          fi

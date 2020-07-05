@@ -1,0 +1,31 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+error: path changes to `Abc`
+ --> removal_use/old.rs:1:1
+  |
+1 | pub struct Abc;
+  | ^^^^^^^^^^^^^^^
+  |
+  = warning: removed definition (breaking)
+
+error: path changes to `Bcd`
+ --> removal_use/old.rs:3:1
+  |
+3 | pub trait Bcd {}
+  | ^^^^^^^^^^^^^^^^
+  |
+  = warning: removed definition (breaking)
+
+error: breaking changes in `Def`
+ --> removal_use/new.rs:1:1
+  |
+1 | / pub struct Def<'a> {
+2 | |     pub field1: (),
+3 | |     pub field2: &'a (),
+4 | | }
+  | |_^
+  |
+  = warning: type error: expected struct `old::Abc`, found `()` (breaking)
+  = warning: type error: expected trait object `dyn old::Bcd`, found `()` (breaking)
+
+error: aborting due to 3 previous errors
+

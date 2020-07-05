@@ -1,0 +1,13 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+error: breaking changes in `Abc`
+ --> kind_change/new.rs:1:1
+  |
+1 | / pub enum Abc {
+2 | |
+3 | | }
+  | |_^
+  |
+  = warning: item kind changed (breaking)
+
+error: aborting due to previous error
+

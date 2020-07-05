@@ -1,0 +1,58 @@
+version bump: 1.0.0 -> (technically breaking) -> 1.1.0
+warning: technically breaking changes in `Bcd`
+ --> addition/new.rs:3:1
+  |
+3 | pub struct Bcd;
+  | ^^^^^^^^^^^^^^^
+  |
+  = note: item made public (technically breaking)
+
+warning: technically breaking changes in `b`
+  --> addition/new.rs:9:1
+   |
+9  | / pub mod b {
+10 | |     #[allow(dead_code)]
+11 | |     pub struct Cde;
+12 | | }
+   | |_^
+   |
+   = note: item made public (technically breaking)
+
+warning: technically breaking changes in `d`
+  --> addition/new.rs:19:1
+   |
+19 | / pub mod d {
+20 | |
+21 | | }
+   | |_^
+   |
+   = note: item made public (technically breaking)
+
+warning: path changes to `Abc`
+ --> addition/new.rs:1:1
+  |
+1 | pub struct Abc;
+  | ^^^^^^^^^^^^^^^
+  |
+  = note: added definition (technically breaking)
+
+warning: path changes to `a`
+ --> addition/new.rs:5:1
+  |
+5 | / pub mod a {
+6 | |
+7 | | }
+  | |_^
+  |
+  = note: added definition (technically breaking)
+
+warning: path changes to `Cde`
+  --> addition/new.rs:11:5
+   |
+11 |     pub struct Cde;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: added definition (technically breaking)
+
+warning: 6 warnings emitted
+

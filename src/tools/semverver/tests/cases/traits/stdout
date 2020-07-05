@@ -1,0 +1,160 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+error: breaking changes in `Abc`
+  --> traits/new.rs:1:1
+   |
+1  | / pub trait Abc {
+2  | |     type A;
+3  | |     fn test(&self) -> u8;
+4  | |     fn test3(&self) -> u8;
+...  |
+13 | |     fn test9(&self) -> u8;
+14 | | }
+   | |_^
+   |
+warning: removed item from trait (breaking)
+  --> traits/old.rs:4:5
+   |
+4  |     fn test2(&self) -> u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+warning: removed defaulted item from trait (breaking)
+  --> traits/old.rs:8:5
+   |
+8  | /     fn test5() -> u8 {
+9  | |         0
+10 | |     }
+   | |_____^
+warning: added item to trait (breaking)
+  --> traits/new.rs:4:5
+   |
+4  |     fn test3(&self) -> u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: added defaulted item to trait (technically breaking)
+  --> traits/new.rs:8:5
+   |
+8  | /     fn test6() -> u8 {
+9  | |         0
+10 | |     }
+   | |_____^
+
+error: breaking changes in `test7`
+  --> traits/new.rs:11:5
+   |
+11 |     fn test7() -> u16;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: type error: expected `u8`, found `u16` (breaking)
+
+error: breaking changes in `test8`
+  --> traits/new.rs:12:5
+   |
+12 |     fn test8(_: &Self) -> u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: removed self-argument from method (breaking)
+
+warning: technically breaking changes in `test9`
+  --> traits/new.rs:13:5
+   |
+13 |     fn test9(&self) -> u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: added self-argument to method (technically breaking)
+
+error: breaking changes in `Bcd`
+  --> traits/new.rs:16:1
+   |
+16 | pub trait Bcd<A> {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: type parameter added (breaking)
+
+error: breaking changes in `Cde`
+  --> traits/new.rs:18:1
+   |
+18 | pub trait Cde {}
+   | ^^^^^^^^^^^^^^^^
+   |
+   = warning: type parameter removed (breaking)
+
+error: breaking changes in `Def`
+  --> traits/new.rs:20:1
+   |
+20 | / pub trait Def<A, B> {
+21 | |     // The method is not broken - the impls are, but calls should work as expected, as
+22 | |     // long as a proper impl is presented. Maybe this will need some more careful handling.
+23 | |     fn def(&self, a: B) -> bool;
+24 | | }
+   | |_^
+   |
+   = warning: type parameter added (breaking)
+
+error: breaking changes in `Efg`
+  --> traits/new.rs:26:1
+   |
+26 | / pub trait Efg<A> {
+27 | |     fn efg(&self, a: A) -> bool;
+28 | | }
+   | |_^
+   |
+   = warning: type parameter removed (breaking)
+
+error: breaking changes in `Ghi`
+  --> traits/new.rs:36:1
+   |
+36 | pub trait Ghi { }
+   | ^^^^^^^^^^^^^^^^^
+   |
+warning: removed item from trait (breaking)
+  --> traits/old.rs:35:5
+   |
+35 |     type A;
+   |     ^^^^^^^
+
+error: breaking changes in `Hij`
+  --> traits/new.rs:38:1
+   |
+38 | / pub trait Hij {
+39 | |     type A;
+40 | | }
+   | |_^
+   |
+warning: added item to trait (breaking)
+  --> traits/new.rs:39:5
+   |
+39 |     type A;
+   |     ^^^^^^^
+
+error: breaking changes in `Klm`
+  --> traits/new.rs:42:1
+   |
+42 | pub trait Klm : Clone { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: added bound: `Self: std::clone::Clone` (breaking)
+
+error: breaking changes in `Nop`
+  --> traits/new.rs:44:1
+   |
+44 | pub trait Nop { }
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = warning: removed bound on trait definition: `Self: std::clone::Clone` (breaking)
+
+error: breaking changes in `Qrs`
+  --> traits/new.rs:46:1
+   |
+46 | pub trait Qrs<A: Clone> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: added bound: `A: std::clone::Clone` (breaking)
+
+error: breaking changes in `Tuv`
+  --> traits/new.rs:48:1
+   |
+48 | pub trait Tuv<A> { }
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: removed bound on trait definition: `A: std::clone::Clone` (breaking)
+
+error: aborting due to 13 previous errors; 1 warning emitted
+

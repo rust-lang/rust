@@ -1,0 +1,57 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+error: path changes to `Abc`
+ --> removal/old.rs:1:1
+  |
+1 | pub struct Abc;
+  | ^^^^^^^^^^^^^^^
+  |
+  = warning: removed definition (breaking)
+
+error: breaking changes in `Bcd`
+ --> removal/new.rs:2:1
+  |
+2 | struct Bcd;
+  | ^^^^^^^^^^^
+  |
+  = warning: item made private (breaking)
+
+error: path changes to `a`
+ --> removal/old.rs:5:1
+  |
+5 | / pub mod a {
+6 | |
+7 | | }
+  | |_^
+  |
+  = warning: removed definition (breaking)
+
+error: breaking changes in `b`
+ --> removal/new.rs:4:1
+  |
+4 | / mod b {
+5 | |
+6 | | }
+  | |_^
+  |
+  = warning: item made private (breaking)
+
+error: path changes to `Cde`
+  --> removal/old.rs:11:5
+   |
+11 |     pub struct Cde;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = warning: removed definition (breaking)
+
+error: breaking changes in `d`
+  --> removal/new.rs:12:1
+   |
+12 | / mod d {
+13 | |
+14 | | }
+   | |_^
+   |
+   = warning: item made private (breaking)
+
+error: aborting due to 6 previous errors
+

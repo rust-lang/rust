@@ -1,0 +1,59 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+error: breaking changes in `ghi`
+  --> inherent_impls/old.rs:14:5
+   |
+14 | /     pub fn ghi<A>(&self, a: A) -> A {
+15 | |         a
+16 | |     }
+   | |_____^
+   |
+   = warning: type error: expected type parameter `A`, found `u8` (breaking)
+
+error: breaking changes in `def`
+  --> inherent_impls/old.rs:26:5
+   |
+26 | /     pub fn def(&self) -> u8 {
+27 | |         0
+28 | |     }
+   | |_____^
+   |
+   = warning: removed item in inherent impl (breaking)
+
+error: breaking changes in `def`
+  --> inherent_impls/old.rs:33:5
+   |
+33 | /     pub fn def(&self) -> u8 {
+34 | |         0
+35 | |     }
+   | |_____^
+   |
+   = warning: type error: expected `u8`, found `u16` (breaking)
+
+error: breaking changes in `ghi`
+  --> inherent_impls/old.rs:37:5
+   |
+37 |     pub fn ghi() { }
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = warning: removed item in inherent impl (breaking)
+
+warning: technically breaking changes in `abc`
+  --> inherent_impls/new.rs:30:5
+   |
+30 |     pub fn abc() { }
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `def`
+  --> inherent_impls/new.rs:37:5
+   |
+37 | /     pub fn def(&self) -> u8 {
+38 | |         0
+39 | |     }
+   | |_____^
+   |
+   = note: added item in inherent impl (technically breaking)
+
+error: aborting due to 4 previous errors; 2 warnings emitted
+

@@ -1,0 +1,60 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+error: breaking changes in `A`
+ --> ty_alias/new.rs:3:1
+  |
+3 | pub type A = u16;
+  | ^^^^^^^^^^^^^^^^^
+  |
+  = warning: type error: expected `u8`, found `u16` (breaking)
+
+error: breaking changes in `B`
+ --> ty_alias/new.rs:4:1
+  |
+4 | pub type B<'a, 'b : 'a, T> = (&'a T, &'b T);
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: region parameter added (breaking)
+
+error: breaking changes in `C`
+ --> ty_alias/new.rs:5:1
+  |
+5 | pub type C<T> = T;
+  | ^^^^^^^^^^^^^^^^^^
+  |
+  = warning: region parameter removed (breaking)
+
+error: breaking changes in `D`
+ --> ty_alias/new.rs:6:1
+  |
+6 | pub type D<'a, T, U=Box<T>> = (&'a T, U);
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: defaulted type parameter added (non-breaking)
+  = warning: type error: expected `&T`, found tuple (breaking)
+
+error: breaking changes in `E`
+ --> ty_alias/new.rs:7:1
+  |
+7 | pub type E<'a, T, U> = (&'a T, U);
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: type parameter added (breaking)
+
+error: breaking changes in `F`
+ --> ty_alias/new.rs:8:1
+  |
+8 | pub type F<'a> = &'a u8;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: defaulted type parameter removed (breaking)
+
+error: breaking changes in `G`
+ --> ty_alias/new.rs:9:1
+  |
+9 | pub type G<'a> = &'a u8;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: type parameter removed (breaking)
+
+error: aborting due to 7 previous errors
+

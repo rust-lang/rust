@@ -1,0 +1,43 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+error: path changes to `qux1`
+  --> macros/old.rs:15:1
+   |
+15 | pub macro qux1() { Item }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: removed definition (breaking)
+
+error: path changes to `qux2`
+  --> macros/old.rs:18:1
+   |
+18 | / macro_rules! qux2 {
+19 | |     () => {
+20 | |         Item
+21 | |     }
+22 | | }
+   | |_^
+   |
+   = warning: removed definition (breaking)
+
+warning: path changes to `quux1`
+  --> macros/new.rs:15:1
+   |
+15 | pub macro quux1() { Item }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: added definition (technically breaking)
+
+warning: path changes to `quux2`
+  --> macros/new.rs:18:1
+   |
+18 | / macro_rules! quux2 {
+19 | |     () => {
+20 | |         Item
+21 | |     }
+22 | | }
+   | |_^
+   |
+   = note: added definition (technically breaking)
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+

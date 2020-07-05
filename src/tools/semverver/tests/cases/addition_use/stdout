@@ -1,0 +1,31 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+error: breaking changes in `Def`
+ --> addition_use/new.rs:5:1
+  |
+5 | / pub struct Def<'a> {
+6 | |     pub field1: Abc,
+7 | |     pub field2: &'a dyn Bcd,
+8 | | }
+  | |_^
+  |
+  = warning: type error: expected `()`, found struct `new::Abc` (breaking)
+  = warning: type error: expected `()`, found trait object `dyn new::Bcd` (breaking)
+
+warning: path changes to `Abc`
+ --> addition_use/new.rs:1:1
+  |
+1 | pub struct Abc;
+  | ^^^^^^^^^^^^^^^
+  |
+  = note: added definition (technically breaking)
+
+warning: path changes to `Bcd`
+ --> addition_use/new.rs:3:1
+  |
+3 | pub trait Bcd {}
+  | ^^^^^^^^^^^^^^^^
+  |
+  = note: added definition (technically breaking)
+
+error: aborting due to previous error; 2 warnings emitted
+

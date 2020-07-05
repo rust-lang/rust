@@ -1,0 +1,83 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: technically breaking changes in `Def`
+ --> structs/new.rs:6:1
+  |
+6 | / pub struct Def<A=u8> {
+7 | |     pub field: A,
+8 | | }
+  | |_^
+  |
+  = note: defaulted type parameter added (non-breaking)
+note: item made public (technically breaking)
+ --> structs/new.rs:7:5
+  |
+7 |     pub field: A,
+  |     ^^^^^^^^^^^^
+
+error: breaking changes in `Def2`
+  --> structs/new.rs:10:1
+   |
+10 | / pub struct Def2<A=u16> {
+11 | |     pub field: A,
+12 | | }
+   | |_^
+   |
+   = note: defaulted type parameter added (non-breaking)
+   = warning: type error: expected `u8`, found `u16` (breaking)
+
+error: breaking changes in `Efg`
+  --> structs/new.rs:14:1
+   |
+14 | / pub struct Efg {
+15 | |     pub field: u16,
+16 | | }
+   | |_^
+   |
+   = warning: type error: expected `u8`, found `u16` (breaking)
+
+warning: technically breaking changes in `Fgh`
+  --> structs/new.rs:18:1
+   |
+18 | / pub struct Fgh {
+19 | |     pub field: u8,
+20 | | }
+   | |_^
+   |
+note: item made public (technically breaking)
+  --> structs/new.rs:19:5
+   |
+19 |     pub field: u8,
+   |     ^^^^^^^^^^^^^
+
+error: breaking changes in `Ghi`
+  --> structs/new.rs:22:1
+   |
+22 | / pub struct Ghi {
+23 | |     field: u8,
+24 | | }
+   | |_^
+   |
+warning: item made private (breaking)
+  --> structs/new.rs:23:5
+   |
+23 |     field: u8,
+   |     ^^^^^^^^^
+
+error: breaking changes in `Hij`
+  --> structs/new.rs:26:1
+   |
+26 | / pub struct Hij {
+27 | |     field: u8,
+28 | | }
+   | |_^
+   |
+warning: tuple struct with no public fields changed to a regular struct (breaking)
+  --> structs/new.rs:26:1
+   |
+26 | / pub struct Hij {
+27 | |     field: u8,
+28 | | }
+   | |_^
+
+error: aborting due to 4 previous errors; 2 warnings emitted
+
