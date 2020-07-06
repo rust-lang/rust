@@ -649,14 +649,16 @@ impl Attributes {
                         if let Some(ref fragment) = *fragment {
                             let cache = cache();
                             let url = match cache.extern_locations.get(krate) {
-                                Some(&(_, _, ExternalLocation::Local)) => {
+                                Some(&(ref krate_name, _, ExternalLocation::Local))
+                                    if krate_name == "core" =>
+                                {
                                     let depth = CURRENT_DEPTH.with(|l| l.get());
                                     "../".repeat(depth)
                                 }
                                 Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
-                                Some(&(_, _, ExternalLocation::Unknown)) | None => {
-                                    String::from("https://doc.rust-lang.org/nightly")
-                                }
+                                Some(&(_, _, ExternalLocation::Local))
+                                | Some(&(_, _, ExternalLocation::Unknown))
+                                | None => String::from("https://doc.rust-lang.org/nightly"),
                             };
                             // This is a primitive so the url is done "by hand".
                             let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
