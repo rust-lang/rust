@@ -1490,9 +1490,9 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
 name = "salsa"
-version = "0.14.3"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cd4f099cf7f1d6147aeb313d3fb093d2be1bf71a9fac0122d171c7593206af3"
+checksum = "d4ca1c656054666a642affbbc86ab95ed7541125a89f032483d34ee56c0f5390"
 dependencies = [
  "crossbeam-utils",
  "indexmap",
