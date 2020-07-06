@@ -340,29 +340,86 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 /// Make headings links with anchor IDs and build up TOC.
 struct LinkReplacer<'a, 'b, I: Iterator<Item = Event<'a>>> {
     inner: I,
-    links: &'b [RenderedLink],
+    links: &'a [RenderedLink],
+    shortcut_link: Option<&'b RenderedLink>,
 }
 
-impl<'a, 'b, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, 'b, I> {
-    fn new(iter: I, links: &'b [RenderedLink]) -> Self {
-        LinkReplacer { inner: iter, links }
+impl<'a, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, '_, I> {
+    fn new(iter: I, links: &'a [RenderedLink]) -> Self {
+        LinkReplacer { inner: iter, links, shortcut_link: None }
     }
 }
 
-impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I> {
+impl<'a: 'b, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I> {
     type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let event = self.inner.next();
-        if let Some(Event::Start(Tag::Link(kind, dest, text))) = event {
-            if let Some(link) = self.links.iter().find(|link| link.original_text == *dest) {
-                Some(Event::Start(Tag::Link(kind, link.href.clone().into(), text)))
-            } else {
-                Some(Event::Start(Tag::Link(kind, dest, text)))
+        let mut event = self.inner.next();
+
+        // Remove disambiguators from shortcut links (`[fn@f]`)
+        match &mut event {
+            Some(Event::Start(Tag::Link(
+                pulldown_cmark::LinkType::ShortcutUnknown,
+                dest,
+                title,
+            ))) => {
+                debug!("saw start of shortcut link to {} with title {}", dest, title);
+                let link = if let Some(link) =
+                    self.links.iter().find(|&link| *link.original_text == **dest)
+                {
+                    // Not sure why this is necessary - maybe the broken_link_callback doesn't always work?
+                    *dest = CowStr::Borrowed(link.href.as_ref());
+                    Some(link)
+                } else {
+                    self.links.iter().find(|&link| *link.href == **dest)
+                };
+                if let Some(link) = link {
+                    trace!("it matched");
+                    assert!(self.shortcut_link.is_none(), "shortcut links cannot be nested");
+                    self.shortcut_link = Some(link);
+                }
             }
-        } else {
-            event
+            Some(Event::End(Tag::Link(pulldown_cmark::LinkType::ShortcutUnknown, dest, _))) => {
+                debug!("saw end of shortcut link to {}", dest);
+                if let Some(_link) = self.links.iter().find(|&link| *link.href == **dest) {
+                    assert!(self.shortcut_link.is_some(), "saw closing link without opening tag");
+                    self.shortcut_link = None;
+                }
+            }
+            // Handle backticks in inline code blocks
+            Some(Event::Code(text)) => {
+                trace!("saw code {}", text);
+                if let Some(link) = self.shortcut_link {
+                    trace!("original text was {}", link.original_text);
+                    if **text == link.original_text[1..link.original_text.len() - 1] {
+                        debug!("replacing {} with {}", text, link.new_text);
+                        *text = link.new_text.clone().into();
+                    }
+                }
+            }
+            // Replace plain text in links
+            Some(Event::Text(text)) => {
+                trace!("saw text {}", text);
+                if let Some(link) = self.shortcut_link {
+                    trace!("original text was {}", link.original_text);
+                    if **text == *link.original_text {
+                        debug!("replacing {} with {}", text, link.new_text);
+                        *text = link.new_text.clone().into();
+                    }
+                }
+            }
+            Some(Event::Start(Tag::Link(_, dest, _))) => {
+                if let Some(link) = self.links.iter().find(|&link| *link.original_text == **dest) {
+                    // Not sure why this is necessary - maybe the broken_link_callback doesn't always work?
+                    *dest = CowStr::Borrowed(link.href.as_ref());
+                }
+            }
+            // Anything else couldn't have been a valid Rust path
+            _ => {}
         }
+
+        // Yield the modified event
+        event
     }
 }
 
@@ -857,7 +914,7 @@ impl Markdown<'_> {
         }
         let replacer = |_: &str, s: &str| {
             if let Some(link) = links.iter().find(|link| &*link.original_text == s) {
-                Some((link.original_text.clone(), link.href.clone()))
+                Some((link.href.clone(), link.new_text.clone()))
             } else {
                 None
             }
@@ -934,8 +991,8 @@ impl MarkdownSummaryLine<'_> {
         }
 
         let replacer = |_: &str, s: &str| {
-            if let Some(rendered_link) = links.iter().find(|link| &*link.original_text == s) {
-                Some((rendered_link.original_text.clone(), rendered_link.href.clone()))
+            if let Some(link) = links.iter().find(|link| &*link.original_text == s) {
+                Some((link.href.clone(), link.new_text.clone()))
             } else {
                 None
             }

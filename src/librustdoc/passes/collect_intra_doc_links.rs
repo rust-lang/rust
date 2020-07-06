@@ -685,6 +685,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 continue;
             }
 
+            //let had_backticks = ori_link.contains("`");
             let link = ori_link.replace("`", "");
             let parts = link.split('#').collect::<Vec<_>>();
             let (link, extra_fragment) = if parts.len() > 2 {
@@ -700,6 +701,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 (parts[0], None)
             };
             let resolved_self;
+            let link_text;
             let mut path_str;
             let disambiguator;
             let (mut res, mut fragment) = {
@@ -715,6 +717,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ch == ':' || ch == '_')) {
                     continue;
                 }
+
+                // We stripped ` characters for `path_str`.
+                // The original link might have had multiple pairs of backticks,
+                // but we don't handle this case.
+                //link_text = if had_backticks { format!("`{}`", path_str) } else { path_str.to_owned() };
+                link_text = path_str.to_owned();
 
                 // In order to correctly resolve intra-doc-links we need to
                 // pick a base AST node to work from.  If the documentation for
@@ -904,7 +912,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             if let Res::PrimTy(_) = res {
                 match disambiguator {
                     Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
-                        item.attrs.links.push(ItemLink { link: ori_link, did: None, fragment });
+                        item.attrs.links.push(ItemLink {
+                            link: ori_link,
+                            link_text: path_str.to_owned(),
+                            did: None,
+                            fragment,
+                        });
                     }
                     Some(other) => {
                         report_mismatch(other, Disambiguator::Primitive);
@@ -955,7 +968,12 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                 }
                 let id = register_res(cx, res);
-                item.attrs.links.push(ItemLink { link: ori_link, did: Some(id), fragment });
+                item.attrs.links.push(ItemLink {
+                    link: ori_link,
+                    link_text,
+                    did: Some(id),
+                    fragment,
+                });
             }
         }
 

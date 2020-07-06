@@ -436,6 +436,11 @@ pub struct Attributes {
 pub struct ItemLink {
     /// The original link written in the markdown
     pub(crate) link: String,
+    /// The link text displayed in the HTML.
+    ///
+    /// This may not be the same as `link` if there was a disambiguator
+    /// in an intra-doc link (e.g. [`fn@f`])
+    pub(crate) link_text: String,
     pub(crate) did: Option<DefId>,
     /// The url fragment to append to the link
     pub(crate) fragment: Option<String>,
@@ -444,6 +449,8 @@ pub struct ItemLink {
 pub struct RenderedLink {
     /// The text the link was original written as
     pub(crate) original_text: String,
+    /// The text to display in the HTML
+    pub(crate) new_text: String,
     /// The URL to put in the `href`
     pub(crate) href: String,
 }
@@ -630,7 +637,7 @@ impl Attributes {
 
         self.links
             .iter()
-            .filter_map(|ItemLink { link: s, did, fragment }| {
+            .filter_map(|ItemLink { link: s, link_text, did, fragment }| {
                 match *did {
                     Some(did) => {
                         if let Some((mut href, ..)) = href(did) {
@@ -638,7 +645,11 @@ impl Attributes {
                                 href.push_str("#");
                                 href.push_str(fragment);
                             }
-                            Some(RenderedLink { original_text: s.clone(), href })
+                            Some(RenderedLink {
+                                original_text: s.clone(),
+                                new_text: link_text.clone(),
+                                href,
+                            })
                         } else {
                             None
                         }
@@ -660,6 +671,7 @@ impl Attributes {
                             let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
                             Some(RenderedLink {
                                 original_text: s.clone(),
+                                new_text: link_text.clone(),
                                 href: format!(
                                     "{}{}std/primitive.{}.html{}",
                                     url,
