@@ -425,8 +425,20 @@ pub struct Attributes {
     pub cfg: Option<Arc<Cfg>>,
     pub span: Option<rustc_span::Span>,
     /// map from Rust paths to resolved defs and potential URL fragments
-    pub links: Vec<(String, Option<DefId>, Option<String>)>,
+    pub links: Vec<ItemLink>,
     pub inner_docs: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+/// A link that has not yet been rendered.
+///
+/// This link will be turned into a rendered link by [`Attributes::links`]
+pub struct ItemLink {
+    /// The original link written in the markdown
+    pub(crate) link: String,
+    pub(crate) did: Option<DefId>,
+    /// The url fragment to append to the link
+    pub(crate) fragment: Option<String>,
 }
 
 impl Attributes {
@@ -611,8 +623,8 @@ impl Attributes {
 
         self.links
             .iter()
-            .filter_map(|&(ref s, did, ref fragment)| {
-                match did {
+            .filter_map(|ItemLink { link: s, did, fragment }| {
+                match *did {
                     Some(did) => {
                         if let Some((mut href, ..)) = href(did) {
                             if let Some(ref fragment) = *fragment {

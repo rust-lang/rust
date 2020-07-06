@@ -904,7 +904,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             if let Res::PrimTy(_) = res {
                 match disambiguator {
                     Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
-                        item.attrs.links.push((ori_link, None, fragment))
+                        item.attrs.links.push(ItemLink { link: ori_link, did: None, fragment });
                     }
                     Some(other) => {
                         report_mismatch(other, Disambiguator::Primitive);
@@ -955,7 +955,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                 }
                 let id = register_res(cx, res);
-                item.attrs.links.push((ori_link, Some(id), fragment));
+                item.attrs.links.push(ItemLink { link: ori_link, did: Some(id), fragment });
             }
         }
 
