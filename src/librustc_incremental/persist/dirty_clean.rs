@@ -64,8 +64,7 @@ const BASE_IMPL: &[&str] =
 
 /// DepNodes for mir_built/Optimized, which is relevant in "executable"
 /// code, i.e., functions+methods
-const BASE_MIR: &[&str] =
-    &[label_strs::optimized_mir, label_strs::promoted_mir, label_strs::mir_built];
+const BASE_MIR: &[&str] = &[label_strs::optimized_mir, label_strs::promoted_mir];
 
 /// Struct, Enum and Union DepNodes
 ///
@@ -376,7 +375,7 @@ impl DirtyCleanVisitor<'tcx> {
         let def_path_hash = self.tcx.def_path_hash(def_id);
         labels.iter().map(move |label| match DepNode::from_label_string(label, def_path_hash) {
             Ok(dep_node) => dep_node,
-            Err(()) => unreachable!(),
+            Err(()) => unreachable!("label: {}", label),
         })
     }
 
