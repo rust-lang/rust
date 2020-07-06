@@ -226,9 +226,9 @@ pub fn const_eval_validated_provider<'tcx>(
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::ConstEvalResult<'tcx> {
     // see comment in const_eval_raw_provider for what we're doing here
-    if key.param_env.reveal == Reveal::All {
+    if key.param_env.reveal() == Reveal::All {
         let mut key = key;
-        key.param_env.reveal = Reveal::UserFacing;
+        key.param_env = key.param_env.with_user_facing();
         match tcx.const_eval_validated(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
@@ -267,9 +267,9 @@ pub fn const_eval_raw_provider<'tcx>(
     // information being available.
 
     // In case we fail in the `UserFacing` variant, we just do the real computation.
-    if key.param_env.reveal == Reveal::All {
+    if key.param_env.reveal() == Reveal::All {
         let mut key = key;
-        key.param_env.reveal = Reveal::UserFacing;
+        key.param_env = key.param_env.with_user_facing();
         match tcx.const_eval_raw(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
@@ -326,7 +326,7 @@ pub fn const_eval_raw_provider<'tcx>(
                 // this is `Reveal::UserFacing`, then it's expected that we could get a
                 // `TooGeneric` error. When we fall back to `Reveal::All`, then it will either
                 // succeed or we'll report this error then.
-                if key.param_env.reveal == Reveal::All {
+                if key.param_env.reveal() == Reveal::All {
                     tcx.sess.delay_span_bug(
                         err.span,
                         &format!("static eval failure did not emit an error: {:#?}", v),

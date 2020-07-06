@@ -231,7 +231,10 @@ fn fulfill_implication<'a, 'tcx>(
                 debug!(
                     "fulfill_implication: for impls on {:?} and {:?}, \
                      could not fulfill: {:?} given {:?}",
-                    source_trait_ref, target_trait_ref, errors, param_env.caller_bounds
+                    source_trait_ref,
+                    target_trait_ref,
+                    errors,
+                    param_env.caller_bounds()
                 );
                 Err(())
             }

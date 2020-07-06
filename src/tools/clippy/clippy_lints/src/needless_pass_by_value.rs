@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
 
-        let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds.iter())
+        let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds().iter())
             .filter(|p| !p.is_global())
             .filter_map(|obligation| {
                 if let ty::PredicateKind::Trait(poly_trait_ref, _) = obligation.predicate.kind() {

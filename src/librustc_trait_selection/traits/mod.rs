@@ -297,7 +297,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
 
     let mut predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.into_iter())
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds().into_iter())
             .map(|obligation| obligation.predicate)
             .collect();
 
@@ -305,7 +305,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     let elaborated_env = ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
-        unnormalized_env.reveal,
+        unnormalized_env.reveal(),
         unnormalized_env.def_id,
     );
 
@@ -361,7 +361,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let outlives_env: Vec<_> =
         non_outlives_predicates.iter().chain(&outlives_predicates).cloned().collect();
     let outlives_env =
-        ty::ParamEnv::new(tcx.intern_predicates(&outlives_env), unnormalized_env.reveal, None);
+        ty::ParamEnv::new(tcx.intern_predicates(&outlives_env), unnormalized_env.reveal(), None);
     let outlives_predicates = match do_normalize_predicates(
         tcx,
         region_context,
@@ -383,7 +383,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
     ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
-        unnormalized_env.reveal,
+        unnormalized_env.reveal(),
         unnormalized_env.def_id,
     )
 }

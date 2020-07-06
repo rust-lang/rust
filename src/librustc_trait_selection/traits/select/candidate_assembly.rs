@@ -186,7 +186,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let all_bounds = stack
             .obligation
             .param_env
-            .caller_bounds
+            .caller_bounds()
             .iter()
             .filter_map(|o| o.to_opt_poly_trait_ref());
 

@@ -218,7 +218,7 @@ fn compare_predicate_entailment<'tcx>(
         let inh = Inherited::new(infcx, impl_m.def_id.expect_local());
         let infcx = &inh.infcx;
 
-        debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds);
+        debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds());
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
@@ -1141,7 +1141,7 @@ fn compare_type_predicate_entailment<'tcx>(
         let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
         let infcx = &inh.infcx;
 
-        debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds);
+        debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds());
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 

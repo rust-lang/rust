@@ -104,7 +104,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // (*)
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
-                match self.param_env.reveal {
+                match self.param_env.reveal() {
                     Reveal::UserFacing => ty,
 
                     Reveal::All => {

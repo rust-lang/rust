@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 pub use self::fold::{TypeFoldable, TypeVisitor};
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
@@ -45,6 +47,7 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::ops::Range;
 use std::ptr;
 
@@ -1571,22 +1574,91 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TypeFoldable)]
+#[derive(Copy, Clone)]
 pub struct ParamEnv<'tcx> {
+    // We pack the caller_bounds List pointer and a Reveal enum into this usize.
+    // Specifically, the low bit represents Reveal, with 0 meaning `UserFacing`
+    // and 1 meaning `All`. The rest is the pointer.
+    //
+    // This relies on the List<ty::Predicate<'tcx>> type having at least 2-byte
+    // alignment. Lists start with a usize and are repr(C) so this should be
+    // fine; there is a debug_assert in the constructor as well.
+    //
+    // Note that the choice of 0 for UserFacing is intentional -- since it is the
+    // first variant in Reveal this means that joining the pointer is a simple `or`.
+    packed_data: usize,
+
     /// `Obligation`s that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into `Obligation`s, and elaborated and normalized.
-    pub caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
+    ///
+    /// Note: This is packed into the `packed_data` usize above, use the
+    /// `caller_bounds()` method to access it.
+    caller_bounds: PhantomData<&'tcx List<ty::Predicate<'tcx>>>,
 
     /// Typically, this is `Reveal::UserFacing`, but during codegen we
-    /// want `Reveal::All` -- note that this is always paired with an
-    /// empty environment. To get that, use `ParamEnv::reveal()`.
-    pub reveal: traits::Reveal,
+    /// want `Reveal::All`.
+    ///
+    /// Note: This is packed into the caller_bounds usize above, use the reveal()
+    /// method to access it.
+    reveal: PhantomData<traits::Reveal>,
 
     /// If this `ParamEnv` comes from a call to `tcx.param_env(def_id)`,
     /// register that `def_id` (useful for transitioning to the chalk trait
     /// solver).
     pub def_id: Option<DefId>,
+}
+
+impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ParamEnv")
+            .field("caller_bounds", &self.caller_bounds())
+            .field("reveal", &self.reveal())
+            .field("def_id", &self.def_id)
+            .finish()
+    }
+}
+
+impl<'tcx> Hash for ParamEnv<'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // List hashes as the raw pointer, so we can skip splitting into the
+        // pointer and the enum.
+        self.packed_data.hash(state);
+        self.def_id.hash(state);
+    }
+}
+
+impl<'tcx> PartialEq for ParamEnv<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        self.caller_bounds() == other.caller_bounds()
+            && self.reveal() == other.reveal()
+            && self.def_id == other.def_id
+    }
+}
+impl<'tcx> Eq for ParamEnv<'tcx> {}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        self.caller_bounds().hash_stable(hcx, hasher);
+        self.reveal().hash_stable(hcx, hasher);
+        self.def_id.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
+    fn super_fold_with<F: ty::fold::TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        ParamEnv::new(
+            self.caller_bounds().fold_with(folder),
+            self.reveal().fold_with(folder),
+            self.def_id.fold_with(folder),
+        )
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.caller_bounds().visit_with(visitor)
+            || self.reveal().visit_with(visitor)
+            || self.def_id.visit_with(visitor)
+    }
 }
 
 impl<'tcx> ParamEnv<'tcx> {
@@ -1597,6 +1669,17 @@ impl<'tcx> ParamEnv<'tcx> {
     #[inline]
     pub fn empty() -> Self {
         Self::new(List::empty(), Reveal::UserFacing, None)
+    }
+
+    #[inline]
+    pub fn caller_bounds(self) -> &'tcx List<ty::Predicate<'tcx>> {
+        // mask out bottom bit
+        unsafe { &*((self.packed_data & (!1)) as *const _) }
+    }
+
+    #[inline]
+    pub fn reveal(self) -> traits::Reveal {
+        if self.packed_data & 1 == 0 { traits::Reveal::UserFacing } else { traits::Reveal::All }
     }
 
     /// Construct a trait environment with no where-clauses in scope
@@ -1618,7 +1701,25 @@ impl<'tcx> ParamEnv<'tcx> {
         reveal: Reveal,
         def_id: Option<DefId>,
     ) -> Self {
-        ty::ParamEnv { caller_bounds, reveal, def_id }
+        let packed_data = caller_bounds as *const _ as usize;
+        // Check that we can pack the reveal data into the pointer.
+        debug_assert!(packed_data & 1 == 0);
+        ty::ParamEnv {
+            packed_data: packed_data
+                | match reveal {
+                    Reveal::UserFacing => 0,
+                    Reveal::All => 1,
+                },
+            caller_bounds: PhantomData,
+            reveal: PhantomData,
+            def_id,
+        }
+    }
+
+    pub fn with_user_facing(mut self) -> Self {
+        // clear bottom bit
+        self.packed_data &= !1;
+        self
     }
 
     /// Returns a new parameter environment with the same clauses, but
@@ -1627,13 +1728,14 @@ impl<'tcx> ParamEnv<'tcx> {
     /// the desired behavior during codegen and certain other special
     /// contexts; normally though we want to use `Reveal::UserFacing`,
     /// which is the default.
-    pub fn with_reveal_all(self) -> Self {
-        ty::ParamEnv { reveal: Reveal::All, ..self }
+    pub fn with_reveal_all(mut self) -> Self {
+        self.packed_data |= 1;
+        self
     }
 
     /// Returns this same environment but with no caller bounds.
     pub fn without_caller_bounds(self) -> Self {
-        ty::ParamEnv { caller_bounds: List::empty(), ..self }
+        Self::new(List::empty(), self.reveal(), self.def_id)
     }
 
     /// Creates a suitable environment in which to perform trait
@@ -1649,7 +1751,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// satisfiable. We generally want to behave as if they were true,
     /// although the surrounding function is never reachable.
     pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
-        match self.reveal {
+        match self.reveal() {
             Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
 
             Reveal::All => {

@@ -221,7 +221,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // dubious for projections, but it will work for simple cases
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
-        let c_b = self.param_env.caller_bounds;
+        let c_b = self.param_env.caller_bounds();
         let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b.into_iter());
 
         // Next, collect regions we scraped from the well-formedness

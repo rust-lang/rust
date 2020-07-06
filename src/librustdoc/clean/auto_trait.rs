@@ -459,9 +459,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let mut replacer = RegionReplacer { vid_to_region: &vid_to_region, tcx };
 
         let orig_bounds: FxHashSet<_> =
-            self.cx.tcx.param_env(param_env_def_id).caller_bounds.iter().collect();
+            self.cx.tcx.param_env(param_env_def_id).caller_bounds().iter().collect();
         let clean_where_predicates = param_env
-            .caller_bounds
+            .caller_bounds()
             .iter()
             .filter(|p| {
                 !orig_bounds.contains(p)
