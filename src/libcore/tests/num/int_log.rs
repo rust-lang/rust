@@ -16,12 +16,13 @@ fn checked_log() {
         assert_eq!(i.checked_log(4), None);
     }
     for i in 1..=i16::MAX {
-        assert_eq!(i.checked_log(13), Some((i as f32).checked_log(13.0) as i16));
+        assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as i16));
     }
     for i in 1..=u16::MAX {
-        assert_eq!(i.checked_log(13), Some((i as f32).checked_log(13.0) as u16));
+        assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as u16));
     }
 }
+
 #[test]
 fn checked_log2() {
     assert_eq!(5u32.checked_log2(), Some(2));
@@ -30,35 +31,34 @@ fn checked_log2() {
     assert_eq!((-55i16).checked_log2(), None);
 
     for i in 1..=u8::MAX {
-        assert_eq!(i.checked_log2(), Some((i as f32).checked_log2() as u8));
+        assert_eq!(i.checked_log2(), Some((i as f32).log2() as u8));
     }
     for i in 1..=u16::MAX {
-        assert_eq!(i.checked_log2(), Some((i as f32).checked_log2() as u16));
+        assert_eq!(i.checked_log2(), Some((i as f32).log2() as u16));
     }
     for i in i8::MIN..=0 {
         assert_eq!(i.checked_log2(), None);
     }
     for i in 1..=i8::MAX {
-        assert_eq!(i.checked_log2(), Some((i as f32).checked_log2() as i8));
+        assert_eq!(i.checked_log2(), Some((i as f32).log2() as i8));
     }
     for i in i16::MIN..=0 {
         assert_eq!(i.checked_log2(), None);
     }
     for i in 1..=i16::MAX {
-        assert_eq!(i.checked_log2(), Some((i as f32).checked_log2() as i16));
+        assert_eq!(i.checked_log2(), Some((i as f32).log2() as i16));
     }
 }
 
 #[test]
 fn checked_log10() {
-    // checked_log10()
     for i in i16::MIN..=0 {
         assert_eq!(i.checked_log10(), None);
     }
     for i in 1..=i16::MAX {
-        assert_eq!(i.checked_log10(), Some((i as f32).checked_log10() as i16));
+        assert_eq!(i.checked_log10(), Some((i as f32).log10() as i16));
     }
     for i in 1..=u16::MAX {
-        assert_eq!(i.checked_log10(), Some((i as f32).checked_log10() as u16));
+        assert_eq!(i.checked_log10(), Some((i as f32).log10() as u16));
     }
 }

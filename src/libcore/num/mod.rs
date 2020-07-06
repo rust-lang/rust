@@ -2163,7 +2163,7 @@ assert_eq!((-a).rem_euclid(-b), 1);
         doc_comment! {
             concat!("Returns the logarithm of the number with respect to an arbitrary base.
 
-Returns `None` if the number is zero, or if the base is zero or one.
+Returns `None` if the number is negative or zero, or if the base is not at least 2.
 
 This method may not be optimized owing to implementation details;
 `self.checked_log2()` can produce results more efficiently for base 2, and
@@ -2214,7 +2214,7 @@ assert_eq!(result, Some(1));
         doc_comment! {
             concat!("Returns the base 2 logarithm of the number.
 
-Returns `None` if the number is lower than 1.
+Returns `None` if the number is negative or zero.
 
 # Examples
 
@@ -2246,7 +2246,7 @@ assert_eq!(result, Some(1));
         doc_comment! {
             concat!("Returns the base 10 logarithm of the number.
 
-Returns `None` if the number is lower than 1.
+Returns `None` if the number is negative or zero.
 
 # Examples
 
@@ -2268,8 +2268,6 @@ assert_eq!(result, Some(1));
                 self.checked_log(10)
             }
         }
-
-
 
         doc_comment! {
             concat!("Computes the absolute value of `self`.
@@ -4283,7 +4281,7 @@ assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer 
         doc_comment! {
             concat!("Returns the logarithm of the number with respect to an arbitrary base.
 
-Returns `None` if the number is negative or zero, or if the base is negative, zero, or one.
+Returns `None` if the number is zero, or if the base is not at least 2.
 
 This method may not be optimized owing to implementation details;
 `self.checked_log2()` can produce results more efficiently for base 2, and
@@ -4334,7 +4332,7 @@ assert_eq!(result, Some(1));
         doc_comment! {
             concat!("Returns the base 2 logarithm of the number.
 
-Returns `None` if the number is lower than 1.
+Returns `None` if the number is zero.
 
 # Examples
 
@@ -4366,7 +4364,7 @@ assert_eq!(result, Some(1));
         doc_comment! {
             concat!("Returns the base 10 logarithm of the number.
 
-Returns `None` if the number is lower than 1.
+Returns `None` if the number is zero.
 
 # Examples
 
