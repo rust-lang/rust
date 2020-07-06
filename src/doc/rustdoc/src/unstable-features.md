@@ -150,6 +150,27 @@ Book][unstable-doc-cfg] and [its tracking issue][issue-doc-cfg].
 [unstable-doc-cfg]: ../unstable-book/language-features/doc-cfg.html
 [issue-doc-cfg]: https://github.com/rust-lang/rust/issues/43781
 
+### Adding your trait to the "Important Traits" dialog
+
+Rustdoc keeps a list of a few traits that are believed to be "fundamental" to a given type when
+implemented on it. These traits are intended to be the primary interface for their types, and are
+often the only thing available to be documented on their types. For this reason, Rustdoc will track
+when a given type implements one of these traits and call special attention to it when a function
+returns one of these types. This is the "Important Traits" dialog, visible as a circle-i button next
+to the function, which, when clicked, shows the dialog.
+
+In the standard library, the traits that qualify for inclusion are `Iterator`, `io::Read`, and
+`io::Write`. However, rather than being implemented as a hard-coded list, these traits have a
+special marker attribute on them: `#[doc(spotlight)]`. This means that you could apply this
+attribute to your own trait to include it in the "Important Traits" dialog in documentation.
+
+The `#[doc(spotlight)]` attribute currently requires the `#![feature(doc_spotlight)]` feature gate.
+For more information, see [its chapter in the Unstable Book][unstable-spotlight] and [its tracking
+issue][issue-spotlight].
+
+[unstable-spotlight]: ../unstable-book/language-features/doc-spotlight.html
+[issue-spotlight]: https://github.com/rust-lang/rust/issues/45040
+
 ### Exclude certain dependencies from documentation
 
 The standard library uses several dependencies which, in turn, use several types and traits from the
