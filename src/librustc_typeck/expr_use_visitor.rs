@@ -384,7 +384,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         // Select just those fields of the `with`
         // expression that will actually be used
-        match with_place.place.ty.kind {
+        match with_place.place.ty().kind {
             ty::Adt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
@@ -583,7 +583,7 @@ fn copy_or_move<'a, 'tcx>(
     place_with_id: &PlaceWithHirId<'tcx>,
 ) -> ConsumeMode {
     if !mc.type_is_copy_modulo_regions(
-        place_with_id.place.ty,
+        place_with_id.place.ty(),
         mc.tcx().hir().span(place_with_id.hir_id),
     ) {
         Move
