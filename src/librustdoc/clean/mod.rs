@@ -1007,6 +1007,7 @@ impl Clean<FnRetTy> for hir::FnRetTy<'_> {
 impl Clean<Item> for doctree::Trait<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let attrs = self.attrs.clean(cx);
+        let is_spotlight = attrs.has_doc_flag(sym::spotlight);
         Item {
             name: Some(self.name.clean(cx)),
             attrs,
@@ -1021,6 +1022,7 @@ impl Clean<Item> for doctree::Trait<'_> {
                 items: self.items.iter().map(|ti| ti.clean(cx)).collect(),
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
+                is_spotlight,
                 is_auto: self.is_auto.clean(cx),
             }),
         }
