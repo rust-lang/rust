@@ -4,6 +4,7 @@
 
 pub mod exports;
 pub mod map;
+pub mod place;
 
 use crate::ich::StableHashingContext;
 use crate::ty::query::Providers;
