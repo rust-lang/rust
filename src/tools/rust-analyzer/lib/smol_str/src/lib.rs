@@ -317,7 +317,7 @@ where
 
 impl From<SmolStr> for String {
     fn from(text: SmolStr) -> Self {
-        text.to_string()
+        text.as_str().into()
     }
 }
 
