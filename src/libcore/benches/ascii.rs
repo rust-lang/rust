@@ -60,7 +60,7 @@ macro_rules! benches {
                 }
             )+
         }
-    };
+    }
 }
 
 use test::black_box;

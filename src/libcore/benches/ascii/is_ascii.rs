@@ -7,7 +7,9 @@ macro_rules! benches {
         benches!(mod short SHORT[..] $($name $arg $body)+);
         benches!(mod medium MEDIUM[..] $($name $arg $body)+);
         benches!(mod long LONG[..] $($name $arg $body)+);
-
+        // Ensure we benchmark cases where the functions are called with strings
+        // that are not perfectly aligned or have a length which is not a
+        // multiple of size_of::<usize>() (or both)
         benches!(mod unaligned_head MEDIUM[1..] $($name $arg $body)+);
         benches!(mod unaligned_tail MEDIUM[..(MEDIUM.len() - 1)] $($name $arg $body)+);
         benches!(mod unaligned_both MEDIUM[1..(MEDIUM.len() - 1)] $($name $arg $body)+);
@@ -22,8 +24,7 @@ macro_rules! benches {
                     bencher.bytes = $input[$range].len() as u64;
                     let mut vec = $input.as_bytes().to_vec();
                     bencher.iter(|| {
-                        black_box(&mut vec);
-                        let $arg = black_box(&vec[$range]);
+                        let $arg: &[u8] = &black_box(&mut vec)[$range];
                         black_box($body)
                     })
                 }
