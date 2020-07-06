@@ -1,5 +1,5 @@
 error: missing `fn` for function definition
-  --> $DIR/pub-ident-fn-with-lifetime.rs:1:4
+  --> $DIR/pub-ident-fn-with-lifetime.rs:3:4
    |
 LL | pub   foo<'a>(_s: &'a usize) -> bool { true }
    |    ^^^

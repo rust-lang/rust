@@ -280,6 +280,8 @@ impl<'a, 'b> Context<'a, 'b> {
                                 ("x", "LowerHex"),
                                 ("X", "UpperHex"),
                             ] {
+                                // FIXME: rustfix (`run-rustfix`) fails to apply suggestions.
+                                // > "Cannot replace slice of data that was already replaced"
                                 err.tool_only_span_suggestion(
                                     sp,
                                     &format!("use the `{}` trait", name),

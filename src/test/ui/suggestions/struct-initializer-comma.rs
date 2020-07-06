@@ -1,10 +1,12 @@
-struct Foo {
-    first: bool,
-    second: u8,
+// run-rustfix
+
+pub struct Foo {
+    pub first: bool,
+    pub second: u8,
 }
 
 fn main() {
-    let a = Foo {
+    let _ = Foo {
         //~^ ERROR missing field
         first: true
         second: 25

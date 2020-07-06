@@ -1,4 +1,8 @@
-mod x {
+// run-rustfix
+
+#![allow(unused_imports)]
+
+pub mod x {
     pub struct A;
     pub struct B;
 }

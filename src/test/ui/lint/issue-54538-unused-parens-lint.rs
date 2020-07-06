@@ -1,10 +1,16 @@
-#![feature(box_patterns, stmt_expr_attributes)]
+// run-rustfix
 
+#![feature(box_patterns, stmt_expr_attributes)]
 #![feature(or_patterns)]
 
-#![allow(ellipsis_inclusive_range_patterns)]
-#![allow(unreachable_patterns)]
-#![allow(unused_variables)]
+#![allow(
+    dead_code,
+    ellipsis_inclusive_range_patterns,
+    irrefutable_let_patterns,
+    unreachable_patterns,
+    unused_mut,
+    unused_variables
+)]
 #![deny(unused_parens)]
 
 fn lint_on_top_level() {
