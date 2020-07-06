@@ -85,10 +85,8 @@ impl<'a> InferenceContext<'a> {
             ctor: TypeCtor::Tuple { cardinality: num_args as u16 },
             parameters,
         });
-        let substs = Substs::build_for_generics(&generic_params)
-            .push(ty.clone())
-            .push(arg_ty.clone())
-            .build();
+        let substs =
+            Substs::build_for_generics(&generic_params).push(ty.clone()).push(arg_ty).build();
 
         let trait_env = Arc::clone(&self.trait_env);
         let implements_fn_trait =
