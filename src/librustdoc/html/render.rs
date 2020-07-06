@@ -810,11 +810,9 @@ themePicker.onblur = handleThemeButtonsBlur;
                 if line.starts_with(&format!("\"{}\"", krate)) {
                     continue;
                 }
-                if line.ends_with(",\\") {
-                    ret.push(line[..line.len() - 2].to_string());
-                } else {
-                    // Ends with "\\" (it's the case for the last added crate line)
-                    ret.push(line[..line.len() - 1].to_string());
+                // Ends with "\\" (it's the case for the last added crate line)
+                if let Some(head) = line.strip_suffix(",\\").or_else(|| line.strip_suffix("\\")) {
+                    ret.push(head.to_string());
                 }
                 krates.push(
                     line.split('"')

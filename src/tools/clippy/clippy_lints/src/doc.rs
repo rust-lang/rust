@@ -257,54 +257,57 @@ fn lint_for_missing_headers<'tcx>(
 /// the spans but this function is inspired from the later.
 #[allow(clippy::cast_possible_truncation)]
 #[must_use]
-pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(usize, Span)>) {
+fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(usize, Span)>) {
     // one-line comments lose their prefix
     const ONELINERS: &[&str] = &["///!", "///", "//!", "//"];
     for prefix in ONELINERS {
-        if comment.starts_with(*prefix) {
-            let doc = &comment[prefix.len()..];
+        if let Some(doc) = comment.strip_prefix(*prefix) {
             let mut doc = doc.to_owned();
             doc.push('\n');
+            let len = doc.len();
             return (
-                doc.to_owned(),
-                vec![(doc.len(), span.with_lo(span.lo() + BytePos(prefix.len() as u32)))],
+                doc,
+                vec![(len, span.with_lo(span.lo() + BytePos(prefix.len() as u32)))],
             );
         }
     }
 
-    if comment.starts_with("/*") {
-        let doc = &comment[3..comment.len() - 2];
-        let mut sizes = vec![];
-        let mut contains_initial_stars = false;
-        for line in doc.lines() {
-            let offset = line.as_ptr() as usize - comment.as_ptr() as usize;
-            debug_assert_eq!(offset as u32 as usize, offset);
-            contains_initial_stars |= line.trim_start().starts_with('*');
-            // +1 for the newline
-            sizes.push((line.len() + 1, span.with_lo(span.lo() + BytePos(offset as u32))));
-        }
-        if !contains_initial_stars {
-            return (doc.to_string(), sizes);
-        }
-        // remove the initial '*'s if any
-        let mut no_stars = String::with_capacity(doc.len());
-        for line in doc.lines() {
-            let mut chars = line.chars();
-            while let Some(c) = chars.next() {
-                if c.is_whitespace() {
-                    no_stars.push(c);
-                } else {
-                    no_stars.push(if c == '*' { ' ' } else { c });
-                    break;
-                }
-            }
-            no_stars.push_str(chars.as_str());
-            no_stars.push('\n');
-        }
-        return (no_stars, sizes);
-    }
+    let doc = comment.strip_prefix("/**")
+        .or_else(|| comment.strip_prefix("/*!"))
+        .and_then(|s| s.strip_suffix("*/"));
+    let doc = match doc {
+        Some(doc) => doc,
+        _ => panic!("not a doc-comment: {}", comment),
+    };
 
-    panic!("not a doc-comment: {}", comment);
+    let mut sizes = vec![];
+    let mut contains_initial_stars = false;
+    for line in doc.lines() {
+        let offset = line.as_ptr() as usize - comment.as_ptr() as usize;
+        debug_assert_eq!(offset as u32 as usize, offset);
+        contains_initial_stars |= line.trim_start().starts_with('*');
+        // +1 for the newline
+        sizes.push((line.len() + 1, span.with_lo(span.lo() + BytePos(offset as u32))));
+    }
+    if !contains_initial_stars {
+        return (doc.to_owned(), sizes);
+    }
+    // remove the initial '*'s if any
+    let mut no_stars = String::with_capacity(doc.len());
+    for line in doc.lines() {
+        let mut chars = line.chars();
+        while let Some(c) = chars.next() {
+            if c.is_whitespace() {
+                no_stars.push(c);
+            } else {
+                no_stars.push(if c == '*' { ' ' } else { c });
+                break;
+            }
+        }
+        no_stars.push_str(chars.as_str());
+        no_stars.push('\n');
+    }
+    (no_stars, sizes)
 }
 
 #[derive(Copy, Clone)]
@@ -319,7 +322,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
 
     for attr in attrs {
         if let AttrKind::DocComment(ref comment) = attr.kind {
-            let comment = comment.to_string();
+            let comment: &str = &*comment.as_str();
             let (comment, current_spans) = strip_doc_comment_decoration(&comment, attr.span);
             spans.extend_from_slice(&current_spans);
             doc.push_str(&comment);
@@ -480,7 +483,7 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
             return false;
         }
 
-        let s = if s.ends_with('s') { &s[..s.len() - 1] } else { s };
+        let s = s.strip_suffix('s').unwrap_or(s);
 
         s.chars().all(char::is_alphanumeric)
             && s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1

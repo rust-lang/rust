@@ -1,5 +1,5 @@
 use rustc_ast::token::{self, Token, TokenKind};
-use rustc_ast::util::comments::is_doc_comment;
+use rustc_ast::util::comments::is_line_doc_comment;
 use rustc_ast::with_default_globals;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{emitter::EmitterWriter, Handler};
@@ -225,9 +225,9 @@ fn literal_suffixes() {
 
 #[test]
 fn line_doc_comments() {
-    assert!(is_doc_comment("///"));
-    assert!(is_doc_comment("/// blah"));
-    assert!(!is_doc_comment("////"));
+    assert!(is_line_doc_comment("///"));
+    assert!(is_line_doc_comment("/// blah"));
+    assert!(!is_line_doc_comment("////"));
 }
 
 #[test]

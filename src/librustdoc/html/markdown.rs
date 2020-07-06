@@ -133,16 +133,24 @@ impl<'a> Line<'a> {
 // then reallocate to remove it; which would make us return a String.
 fn map_line(s: &str) -> Line<'_> {
     let trimmed = s.trim();
-    if trimmed.starts_with("##") {
-        Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
-    } else if trimmed.starts_with("# ") {
-        // # text
-        Line::Hidden(&trimmed[2..])
-    } else if trimmed == "#" {
-        // We cannot handle '#text' because it could be #[attr].
-        Line::Hidden("")
-    } else {
-        Line::Shown(Cow::Borrowed(s))
+    match trimmed.strip_prefix("#") {
+        Some(tail) => match tail.strip_prefix("#") {
+            // `##text` rendered as `#text`.
+            Some(_) => Line::Shown(tail.into()),
+            None => {
+                if tail.is_empty() {
+                    // `#` will be hidden.
+                    Line::Hidden("")
+                } else if let Some(text) = tail.strip_prefix(' ') {
+                    // `# text` will be hidden.
+                    Line::Hidden(text)
+                } else {
+                    // `#text` will be shown as it could be `#[attr]`
+                    Line::Shown(s.into())
+                }
+            }
+        },
+        None => Line::Shown(s.into()),
     }
 }
 
@@ -754,7 +762,7 @@ impl LangString {
                 }
                 x if x.starts_with("ignore-") => {
                     if enable_per_target_ignores {
-                        ignores.push(x.trim_start_matches("ignore-").to_owned());
+                        ignores.push(x.strip_prefix("ignore-").unwrap().to_owned());
                         seen_rust_tags = !seen_other_tags;
                     }
                 }
@@ -776,10 +784,10 @@ impl LangString {
                     data.no_run = true;
                 }
                 x if x.starts_with("edition") => {
-                    data.edition = x[7..].parse::<Edition>().ok();
+                    data.edition = x.strip_prefix("edition").unwrap().parse::<Edition>().ok();
                 }
-                x if allow_error_code_check && x.starts_with('E') && x.len() == 5 => {
-                    if x[1..].parse::<u32>().is_ok() {
+                x if allow_error_code_check && x.len() == 5 && x.starts_with('E') => {
+                    if x.strip_prefix('E').unwrap().parse::<u32>().is_ok() {
                         data.error_codes.push(x.to_owned());
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     } else {

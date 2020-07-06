@@ -481,12 +481,14 @@ pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
         _ => {
             let mut s = n.to_string();
             // array lengths are obviously usize
-            if s.ends_with("_usize") {
-                let n = s.len() - "_usize".len();
-                s.truncate(n);
-                if s.ends_with(": ") {
-                    let n = s.len() - ": ".len();
-                    s.truncate(n);
+            if let Some(head) = s.strip_suffix("_usize") {
+                let new_len = match head.strip_suffix(": ") {
+                    None => head.len(),
+                    Some(hhead) => hhead.len(),
+                };
+                // SAFETY: `new_len` should be in between char boundary
+                unsafe {
+                    s.as_mut_vec().set_len(new_len);
                 }
             }
             s
