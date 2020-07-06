@@ -397,8 +397,6 @@ impl Step for Miri {
             cargo.env("MIRI", &miri);
             // Debug things.
             cargo.env("RUST_BACKTRACE", "1");
-            // Overwrite bootstrap's `rustc` wrapper overwriting our flags.
-            cargo.env("RUSTC_DEBUG_ASSERTIONS", "true");
             // Let cargo-miri know where xargo ended up.
             cargo.env("XARGO_CHECK", builder.out.join("bin").join("xargo-check"));
 
