@@ -1078,7 +1078,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	font-size: 16px;
 }
 
-.tooltip:hover .tooltiptext {
+.important-traits:hover .tooltiptext {
 	display: inline;
 }
 
@@ -1146,6 +1146,7 @@ pre.rust {
 .important-traits {
 	cursor: pointer;
 	z-index: 2;
+	margin-left: 5px;
 }
 
 h4 > .important-traits {
@@ -1549,19 +1550,6 @@ h3.important {
 	width: 3px;
 	right: -2px;
 	top: 0px;
-}
-
-#main > div.important-traits {
-	position: absolute;
-	left: -24px;
-	margin-top: 16px;
-}
-
-.content > .methods > .method > div.important-traits {
-	position: absolute;
-	font-weight: 400;
-	left: -42px;
-	margin-top: 2px;
 }
 
 kbd {
