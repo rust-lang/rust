@@ -10,10 +10,9 @@ mod include;
 
 use std::convert::{TryFrom, TryInto};
 
-use crossbeam_channel::{select, unbounded, Receiver, Sender};
+use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use paths::{AbsPath, AbsPathBuf};
-use rustc_hash::FxHashSet;
 use vfs::loader;
 use walkdir::WalkDir;
 
@@ -55,10 +54,8 @@ type NotifyEvent = notify::Result<notify::Event>;
 struct NotifyActor {
     sender: loader::Sender,
     config: Vec<(AbsPathBuf, Include, bool)>,
-    watched_paths: FxHashSet<AbsPathBuf>,
-    // Drop order of fields bellow is significant,
-    watcher: Option<RecommendedWatcher>,
-    watcher_receiver: Receiver<NotifyEvent>,
+    // Drop order is significant.
+    watcher: Option<(RecommendedWatcher, Receiver<NotifyEvent>)>,
 }
 
 #[derive(Debug)]
@@ -69,23 +66,13 @@ enum Event {
 
 impl NotifyActor {
     fn new(sender: loader::Sender) -> NotifyActor {
-        let (watcher_sender, watcher_receiver) = unbounded();
-        let watcher = log_notify_error(Watcher::new_immediate(move |event| {
-            watcher_sender.send(event).unwrap()
-        }));
-
-        NotifyActor {
-            sender,
-            config: Vec::new(),
-            watched_paths: FxHashSet::default(),
-            watcher,
-            watcher_receiver,
-        }
+        NotifyActor { sender, config: Vec::new(), watcher: None }
     }
     fn next_event(&self, receiver: &Receiver<Message>) -> Option<Event> {
+        let watcher_receiver = self.watcher.as_ref().map(|(_, receiver)| receiver);
         select! {
             recv(receiver) -> it => it.ok().map(Event::Message),
-            recv(&self.watcher_receiver) -> it => Some(Event::NotifyEvent(it.unwrap())),
+            recv(watcher_receiver.unwrap_or(&never())) -> it => Some(Event::NotifyEvent(it.unwrap())),
         }
     }
     fn run(mut self, inbox: Receiver<Message>) {
@@ -94,10 +81,16 @@ impl NotifyActor {
             match event {
                 Event::Message(msg) => match msg {
                     Message::Config(config) => {
+                        self.watcher = None;
+                        let (watcher_sender, watcher_receiver) = unbounded();
+                        let watcher = log_notify_error(Watcher::new_immediate(move |event| {
+                            watcher_sender.send(event).unwrap()
+                        }));
+                        self.watcher = watcher.map(|it| (it, watcher_receiver));
+
                         let n_total = config.load.len();
                         self.send(loader::Message::Progress { n_total, n_done: 0 });
 
-                        self.unwatch_all();
                         self.config.clear();
 
                         for (i, entry) in config.load.into_iter().enumerate() {
@@ -217,16 +210,8 @@ impl NotifyActor {
     }
 
     fn watch(&mut self, path: AbsPathBuf) {
-        if let Some(watcher) = &mut self.watcher {
+        if let Some((watcher, _)) = &mut self.watcher {
             log_notify_error(watcher.watch(&path, RecursiveMode::NonRecursive));
-            self.watched_paths.insert(path);
-        }
-    }
-    fn unwatch_all(&mut self) {
-        if let Some(watcher) = &mut self.watcher {
-            for path in self.watched_paths.drain() {
-                log_notify_error(watcher.unwatch(path));
-            }
         }
     }
     fn send(&mut self, msg: loader::Message) {
