@@ -410,9 +410,9 @@ impl Repr {
 
 #[cfg(feature = "serde")]
 mod serde {
+    use super::SmolStr;
     use ::serde::de::{Deserializer, Error, Unexpected, Visitor};
     use std::fmt;
-    use super::SmolStr;
 
     // https://github.com/serde-rs/serde/blob/629802f2abfd1a54a6072992888fea7ca5bc209f/serde/src/private/de.rs#L56-L125
     fn smol_str<'de: 'a, 'a, D>(deserializer: D) -> Result<SmolStr, D::Error>
