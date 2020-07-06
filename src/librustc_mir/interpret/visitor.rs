@@ -125,6 +125,15 @@ macro_rules! make_value_visitor {
             fn ecx(&$($mutability)? self)
                 -> &$($mutability)? InterpCx<'mir, 'tcx, M>;
 
+            /// `read_discriminant` can be hooked for better error messages.
+            #[inline(always)]
+            fn read_discriminant(
+                &mut self,
+                op: OpTy<'tcx, M::PointerTag>,
+            ) -> InterpResult<'tcx, VariantIdx> {
+                Ok(self.ecx().read_discriminant(op)?.1)
+            }
+
             // Recursive actions, ready to be overloaded.
             /// Visits the given value, dispatching as appropriate to more specialized visitors.
             #[inline(always)]
@@ -245,7 +254,7 @@ macro_rules! make_value_visitor {
                     // with *its* fields.
                     Variants::Multiple { .. } => {
                         let op = v.to_op(self.ecx())?;
-                        let idx = self.ecx().read_discriminant(op)?.1;
+                        let idx = self.read_discriminant(op)?;
                         let inner = v.project_downcast(self.ecx(), idx)?;
                         trace!("walk_value: variant layout: {:#?}", inner.layout());
                         // recurse with the inner type
