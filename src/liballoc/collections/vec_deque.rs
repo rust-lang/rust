@@ -1114,10 +1114,12 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(deque_range)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
-    /// let range = v.iter_rage(2..).copied().collect::<VecDeque<_>>();
+    /// let range = v.range(2..).copied().collect::<VecDeque<_>>();
     /// assert_eq!(range, [3]);
     ///
     /// // A full range covers all contents
@@ -1151,6 +1153,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(deque_range)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();

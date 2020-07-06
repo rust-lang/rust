@@ -254,7 +254,7 @@ fn test_range() {
     for len in 0..=cap {
         for tail in 0..=cap {
             for start in 0..=len {
-                for end in drain_start..=len {
+                for end in start..=len {
                     tester.tail = tail;
                     tester.head = tail;
                     for i in 0..len {
@@ -279,7 +279,7 @@ fn test_range_mut() {
     for len in 0..=cap {
         for tail in 0..=cap {
             for start in 0..=len {
-                for end in drain_start..=len {
+                for end in start..=len {
                     tester.tail = tail;
                     tester.head = tail;
                     for i in 0..len {
@@ -290,7 +290,7 @@ fn test_range_mut() {
                     let tail_was = tester.tail;
 
                     // Check that we iterate over the correct values
-                    let range: VecDeque<_> = tester.range_mut(start..end).copied().collect();
+                    let range: VecDeque<_> = tester.range_mut(start..end).map(|v| *v).collect();
                     let expected: VecDeque<_> = (start..end).collect();
                     assert_eq!(range, expected);
 
