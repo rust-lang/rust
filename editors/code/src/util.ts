@@ -1,5 +1,4 @@
 import * as lc from "vscode-languageclient";
-import * as fs from "fs";
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
 import { spawnSync } from "child_process";
@@ -114,15 +113,12 @@ export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
 export function isValidExecutable(path: string): boolean {
     log.debug("Checking availability of a binary at", path);
 
-    if (!fs.existsSync(path)) return false;
-
     const res = spawnSync(path, ["--version"], { encoding: 'utf8' });
 
-    const isSuccess = res.status === 0;
-    const printOutput = isSuccess ? log.debug : log.warn;
+    const printOutput = res.error && (res.error as any).code !== 'ENOENT' ? log.warn : log.debug;
     printOutput(path, "--version:", res);
 
-    return isSuccess;
+    return res.status === 0;
 }
 
 /** Sets ['when'](https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts) clause contexts */
