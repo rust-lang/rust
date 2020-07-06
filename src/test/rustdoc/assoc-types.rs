@@ -5,9 +5,7 @@
 // @has assoc_types/trait.Index.html
 pub trait Index<I: ?Sized> {
     // @has - '//*[@id="associatedtype.Output"]//code' 'type Output: ?Sized'
-    // @has - '//code[@id="Output.t"]' 'type Output: ?Sized'
     type Output: ?Sized;
-    // @has - '//code[@id="index.v"]' 'fn index'
     // @has - '//*[@id="tymethod.index"]//code' \
     //      "fn index<'a>(&'a self, index: I) -> &'a Self::Output"
     // @has - '//*[@id="tymethod.index"]//code//a[@href="../assoc_types/trait.Index.html#associatedtype.Output"]' \

@@ -1069,7 +1069,7 @@ fn handle_variant(
     };
     let parent_def = Res::Def(DefKind::Enum, parent);
     let variant = cx.tcx.expect_variant_res(res);
-    Ok((parent_def, Some(format!("{}.v", variant.ident.name))))
+    Ok((parent_def, Some(format!("variant.{}", variant.ident.name))))
 }
 
 const PRIMITIVES: &[(&str, Res)] = &[

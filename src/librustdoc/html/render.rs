@@ -195,8 +195,6 @@ crate struct SharedContext {
     /// Optional path string to be used to load static files on output pages. If not set, uses
     /// combinations of `../` to reach the documentation root.
     pub static_root_path: Option<String>,
-    /// Option disabled by default to generate files used by RLS and some other tools.
-    pub generate_redirect_pages: bool,
     /// The fs handle we are working with.
     pub fs: DocFS,
     /// The default edition used to parse doctests.
@@ -468,7 +466,6 @@ pub fn run(
         resource_suffix,
         static_root_path,
         generate_search_filter,
-        generate_redirect_pages,
         document_private,
         ..
     } = options;
@@ -536,7 +533,6 @@ pub fn run(
         themes,
         resource_suffix,
         static_root_path,
-        generate_redirect_pages,
         fs: DocFS::new(&errors),
         edition,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
@@ -1555,14 +1551,6 @@ impl Context {
 
                 if !self.render_redirect_pages {
                     all.append(full_path(self, &item), &item_type);
-                }
-                if self.shared.generate_redirect_pages {
-                    // Redirect from a sane URL using the namespace to Rustdoc's
-                    // URL for the page.
-                    let redir_name = format!("{}.{}.html", name, item_type.name_space());
-                    let redir_dst = self.dst.join(redir_name);
-                    let v = layout::redirect(file_name);
-                    self.shared.fs.write(&redir_dst, v.as_bytes())?;
                 }
                 // If the item is a macro, redirect from the old macro URL (with !)
                 // to the new one (without).
@@ -2586,8 +2574,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
         let name = m.name.as_ref().unwrap();
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
-        let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-        write!(w, "<h3 id='{id}' class='method'><code id='{ns_id}'>", id = id, ns_id = ns_id);
+        write!(w, "<h3 id='{id}' class='method'><code>", id = id);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
         render_stability_since(w, m, t);
@@ -2972,20 +2959,14 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
                     ItemType::StructField,
                     field.name.as_ref().unwrap()
                 ));
-                let ns_id = cx.derive_id(format!(
-                    "{}.{}",
-                    field.name.as_ref().unwrap(),
-                    ItemType::StructField.name_space()
-                ));
                 write!(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
                            <a href=\"#{id}\" class=\"anchor field\"></a>\
-                           <code id=\"{ns_id}\">{name}: {ty}</code>\
+                           <code>{name}: {ty}</code>\
                            </span>",
                     item_type = ItemType::StructField,
                     id = id,
-                    ns_id = ns_id,
                     name = field.name.as_ref().unwrap(),
                     ty = ty.print()
                 );
@@ -3103,18 +3084,12 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
         for variant in &e.variants {
             let id =
                 cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.as_ref().unwrap()));
-            let ns_id = cx.derive_id(format!(
-                "{}.{}",
-                variant.name.as_ref().unwrap(),
-                ItemType::Variant.name_space()
-            ));
             write!(
                 w,
                 "<div id=\"{id}\" class=\"variant small-section-header\">\
-                       <a href=\"#{id}\" class=\"anchor field\"></a>\
-                       <code id='{ns_id}'>{name}",
+                    <a href=\"#{id}\" class=\"anchor field\"></a>\
+                    <code>{name}",
                 id = id,
-                ns_id = ns_id,
                 name = variant.name.as_ref().unwrap()
             );
             if let clean::VariantItem(ref var) = variant.inner {
@@ -3155,21 +3130,13 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
                             variant.name.as_ref().unwrap(),
                             field.name.as_ref().unwrap()
                         ));
-                        let ns_id = cx.derive_id(format!(
-                            "{}.{}.{}.{}",
-                            variant.name.as_ref().unwrap(),
-                            ItemType::Variant.name_space(),
-                            field.name.as_ref().unwrap(),
-                            ItemType::StructField.name_space()
-                        ));
                         write!(
                             w,
                             "<span id=\"{id}\" class=\"variant small-section-header\">\
                                    <a href=\"#{id}\" class=\"anchor field\"></a>\
-                                   <code id='{ns_id}'>{f}:&nbsp;{t}\
+                                   <code>{f}:&nbsp;{t}\
                                    </code></span>",
                             id = id,
-                            ns_id = ns_id,
                             f = field.name.as_ref().unwrap(),
                             t = ty.print()
                         );
@@ -3661,9 +3628,7 @@ fn render_impl(
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
-                    let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-                    write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                    write!(w, "<code id='{}'>", ns_id);
+                    write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
                     render_stability_since_raw(w, item.stable_since(), outer_version);
@@ -3679,17 +3644,13 @@ fn render_impl(
             }
             clean::TypedefItem(ref tydef, _) => {
                 let id = cx.derive_id(format!("{}.{}", ItemType::AssocType, name));
-                let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                write!(w, "<code id='{}'>", ns_id);
+                write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id), "");
                 write!(w, "</code></h4>");
             }
             clean::AssocConstItem(ref ty, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
-                let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                write!(w, "<code id='{}'>", ns_id);
+                write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "");
                 write!(w, "</code>");
                 render_stability_since_raw(w, item.stable_since(), outer_version);
@@ -3704,9 +3665,7 @@ fn render_impl(
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
-                let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                write!(w, "<code id='{}'>", ns_id);
+                write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id), "");
                 write!(w, "</code></h4>");
             }
