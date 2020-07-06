@@ -37,6 +37,8 @@ Release: release:{}[]
 
 == Sponsors
 
+**Become a sponsor:** https://opencollective.com/rust-analyzer/[opecollective.com/rust-analyzer]
+
 == New Features
 
 * pr:[] .
