@@ -1,118 +1,110 @@
 error: unnecessary parentheses around `return` value
-  --> $DIR/lint-unnecessary-parens.rs:10:12
+  --> $DIR/lint-unnecessary-parens.rs:13:12
    |
 LL |     return (1);
    |            ^^^ help: remove these parentheses
    |
 note: the lint level is defined here
-  --> $DIR/lint-unnecessary-parens.rs:1:9
+  --> $DIR/lint-unnecessary-parens.rs:3:9
    |
 LL | #![deny(unused_parens)]
    |         ^^^^^^^^^^^^^
 
 error: unnecessary parentheses around `return` value
-  --> $DIR/lint-unnecessary-parens.rs:13:12
+  --> $DIR/lint-unnecessary-parens.rs:16:12
    |
 LL |     return (X { y });
    |            ^^^^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around type
-  --> $DIR/lint-unnecessary-parens.rs:16:42
+  --> $DIR/lint-unnecessary-parens.rs:19:46
    |
-LL | fn unused_parens_around_return_type() -> (u32) {
-   |                                          ^^^^^ help: remove these parentheses
+LL | pub fn unused_parens_around_return_type() -> (u32) {
+   |                                              ^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around block return value
-  --> $DIR/lint-unnecessary-parens.rs:22:9
+  --> $DIR/lint-unnecessary-parens.rs:25:9
    |
 LL |         (5)
    |         ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around block return value
-  --> $DIR/lint-unnecessary-parens.rs:24:5
+  --> $DIR/lint-unnecessary-parens.rs:27:5
    |
 LL |     (5)
    |     ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:41:27
+  --> $DIR/lint-unnecessary-parens.rs:44:31
    |
-LL | const CONST_ITEM: usize = (10);
-   |                           ^^^^ help: remove these parentheses
+LL | pub const CONST_ITEM: usize = (10);
+   |                               ^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:42:29
+  --> $DIR/lint-unnecessary-parens.rs:45:33
    |
-LL | static STATIC_ITEM: usize = (10);
-   |                             ^^^^ help: remove these parentheses
+LL | pub static STATIC_ITEM: usize = (10);
+   |                                 ^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around function argument
-  --> $DIR/lint-unnecessary-parens.rs:46:9
+  --> $DIR/lint-unnecessary-parens.rs:49:9
    |
 LL |     bar((true));
    |         ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `if` condition
-  --> $DIR/lint-unnecessary-parens.rs:48:8
+  --> $DIR/lint-unnecessary-parens.rs:51:8
    |
 LL |     if (true) {}
    |        ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `while` condition
-  --> $DIR/lint-unnecessary-parens.rs:49:11
+  --> $DIR/lint-unnecessary-parens.rs:52:11
    |
 LL |     while (true) {}
    |           ^^^^^^ help: remove these parentheses
 
-warning: denote infinite loops with `loop { ... }`
-  --> $DIR/lint-unnecessary-parens.rs:49:5
-   |
-LL |     while (true) {}
-   |     ^^^^^^^^^^^^ help: use `loop`
-   |
-   = note: `#[warn(while_true)]` on by default
-
 error: unnecessary parentheses around `match` scrutinee expression
-  --> $DIR/lint-unnecessary-parens.rs:51:11
+  --> $DIR/lint-unnecessary-parens.rs:53:11
    |
 LL |     match (true) {
    |           ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `let` scrutinee expression
-  --> $DIR/lint-unnecessary-parens.rs:54:16
+  --> $DIR/lint-unnecessary-parens.rs:56:16
    |
 LL |     if let 1 = (1) {}
    |                ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around `let` scrutinee expression
-  --> $DIR/lint-unnecessary-parens.rs:55:19
+  --> $DIR/lint-unnecessary-parens.rs:57:19
    |
 LL |     while let 1 = (2) {}
    |                   ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around method argument
-  --> $DIR/lint-unnecessary-parens.rs:69:24
+  --> $DIR/lint-unnecessary-parens.rs:71:24
    |
 LL |     X { y: false }.foo((true));
    |                        ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:71:18
+  --> $DIR/lint-unnecessary-parens.rs:73:18
    |
 LL |     let mut _a = (0);
    |                  ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:72:10
+  --> $DIR/lint-unnecessary-parens.rs:74:10
    |
 LL |     _a = (0);
    |          ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:73:11
+  --> $DIR/lint-unnecessary-parens.rs:75:11
    |
 LL |     _a += (1);
    |           ^^^ help: remove these parentheses
 
-error: aborting due to 17 previous errors; 1 warning emitted
+error: aborting due to 17 previous errors
 
