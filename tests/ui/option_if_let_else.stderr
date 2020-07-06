@@ -1,0 +1,151 @@
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:5:5
+   |
+LL | /     if let Some(x) = string {
+LL | |         (true, x)
+LL | |     } else {
+LL | |         (false, "hello")
+LL | |     }
+   | |_____^ help: try: `string.map_or((false, "hello"), |x| (true, x))`
+   |
+   = note: `-D clippy::option-if-let-else` implied by `-D warnings`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:15:12
+   |
+LL |       } else if let Some(x) = string {
+   |  ____________^
+LL | |         Some((true, x))
+LL | |     } else {
+LL | |         Some((false, ""))
+LL | |     }
+   | |_____^ help: try: `{ string.map_or(Some((false, "")), |x| Some((true, x))) }`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:23:13
+   |
+LL |     let _ = if let Some(s) = *string { s.len() } else { 0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `string.map_or(0, |s| s.len())`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:24:13
+   |
+LL |     let _ = if let Some(s) = &num { s } else { &0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `num.as_ref().map_or(&0, |s| s)`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:25:13
+   |
+LL |       let _ = if let Some(s) = &mut num {
+   |  _____________^
+LL | |         *s += 1;
+LL | |         s
+LL | |     } else {
+LL | |         &mut 0
+LL | |     };
+   | |_____^
+   |
+help: try
+   |
+LL |     let _ = num.as_mut().map_or(&mut 0, |s| {
+LL |         *s += 1;
+LL |         s
+LL |     });
+   |
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:31:13
+   |
+LL |     let _ = if let Some(ref s) = num { s } else { &0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `num.as_ref().map_or(&0, |s| s)`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:32:13
+   |
+LL |       let _ = if let Some(mut s) = num {
+   |  _____________^
+LL | |         s += 1;
+LL | |         s
+LL | |     } else {
+LL | |         0
+LL | |     };
+   | |_____^
+   |
+help: try
+   |
+LL |     let _ = num.map_or(0, |mut s| {
+LL |         s += 1;
+LL |         s
+LL |     });
+   |
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:38:13
+   |
+LL |       let _ = if let Some(ref mut s) = num {
+   |  _____________^
+LL | |         *s += 1;
+LL | |         s
+LL | |     } else {
+LL | |         &mut 0
+LL | |     };
+   | |_____^
+   |
+help: try
+   |
+LL |     let _ = num.as_mut().map_or(&mut 0, |s| {
+LL |         *s += 1;
+LL |         s
+LL |     });
+   |
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:47:5
+   |
+LL | /     if let Some(x) = arg {
+LL | |         let y = x * x;
+LL | |         y * y
+LL | |     } else {
+LL | |         13
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL |     arg.map_or(13, |x| {
+LL |         let y = x * x;
+LL |         y * y
+LL |     })
+   |
+
+error: use Option::map_or_else instead of an if let/else
+  --> $DIR/option_if_let_else.rs:56:13
+   |
+LL |       let _ = if let Some(x) = arg {
+   |  _____________^
+LL | |         x * x * x * x
+LL | |     } else {
+LL | |         let mut y = 1;
+...  |
+LL | |         y
+LL | |     };
+   | |_____^
+   |
+help: try
+   |
+LL |     let _ = arg.map_or_else(|| {
+LL |         let mut y = 1;
+LL |         y = (y + 2 / y) / 2;
+LL |         y = (y + 2 / y) / 2;
+LL |         y
+LL |     }, |x| x * x * x * x);
+   |
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:85:13
+   |
+LL |     let _ = if let Some(x) = optional { x + 2 } else { 5 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `optional.map_or(5, |x| x + 2)`
+
+error: aborting due to 11 previous errors
+

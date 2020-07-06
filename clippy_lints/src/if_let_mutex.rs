@@ -135,13 +135,10 @@ impl<'tcx> Visitor<'tcx> for ArmVisitor<'_, 'tcx> {
     }
 }
 
-impl<'tcx> ArmVisitor<'_, 'tcx> {
+impl<'tcx, 'l> ArmVisitor<'tcx, 'l> {
     fn same_mutex(&self, cx: &LateContext<'_>, op_mutex: &Expr<'_>) -> bool {
-        if let Some(arm_mutex) = self.found_mutex {
-            SpanlessEq::new(cx).eq_expr(op_mutex, arm_mutex)
-        } else {
-            false
-        }
+        self.found_mutex
+            .map_or(false, |arm_mutex| SpanlessEq::new(cx).eq_expr(op_mutex, arm_mutex))
     }
 }
 

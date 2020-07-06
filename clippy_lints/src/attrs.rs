@@ -481,15 +481,14 @@ fn is_relevant_trait(cx: &LateContext<'_>, item: &TraitItem<'_>) -> bool {
 }
 
 fn is_relevant_block(cx: &LateContext<'_>, tables: &ty::TypeckTables<'_>, block: &Block<'_>) -> bool {
-    if let Some(stmt) = block.stmts.first() {
-        match &stmt.kind {
+    block.stmts.first().map_or(
+        block.expr.as_ref().map_or(false, |e| is_relevant_expr(cx, tables, e)),
+        |stmt| match &stmt.kind {
             StmtKind::Local(_) => true,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, tables, expr),
             _ => false,
-        }
-    } else {
-        block.expr.as_ref().map_or(false, |e| is_relevant_expr(cx, tables, e))
-    }
+        },
+    )
 }
 
 fn is_relevant_expr(cx: &LateContext<'_>, tables: &ty::TypeckTables<'_>, expr: &Expr<'_>) -> bool {
@@ -499,11 +498,10 @@ fn is_relevant_expr(cx: &LateContext<'_>, tables: &ty::TypeckTables<'_>, expr: &
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
         ExprKind::Call(path_expr, _) => {
             if let ExprKind::Path(qpath) = &path_expr.kind {
-                if let Some(fun_id) = tables.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
-                    !match_def_path(cx, fun_id, &paths::BEGIN_PANIC)
-                } else {
-                    true
-                }
+                tables
+                    .qpath_res(qpath, path_expr.hir_id)
+                    .opt_def_id()
+                    .map_or(true, |fun_id| !match_def_path(cx, fun_id, &paths::BEGIN_PANIC))
             } else {
                 true
             }

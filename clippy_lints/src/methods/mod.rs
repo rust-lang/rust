@@ -2460,13 +2460,9 @@ fn derefs_to_slice<'tcx>(
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym!(vec_type)),
-            ty::Array(_, size) => {
-                if let Some(size) = size.try_eval_usize(cx.tcx, cx.param_env) {
-                    size < 32
-                } else {
-                    false
-                }
-            },
+            ty::Array(_, size) => size
+                .try_eval_usize(cx.tcx, cx.param_env)
+                .map_or(false, |size| size < 32),
             ty::Ref(_, inner, _) => may_slice(cx, inner),
             _ => false,
         }
