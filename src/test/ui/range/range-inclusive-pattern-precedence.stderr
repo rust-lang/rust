@@ -1,32 +1,20 @@
 error: the range pattern here has ambiguous interpretation
-  --> $DIR/range-inclusive-pattern-precedence.rs:17:10
+  --> $DIR/range-inclusive-pattern-precedence.rs:14:10
    |
 LL |         &10..=15 => {}
    |          ^^^^^^^ help: add parentheses to clarify the precedence: `(10 ..=15)`
 
-error: the range pattern here has ambiguous interpretation
-  --> $DIR/range-inclusive-pattern-precedence.rs:28:13
-   |
-LL |         box 10..=15 => {}
-   |             ^^^^^^^ help: add parentheses to clarify the precedence: `(10 ..=15)`
-
 warning: `...` range patterns are deprecated
-  --> $DIR/range-inclusive-pattern-precedence.rs:14:9
+  --> $DIR/range-inclusive-pattern-precedence.rs:11:9
    |
 LL |         &0...9 => {}
    |         ^^^^^^ help: use `..=` for an inclusive range: `&(0..=9)`
    |
 note: the lint level is defined here
-  --> $DIR/range-inclusive-pattern-precedence.rs:9:9
+  --> $DIR/range-inclusive-pattern-precedence.rs:7:9
    |
 LL | #![warn(ellipsis_inclusive_range_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: `...` range patterns are deprecated
-  --> $DIR/range-inclusive-pattern-precedence.rs:25:14
-   |
-LL |         box 0...9 => {}
-   |              ^^^ help: use `..=` for an inclusive range
-
-error: aborting due to 2 previous errors; 2 warnings emitted
+error: aborting due to previous error; 1 warning emitted
 

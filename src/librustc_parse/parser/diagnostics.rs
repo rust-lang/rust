@@ -1228,10 +1228,13 @@ impl<'a> Parser<'a> {
                 if let Some(sp) = unmatched.unclosed_span {
                     err.span_label(sp, "unclosed delimiter");
                 }
+                // Backticks should be removed to apply suggestions.
+                let mut delim = delim.to_string();
+                delim.retain(|c| c != '`');
                 err.span_suggestion_short(
                     self.prev_token.span.shrink_to_hi(),
-                    &format!("{} may belong here", delim.to_string()),
-                    delim.to_string(),
+                    &format!("`{}` may belong here", delim),
+                    delim,
                     Applicability::MaybeIncorrect,
                 );
                 if unmatched.found_delim.is_none() {

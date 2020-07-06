@@ -1,8 +1,8 @@
 error: expected `;`, found `}`
-  --> $DIR/issue-3036.rs:5:14
+  --> $DIR/issue-3036.rs:6:15
    |
-LL |     let x = 3
-   |              ^ help: add `;` here
+LL |     let _x = 3
+   |               ^ help: add `;` here
 LL | }
    | - unexpected token
 
