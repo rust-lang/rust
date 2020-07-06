@@ -248,7 +248,12 @@ where
         assert!(promoted.is_none());
         // Don't peek inside trait associated constants.
         if cx.tcx.trait_of_item(def.did).is_none() {
-            let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def.did);
+            let qualifs = if let Some(def) = def.as_local() {
+                cx.tcx.at(constant.span).mir_const_qualif_const_arg(def)
+            } else {
+                cx.tcx.at(constant.span).mir_const_qualif(def.did)
+            };
+
             if !Q::in_qualifs(&qualifs) {
                 return false;
             }

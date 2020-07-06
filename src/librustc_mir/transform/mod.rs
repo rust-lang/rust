@@ -48,13 +48,31 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         mir_keys,
         mir_const,
-        mir_const_qualif,
+        mir_const_qualif: |tcx, did| {
+            mir_const_qualif(tcx, ty::WithOptParam::dummy(did.expect_local()))
+        },
+        mir_const_qualif_const_arg: |tcx, def| {
+            if def.param_did.is_none() {
+                tcx.mir_const_qualif(def.did.to_def_id())
+            } else {
+                mir_const_qualif(tcx, def)
+            }
+        },
         mir_validated,
         mir_drops_elaborated_and_const_checked,
         optimized_mir,
         optimized_mir_of_const_arg,
         is_mir_available,
-        promoted_mir,
+        promoted_mir: |tcx, def_id| {
+            promoted_mir(tcx, ty::WithOptParam::dummy(def_id.expect_local()))
+        },
+        promoted_mir_of_const_arg: |tcx, def| {
+            if def.param_did.is_none() {
+                tcx.promoted_mir(def.did.to_def_id())
+            } else {
+                promoted_mir(tcx, def)
+            }
+        },
         ..*providers
     };
     instrument_coverage::provide(providers);
@@ -118,6 +136,10 @@ pub struct MirSource<'tcx> {
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
         MirSource { instance: InstanceDef::Item(ty::WithOptParam::dummy(def_id)), promoted: None }
+    }
+
+    pub fn with_opt_param(self) -> ty::WithOptParam<DefId> {
+        self.instance.with_opt_param()
     }
 
     #[inline]
@@ -203,9 +225,14 @@ pub fn run_passes(
     }
 }
 
-fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
-    let def_id = def_id.expect_local();
-    let const_kind = tcx.hir().body_const_context(def_id);
+fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptParam<LocalDefId>) -> ConstQualifs {
+    if def.param_did.is_none() {
+        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
+            return tcx.mir_const_qualif_const_arg(ty::WithOptParam { param_did, ..def });
+        }
+    }
+
+    let const_kind = tcx.hir().body_const_context(def.did);
 
     // No need to const-check a non-const `fn`.
     if const_kind.is_none() {
@@ -216,15 +243,20 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
     // performing the steal.
-    let body = &tcx.mir_const(def_id.to_def_id()).borrow();
+    let body = &tcx.mir_const(def).borrow();
 
     if body.return_ty().references_error() {
         tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
         return Default::default();
     }
 
-    let ccx =
-        check_consts::ConstCx { body, tcx, def_id, const_kind, param_env: tcx.param_env(def_id) };
+    let ccx = check_consts::ConstCx {
+        body,
+        tcx,
+        def_id: def.did,
+        const_kind,
+        param_env: tcx.param_env(def.did),
+    };
 
     let mut validator = check_consts::validation::Validator::new(&ccx);
     validator.check_body();
@@ -235,22 +267,35 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
 }
 
 /// Make MIR ready for const evaluation. This is run on all MIR, not just on consts!
-fn mir_const<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> {
-    let def_id = def_id.expect_local();
+fn mir_const<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::WithOptParam<LocalDefId>,
+) -> &'tcx Steal<Body<'tcx>> {
+    if def.param_did.is_none() {
+        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
+            return tcx.mir_const(ty::WithOptParam { param_did, ..def });
+        }
+    }
 
     // Unsafety check uses the raw mir, so make sure it is run.
-    let _ = tcx.unsafety_check_result(def_id);
+    let _ = tcx.unsafety_check_result_const_arg(def);
 
-    let mut body = tcx.mir_built(def_id).steal();
+    let mut body = tcx.mir_built(def).steal();
 
-    util::dump_mir(tcx, None, "mir_map", &0, MirSource::item(def_id.to_def_id()), &body, |_, _| {
-        Ok(())
-    });
+    util::dump_mir(
+        tcx,
+        None,
+        "mir_map",
+        &0,
+        MirSource { instance: InstanceDef::Item(def.to_global()), promoted: None },
+        &body,
+        |_, _| Ok(()),
+    );
 
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(ty::WithOptParam::dummy(def_id.to_def_id())),
+        InstanceDef::Item(def.to_global()),
         None,
         MirPhase::Const,
         &[&[
@@ -266,13 +311,19 @@ fn mir_const<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Steal<Body<'tcx>> 
 
 fn mir_validated(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    def: ty::WithOptParam<LocalDefId>,
 ) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
+    if def.param_did.is_none() {
+        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
+            return tcx.mir_validated(ty::WithOptParam { param_did, ..def });
+        }
+    }
+
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
-    let _ = tcx.mir_const_qualif(def_id.to_def_id());
+    let _ = tcx.mir_const_qualif_const_arg(def);
 
-    let mut body = tcx.mir_const(def_id.to_def_id()).steal();
+    let mut body = tcx.mir_const(def).steal();
 
     let mut required_consts = Vec::new();
     let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
@@ -285,7 +336,7 @@ fn mir_validated(
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(ty::WithOptParam::dummy(def_id.to_def_id())),
+        InstanceDef::Item(def.to_global()),
         None,
         MirPhase::Validated,
         &[&[
@@ -316,9 +367,9 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
 
     // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
-    tcx.ensure().mir_borrowck(def.did);
+    tcx.ensure().mir_borrowck_const_arg(def);
 
-    let (body, _) = tcx.mir_validated(def.did);
+    let (body, _) = tcx.mir_validated(def);
     let mut body = body.steal();
 
     run_post_borrowck_cleanup_passes(tcx, &mut body, def.did, None);
@@ -473,23 +524,30 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptParam<LocalDefId>) -> Bo
     body
 }
 
-fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> IndexVec<Promoted, Body<'_>> {
-    if tcx.is_constructor(def_id) {
-        return IndexVec::new();
+fn promoted_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::WithOptParam<LocalDefId>,
+) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
+    if def.param_did.is_none() {
+        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
+            return tcx.promoted_mir_of_const_arg(ty::WithOptParam { param_did, ..def });
+        }
     }
 
-    let def_id = def_id.expect_local();
+    if tcx.is_constructor(def.did.to_def_id()) {
+        return tcx.arena.alloc(IndexVec::new());
+    }
 
-    tcx.ensure().mir_borrowck(def_id);
-    let (_, promoted) = tcx.mir_validated(def_id);
+    tcx.ensure().mir_borrowck_const_arg(def);
+    let (_, promoted) = tcx.mir_validated(def);
     let mut promoted = promoted.steal();
 
     for (p, mut body) in promoted.iter_enumerated_mut() {
-        run_post_borrowck_cleanup_passes(tcx, &mut body, def_id, Some(p));
-        run_optimization_passes(tcx, &mut body, def_id, Some(p));
+        run_post_borrowck_cleanup_passes(tcx, &mut body, def.did, Some(p));
+        run_optimization_passes(tcx, &mut body, def.did, Some(p));
     }
 
     debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");
 
-    promoted
+    tcx.arena.alloc(promoted)
 }

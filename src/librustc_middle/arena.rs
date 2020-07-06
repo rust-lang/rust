@@ -31,10 +31,20 @@ macro_rules! arena_types {
                         rustc_middle::mir::Body<$tcx>
                     >
                 >;
+            [] promoted:
+                rustc_index::vec::IndexVec<
+                    rustc_middle::mir::Promoted,
+                    rustc_middle::mir::Body<$tcx>
+                >,
+                rustc_index::vec::IndexVec<
+                    rustc_middle::mir::Promoted,
+                    rustc_middle::mir::Body<'_x>
+                >;
             [decode] tables: rustc_middle::ty::TypeckTables<$tcx>, rustc_middle::ty::TypeckTables<'_x>;
             [decode] borrowck_result:
                 rustc_middle::mir::BorrowCheckResult<$tcx>,
                 rustc_middle::mir::BorrowCheckResult<'_x>;
+            [] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult, rustc_middle::mir::UnsafetyCheckResult;
             [] const_allocs: rustc_middle::mir::interpret::Allocation, rustc_middle::mir::interpret::Allocation;
             // Required for the incremental on-disk cache
             [few, decode] mir_keys: rustc_hir::def_id::DefIdSet, rustc_hir::def_id::DefIdSet;

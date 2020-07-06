@@ -1600,12 +1600,20 @@ impl WithOptParam<DefId> {
         self.did.as_local().map(|did| WithOptParam { did, param_did: self.param_did })
     }
 
+    pub fn expect_local(self) -> WithOptParam<LocalDefId> {
+        self.as_local().unwrap()
+    }
+
     pub fn is_local(self) -> bool {
         self.did.is_local()
     }
 
     pub fn ty_def_id(self) -> DefId {
         self.param_did.unwrap_or(self.did)
+    }
+
+    pub fn init_me_bby(tcx: TyCtxt<'_>, did: DefId) -> WithOptParam<DefId> {
+        WithOptParam { did, param_did: did.as_local().and_then(|did| tcx.opt_const_param_of(did)) }
     }
 }
 

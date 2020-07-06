@@ -489,7 +489,20 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { unsafety_check_result, unsafe_derive_on_repr_packed, ..*providers };
+    *providers = Providers {
+        unsafety_check_result: |tcx, def_id| {
+            unsafety_check_result(tcx, ty::WithOptParam::dummy(def_id))
+        },
+        unsafety_check_result_const_arg: |tcx, def| {
+            if def.param_did.is_none() {
+                tcx.unsafety_check_result(def.did)
+            } else {
+                unsafety_check_result(tcx, def)
+            }
+        },
+        unsafe_derive_on_repr_packed,
+        ..*providers
+    };
 }
 
 struct UnusedUnsafeVisitor<'a> {
@@ -535,32 +548,42 @@ fn check_unused_unsafe(
     intravisit::Visitor::visit_body(&mut visitor, body);
 }
 
-fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: LocalDefId) -> UnsafetyCheckResult {
-    debug!("unsafety_violations({:?})", def_id);
+fn unsafety_check_result<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::WithOptParam<LocalDefId>,
+) -> &'tcx UnsafetyCheckResult {
+    if def.param_did.is_none() {
+        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
+            return tcx.unsafety_check_result_const_arg(ty::WithOptParam { param_did, ..def });
+        }
+    }
+
+    debug!("unsafety_violations({:?})", def);
 
     // N.B., this borrow is valid because all the consumers of
     // `mir_built` force this.
-    let body = &tcx.mir_built(def_id).borrow();
+    let body = &tcx.mir_built(def).borrow();
 
-    let param_env = tcx.param_env(def_id);
+    let param_env = tcx.param_env(def.did);
 
-    let id = tcx.hir().as_local_hir_id(def_id);
+    let id = tcx.hir().as_local_hir_id(def.did);
     let (const_context, min_const_fn) = match tcx.hir().body_owner_kind(id) {
         hir::BodyOwnerKind::Closure => (false, false),
         hir::BodyOwnerKind::Fn => {
-            (tcx.is_const_fn_raw(def_id.to_def_id()), is_min_const_fn(tcx, def_id.to_def_id()))
+            (tcx.is_const_fn_raw(def.did.to_def_id()), is_min_const_fn(tcx, def.did.to_def_id()))
         }
         hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => (true, false),
     };
     let mut checker =
-        UnsafetyChecker::new(const_context, min_const_fn, body, def_id, tcx, param_env);
+        UnsafetyChecker::new(const_context, min_const_fn, body, def.did, tcx, param_env);
     checker.visit_body(&body);
 
-    check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);
-    UnsafetyCheckResult {
+    check_unused_unsafe(tcx, def.did, &checker.used_unsafe, &mut checker.inherited_blocks);
+
+    tcx.arena.alloc(UnsafetyCheckResult {
         violations: checker.violations.into(),
         unsafe_blocks: checker.inherited_blocks.into(),
-    }
+    })
 }
 
 fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
