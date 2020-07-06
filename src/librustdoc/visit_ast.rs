@@ -31,6 +31,27 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
+fn check_doc_alias_attrs(
+    attrs: &[ast::Attribute],
+    item_kind: &str,
+    diagnostic: &::rustc_errors::Handler,
+) {
+    for attr in attrs {
+        if let Some(attr) = attr.meta() {
+            if let Some(list) = attr.meta_item_list() {
+                for meta in list {
+                    if meta.check_name(sym::alias) {
+                        diagnostic.span_err(
+                            meta.span(),
+                            &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", item_kind),
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?.
 
@@ -387,6 +408,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         match item.kind {
             hir::ItemKind::ForeignMod(ref fm) => {
+                check_doc_alias_attrs(&item.attrs, "extern block", self.cx.sess().diagnostic());
                 for item in fm.items {
                     self.visit_foreign_item(item, None, om);
                 }
@@ -561,6 +583,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 self_ty,
                 ref items,
             } => {
+                check_doc_alias_attrs(
+                    &item.attrs,
+                    "implementation block",
+                    self.cx.sess().diagnostic(),
+                );
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
                 if !self.inlining && of_trait.is_none() {
