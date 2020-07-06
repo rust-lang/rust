@@ -665,6 +665,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let Some((rvalue, _)) = constant(cx, cx.tables(), div_rhs);
         if let Some((lvalue, _)) = constant(cx, cx.tables(), mul_rhs);
         then {
+            // TODO: also check for constant values near PI/180 or 180/PI
             if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue) &&
                (F32(180_f32) == lvalue || F64(180_f64) == lvalue)
             {
