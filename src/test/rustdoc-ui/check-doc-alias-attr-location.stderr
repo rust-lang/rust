@@ -1,0 +1,20 @@
+error: `#[doc(alias = "...")]` isn't allowed on extern block
+  --> $DIR/check-doc-alias-attr-location.rs:6:7
+   |
+LL | #[doc(alias = "foo")]
+   |       ^^^^^^^^^^^^^
+
+error: `#[doc(alias = "...")]` isn't allowed on implementation block
+  --> $DIR/check-doc-alias-attr-location.rs:9:7
+   |
+LL | #[doc(alias = "bar")]
+   |       ^^^^^^^^^^^^^
+
+error: `#[doc(alias = "...")]` isn't allowed on implementation block
+  --> $DIR/check-doc-alias-attr-location.rs:12:7
+   |
+LL | #[doc(alias = "foobar")]
+   |       ^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
