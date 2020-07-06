@@ -158,6 +158,8 @@ static DOCS_TARGETS: &[&str] = &[
 
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
+static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rust-analyzer-preview"];
+
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
 struct Manifest {
@@ -222,6 +224,7 @@ struct Builder {
     rust_release: String,
     cargo_release: String,
     rls_release: String,
+    rust_analyzer_release: String,
     clippy_release: String,
     rustfmt_release: String,
     llvm_tools_release: String,
@@ -237,6 +240,7 @@ struct Builder {
     rust_version: Option<String>,
     cargo_version: Option<String>,
     rls_version: Option<String>,
+    rust_analyzer_version: Option<String>,
     clippy_version: Option<String>,
     rustfmt_version: Option<String>,
     llvm_tools_version: Option<String>,
@@ -245,6 +249,7 @@ struct Builder {
     rust_git_commit_hash: Option<String>,
     cargo_git_commit_hash: Option<String>,
     rls_git_commit_hash: Option<String>,
+    rust_analyzer_git_commit_hash: Option<String>,
     clippy_git_commit_hash: Option<String>,
     rustfmt_git_commit_hash: Option<String>,
     llvm_tools_git_commit_hash: Option<String>,
@@ -274,6 +279,7 @@ fn main() {
     let s3_address = args.next().unwrap();
     let cargo_release = args.next().unwrap();
     let rls_release = args.next().unwrap();
+    let rust_analyzer_release = args.next().unwrap();
     let clippy_release = args.next().unwrap();
     let miri_release = args.next().unwrap();
     let rustfmt_release = args.next().unwrap();
@@ -290,6 +296,7 @@ fn main() {
         rust_release,
         cargo_release,
         rls_release,
+        rust_analyzer_release,
         clippy_release,
         rustfmt_release,
         llvm_tools_release,
@@ -305,6 +312,7 @@ fn main() {
         rust_version: None,
         cargo_version: None,
         rls_version: None,
+        rust_analyzer_version: None,
         clippy_version: None,
         rustfmt_version: None,
         llvm_tools_version: None,
@@ -313,6 +321,7 @@ fn main() {
         rust_git_commit_hash: None,
         cargo_git_commit_hash: None,
         rls_git_commit_hash: None,
+        rust_analyzer_git_commit_hash: None,
         clippy_git_commit_hash: None,
         rustfmt_git_commit_hash: None,
         llvm_tools_git_commit_hash: None,
@@ -327,6 +336,7 @@ enum PkgType {
     RustSrc,
     Cargo,
     Rls,
+    RustAnalyzer,
     Clippy,
     Rustfmt,
     LlvmTools,
@@ -341,6 +351,7 @@ impl PkgType {
             "rust-src" => RustSrc,
             "cargo" => Cargo,
             "rls" | "rls-preview" => Rls,
+            "rust-analyzer" | "rust-analyzer-preview" => RustAnalyzer,
             "clippy" | "clippy-preview" => Clippy,
             "rustfmt" | "rustfmt-preview" => Rustfmt,
             "llvm-tools" | "llvm-tools-preview" => LlvmTools,
@@ -355,6 +366,7 @@ impl Builder {
         self.rust_version = self.version("rust", "x86_64-unknown-linux-gnu");
         self.cargo_version = self.version("cargo", "x86_64-unknown-linux-gnu");
         self.rls_version = self.version("rls", "x86_64-unknown-linux-gnu");
+        self.rust_analyzer_version = self.version("rust-analyzer", "x86_64-unknown-linux-gnu");
         self.clippy_version = self.version("clippy", "x86_64-unknown-linux-gnu");
         self.rustfmt_version = self.version("rustfmt", "x86_64-unknown-linux-gnu");
         self.llvm_tools_version = self.version("llvm-tools", "x86_64-unknown-linux-gnu");
@@ -363,6 +375,8 @@ impl Builder {
         self.rust_git_commit_hash = self.git_commit_hash("rust", "x86_64-unknown-linux-gnu");
         self.cargo_git_commit_hash = self.git_commit_hash("cargo", "x86_64-unknown-linux-gnu");
         self.rls_git_commit_hash = self.git_commit_hash("rls", "x86_64-unknown-linux-gnu");
+        self.rust_analyzer_git_commit_hash =
+            self.git_commit_hash("rust-analyzer", "x86_64-unknown-linux-gnu");
         self.clippy_git_commit_hash = self.git_commit_hash("clippy", "x86_64-unknown-linux-gnu");
         self.rustfmt_git_commit_hash = self.git_commit_hash("rustfmt", "x86_64-unknown-linux-gnu");
         self.llvm_tools_git_commit_hash =
@@ -436,6 +450,7 @@ impl Builder {
         package("rust-docs", DOCS_TARGETS);
         package("rust-src", &["*"]);
         package("rls-preview", HOSTS);
+        package("rust-analyzer-preview", HOSTS);
         package("clippy-preview", HOSTS);
         package("miri-preview", HOSTS);
         package("rustfmt-preview", HOSTS);
@@ -469,6 +484,7 @@ impl Builder {
                 "rustfmt-preview",
                 "clippy-preview",
                 "rls-preview",
+                "rust-analyzer-preview",
                 "rust-src",
                 "llvm-tools-preview",
                 "rust-analysis",
@@ -543,6 +559,7 @@ impl Builder {
             host_component("clippy-preview"),
             host_component("miri-preview"),
             host_component("rls-preview"),
+            host_component("rust-analyzer-preview"),
             host_component("rustfmt-preview"),
             host_component("llvm-tools-preview"),
             host_component("rust-analysis"),
@@ -612,8 +629,8 @@ impl Builder {
             .map(|version| (version, true))
             .unwrap_or_default(); // `is_present` defaults to `false` here.
 
-        // Miri is nightly-only; never ship it for other trains.
-        if pkgname == "miri-preview" && self.rust_release != "nightly" {
+        // Never ship nightly-only components for other trains.
+        if self.rust_release != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(&pkgname) {
             is_present = false; // Pretend the component is entirely missing.
         }
 
@@ -671,6 +688,9 @@ impl Builder {
             RustSrc => format!("rust-src-{}.tar.gz", self.rust_release),
             Cargo => format!("cargo-{}-{}.tar.gz", self.cargo_release, target),
             Rls => format!("rls-{}-{}.tar.gz", self.rls_release, target),
+            RustAnalyzer => {
+                format!("rust-analyzer-{}-{}.tar.gz", self.rust_analyzer_release, target)
+            }
             Clippy => format!("clippy-{}-{}.tar.gz", self.clippy_release, target),
             Rustfmt => format!("rustfmt-{}-{}.tar.gz", self.rustfmt_release, target),
             LlvmTools => format!("llvm-tools-{}-{}.tar.gz", self.llvm_tools_release, target),
@@ -684,6 +704,7 @@ impl Builder {
         match PkgType::from_component(component) {
             Cargo => &self.cargo_version,
             Rls => &self.rls_version,
+            RustAnalyzer => &self.rust_analyzer_version,
             Clippy => &self.clippy_version,
             Rustfmt => &self.rustfmt_version,
             LlvmTools => &self.llvm_tools_version,
@@ -697,6 +718,7 @@ impl Builder {
         match PkgType::from_component(component) {
             Cargo => &self.cargo_git_commit_hash,
             Rls => &self.rls_git_commit_hash,
+            RustAnalyzer => &self.rust_analyzer_git_commit_hash,
             Clippy => &self.clippy_git_commit_hash,
             Rustfmt => &self.rustfmt_git_commit_hash,
             LlvmTools => &self.llvm_tools_git_commit_hash,
