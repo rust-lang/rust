@@ -138,12 +138,18 @@ impl SmolStr {
     }
 
     fn from_char_iter<I: iter::Iterator<Item = char>>(mut iter: I) -> SmolStr {
+        let (min_size, _) = iter.size_hint();
+        if min_size > INLINE_CAP {
+            let heap: String = iter.collect();
+            return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
+        }
         let mut len = 0;
         let mut buf = [0u8; INLINE_CAP];
         while let Some(ch) = iter.next() {
             let size = ch.len_utf8();
             if size + len > INLINE_CAP {
-                let mut heap = String::with_capacity(size + len);
+                let (min_remaining, _) = iter.size_hint();
+                let mut heap = String::with_capacity(size + len + min_remaining);
                 heap.push_str(std::str::from_utf8(&buf[..len]).unwrap());
                 heap.push(ch);
                 heap.extend(iter);
