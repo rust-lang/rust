@@ -38,6 +38,11 @@ function isGitHubActions {
     [[ "${GITHUB_ACTIONS-false}" = "true" ]]
 }
 
+
+function isSelfHostedGitHubActions {
+    [[ "${RUST_GHA_SELF_HOSTED-false}" = "true" ]]
+}
+
 function isMacOS {
     [[ "${OSTYPE}" = "darwin"* ]]
 }

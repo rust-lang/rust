@@ -12,7 +12,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 if isWindows && isAzurePipelines; then
     cmd //c "mkdir c:\\MORE_SPACE"
     cmd //c "mklink /J build c:\\MORE_SPACE"
-elif isLinux && isGitHubActions; then
+elif isLinux && isGitHubActions && ! isSelfHostedGitHubActions; then
     sudo mkdir -p /mnt/more-space
     sudo chown -R "$(whoami):" /mnt/more-space
 
