@@ -43,7 +43,7 @@ pub mod util {
 
 pub mod ast;
 pub mod attr;
-pub use attr::{with_default_globals, with_globals, GLOBALS};
+pub use attr::{with_default_session_globals, with_session_globals, SESSION_GLOBALS};
 pub mod crate_disambiguator;
 pub mod entry;
 pub mod expand;

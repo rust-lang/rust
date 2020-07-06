@@ -2,7 +2,7 @@ use crate::tests::string_to_stream;
 
 use rustc_ast::token;
 use rustc_ast::tokenstream::{TokenStream, TokenStreamBuilder, TokenTree};
-use rustc_ast::with_default_globals;
+use rustc_ast::with_default_session_globals;
 use rustc_span::{BytePos, Span, Symbol};
 use smallvec::smallvec;
 
@@ -16,7 +16,7 @@ fn sp(a: u32, b: u32) -> Span {
 
 #[test]
 fn test_concat() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let test_res = string_to_ts("foo::bar::baz");
         let test_fst = string_to_ts("foo::bar");
         let test_snd = string_to_ts("::baz");
@@ -29,7 +29,7 @@ fn test_concat() {
 
 #[test]
 fn test_to_from_bijection() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let test_start = string_to_ts("foo::bar(baz)");
         let test_end = test_start.trees().collect();
         assert_eq!(test_start, test_end)
@@ -38,7 +38,7 @@ fn test_to_from_bijection() {
 
 #[test]
 fn test_eq_0() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let test_res = string_to_ts("foo");
         let test_eqs = string_to_ts("foo");
         assert_eq!(test_res, test_eqs)
@@ -47,7 +47,7 @@ fn test_eq_0() {
 
 #[test]
 fn test_eq_1() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let test_res = string_to_ts("::bar::baz");
         let test_eqs = string_to_ts("::bar::baz");
         assert_eq!(test_res, test_eqs)
@@ -56,7 +56,7 @@ fn test_eq_1() {
 
 #[test]
 fn test_eq_3() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let test_res = string_to_ts("");
         let test_eqs = string_to_ts("");
         assert_eq!(test_res, test_eqs)
@@ -65,7 +65,7 @@ fn test_eq_3() {
 
 #[test]
 fn test_diseq_0() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let test_res = string_to_ts("::bar::baz");
         let test_eqs = string_to_ts("bar::baz");
         assert_eq!(test_res == test_eqs, false)
@@ -74,7 +74,7 @@ fn test_diseq_0() {
 
 #[test]
 fn test_diseq_1() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let test_res = string_to_ts("(bar,baz)");
         let test_eqs = string_to_ts("bar,baz");
         assert_eq!(test_res == test_eqs, false)
@@ -83,7 +83,7 @@ fn test_diseq_1() {
 
 #[test]
 fn test_is_empty() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
         let test1: TokenStream =
             TokenTree::token(token::Ident(Symbol::intern("a"), false), sp(0, 1)).into();
@@ -97,7 +97,7 @@ fn test_is_empty() {
 
 #[test]
 fn test_dotdotdot() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let mut builder = TokenStreamBuilder::new();
         builder.push(TokenTree::token(token::Dot, sp(0, 1)).joint());
         builder.push(TokenTree::token(token::Dot, sp(1, 2)).joint());

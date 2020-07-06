@@ -39,16 +39,16 @@ impl<T: Write> Write for Shared<T> {
     }
 }
 
-fn with_default_globals(f: impl FnOnce()) {
-    let globals = rustc_span::Globals::new(rustc_span::edition::DEFAULT_EDITION);
-    rustc_span::GLOBALS.set(&globals, || rustc_span::GLOBALS.set(&globals, f))
+fn with_default_session_globals(f: impl FnOnce()) {
+    let session_globals = rustc_span::SessionGlobals::new(rustc_span::edition::DEFAULT_EDITION);
+    rustc_span::SESSION_GLOBALS.set(&session_globals, f);
 }
 
 /// Test the span yields correct positions in JSON.
 fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
     let expected_output = TestData { spans: vec![expected_output] };
 
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         sm.new_source_file(Path::new("test.rs").to_owned().into(), code.to_owned());
 

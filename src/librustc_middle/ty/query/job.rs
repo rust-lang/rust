@@ -13,16 +13,15 @@ pub unsafe fn handle_deadlock() {
     let gcx_ptr = tls::GCX_PTR.with(|gcx_ptr| gcx_ptr as *const _);
     let gcx_ptr = &*gcx_ptr;
 
-    let rustc_span_globals =
-        rustc_span::GLOBALS.with(|rustc_span_globals| rustc_span_globals as *const _);
-    let rustc_span_globals = &*rustc_span_globals;
-    let syntax_globals = rustc_ast::attr::GLOBALS.with(|syntax_globals| syntax_globals as *const _);
-    let syntax_globals = &*syntax_globals;
+    let span_session_globals = rustc_span::SESSION_GLOBALS.with(|ssg| ssg as *const _);
+    let span_session_globals = &*span_session_globals;
+    let ast_session_globals = rustc_ast::attr::SESSION_GLOBALS.with(|asg| asg as *const _);
+    let ast_session_globals = &*ast_session_globals;
     thread::spawn(move || {
         tls::GCX_PTR.set(gcx_ptr, || {
-            rustc_ast::attr::GLOBALS.set(syntax_globals, || {
-                rustc_span::GLOBALS
-                    .set(rustc_span_globals, || tls::with_global(|tcx| deadlock(tcx, &registry)))
+            rustc_ast::attr::SESSION_GLOBALS.set(ast_session_globals, || {
+                rustc_span::SESSION_GLOBALS
+                    .set(span_session_globals, || tls::with_global(|tcx| deadlock(tcx, &registry)))
             });
         })
     });
