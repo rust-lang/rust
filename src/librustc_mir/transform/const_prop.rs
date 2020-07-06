@@ -1004,14 +1004,6 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     let expected = ScalarMaybeUninit::from(Scalar::from_bool(*expected));
                     let value_const = self.ecx.read_scalar(value).unwrap();
                     if expected != value_const {
-                        // Poison all places this operand references so that further code
-                        // doesn't use the invalid value
-                        match cond {
-                            Operand::Move(ref place) | Operand::Copy(ref place) => {
-                                Self::remove_const(&mut self.ecx, place.local);
-                            }
-                            Operand::Constant(_) => {}
-                        }
                         let mut eval_to_int = |op| {
                             let op = self
                                 .eval_operand(op, source_info)
@@ -1020,27 +1012,37 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         };
                         let msg = match msg {
                             AssertKind::DivisionByZero(op) => {
-                                AssertKind::DivisionByZero(eval_to_int(op))
+                                Some(AssertKind::DivisionByZero(eval_to_int(op)))
                             }
                             AssertKind::RemainderByZero(op) => {
-                                AssertKind::RemainderByZero(eval_to_int(op))
+                                Some(AssertKind::RemainderByZero(eval_to_int(op)))
                             }
                             AssertKind::BoundsCheck { ref len, ref index } => {
                                 let len = eval_to_int(len);
                                 let index = eval_to_int(index);
-                                AssertKind::BoundsCheck { len, index }
+                                Some(AssertKind::BoundsCheck { len, index })
                             }
                             // Overflow is are already covered by checks on the binary operators.
-                            AssertKind::Overflow(..) | AssertKind::OverflowNeg(_) => return,
+                            AssertKind::Overflow(..) | AssertKind::OverflowNeg(_) => None,
                             // Need proper const propagator for these.
-                            _ => return,
+                            _ => None,
                         };
-                        self.report_assert_as_lint(
-                            lint::builtin::UNCONDITIONAL_PANIC,
-                            source_info,
-                            "this operation will panic at runtime",
-                            msg,
-                        );
+                        // Poison all places this operand references so that further code
+                        // doesn't use the invalid value
+                        match cond {
+                            Operand::Move(ref place) | Operand::Copy(ref place) => {
+                                Self::remove_const(&mut self.ecx, place.local);
+                            }
+                            Operand::Constant(_) => {}
+                        }
+                        if let Some(msg) = msg {
+                            self.report_assert_as_lint(
+                                lint::builtin::UNCONDITIONAL_PANIC,
+                                source_info,
+                                "this operation will panic at runtime",
+                                msg,
+                            );
+                        }
                     } else {
                         if self.should_const_prop(value) {
                             if let ScalarMaybeUninit::Scalar(scalar) = value_const {
