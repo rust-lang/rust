@@ -530,16 +530,22 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
             // the lint noisy in unnecessary situations
             return;
         }
-        let els = remove_blocks(&arms[1].body);
-        let els = if is_unit_expr(els) {
+        let els = arms[1].body;
+        let els = if is_unit_expr(remove_blocks(els)) {
             None
-        } else if let ExprKind::Block(_, _) = els.kind {
-            // matches with blocks that contain statements are prettier as `if let + else`
-            Some(els)
+        } else if let ExprKind::Block(Block { stmts, expr: block_expr, .. }, _) = els.kind {
+            if stmts.len() == 1 && block_expr.is_none() || stmts.is_empty() && block_expr.is_some() {
+                // single statement/expr "else" block, don't lint
+                return;
+            } else {
+                // block with 2+ statements or 1 expr and 1+ statement
+                Some(els)
+            }
         } else {
-            // allow match arms with just expressions
-            return;
+            // not a block, don't lint
+            return; 
         };
+
         let ty = cx.tables().expr_ty(ex);
         if ty.kind != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
