@@ -695,9 +695,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     // This is an anchor to an element of the current page, nothing to do in here!
                     continue;
                 }
-                (parts[0].to_owned(), Some(parts[1].to_owned()))
+                (parts[0], Some(parts[1].to_owned()))
             } else {
-                (parts[0].to_owned(), None)
+                (parts[0], None)
             };
             let resolved_self;
             let mut path_str;
