@@ -2410,12 +2410,12 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
         f.generics.print()
     )
     .len();
-    write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it));
+    write!(w, "<pre class='rust fn'>");
     render_attributes(w, it, false);
     write!(
         w,
         "{vis}{constness}{asyncness}{unsafety}{abi}fn \
-           {name}{generics}{decl}{where_clause}</pre>",
+           {name}{generics}{decl}{spotlight}{where_clause}</pre>",
         vis = it.visibility.print_with_space(),
         constness = f.header.constness.print_with_space(),
         asyncness = f.header.asyncness.print_with_space(),
@@ -2425,7 +2425,8 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
         generics = f.generics.print(),
         where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
         decl = Function { decl: &f.decl, header_len, indent: 0, asyncness: f.header.asyncness }
-            .print()
+            .print(),
+        spotlight = spotlight_decl(&f.decl),
     );
     document(w, cx, it)
 }
@@ -2614,9 +2615,8 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         write!(
             w,
-            "<h3 id='{id}' class='method'>{extra}<code>",
-            extra = render_spotlight_traits(m),
-            id = id
+            "<h3 id='{id}' class='method'><code>",
+            id = id,
         );
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
@@ -2931,7 +2931,7 @@ fn render_assoc_item(
         write!(
             w,
             "{}{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
-                   {generics}{decl}{where_clause}",
+                   {generics}{decl}{spotlight}{where_clause}",
             if parent == ItemType::Trait { "    " } else { "" },
             meth.visibility.print_with_space(),
             header.constness.print_with_space(),
@@ -2943,6 +2943,7 @@ fn render_assoc_item(
             name = name,
             generics = g.print(),
             decl = Function { decl: d, header_len, indent, asyncness: header.asyncness }.print(),
+            spotlight = spotlight_decl(&d),
             where_clause = WhereClause { gens: g, indent, end_newline }
         )
     }
@@ -3564,16 +3565,6 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
     }
 }
 
-fn render_spotlight_traits(item: &clean::Item) -> String {
-    match item.inner {
-        clean::FunctionItem(clean::Function { ref decl, .. })
-        | clean::TyMethodItem(clean::TyMethod { ref decl, .. })
-        | clean::MethodItem(clean::Method { ref decl, .. })
-        | clean::ForeignFunctionItem(clean::Function { ref decl, .. }) => spotlight_decl(decl),
-        _ => String::new(),
-    }
-}
-
 fn spotlight_decl(decl: &clean::FnDecl) -> String {
     let mut out = Buffer::html();
     let mut trait_ = String::new();
@@ -3622,13 +3613,13 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
         out.insert_str(
             0,
             &format!(
-                "<div class=\"important-traits\"><div class='tooltip'>ⓘ\
+                "<span class=\"important-traits\"><div class='tooltip'>ⓘ\
                                     <span class='tooltiptext'>Important traits for {}</span></div>\
                                     <div class=\"content hidden\">",
                 trait_
             ),
         );
-        out.push_str("</code></div></div>");
+        out.push_str("</code></div></span>");
     }
 
     out.into_inner()
@@ -3740,13 +3731,12 @@ fn render_impl(
                 (true, " hidden")
             };
         match item.inner {
-            clean::MethodItem(clean::Method { ref decl, .. })
-            | clean::TyMethodItem(clean::TyMethod { ref decl, .. }) => {
+            clean::MethodItem(clean::Method { .. })
+            | clean::TyMethodItem(clean::TyMethod { .. }) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
                     write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                    write!(w, "{}", spotlight_decl(decl));
                     write!(w, "<code>");
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
