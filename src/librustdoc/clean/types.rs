@@ -118,7 +118,7 @@ impl Item {
         self.attrs.collapsed_doc_value()
     }
 
-    pub fn links(&self) -> Vec<(String, String)> {
+    pub fn links(&self) -> Vec<RenderedLink> {
         self.attrs.links(&self.def_id.krate)
     }
 
@@ -441,6 +441,13 @@ pub struct ItemLink {
     pub(crate) fragment: Option<String>,
 }
 
+pub struct RenderedLink {
+    /// The text the link was original written as
+    pub(crate) original_text: String,
+    /// The URL to put in the `href`
+    pub(crate) href: String,
+}
+
 impl Attributes {
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
     pub fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
@@ -617,7 +624,7 @@ impl Attributes {
     /// Gets links as a vector
     ///
     /// Cache must be populated before call
-    pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
+    pub fn links(&self, krate: &CrateNum) -> Vec<RenderedLink> {
         use crate::html::format::href;
         use crate::html::render::CURRENT_DEPTH;
 
@@ -631,7 +638,7 @@ impl Attributes {
                                 href.push_str("#");
                                 href.push_str(fragment);
                             }
-                            Some((s.clone(), href))
+                            Some(RenderedLink { original_text: s.clone(), href })
                         } else {
                             None
                         }
@@ -651,16 +658,16 @@ impl Attributes {
                             };
                             // This is a primitive so the url is done "by hand".
                             let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
-                            Some((
-                                s.clone(),
-                                format!(
+                            Some(RenderedLink {
+                                original_text: s.clone(),
+                                href: format!(
                                     "{}{}std/primitive.{}.html{}",
                                     url,
                                     if !url.ends_with('/') { "/" } else { "" },
                                     &fragment[..tail],
                                     &fragment[tail..]
                                 ),
-                            ))
+                            })
                         } else {
                             panic!("This isn't a primitive?!");
                         }

@@ -63,7 +63,7 @@ use rustc_span::symbol::{sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, TypeKind};
+use crate::clean::{self, AttributesExt, Deprecation, GetDefId, RenderedLink, SelfTy, TypeKind};
 use crate::config::RenderInfo;
 use crate::config::RenderOptions;
 use crate::docfs::{DocFS, PathError};
@@ -1780,7 +1780,7 @@ fn render_markdown(
     w: &mut Buffer,
     cx: &Context,
     md_text: &str,
-    links: Vec<(String, String)>,
+    links: Vec<RenderedLink>,
     prefix: &str,
     is_hidden: bool,
 ) {

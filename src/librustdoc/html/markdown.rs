@@ -34,6 +34,7 @@ use std::fmt::Write;
 use std::ops::Range;
 use std::str;
 
+use crate::clean::RenderedLink;
 use crate::doctest;
 use crate::html::highlight;
 use crate::html::toc::TocBuilder;
@@ -52,7 +53,7 @@ fn opts() -> Options {
 pub struct Markdown<'a>(
     pub &'a str,
     /// A list of link replacements.
-    pub &'a [(String, String)],
+    pub &'a [RenderedLink],
     /// The current list of used header IDs.
     pub &'a mut IdMap,
     /// Whether to allow the use of explicit error codes in doctest lang strings.
@@ -78,7 +79,7 @@ pub struct MarkdownHtml<'a>(
     pub &'a Option<Playground>,
 );
 /// A tuple struct like `Markdown` that renders only the first paragraph.
-pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [(String, String)]);
+pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ErrorCodes {
@@ -339,11 +340,11 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 /// Make headings links with anchor IDs and build up TOC.
 struct LinkReplacer<'a, 'b, I: Iterator<Item = Event<'a>>> {
     inner: I,
-    links: &'b [(String, String)],
+    links: &'b [RenderedLink],
 }
 
 impl<'a, 'b, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, 'b, I> {
-    fn new(iter: I, links: &'b [(String, String)]) -> Self {
+    fn new(iter: I, links: &'b [RenderedLink]) -> Self {
         LinkReplacer { inner: iter, links }
     }
 }
@@ -354,8 +355,8 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I>
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.inner.next();
         if let Some(Event::Start(Tag::Link(kind, dest, text))) = event {
-            if let Some(&(_, ref replace)) = self.links.iter().find(|link| link.0 == *dest) {
-                Some(Event::Start(Tag::Link(kind, replace.to_owned().into(), text)))
+            if let Some(link) = self.links.iter().find(|link| link.original_text == *dest) {
+                Some(Event::Start(Tag::Link(kind, link.href.clone().into(), text)))
             } else {
                 Some(Event::Start(Tag::Link(kind, dest, text)))
             }
@@ -855,8 +856,8 @@ impl Markdown<'_> {
             return String::new();
         }
         let replacer = |_: &str, s: &str| {
-            if let Some(&(_, ref replace)) = links.iter().find(|link| &*link.0 == s) {
-                Some((replace.clone(), s.to_owned()))
+            if let Some(link) = links.iter().find(|link| &*link.original_text == s) {
+                Some((link.original_text.clone(), link.href.clone()))
             } else {
                 None
             }
@@ -933,8 +934,8 @@ impl MarkdownSummaryLine<'_> {
         }
 
         let replacer = |_: &str, s: &str| {
-            if let Some(&(_, ref replace)) = links.iter().find(|link| &*link.0 == s) {
-                Some((replace.clone(), s.to_owned()))
+            if let Some(rendered_link) = links.iter().find(|link| &*link.original_text == s) {
+                Some((rendered_link.original_text.clone(), rendered_link.href.clone()))
             } else {
                 None
             }
