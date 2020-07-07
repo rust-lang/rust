@@ -1,4 +1,10 @@
-use std::{borrow::Borrow, cmp::Ordering, fmt, hash, iter, ops::Deref, sync::Arc};
+use std::{
+    borrow::Borrow,
+    cmp::{self, Ordering},
+    fmt, hash, iter,
+    ops::Deref,
+    sync::Arc,
+};
 
 /// A `SmolStr` is a string type that has the following properties:
 ///
@@ -368,10 +374,17 @@ impl Repr {
                 };
             }
 
-            let newlines = text.bytes().take_while(|&b| b == b'\n').count();
-            if text[newlines..].bytes().all(|b| b == b' ') {
-                let spaces = len - newlines;
-                if newlines <= N_NEWLINES && spaces <= N_SPACES {
+            if len <= N_NEWLINES + N_SPACES {
+                let bytes = text.as_bytes();
+                let possible_newline_count = cmp::min(len, N_NEWLINES);
+                let newlines = bytes[..possible_newline_count]
+                    .iter()
+                    .take_while(|&&b| b == b'\n')
+                    .count();
+                let possible_space_count = len - newlines;
+                if possible_space_count <= N_SPACES && bytes[newlines..].iter().all(|&b| b == b' ')
+                {
+                    let spaces = possible_space_count;
                     return Repr::Substring { newlines, spaces };
                 }
             }
@@ -420,9 +433,9 @@ impl Repr {
 
 #[cfg(feature = "serde")]
 mod serde {
+    use super::SmolStr;
     use ::serde::de::{Deserializer, Error, Unexpected, Visitor};
     use std::fmt;
-    use super::SmolStr;
 
     // https://github.com/serde-rs/serde/blob/629802f2abfd1a54a6072992888fea7ca5bc209f/serde/src/private/de.rs#L56-L125
     fn smol_str<'de: 'a, 'a, D>(deserializer: D) -> Result<SmolStr, D::Error>

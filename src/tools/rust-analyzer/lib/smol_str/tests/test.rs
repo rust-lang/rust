@@ -87,7 +87,7 @@ proptest! {
 #[cfg(feature = "serde")]
 mod serde_tests {
     use super::*;
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
     use std::collections::HashMap;
 
     #[derive(Serialize, Deserialize)]
