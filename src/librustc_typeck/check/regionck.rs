@@ -488,7 +488,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     ) {
         if let mc::PlaceBase::Rvalue = place_with_id.place.base {
             if place_with_id.place.projections.is_empty() {
-                let typ = self.resolve_type(place_with_id.place.ty);
+                let typ = self.resolve_type(place_with_id.place.ty());
                 let body_id = self.body_id;
                 let _ = dropck::check_drop_obligations(self, typ, span, body_id);
             }
@@ -640,8 +640,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         borrow_kind: ty::BorrowKind,
         borrow_place: &mc::PlaceWithHirId<'tcx>,
     ) {
-        let origin = infer::DataBorrowed(borrow_place.place.ty, span);
-        self.type_must_outlive(origin, borrow_place.place.ty, borrow_region);
+        let origin = infer::DataBorrowed(borrow_place.place.ty(), span);
+        self.type_must_outlive(origin, borrow_place.place.ty(), borrow_region);
 
         for pointer_ty in borrow_place.place.deref_tys() {
             debug!(
