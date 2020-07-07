@@ -2639,28 +2639,13 @@ function defocusSearchBar() {
         });
     }());
 
-    function showModal(content) {
-        var modal = document.createElement("div");
-        modal.id = "important";
-        addClass(modal, "modal");
-        modal.innerHTML = "<div class=\"modal-content\"><div class=\"close\" id=\"modal-close\">✕" +
-                          "</div><div class=\"whiter\"></div><span class=\"docblock\">" + content +
-                          "</span></div>";
-        document.getElementsByTagName("body")[0].appendChild(modal);
-        document.getElementById("modal-close").onclick = hideModal;
-        modal.onclick = hideModal;
-    }
-
-    function hideModal() {
-        var modal = document.getElementById("important");
-        if (modal) {
-            modal.parentNode.removeChild(modal);
-        }
+    function showImportantTraits(content) {
+        let list = content.classList
     }
 
     onEachLazy(document.getElementsByClassName("important-traits"), function(e) {
         e.onclick = function() {
-            showModal(e.lastElementChild.innerHTML);
+            e.getElementsByClassName('important-traits-tooltiptext')[0].classList.toggle("force-tooltip")
         };
     });
 

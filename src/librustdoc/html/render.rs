@@ -2613,11 +2613,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
         let name = m.name.as_ref().unwrap();
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
-        write!(
-            w,
-            "<h3 id='{id}' class='method'><code>",
-            id = id,
-        );
+        write!(w, "<h3 id='{id}' class='method'><code>", id = id,);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
         render_stability_since(w, m, t);
@@ -3612,14 +3608,10 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
     if !out.is_empty() {
         out.insert_str(
             0,
-            &format!(
-                "<span class=\"important-traits\"><div class='tooltip'>ⓘ\
-                                    <span class='tooltiptext'>Important traits for {}</span></div>\
-                                    <div class=\"content hidden\">",
-                trait_
-            ),
+            "<span class=\"important-traits\"><span class=\"important-traits-tooltip\">ⓘ<div class='important-traits-tooltiptext'><span class=\"docblock\">"
+
         );
-        out.push_str("</code></div></span>");
+        out.push_str("</code></span></div></span></span>");
     }
 
     out.into_inner()
