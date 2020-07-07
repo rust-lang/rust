@@ -113,7 +113,7 @@ pub trait SourceDatabase: CheckCanceled + FileLoader + std::fmt::Debug {
     fn crate_graph(&self) -> Arc<CrateGraph>;
 }
 
-fn parse_query(db: &impl SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
+fn parse_query(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
     let _p = profile("parse_query").detail(|| format!("{:?}", file_id));
     let text = db.file_text(file_id);
     SourceFile::parse(&*text)
@@ -136,10 +136,7 @@ pub trait SourceDatabaseExt: SourceDatabase {
     fn source_root_crates(&self, id: SourceRootId) -> Arc<FxHashSet<CrateId>>;
 }
 
-fn source_root_crates(
-    db: &(impl SourceDatabaseExt + SourceDatabase),
-    id: SourceRootId,
-) -> Arc<FxHashSet<CrateId>> {
+fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<FxHashSet<CrateId>> {
     let graph = db.crate_graph();
     let res = graph
         .iter()

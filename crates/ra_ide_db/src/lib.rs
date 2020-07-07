@@ -11,11 +11,11 @@ pub mod imports_locator;
 pub mod source_change;
 mod wasm_shims;
 
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 use hir::db::{AstDatabase, DefDatabase, HirDatabase};
 use ra_db::{
-    salsa::{self, Database, Durability},
+    salsa::{self, Durability},
     Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase,
     Upcast,
 };
@@ -33,11 +33,16 @@ use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
     hir::db::DefDatabaseStorage,
     hir::db::HirDatabaseStorage
 )]
-#[derive(Debug)]
 pub struct RootDatabase {
-    runtime: salsa::Runtime<RootDatabase>,
+    storage: salsa::Storage<RootDatabase>,
     pub last_gc: crate::wasm_shims::Instant,
     pub last_gc_check: crate::wasm_shims::Instant,
+}
+
+impl fmt::Debug for RootDatabase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RootDatabase").finish()
+    }
 }
 
 impl Upcast<dyn AstDatabase> for RootDatabase {
@@ -71,17 +76,11 @@ impl FileLoader for RootDatabase {
 }
 
 impl salsa::Database for RootDatabase {
-    fn salsa_runtime(&self) -> &salsa::Runtime<RootDatabase> {
-        &self.runtime
-    }
-    fn salsa_runtime_mut(&mut self) -> &mut salsa::Runtime<Self> {
-        &mut self.runtime
-    }
     fn on_propagated_panic(&self) -> ! {
         Canceled::throw()
     }
-    fn salsa_event(&self, event: impl Fn() -> salsa::Event<RootDatabase>) {
-        match event().kind {
+    fn salsa_event(&self, event: salsa::Event) {
+        match event.kind {
             salsa::EventKind::DidValidateMemoizedValue { .. }
             | salsa::EventKind::WillExecute { .. } => {
                 self.check_canceled();
@@ -100,7 +99,7 @@ impl Default for RootDatabase {
 impl RootDatabase {
     pub fn new(lru_capacity: Option<usize>) -> RootDatabase {
         let mut db = RootDatabase {
-            runtime: salsa::Runtime::default(),
+            storage: salsa::Storage::default(),
             last_gc: crate::wasm_shims::Instant::now(),
             last_gc_check: crate::wasm_shims::Instant::now(),
         };
@@ -113,16 +112,16 @@ impl RootDatabase {
 
     pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
         let lru_capacity = lru_capacity.unwrap_or(ra_db::DEFAULT_LRU_CAP);
-        self.query_mut(ra_db::ParseQuery).set_lru_capacity(lru_capacity);
-        self.query_mut(hir::db::ParseMacroQuery).set_lru_capacity(lru_capacity);
-        self.query_mut(hir::db::MacroExpandQuery).set_lru_capacity(lru_capacity);
+        ra_db::ParseQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
+        hir::db::ParseMacroQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
+        hir::db::MacroExpandQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
     }
 }
 
 impl salsa::ParallelDatabase for RootDatabase {
     fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
         salsa::Snapshot::new(RootDatabase {
-            runtime: self.runtime.snapshot(self),
+            storage: self.storage.snapshot(),
             last_gc: self.last_gc,
             last_gc_check: self.last_gc_check,
         })
@@ -134,7 +133,7 @@ pub trait LineIndexDatabase: ra_db::SourceDatabase + CheckCanceled {
     fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
 }
 
-fn line_index(db: &impl LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
+fn line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
     Arc::new(LineIndex::new(&*text))
 }

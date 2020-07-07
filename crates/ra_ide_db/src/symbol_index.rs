@@ -87,7 +87,7 @@ impl Query {
 }
 
 #[salsa::query_group(SymbolsDatabaseStorage)]
-pub trait SymbolsDatabase: hir::db::HirDatabase + SourceDatabaseExt + ParallelDatabase {
+pub trait SymbolsDatabase: hir::db::HirDatabase + SourceDatabaseExt {
     fn file_symbols(&self, file_id: FileId) -> Arc<SymbolIndex>;
     fn library_symbols(&self) -> Arc<FxHashMap<SourceRootId, SymbolIndex>>;
     /// The set of "local" (that is, from the current workspace) roots.
@@ -100,9 +100,7 @@ pub trait SymbolsDatabase: hir::db::HirDatabase + SourceDatabaseExt + ParallelDa
     fn library_roots(&self) -> Arc<FxHashSet<SourceRootId>>;
 }
 
-fn library_symbols(
-    db: &(impl SymbolsDatabase + ParallelDatabase),
-) -> Arc<FxHashMap<SourceRootId, SymbolIndex>> {
+fn library_symbols(db: &dyn SymbolsDatabase) -> Arc<FxHashMap<SourceRootId, SymbolIndex>> {
     let _p = profile("library_symbols");
 
     let roots = db.library_roots();
@@ -123,7 +121,7 @@ fn library_symbols(
     Arc::new(res)
 }
 
-fn file_symbols(db: &impl SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> {
+fn file_symbols(db: &dyn SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> {
     db.check_canceled();
     let parse = db.parse(file_id);
 

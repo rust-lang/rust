@@ -10,7 +10,7 @@ use hir_def::{AdtId, AssocContainerId, DefWithBodyId, Lookup, TypeAliasId};
 
 pub use unsafe_tls::{set_current_program, with_current_program};
 
-pub struct DebugContext<'a>(&'a (dyn HirDatabase + 'a));
+pub struct DebugContext<'a>(&'a dyn HirDatabase);
 
 impl DebugContext<'_> {
     pub fn debug_struct_id(

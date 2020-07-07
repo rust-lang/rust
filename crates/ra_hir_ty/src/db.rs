@@ -19,7 +19,6 @@ use crate::{
 use hir_expand::name::Name;
 
 #[salsa::query_group(HirDatabaseStorage)]
-#[salsa::requires(salsa::Database)]
 pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(infer_wait)]
     #[salsa::transparent]

@@ -1216,7 +1216,7 @@ pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<
 }
 
 pub(crate) fn return_type_impl_traits(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     def: hir_def::FunctionId,
 ) -> Option<Arc<Binders<ReturnTypeImplTraits>>> {
     // FIXME unify with fn_sig_for_fn instead of doing lowering twice, maybe

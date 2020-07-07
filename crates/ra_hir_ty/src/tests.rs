@@ -21,7 +21,7 @@ use hir_def::{
 };
 use hir_expand::{db::AstDatabase, InFile};
 use insta::assert_snapshot;
-use ra_db::{fixture::WithFixture, salsa::Database, FileRange, SourceDatabase};
+use ra_db::{fixture::WithFixture, FileRange, SourceDatabase, SourceDatabaseExt};
 use ra_syntax::{
     algo,
     ast::{self, AstNode},
@@ -317,7 +317,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     "
     .to_string();
 
-    db.query_mut(ra_db::FileTextQuery).set(pos.file_id, Arc::new(new_text));
+    db.set_file_text(pos.file_id, Arc::new(new_text));
 
     {
         let events = db.log_executed(|| {

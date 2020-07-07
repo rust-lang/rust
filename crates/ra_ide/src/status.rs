@@ -2,10 +2,7 @@ use std::{fmt, iter::FromIterator, sync::Arc};
 
 use hir::MacroFile;
 use ra_db::{
-    salsa::{
-        debug::{DebugQueryTable, TableEntry},
-        Database,
-    },
+    salsa::debug::{DebugQueryTable, TableEntry},
     FileTextQuery, SourceRootId,
 };
 use ra_ide_db::{
@@ -14,15 +11,15 @@ use ra_ide_db::{
 };
 use ra_prof::{memory_usage, Bytes};
 use ra_syntax::{ast, Parse, SyntaxNode};
-
-use crate::FileId;
 use rustc_hash::FxHashMap;
 
+use crate::FileId;
+
 fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
-    db.query(ra_db::ParseQuery).entries::<SyntaxTreeStats>()
+    ra_db::ParseQuery.in_db(db).entries::<SyntaxTreeStats>()
 }
 fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
-    db.query(hir::db::ParseMacroQuery).entries::<SyntaxTreeStats>()
+    hir::db::ParseMacroQuery.in_db(db).entries::<SyntaxTreeStats>()
 }
 
 // Feature: Status
@@ -35,10 +32,10 @@ fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
 // | VS Code | **Rust Analyzer: Status**
 // |===
 pub(crate) fn status(db: &RootDatabase) -> String {
-    let files_stats = db.query(FileTextQuery).entries::<FilesStats>();
+    let files_stats = FileTextQuery.in_db(db).entries::<FilesStats>();
     let syntax_tree_stats = syntax_tree_stats(db);
     let macro_syntax_tree_stats = macro_syntax_tree_stats(db);
-    let symbols_stats = db.query(LibrarySymbolsQuery).entries::<LibrarySymbolsStats>();
+    let symbols_stats = LibrarySymbolsQuery.in_db(db).entries::<LibrarySymbolsStats>();
     format!(
         "{}\n{}\n{}\n{} (macros)\n\n\nmemory:\n{}\ngc {:?} seconds ago",
         files_stats,
