@@ -15,6 +15,7 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{FnRetTy, FnSig, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
@@ -28,11 +29,11 @@ use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
     get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro, is_copy,
-    is_ctor_or_promotable_const_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
-    match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, paths,
-    remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
-    span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty,
-    walk_ptrs_ty_depth, SpanlessEq,
+    is_ctor_or_promotable_const_function, is_expn_of, is_self_ty, is_type_diagnostic_item, iter_input_pats,
+    last_path_segment, match_def_path, match_qpath, match_trait_method, match_type, match_var, method_calls,
+    method_chain_args, paths, remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    span_lint_and_then, sugg, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -1631,6 +1632,11 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             }
         }
 
+        // if this impl block implements a trait, lint in trait definition instead
+        if let hir::ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
+            return;
+        }
+
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
             let ret_ty = return_ty(cx, impl_item.hir_id);
 
@@ -1669,6 +1675,48 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 );
             }
         }
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
+        if_chain! {
+            if !in_external_macro(cx.tcx.sess, item.span);
+            if !item.span.from_expansion();
+            if item.ident.name == sym!(new);
+            if let TraitItemKind::Fn(FnSig { decl, .. }, _) = &item.kind;
+            if let FnRetTy::Return(ret_ty) = &decl.output;
+
+            then {
+                let mut visitor = HasSelfVisitor { has_self_ty: false };
+                visitor.visit_ty(ret_ty);
+                if !visitor.has_self_ty {
+                    span_lint(
+                        cx,
+                        NEW_RET_NO_SELF,
+                        item.span,
+                        "methods called `new` usually return `Self`",
+                    );
+                }
+            }
+        }
+    }
+}
+
+struct HasSelfVisitor {
+    pub has_self_ty: bool,
+}
+
+impl<'tcx> intravisit::Visitor<'tcx> for HasSelfVisitor {
+    type Map = Map<'tcx>;
+
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
+        if is_self_ty(ty) {
+            self.has_self_ty = true;
+        } else {
+            intravisit::walk_ty(self, ty);
+        }
+    }
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::None
     }
 }
 
