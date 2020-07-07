@@ -142,7 +142,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 
     crate::callbacks::setup_callbacks();
 
-    scoped_thread(cfg, || {
+    let main_handler = move || {
         rustc_ast::with_session_globals(edition, || {
             ty::tls::GCX_PTR.set(&Lock::new(0), || {
                 if let Some(stderr) = stderr {
@@ -151,7 +151,9 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
                 f()
             })
         })
-    })
+    };
+
+    scoped_thread(cfg, main_handler)
 }
 
 #[cfg(parallel_compiler)]
@@ -161,12 +163,9 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
-    use rayon::{ThreadBuilder, ThreadPool, ThreadPoolBuilder};
-
-    let gcx_ptr = &Lock::new(0);
     crate::callbacks::setup_callbacks();
 
-    let mut config = ThreadPoolBuilder::new()
+    let mut config = rayon::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
@@ -177,7 +176,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
         config = config.stack_size(size);
     }
 
-    let with_pool = move |pool: &ThreadPool| pool.install(move || f());
+    let with_pool = move |pool: &rayon::ThreadPool| pool.install(move || f());
 
     rustc_ast::with_session_globals(edition, || {
         rustc_ast::SESSION_GLOBALS.with(|ast_session_globals| {
@@ -190,10 +189,12 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
                 let main_handler = move |thread: ThreadBuilder| {
                     rustc_ast::SESSION_GLOBALS.set(ast_session_globals, || {
                         rustc_span::SESSION_GLOBALS.set(span_session_globals, || {
-                            if let Some(stderr) = stderr {
-                                io::set_panic(Some(box Sink(stderr.clone())));
-                            }
-                            ty::tls::GCX_PTR.set(gcx_ptr, || thread.run())
+                            ty::tls::GCX_PTR.set(&Lock::new(0), || {
+                                if let Some(stderr) = stderr {
+                                    io::set_panic(Some(box Sink(stderr.clone())));
+                                }
+                                thread.run()
+                            })
                         })
                     })
                 };
