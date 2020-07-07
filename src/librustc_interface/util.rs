@@ -128,7 +128,7 @@ pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: 
 }
 
 #[cfg(not(parallel_compiler))]
-pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
+pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
@@ -157,7 +157,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 }
 
 #[cfg(parallel_compiler)]
-pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
+pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,

@@ -437,7 +437,10 @@ fn main_args(args: &[String]) -> i32 {
         Ok(opts) => opts,
         Err(code) => return code,
     };
-    rustc_interface::interface::default_thread_pool(options.edition, move || main_options(options))
+    rustc_interface::interface::setup_callbacks_and_run_in_default_thread_pool_with_globals(
+        options.edition,
+        move || main_options(options),
+    )
 }
 
 fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> i32 {
