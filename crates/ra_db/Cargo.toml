@@ -8,7 +8,7 @@ authors = ["rust-analyzer developers"]
 doctest = false
 
 [dependencies]
-salsa = "0.14.1"
+salsa = { git = "https://github.com/nikomatsakis/salsa", branch = "dynamic-databases-rfc" }
 relative-path = "1.0.0"
 rustc-hash = "1.1.0"
 

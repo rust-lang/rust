@@ -1,7 +1,7 @@
 //! Database used for testing `hir`.
 
 use std::{
-    panic,
+    fmt, panic,
     sync::{Arc, Mutex},
 };
 
@@ -26,10 +26,15 @@ use crate::{
     hir_def::db::DefDatabaseStorage,
     crate::db::HirDatabaseStorage
 )]
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct TestDB {
-    events: Mutex<Option<Vec<salsa::Event<TestDB>>>>,
-    runtime: salsa::Runtime<TestDB>,
+    storage: salsa::Storage<TestDB>,
+    events: Mutex<Option<Vec<salsa::Event>>>,
+}
+impl fmt::Debug for TestDB {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TestDB").finish()
+    }
 }
 
 impl Upcast<dyn AstDatabase> for TestDB {
@@ -45,18 +50,10 @@ impl Upcast<dyn DefDatabase> for TestDB {
 }
 
 impl salsa::Database for TestDB {
-    fn salsa_runtime(&self) -> &salsa::Runtime<TestDB> {
-        &self.runtime
-    }
-
-    fn salsa_runtime_mut(&mut self) -> &mut salsa::Runtime<Self> {
-        &mut self.runtime
-    }
-
-    fn salsa_event(&self, event: impl Fn() -> salsa::Event<TestDB>) {
+    fn salsa_event(&self, event: salsa::Event) {
         let mut events = self.events.lock().unwrap();
         if let Some(events) = &mut *events {
-            events.push(event());
+            events.push(event);
         }
     }
 }
@@ -64,8 +61,8 @@ impl salsa::Database for TestDB {
 impl salsa::ParallelDatabase for TestDB {
     fn snapshot(&self) -> salsa::Snapshot<TestDB> {
         salsa::Snapshot::new(TestDB {
+            storage: self.storage.snapshot(),
             events: Default::default(),
-            runtime: self.runtime.snapshot(self),
         })
     }
 }
@@ -182,7 +179,7 @@ impl TestDB {
 }
 
 impl TestDB {
-    pub fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<TestDB>> {
+    pub fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event> {
         *self.events.lock().unwrap() = Some(Vec::new());
         f();
         self.events.lock().unwrap().take().unwrap()
@@ -196,7 +193,7 @@ impl TestDB {
                 // This pretty horrible, but `Debug` is the only way to inspect
                 // QueryDescriptor at the moment.
                 salsa::EventKind::WillExecute { database_key } => {
-                    Some(format!("{:?}", database_key))
+                    Some(format!("{:?}", database_key.debug(self)))
                 }
                 _ => None,
             })

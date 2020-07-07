@@ -31,7 +31,7 @@ pub struct FunctionData {
 }
 
 impl FunctionData {
-    pub(crate) fn fn_data_query(db: &impl DefDatabase, func: FunctionId) -> Arc<FunctionData> {
+    pub(crate) fn fn_data_query(db: &dyn DefDatabase, func: FunctionId) -> Arc<FunctionData> {
         let loc = func.lookup(db);
         let item_tree = db.item_tree(loc.id.file_id);
         let func = &item_tree[loc.id.value];
