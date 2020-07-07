@@ -1,4 +1,5 @@
 // aux-build:my-core.rs
+// build-aux-docs
 // ignore-cross-compile
 
 #![deny(intra_doc_link_resolution_failure)]
