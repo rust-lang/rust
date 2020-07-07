@@ -69,3 +69,16 @@ Release: release:{}[]
         Ok(())
     }
 }
+
+pub struct PromoteCmd {
+    pub dry_run: bool,
+}
+
+impl PromoteCmd {
+    pub fn run(self) -> Result<()> {
+        run!("git switch release")?;
+        run!("git fetch upstream")?;
+        run!("git reset --hard upstream/release")?;
+        Ok(())
+    }
+}
