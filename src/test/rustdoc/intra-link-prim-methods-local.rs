@@ -2,6 +2,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
+// ignore-tidy-linelength
+
 // @has intra_link_prim_methods_local/index.html
 // @has - '//*[@id="main"]//a[@href="https://doc.rust-lang.org/nightly/std/primitive.char.html"]' 'char'
 // @has - '//*[@id="main"]//a[@href="https://doc.rust-lang.org/nightly/std/primitive.char.html#method.len_utf8"]' 'char::len_utf8'

@@ -1,6 +1,7 @@
 // aux-build:my-core.rs
 // build-aux-docs
 // ignore-cross-compile
+// ignore-tidy-linelength
 
 #![deny(intra_doc_link_resolution_failure)]
 #![feature(no_core, lang_items)]
