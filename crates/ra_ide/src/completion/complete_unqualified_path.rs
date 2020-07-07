@@ -1,11 +1,10 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
-use hir::ScopeDef;
+use hir::{Adt, ModuleDef, ScopeDef, Type};
+use ra_syntax::AstNode;
 use test_utils::mark;
 
 use crate::completion::{CompletionContext, Completions};
-use hir::{Adt, ModuleDef, Type};
-use ra_syntax::AstNode;
 
 pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
