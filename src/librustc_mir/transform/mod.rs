@@ -51,12 +51,8 @@ pub(crate) fn provide(providers: &mut Providers) {
         mir_const_qualif: |tcx, did| {
             mir_const_qualif(tcx, ty::WithOptParam::dummy(did.expect_local()))
         },
-        mir_const_qualif_const_arg: |tcx, def| {
-            if def.param_did.is_none() {
-                tcx.mir_const_qualif(def.did.to_def_id())
-            } else {
-                mir_const_qualif(tcx, def)
-            }
+        mir_const_qualif_const_arg: |tcx, (did, param_did)| {
+            mir_const_qualif(tcx, ty::WithOptParam { did, param_did: Some(param_did) })
         },
         mir_validated,
         mir_drops_elaborated_and_const_checked,
@@ -227,8 +223,8 @@ pub fn run_passes(
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptParam<LocalDefId>) -> ConstQualifs {
     if def.param_did.is_none() {
-        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
-            return tcx.mir_const_qualif_const_arg(ty::WithOptParam { param_did, ..def });
+        if let Some(param_did) = tcx.opt_const_param_of(def.did) {
+            return tcx.mir_const_qualif_const_arg((def.did, param_did));
         }
     }
 
@@ -278,7 +274,11 @@ fn mir_const<'tcx>(
     }
 
     // Unsafety check uses the raw mir, so make sure it is run.
-    let _ = tcx.unsafety_check_result_const_arg(def);
+    if let Some(param_did) = def.param_did {
+        tcx.ensure().unsafety_check_result_const_arg((def.did, param_did));
+    } else {
+        tcx.ensure().unsafety_check_result(def.did);
+    }
 
     let mut body = tcx.mir_built(def).steal();
 
@@ -321,7 +321,7 @@ fn mir_validated(
 
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
-    let _ = tcx.mir_const_qualif_const_arg(def);
+    let _ = tcx.mir_const_qualif_opt_const_arg(def);
 
     let mut body = tcx.mir_const(def).steal();
 
@@ -367,7 +367,11 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
 
     // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
-    tcx.ensure().mir_borrowck_const_arg(def);
+    if let Some(param_did) = def.param_did {
+        tcx.ensure().mir_borrowck_const_arg((def.did, param_did));
+    } else {
+        tcx.ensure().mir_borrowck(def.did);
+    }
 
     let (body, _) = tcx.mir_validated(def);
     let mut body = body.steal();
@@ -485,8 +489,8 @@ fn run_optimization_passes<'tcx>(
 
 fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx Body<'tcx> {
     let did = did.expect_local();
-    if let param_did @ Some(_) = tcx.opt_const_param_of(did) {
-        tcx.optimized_mir_of_const_arg(ty::WithOptParam { did, param_did })
+    if let Some(param_did) = tcx.opt_const_param_of(did) {
+        tcx.optimized_mir_of_const_arg((did, param_did))
     } else {
         tcx.arena.alloc(inner_optimized_mir(tcx, ty::WithOptParam::dummy(did)))
     }
@@ -494,17 +498,9 @@ fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx Body<'tcx> {
 
 fn optimized_mir_of_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptParam<LocalDefId>,
+    (did, param_did): (LocalDefId, DefId),
 ) -> &'tcx Body<'tcx> {
-    if def.param_did.is_none() {
-        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
-            tcx.optimized_mir_of_const_arg(ty::WithOptParam { param_did, ..def })
-        } else {
-            tcx.optimized_mir(def.did)
-        }
-    } else {
-        tcx.arena.alloc(inner_optimized_mir(tcx, def))
-    }
+    tcx.arena.alloc(inner_optimized_mir(tcx, ty::WithOptParam { did, param_did: Some(param_did) }))
 }
 
 fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptParam<LocalDefId>) -> Body<'_> {
@@ -538,7 +534,11 @@ fn promoted_mir<'tcx>(
         return tcx.arena.alloc(IndexVec::new());
     }
 
-    tcx.ensure().mir_borrowck_const_arg(def);
+    if let Some(param_did) = def.param_did {
+        tcx.ensure().mir_borrowck_const_arg((def.did, param_did));
+    } else {
+        tcx.ensure().mir_borrowck(def.did);
+    }
     let (_, promoted) = tcx.mir_validated(def);
     let mut promoted = promoted.steal();
 

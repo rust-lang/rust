@@ -1,5 +1,5 @@
 use rustc_errors::ErrorReported;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeFoldable};
@@ -15,32 +15,25 @@ fn resolve_instance<'tcx>(
     key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
     let (param_env, (did, substs)) = key.into_parts();
-    if let param_did @ Some(_) = did.as_local().and_then(|did| tcx.opt_const_param_of(did)) {
-        tcx.resolve_instance_of_const_arg(
-            param_env.and((ty::WithOptParam { did, param_did }, substs)),
-        )
-    } else {
-        inner_resolve_instance(tcx, param_env.and((ty::WithOptParam::dummy(did), substs)))
+    if let Some(did) = did.as_local() {
+        if let Some(param_did) = tcx.opt_const_param_of(did) {
+            return tcx.resolve_instance_of_const_arg(param_env.and((did, param_did, substs)));
+        }
     }
+
+    inner_resolve_instance(tcx, param_env.and((ty::WithOptParam::dummy(did), substs)))
 }
 
 fn resolve_instance_of_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (ty::WithOptParam<DefId>, SubstsRef<'tcx>)>,
+    key: ty::ParamEnvAnd<'tcx, (LocalDefId, DefId, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
-    let (param_env, (def, substs)) = key.into_parts();
-    if def.param_did.is_none() {
-        if let Some(did) = def.did.as_local() {
-            if let param_did @ Some(_) = tcx.opt_const_param_of(did) {
-                return tcx.resolve_instance_of_const_arg(
-                    param_env.and((ty::WithOptParam { param_did, ..def }, substs)),
-                );
-            }
-        }
-        tcx.resolve_instance(param_env.and((def.did, substs)))
-    } else {
-        inner_resolve_instance(tcx, param_env.and((def, substs)))
-    }
+    let (param_env, (did, param_did, substs)) = key.into_parts();
+    inner_resolve_instance(
+        tcx,
+        param_env
+            .and((ty::WithOptParam { did: did.to_def_id(), param_did: Some(param_did) }, substs)),
+    )
 }
 
 fn inner_resolve_instance<'tcx>(

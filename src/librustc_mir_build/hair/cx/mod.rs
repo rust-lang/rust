@@ -56,7 +56,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         src_id: hir::HirId,
     ) -> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;
-        let tables = tcx.typeck_tables_of_const_arg(def);
+        let tables = tcx.typeck_tables_of_opt_const_arg(def);
         let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {

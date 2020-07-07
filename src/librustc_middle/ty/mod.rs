@@ -1600,6 +1600,16 @@ impl WithOptParam<DefId> {
         self.did.as_local().map(|did| WithOptParam { did, param_did: self.param_did })
     }
 
+    pub fn as_const_arg(self) -> Option<(LocalDefId, DefId)> {
+        if let Some(param_did) = self.param_did {
+            if let Some(did) = self.did.as_local() {
+                return Some((did, param_did));
+            }
+        }
+
+        None
+    }
+
     pub fn expect_local(self) -> WithOptParam<LocalDefId> {
         self.as_local().unwrap()
     }
@@ -1610,10 +1620,6 @@ impl WithOptParam<DefId> {
 
     pub fn ty_def_id(self) -> DefId {
         self.param_did.unwrap_or(self.did)
-    }
-
-    pub fn init_me_bby(tcx: TyCtxt<'_>, did: DefId) -> WithOptParam<DefId> {
-        WithOptParam { did, param_did: did.as_local().and_then(|did| tcx.opt_const_param_of(did)) }
     }
 }
 
@@ -2889,8 +2895,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
         match instance {
             ty::InstanceDef::Item(def) => {
-                if let Some(def) = def.as_local() {
-                    self.optimized_mir_of_const_arg(def)
+                if let Some((did, param_did)) = def.as_const_arg() {
+                    // The `param_did` is only `Some` for local `DefId`s.
+                    self.optimized_mir_of_const_arg((did, param_did))
                 } else {
                     self.optimized_mir(def.did)
                 }

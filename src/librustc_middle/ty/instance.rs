@@ -359,7 +359,14 @@ impl<'tcx> Instance<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
         let substs = tcx.erase_regions(&substs);
-        tcx.resolve_instance_of_const_arg(tcx.erase_regions(&param_env.and((def, substs))))
+
+        if let Some((did, param_did)) = def.as_const_arg() {
+            tcx.resolve_instance_of_const_arg(
+                tcx.erase_regions(&param_env.and((did, param_did, substs))),
+            )
+        } else {
+            tcx.resolve_instance(tcx.erase_regions(&param_env.and((def.did, substs))))
+        }
     }
 
     pub fn resolve_for_fn_ptr(

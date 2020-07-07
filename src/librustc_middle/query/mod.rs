@@ -209,11 +209,11 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
         query mir_const_qualif_const_arg(
-            key: ty::WithOptParam<LocalDefId>
+            key: (LocalDefId, DefId)
         ) -> mir::ConstQualifs {
             desc {
-                |tcx| "const checking the potential const argument `{}`",
-                tcx.def_path_str(key.did.to_def_id())
+                |tcx| "const checking the const argument `{}`",
+                tcx.def_path_str(key.0.to_def_id())
             }
         }
 
@@ -257,10 +257,10 @@ rustc_queries! {
             desc { |tcx| "optimizing MIR for `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
-        query optimized_mir_of_const_arg(key: ty::WithOptParam<LocalDefId>) -> &'tcx mir::Body<'tcx> {
+        query optimized_mir_of_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::Body<'tcx> {
             desc {
-                |tcx| "optimizing MIR for the potential const argument `{}`",
-                tcx.def_path_str(key.did.to_def_id())
+                |tcx| "optimizing MIR for the const argument `{}`",
+                tcx.def_path_str(key.0.to_def_id())
             }
         }
 
@@ -280,7 +280,7 @@ rustc_queries! {
             key: ty::WithOptParam<LocalDefId>
         ) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
             desc {
-                |tcx| "optimizing promoted MIR for the potential const argument `{}`",
+                |tcx| "optimizing promoted MIR for the const argument `{}`",
                 tcx.def_path_str(key.did.to_def_id()),
             }
         }
@@ -496,8 +496,8 @@ rustc_queries! {
             desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
         }
-        query unsafety_check_result_const_arg(key: ty::WithOptParam<LocalDefId>) -> &'tcx mir::UnsafetyCheckResult {
-            desc { |tcx| "unsafety-checking the potential const arg `{}`", tcx.def_path_str(key.did.to_def_id()) }
+        query unsafety_check_result_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::UnsafetyCheckResult {
+            desc { |tcx| "unsafety-checking the const arg `{}`", tcx.def_path_str(key.0.to_def_id()) }
         }
 
         /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error.
@@ -579,12 +579,12 @@ rustc_queries! {
             desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
         }
-        query _typeck_tables_of_const_arg(
-            key: ty::WithOptParam<LocalDefId>
+        query typeck_tables_of_const_arg(
+            key: (LocalDefId, DefId)
         ) -> &'tcx ty::TypeckTables<'tcx> {
             desc {
                 |tcx| "type-checking the const argument `{}`",
-                tcx.def_path_str(key.did.to_def_id()),
+                tcx.def_path_str(key.0.to_def_id()),
             }
         }
         query diagnostic_only_typeck_tables_of(key: LocalDefId) -> &'tcx ty::TypeckTables<'tcx> {
@@ -627,10 +627,10 @@ rustc_queries! {
                     || opt_result.map_or(false, |r| !r.concrete_opaque_types.is_empty())
             }
         }
-        query mir_borrowck_const_arg(key: ty::WithOptParam<LocalDefId>) -> &'tcx mir::BorrowCheckResult<'tcx> {
+        query mir_borrowck_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::BorrowCheckResult<'tcx> {
             desc {
-                |tcx| "borrow-checking the potential const argument`{}`",
-                tcx.def_path_str(key.did.to_def_id())
+                |tcx| "borrow-checking the const argument`{}`",
+                tcx.def_path_str(key.0.to_def_id())
             }
         }
     }
@@ -1501,11 +1501,11 @@ rustc_queries! {
         }
 
         query resolve_instance_of_const_arg(
-            key: ty::ParamEnvAnd<'tcx, (ty::WithOptParam<DefId>, SubstsRef<'tcx>)>
+            key: ty::ParamEnvAnd<'tcx, (LocalDefId, DefId, SubstsRef<'tcx>)>
         ) -> Result<Option<ty::Instance<'tcx>>, ErrorReported> {
             desc {
-                "resolving instance of the potential const argument `{}`",
-                ty::Instance::new(key.value.0.did, key.value.1),
+                "resolving instance of the const argument `{}`",
+                ty::Instance::new(key.value.0.to_def_id(), key.value.2),
             }
         }
     }

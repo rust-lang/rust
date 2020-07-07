@@ -398,7 +398,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some(def) = def.as_local() {
             if self.tcx.has_typeck_tables(def.did) {
                 if let Some(error_reported) =
-                    self.tcx.typeck_tables_of_const_arg(def).tainted_by_errors
+                    self.tcx.typeck_tables_of_opt_const_arg(def).tainted_by_errors
                 {
                     throw_inval!(TypeckError(error_reported))
                 }
@@ -415,8 +415,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match instance {
             ty::InstanceDef::Item(def) => {
                 if self.tcx.is_mir_available(def.did) {
-                    if let Some(def) = def.as_local() {
-                        Ok(self.tcx.optimized_mir_of_const_arg(def))
+                    if let Some((did, param_did)) = def.as_const_arg() {
+                        Ok(self.tcx.optimized_mir_of_const_arg((did, param_did)))
                     } else {
                         Ok(self.tcx.optimized_mir(def.did))
                     }

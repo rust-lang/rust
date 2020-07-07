@@ -1,10 +1,10 @@
 //! Values computed by queries that use MIR.
 
-use crate::ty::{self, Ty};
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::IndexVec;
 use rustc_span::{Span, Symbol};
@@ -322,4 +322,25 @@ pub struct CoverageInfo {
 
     /// The total number of coverage region counters added to the MIR `Body`.
     pub num_counters: u32,
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn mir_borrowck_opt_const_arg(
+        self,
+        def: ty::WithOptParam<LocalDefId>,
+    ) -> &'tcx BorrowCheckResult<'tcx> {
+        if let Some(param_did) = def.param_did {
+            self.mir_borrowck_const_arg((def.did, param_did))
+        } else {
+            self.mir_borrowck(def.did)
+        }
+    }
+
+    pub fn mir_const_qualif_opt_const_arg(self, def: ty::WithOptParam<LocalDefId>) -> ConstQualifs {
+        if let Some(param_did) = def.param_did {
+            self.mir_const_qualif_const_arg((def.did, param_did))
+        } else {
+            self.mir_const_qualif(def.did)
+        }
+    }
 }

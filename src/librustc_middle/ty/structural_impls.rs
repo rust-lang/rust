@@ -272,6 +272,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::DefId,
+    ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::LlvmInlineAsmInner,
     ::rustc_hir::MatchSource,
     ::rustc_hir::Mutability,
@@ -716,6 +717,18 @@ impl<'tcx, T: TypeFoldable<'tcx>, U: TypeFoldable<'tcx>> TypeFoldable<'tcx> for 
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.0.visit_with(visitor) || self.1.visit_with(visitor)
+    }
+}
+
+impl<'tcx, A: TypeFoldable<'tcx>, B: TypeFoldable<'tcx>, C: TypeFoldable<'tcx>> TypeFoldable<'tcx>
+    for (A, B, C)
+{
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> (A, B, C) {
+        (self.0.fold_with(folder), self.1.fold_with(folder), self.2.fold_with(folder))
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.0.visit_with(visitor) || self.1.visit_with(visitor) || self.2.visit_with(visitor)
     }
 }
 

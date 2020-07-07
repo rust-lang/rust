@@ -493,12 +493,8 @@ pub(crate) fn provide(providers: &mut Providers) {
         unsafety_check_result: |tcx, def_id| {
             unsafety_check_result(tcx, ty::WithOptParam::dummy(def_id))
         },
-        unsafety_check_result_const_arg: |tcx, def| {
-            if def.param_did.is_none() {
-                tcx.unsafety_check_result(def.did)
-            } else {
-                unsafety_check_result(tcx, def)
-            }
+        unsafety_check_result_const_arg: |tcx, (did, param_did)| {
+            unsafety_check_result(tcx, ty::WithOptParam { did, param_did: Some(param_did) })
         },
         unsafe_derive_on_repr_packed,
         ..*providers
@@ -553,8 +549,8 @@ fn unsafety_check_result<'tcx>(
     def: ty::WithOptParam<LocalDefId>,
 ) -> &'tcx UnsafetyCheckResult {
     if def.param_did.is_none() {
-        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
-            return tcx.unsafety_check_result_const_arg(ty::WithOptParam { param_did, ..def });
+        if let Some(param_did) = tcx.opt_const_param_of(def.did) {
+            return tcx.unsafety_check_result_const_arg((def.did, param_did));
         }
     }
 

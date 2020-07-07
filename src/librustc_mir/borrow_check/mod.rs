@@ -89,8 +89,8 @@ const DEREF_PROJECTION: &[PlaceElem<'_>; 1] = &[ProjectionElem::Deref];
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         mir_borrowck: |tcx, did| mir_borrowck(tcx, ty::WithOptParam::dummy(did)),
-        mir_borrowck_const_arg: |tcx, def| {
-            if def.param_did.is_none() { tcx.mir_borrowck(def.did) } else { mir_borrowck(tcx, def) }
+        mir_borrowck_const_arg: |tcx, (did, param_did)| {
+            mir_borrowck(tcx, ty::WithOptParam { did, param_did: Some(param_did) })
         },
         ..*providers
     };
@@ -101,8 +101,8 @@ fn mir_borrowck<'tcx>(
     def: ty::WithOptParam<LocalDefId>,
 ) -> &'tcx BorrowCheckResult<'tcx> {
     if def.param_did.is_none() {
-        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
-            return tcx.mir_borrowck_const_arg(ty::WithOptParam { param_did, ..def });
+        if let Some(param_did) = tcx.opt_const_param_of(def.did) {
+            return tcx.mir_borrowck_const_arg((def.did, param_did));
         }
     }
 
@@ -150,7 +150,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     }
 
     // Gather the upvars of a closure, if any.
-    let tables = tcx.typeck_tables_of_const_arg(def);
+    let tables = tcx.typeck_tables_of_opt_const_arg(def);
     if let Some(ErrorReported) = tables.tainted_by_errors {
         infcx.set_tainted_by_errors();
     }
