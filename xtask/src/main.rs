@@ -17,7 +17,7 @@ use xtask::{
     install::{ClientOpt, InstallCmd, ServerOpt},
     not_bash::pushd,
     pre_commit, project_root,
-    release::ReleaseCmd,
+    release::{PromoteCmd, ReleaseCmd},
     run_clippy, run_fuzzer, run_pre_cache, run_rustfmt, Result,
 };
 
@@ -104,6 +104,11 @@ FLAGS:
             let dry_run = args.contains("--dry-run");
             args.finish()?;
             ReleaseCmd { dry_run }.run()
+        }
+        "promote" => {
+            let dry_run = args.contains("--dry-run");
+            args.finish()?;
+            PromoteCmd { dry_run }.run()
         }
         "dist" => {
             let nightly = args.contains("--nightly");
