@@ -2,8 +2,9 @@
 //!
 //! Files which do not belong to any explicitly configured `FileSet` belong to
 //! the default `FileSet`.
-use std::{fmt, mem};
+use std::fmt;
 
+use fst::{IntoStreamer, Streamer};
 use rustc_hash::FxHashMap;
 
 use crate::{FileId, Vfs, VfsPath};
@@ -40,15 +41,10 @@ impl fmt::Debug for FileSet {
     }
 }
 
-// Invariant: if k1 is a prefix of k2, then they are in different buckets (k2
-// is closer to 0th bucket).
-// FIXME: replace with an actual trie some day.
-type BadTrie<K, V> = Vec<Vec<(K, V)>>;
-
 #[derive(Debug)]
 pub struct FileSetConfig {
     n_file_sets: usize,
-    trie: BadTrie<VfsPath, usize>,
+    map: fst::Map<Vec<u8>>,
 }
 
 impl Default for FileSetConfig {
@@ -62,9 +58,10 @@ impl FileSetConfig {
         FileSetConfigBuilder::default()
     }
     pub fn partition(&self, vfs: &Vfs) -> Vec<FileSet> {
+        let mut scratch_space = Vec::new();
         let mut res = vec![FileSet::default(); self.len()];
         for (file_id, path) in vfs.iter() {
-            let root = self.classify(&path);
+            let root = self.classify(&path, &mut scratch_space);
             res[root].insert(file_id, path)
         }
         res
@@ -72,8 +69,16 @@ impl FileSetConfig {
     fn len(&self) -> usize {
         self.n_file_sets
     }
-    fn classify(&self, path: &VfsPath) -> usize {
-        find_ancestor(&self.trie, path, is_prefix).copied().unwrap_or(self.len() - 1)
+    fn classify(&self, path: &VfsPath, scratch_space: &mut Vec<u8>) -> usize {
+        scratch_space.clear();
+        path.encode(scratch_space);
+        let automaton = PrefixOf::new(scratch_space.as_slice());
+        let mut longest_prefix = self.len() - 1;
+        let mut stream = self.map.search(automaton).into_stream();
+        while let Some((_, v)) = stream.next() {
+            longest_prefix = v as usize;
+        }
+        longest_prefix
     }
 }
 
@@ -96,63 +101,51 @@ impl FileSetConfigBuilder {
     }
     pub fn build(self) -> FileSetConfig {
         let n_file_sets = self.roots.len() + 1;
-
-        let mut trie = BadTrie::new();
-
-        for (i, paths) in self.roots.into_iter().enumerate() {
-            for p in paths {
-                insert(&mut trie, p, i, is_prefix);
+        let map = {
+            let mut entries = Vec::new();
+            for (i, paths) in self.roots.into_iter().enumerate() {
+                for p in paths {
+                    let mut buf = Vec::new();
+                    p.encode(&mut buf);
+                    entries.push((buf, i as u64));
+                }
             }
-        }
-        trie.iter_mut().for_each(|it| it.sort());
-        FileSetConfig { n_file_sets, trie }
-    }
-}
-
-fn is_prefix(short: &VfsPath, long: &VfsPath) -> bool {
-    long.starts_with(short)
-}
-
-fn insert<K: Ord, V, P: Fn(&K, &K) -> bool>(
-    trie: &mut BadTrie<K, V>,
-    mut key: K,
-    mut value: V,
-    is_prefix: P,
-) {
-    'outer: for level in 0.. {
-        if trie.len() == level {
-            trie.push(Vec::new())
-        }
-        for (k, v) in trie[level].iter_mut() {
-            if is_prefix(&key, k) {
-                continue 'outer;
-            }
-            if is_prefix(k, &key) {
-                mem::swap(k, &mut key);
-                mem::swap(v, &mut value);
-                continue 'outer;
-            }
-        }
-        trie[level].push((key, value));
-        return;
-    }
-}
-
-fn find_ancestor<'t, K: Ord, V, P: Fn(&K, &K) -> bool>(
-    trie: &'t BadTrie<K, V>,
-    key: &K,
-    is_prefix: P,
-) -> Option<&'t V> {
-    for bucket in trie {
-        let idx = match bucket.binary_search_by(|(k, _)| k.cmp(key)) {
-            Ok(it) => it,
-            Err(it) => it.saturating_sub(1),
+            entries.sort();
+            entries.dedup_by(|(a, _), (b, _)| a == b);
+            fst::Map::from_iter(entries).unwrap()
         };
-        if !bucket.is_empty() && is_prefix(&bucket[idx].0, key) {
-            return Some(&bucket[idx].1);
+        FileSetConfig { n_file_sets, map }
+    }
+}
+
+struct PrefixOf<'a> {
+    prefix_of: &'a [u8],
+}
+
+impl<'a> PrefixOf<'a> {
+    fn new(prefix_of: &'a [u8]) -> Self {
+        Self { prefix_of }
+    }
+}
+
+impl fst::Automaton for PrefixOf<'_> {
+    type State = usize;
+    fn start(&self) -> usize {
+        0
+    }
+    fn is_match(&self, &state: &usize) -> bool {
+        state != !0
+    }
+    fn can_match(&self, &state: &usize) -> bool {
+        state != !0
+    }
+    fn accept(&self, &state: &usize, byte: u8) -> usize {
+        if self.prefix_of.get(state) == Some(&byte) {
+            state + 1
+        } else {
+            !0
         }
     }
-    None
 }
 
 #[test]
