@@ -174,6 +174,28 @@ mod sameish_members {
     }
 }
 
+mod same_sized_members_clash {
+    mod a {
+        #[repr(C)]
+        struct Point3 {
+            x: f32,
+            y: f32,
+            z: f32,
+        }
+        extern "C" { fn origin() -> Point3; }
+    }
+    mod b {
+        #[repr(C)]
+        struct Point3 {
+            x: i32,
+            y: i32,
+            z: i32, // NOTE: Incorrectly redeclared as i32
+        }
+        extern "C" { fn origin() -> Point3; }
+        //~^ WARN `origin` redeclared with a different signature
+    }
+}
+
 mod transparent {
     #[repr(transparent)]
     struct T(usize);

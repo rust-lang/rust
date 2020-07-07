@@ -38,14 +38,14 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
 use rustc_hir::{HirId, HirIdSet, Node};
 use rustc_middle::lint::LintDiagnosticBuilder;
-use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{LayoutOf, VariantIdx};
 use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
@@ -2163,9 +2163,11 @@ impl ClashingExternDeclarations {
             let a_kind = &a.kind;
             let b_kind = &b.kind;
 
-            use rustc_target::abi::LayoutOf;
             let compare_layouts = |a, b| -> bool {
-                &cx.layout_of(a).unwrap().layout.abi == &cx.layout_of(b).unwrap().layout.abi
+                let a_layout = &cx.layout_of(a).unwrap().layout.abi;
+                let b_layout = &cx.layout_of(b).unwrap().layout.abi;
+                debug!("{:?} == {:?} = {}", a_layout, b_layout, a_layout == b_layout);
+                a_layout == b_layout
             };
 
             #[allow(rustc::usage_of_ty_tykind)]
@@ -2173,7 +2175,32 @@ impl ClashingExternDeclarations {
                 |kind: &ty::TyKind<'_>| kind.is_primitive() || matches!(kind, RawPtr(..));
 
             match (a_kind, b_kind) {
-                (Adt(..), Adt(..)) => compare_layouts(a, b),
+                (Adt(_, a_substs), Adt(_, b_substs)) => {
+                    let a = a.subst(cx.tcx, a_substs);
+                    let b = b.subst(cx.tcx, b_substs);
+                    debug!("Comparing {:?} and {:?}", a, b);
+
+                    if let (Adt(a_def, ..), Adt(b_def, ..)) = (&a.kind, &b.kind) {
+                        // Grab a flattened representation of all fields.
+                        let a_fields = a_def.variants.iter().flat_map(|v| v.fields.iter());
+                        let b_fields = b_def.variants.iter().flat_map(|v| v.fields.iter());
+                        compare_layouts(a, b)
+                            && a_fields.eq_by(
+                                b_fields,
+                                |&ty::FieldDef { did: a_did, .. },
+                                 &ty::FieldDef { did: b_did, .. }| {
+                                    Self::structurally_same_type(
+                                        cx,
+                                        tcx.type_of(a_did),
+                                        tcx.type_of(b_did),
+                                        ckind,
+                                    )
+                                },
+                            )
+                    } else {
+                        unreachable!()
+                    }
+                }
                 (Array(a_ty, a_const), Array(b_ty, b_const)) => {
                     // For arrays, we also check the constness of the type.
                     a_const.val == b_const.val
