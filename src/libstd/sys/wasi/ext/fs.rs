@@ -21,11 +21,29 @@ pub trait FileExt {
     ///
     /// The current file cursor is not affected by this function.
     ///
+    /// Note that similar to [`File::read`], it is not an error to return with a
+    /// short read.
+    ///
+    /// [`File::read`]: ../../../../std/fs/struct.File.html#method.read
+    fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+        let bufs = &mut [IoSliceMut::new(buf)];
+        self.read_vectored_at(bufs, offset)
+    }
+
+    /// Reads a number of bytes starting from a given offset.
+    ///
+    /// Returns the number of bytes read.
+    ///
+    /// The offset is relative to the start of the file and thus independent
+    /// from the current cursor.
+    ///
+    /// The current file cursor is not affected by this function.
+    ///
     /// Note that similar to [`File::read_vectored`], it is not an error to
     /// return with a short read.
     ///
     /// [`File::read`]: ../../../../std/fs/struct.File.html#method.read_vectored
-    fn read_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize>;
+    fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize>;
 
     /// Reads the exact number of byte required to fill `buf` from the given offset.
     ///
@@ -91,11 +109,32 @@ pub trait FileExt {
     /// When writing beyond the end of the file, the file is appropriately
     /// extended and the intermediate bytes are initialized with the value 0.
     ///
+    /// Note that similar to [`File::write`], it is not an error to return a
+    /// short write.
+    ///
+    /// [`File::write`]: ../../../../std/fs/struct.File.html#write.v
+    fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+        let bufs = &[IoSlice::new(buf)];
+        self.write_vectored_at(bufs, offset)
+    }
+
+    /// Writes a number of bytes starting from a given offset.
+    ///
+    /// Returns the number of bytes written.
+    ///
+    /// The offset is relative to the start of the file and thus independent
+    /// from the current cursor.
+    ///
+    /// The current file cursor is not affected by this function.
+    ///
+    /// When writing beyond the end of the file, the file is appropriately
+    /// extended and the intermediate bytes are initialized with the value 0.
+    ///
     /// Note that similar to [`File::write_vectored`], it is not an error to return a
     /// short write.
     ///
     /// [`File::write`]: ../../../../std/fs/struct.File.html#method.write_vectored
-    fn write_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize>;
+    fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize>;
 
     /// Attempts to write an entire buffer starting from a given offset.
     ///
@@ -199,11 +238,11 @@ pub trait FileExt {
 // FIXME: bind random_get maybe? - on crates.io for unix
 
 impl FileExt for fs::File {
-    fn read_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+    fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().fd().pread(bufs, offset)
     }
 
-    fn write_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+    fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().fd().pwrite(bufs, offset)
     }
 
