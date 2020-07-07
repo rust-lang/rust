@@ -891,7 +891,7 @@ impl Ty {
                             let data = (*it)
                                 .as_ref()
                                 .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                            data.clone().subst(&opaque_ty.parameters)
+                            data.subst(&opaque_ty.parameters)
                         })
                     }
                 };

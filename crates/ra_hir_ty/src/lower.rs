@@ -720,8 +720,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
                 None => return SmallVec::<[GenericPredicate; 1]>::new(),
                 Some(t) => t,
             };
-            let projection_ty =
-                ProjectionTy { associated_ty, parameters: super_trait_ref.substs.clone() };
+            let projection_ty = ProjectionTy { associated_ty, parameters: super_trait_ref.substs };
             let mut preds = SmallVec::with_capacity(
                 binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
             );

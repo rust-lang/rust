@@ -369,7 +369,7 @@ impl HirDisplay for ApplicationTy {
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        data.clone().subst(&self.parameters)
+                        data.subst(&self.parameters)
                     }
                 };
                 write!(f, "impl ")?;
@@ -456,7 +456,7 @@ impl HirDisplay for Ty {
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        data.clone().subst(&opaque_ty.parameters)
+                        data.subst(&opaque_ty.parameters)
                     }
                 };
                 write!(f, "impl ")?;

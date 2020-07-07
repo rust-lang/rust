@@ -62,7 +62,7 @@ impl Fixture {
         let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
 
         let path = components[0].to_string();
-        assert!(path.starts_with("/"));
+        assert!(path.starts_with('/'));
 
         let mut krate = None;
         let mut deps = Vec::new();
