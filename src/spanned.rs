@@ -132,7 +132,8 @@ impl Spanned for ast::GenericParam {
         };
         let ty_hi = if let ast::GenericParamKind::Type {
             default: Some(ref ty),
-        } = self.kind
+        }
+        | ast::GenericParamKind::Const { ref ty, .. } = self.kind
         {
             ty.span().hi()
         } else {

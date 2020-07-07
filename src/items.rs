@@ -2217,11 +2217,10 @@ fn rewrite_fn_base(
 
     // Skip `pub(crate)`.
     let lo_after_visibility = get_bytepos_after_visibility(&fn_sig.visibility, span);
-    // A conservative estimation, to goal is to be over all parens in generics
+    // A conservative estimation, the goal is to be over all parens in generics
     let params_start = fn_sig
         .generics
         .params
-        .iter()
         .last()
         .map_or(lo_after_visibility, |param| param.span().hi());
     let params_end = if fd.inputs.is_empty() {
