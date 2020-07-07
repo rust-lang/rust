@@ -246,10 +246,11 @@ pub mod guard {
     use libc::{MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE};
 
     use crate::ops::Range;
+    use crate::sync::atomic::{AtomicUsize, Ordering};
     use crate::sys::os;
 
     // This is initialized in init() and only read from after
-    static mut PAGE_SIZE: usize = 0;
+    static PAGE_SIZE: AtomicUsize = AtomicUsize::new(0);
 
     pub type Guard = Range<usize>;
 
@@ -275,7 +276,7 @@ pub mod guard {
 
         let stackaddr = if libc::pthread_main_np() == 1 {
             // main thread
-            current_stack.ss_sp as usize - current_stack.ss_size + PAGE_SIZE
+            current_stack.ss_sp as usize - current_stack.ss_size + PAGE_SIZE.load(Ordering::Relaxed)
         } else {
             // new thread
             current_stack.ss_sp as usize - current_stack.ss_size
@@ -310,7 +311,8 @@ pub mod guard {
 
     // Precondition: PAGE_SIZE is initialized.
     unsafe fn get_stack_start_aligned() -> Option<*mut libc::c_void> {
-        assert!(PAGE_SIZE != 0);
+        let page_size = PAGE_SIZE.load(Ordering::Relaxed);
+        assert!(page_size != 0);
         let stackaddr = get_stack_start()?;
 
         // Ensure stackaddr is page aligned! A parent process might
@@ -319,16 +321,17 @@ pub mod guard {
         // stackaddr < stackaddr + stacksize, so if stackaddr is not
         // page-aligned, calculate the fix such that stackaddr <
         // new_page_aligned_stackaddr < stackaddr + stacksize
-        let remainder = (stackaddr as usize) % PAGE_SIZE;
+        let remainder = (stackaddr as usize) % page_size;
         Some(if remainder == 0 {
             stackaddr
         } else {
-            ((stackaddr as usize) + PAGE_SIZE - remainder) as *mut libc::c_void
+            ((stackaddr as usize) + page_size - remainder) as *mut libc::c_void
         })
     }
 
     pub unsafe fn init() -> Option<Guard> {
-        PAGE_SIZE = os::page_size();
+        let page_size = os::page_size();
+        PAGE_SIZE.store(page_size, Ordering::Relaxed);
 
         let stackaddr = get_stack_start_aligned()?;
 
@@ -344,7 +347,7 @@ pub mod guard {
             // faulting, so our handler can report "stack overflow", and
             // trust that the kernel's own stack guard will work.
             let stackaddr = stackaddr as usize;
-            Some(stackaddr - PAGE_SIZE..stackaddr)
+            Some(stackaddr - page_size..stackaddr)
         } else {
             // Reallocate the last page of the stack.
             // This ensures SIGBUS will be raised on
@@ -356,7 +359,7 @@ pub mod guard {
             // no permissions at all. See issue #50313.
             let result = mmap(
                 stackaddr,
-                PAGE_SIZE,
+                page_size,
                 PROT_READ | PROT_WRITE,
                 MAP_PRIVATE | MAP_ANON | MAP_FIXED,
                 -1,
@@ -366,7 +369,7 @@ pub mod guard {
                 panic!("failed to allocate a guard page");
             }
 
-            let result = mprotect(stackaddr, PAGE_SIZE, PROT_NONE);
+            let result = mprotect(stackaddr, page_size, PROT_NONE);
             if result != 0 {
                 panic!("failed to protect the guard page");
             }
@@ -374,14 +377,14 @@ pub mod guard {
             let guardaddr = stackaddr as usize;
             let offset = if cfg!(target_os = "freebsd") { 2 } else { 1 };
 
-            Some(guardaddr..guardaddr + offset * PAGE_SIZE)
+            Some(guardaddr..guardaddr + offset * page_size)
         }
     }
 
     #[cfg(any(target_os = "macos", target_os = "openbsd", target_os = "solaris"))]
     pub unsafe fn current() -> Option<Guard> {
         let stackaddr = get_stack_start()? as usize;
-        Some(stackaddr - PAGE_SIZE..stackaddr)
+        Some(stackaddr - PAGE_SIZE.load(Ordering::Relaxed)..stackaddr)
     }
 
     #[cfg(any(
@@ -413,7 +416,7 @@ pub mod guard {
             ret = if cfg!(target_os = "freebsd") {
                 // FIXME does freebsd really fault *below* the guard addr?
                 let guardaddr = stackaddr - guardsize;
-                Some(guardaddr - PAGE_SIZE..guardaddr)
+                Some(guardaddr - PAGE_SIZE.load(Ordering::Relaxed)..guardaddr)
             } else if cfg!(target_os = "netbsd") {
                 Some(stackaddr - guardsize..stackaddr)
             } else if cfg!(all(target_os = "linux", target_env = "gnu")) {
