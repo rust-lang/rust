@@ -100,6 +100,7 @@ pub(crate) fn completion_item_kind(
         CompletionItemKind::TypeParam => lsp_types::CompletionItemKind::TypeParameter,
         CompletionItemKind::Macro => lsp_types::CompletionItemKind::Method,
         CompletionItemKind::Attribute => lsp_types::CompletionItemKind::EnumMember,
+        CompletionItemKind::UnresolvedReference => lsp_types::CompletionItemKind::Reference,
     }
 }
 

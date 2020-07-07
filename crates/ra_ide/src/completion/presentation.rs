@@ -79,11 +79,10 @@ impl Completions {
                 return self.add_macro(ctx, Some(local_name), *mac);
             }
             ScopeDef::Unknown => {
-                return self.add(CompletionItem::new(
-                    CompletionKind::Reference,
-                    ctx.source_range(),
-                    local_name,
-                ));
+                return self.add(
+                    CompletionItem::new(CompletionKind::Reference, ctx.source_range(), local_name)
+                        .kind(CompletionItemKind::UnresolvedReference),
+                );
             }
         };
 

@@ -123,6 +123,7 @@ pub enum CompletionItemKind {
     TypeParam,
     Macro,
     Attribute,
+    UnresolvedReference,
 }
 
 impl CompletionItemKind {
@@ -147,6 +148,7 @@ impl CompletionItemKind {
             CompletionItemKind::Trait => "tt",
             CompletionItemKind::TypeAlias => "ta",
             CompletionItemKind::TypeParam => "tp",
+            CompletionItemKind::UnresolvedReference => "??",
         }
     }
 }
