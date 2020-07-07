@@ -5,7 +5,7 @@ from os.path import isfile, join
 from subprocess import PIPE, Popen
 
 
-# This is a whitelist of files which are stable crates or simply are not crates,
+# This is n list of files which are stable crates or simply are not crates,
 # we don't check for the instability of these crates as they're all stable!
 STABLE_CRATES = ['std', 'alloc', 'core', 'proc_macro',
                  'rsbegin.o', 'rsend.o', 'dllcrt2.o', 'crt2.o', 'clang_rt']

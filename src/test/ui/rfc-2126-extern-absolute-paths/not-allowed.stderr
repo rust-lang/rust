@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `alloc`
-  --> $DIR/not-whitelisted.rs:5:5
+  --> $DIR/not-allowed.rs:5:5
    |
 LL | use alloc;
    |     ^^^^^ no `alloc` external crate

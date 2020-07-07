@@ -1256,7 +1256,7 @@ fn check_loss_of_sign(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast
     // don't lint for the result of methods that always return non-negative values
     if let ExprKind::MethodCall(ref path, _, _, _) = op.kind {
         let mut method_name = path.ident.name.as_str();
-        let whitelisted_methods = ["abs", "checked_abs", "rem_euclid", "checked_rem_euclid"];
+        let allowed_methods = ["abs", "checked_abs", "rem_euclid", "checked_rem_euclid"];
 
         if_chain! {
             if method_name == "unwrap";
@@ -1267,7 +1267,7 @@ fn check_loss_of_sign(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast
             }
         }
 
-        if whitelisted_methods.iter().any(|&name| method_name == name) {
+        if allowed_methods.iter().any(|&name| method_name == name) {
             return;
         }
     }

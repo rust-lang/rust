@@ -16,8 +16,8 @@ pub(super) fn test_target(target: TargetResult) {
 impl Target {
     fn check_consistency(&self) {
         // Check that LLD with the given flavor is treated identically to the linker it emulates.
-        // If you target really needs to deviate from the rules below, whitelist it
-        // and document the reasons.
+        // If your target really needs to deviate from the rules below, except it and document the
+        // reasons.
         assert_eq!(
             self.linker_flavor == LinkerFlavor::Msvc
                 || self.linker_flavor == LinkerFlavor::Lld(LldFlavor::Link),

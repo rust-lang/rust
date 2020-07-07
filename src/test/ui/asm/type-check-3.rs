@@ -7,7 +7,7 @@ use std::arch::x86_64::{_mm256_setzero_ps, _mm_setzero_ps};
 
 fn main() {
     unsafe {
-        // Types must be in the whitelist for the register class
+        // Types must be listed in the register class.
 
         asm!("{}", in(reg) 0i128);
         //~^ ERROR type `i128` cannot be used with this register class

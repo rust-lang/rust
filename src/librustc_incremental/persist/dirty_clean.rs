@@ -168,7 +168,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
         // Note that we cannot use the existing "unused attribute"-infrastructure
         // here, since that is running before codegen. This is also the reason why
-        // all codegen-specific attributes are `Whitelisted` in rustc_ast::feature_gate.
+        // all codegen-specific attributes are `AssumedUsed` in rustc_ast::feature_gate.
         all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
     })
 }
