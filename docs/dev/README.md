@@ -314,7 +314,7 @@ We don't have specific rules around git history hygiene.
 Maintaining clean git history is encouraged, but not enforced.
 We use rebase workflow, it's OK to rewrite history during PR review process.
 
-Avoid @mentioning people in commit messages and pull request descriptions, as such messages create a lot of duplicate notification traffic during rebases.
+Avoid @mentioning people in commit messages and pull request descriptions (they are added to commit message by bors), as such messages create a lot of duplicate notification traffic during rebases.
 
 # Architecture Invariants
 
