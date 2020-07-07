@@ -2,7 +2,7 @@
 //!
 //! Files which do not belong to any explicitly configured `FileSet` belong to
 //! the default `FileSet`.
-use std::{fmt, iter};
+use std::{fmt, mem};
 
 use rustc_hash::FxHashMap;
 
@@ -15,6 +15,9 @@ pub struct FileSet {
 }
 
 impl FileSet {
+    pub fn len(&self) -> usize {
+        self.files.len()
+    }
     pub fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         let mut base = self.paths[&anchor].clone();
         base.pop();
@@ -37,10 +40,15 @@ impl fmt::Debug for FileSet {
     }
 }
 
+// Invariant: if k1 is a prefix of k2, then they are in different buckets (k2
+// is closer to 0th bucket).
+// FIXME: replace with an actual trie some day.
+type BadTrie<K, V> = Vec<Vec<(K, V)>>;
+
 #[derive(Debug)]
 pub struct FileSetConfig {
     n_file_sets: usize,
-    roots: Vec<(VfsPath, usize)>,
+    trie: BadTrie<VfsPath, usize>,
 }
 
 impl Default for FileSetConfig {
@@ -65,15 +73,7 @@ impl FileSetConfig {
         self.n_file_sets
     }
     fn classify(&self, path: &VfsPath) -> usize {
-        let idx = match self.roots.binary_search_by(|(p, _)| p.cmp(path)) {
-            Ok(it) => it,
-            Err(it) => it.saturating_sub(1),
-        };
-        if !self.roots.is_empty() && path.starts_with(&self.roots[idx].0) {
-            self.roots[idx].1
-        } else {
-            self.len() - 1
-        }
+        find_ancestor(&self.trie, path, is_prefix).copied().unwrap_or(self.len() - 1)
     }
 }
 
@@ -96,13 +96,84 @@ impl FileSetConfigBuilder {
     }
     pub fn build(self) -> FileSetConfig {
         let n_file_sets = self.roots.len() + 1;
-        let mut roots: Vec<(VfsPath, usize)> = self
-            .roots
-            .into_iter()
-            .enumerate()
-            .flat_map(|(i, paths)| paths.into_iter().zip(iter::repeat(i)))
-            .collect();
-        roots.sort();
-        FileSetConfig { n_file_sets, roots }
+
+        let mut trie = BadTrie::new();
+
+        for (i, paths) in self.roots.into_iter().enumerate() {
+            for p in paths {
+                insert(&mut trie, p, i, is_prefix);
+            }
+        }
+        trie.iter_mut().for_each(|it| it.sort());
+        FileSetConfig { n_file_sets, trie }
     }
+}
+
+fn is_prefix(short: &VfsPath, long: &VfsPath) -> bool {
+    long.starts_with(short)
+}
+
+fn insert<K: Ord, V, P: Fn(&K, &K) -> bool>(
+    trie: &mut BadTrie<K, V>,
+    mut key: K,
+    mut value: V,
+    is_prefix: P,
+) {
+    'outer: for level in 0.. {
+        if trie.len() == level {
+            trie.push(Vec::new())
+        }
+        for (k, v) in trie[level].iter_mut() {
+            if is_prefix(&key, k) {
+                continue 'outer;
+            }
+            if is_prefix(k, &key) {
+                mem::swap(k, &mut key);
+                mem::swap(v, &mut value);
+                continue 'outer;
+            }
+        }
+        trie[level].push((key, value));
+        return;
+    }
+}
+
+fn find_ancestor<'t, K: Ord, V, P: Fn(&K, &K) -> bool>(
+    trie: &'t BadTrie<K, V>,
+    key: &K,
+    is_prefix: P,
+) -> Option<&'t V> {
+    for bucket in trie {
+        let idx = match bucket.binary_search_by(|(k, _)| k.cmp(key)) {
+            Ok(it) => it,
+            Err(it) => it.saturating_sub(1),
+        };
+        if !bucket.is_empty() && is_prefix(&bucket[idx].0, key) {
+            return Some(&bucket[idx].1);
+        }
+    }
+    None
+}
+
+#[test]
+fn test_partitioning() {
+    let mut file_set = FileSetConfig::builder();
+    file_set.add_file_set(vec![VfsPath::new_virtual_path("/foo".into())]);
+    file_set.add_file_set(vec![VfsPath::new_virtual_path("/foo/bar/baz".into())]);
+    let file_set = file_set.build();
+
+    let mut vfs = Vfs::default();
+    vfs.set_file_contents(VfsPath::new_virtual_path("/foo/src/lib.rs".into()), Some(Vec::new()));
+    vfs.set_file_contents(
+        VfsPath::new_virtual_path("/foo/src/bar/baz/lib.rs".into()),
+        Some(Vec::new()),
+    );
+    vfs.set_file_contents(
+        VfsPath::new_virtual_path("/foo/bar/baz/lib.rs".into()),
+        Some(Vec::new()),
+    );
+    vfs.set_file_contents(VfsPath::new_virtual_path("/quux/lib.rs".into()), Some(Vec::new()));
+
+    let partition = file_set.partition(&vfs).into_iter().map(|it| it.len()).collect::<Vec<_>>();
+    assert_eq!(partition, vec![2, 1, 1]);
 }
