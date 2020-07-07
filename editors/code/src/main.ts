@@ -54,7 +54,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     const serverPath = await bootstrap(config, state).catch(err => {
         let message = "bootstrap error. ";
 
-        if (err.code === "EBUSY" || err.code === "ETXTBSY") {
+        if (err.code === "EBUSY" || err.code === "ETXTBSY" || err.code === "EPERM") {
             message += "Other vscode windows might be using rust-analyzer, ";
             message += "you should close them and reload this window to retry. ";
         }
