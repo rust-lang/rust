@@ -1490,8 +1490,9 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 
 [[package]]
 name = "salsa"
-version = "0.14.3"
-source = "git+https://github.com/nikomatsakis/salsa?branch=dynamic-databases-rfc#fd036a4f154c46253443b3a79b6f4400c40e87b1"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "885b4b99dde959decc84e85dd943bd140b4aabd62db2f8206ef5270f77ec20b9"
 dependencies = [
  "crossbeam-utils",
  "indexmap",
@@ -1506,8 +1507,9 @@ dependencies = [
 
 [[package]]
 name = "salsa-macros"
-version = "0.14.1"
-source = "git+https://github.com/nikomatsakis/salsa?branch=dynamic-databases-rfc#fd036a4f154c46253443b3a79b6f4400c40e87b1"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c280ac85b15ac214b86ac4b407626a48e6a1c4f90769a582fec74aa57942b9f"
 dependencies = [
  "heck",
  "proc-macro2",
