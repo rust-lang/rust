@@ -274,13 +274,13 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     };
     if (config.package.releaseTag === null) return "rust-analyzer";
 
-    let binaryName: string | undefined = undefined;
+    let platform: string | undefined;
     if (process.arch === "x64" || process.arch === "ia32") {
-        if (process.platform === "linux") binaryName = "rust-analyzer-linux";
-        if (process.platform === "darwin") binaryName = "rust-analyzer-mac";
-        if (process.platform === "win32") binaryName = "rust-analyzer-windows.exe";
+        if (process.platform === "linux") platform = "linux";
+        if (process.platform === "darwin") platform = "mac";
+        if (process.platform === "win32") platform = "windows";
     }
-    if (binaryName === undefined) {
+    if (platform === undefined) {
         vscode.window.showErrorMessage(
             "Unfortunately we don't ship binaries for your platform yet. " +
             "You need to manually clone rust-analyzer repository and " +
@@ -291,8 +291,8 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         );
         return undefined;
     }
-
-    const dest = path.join(config.globalStoragePath, binaryName);
+    const ext = platform === "windows" ? ".exe" : "";
+    const dest = path.join(config.globalStoragePath, `rust-analyzer-${platform}${ext}`);
     const exists = await fs.stat(dest).then(() => true, () => false);
     if (!exists) {
         await state.updateServerVersion(undefined);
@@ -309,7 +309,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     }
 
     const release = await fetchRelease(config.package.releaseTag);
-    const artifact = release.assets.find(artifact => artifact.name === binaryName);
+    const artifact = release.assets.find(artifact => artifact.name === `rust-analyzer-${platform}.gz`);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
     // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
@@ -321,6 +321,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         url: artifact.browser_download_url,
         dest,
         progressTitle: "Downloading rust-analyzer server",
+        gunzip: true,
         mode: 0o755
     });
 

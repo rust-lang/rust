@@ -29,6 +29,11 @@ opt-level = 0
 [profile.release.package.xtask]
 opt-level = 0
 
+# Gzipping the artifacts is up to 10 times faster with optimizations (`cargo xtask dist`).
+# `miniz_oxide` is the direct dependency of `flate2` which does all the heavy lifting
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+
 [patch.'crates-io']
 # rowan = { path = "../rowan" }
 
