@@ -1386,9 +1386,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let constness = match self.kind(id) {
             EntryKind::AssocFn(data) => data.decode(self).fn_data.constness,
             EntryKind::Fn(data) => data.decode(self).constness,
-            // Some intrinsics can be const fn. While we could recompute this (at least until we
-            // stop having hardcoded whitelists and move to stability attributes), it seems cleaner
-            // to treat all const fns equally.
             EntryKind::ForeignFn(data) => data.decode(self).constness,
             EntryKind::Variant(..) | EntryKind::Struct(..) => hir::Constness::Const,
             _ => hir::Constness::NotConst,

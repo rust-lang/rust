@@ -21,19 +21,19 @@ use rustc_span::source_map;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.lint_store.register_lints(&[&MISSING_WHITELISTED_ATTR]);
-    reg.lint_store.register_late_pass(|| box MissingWhitelistedAttrPass);
+    reg.lint_store.register_lints(&[&MISSING_ALLOWED_ATTR]);
+    reg.lint_store.register_late_pass(|| box MissingAllowedAttrPass);
 }
 
 declare_lint! {
-    MISSING_WHITELISTED_ATTR,
+    MISSING_ALLOWED_ATTR,
     Deny,
-    "Checks for missing `whitelisted_attr` attribute"
+    "Checks for missing `allowed_attr` attribute"
 }
 
-declare_lint_pass!(MissingWhitelistedAttrPass => [MISSING_WHITELISTED_ATTR]);
+declare_lint_pass!(MissingAllowedAttrPass => [MISSING_ALLOWED_ATTR]);
 
-impl<'tcx> LateLintPass<'tcx> for MissingWhitelistedAttrPass {
+impl<'tcx> LateLintPass<'tcx> for MissingAllowedAttrPass {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -48,10 +48,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingWhitelistedAttrPass {
             _ => cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(id)),
         };
 
-        let whitelisted = |attr| pprust::attribute_to_string(attr).contains("whitelisted_attr");
-        if !item.attrs.iter().any(whitelisted) {
-            cx.lint(MISSING_WHITELISTED_ATTR, |lint| {
-                lint.build("Missing 'whitelisted_attr' attribute").set_span(span).emit()
+        let allowed = |attr| pprust::attribute_to_string(attr).contains("allowed_attr");
+        if !item.attrs.iter().any(allowed) {
+            cx.lint(MISSING_ALLOWED_ATTR, |lint| {
+                lint.build("Missing 'allowed_attr' attribute").set_span(span).emit()
             });
         }
     }

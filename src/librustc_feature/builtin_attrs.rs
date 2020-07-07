@@ -47,7 +47,7 @@ pub enum AttributeType {
     /// Builtin attribute that may not be consumed by the compiler
     /// before the unused_attribute check. These attributes
     /// will be ignored by the unused_attribute lint
-    Whitelisted,
+    AssumedUsed,
 
     /// Builtin attribute that is only allowed at the crate level
     CrateLevel,
@@ -202,7 +202,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(allow, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#)),
     ungated!(forbid, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#)),
     ungated!(deny, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#)),
-    ungated!(must_use, Whitelisted, template!(Word, NameValueStr: "reason")),
+    ungated!(must_use, AssumedUsed, template!(Word, NameValueStr: "reason")),
     // FIXME(#14407)
     ungated!(
         deprecated, Normal,
@@ -220,16 +220,16 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // ABI, linking, symbols, and FFI
     ungated!(
-        link, Whitelisted,
+        link, AssumedUsed,
         template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...""#),
     ),
-    ungated!(link_name, Whitelisted, template!(NameValueStr: "name")),
+    ungated!(link_name, AssumedUsed, template!(NameValueStr: "name")),
     ungated!(no_link, Normal, template!(Word)),
     ungated!(repr, Normal, template!(List: "C")),
-    ungated!(export_name, Whitelisted, template!(NameValueStr: "name")),
-    ungated!(link_section, Whitelisted, template!(NameValueStr: "name")),
-    ungated!(no_mangle, Whitelisted, template!(Word)),
-    ungated!(used, Whitelisted, template!(Word)),
+    ungated!(export_name, AssumedUsed, template!(NameValueStr: "name")),
+    ungated!(link_section, AssumedUsed, template!(NameValueStr: "name")),
+    ungated!(no_mangle, AssumedUsed, template!(Word)),
+    ungated!(used, AssumedUsed, template!(Word)),
 
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N")),
@@ -249,40 +249,40 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(path, Normal, template!(NameValueStr: "file")),
     ungated!(no_std, CrateLevel, template!(Word)),
     ungated!(no_implicit_prelude, Normal, template!(Word)),
-    ungated!(non_exhaustive, Whitelisted, template!(Word)),
+    ungated!(non_exhaustive, AssumedUsed, template!(Word)),
 
     // Runtime
-    ungated!(windows_subsystem, Whitelisted, template!(NameValueStr: "windows|console")),
+    ungated!(windows_subsystem, AssumedUsed, template!(NameValueStr: "windows|console")),
     ungated!(panic_handler, Normal, template!(Word)), // RFC 2070
 
     // Code generation:
-    ungated!(inline, Whitelisted, template!(Word, List: "always|never")),
-    ungated!(cold, Whitelisted, template!(Word)),
-    ungated!(no_builtins, Whitelisted, template!(Word)),
-    ungated!(target_feature, Whitelisted, template!(List: r#"enable = "name""#)),
-    ungated!(track_caller, Whitelisted, template!(Word)),
+    ungated!(inline, AssumedUsed, template!(Word, List: "always|never")),
+    ungated!(cold, AssumedUsed, template!(Word)),
+    ungated!(no_builtins, AssumedUsed, template!(Word)),
+    ungated!(target_feature, AssumedUsed, template!(List: r#"enable = "name""#)),
+    ungated!(track_caller, AssumedUsed, template!(Word)),
     gated!(
-        no_sanitize, Whitelisted,
+        no_sanitize, AssumedUsed,
         template!(List: "address, memory, thread"),
         experimental!(no_sanitize)
     ),
 
-    // FIXME: #14408 whitelist docs since rustdoc looks at them
-    ungated!(doc, Whitelisted, template!(List: "hidden|inline|...", NameValueStr: "string")),
+    // FIXME: #14408 assume docs are used since rustdoc looks at them.
+    ungated!(doc, AssumedUsed, template!(List: "hidden|inline|...", NameValueStr: "string")),
 
     // ==========================================================================
     // Unstable attributes:
     // ==========================================================================
 
     // Linking:
-    gated!(naked, Whitelisted, template!(Word), naked_functions, experimental!(naked)),
+    gated!(naked, AssumedUsed, template!(Word), naked_functions, experimental!(naked)),
     gated!(
         link_args, Normal, template!(NameValueStr: "args"),
         "the `link_args` attribute is experimental and not portable across platforms, \
         it is recommended to use `#[link(name = \"foo\")] instead",
     ),
     gated!(
-        link_ordinal, Whitelisted, template!(List: "ordinal"), raw_dylib,
+        link_ordinal, AssumedUsed, template!(List: "ordinal"), raw_dylib,
         experimental!(link_ordinal)
     ),
 
@@ -321,19 +321,19 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // RFC #1268
     gated!(marker, Normal, template!(Word), marker_trait_attr, experimental!(marker)),
     gated!(
-        thread_local, Whitelisted, template!(Word),
+        thread_local, AssumedUsed, template!(Word),
         "`#[thread_local]` is an experimental feature, and does not currently handle destructors",
     ),
     gated!(no_core, CrateLevel, template!(Word), experimental!(no_core)),
     // RFC 2412
     gated!(
-        optimize, Whitelisted, template!(List: "size|speed"), optimize_attribute,
+        optimize, AssumedUsed, template!(List: "size|speed"), optimize_attribute,
         experimental!(optimize),
     ),
 
-    gated!(ffi_returns_twice, Whitelisted, template!(Word), experimental!(ffi_returns_twice)),
-    gated!(ffi_pure, Whitelisted, template!(Word), experimental!(ffi_pure)),
-    gated!(ffi_const, Whitelisted, template!(Word), experimental!(ffi_const)),
+    gated!(ffi_returns_twice, AssumedUsed, template!(Word), experimental!(ffi_returns_twice)),
+    gated!(ffi_pure, AssumedUsed, template!(Word), experimental!(ffi_pure)),
+    gated!(ffi_const, AssumedUsed, template!(Word), experimental!(ffi_const)),
     gated!(
         register_attr, CrateLevel, template!(List: "attr1, attr2, ..."),
         experimental!(register_attr),
@@ -351,22 +351,22 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // FIXME(#14407) -- only looked at on-demand so we can't
     // guarantee they'll have already been checked.
     ungated!(
-        rustc_deprecated, Whitelisted,
+        rustc_deprecated, AssumedUsed,
         template!(List: r#"since = "version", reason = "...""#)
     ),
     // FIXME(#14407)
-    ungated!(stable, Whitelisted, template!(List: r#"feature = "name", since = "version""#)),
+    ungated!(stable, AssumedUsed, template!(List: r#"feature = "name", since = "version""#)),
     // FIXME(#14407)
     ungated!(
-        unstable, Whitelisted,
+        unstable, AssumedUsed,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#),
     ),
     // FIXME(#14407)
-    ungated!(rustc_const_unstable, Whitelisted, template!(List: r#"feature = "name""#)),
+    ungated!(rustc_const_unstable, AssumedUsed, template!(List: r#"feature = "name""#)),
     // FIXME(#14407)
-    ungated!(rustc_const_stable, Whitelisted, template!(List: r#"feature = "name""#)),
+    ungated!(rustc_const_stable, AssumedUsed, template!(List: r#"feature = "name""#)),
     gated!(
-        allow_internal_unstable, Whitelisted, template!(Word, List: "feat1, feat2, ..."),
+        allow_internal_unstable, AssumedUsed, template!(Word, List: "feat1, feat2, ..."),
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
@@ -378,7 +378,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Type system related:
     // ==========================================================================
 
-    gated!(fundamental, Whitelisted, template!(Word), experimental!(fundamental)),
+    gated!(fundamental, AssumedUsed, template!(Word), experimental!(fundamental)),
     gated!(
         may_dangle, Normal, template!(Word), dropck_eyepatch,
         "`may_dangle` has unstable semantics and may be removed in the future",
@@ -388,30 +388,30 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Runtime related:
     // ==========================================================================
 
-    rustc_attr!(rustc_allocator, Whitelisted, template!(Word), IMPL_DETAIL),
-    rustc_attr!(rustc_allocator_nounwind, Whitelisted, template!(Word), IMPL_DETAIL),
+    rustc_attr!(rustc_allocator, AssumedUsed, template!(Word), IMPL_DETAIL),
+    rustc_attr!(rustc_allocator_nounwind, AssumedUsed, template!(Word), IMPL_DETAIL),
     gated!(alloc_error_handler, Normal, template!(Word), experimental!(alloc_error_handler)),
     gated!(
-        default_lib_allocator, Whitelisted, template!(Word), allocator_internals,
+        default_lib_allocator, AssumedUsed, template!(Word), allocator_internals,
         experimental!(default_lib_allocator),
     ),
     gated!(
         needs_allocator, Normal, template!(Word), allocator_internals,
         experimental!(needs_allocator),
     ),
-    gated!(panic_runtime, Whitelisted, template!(Word), experimental!(panic_runtime)),
-    gated!(needs_panic_runtime, Whitelisted, template!(Word), experimental!(needs_panic_runtime)),
+    gated!(panic_runtime, AssumedUsed, template!(Word), experimental!(panic_runtime)),
+    gated!(needs_panic_runtime, AssumedUsed, template!(Word), experimental!(needs_panic_runtime)),
     gated!(
-        unwind, Whitelisted, template!(List: "allowed|aborts"), unwind_attributes,
+        unwind, AssumedUsed, template!(List: "allowed|aborts"), unwind_attributes,
         experimental!(unwind),
     ),
     gated!(
-        compiler_builtins, Whitelisted, template!(Word),
+        compiler_builtins, AssumedUsed, template!(Word),
         "the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate \
         which contains compiler-rt intrinsics and will never be stable",
     ),
     gated!(
-        profiler_runtime, Whitelisted, template!(Word),
+        profiler_runtime, AssumedUsed, template!(Word),
         "the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate \
         which contains the profiler runtime and will never be stable",
     ),
@@ -421,19 +421,19 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     gated!(
-        linkage, Whitelisted, template!(NameValueStr: "external|internal|..."),
+        linkage, AssumedUsed, template!(NameValueStr: "external|internal|..."),
         "the `linkage` attribute is experimental and not portable across platforms",
     ),
-    rustc_attr!(rustc_std_internal_symbol, Whitelisted, template!(Word), INTERNAL_UNSTABLE),
+    rustc_attr!(rustc_std_internal_symbol, AssumedUsed, template!(Word), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Macro related:
     // ==========================================================================
 
-    rustc_attr!(rustc_builtin_macro, Whitelisted, template!(Word), IMPL_DETAIL),
+    rustc_attr!(rustc_builtin_macro, AssumedUsed, template!(Word), IMPL_DETAIL),
     rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), INTERNAL_UNSTABLE),
     rustc_attr!(
-        rustc_macro_transparency, Whitelisted,
+        rustc_macro_transparency, AssumedUsed,
         template!(NameValueStr: "transparent|semitransparent|opaque"),
         "used internally for testing macro hygiene",
     ),
@@ -443,40 +443,40 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(
-        rustc_on_unimplemented, Whitelisted,
+        rustc_on_unimplemented, AssumedUsed,
         template!(
             List: r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#,
             NameValueStr: "message"
         ),
         INTERNAL_UNSTABLE
     ),
-    // Whitelists "identity-like" conversion methods to suggest on type mismatch.
-    rustc_attr!(rustc_conversion_suggestion, Whitelisted, template!(Word), INTERNAL_UNSTABLE),
+    // Enumerates "identity-like" conversion methods to suggest on type mismatch.
+    rustc_attr!(rustc_conversion_suggestion, AssumedUsed, template!(Word), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Const related:
     // ==========================================================================
 
-    rustc_attr!(rustc_promotable, Whitelisted, template!(Word), IMPL_DETAIL),
-    rustc_attr!(rustc_allow_const_fn_ptr, Whitelisted, template!(Word), IMPL_DETAIL),
-    rustc_attr!(rustc_args_required_const, Whitelisted, template!(List: "N"), INTERNAL_UNSTABLE),
+    rustc_attr!(rustc_promotable, AssumedUsed, template!(Word), IMPL_DETAIL),
+    rustc_attr!(rustc_allow_const_fn_ptr, AssumedUsed, template!(Word), IMPL_DETAIL),
+    rustc_attr!(rustc_args_required_const, AssumedUsed, template!(List: "N"), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Layout related:
     // ==========================================================================
 
     rustc_attr!(
-        rustc_layout_scalar_valid_range_start, Whitelisted, template!(List: "value"),
+        rustc_layout_scalar_valid_range_start, AssumedUsed, template!(List: "value"),
         "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
         niche optimizations in libcore and will never be stable",
     ),
     rustc_attr!(
-        rustc_layout_scalar_valid_range_end, Whitelisted, template!(List: "value"),
+        rustc_layout_scalar_valid_range_end, AssumedUsed, template!(List: "value"),
         "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
         niche optimizations in libcore and will never be stable",
     ),
     rustc_attr!(
-        rustc_nonnull_optimization_guaranteed, Whitelisted, template!(Word),
+        rustc_nonnull_optimization_guaranteed, AssumedUsed, template!(Word),
         "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable \
         niche optimizations in libcore and will never be stable",
     ),
@@ -501,7 +501,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         // Used in resolve:
-        prelude_import, Whitelisted, template!(Word),
+        prelude_import, AssumedUsed, template!(Word),
         "`#[prelude_import]` is for use by rustc only",
     ),
     gated!(
@@ -509,7 +509,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "unboxed_closures are still evolving",
     ),
     rustc_attr!(
-        rustc_inherit_overflow_checks, Whitelisted, template!(Word),
+        rustc_inherit_overflow_checks, AssumedUsed, template!(Word),
         "the `#[rustc_inherit_overflow_checks]` attribute is just used to control \
         overflow checking behavior of several libcore functions that are inlined \
         across crates and will never be stable",
@@ -540,42 +540,42 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ...")),
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word)),
     rustc_attr!(
-        TEST, rustc_error, Whitelisted,
+        TEST, rustc_error, AssumedUsed,
         template!(Word, List: "delay_span_bug_from_inside_query")
     ),
-    rustc_attr!(TEST, rustc_dump_user_substs, Whitelisted, template!(Word)),
-    rustc_attr!(TEST, rustc_if_this_changed, Whitelisted, template!(Word, List: "DepNode")),
-    rustc_attr!(TEST, rustc_then_this_would_need, Whitelisted, template!(List: "DepNode")),
+    rustc_attr!(TEST, rustc_dump_user_substs, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_if_this_changed, AssumedUsed, template!(Word, List: "DepNode")),
+    rustc_attr!(TEST, rustc_then_this_would_need, AssumedUsed, template!(List: "DepNode")),
     rustc_attr!(
-        TEST, rustc_dirty, Whitelisted,
+        TEST, rustc_dirty, AssumedUsed,
         template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
     ),
     rustc_attr!(
-        TEST, rustc_clean, Whitelisted,
+        TEST, rustc_clean, AssumedUsed,
         template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
     ),
     rustc_attr!(
-        TEST, rustc_partition_reused, Whitelisted,
+        TEST, rustc_partition_reused, AssumedUsed,
         template!(List: r#"cfg = "...", module = "...""#),
     ),
     rustc_attr!(
-        TEST, rustc_partition_codegened, Whitelisted,
+        TEST, rustc_partition_codegened, AssumedUsed,
         template!(List: r#"cfg = "...", module = "...""#),
     ),
     rustc_attr!(
-        TEST, rustc_expected_cgu_reuse, Whitelisted,
+        TEST, rustc_expected_cgu_reuse, AssumedUsed,
         template!(List: r#"cfg = "...", module = "...", kind = "...""#),
     ),
-    rustc_attr!(TEST, rustc_synthetic, Whitelisted, template!(Word)),
-    rustc_attr!(TEST, rustc_symbol_name, Whitelisted, template!(Word)),
-    rustc_attr!(TEST, rustc_def_path, Whitelisted, template!(Word)),
-    rustc_attr!(TEST, rustc_mir, Whitelisted, template!(List: "arg1, arg2, ...")),
-    rustc_attr!(TEST, rustc_dump_program_clauses, Whitelisted, template!(Word)),
-    rustc_attr!(TEST, rustc_dump_env_program_clauses, Whitelisted, template!(Word)),
-    rustc_attr!(TEST, rustc_object_lifetime_default, Whitelisted, template!(Word)),
+    rustc_attr!(TEST, rustc_synthetic, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_symbol_name, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_def_path, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_mir, AssumedUsed, template!(List: "arg1, arg2, ...")),
+    rustc_attr!(TEST, rustc_dump_program_clauses, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_dump_env_program_clauses, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_object_lifetime_default, AssumedUsed, template!(Word)),
     rustc_attr!(TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/)),
     gated!(
-        omit_gdb_pretty_printer_section, Whitelisted, template!(Word),
+        omit_gdb_pretty_printer_section, AssumedUsed, template!(Word),
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
     ),
 ];

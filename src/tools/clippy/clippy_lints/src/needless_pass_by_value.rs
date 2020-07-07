@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         // Allow `Borrow` or functions to be taken by value
         let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
-        let whitelisted_traits = [
+        let allowed_traits = [
             need!(cx.tcx.lang_items().fn_trait()),
             need!(cx.tcx.lang_items().fn_once_trait()),
             need!(cx.tcx.lang_items().fn_mut_trait()),
@@ -184,7 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 if !is_self(arg);
                 if !ty.is_mutable_ptr();
                 if !is_copy(cx, ty);
-                if !whitelisted_traits.iter().any(|&t| implements_trait(cx, ty, t, &[]));
+                if !allowed_traits.iter().any(|&t| implements_trait(cx, ty, t, &[]));
                 if !implements_borrow_trait;
                 if !all_borrowable_trait;
 
