@@ -6,5 +6,6 @@ edition = "2018"
 
 [dependencies]
 rustc-hash = "1.0"
+fst = "0.4"
 
 paths = { path = "../paths" }

@@ -126,7 +126,6 @@ core
 alloc
 collections
 libc
-panic_unwind
 proc_macro
 rustc_unicode
 std_unicode
