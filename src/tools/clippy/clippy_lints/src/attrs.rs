@@ -72,7 +72,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for `extern crate` and `use` items annotated with
     /// lint attributes.
     ///
-    /// This lint whitelists `#[allow(unused_imports)]`, `#[allow(deprecated)]` and
+    /// This lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]` and
     /// `#[allow(unreachable_pub)]` on `use` items and `#[allow(unused_imports)]` on
     /// `extern crate` items with a `#[macro_use]` attribute.
     ///
@@ -294,7 +294,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                         if let Some(ident) = attr.ident() {
                             match &*ident.as_str() {
                                 "allow" | "warn" | "deny" | "forbid" => {
-                                    // whitelist `unused_imports`, `deprecated` and `unreachable_pub` for `use` items
+                                    // permit `unused_imports`, `deprecated` and `unreachable_pub` for `use` items
                                     // and `unused_imports` for `extern crate` items with `macro_use`
                                     for lint in lint_list {
                                         match item.kind {

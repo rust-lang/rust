@@ -7,7 +7,7 @@ use std::fs::read_to_string;
 use std::path::Path;
 
 // A few of those error codes can't be tested but all the others can and *should* be tested!
-const WHITELIST: &[&str] = &[
+const EXEMPTED_FROM_TEST: &[&str] = &[
     "E0183", "E0227", "E0279", "E0280", "E0311", "E0313", "E0314", "E0315", "E0377", "E0456",
     "E0461", "E0462", "E0464", "E0465", "E0472", "E0473", "E0474", "E0475", "E0476", "E0479",
     "E0480", "E0481", "E0482", "E0483", "E0484", "E0485", "E0486", "E0487", "E0488", "E0489",
@@ -166,7 +166,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         println!("Found {} error codes", error_codes.len());
 
         for (err_code, nb) in &error_codes {
-            if !*nb && !WHITELIST.contains(&err_code.as_str()) {
+            if !*nb && !EXEMPTED_FROM_TEST.contains(&err_code.as_str()) {
                 errors.push(format!("Error code {} needs to have at least one UI test!", err_code));
             }
         }

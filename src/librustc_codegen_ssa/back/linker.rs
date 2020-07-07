@@ -1176,10 +1176,10 @@ impl<'a> Linker for WasmLd<'a> {
             self.cmd.arg("--export").arg(&sym);
         }
 
-        // LLD will hide these otherwise-internal symbols since our `--export`
-        // list above is a whitelist of what to export. Various bits and pieces
-        // of tooling use this, so be sure these symbols make their way out of
-        // the linker as well.
+        // LLD will hide these otherwise-internal symbols since it only exports
+        // symbols explicity passed via the `--export` flags above and hides all
+        // others. Various bits and pieces of tooling use this, so be sure these
+        // symbols make their way out of the linker as well.
         self.cmd.arg("--export=__heap_base");
         self.cmd.arg("--export=__data_end");
     }

@@ -40,14 +40,14 @@ pub fn options() -> TargetOptions {
     // corrupting static data.
     arg("--stack-first");
 
-    // FIXME we probably shouldn't pass this but instead pass an explicit
-    // whitelist of symbols we'll allow to be undefined. We don't currently have
-    // a mechanism of knowing, however, which symbols are intended to be
-    // imported from the environment and which are intended to be imported from
-    // other objects linked elsewhere. This is a coarse approximation but is
-    // sure to hide some bugs and frustrate someone at some point, so we should
-    // ideally work towards a world where we can explicitly list symbols that
-    // are supposed to be imported and have all other symbols generate errors if
+    // FIXME we probably shouldn't pass this but instead pass an explicit list
+    // of symbols we'll allow to be undefined. We don't currently have a
+    // mechanism of knowing, however, which symbols are intended to be imported
+    // from the environment and which are intended to be imported from other
+    // objects linked elsewhere. This is a coarse approximation but is sure to
+    // hide some bugs and frustrate someone at some point, so we should ideally
+    // work towards a world where we can explicitly list symbols that are
+    // supposed to be imported and have all other symbols generate errors if
     // they remain undefined.
     arg("--allow-undefined");
 
