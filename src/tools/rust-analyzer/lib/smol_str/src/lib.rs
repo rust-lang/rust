@@ -136,6 +136,33 @@ impl SmolStr {
             _ => false,
         }
     }
+
+    fn from_char_iter<I: iter::Iterator<Item = char>>(mut iter: I) -> SmolStr {
+        let (min_size, _) = iter.size_hint();
+        if min_size > INLINE_CAP {
+            let heap: String = iter.collect();
+            return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
+        }
+        let mut len = 0;
+        let mut buf = [0u8; INLINE_CAP];
+        while let Some(ch) = iter.next() {
+            let size = ch.len_utf8();
+            if size + len > INLINE_CAP {
+                let (min_remaining, _) = iter.size_hint();
+                let mut heap = String::with_capacity(size + len + min_remaining);
+                heap.push_str(std::str::from_utf8(&buf[..len]).unwrap());
+                heap.push(ch);
+                heap.extend(iter);
+                return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
+            }
+            ch.encode_utf8(&mut buf[len..]);
+            len += size;
+        }
+        SmolStr(Repr::Inline {
+            len: len as u8,
+            buf,
+        })
+    }
 }
 
 impl Default for SmolStr {
@@ -240,25 +267,8 @@ impl fmt::Display for SmolStr {
 
 impl iter::FromIterator<char> for SmolStr {
     fn from_iter<I: iter::IntoIterator<Item = char>>(iter: I) -> SmolStr {
-        let mut len = 0;
-        let mut buf = [0u8; INLINE_CAP];
-        let mut iter = iter.into_iter();
-        while let Some(ch) = iter.next() {
-            let size = ch.len_utf8();
-            if size + len > INLINE_CAP {
-                let mut heap = String::with_capacity(size + len);
-                heap.push_str(std::str::from_utf8(&buf[..len]).unwrap());
-                heap.push(ch);
-                heap.extend(iter);
-                return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
-            }
-            ch.encode_utf8(&mut buf[len..]);
-            len += size;
-        }
-        SmolStr(Repr::Inline {
-            len: len as u8,
-            buf,
-        })
+        let iter = iter.into_iter();
+        Self::from_char_iter(iter)
     }
 }
 
