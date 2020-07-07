@@ -78,19 +78,20 @@ mod imp {
     use crate::marker::PhantomData;
     use crate::os::unix::prelude::*;
     use crate::ptr;
+    use crate::sync::atomic::{AtomicIsize, AtomicPtr, Ordering};
 
     use crate::sys_common::mutex::Mutex;
 
-    static mut ARGC: isize = 0;
-    static mut ARGV: *const *const u8 = ptr::null();
+    static ARGC: AtomicIsize = AtomicIsize::new(0);
+    static ARGV: AtomicPtr<*const u8> = AtomicPtr::new(ptr::null_mut());
     // We never call `ENV_LOCK.init()`, so it is UB to attempt to
     // acquire this mutex reentrantly!
     static LOCK: Mutex = Mutex::new();
 
     unsafe fn really_init(argc: isize, argv: *const *const u8) {
         let _guard = LOCK.lock();
-        ARGC = argc;
-        ARGV = argv;
+        ARGC.store(argc, Ordering::Relaxed);
+        ARGV.store(argv as *mut _, Ordering::Relaxed);
     }
 
     #[inline(always)]
@@ -126,8 +127,8 @@ mod imp {
 
     pub unsafe fn cleanup() {
         let _guard = LOCK.lock();
-        ARGC = 0;
-        ARGV = ptr::null();
+        ARGC.store(0, Ordering::Relaxed);
+        ARGV.store(ptr::null_mut(), Ordering::Relaxed);
     }
 
     pub fn args() -> Args {
@@ -137,9 +138,11 @@ mod imp {
     fn clone() -> Vec<OsString> {
         unsafe {
             let _guard = LOCK.lock();
-            (0..ARGC)
+            let argc = ARGC.load(Ordering::Relaxed);
+            let argv = ARGV.load(Ordering::Relaxed);
+            (0..argc)
                 .map(|i| {
-                    let cstr = CStr::from_ptr(*ARGV.offset(i) as *const libc::c_char);
+                    let cstr = CStr::from_ptr(*argv.offset(i) as *const libc::c_char);
                     OsStringExt::from_vec(cstr.to_bytes().to_vec())
                 })
                 .collect()
