@@ -214,7 +214,7 @@ pub fn new_handler(
 
 /// This function is used to setup the lint initialization. By default, in rustdoc, everything
 /// is "allowed". Depending if we run in test mode or not, we want some of them to be at their
-/// default level. For example, the "INVALID_CODEBLOCK_ATTRIBUTE" lint is activated in both
+/// default level. For example, the "INVALID_CODEBLOCK_ATTRIBUTES" lint is activated in both
 /// modes.
 ///
 /// A little detail easy to forget is that there is a way to set the lint level for all lints
@@ -315,7 +315,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
     let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
     let no_crate_level_docs = rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS.name;
-    let invalid_codeblock_attribute_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTE.name;
+    let invalid_codeblock_attribute_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
     // In addition to those specific lints, we also need to whitelist those given through
     // command line, otherwise they'll get ignored and we don't want that.
