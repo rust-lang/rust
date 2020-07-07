@@ -1,6 +1,6 @@
 use crate::{
     codegen, is_release_tag,
-    not_bash::{date_iso, fs2, run},
+    not_bash::{date_iso, fs2, pushd, run},
     project_root, Mode, Result,
 };
 
@@ -76,9 +76,25 @@ pub struct PromoteCmd {
 
 impl PromoteCmd {
     pub fn run(self) -> Result<()> {
-        run!("git switch release")?;
+        let _dir = pushd("../rust-rust-analyzer");
+        run!("git switch master")?;
         run!("git fetch upstream")?;
-        run!("git reset --hard upstream/release")?;
+        run!("git reset --hard upstream/master")?;
+        run!("git submodule update --recursive")?;
+
+        let branch = format!("rust-analyzer-{}", date_iso()?);
+        run!("git switch -c {}", branch)?;
+        {
+            let _dir = pushd("src/tools/rust-analyzer");
+            run!("git fetch origin")?;
+            run!("git reset --hard origin/release")?;
+        }
+        run!("git add src/tools/rust-analyzer")?;
+        run!("git commit -m':arrow_up: rust-analyzer'")?;
+        if !self.dry_run {
+            run!("git push")?;
+            run!("xdg-open https://github.com/matklad/rust/pull/new/{}", branch)?;
+        }
         Ok(())
     }
 }
