@@ -3604,14 +3604,10 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
     if !out.is_empty() {
         out.insert_str(
             0,
-            &format!(
-                "<span class=\"important-traits\"><div class='tooltip'>ⓘ\
-                                    <span class='tooltiptext'>Important traits for {}</span></div>\
-                                    <div class=\"content hidden\">",
-                trait_
-            ),
+            "<span class=\"important-traits\"><span class=\"important-traits-tooltip\">ⓘ<div class='important-traits-tooltiptext'><span class=\"docblock\">"
+
         );
-        out.push_str("</code></div></span>");
+        out.push_str("</code></span></div></span></span>");
     }
 
     out.into_inner()
