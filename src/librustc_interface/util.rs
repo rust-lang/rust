@@ -128,7 +128,7 @@ pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: 
 }
 
 #[cfg(not(parallel_compiler))]
-pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
+pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
@@ -157,7 +157,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 }
 
 #[cfg(parallel_compiler)]
-pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
+pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
@@ -186,7 +186,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
                 // span_session_globals are captured and set on the new
                 // threads. ty::tls::with_thread_locals sets up thread local
                 // callbacks from librustc_ast.
-                let main_handler = move |thread: ThreadBuilder| {
+                let main_handler = move |thread: rayon::ThreadBuilder| {
                     rustc_ast::SESSION_GLOBALS.set(ast_session_globals, || {
                         rustc_span::SESSION_GLOBALS.set(span_session_globals, || {
                             ty::tls::GCX_PTR.set(&Lock::new(0), || {

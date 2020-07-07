@@ -159,10 +159,7 @@ pub struct Config {
     pub registry: Registry,
 }
 
-pub fn run_compiler_in_existing_thread_pool<R>(
-    config: Config,
-    f: impl FnOnce(&Compiler) -> R,
-) -> R {
+pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
     let registry = &config.registry;
     let (sess, codegen_backend) = util::create_session(
         config.opts,
@@ -204,17 +201,20 @@ pub fn run_compiler_in_existing_thread_pool<R>(
 pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     log::trace!("run_compiler");
     let stderr = config.stderr.take();
-    util::spawn_thread_pool(
+    util::setup_callbacks_and_run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.debugging_opts.threads,
         &stderr,
-        || run_compiler_in_existing_thread_pool(config, f),
+        || create_compiler_and_run(config, f),
     )
 }
 
-pub fn default_thread_pool<R: Send>(edition: edition::Edition, f: impl FnOnce() -> R + Send) -> R {
+pub fn setup_callbacks_and_run_in_default_thread_pool_with_globals<R: Send>(
+    edition: edition::Edition,
+    f: impl FnOnce() -> R + Send,
+) -> R {
     // the 1 here is duplicating code in config.opts.debugging_opts.threads
     // which also defaults to 1; it ultimately doesn't matter as the default
     // isn't threaded, and just ignores this parameter
-    util::spawn_thread_pool(edition, 1, &None, f)
+    util::setup_callbacks_and_run_in_thread_pool_with_globals(edition, 1, &None, f)
 }
