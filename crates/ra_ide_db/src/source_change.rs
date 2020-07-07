@@ -6,7 +6,7 @@
 use ra_db::FileId;
 use ra_text_edit::TextEdit;
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct SourceChange {
     pub source_file_edits: Vec<SourceFileEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,

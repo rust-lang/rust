@@ -176,7 +176,7 @@ pub(crate) struct AssistBuilder {
     edit: TextEditBuilder,
     file_id: FileId,
     is_snippet: bool,
-    edits: Vec<SourceFileEdit>,
+    change: SourceChange,
 }
 
 impl AssistBuilder {
@@ -185,7 +185,7 @@ impl AssistBuilder {
             edit: TextEditBuilder::default(),
             file_id,
             is_snippet: false,
-            edits: Vec::new(),
+            change: SourceChange::default(),
         }
     }
 
@@ -197,8 +197,8 @@ impl AssistBuilder {
         let edit = mem::take(&mut self.edit).finish();
         if !edit.is_empty() {
             let new_edit = SourceFileEdit { file_id: self.file_id, edit };
-            assert!(!self.edits.iter().any(|it| it.file_id == new_edit.file_id));
-            self.edits.push(new_edit);
+            assert!(!self.change.source_file_edits.iter().any(|it| it.file_id == new_edit.file_id));
+            self.change.source_file_edits.push(new_edit);
         }
     }
 
@@ -265,10 +265,10 @@ impl AssistBuilder {
 
     fn finish(mut self) -> SourceChange {
         self.commit();
-        let mut res: SourceChange = mem::take(&mut self.edits).into();
+        let mut change = mem::take(&mut self.change);
         if self.is_snippet {
-            res.is_snippet = true;
+            change.is_snippet = true;
         }
-        res
+        change
     }
 }
