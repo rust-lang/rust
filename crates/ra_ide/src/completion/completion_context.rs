@@ -196,20 +196,11 @@ impl<'a> CompletionContext<'a> {
     // The range of the identifier that is being completed.
     pub(crate) fn source_range(&self) -> TextRange {
         // check kind of macro-expanded token, but use range of original token
-        match self.token.kind() {
-            // workaroud when completion is triggered by trigger characters.
-            IDENT => self.original_token.text_range(),
-            _ => {
-                // If we haven't characters between keyword and our cursor we take the keyword start range to edit
-                if self.token.kind().is_keyword()
-                    && self.offset == self.original_token.text_range().end()
-                {
-                    mark::hit!(completes_bindings_from_for_with_in_prefix);
-                    TextRange::empty(self.original_token.text_range().start())
-                } else {
-                    TextRange::empty(self.offset)
-                }
-            }
+        if self.token.kind() == IDENT || self.token.kind().is_keyword() {
+            mark::hit!(completes_if_prefix_is_keyword);
+            self.original_token.text_range()
+        } else {
+            TextRange::empty(self.offset)
         }
     }
 
