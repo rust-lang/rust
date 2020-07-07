@@ -2,7 +2,7 @@
 // @has - '//a/@href' '../intra_links/struct.ThisType.html'
 // @has - '//a/@href' '../intra_links/struct.ThisType.html#method.this_method'
 // @has - '//a/@href' '../intra_links/enum.ThisEnum.html'
-// @has - '//a/@href' '../intra_links/enum.ThisEnum.html#ThisVariant.v'
+// @has - '//a/@href' '../intra_links/enum.ThisEnum.html#variant.ThisVariant'
 // @has - '//a/@href' '../intra_links/trait.ThisTrait.html'
 // @has - '//a/@href' '../intra_links/trait.ThisTrait.html#tymethod.this_associated_method'
 // @has - '//a/@href' '../intra_links/trait.ThisTrait.html#associatedtype.ThisAssociatedType'
@@ -73,7 +73,7 @@ pub fn SoAmbiguous() {}
 // @has - '//a/@href' '../intra_links/struct.ThisType.html'
 // @has - '//a/@href' '../intra_links/struct.ThisType.html#method.this_method'
 // @has - '//a/@href' '../intra_links/enum.ThisEnum.html'
-// @has - '//a/@href' '../intra_links/enum.ThisEnum.html#ThisVariant.v'
+// @has - '//a/@href' '../intra_links/enum.ThisEnum.html#variant.ThisVariant'
 /// Shortcut links for:
 /// * [`ThisType`]
 /// * [`ThisType::this_method`]
