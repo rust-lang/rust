@@ -96,6 +96,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     });
 
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
+    ctx.registerCommand('memoryUsage', commands.memoryUsage);
     ctx.registerCommand('reloadWorkspace', commands.reloadWorkspace);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
     ctx.registerCommand('joinLines', commands.joinLines);

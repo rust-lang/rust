@@ -164,6 +164,15 @@ impl RootDatabase {
         hir::db::BodyQuery.in_db(self).sweep(sweep);
     }
 
+    // Feature: Memory Usage
+    //
+    // Clears rust-analyzer's internal database and prints memory usage statistics.
+    //
+    // |===
+    // | Editor  | Action Name
+    //
+    // | VS Code | **Rust Analyzer: Memory Usage (Clears Database)**
+    // |===
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {
         let mut acc: Vec<(String, Bytes)> = vec![];
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();

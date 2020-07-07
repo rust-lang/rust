@@ -14,6 +14,14 @@ impl Request for AnalyzerStatus {
     const METHOD: &'static str = "rust-analyzer/analyzerStatus";
 }
 
+pub enum MemoryUsage {}
+
+impl Request for MemoryUsage {
+    type Params = ();
+    type Result = String;
+    const METHOD: &'static str = "rust-analyzer/memoryUsage";
+}
+
 pub enum ReloadWorkspace {}
 
 impl Request for ReloadWorkspace {
