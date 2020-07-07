@@ -69,7 +69,7 @@ LL |         mut a: i32,
    |         help: remove this `mut`
 
 warning: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:104:14
+  --> $DIR/lint-unused-mut-variables.rs:107:14
    |
 LL |     let x = |mut y: isize| 10;
    |              ----^
@@ -141,15 +141,15 @@ LL |         mut x => {}
    |         help: remove this `mut`
 
 warning: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:96:8
+  --> $DIR/lint-unused-mut-variables.rs:99:10
    |
-LL |       (mut x, 1) |
-   |        ----^
-   |        |
-   |        help: remove this `mut`
+LL |         (mut x, 1) |
+   |          ----^
+   |          |
+   |          help: remove this `mut`
 
 warning: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:109:9
+  --> $DIR/lint-unused-mut-variables.rs:112:9
    |
 LL |     let mut a = &mut 5;
    |         ----^
@@ -157,7 +157,7 @@ LL |     let mut a = &mut 5;
    |         help: remove this `mut`
 
 warning: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:114:9
+  --> $DIR/lint-unused-mut-variables.rs:117:9
    |
 LL |     let mut b = (&mut a,);
    |         ----^
@@ -165,7 +165,7 @@ LL |     let mut b = (&mut a,);
    |         help: remove this `mut`
 
 warning: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:117:9
+  --> $DIR/lint-unused-mut-variables.rs:120:9
    |
 LL |     let mut x = &mut 1;
    |         ----^
@@ -173,7 +173,7 @@ LL |     let mut x = &mut 1;
    |         help: remove this `mut`
 
 warning: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:129:9
+  --> $DIR/lint-unused-mut-variables.rs:132:9
    |
 LL |     let mut v : &mut Vec<()> = &mut vec![];
    |         ----^
@@ -181,7 +181,7 @@ LL |     let mut v : &mut Vec<()> = &mut vec![];
    |         help: remove this `mut`
 
 warning: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:184:9
+  --> $DIR/lint-unused-mut-variables.rs:187:9
    |
 LL |     let mut raw_address_of_const = 1;
    |         ----^^^^^^^^^^^^^^^^^^^^
@@ -189,7 +189,7 @@ LL |     let mut raw_address_of_const = 1;
    |         help: remove this `mut`
 
 warning: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:106:13
+  --> $DIR/lint-unused-mut-variables.rs:109:13
    |
 LL |     fn what(mut foo: isize) {}
    |             ----^^^
@@ -197,7 +197,7 @@ LL |     fn what(mut foo: isize) {}
    |             help: remove this `mut`
 
 warning: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:124:20
+  --> $DIR/lint-unused-mut-variables.rs:127:20
    |
 LL |     fn mut_ref_arg(mut arg : &mut [u8]) -> &mut [u8] {
    |                    ----^^^
@@ -205,7 +205,7 @@ LL |     fn mut_ref_arg(mut arg : &mut [u8]) -> &mut [u8] {
    |                    help: remove this `mut`
 
 error: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:202:9
+  --> $DIR/lint-unused-mut-variables.rs:205:9
    |
 LL |     let mut b = vec![2];
    |         ----^
@@ -213,7 +213,7 @@ LL |     let mut b = vec![2];
    |         help: remove this `mut`
    |
 note: the lint level is defined here
-  --> $DIR/lint-unused-mut-variables.rs:198:8
+  --> $DIR/lint-unused-mut-variables.rs:201:8
    |
 LL | #[deny(unused_mut)]
    |        ^^^^^^^^^^

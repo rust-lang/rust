@@ -100,6 +100,9 @@ h1.fqn {
 	border-bottom: 1px dashed;
 	margin-top: 0;
 }
+h1.fqn > .in-band > a:hover {
+	text-decoration: underline;
+}
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	border-bottom: 1px solid;
 }

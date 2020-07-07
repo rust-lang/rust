@@ -451,7 +451,6 @@ impl Step for Std {
                 .arg("--markdown-css")
                 .arg("rust.css")
                 .arg("--markdown-no-toc")
-                .arg("--generate-redirect-pages")
                 .arg("-Z")
                 .arg("unstable-options")
                 .arg("--resource-suffix")

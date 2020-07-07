@@ -1,7 +1,7 @@
 #![stable(feature = "", since = "1.30.0")]
 #![allow(non_camel_case_types)]
 
-//! Utilities related to FFI bindings.
+//! Utilities related to foreign function interface (FFI) bindings.
 
 use crate::fmt;
 use crate::marker::PhantomData;

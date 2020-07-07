@@ -112,9 +112,11 @@ function defocusSearchBar() {
     }
 
     function getPageId() {
-        var id = document.location.href.split("#")[1];
-        if (id) {
-            return id.split("?")[0].split("&")[0];
+        if (window.location.hash) {
+            var tmp = window.location.hash.replace(/^#/, "");
+            if (tmp.length > 0) {
+                return tmp;
+            }
         }
         return null;
     }
@@ -2551,6 +2553,13 @@ function defocusSearchBar() {
 
         onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
         onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
+        var pageId = getPageId();
+
+        autoCollapse(pageId, getCurrentValue("rustdoc-collapse") === "true");
+
+        if (pageId !== null) {
+            expandSection(pageId);
+        }
     }());
 
     function createToggleWrapper(tog) {
@@ -2685,12 +2694,6 @@ function defocusSearchBar() {
     window.onresize = function() {
         hideSidebar();
     };
-
-    autoCollapse(getPageId(), getCurrentValue("rustdoc-collapse") === "true");
-
-    if (window.location.hash && window.location.hash.length > 0) {
-        expandSection(window.location.hash.replace(/^#/, ""));
-    }
 
     if (main) {
         onEachLazy(main.getElementsByClassName("loading-content"), function(e) {

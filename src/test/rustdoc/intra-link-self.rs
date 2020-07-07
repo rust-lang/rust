@@ -40,7 +40,7 @@ pub struct MyStruct {
 }
 
 pub enum MyEnum {
-    // @has foo/enum.MyEnum.html '//a/@href' '../foo/enum.MyEnum.html#EnumVariant.v'
+    // @has foo/enum.MyEnum.html '//a/@href' '../foo/enum.MyEnum.html#variant.EnumVariant'
 
     /// [`EnumVariant`]
     ///

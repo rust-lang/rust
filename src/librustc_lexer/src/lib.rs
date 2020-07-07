@@ -6,17 +6,18 @@
 //! produces simple tokens which are a pair of type-tag and a bit of original text,
 //! and does not report errors, instead storing them as flags on the token.
 //!
-//! Tokens produced by this lexer are not yet ready for parsing the Rust syntax,
-//! for that see `librustc_parse::lexer`, which converts this basic token stream
+//! Tokens produced by this lexer are not yet ready for parsing the Rust syntax.
+//! For that see [`librustc_parse::lexer`], which converts this basic token stream
 //! into wide tokens used by actual parser.
 //!
 //! The purpose of this crate is to convert raw sources into a labeled sequence
 //! of well-known token types, so building an actual Rust token stream will
 //! be easier.
 //!
-//! Main entity of this crate is [`TokenKind`] enum which represents common
+//! The main entity of this crate is the [`TokenKind`] enum which represents common
 //! lexeme types.
-
+//!
+//! [`librustc_parse::lexer`]: ../rustc_parse/lexer/index.html
 // We want to be able to build this crate with a stable compiler, so no
 // `#![feature]` attributes should be added.
 

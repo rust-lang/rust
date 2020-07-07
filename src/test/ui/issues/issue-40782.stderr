@@ -1,8 +1,8 @@
 error: missing `in` in `for` loop
-  --> $DIR/issue-40782.rs:2:10
+  --> $DIR/issue-40782.rs:4:11
    |
-LL |     for i 0..2 {
-   |          ^ help: try adding `in` here
+LL |     for _i 0..2 {
+   |           ^ help: try adding `in` here
 
 error: aborting due to previous error
 

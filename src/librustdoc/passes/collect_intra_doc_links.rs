@@ -164,6 +164,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     fn resolve(
         &self,
         path_str: &str,
+        disambiguator: Option<&str>,
         ns: Namespace,
         current_item: &Option<String>,
         parent_id: Option<hir::HirId>,
@@ -203,11 +204,22 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         }
                         return Ok((res, Some(path_str.to_owned())));
                     }
-                    other => {
-                        debug!(
-                            "failed to resolve {} in namespace {:?} (got {:?})",
-                            path_str, ns, other
-                        );
+                    Res::Def(DefKind::Mod, _) => {
+                        // This resolved to a module, but if we were passed `type@`,
+                        // we want primitive types to take precedence instead.
+                        if disambiguator == Some("type") {
+                            if let Some(prim) = is_primitive(path_str, ns) {
+                                if extra_fragment.is_some() {
+                                    return Err(ErrorKind::AnchorFailure(
+                                        "primitive types cannot be followed by anchors",
+                                    ));
+                                }
+                                return Ok((prim, Some(path_str.to_owned())));
+                            }
+                        }
+                        return Ok((res, extra_fragment.clone()));
+                    }
+                    _ => {
                         return Ok((res, extra_fragment.clone()));
                     }
                 };
@@ -566,11 +578,13 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             let mut path_str;
             let (res, fragment) = {
                 let mut kind = None;
+                let mut disambiguator = None;
                 path_str = if let Some(prefix) = ["struct@", "enum@", "type@", "trait@", "union@"]
                     .iter()
                     .find(|p| link.starts_with(**p))
                 {
                     kind = Some(TypeNS);
+                    disambiguator = Some(&prefix[..prefix.len() - 1]);
                     link.trim_start_matches(prefix)
                 } else if let Some(prefix) = [
                     "const@",
@@ -586,18 +600,23 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 .find(|p| link.starts_with(**p))
                 {
                     kind = Some(ValueNS);
+                    disambiguator = Some(&prefix[..prefix.len() - 1]);
                     link.trim_start_matches(prefix)
                 } else if link.ends_with("()") {
                     kind = Some(ValueNS);
+                    disambiguator = Some("fn");
                     link.trim_end_matches("()")
                 } else if link.starts_with("macro@") {
                     kind = Some(MacroNS);
+                    disambiguator = Some("macro");
                     link.trim_start_matches("macro@")
                 } else if link.starts_with("derive@") {
                     kind = Some(MacroNS);
+                    disambiguator = Some("derive");
                     link.trim_start_matches("derive@")
                 } else if link.ends_with('!') {
                     kind = Some(MacroNS);
+                    disambiguator = Some("macro");
                     link.trim_end_matches('!')
                 } else {
                     &link[..]
@@ -634,6 +653,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     Some(ns @ ValueNS) => {
                         match self.resolve(
                             path_str,
+                            disambiguator,
                             ns,
                             &current_item,
                             base_node,
@@ -657,6 +677,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     Some(ns @ TypeNS) => {
                         match self.resolve(
                             path_str,
+                            disambiguator,
                             ns,
                             &current_item,
                             base_node,
@@ -683,6 +704,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 .map(|res| (res, extra_fragment.clone())),
                             type_ns: match self.resolve(
                                 path_str,
+                                disambiguator,
                                 TypeNS,
                                 &current_item,
                                 base_node,
@@ -697,6 +719,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             },
                             value_ns: match self.resolve(
                                 path_str,
+                                disambiguator,
                                 ValueNS,
                                 &current_item,
                                 base_node,
@@ -1069,7 +1092,7 @@ fn handle_variant(
     };
     let parent_def = Res::Def(DefKind::Enum, parent);
     let variant = cx.tcx.expect_variant_res(res);
-    Ok((parent_def, Some(format!("{}.v", variant.ident.name))))
+    Ok((parent_def, Some(format!("variant.{}", variant.ident.name))))
 }
 
 const PRIMITIVES: &[(&str, Res)] = &[
