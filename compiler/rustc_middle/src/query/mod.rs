@@ -357,6 +357,13 @@ rustc_queries! {
             desc { |tcx| "computing the supertraits of `{}`", tcx.def_path_str(key) }
         }
 
+        query super_predicates_of_skip_self_param(key: DefId) -> ty::GenericPredicates<'tcx> {
+            desc {
+                |tcx| "computing the supertraits of `{}` skipping super-traits referencing `Self`",
+                tcx.def_path_str(key)
+            }
+        }
+
         /// To avoid cycles within the predicates of a single item we compute
         /// per-type-parameter predicates for resolving `T::AssocTy`.
         query type_param_predicates(key: (DefId, LocalDefId)) -> ty::GenericPredicates<'tcx> {

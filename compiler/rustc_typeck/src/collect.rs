@@ -73,6 +73,7 @@ pub fn provide(providers: &mut Providers) {
         projection_ty_from_predicates,
         explicit_predicates_of,
         super_predicates_of,
+        super_predicates_of_skip_self_param,
         type_param_predicates,
         trait_def,
         adt_def,
@@ -966,6 +967,75 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
 /// of `trait_def_id` are converted and stored. This also ensures that
 /// the transitive super-predicates are converted.
 fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredicates<'_> {
+    super_predicates_of_inner(tcx, trait_def_id, false)
+}
+
+/// Same as `super_predicates_of`, but it avoids evaluating super-traits that reference `Self` in
+/// any way to avoid unnecessary cycle errors. This lets us correctly evaluate
+/// `trait A: B<Self::C> { type C; }` without forcing the user to write the following instead:
+/// `trait A: B<<Self as A>::C> { type C; }`. This also works correctly if `C` comes from a super
+/// trait that doesn't reference `Self`. On that previous example, calling this function is
+/// equivalent to calling `supper_predicates_of` on `trait A { type C; }`. Because of this, if
+/// there are sister dependencies like the following, this heuristic won't do what the user desired
+///
+/// ```text
+/// trait X<T> {
+///    type Y;
+/// }
+/// trait A: B<Self::Y> + X<Self::C> {
+///    type C;
+/// }
+/// ```
+///
+/// This will be evaluated as `trait A { type C; }` because both `B` and `X` reference `Self`, so
+/// they are skipped when looking for associated items. This code will emit the following:
+///
+/// ```text
+/// error[E0220]: associated type `Y` not found for `Self`
+///  --> file.rs:5:18
+///   |
+/// 5 | trait A: B<Self::Y> + X<Self::C> {
+///   |                  ^ help: there is an associated type with a similar name: `C`
+/// ```
+///
+/// It suggests `C` because it is defined in `A`, so it is always "findable". The way to get this
+/// to work is to write the following instead:
+///
+/// ```text
+/// trait A: B<<Self as X<Self::C>>::Y> + X<Self::C> {
+///    type C;
+/// }
+/// ```
+///
+/// This is an edge case, a more likely scenario like the following would compile with this
+/// heuristic:
+///
+/// ```text
+/// trait X<T> {
+///    type Y;
+/// }
+/// trait Z {
+///    type K;
+/// }
+/// trait A: B<Self::K> + X<Self::C> + Z {
+///    type C;
+/// }
+/// ```
+///
+/// This would be evaluated by this function as `trait A: Z { type C; }` so both `Self::C` and
+/// `Self::K` are accessible.
+fn super_predicates_of_skip_self_param(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> ty::GenericPredicates<'_> {
+    super_predicates_of_inner(tcx, trait_def_id, true)
+}
+
+fn super_predicates_of_inner(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+    skip_self_param: bool,
+) -> ty::GenericPredicates<'_> {
     debug!("super_predicates(trait_def_id={:?})", trait_def_id);
     let trait_hir_id = tcx.hir().local_def_id_to_hir_id(trait_def_id.expect_local());
 
@@ -984,8 +1054,14 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
 
     // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
     let self_param_ty = tcx.types.self_param;
-    let superbounds1 =
-        AstConv::compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
+    let superbounds1 = AstConv::compute_bounds(
+        &icx,
+        self_param_ty,
+        &bounds[..],
+        SizedByDefault::No,
+        item.span,
+        skip_self_param,
+    );
 
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
@@ -1803,6 +1879,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                             bounds,
                             SizedByDefault::Yes,
                             tcx.def_span(def_id),
+                            false,
                         );
 
                         bounds.predicates(tcx, opaque_ty)
@@ -1899,8 +1976,14 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                 index += 1;
 
                 let sized = SizedByDefault::Yes;
-                let bounds =
-                    AstConv::compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
+                let bounds = AstConv::compute_bounds(
+                    &icx,
+                    param_ty,
+                    &param.bounds,
+                    sized,
+                    param.span,
+                    false,
+                );
                 predicates.extend(bounds.predicates(tcx, param_ty));
             }
             GenericParamKind::Const { .. } => {
@@ -2116,6 +2199,7 @@ fn associated_item_bounds(
         bounds,
         SizedByDefault::Yes,
         span,
+        false,
     );
 
     let predicates = bounds.predicates(tcx, projection_ty);

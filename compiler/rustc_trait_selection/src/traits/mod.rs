@@ -65,7 +65,8 @@ pub use self::util::{
     get_vtable_index_of_object_method, impl_item_is_final, predicate_for_trait_def, upcast_choices,
 };
 pub use self::util::{
-    supertrait_def_ids, supertraits, transitive_bounds, SupertraitDefIds, Supertraits,
+    supertrait_def_ids, supertraits, supertraits_maybe_skip_self_param_users, transitive_bounds,
+    SupertraitDefIds, Supertraits,
 };
 
 pub use self::chalk_fulfill::FulfillmentContext as ChalkFulfillmentContext;

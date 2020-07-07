@@ -73,6 +73,10 @@ impl Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
 pub struct Elaborator<'tcx> {
     stack: Vec<PredicateObligation<'tcx>>,
     visited: PredicateSet<'tcx>,
+    /// If this is `true` we will call `super_predicates_of_skip_self_param` instead of
+    /// `super_predicates_of`, which lets us get around cycle errors when super-traits reference
+    /// associated types on `Self`. See `super_predicates_of_skip_self_param` for more info.
+    evaluate_self_param: bool,
 }
 
 pub fn elaborate_trait_ref<'tcx>(
@@ -104,7 +108,7 @@ pub fn elaborate_obligations<'tcx>(
 ) -> Elaborator<'tcx> {
     let mut visited = PredicateSet::new(tcx);
     obligations.retain(|obligation| visited.insert(obligation.predicate));
-    Elaborator { stack: obligations, visited }
+    Elaborator { stack: obligations, visited, evaluate_self_param: true }
 }
 
 fn predicate_obligation<'tcx>(
@@ -131,9 +135,14 @@ impl Elaborator<'tcx> {
         match obligation.predicate.skip_binders() {
             ty::PredicateAtom::Trait(data, _) => {
                 // Get predicates declared on the trait.
-                let predicates = tcx.super_predicates_of(data.def_id());
+                let predicates = if self.evaluate_self_param {
+                    tcx.super_predicates_of(data.def_id())
+                } else {
+                    tcx.super_predicates_of_skip_self_param(data.def_id())
+                }
+                .predicates;
 
-                let obligations = predicates.predicates.iter().map(|&(pred, span)| {
+                let obligations = predicates.iter().map(|&(pred, span)| {
                     predicate_obligation(
                         pred.subst_supertrait(tcx, &ty::Binder::bind(data.trait_ref)),
                         Some(span),
@@ -269,6 +278,23 @@ pub fn supertraits<'tcx>(
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Supertraits<'tcx> {
     elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
+}
+
+/// Elaborate supertraits.
+///
+/// See `super_predicates_of_skip_self_param` for the behavior when `skip_self_param` is `true`.
+pub fn supertraits_maybe_skip_self_param_users<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+    skip_self_param: bool,
+) -> Supertraits<'tcx> {
+    let mut obligations: Vec<_> = bounds
+        .map(|trait_ref| predicate_obligation(trait_ref.without_const().to_predicate(tcx), None))
+        .collect();
+    let mut visited = PredicateSet::new(tcx);
+    obligations.retain(|obligation| visited.insert(obligation.predicate));
+    Elaborator { stack: obligations, visited, evaluate_self_param: !skip_self_param }
+        .filter_to_traits()
 }
 
 pub fn transitive_bounds<'tcx>(

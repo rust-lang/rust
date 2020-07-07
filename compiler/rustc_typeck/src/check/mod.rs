@@ -4495,8 +4495,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     Res::Err
                 };
-                let result =
-                    AstConv::associated_path_to_ty(self, hir_id, path_span, ty, res, segment, true);
+                let result = AstConv::associated_path_to_ty(
+                    self, hir_id, path_span, ty, res, segment, true, false,
+                );
                 let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().ty_error());
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
