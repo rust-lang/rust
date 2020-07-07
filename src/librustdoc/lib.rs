@@ -471,7 +471,29 @@ fn main_options(options: config::Options) -> i32 {
     // but we can't crates the Handler ahead of time because it's not Send
     let diag_opts = (options.error_format, options.edition, options.debugging_options.clone());
     let show_coverage = options.show_coverage;
-    rust_input(options, move |out| {
+
+    // First, parse the crate and extract all relevant information.
+    info!("starting to run rustc");
+
+    // Interpret the input file as a rust source file, passing it through the
+    // compiler all the way through the analysis passes. The rustdoc output is
+    // then generated from the cleaned AST of the crate. This runs all the
+    // plug/cleaning passes.
+    let result = rustc_driver::catch_fatal_errors(move || {
+        let crate_name = options.crate_name.clone();
+        let crate_version = options.crate_version.clone();
+        let (mut krate, renderinfo, renderopts) = core::run_core(options);
+
+        info!("finished with rustc");
+
+        if let Some(name) = crate_name {
+            krate.name = name
+        }
+
+        krate.version = crate_version;
+
+        let out = Output { krate, renderinfo, renderopts };
+
         if show_coverage {
             // if we ran coverage, bail early, we don't need to also generate docs at this point
             // (also we didn't load in any of the useful passes)
@@ -491,36 +513,6 @@ fn main_options(options: config::Options) -> i32 {
                 rustc_driver::EXIT_FAILURE
             }
         }
-    })
-}
-
-/// Interprets the input file as a rust source file, passing it through the
-/// compiler all the way through the analysis passes. The rustdoc output is then
-/// generated from the cleaned AST of the crate.
-///
-/// This form of input will run all of the plug/cleaning passes
-fn rust_input<R, F>(options: config::Options, f: F) -> R
-where
-    R: 'static + Send,
-    F: 'static + Send + FnOnce(Output) -> R,
-{
-    // First, parse the crate and extract all relevant information.
-    info!("starting to run rustc");
-
-    let result = rustc_driver::catch_fatal_errors(move || {
-        let crate_name = options.crate_name.clone();
-        let crate_version = options.crate_version.clone();
-        let (mut krate, renderinfo, renderopts) = core::run_core(options);
-
-        info!("finished with rustc");
-
-        if let Some(name) = crate_name {
-            krate.name = name
-        }
-
-        krate.version = crate_version;
-
-        f(Output { krate, renderinfo, renderopts })
     });
 
     match result {
