@@ -102,6 +102,8 @@ impl Write for Sink {
     }
 }
 
+/// Like a `thread::Builder::spawn` followed by a `join()`, but avoids the need
+/// for `'static` bounds.
 #[cfg(not(parallel_compiler))]
 pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: F) -> R {
     struct Ptr(*mut ());
