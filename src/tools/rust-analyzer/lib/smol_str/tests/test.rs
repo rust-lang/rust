@@ -209,10 +209,41 @@ fn test_from_char_iterator() {
         ("사회과학원 어학연구소", true),
         // String containing diverse characters
         ("表ポあA鷗ŒéＢ逍Üßªąñ丂㐀𠀀", true),
+        // String which has too many characters to even consider inlining
+        ("☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺", true),
     ];
     for (raw, is_heap) in &examples {
         let s: SmolStr = raw.chars().collect();
         assert_eq!(s.as_str(), *raw);
         assert_eq!(s.is_heap_allocated(), *is_heap);
     }
+}
+
+#[test]
+fn test_bad_size_hint_char_iter() {
+    struct BadSizeHint<I>(I);
+
+    impl<T, I: Iterator<Item = T>> Iterator for BadSizeHint<I> {
+        type Item = T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.0.next()
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (1024, None)
+        }
+    }
+
+    let data = "testing";
+    let collected: SmolStr = BadSizeHint(data.chars()).collect();
+    let new = SmolStr::new(data);
+
+    // Because of the bad size hint, `collected` will be heap allocated, but `new` will be inline
+
+    // If we try to use the type of the string (inline/heap) to quickly test for equality, we need to ensure
+    // `collected` is inline allocated instead
+    assert!(collected.is_heap_allocated());
+    assert!(!new.is_heap_allocated());
+    assert_eq!(new, collected);
 }
