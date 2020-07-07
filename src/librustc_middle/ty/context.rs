@@ -980,6 +980,17 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn typeck_tables_of_const_arg(
+        self,
+        def: ty::WithOptParam<LocalDefId>,
+    ) -> &'tcx TypeckTables<'tcx> {
+        if def.param_did.is_some() {
+            self._typeck_tables_of_const_arg(def)
+        } else {
+            self.typeck_tables_of(def.did)
+        }
+    }
+
     pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
         self.arena.alloc(Steal::new(mir))
     }

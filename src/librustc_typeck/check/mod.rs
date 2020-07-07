@@ -764,7 +764,7 @@ pub fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
         typeck_item_bodies,
-        typeck_tables_of_const_arg,
+        _typeck_tables_of_const_arg: typeck_tables_of_const_arg,
         typeck_tables_of,
         diagnostic_only_typeck_tables_of,
         has_typeck_tables,
@@ -964,7 +964,7 @@ fn typeck_tables_of_const_arg<'tcx>(
         let fallback = move || tcx.type_of(param_did);
         typeck_tables_of_with_fallback(tcx, def.did, fallback)
     } else {
-        tcx.typeck_tables_of(def.did)
+        bug!("missing param_did")
     }
 }
 
