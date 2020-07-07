@@ -5,6 +5,7 @@
 import * as lc from "vscode-languageclient";
 
 export const analyzerStatus = new lc.RequestType<null, string, void>("rust-analyzer/analyzerStatus");
+export const memoryUsage = new lc.RequestType<null, string, void>("rust-analyzer/memoryUsage");
 
 export type Status = "loading" | "ready" | "invalid" | "needsReload";
 export const status = new lc.NotificationType<Status>("rust-analyzer/status");

@@ -32,7 +32,7 @@ use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::RustfmtConfig,
     from_json, from_proto,
-    global_state::GlobalStateSnapshot,
+    global_state::{GlobalState, GlobalStateSnapshot},
     lsp_ext::{self, InlayHint, InlayHintsParams},
     to_proto, LspError, Result,
 };
@@ -60,6 +60,17 @@ pub(crate) fn handle_analyzer_status(snap: GlobalStateSnapshot, _: ()) -> Result
         format_to!(buf, "{}{:4} {:<36}{}ms\n", mark, r.id, r.method, r.duration.as_millis());
     }
     Ok(buf)
+}
+
+pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> Result<String> {
+    let _p = profile("handle_memory_usage");
+    let mem = state.analysis_host.per_query_memory_usage();
+
+    let mut out = String::new();
+    for (name, bytes) in mem {
+        format_to!(out, "{:>8} {}\n", bytes, name);
+    }
+    Ok(out)
 }
 
 pub(crate) fn handle_syntax_tree(

@@ -61,6 +61,7 @@
     "activationEvents": [
         "onLanguage:rust",
         "onCommand:rust-analyzer.analyzerStatus",
+        "onCommand:rust-analyzer.memoryUsage",
         "onCommand:rust-analyzer.reloadWorkspace",
         "workspaceContains:**/Cargo.toml"
     ],
@@ -140,6 +141,11 @@
             {
                 "command": "rust-analyzer.analyzerStatus",
                 "title": "Status",
+                "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.memoryUsage",
+                "title": "Memory Usage (Clears Database)",
                 "category": "Rust Analyzer"
             },
             {
@@ -841,6 +847,10 @@
                 },
                 {
                     "command": "rust-analyzer.analyzerStatus",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.memoryUsage",
                     "when": "inRustProject"
                 },
                 {
