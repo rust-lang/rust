@@ -674,7 +674,7 @@ impl<'a> Resolver<'a> {
 
         match find_best_match_for_name(
             suggestions.iter().map(|suggestion| &suggestion.candidate),
-            &ident.as_str(),
+            ident.name,
             None,
         ) {
             Some(found) if found != ident.name => {

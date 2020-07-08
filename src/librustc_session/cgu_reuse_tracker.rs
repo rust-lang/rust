@@ -4,7 +4,7 @@
 
 use log::debug;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use std::sync::{Arc, Mutex};
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
@@ -67,7 +67,7 @@ impl CguReuseTracker {
 
     pub fn set_expectation(
         &self,
-        cgu_name: &str,
+        cgu_name: Symbol,
         cgu_user_name: &str,
         error_span: Span,
         expected_reuse: CguReuse,

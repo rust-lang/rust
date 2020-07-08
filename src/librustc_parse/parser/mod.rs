@@ -213,7 +213,7 @@ impl TokenCursor {
             tok => return tok,
         };
 
-        let stripped = strip_doc_comment_decoration(&name.as_str());
+        let stripped = strip_doc_comment_decoration(name);
 
         // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
         // required to wrap the text.
@@ -250,7 +250,7 @@ impl TokenCursor {
             TokenCursorFrame::new(
                 delim_span,
                 token::NoDelim,
-                &if doc_comment_style(&name.as_str()) == AttrStyle::Inner {
+                &if doc_comment_style(name) == AttrStyle::Inner {
                     [TokenTree::token(token::Pound, sp), TokenTree::token(token::Not, sp), body]
                         .iter()
                         .cloned()

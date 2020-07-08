@@ -193,11 +193,11 @@ enum ResolutionError<'a> {
     /// Error E0409: variable `{}` is bound in inconsistent ways within the same match arm.
     VariableBoundWithDifferentMode(Symbol, Span),
     /// Error E0415: identifier is bound more than once in this parameter list.
-    IdentifierBoundMoreThanOnceInParameterList(&'a str),
+    IdentifierBoundMoreThanOnceInParameterList(Symbol),
     /// Error E0416: identifier is bound more than once in the same pattern.
-    IdentifierBoundMoreThanOnceInSamePattern(&'a str),
+    IdentifierBoundMoreThanOnceInSamePattern(Symbol),
     /// Error E0426: use of undeclared label.
-    UndeclaredLabel { name: &'a str, suggestion: Option<LabelSuggestion> },
+    UndeclaredLabel { name: Symbol, suggestion: Option<LabelSuggestion> },
     /// Error E0429: `self` imports are only allowed within a `{ }` list.
     SelfImportsOnlyAllowedWithin { root: bool, span_with_rename: Span },
     /// Error E0430: `self` import can only appear once in the list.
@@ -211,13 +211,13 @@ enum ResolutionError<'a> {
     /// Error E0435: attempt to use a non-constant value in a constant.
     AttemptToUseNonConstantValueInConstant,
     /// Error E0530: `X` bindings cannot shadow `Y`s.
-    BindingShadowsSomethingUnacceptable(&'a str, Symbol, &'a NameBinding<'a>),
+    BindingShadowsSomethingUnacceptable(&'static str, Symbol, &'a NameBinding<'a>),
     /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
     /// Error E0767: use of unreachable label
-    UnreachableLabel { name: &'a str, definition_span: Span, suggestion: Option<LabelSuggestion> },
+    UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
 }
 
 enum VisResolutionError<'a> {

@@ -1597,7 +1597,7 @@ impl !Sync for SymbolStr {}
 
 /// This impl means that if `ss` is a `SymbolStr`:
 /// - `*ss` is a `str`;
-/// - `&*ss` is a `&str`;
+/// - `&*ss` is a `&str` (and `match &*ss { ... }` is a common pattern).
 /// - `&ss as &str` is a `&str`, which means that `&ss` can be passed to a
 ///   function expecting a `&str`.
 impl std::ops::Deref for SymbolStr {

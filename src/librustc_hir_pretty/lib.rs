@@ -1557,7 +1557,7 @@ impl<'a> State<'a> {
                 let i = &a.inner;
                 self.s.word("llvm_asm!");
                 self.popen();
-                self.print_string(&i.asm.as_str(), i.asm_str_style);
+                self.print_symbol(i.asm, i.asm_str_style);
                 self.word_space(":");
 
                 let mut out_idx = 0;
@@ -1579,8 +1579,8 @@ impl<'a> State<'a> {
                 self.word_space(":");
 
                 let mut in_idx = 0;
-                self.commasep(Inconsistent, &i.inputs, |s, co| {
-                    s.print_string(&co.as_str(), ast::StrStyle::Cooked);
+                self.commasep(Inconsistent, &i.inputs, |s, &co| {
+                    s.print_symbol(co, ast::StrStyle::Cooked);
                     s.popen();
                     s.print_expr(&a.inputs_exprs[in_idx]);
                     s.pclose();
@@ -1589,8 +1589,8 @@ impl<'a> State<'a> {
                 self.s.space();
                 self.word_space(":");
 
-                self.commasep(Inconsistent, &i.clobbers, |s, co| {
-                    s.print_string(&co.as_str(), ast::StrStyle::Cooked);
+                self.commasep(Inconsistent, &i.clobbers, |s, &co| {
+                    s.print_symbol(co, ast::StrStyle::Cooked);
                 });
 
                 let mut options = vec![];

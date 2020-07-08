@@ -1216,7 +1216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             if plural == "" {
                 let input = unmentioned_fields.iter().map(|field| &field.name);
-                let suggested_name = find_best_match_for_name(input, &ident.as_str(), None);
+                let suggested_name = find_best_match_for_name(input, ident.name, None);
                 if let Some(suggested_name) = suggested_name {
                     err.span_suggestion(
                         ident.span,

@@ -1132,7 +1132,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 });
 
                 let lev_suggestion =
-                    find_best_match_for_name(names, &ident.as_str(), None).map(|suggestion| {
+                    find_best_match_for_name(names, ident.name, None).map(|suggestion| {
                         (
                             vec![(ident.span, suggestion.to_string())],
                             String::from("a similar name exists in the module"),

@@ -760,7 +760,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.r.report_error(
                         original_span,
                         ResolutionError::UnreachableLabel {
-                            name: &label.name.as_str(),
+                            name: label.name,
                             definition_span: ident.span,
                             suggestion,
                         },
@@ -777,7 +777,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         self.r.report_error(
             original_span,
-            ResolutionError::UndeclaredLabel { name: &label.name.as_str(), suggestion },
+            ResolutionError::UndeclaredLabel { name: label.name, suggestion },
         );
         None
     }
@@ -1550,7 +1550,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // `Variant(a, a)`:
                 _ => IdentifierBoundMoreThanOnceInSamePattern,
             };
-            self.r.report_error(ident.span, error(&ident.as_str()));
+            self.r.report_error(ident.span, error(ident.name));
         }
 
         // Record as bound if it's valid:

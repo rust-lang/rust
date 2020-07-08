@@ -540,7 +540,7 @@ impl Attributes {
             .filter_map(|attr| {
                 if let Some(value) = attr.doc_str() {
                     let (value, mk_fragment): (_, fn(_, _, _) -> _) = if attr.is_doc_comment() {
-                        (strip_doc_comment_decoration(&value.as_str()), DocFragment::SugaredDoc)
+                        (strip_doc_comment_decoration(value), DocFragment::SugaredDoc)
                     } else {
                         (value.to_string(), DocFragment::RawDoc)
                     };

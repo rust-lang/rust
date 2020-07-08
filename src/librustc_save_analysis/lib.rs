@@ -824,7 +824,7 @@ impl<'tcx> SaveContext<'tcx> {
         for attr in attrs {
             if let Some(val) = attr.doc_str() {
                 if attr.is_doc_comment() {
-                    result.push_str(&strip_doc_comment_decoration(&val.as_str()));
+                    result.push_str(&strip_doc_comment_decoration(val));
                 } else {
                     result.push_str(&val.as_str());
                 }

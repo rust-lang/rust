@@ -729,7 +729,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let adt_def = actual.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggestion) = lev_distance::find_best_match_for_name(
                         adt_def.variants.iter().map(|s| &s.ident.name),
-                        &item_name.as_str(),
+                        item_name.name,
                         None,
                     ) {
                         err.span_suggestion(

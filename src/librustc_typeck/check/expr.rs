@@ -1336,7 +1336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // prevent all specified fields from being suggested
                 let skip_fields = skip_fields.iter().map(|ref x| x.ident.name);
                 if let Some(field_name) =
-                    Self::suggest_field_name(variant, &field.ident.as_str(), skip_fields.collect())
+                    Self::suggest_field_name(variant, field.ident.name, skip_fields.collect())
                 {
                     err.span_suggestion(
                         field.ident.span,
@@ -1377,7 +1377,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Return an hint about the closest match in field names
     fn suggest_field_name(
         variant: &'tcx ty::VariantDef,
-        field: &str,
+        field: Symbol,
         skip: Vec<Symbol>,
     ) -> Option<Symbol> {
         let names = variant.fields.iter().filter_map(|field| {
@@ -1621,7 +1621,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
     ) {
         if let Some(suggested_field_name) =
-            Self::suggest_field_name(def.non_enum_variant(), &field.as_str(), vec![])
+            Self::suggest_field_name(def.non_enum_variant(), field.name, vec![])
         {
             err.span_suggestion(
                 field.span,
