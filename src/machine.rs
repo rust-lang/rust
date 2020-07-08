@@ -54,7 +54,7 @@ pub enum MiriMemoryKind {
     C,
     /// Windows `HeapAlloc` memory.
     WinHeap,
-    /// Memory for args, errno, extern statics and other parts of the machine-managed environment.
+    /// Memory for args, errno, and other parts of the machine-managed environment.
     /// This memory may leak.
     Machine,
     /// Memory for env vars. Separate from `Machine` because we clean it up and leak-check it.
@@ -62,6 +62,9 @@ pub enum MiriMemoryKind {
     /// Globals copied from `tcx`.
     /// This memory may leak.
     Global,
+    /// Memory for extern statics.
+    /// This memory may leak.
+    ExternGlobal,
 }
 
 impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
@@ -77,7 +80,7 @@ impl MayLeak for MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             Rust | C | WinHeap | Env => false,
-            Machine | Global => true,
+            Machine | Global | ExternGlobal => true,
         }
     }
 }
@@ -92,6 +95,7 @@ impl fmt::Display for MiriMemoryKind {
             Machine => write!(f, "machine-managed memory"),
             Env => write!(f, "environment variable"),
             Global => write!(f, "global"),
+            ExternGlobal => write!(f, "extern global"),
         }
     }
 }
@@ -171,7 +175,7 @@ impl MemoryExtra {
                 // "__cxa_thread_atexit_impl"
                 // This should be all-zero, pointer-sized.
                 let layout = this.machine.layouts.usize;
-                let place = this.allocate(layout, MiriMemoryKind::Machine.into());
+                let place = this.allocate(layout, MiriMemoryKind::ExternGlobal.into());
                 this.write_scalar(Scalar::from_machine_usize(0, this), place.into())?;
                 Self::add_extern_static(this, "__cxa_thread_atexit_impl", place.ptr);
                 // "environ"
@@ -181,7 +185,7 @@ impl MemoryExtra {
                 // "_tls_used"
                 // This is some obscure hack that is part of the Windows TLS story. It's a `u8`.
                 let layout = this.machine.layouts.u8;
-                let place = this.allocate(layout, MiriMemoryKind::Machine.into());
+                let place = this.allocate(layout, MiriMemoryKind::ExternGlobal.into());
                 this.write_scalar(Scalar::from_u8(0), place.into())?;
                 Self::add_extern_static(this, "_tls_used", place.ptr);
             }

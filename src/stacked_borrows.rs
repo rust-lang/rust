@@ -466,13 +466,13 @@ impl Stacks {
             // everything else off the stack, invalidating all previous pointers,
             // and in particular, *all* raw pointers.
             MemoryKind::Stack => (Tag::Tagged(extra.borrow_mut().new_ptr()), Permission::Unique),
-            // Global memory can be referenced by global pointers from `tcx`.
+            // `Global` memory can be referenced by global pointers from `tcx`.
             // Thus we call `global_base_ptr` such that the global pointers get the same tag
             // as what we use here.
-            // `Machine` is used for extern statics, and thus must also be listed here.
+            // `ExternGlobal` is used for extern statics, and thus must also be listed here.
             // `Env` we list because we can get away with precise tracking there.
             // The base pointer is not unique, so the base permission is `SharedReadWrite`.
-            MemoryKind::Machine(MiriMemoryKind::Global | MiriMemoryKind::Machine | MiriMemoryKind::Env) =>
+            MemoryKind::Machine(MiriMemoryKind::Global | MiriMemoryKind::ExternGlobal | MiriMemoryKind::Env) =>
                 (extra.borrow_mut().global_base_ptr(id), Permission::SharedReadWrite),
             // Everything else we handle entirely untagged for now.
             // FIXME: experiment with more precise tracking.
