@@ -1,5 +1,6 @@
 //! Values computed by queries that use MIR.
 
+use crate::mir::{Body, Promoted};
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -341,6 +342,17 @@ impl<'tcx> TyCtxt<'tcx> {
             self.mir_const_qualif_const_arg((def.did, param_did))
         } else {
             self.mir_const_qualif(def.did)
+        }
+    }
+
+    pub fn promoted_mir_of_opt_const_arg(
+        self,
+        def: ty::WithOptParam<DefId>,
+    ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
+        if let Some((did, param_did)) = def.as_const_arg() {
+            self.promoted_mir_of_const_arg((did, param_did))
+        } else {
+            self.promoted_mir(def.did)
         }
     }
 }

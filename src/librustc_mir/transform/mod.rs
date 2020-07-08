@@ -62,12 +62,8 @@ pub(crate) fn provide(providers: &mut Providers) {
         promoted_mir: |tcx, def_id| {
             promoted_mir(tcx, ty::WithOptParam::dummy(def_id.expect_local()))
         },
-        promoted_mir_of_const_arg: |tcx, def| {
-            if def.param_did.is_none() {
-                tcx.promoted_mir(def.did.to_def_id())
-            } else {
-                promoted_mir(tcx, def)
-            }
+        promoted_mir_of_const_arg: |tcx, (did, param_did)| {
+            promoted_mir(tcx, ty::WithOptParam { did, param_did: Some(param_did) })
         },
         ..*providers
     };
@@ -525,8 +521,8 @@ fn promoted_mir<'tcx>(
     def: ty::WithOptParam<LocalDefId>,
 ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
     if def.param_did.is_none() {
-        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
-            return tcx.promoted_mir_of_const_arg(ty::WithOptParam { param_did, ..def });
+        if let Some(param_did) = tcx.opt_const_param_of(def.did) {
+            return tcx.promoted_mir_of_const_arg((def.did, param_did));
         }
     }
 

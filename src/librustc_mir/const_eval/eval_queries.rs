@@ -360,7 +360,7 @@ pub fn const_eval_raw_provider<'tcx>(
                     // deny-by-default lint
                     _ => {
                         if let Some(p) = cid.promoted {
-                            let span = tcx.promoted_mir_of_const_arg(def)[p].span;
+                            let span = tcx.promoted_mir_of_opt_const_arg(def.to_global())[p].span;
                             if let err_inval!(ReferencedConstant) = err.error {
                                 err.report_as_error(
                                     tcx.at(span),

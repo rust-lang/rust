@@ -406,11 +406,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return if let Some(def) = def.as_local() {
-                Ok(&self.tcx.promoted_mir_of_const_arg(def)[promoted])
-            } else {
-                Ok(&self.tcx.promoted_mir(def.did)[promoted])
-            };
+            return Ok(&self.tcx.promoted_mir_of_opt_const_arg(def)[promoted]);
         }
         match instance {
             ty::InstanceDef::Item(def) => {

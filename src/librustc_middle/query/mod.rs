@@ -277,11 +277,11 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
         query promoted_mir_of_const_arg(
-            key: ty::WithOptParam<LocalDefId>
+            key: (LocalDefId, DefId)
         ) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
             desc {
                 |tcx| "optimizing promoted MIR for the const argument `{}`",
-                tcx.def_path_str(key.did.to_def_id()),
+                tcx.def_path_str(key.0.to_def_id()),
             }
         }
     }
