@@ -45,7 +45,7 @@ fn find_registrar_symbol(file: &Path) -> io::Result<Option<String>> {
                     // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html
                     // Unlike other dyld API's, the symbol name passed to dlsym() must NOT be
                     // prepended with an underscore.
-                    if s.name.starts_with("_") {
+                    if s.name.starts_with('_') {
                         &s.name[1..]
                     } else {
                         &s.name

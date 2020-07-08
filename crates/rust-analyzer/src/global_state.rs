@@ -204,8 +204,7 @@ impl GlobalState {
         if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone()) {
             let duration = start.elapsed();
             log::info!("handled req#{} in {:?}", response.id, duration);
-            let metrics =
-                RequestMetrics { id: response.id.clone(), method: method.to_string(), duration };
+            let metrics = RequestMetrics { id: response.id.clone(), method, duration };
             self.latest_requests.write().record(metrics);
             self.send(response.into());
         }
