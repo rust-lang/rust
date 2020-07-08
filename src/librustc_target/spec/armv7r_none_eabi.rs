@@ -22,7 +22,7 @@ pub fn target() -> TargetResult {
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
             max_atomic_width: Some(32),
-            abi_blacklist: super::arm_base::abi_blacklist(),
+            unsupported_abis: super::arm_base::unsupported_abis(),
             emit_debug_gdb_scripts: false,
             ..Default::default()
         },

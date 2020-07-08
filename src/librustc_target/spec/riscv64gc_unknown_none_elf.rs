@@ -25,7 +25,7 @@ pub fn target() -> TargetResult {
             relocation_model: RelocModel::Static,
             code_model: Some(CodeModel::Medium),
             emit_debug_gdb_scripts: false,
-            abi_blacklist: super::riscv_base::abi_blacklist(),
+            unsupported_abis: super::riscv_base::unsupported_abis(),
             ..Default::default()
         },
     })
