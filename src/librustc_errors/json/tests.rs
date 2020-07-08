@@ -59,6 +59,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
             sm,
             true,
             HumanReadableErrorType::Short(ColorConfig::Never),
+            None,
             false,
         );
 
