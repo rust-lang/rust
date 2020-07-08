@@ -366,7 +366,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             param.def_id,
                             Some(arg.id()),
                             arg.span(),
-                            |_, _| (),
+                            |_, _| {
+                                // Default generic parameters may not be marked
+                                // with stability attributes, i.e. when the
+                                // default parameter was defined at the same time
+                                // as the rest of the type. As such, we ignore missing
+                                // stability attributes.
+                            },
                         )
                     }
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.allow_ty_infer()) {
