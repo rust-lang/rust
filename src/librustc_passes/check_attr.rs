@@ -292,6 +292,8 @@ impl CheckAttrVisitor<'tcx> {
                 | sym::u32
                 | sym::i64
                 | sym::u64
+                | sym::i128
+                | sym::u128
                 | sym::isize
                 | sym::usize => {
                     int_reprs += 1;
