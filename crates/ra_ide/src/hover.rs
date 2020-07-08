@@ -77,10 +77,6 @@ impl HoverResult {
         Self::default()
     }
 
-    pub fn extend(&mut self, item: Option<String>) {
-        self.results.extend(item);
-    }
-
     pub fn is_empty(&self) -> bool {
         self.results.is_empty()
     }
@@ -100,17 +96,19 @@ impl HoverResult {
     pub fn actions(&self) -> &[HoverAction] {
         &self.actions
     }
-
-    pub fn push_action(&mut self, action: HoverAction) {
-        self.actions.push(action);
-    }
-
     /// Returns the results converted into markup
     /// for displaying in a UI
     ///
     /// Does not process actions!
     pub fn to_markup(&self) -> String {
         self.results.join("\n\n___\n")
+    }
+
+    fn extend(&mut self, item: Option<String>) {
+        self.results.extend(item);
+    }
+    fn push_action(&mut self, action: HoverAction) {
+        self.actions.push(action);
     }
 }
 
