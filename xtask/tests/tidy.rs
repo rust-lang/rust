@@ -50,18 +50,19 @@ fn rust_files_are_tidy() {
 }
 
 fn check_todo(path: &Path, text: &str) {
-    let whitelist = &[
-        // This file itself is whitelisted since this test itself contains matches.
+    let need_todo = &[
+        // This file itself obviously needs to use todo (<- like this!).
         "tests/cli.rs",
-        // Some of our assists generate `todo!()` so those files are whitelisted.
+        // Some of our assists generate `todo!()`.
         "tests/generated.rs",
         "handlers/add_missing_impl_members.rs",
         "handlers/add_turbo_fish.rs",
         "handlers/generate_function.rs",
-        // To support generating `todo!()` in assists, we have `expr_todo()` in ast::make.
+        // To support generating `todo!()` in assists, we have `expr_todo()` in
+        // `ast::make`.
         "ast/make.rs",
     ];
-    if whitelist.iter().any(|p| path.ends_with(p)) {
+    if need_todo.iter().any(|p| path.ends_with(p)) {
         return;
     }
     if text.contains("TODO") || text.contains("TOOD") || text.contains("todo!") {
@@ -139,7 +140,7 @@ impl TidyDocs {
             )
         }
 
-        let whitelist = [
+        let poorly_documented = [
             "ra_hir",
             "ra_hir_expand",
             "ra_ide",
@@ -153,9 +154,9 @@ impl TidyDocs {
         ];
 
         let mut has_fixmes =
-            whitelist.iter().map(|it| (*it, false)).collect::<HashMap<&str, bool>>();
+            poorly_documented.iter().map(|it| (*it, false)).collect::<HashMap<&str, bool>>();
         'outer: for path in self.contains_fixme {
-            for krate in whitelist.iter() {
+            for krate in poorly_documented.iter() {
                 if path.components().any(|it| it.as_os_str() == *krate) {
                     has_fixmes.insert(krate, true);
                     continue 'outer;
@@ -166,7 +167,7 @@ impl TidyDocs {
 
         for (krate, has_fixme) in has_fixmes.iter() {
             if !has_fixme {
-                panic!("crate {} is fully documented, remove it from the white list", krate)
+                panic!("crate {} is fully documented :tada:, remove it from the list of poorly documented crates", krate)
             }
         }
     }
