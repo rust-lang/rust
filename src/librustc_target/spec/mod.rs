@@ -902,9 +902,10 @@ pub struct TargetOptions {
     /// Panic strategy: "unwind" or "abort"
     pub panic_strategy: PanicStrategy,
 
-    /// A blacklist of ABIs unsupported by the current target. Note that generic
-    /// ABIs are considered to be supported on all platforms and cannot be blacklisted.
-    pub abi_blacklist: Vec<Abi>,
+    /// A list of ABIs unsupported by the current target. Note that generic ABIs
+    /// are considered to be supported on all platforms and cannot be marked
+    /// unsupported.
+    pub unsupported_abis: Vec<Abi>,
 
     /// Whether or not linking dylibs to a static CRT is allowed.
     pub crt_static_allows_dylibs: bool,
@@ -1056,7 +1057,7 @@ impl Default for TargetOptions {
             max_atomic_width: None,
             atomic_cas: true,
             panic_strategy: PanicStrategy::Unwind,
-            abi_blacklist: vec![],
+            unsupported_abis: vec![],
             crt_static_allows_dylibs: false,
             crt_static_default: false,
             crt_static_respected: false,
@@ -1125,7 +1126,7 @@ impl Target {
     }
 
     pub fn is_abi_supported(&self, abi: Abi) -> bool {
-        abi.generic() || !self.options.abi_blacklist.contains(&abi)
+        abi.generic() || !self.options.unsupported_abis.contains(&abi)
     }
 
     /// Loads a target descriptor from a JSON object.
@@ -1474,22 +1475,29 @@ impl Target {
         key!(llvm_args, list);
         key!(use_ctors_section, bool);
 
-        if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
-            for name in array.iter().filter_map(|abi| abi.as_string()) {
-                match lookup_abi(name) {
-                    Some(abi) => {
-                        if abi.generic() {
+        // NB: The old name is deprecated, but support for it is retained for
+        // compatibility.
+        for name in ["abi-blacklist", "unsupported-abis"].iter() {
+            if let Some(array) = obj.find(name).and_then(Json::as_array) {
+                for name in array.iter().filter_map(|abi| abi.as_string()) {
+                    match lookup_abi(name) {
+                        Some(abi) => {
+                            if abi.generic() {
+                                return Err(format!(
+                                    "The ABI \"{}\" is considered to be supported on all \
+                                    targets and cannot be marked unsupported",
+                                    abi
+                                ));
+                            }
+
+                            base.options.unsupported_abis.push(abi)
+                        }
+                        None => {
                             return Err(format!(
-                                "The ABI \"{}\" is considered to be supported on \
-                                                all targets and cannot be blacklisted",
-                                abi
+                                "Unknown ABI \"{}\" in target specification",
+                                name
                             ));
                         }
-
-                        base.options.abi_blacklist.push(abi)
-                    }
-                    None => {
-                        return Err(format!("Unknown ABI \"{}\" in target specification", name));
                     }
                 }
             }
@@ -1705,11 +1713,11 @@ impl ToJson for Target {
         target_option_val!(llvm_args);
         target_option_val!(use_ctors_section);
 
-        if default.abi_blacklist != self.options.abi_blacklist {
+        if default.unsupported_abis != self.options.unsupported_abis {
             d.insert(
-                "abi-blacklist".to_string(),
+                "unsupported-abis".to_string(),
                 self.options
-                    .abi_blacklist
+                    .unsupported_abis
                     .iter()
                     .map(|&name| Abi::name(name).to_json())
                     .collect::<Vec<_>>()
