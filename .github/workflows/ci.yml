@@ -309,6 +309,9 @@ jobs:
           - name: dist-x86_64-freebsd
             os: ubuntu-latest-xl
             env: {}
+          - name: dist-x86_64-illumos
+            os: ubuntu-latest-xl
+            env: {}
           - name: dist-x86_64-linux
             os: ubuntu-latest-xl
             env: {}

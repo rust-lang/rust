@@ -353,6 +353,9 @@ jobs:
           - name: dist-x86_64-freebsd
             <<: *job-linux-xl
 
+          - name: dist-x86_64-illumos
+            <<: *job-linux-xl
+
           - name: dist-x86_64-linux
             <<: *job-linux-xl
 

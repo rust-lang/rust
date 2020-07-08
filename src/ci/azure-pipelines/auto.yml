@@ -55,6 +55,7 @@ jobs:
       dist-powerpc64le-linux: {}
       dist-s390x-linux: {}
       dist-x86_64-freebsd: {}
+      dist-x86_64-illumos: {}
       dist-x86_64-musl: {}
       dist-x86_64-netbsd: {}
       i686-gnu: {}

@@ -39,6 +39,7 @@ static HOSTS: &[&str] = &[
     "x86_64-pc-windows-gnu",
     "x86_64-pc-windows-msvc",
     "x86_64-unknown-freebsd",
+    "x86_64-unknown-illumos",
     "x86_64-unknown-linux-gnu",
     "x86_64-unknown-linux-musl",
     "x86_64-unknown-netbsd",
