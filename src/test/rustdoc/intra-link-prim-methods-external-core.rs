@@ -6,6 +6,7 @@
 #![deny(intra_doc_link_resolution_failure)]
 #![feature(no_core, lang_items)]
 #![no_core]
+#![crate_type = "rlib"]
 
 // @has intra_link_prim_methods_external_core/index.html
 // @has - '//*[@id="main"]//a[@href="https://doc.rust-lang.org/nightly/std/primitive.char.html"]' 'char'

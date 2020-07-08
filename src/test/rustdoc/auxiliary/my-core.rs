@@ -1,5 +1,6 @@
 #![feature(no_core, lang_items)]
 #![no_core]
+#![crate_type="rlib"]
 
 #[lang = "char"]
 impl char {

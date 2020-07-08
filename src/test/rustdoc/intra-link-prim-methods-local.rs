@@ -1,6 +1,7 @@
 #![deny(intra_doc_link_resolution_failure)]
 #![feature(no_core, lang_items)]
 #![no_core]
+#![crate_type = "rlib"]
 
 // ignore-tidy-linelength
 
