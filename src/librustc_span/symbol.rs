@@ -102,9 +102,13 @@ symbols! {
         Union:              "union",
     }
 
-    // Symbols that can be referred to with rustc_span::sym::*. The symbol is
-    // the stringified identifier unless otherwise specified (e.g.
-    // `proc_dash_macro` represents "proc-macro").
+    // Pre-interned symbols that can be referred to with `rustc_span::sym::*`.
+    //
+    // The symbol is the stringified identifier unless otherwise specified, in
+    // which case the name should mention the non-identifier punctuation.
+    // E.g. `sym::proc_dash_macro` represents "proc-macro", and it shouldn't be
+    // called `sym::proc_macro` because then it's easy to mistakenly think it
+    // represents "proc_macro".
     //
     // As well as the symbols listed, there are symbols for the the strings
     // "0", "1", ..., "9", which are accessible via `sym::integer`.
@@ -567,7 +571,7 @@ symbols! {
         non_exhaustive,
         non_modrs_mods,
         nontemporal_store,
-        nontrapping_fptoint: "nontrapping-fptoint",
+        nontrapping_dash_fptoint: "nontrapping-fptoint",
         noreturn,
         no_niche,
         no_sanitize,
