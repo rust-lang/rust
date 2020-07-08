@@ -92,7 +92,7 @@ use crate::deriving::pathvec_std;
 use rustc_ast::ast::{Expr, ExprKind, MetaItem, Mutability};
 use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
 pub fn expand_deriving_rustc_encodable(
@@ -114,7 +114,7 @@ pub fn expand_deriving_rustc_encodable(
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
-            name: "encode",
+            name: sym::encode,
             generics: LifetimeBounds {
                 lifetimes: Vec::new(),
                 bounds: vec![(

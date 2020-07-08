@@ -17,7 +17,8 @@ use rustc_middle::mir::interpret::{AllocId, ConstValue, Pointer, Scalar};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
-use rustc_span::{source_map::Span, symbol::Symbol};
+use rustc_span::source_map::Span;
+use rustc_span::{sym, Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::abi::{self, LayoutOf};
 use rustc_target::spec::abi::Abi;
@@ -445,7 +446,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         helper: &TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
-        intrinsic: Option<&str>,
+        intrinsic: Option<Symbol>,
         instance: Option<Instance<'tcx>>,
         span: Span,
         destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
@@ -461,10 +462,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             UninitValid,
         };
         let panic_intrinsic = intrinsic.and_then(|i| match i {
-            // FIXME: Move to symbols instead of strings.
-            "assert_inhabited" => Some(AssertIntrinsic::Inhabited),
-            "assert_zero_valid" => Some(AssertIntrinsic::ZeroValid),
-            "assert_uninit_valid" => Some(AssertIntrinsic::UninitValid),
+            sym::assert_inhabited => Some(AssertIntrinsic::Inhabited),
+            sym::assert_zero_valid => Some(AssertIntrinsic::ZeroValid),
+            sym::assert_uninit_valid => Some(AssertIntrinsic::UninitValid),
             _ => None,
         });
         if let Some(intrinsic) = panic_intrinsic {
@@ -568,10 +568,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Handle intrinsics old codegen wants Expr's for, ourselves.
         let intrinsic = match def {
-            Some(ty::InstanceDef::Intrinsic(def_id)) => Some(bx.tcx().item_name(def_id).as_str()),
+            Some(ty::InstanceDef::Intrinsic(def_id)) => Some(bx.tcx().item_name(def_id)),
             _ => None,
         };
-        let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
 
         let extra_args = &args[sig.inputs().skip_binder().len()..];
         let extra_args = extra_args
@@ -587,7 +586,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             None => FnAbi::of_fn_ptr(&bx, sig, &extra_args),
         };
 
-        if intrinsic == Some("transmute") {
+        if intrinsic == Some(sym::transmute) {
             if let Some(destination_ref) = destination.as_ref() {
                 let &(dest, target) = destination_ref;
                 self.codegen_transmute(&mut bx, &args[0], dest);
@@ -607,7 +606,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         // For normal codegen, this Miri-specific intrinsic should never occur.
-        if intrinsic == Some("miri_start_panic") {
+        if intrinsic == Some(sym::miri_start_panic) {
             bug!("`miri_start_panic` should never end up in compiled code");
         }
 
@@ -635,7 +634,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             ReturnDest::Nothing
         };
 
-        if intrinsic == Some("caller_location") {
+        if intrinsic == Some(sym::caller_location) {
             if let Some((_, target)) = destination.as_ref() {
                 let location = self.get_caller_location(&mut bx, fn_span);
 
@@ -650,7 +649,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        if intrinsic.is_some() && intrinsic != Some("drop_in_place") {
+        if intrinsic.is_some() && intrinsic != Some(sym::drop_in_place) {
             let intrinsic = intrinsic.unwrap();
 
             // `is_codegen_intrinsic()` allows the backend implementation to perform compile-time
@@ -682,7 +681,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // third argument must be constant. This is
                     // checked by const-qualification, which also
                     // promotes any complex rvalues to constants.
-                    if i == 2 && intrinsic.starts_with("simd_shuffle") {
+                    if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
                         if let mir::Operand::Constant(constant) = arg {
                             let c = self.eval_mir_constant(constant);
                             let (llval, ty) = self.simd_shuffle_indices(

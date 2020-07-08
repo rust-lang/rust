@@ -62,11 +62,11 @@ impl MultiItemModifier for BuiltinDerive {
 fn call_intrinsic(
     cx: &ExtCtxt<'_>,
     span: Span,
-    intrinsic: &str,
+    intrinsic: Symbol,
     args: Vec<P<ast::Expr>>,
 ) -> P<ast::Expr> {
     let span = cx.with_def_site_ctxt(span);
-    let path = cx.std_path(&[sym::intrinsics, Symbol::intern(intrinsic)]);
+    let path = cx.std_path(&[sym::intrinsics, intrinsic]);
     let call = cx.expr_call_global(span, path, args);
 
     cx.expr_block(P(ast::Block {

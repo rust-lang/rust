@@ -2364,7 +2364,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         if let Some(params) = error {
             // If there's no lifetime available, suggest `'static`.
             if self.report_elision_failure(&mut err, params) && lifetime_names.is_empty() {
-                lifetime_names.insert(Ident::from_str("'static"));
+                lifetime_names.insert(Ident::with_dummy_span(kw::StaticLifetime));
             }
         }
         self.add_missing_lifetime_specifiers_label(

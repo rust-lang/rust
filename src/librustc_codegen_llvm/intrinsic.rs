@@ -25,59 +25,59 @@ use rustc_middle::mir::Operand;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{sym, symbol::kw, Span, Symbol};
 use rustc_target::abi::{self, HasDataLayout, LayoutOf, Primitive};
 use rustc_target::spec::PanicStrategy;
 
 use std::cmp::Ordering;
 use std::iter;
 
-fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
+fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: Symbol) -> Option<&'ll Value> {
     let llvm_name = match name {
-        "sqrtf32" => "llvm.sqrt.f32",
-        "sqrtf64" => "llvm.sqrt.f64",
-        "powif32" => "llvm.powi.f32",
-        "powif64" => "llvm.powi.f64",
-        "sinf32" => "llvm.sin.f32",
-        "sinf64" => "llvm.sin.f64",
-        "cosf32" => "llvm.cos.f32",
-        "cosf64" => "llvm.cos.f64",
-        "powf32" => "llvm.pow.f32",
-        "powf64" => "llvm.pow.f64",
-        "expf32" => "llvm.exp.f32",
-        "expf64" => "llvm.exp.f64",
-        "exp2f32" => "llvm.exp2.f32",
-        "exp2f64" => "llvm.exp2.f64",
-        "logf32" => "llvm.log.f32",
-        "logf64" => "llvm.log.f64",
-        "log10f32" => "llvm.log10.f32",
-        "log10f64" => "llvm.log10.f64",
-        "log2f32" => "llvm.log2.f32",
-        "log2f64" => "llvm.log2.f64",
-        "fmaf32" => "llvm.fma.f32",
-        "fmaf64" => "llvm.fma.f64",
-        "fabsf32" => "llvm.fabs.f32",
-        "fabsf64" => "llvm.fabs.f64",
-        "minnumf32" => "llvm.minnum.f32",
-        "minnumf64" => "llvm.minnum.f64",
-        "maxnumf32" => "llvm.maxnum.f32",
-        "maxnumf64" => "llvm.maxnum.f64",
-        "copysignf32" => "llvm.copysign.f32",
-        "copysignf64" => "llvm.copysign.f64",
-        "floorf32" => "llvm.floor.f32",
-        "floorf64" => "llvm.floor.f64",
-        "ceilf32" => "llvm.ceil.f32",
-        "ceilf64" => "llvm.ceil.f64",
-        "truncf32" => "llvm.trunc.f32",
-        "truncf64" => "llvm.trunc.f64",
-        "rintf32" => "llvm.rint.f32",
-        "rintf64" => "llvm.rint.f64",
-        "nearbyintf32" => "llvm.nearbyint.f32",
-        "nearbyintf64" => "llvm.nearbyint.f64",
-        "roundf32" => "llvm.round.f32",
-        "roundf64" => "llvm.round.f64",
-        "assume" => "llvm.assume",
-        "abort" => "llvm.trap",
+        sym::sqrtf32 => "llvm.sqrt.f32",
+        sym::sqrtf64 => "llvm.sqrt.f64",
+        sym::powif32 => "llvm.powi.f32",
+        sym::powif64 => "llvm.powi.f64",
+        sym::sinf32 => "llvm.sin.f32",
+        sym::sinf64 => "llvm.sin.f64",
+        sym::cosf32 => "llvm.cos.f32",
+        sym::cosf64 => "llvm.cos.f64",
+        sym::powf32 => "llvm.pow.f32",
+        sym::powf64 => "llvm.pow.f64",
+        sym::expf32 => "llvm.exp.f32",
+        sym::expf64 => "llvm.exp.f64",
+        sym::exp2f32 => "llvm.exp2.f32",
+        sym::exp2f64 => "llvm.exp2.f64",
+        sym::logf32 => "llvm.log.f32",
+        sym::logf64 => "llvm.log.f64",
+        sym::log10f32 => "llvm.log10.f32",
+        sym::log10f64 => "llvm.log10.f64",
+        sym::log2f32 => "llvm.log2.f32",
+        sym::log2f64 => "llvm.log2.f64",
+        sym::fmaf32 => "llvm.fma.f32",
+        sym::fmaf64 => "llvm.fma.f64",
+        sym::fabsf32 => "llvm.fabs.f32",
+        sym::fabsf64 => "llvm.fabs.f64",
+        sym::minnumf32 => "llvm.minnum.f32",
+        sym::minnumf64 => "llvm.minnum.f64",
+        sym::maxnumf32 => "llvm.maxnum.f32",
+        sym::maxnumf64 => "llvm.maxnum.f64",
+        sym::copysignf32 => "llvm.copysign.f32",
+        sym::copysignf64 => "llvm.copysign.f64",
+        sym::floorf32 => "llvm.floor.f32",
+        sym::floorf64 => "llvm.floor.f64",
+        sym::ceilf32 => "llvm.ceil.f32",
+        sym::ceilf64 => "llvm.ceil.f64",
+        sym::truncf32 => "llvm.trunc.f32",
+        sym::truncf64 => "llvm.trunc.f64",
+        sym::rintf32 => "llvm.rint.f32",
+        sym::rintf64 => "llvm.rint.f64",
+        sym::nearbyintf32 => "llvm.nearbyint.f32",
+        sym::nearbyintf64 => "llvm.nearbyint.f64",
+        sym::roundf32 => "llvm.round.f32",
+        sym::roundf64 => "llvm.round.f64",
+        sym::assume => "llvm.assume",
+        sym::abort => "llvm.trap",
         _ => return None,
     };
     Some(cx.get_intrinsic(&llvm_name))
@@ -86,12 +86,12 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Valu
 impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn is_codegen_intrinsic(
         &mut self,
-        intrinsic: &str,
+        intrinsic: Symbol,
         args: &Vec<Operand<'tcx>>,
         caller_instance: ty::Instance<'tcx>,
     ) -> bool {
         match intrinsic {
-            "count_code_region" => {
+            sym::count_code_region => {
                 use coverage::count_code_region_args::*;
                 self.add_counter_region(
                     caller_instance,
@@ -101,13 +101,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 );
                 true // Also inject the counter increment in the backend
             }
-            "coverage_counter_add" | "coverage_counter_subtract" => {
+            sym::coverage_counter_add | sym::coverage_counter_subtract => {
                 use coverage::coverage_counter_expression_args::*;
                 self.add_counter_expression_region(
                     caller_instance,
                     op_to_u32(&args[COUNTER_EXPRESSION_INDEX]),
                     op_to_u32(&args[LEFT_INDEX]),
-                    if intrinsic == "coverage_counter_add" {
+                    if intrinsic == sym::coverage_counter_add {
                         CounterOp::Add
                     } else {
                         CounterOp::Subtract
@@ -118,7 +118,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 );
                 false // Does not inject backend code
             }
-            "coverage_unreachable" => {
+            sym::coverage_unreachable => {
                 use coverage::coverage_unreachable_args::*;
                 self.add_unreachable_region(
                     caller_instance,
@@ -152,7 +152,8 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         let arg_tys = sig.inputs();
         let ret_ty = sig.output();
-        let name = &*tcx.item_name(def_id).as_str();
+        let name = tcx.item_name(def_id);
+        let name_str = &*name.as_str();
 
         let llret_ty = self.layout_of(ret_ty).llvm_type(self);
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
@@ -164,18 +165,18 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 None,
             ),
-            "unreachable" => {
+            sym::unreachable => {
                 return;
             }
-            "likely" => {
+            sym::likely => {
                 let expect = self.get_intrinsic(&("llvm.expect.i1"));
                 self.call(expect, &[args[0].immediate(), self.const_bool(true)], None)
             }
-            "unlikely" => {
+            sym::unlikely => {
                 let expect = self.get_intrinsic(&("llvm.expect.i1"));
                 self.call(expect, &[args[0].immediate(), self.const_bool(false)], None)
             }
-            "try" => {
+            kw::Try => {
                 try_intrinsic(
                     self,
                     args[0].immediate(),
@@ -185,11 +186,11 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 );
                 return;
             }
-            "breakpoint" => {
+            sym::breakpoint => {
                 let llfn = self.get_intrinsic(&("llvm.debugtrap"));
                 self.call(llfn, &[], None)
             }
-            "count_code_region" => {
+            sym::count_code_region => {
                 // FIXME(richkadel): The current implementation assumes the MIR for the given
                 // caller_instance represents a single function. Validate and/or correct if inlining
                 // and/or monomorphization invalidates these assumptions.
@@ -206,13 +207,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 );
                 self.instrprof_increment(mangled_fn_name, hash, num_counters, index)
             }
-            "va_start" => self.va_start(args[0].immediate()),
-            "va_end" => self.va_end(args[0].immediate()),
-            "va_copy" => {
+            sym::va_start => self.va_start(args[0].immediate()),
+            sym::va_end => self.va_end(args[0].immediate()),
+            sym::va_copy => {
                 let intrinsic = self.cx().get_intrinsic(&("llvm.va_copy"));
                 self.call(intrinsic, &[args[0].immediate(), args[1].immediate()], None)
             }
-            "va_arg" => {
+            sym::va_arg => {
                 match fn_abi.ret.layout.abi {
                     abi::Abi::Scalar(ref scalar) => {
                         match scalar.value {
@@ -238,7 +239,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     _ => bug!("the va_arg intrinsic does not work with non-scalar types"),
                 }
             }
-            "size_of_val" => {
+            sym::size_of_val => {
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
                     let (llsize, _) = glue::size_and_align_of_dst(self, tp_ty, Some(meta));
@@ -247,7 +248,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     self.const_usize(self.size_of(tp_ty).bytes())
                 }
             }
-            "min_align_of_val" => {
+            sym::min_align_of_val => {
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
                     let (_, llalign) = glue::size_and_align_of_dst(self, tp_ty, Some(meta));
@@ -256,8 +257,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     self.const_usize(self.align_of(tp_ty).bytes())
                 }
             }
-            "size_of" | "pref_align_of" | "min_align_of" | "needs_drop" | "type_id"
-            | "type_name" | "variant_count" => {
+            sym::size_of
+            | sym::pref_align_of
+            | sym::min_align_of
+            | sym::needs_drop
+            | sym::type_id
+            | sym::type_name
+            | sym::variant_count => {
                 let value = self
                     .tcx
                     .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
@@ -265,21 +271,21 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 OperandRef::from_const(self, value, ret_ty).immediate_or_packed_pair(self)
             }
             // Effectively no-op
-            "forget" => {
+            sym::forget => {
                 return;
             }
-            "offset" => {
+            sym::offset => {
                 let ptr = args[0].immediate();
                 let offset = args[1].immediate();
                 self.inbounds_gep(ptr, &[offset])
             }
-            "arith_offset" => {
+            sym::arith_offset => {
                 let ptr = args[0].immediate();
                 let offset = args[1].immediate();
                 self.gep(ptr, &[offset])
             }
 
-            "copy_nonoverlapping" => {
+            sym::copy_nonoverlapping => {
                 copy_intrinsic(
                     self,
                     false,
@@ -291,7 +297,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 );
                 return;
             }
-            "copy" => {
+            sym::copy => {
                 copy_intrinsic(
                     self,
                     true,
@@ -303,7 +309,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 );
                 return;
             }
-            "write_bytes" => {
+            sym::write_bytes => {
                 memset_intrinsic(
                     self,
                     false,
@@ -315,7 +321,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 return;
             }
 
-            "volatile_copy_nonoverlapping_memory" => {
+            sym::volatile_copy_nonoverlapping_memory => {
                 copy_intrinsic(
                     self,
                     false,
@@ -327,7 +333,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 );
                 return;
             }
-            "volatile_copy_memory" => {
+            sym::volatile_copy_memory => {
                 copy_intrinsic(
                     self,
                     true,
@@ -339,7 +345,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 );
                 return;
             }
-            "volatile_set_memory" => {
+            sym::volatile_set_memory => {
                 memset_intrinsic(
                     self,
                     true,
@@ -350,14 +356,14 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 );
                 return;
             }
-            "volatile_load" | "unaligned_volatile_load" => {
+            sym::volatile_load | sym::unaligned_volatile_load => {
                 let tp_ty = substs.type_at(0);
                 let mut ptr = args[0].immediate();
                 if let PassMode::Cast(ty) = fn_abi.ret.mode {
                     ptr = self.pointercast(ptr, self.type_ptr_to(ty.llvm_type(self)));
                 }
                 let load = self.volatile_load(ptr);
-                let align = if name == "unaligned_volatile_load" {
+                let align = if name == sym::unaligned_volatile_load {
                     1
                 } else {
                     self.align_of(tp_ty).bytes() as u32
@@ -367,26 +373,26 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
                 to_immediate(self, load, self.layout_of(tp_ty))
             }
-            "volatile_store" => {
+            sym::volatile_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.volatile_store(self, dst);
                 return;
             }
-            "unaligned_volatile_store" => {
+            sym::unaligned_volatile_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.unaligned_volatile_store(self, dst);
                 return;
             }
-            "prefetch_read_data"
-            | "prefetch_write_data"
-            | "prefetch_read_instruction"
-            | "prefetch_write_instruction" => {
+            sym::prefetch_read_data
+            | sym::prefetch_write_data
+            | sym::prefetch_read_instruction
+            | sym::prefetch_write_instruction => {
                 let expect = self.get_intrinsic(&("llvm.prefetch"));
                 let (rw, cache_type) = match name {
-                    "prefetch_read_data" => (0, 1),
-                    "prefetch_write_data" => (1, 1),
-                    "prefetch_read_instruction" => (0, 0),
-                    "prefetch_write_instruction" => (1, 0),
+                    sym::prefetch_read_data => (0, 1),
+                    sym::prefetch_write_data => (1, 1),
+                    sym::prefetch_read_instruction => (0, 0),
+                    sym::prefetch_write_instruction => (1, 0),
                     _ => bug!(),
                 };
                 self.call(
@@ -400,32 +406,51 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     None,
                 )
             }
-            "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "ctpop" | "bswap"
-            | "bitreverse" | "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow"
-            | "wrapping_add" | "wrapping_sub" | "wrapping_mul" | "unchecked_div"
-            | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" | "unchecked_add"
-            | "unchecked_sub" | "unchecked_mul" | "exact_div" | "rotate_left" | "rotate_right"
-            | "saturating_add" | "saturating_sub" => {
+            sym::ctlz
+            | sym::ctlz_nonzero
+            | sym::cttz
+            | sym::cttz_nonzero
+            | sym::ctpop
+            | sym::bswap
+            | sym::bitreverse
+            | sym::add_with_overflow
+            | sym::sub_with_overflow
+            | sym::mul_with_overflow
+            | sym::wrapping_add
+            | sym::wrapping_sub
+            | sym::wrapping_mul
+            | sym::unchecked_div
+            | sym::unchecked_rem
+            | sym::unchecked_shl
+            | sym::unchecked_shr
+            | sym::unchecked_add
+            | sym::unchecked_sub
+            | sym::unchecked_mul
+            | sym::exact_div
+            | sym::rotate_left
+            | sym::rotate_right
+            | sym::saturating_add
+            | sym::saturating_sub => {
                 let ty = arg_tys[0];
                 match int_type_width_signed(ty, self) {
                     Some((width, signed)) => match name {
-                        "ctlz" | "cttz" => {
+                        sym::ctlz | sym::cttz => {
                             let y = self.const_bool(false);
                             let llfn = self.get_intrinsic(&format!("llvm.{}.i{}", name, width));
                             self.call(llfn, &[args[0].immediate(), y], None)
                         }
-                        "ctlz_nonzero" | "cttz_nonzero" => {
+                        sym::ctlz_nonzero | sym::cttz_nonzero => {
                             let y = self.const_bool(true);
-                            let llvm_name = &format!("llvm.{}.i{}", &name[..4], width);
+                            let llvm_name = &format!("llvm.{}.i{}", &name_str[..4], width);
                             let llfn = self.get_intrinsic(llvm_name);
                             self.call(llfn, &[args[0].immediate(), y], None)
                         }
-                        "ctpop" => self.call(
+                        sym::ctpop => self.call(
                             self.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
                             &[args[0].immediate()],
                             None,
                         ),
-                        "bswap" => {
+                        sym::bswap => {
                             if width == 8 {
                                 args[0].immediate() // byte swap a u8/i8 is just a no-op
                             } else {
@@ -436,16 +461,18 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                 )
                             }
                         }
-                        "bitreverse" => self.call(
+                        sym::bitreverse => self.call(
                             self.get_intrinsic(&format!("llvm.bitreverse.i{}", width)),
                             &[args[0].immediate()],
                             None,
                         ),
-                        "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" => {
+                        sym::add_with_overflow
+                        | sym::sub_with_overflow
+                        | sym::mul_with_overflow => {
                             let intrinsic = format!(
                                 "llvm.{}{}.with.overflow.i{}",
                                 if signed { 's' } else { 'u' },
-                                &name[..3],
+                                &name_str[..3],
                                 width
                             );
                             let llfn = self.get_intrinsic(&intrinsic);
@@ -464,61 +491,61 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
                             return;
                         }
-                        "wrapping_add" => self.add(args[0].immediate(), args[1].immediate()),
-                        "wrapping_sub" => self.sub(args[0].immediate(), args[1].immediate()),
-                        "wrapping_mul" => self.mul(args[0].immediate(), args[1].immediate()),
-                        "exact_div" => {
+                        sym::wrapping_add => self.add(args[0].immediate(), args[1].immediate()),
+                        sym::wrapping_sub => self.sub(args[0].immediate(), args[1].immediate()),
+                        sym::wrapping_mul => self.mul(args[0].immediate(), args[1].immediate()),
+                        sym::exact_div => {
                             if signed {
                                 self.exactsdiv(args[0].immediate(), args[1].immediate())
                             } else {
                                 self.exactudiv(args[0].immediate(), args[1].immediate())
                             }
                         }
-                        "unchecked_div" => {
+                        sym::unchecked_div => {
                             if signed {
                                 self.sdiv(args[0].immediate(), args[1].immediate())
                             } else {
                                 self.udiv(args[0].immediate(), args[1].immediate())
                             }
                         }
-                        "unchecked_rem" => {
+                        sym::unchecked_rem => {
                             if signed {
                                 self.srem(args[0].immediate(), args[1].immediate())
                             } else {
                                 self.urem(args[0].immediate(), args[1].immediate())
                             }
                         }
-                        "unchecked_shl" => self.shl(args[0].immediate(), args[1].immediate()),
-                        "unchecked_shr" => {
+                        sym::unchecked_shl => self.shl(args[0].immediate(), args[1].immediate()),
+                        sym::unchecked_shr => {
                             if signed {
                                 self.ashr(args[0].immediate(), args[1].immediate())
                             } else {
                                 self.lshr(args[0].immediate(), args[1].immediate())
                             }
                         }
-                        "unchecked_add" => {
+                        sym::unchecked_add => {
                             if signed {
                                 self.unchecked_sadd(args[0].immediate(), args[1].immediate())
                             } else {
                                 self.unchecked_uadd(args[0].immediate(), args[1].immediate())
                             }
                         }
-                        "unchecked_sub" => {
+                        sym::unchecked_sub => {
                             if signed {
                                 self.unchecked_ssub(args[0].immediate(), args[1].immediate())
                             } else {
                                 self.unchecked_usub(args[0].immediate(), args[1].immediate())
                             }
                         }
-                        "unchecked_mul" => {
+                        sym::unchecked_mul => {
                             if signed {
                                 self.unchecked_smul(args[0].immediate(), args[1].immediate())
                             } else {
                                 self.unchecked_umul(args[0].immediate(), args[1].immediate())
                             }
                         }
-                        "rotate_left" | "rotate_right" => {
-                            let is_left = name == "rotate_left";
+                        sym::rotate_left | sym::rotate_right => {
+                            let is_left = name == sym::rotate_left;
                             let val = args[0].immediate();
                             let raw_shift = args[1].immediate();
                             // rotate = funnel shift with first two args the same
@@ -527,8 +554,8 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             let llfn = self.get_intrinsic(llvm_name);
                             self.call(llfn, &[val, val, raw_shift], None)
                         }
-                        "saturating_add" | "saturating_sub" => {
-                            let is_add = name == "saturating_add";
+                        sym::saturating_add | sym::saturating_sub => {
+                            let is_add = name == sym::saturating_add;
                             let lhs = args[0].immediate();
                             let rhs = args[1].immediate();
                             let llvm_name = &format!(
@@ -556,14 +583,14 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     }
                 }
             }
-            "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
+            sym::fadd_fast | sym::fsub_fast | sym::fmul_fast | sym::fdiv_fast | sym::frem_fast => {
                 match float_type_width(arg_tys[0]) {
                     Some(_width) => match name {
-                        "fadd_fast" => self.fadd_fast(args[0].immediate(), args[1].immediate()),
-                        "fsub_fast" => self.fsub_fast(args[0].immediate(), args[1].immediate()),
-                        "fmul_fast" => self.fmul_fast(args[0].immediate(), args[1].immediate()),
-                        "fdiv_fast" => self.fdiv_fast(args[0].immediate(), args[1].immediate()),
-                        "frem_fast" => self.frem_fast(args[0].immediate(), args[1].immediate()),
+                        sym::fadd_fast => self.fadd_fast(args[0].immediate(), args[1].immediate()),
+                        sym::fsub_fast => self.fsub_fast(args[0].immediate(), args[1].immediate()),
+                        sym::fmul_fast => self.fmul_fast(args[0].immediate(), args[1].immediate()),
+                        sym::fdiv_fast => self.fdiv_fast(args[0].immediate(), args[1].immediate()),
+                        sym::frem_fast => self.frem_fast(args[0].immediate(), args[1].immediate()),
                         _ => bug!(),
                     },
                     None => {
@@ -581,7 +608,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
 
-            "float_to_int_unchecked" => {
+            sym::float_to_int_unchecked => {
                 if float_type_width(arg_tys[0]).is_none() {
                     span_invalid_monomorphization_error(
                         tcx.sess,
@@ -619,7 +646,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
 
-            "discriminant_value" => {
+            sym::discriminant_value => {
                 if ret_ty.is_integral() {
                     args[0].deref(self.cx()).codegen_get_discr(self, ret_ty)
                 } else {
@@ -627,7 +654,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
 
-            name if name.starts_with("simd_") => {
+            _ if name_str.starts_with("simd_") => {
                 match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                     Ok(llval) => llval,
                     Err(()) => return,
@@ -635,11 +662,11 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             // This requires that atomic intrinsics follow a specific naming pattern:
             // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
-            name if name.starts_with("atomic_") => {
+            name if name_str.starts_with("atomic_") => {
                 use rustc_codegen_ssa::common::AtomicOrdering::*;
                 use rustc_codegen_ssa::common::{AtomicRmwBinOp, SynchronizationScope};
 
-                let split: Vec<&str> = name.split('_').collect();
+                let split: Vec<&str> = name_str.split('_').collect();
 
                 let is_cxchg = split[1] == "cxchg" || split[1] == "cxchgweak";
                 let (order, failorder) = match split.len() {
@@ -769,23 +796,23 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
 
-            "nontemporal_store" => {
+            sym::nontemporal_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.nontemporal_store(self, dst);
                 return;
             }
 
-            "ptr_guaranteed_eq" | "ptr_guaranteed_ne" => {
+            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
                 let a = args[0].immediate();
                 let b = args[1].immediate();
-                if name == "ptr_guaranteed_eq" {
+                if name == sym::ptr_guaranteed_eq {
                     self.icmp(IntPredicate::IntEQ, a, b)
                 } else {
                     self.icmp(IntPredicate::IntNE, a, b)
                 }
             }
 
-            "ptr_offset_from" => {
+            sym::ptr_offset_from => {
                 let ty = substs.type_at(0);
                 let pointee_size = self.size_of(ty);
 
@@ -1172,7 +1199,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
 
 fn generic_simd_intrinsic(
     bx: &mut Builder<'a, 'll, 'tcx>,
-    name: &str,
+    name: Symbol,
     callee_ty: Ty<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
     ret_ty: Ty<'tcx>,
@@ -1219,8 +1246,9 @@ fn generic_simd_intrinsic(
     let sig = tcx
         .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
+    let name_str = &*name.as_str();
 
-    if name == "simd_select_bitmask" {
+    if name == sym::simd_select_bitmask {
         let in_ty = arg_tys[0];
         let m_len = match in_ty.kind {
             // Note that this `.unwrap()` crashes for isize/usize, that's sort
@@ -1250,12 +1278,12 @@ fn generic_simd_intrinsic(
     let in_len = arg_tys[0].simd_size(tcx);
 
     let comparison = match name {
-        "simd_eq" => Some(hir::BinOpKind::Eq),
-        "simd_ne" => Some(hir::BinOpKind::Ne),
-        "simd_lt" => Some(hir::BinOpKind::Lt),
-        "simd_le" => Some(hir::BinOpKind::Le),
-        "simd_gt" => Some(hir::BinOpKind::Gt),
-        "simd_ge" => Some(hir::BinOpKind::Ge),
+        sym::simd_eq => Some(hir::BinOpKind::Eq),
+        sym::simd_ne => Some(hir::BinOpKind::Ne),
+        sym::simd_lt => Some(hir::BinOpKind::Lt),
+        sym::simd_le => Some(hir::BinOpKind::Le),
+        sym::simd_gt => Some(hir::BinOpKind::Gt),
+        sym::simd_ge => Some(hir::BinOpKind::Ge),
         _ => None,
     };
 
@@ -1289,8 +1317,8 @@ fn generic_simd_intrinsic(
         ));
     }
 
-    if name.starts_with("simd_shuffle") {
-        let n: u64 = name["simd_shuffle".len()..].parse().unwrap_or_else(|_| {
+    if name_str.starts_with("simd_shuffle") {
+        let n: u64 = name_str["simd_shuffle".len()..].parse().unwrap_or_else(|_| {
             span_bug!(span, "bad `simd_shuffle` instruction only caught in codegen?")
         });
 
@@ -1351,7 +1379,7 @@ fn generic_simd_intrinsic(
         ));
     }
 
-    if name == "simd_insert" {
+    if name == sym::simd_insert {
         require!(
             in_elem == arg_tys[2],
             "expected inserted type `{}` (element of input `{}`), found `{}`",
@@ -1365,7 +1393,7 @@ fn generic_simd_intrinsic(
             args[1].immediate(),
         ));
     }
-    if name == "simd_extract" {
+    if name == sym::simd_extract {
         require!(
             ret_ty == in_elem,
             "expected return type `{}` (element of input `{}`), found `{}`",
@@ -1376,7 +1404,7 @@ fn generic_simd_intrinsic(
         return Ok(bx.extract_element(args[0].immediate(), args[1].immediate()));
     }
 
-    if name == "simd_select" {
+    if name == sym::simd_select {
         let m_elem_ty = in_elem;
         let m_len = in_len;
         require_simd!(arg_tys[1], "argument");
@@ -1398,7 +1426,7 @@ fn generic_simd_intrinsic(
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
-    if name == "simd_bitmask" {
+    if name == sym::simd_bitmask {
         // The `fn simd_bitmask(vector) -> unsigned integer` intrinsic takes a
         // vector mask and returns an unsigned integer containing the most
         // significant bit (MSB) of each lane.
@@ -1513,46 +1541,46 @@ fn generic_simd_intrinsic(
     }
 
     match name {
-        "simd_fsqrt" => {
+        sym::simd_fsqrt => {
             return simd_simple_float_intrinsic("sqrt", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_fsin" => {
+        sym::simd_fsin => {
             return simd_simple_float_intrinsic("sin", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_fcos" => {
+        sym::simd_fcos => {
             return simd_simple_float_intrinsic("cos", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_fabs" => {
+        sym::simd_fabs => {
             return simd_simple_float_intrinsic("fabs", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_floor" => {
+        sym::simd_floor => {
             return simd_simple_float_intrinsic("floor", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_ceil" => {
+        sym::simd_ceil => {
             return simd_simple_float_intrinsic("ceil", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_fexp" => {
+        sym::simd_fexp => {
             return simd_simple_float_intrinsic("exp", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_fexp2" => {
+        sym::simd_fexp2 => {
             return simd_simple_float_intrinsic("exp2", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_flog10" => {
+        sym::simd_flog10 => {
             return simd_simple_float_intrinsic("log10", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_flog2" => {
+        sym::simd_flog2 => {
             return simd_simple_float_intrinsic("log2", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_flog" => {
+        sym::simd_flog => {
             return simd_simple_float_intrinsic("log", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_fpowi" => {
+        sym::simd_fpowi => {
             return simd_simple_float_intrinsic("powi", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_fpow" => {
+        sym::simd_fpow => {
             return simd_simple_float_intrinsic("pow", in_elem, in_ty, in_len, bx, span, args);
         }
-        "simd_fma" => {
+        sym::simd_fma => {
             return simd_simple_float_intrinsic("fma", in_elem, in_ty, in_len, bx, span, args);
         }
         _ => { /* fallthrough */ }
@@ -1591,7 +1619,7 @@ fn generic_simd_intrinsic(
         cx.type_vector(elem_ty, vec_len)
     }
 
-    if name == "simd_gather" {
+    if name == sym::simd_gather {
         // simd_gather(values: <N x T>, pointers: <N x *_ T>,
         //             mask: <N x i{M}>) -> <N x T>
         // * N: number of elements in the input vectors
@@ -1718,7 +1746,7 @@ fn generic_simd_intrinsic(
         return Ok(v);
     }
 
-    if name == "simd_scatter" {
+    if name == sym::simd_scatter {
         // simd_scatter(values: <N x T>, pointers: <N x *mut T>,
         //             mask: <N x i{M}>) -> ()
         // * N: number of elements in the input vectors
@@ -1841,8 +1869,9 @@ fn generic_simd_intrinsic(
     }
 
     macro_rules! arith_red {
-        ($name:tt : $integer_reduce:ident, $float_reduce:ident, $ordered:expr) => {
-            if name == $name {
+        ($name:ident : $integer_reduce:ident, $float_reduce:ident, $ordered:expr, $op:ident,
+         $identity:expr) => {
+            if name == sym::$name {
                 require!(
                     ret_ty == in_elem,
                     "expected return type `{}` (element of input `{}`), found `{}`",
@@ -1856,11 +1885,7 @@ fn generic_simd_intrinsic(
                         if $ordered {
                             // if overflow occurs, the result is the
                             // mathematical result modulo 2^n:
-                            if name.contains("mul") {
-                                Ok(bx.mul(args[1].immediate(), r))
-                            } else {
-                                Ok(bx.add(args[1].immediate(), r))
-                            }
+                            Ok(bx.$op(args[1].immediate(), r))
                         } else {
                             Ok(bx.$integer_reduce(args[0].immediate()))
                         }
@@ -1871,14 +1896,13 @@ fn generic_simd_intrinsic(
                             args[1].immediate()
                         } else {
                             // unordered arithmetic reductions use the identity accumulator
-                            let identity_acc = if $name.contains("mul") { 1.0 } else { 0.0 };
                             match f.bit_width() {
-                                32 => bx.const_real(bx.type_f32(), identity_acc),
-                                64 => bx.const_real(bx.type_f64(), identity_acc),
+                                32 => bx.const_real(bx.type_f32(), $identity),
+                                64 => bx.const_real(bx.type_f64(), $identity),
                                 v => return_error!(
                                     r#"
 unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
-                                    $name,
+                                    sym::$name,
                                     in_ty,
                                     in_elem,
                                     v,
@@ -1890,7 +1914,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     }
                     _ => return_error!(
                         "unsupported {} from `{}` with element `{}` to `{}`",
-                        $name,
+                        sym::$name,
                         in_ty,
                         in_elem,
                         ret_ty
@@ -1900,14 +1924,26 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         };
     }
 
-    arith_red!("simd_reduce_add_ordered": vector_reduce_add, vector_reduce_fadd, true);
-    arith_red!("simd_reduce_mul_ordered": vector_reduce_mul, vector_reduce_fmul, true);
-    arith_red!("simd_reduce_add_unordered": vector_reduce_add, vector_reduce_fadd_fast, false);
-    arith_red!("simd_reduce_mul_unordered": vector_reduce_mul, vector_reduce_fmul_fast, false);
+    arith_red!(simd_reduce_add_ordered: vector_reduce_add, vector_reduce_fadd, true, add, 0.0);
+    arith_red!(simd_reduce_mul_ordered: vector_reduce_mul, vector_reduce_fmul, true, mul, 1.0);
+    arith_red!(
+        simd_reduce_add_unordered: vector_reduce_add,
+        vector_reduce_fadd_fast,
+        false,
+        add,
+        0.0
+    );
+    arith_red!(
+        simd_reduce_mul_unordered: vector_reduce_mul,
+        vector_reduce_fmul_fast,
+        false,
+        mul,
+        1.0
+    );
 
     macro_rules! minmax_red {
-        ($name:tt: $int_red:ident, $float_red:ident) => {
-            if name == $name {
+        ($name:ident: $int_red:ident, $float_red:ident) => {
+            if name == sym::$name {
                 require!(
                     ret_ty == in_elem,
                     "expected return type `{}` (element of input `{}`), found `{}`",
@@ -1921,7 +1957,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     ty::Float(_f) => Ok(bx.$float_red(args[0].immediate())),
                     _ => return_error!(
                         "unsupported {} from `{}` with element `{}` to `{}`",
-                        $name,
+                        sym::$name,
                         in_ty,
                         in_elem,
                         ret_ty
@@ -1931,15 +1967,15 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         };
     }
 
-    minmax_red!("simd_reduce_min": vector_reduce_min, vector_reduce_fmin);
-    minmax_red!("simd_reduce_max": vector_reduce_max, vector_reduce_fmax);
+    minmax_red!(simd_reduce_min: vector_reduce_min, vector_reduce_fmin);
+    minmax_red!(simd_reduce_max: vector_reduce_max, vector_reduce_fmax);
 
-    minmax_red!("simd_reduce_min_nanless": vector_reduce_min, vector_reduce_fmin_fast);
-    minmax_red!("simd_reduce_max_nanless": vector_reduce_max, vector_reduce_fmax_fast);
+    minmax_red!(simd_reduce_min_nanless: vector_reduce_min, vector_reduce_fmin_fast);
+    minmax_red!(simd_reduce_max_nanless: vector_reduce_max, vector_reduce_fmax_fast);
 
     macro_rules! bitwise_red {
-        ($name:tt : $red:ident, $boolean:expr) => {
-            if name == $name {
+        ($name:ident : $red:ident, $boolean:expr) => {
+            if name == sym::$name {
                 let input = if !$boolean {
                     require!(
                         ret_ty == in_elem,
@@ -1954,7 +1990,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                         ty::Int(_) | ty::Uint(_) => {}
                         _ => return_error!(
                             "unsupported {} from `{}` with element `{}` to `{}`",
-                            $name,
+                            sym::$name,
                             in_ty,
                             in_elem,
                             ret_ty
@@ -1973,7 +2009,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     }
                     _ => return_error!(
                         "unsupported {} from `{}` with element `{}` to `{}`",
-                        $name,
+                        sym::$name,
                         in_ty,
                         in_elem,
                         ret_ty
@@ -1983,13 +2019,13 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         };
     }
 
-    bitwise_red!("simd_reduce_and": vector_reduce_and, false);
-    bitwise_red!("simd_reduce_or": vector_reduce_or, false);
-    bitwise_red!("simd_reduce_xor": vector_reduce_xor, false);
-    bitwise_red!("simd_reduce_all": vector_reduce_and, true);
-    bitwise_red!("simd_reduce_any": vector_reduce_or, true);
+    bitwise_red!(simd_reduce_and: vector_reduce_and, false);
+    bitwise_red!(simd_reduce_or: vector_reduce_or, false);
+    bitwise_red!(simd_reduce_xor: vector_reduce_xor, false);
+    bitwise_red!(simd_reduce_all: vector_reduce_and, true);
+    bitwise_red!(simd_reduce_any: vector_reduce_or, true);
 
-    if name == "simd_cast" {
+    if name == sym::simd_cast {
         require_simd!(ret_ty, "return");
         let out_len = ret_ty.simd_size(tcx);
         require!(
@@ -2077,7 +2113,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
     }
     macro_rules! arith {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
-            $(if name == stringify!($name) {
+            $(if name == sym::$name {
                 match in_elem.kind {
                     $($(ty::$p(_))|* => {
                         return Ok(bx.$call(args[0].immediate(), args[1].immediate()))
@@ -2107,10 +2143,10 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 
     }
 
-    if name == "simd_saturating_add" || name == "simd_saturating_sub" {
+    if name == sym::simd_saturating_add || name == sym::simd_saturating_sub {
         let lhs = args[0].immediate();
         let rhs = args[1].immediate();
-        let is_add = name == "simd_saturating_add";
+        let is_add = name == sym::simd_saturating_add;
         let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
         let (signed, elem_width, elem_ty) = match in_elem.kind {
             ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_int_from_ty(i)),

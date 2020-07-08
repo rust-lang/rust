@@ -27,7 +27,7 @@ pub fn expand_deriving_default(
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
-            name: "default",
+            name: kw::Default,
             generics: LifetimeBounds::empty(),
             explicit_self: None,
             args: Vec::new(),

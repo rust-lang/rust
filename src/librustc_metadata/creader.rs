@@ -679,8 +679,8 @@ impl<'a> CrateLoader<'a> {
         // in terms of everyone has a compatible panic runtime format, that's
         // performed later as part of the `dependency_format` module.
         let name = match desired_strategy {
-            PanicStrategy::Unwind => Symbol::intern("panic_unwind"),
-            PanicStrategy::Abort => Symbol::intern("panic_abort"),
+            PanicStrategy::Unwind => sym::panic_unwind,
+            PanicStrategy::Abort => sym::panic_abort,
         };
         info!("panic runtime not found -- loading {}", name);
 
@@ -713,7 +713,7 @@ impl<'a> CrateLoader<'a> {
         {
             info!("loading profiler");
 
-            let name = Symbol::intern("profiler_builtins");
+            let name = sym::profiler_builtins;
             let cnum = self.resolve_crate(name, DUMMY_SP, DepKind::Implicit, None);
             let data = self.cstore.get_crate_data(cnum);
 

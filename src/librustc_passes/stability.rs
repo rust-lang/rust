@@ -620,7 +620,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     // available as we'd like it to be.
     // FIXME: only remove `libc` when `stdbuild` is active.
     // FIXME: remove special casing for `test`.
-    remaining_lib_features.remove(&Symbol::intern("libc"));
+    remaining_lib_features.remove(&sym::libc);
     remaining_lib_features.remove(&sym::test);
 
     let check_features = |remaining_lib_features: &mut FxHashMap<_, _>, defined_features: &[_]| {

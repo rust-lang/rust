@@ -29,7 +29,7 @@ pub fn expand_deriving_hash(
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
-            name: "hash",
+            name: sym::hash,
             generics: LifetimeBounds {
                 lifetimes: Vec::new(),
                 bounds: vec![(typaram, vec![path_std!(cx, hash::Hasher)])],
@@ -73,7 +73,7 @@ fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructu
             let variant_value = deriving::call_intrinsic(
                 cx,
                 trait_span,
-                "discriminant_value",
+                sym::discriminant_value,
                 vec![cx.expr_self(trait_span)],
             );
 

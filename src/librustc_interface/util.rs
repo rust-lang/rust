@@ -53,7 +53,7 @@ pub fn add_configuration(
     cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
 
     if sess.crt_static(None) {
-        cfg.insert((tf, Some(Symbol::intern("crt-static"))));
+        cfg.insert((tf, Some(sym::crt_dash_static)));
     }
 }
 

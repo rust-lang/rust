@@ -1247,7 +1247,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .generic_args()
                             .bindings
                             .iter()
-                            .find_map(|b| match (b.ident.as_str() == "Output", &b.kind) {
+                            .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
                                 (true, hir::TypeBindingKind::Equality { ty }) => {
                                     sess.source_map().span_to_snippet(ty.span).ok()
                                 }

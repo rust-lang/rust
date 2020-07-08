@@ -28,7 +28,7 @@ pub fn expand_deriving_eq(
         is_unsafe: false,
         supports_unions: true,
         methods: vec![MethodDef {
-            name: "assert_receiver_is_total_eq",
+            name: sym::assert_receiver_is_total_eq,
             generics: LifetimeBounds::empty(),
             explicit_self: borrowed_explicit_self(),
             args: vec![],
