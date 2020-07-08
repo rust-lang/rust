@@ -139,7 +139,7 @@ pub fn time_trace_profiler_finish(file_name: &str) {
 // to LLVM or the feature detection code will walk past the end of the feature
 // array, leading to crashes.
 
-const ARM_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("aclass", Some(sym::arm_target_feature)),
     ("mclass", Some(sym::arm_target_feature)),
     ("rclass", Some(sym::arm_target_feature)),
@@ -162,7 +162,7 @@ const ARM_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("thumb-mode", Some(sym::arm_target_feature)),
 ];
 
-const AARCH64_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("fp", Some(sym::aarch64_target_feature)),
     ("neon", Some(sym::aarch64_target_feature)),
     ("sve", Some(sym::aarch64_target_feature)),
@@ -180,7 +180,7 @@ const AARCH64_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("v8.3a", Some(sym::aarch64_target_feature)),
 ];
 
-const X86_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("adx", Some(sym::adx_target_feature)),
     ("aes", None),
     ("avx", None),
@@ -224,12 +224,12 @@ const X86_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("xsaves", None),
 ];
 
-const HEXAGON_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const HEXAGON_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("hvx", Some(sym::hexagon_target_feature)),
     ("hvx-length128b", Some(sym::hexagon_target_feature)),
 ];
 
-const POWERPC_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const POWERPC_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("altivec", Some(sym::powerpc_target_feature)),
     ("power8-altivec", Some(sym::powerpc_target_feature)),
     ("power9-altivec", Some(sym::powerpc_target_feature)),
@@ -238,10 +238,10 @@ const POWERPC_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("vsx", Some(sym::powerpc_target_feature)),
 ];
 
-const MIPS_WHITELIST: &[(&str, Option<Symbol>)] =
+const MIPS_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] =
     &[("fp64", Some(sym::mips_target_feature)), ("msa", Some(sym::mips_target_feature))];
 
-const RISCV_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("m", Some(sym::riscv_target_feature)),
     ("a", Some(sym::riscv_target_feature)),
     ("c", Some(sym::riscv_target_feature)),
@@ -250,7 +250,7 @@ const RISCV_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("e", Some(sym::riscv_target_feature)),
 ];
 
-const WASM_WHITELIST: &[(&str, Option<Symbol>)] = &[
+const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("simd128", Some(sym::wasm_target_feature)),
     ("atomics", Some(sym::wasm_target_feature)),
     ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
@@ -259,19 +259,18 @@ const WASM_WHITELIST: &[(&str, Option<Symbol>)] = &[
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
-/// IMPORTANT: If you're adding another whitelist to the above lists, make sure to add it to this
-/// iterator!
+/// IMPORTANT: If you're adding another feature list above, make sure to add it to this iterator!
 pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol>)> {
-    ARM_WHITELIST
-        .iter()
+    std::iter::empty()
+        .chain(ARM_ALLOWED_FEATURES.iter())
+        .chain(AARCH64_ALLOWED_FEATURES.iter())
+        .chain(X86_ALLOWED_FEATURES.iter())
+        .chain(HEXAGON_ALLOWED_FEATURES.iter())
+        .chain(POWERPC_ALLOWED_FEATURES.iter())
+        .chain(MIPS_ALLOWED_FEATURES.iter())
+        .chain(RISCV_ALLOWED_FEATURES.iter())
+        .chain(WASM_ALLOWED_FEATURES.iter())
         .cloned()
-        .chain(AARCH64_WHITELIST.iter().cloned())
-        .chain(X86_WHITELIST.iter().cloned())
-        .chain(HEXAGON_WHITELIST.iter().cloned())
-        .chain(POWERPC_WHITELIST.iter().cloned())
-        .chain(MIPS_WHITELIST.iter().cloned())
-        .chain(RISCV_WHITELIST.iter().cloned())
-        .chain(WASM_WHITELIST.iter().cloned())
 }
 
 pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
@@ -289,7 +288,7 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
     let target_machine = create_informational_target_machine(sess);
-    target_feature_whitelist(sess)
+    supported_target_features(sess)
         .iter()
         .filter_map(|&(feature, gate)| {
             if UnstableFeatures::from_environment().is_nightly_build() || gate.is_none() {
@@ -307,16 +306,16 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         .collect()
 }
 
-pub fn target_feature_whitelist(sess: &Session) -> &'static [(&'static str, Option<Symbol>)] {
+pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Option<Symbol>)] {
     match &*sess.target.target.arch {
-        "arm" => ARM_WHITELIST,
-        "aarch64" => AARCH64_WHITELIST,
-        "x86" | "x86_64" => X86_WHITELIST,
-        "hexagon" => HEXAGON_WHITELIST,
-        "mips" | "mips64" => MIPS_WHITELIST,
-        "powerpc" | "powerpc64" => POWERPC_WHITELIST,
-        "riscv32" | "riscv64" => RISCV_WHITELIST,
-        "wasm32" => WASM_WHITELIST,
+        "arm" => ARM_ALLOWED_FEATURES,
+        "aarch64" => AARCH64_ALLOWED_FEATURES,
+        "x86" | "x86_64" => X86_ALLOWED_FEATURES,
+        "hexagon" => HEXAGON_ALLOWED_FEATURES,
+        "mips" | "mips64" => MIPS_ALLOWED_FEATURES,
+        "powerpc" | "powerpc64" => POWERPC_ALLOWED_FEATURES,
+        "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
+        "wasm32" => WASM_ALLOWED_FEATURES,
         _ => &[],
     }
 }

@@ -20,7 +20,7 @@ fn main() {
         assert!(cfg!(target_feature = "sse2"),
                 "SSE2 was not detected as available on an x86 platform");
     }
-    // check a negative case too -- whitelisted on x86, but not enabled by default
+    // check a negative case too -- allowed on x86, but not enabled by default
     assert!(cfg!(not(target_feature = "avx2")),
             "AVX2 shouldn't be detected as available by default on any platform");
 }
