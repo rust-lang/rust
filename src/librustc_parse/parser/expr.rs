@@ -1790,7 +1790,7 @@ impl<'a> Parser<'a> {
         let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
             && self.token != token::CloseDelim(token::Brace);
 
-        let hi = self.token.span;
+        let hi = self.prev_token.span;
 
         if require_comma {
             let sm = self.sess.source_map();
