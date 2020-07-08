@@ -16,7 +16,7 @@ pub fn target() -> Result<Target, String> {
         disable_redzone: true,
         max_atomic_width: Some(64),
         panic_strategy: PanicStrategy::Abort,
-        abi_blacklist: super::arm_base::abi_blacklist(),
+        unsupported_abis: super::arm_base::unsupported_abis(),
         emit_debug_gdb_scripts: false,
         ..Default::default()
     };

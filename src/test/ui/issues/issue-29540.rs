@@ -283,7 +283,7 @@ pub struct Config {
     pub mds_beacon_interval: String,
     pub mds_beacon_grace: String,
     pub mds_enforce_unique_name: String,
-    pub mds_blacklist_interval: String,
+    pub mds_interval: String,
     pub mds_session_timeout: String,
     pub mds_freeze_tree_timeout: String,
     pub mds_session_autoclose: String,

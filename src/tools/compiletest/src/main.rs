@@ -401,7 +401,7 @@ fn configure_lldb(config: &Config) -> Option<Config> {
     }
 
     if let Some(lldb_version) = config.lldb_version.as_ref() {
-        if is_blacklisted_lldb_version(&lldb_version) {
+        if lldb_version == "350" {
             println!(
                 "WARNING: The used version of LLDB ({}) has a \
                  known issue that breaks debuginfo tests. See \
@@ -978,8 +978,4 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
         }
     }
     (None, false)
-}
-
-fn is_blacklisted_lldb_version(version: &str) -> bool {
-    version == "350"
 }

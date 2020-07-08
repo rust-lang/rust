@@ -3,7 +3,7 @@ use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 pub fn target() -> TargetResult {
     let mut base = super::netbsd_base::opts();
     base.max_atomic_width = Some(128);
-    base.abi_blacklist = super::arm_base::abi_blacklist();
+    base.unsupported_abis = super::arm_base::unsupported_abis();
 
     Ok(Target {
         llvm_target: "aarch64-unknown-netbsd".to_string(),
