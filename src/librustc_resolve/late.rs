@@ -123,6 +123,10 @@ crate enum RibKind<'a> {
     /// from the default of a type parameter because they're not declared
     /// before said type parameter. Also see the `visit_generics` override.
     ForwardTyParamBanRibKind,
+
+    /// We are inside of the type of a const parameter. Can't refer to any
+    /// parameters.
+    ConstParamTyRibKind,
 }
 
 impl RibKind<'_> {
@@ -135,7 +139,8 @@ impl RibKind<'_> {
             | FnItemRibKind
             | ConstantItemRibKind
             | ModuleRibKind(_)
-            | MacroDefinition(_) => false,
+            | MacroDefinition(_)
+            | ConstParamTyRibKind => false,
             AssocItemRibKind | ItemRibKind(_) | ForwardTyParamBanRibKind => true,
         }
     }
@@ -562,7 +567,11 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     for bound in &param.bounds {
                         self.visit_param_bound(bound);
                     }
+                    self.ribs[TypeNS].push(Rib::new(ConstParamTyRibKind));
+                    self.ribs[ValueNS].push(Rib::new(ConstParamTyRibKind));
                     self.visit_ty(ty);
+                    self.ribs[TypeNS].pop().unwrap();
+                    self.ribs[ValueNS].pop().unwrap();
                 }
             }
         }
@@ -798,7 +807,8 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | ItemRibKind(..)
                 | ConstantItemRibKind
                 | ModuleRibKind(..)
-                | ForwardTyParamBanRibKind => {
+                | ForwardTyParamBanRibKind
+                | ConstParamTyRibKind => {
                     return false;
                 }
             }
