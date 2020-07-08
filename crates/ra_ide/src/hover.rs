@@ -96,9 +96,6 @@ impl HoverResult {
         self.results.join("\n\n___\n")
     }
 
-    fn extend(&mut self, item: Option<String>) {
-        self.results.extend(item);
-    }
     fn push_action(&mut self, action: HoverAction) {
         self.actions.push(action);
     }
@@ -128,8 +125,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     } {
         let range = sema.original_range(&node).range;
-        res.extend(hover_text_from_name_kind(db, name_kind));
-
+        if let Some(text) = hover_text_from_name_kind(db, name_kind) {
+            res.results.push(text);
+        }
         if !res.is_empty() {
             if let Some(action) = show_implementations_action(db, name_kind) {
                 res.push_action(action);
@@ -168,7 +166,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     }?;
 
-    res.extend(Some(rust_code_markup(&ty.display(db))));
+    res.results.push(rust_code_markup(&ty.display(db)));
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
