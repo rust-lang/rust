@@ -17,6 +17,7 @@ macro_rules! eprintln {
 
 pub mod mock_analysis;
 
+mod markup;
 mod prime_caches;
 mod status;
 mod completion;
@@ -68,6 +69,7 @@ pub use crate::{
     folding_ranges::{Fold, FoldKind},
     hover::{HoverAction, HoverConfig, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
+    markup::Markup,
     references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
     syntax_highlighting::{

@@ -16,6 +16,7 @@ use crate::{
     display::{
         macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel, ToNav, TryToNav,
     },
+    markup::Markup,
     runnables::runnable,
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
 };
@@ -68,8 +69,8 @@ pub struct HoverGotoTypeData {
 /// Contains the results when hovering over an item
 #[derive(Debug, Default)]
 pub struct HoverResult {
-    results: Vec<String>,
-    actions: Vec<HoverAction>,
+    pub markup: Markup,
+    pub actions: Vec<HoverAction>,
 }
 
 impl HoverResult {
@@ -78,22 +79,7 @@ impl HoverResult {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.results.is_empty()
-    }
-
-    pub fn len(&self) -> usize {
-        self.results.len()
-    }
-
-    pub fn actions(&self) -> &[HoverAction] {
-        &self.actions
-    }
-    /// Returns the results converted into markup
-    /// for displaying in a UI
-    ///
-    /// Does not process actions!
-    pub fn to_markup(&self) -> String {
-        self.results.join("\n\n___\n")
+        self.markup.is_empty()
     }
 
     fn push_action(&mut self, action: HoverAction) {
@@ -128,7 +114,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     if let Some(definition) = definition {
         let range = sema.original_range(&node).range;
         if let Some(text) = hover_text_from_name_kind(db, definition) {
-            res.results.push(text);
+            res.markup.push_section(&text);
         }
         if !res.is_empty() {
             if let Some(action) = show_implementations_action(db, definition) {
@@ -168,7 +154,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     }?;
 
-    res.results.push(rust_code_markup(&ty.display(db)));
+    res.markup.push_section(&rust_code_markup(&ty.display(db)));
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
@@ -406,19 +392,12 @@ mod tests {
     fn check_hover_result(ra_fixture: &str, expected: &[&str]) -> (String, Vec<HoverAction>) {
         let (analysis, position) = analysis_and_position(ra_fixture);
         let hover = analysis.hover(position).unwrap().unwrap();
-        let mut results = hover.info.results.clone();
-        results.sort();
-
-        for (markup, expected) in
-            results.iter().zip(expected.iter().chain(std::iter::repeat(&"<missing>")))
-        {
-            assert_eq!(trim_markup(&markup), *expected);
-        }
-
-        assert_eq!(hover.info.len(), expected.len());
+        let expected = expected.join("\n\n___\n");
+        let actual = trim_markup(hover.info.markup.as_str());
+        assert_eq!(expected, actual);
 
         let content = analysis.db.file_text(position.file_id);
-        (content[hover.range].to_string(), hover.info.actions().to_vec())
+        (content[hover.range].to_string(), hover.info.actions.clone())
     }
 
     fn check_hover_no_result(ra_fixture: &str) {
@@ -439,7 +418,7 @@ fn main() {
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(hover.range, TextRange::new(58.into(), 63.into()));
-        assert_eq!(trim_markup(&hover.info.results[0]), ("u32"));
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), ("u32"));
     }
 
     #[test]
@@ -638,7 +617,7 @@ fn main() {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), ("Option\n```\n\n```rust\nSome"));
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), ("Option\n```\n\n```rust\nSome"));
 
         let (analysis, position) = analysis_and_position(
             "
@@ -651,7 +630,7 @@ fn main() {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), ("Option<i32>"));
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), ("Option<i32>"));
     }
 
     #[test]
@@ -708,14 +687,14 @@ The Some variant
     fn hover_for_local_variable() {
         let (analysis, position) = analysis_and_position("fn func(foo: i32) { fo<|>o; }");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), "i32");
     }
 
     #[test]
     fn hover_for_local_variable_pat() {
         let (analysis, position) = analysis_and_position("fn func(fo<|>o: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), "i32");
     }
 
     #[test]
@@ -726,14 +705,14 @@ fn func(foo: i32) { if true { <|>foo; }; }
 ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), "i32");
     }
 
     #[test]
     fn hover_for_param_edge() {
         let (analysis, position) = analysis_and_position("fn func(<|>foo: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), "i32");
     }
 
     #[test]
@@ -754,7 +733,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), ("Thing"));
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), ("Thing"));
     }
 
     #[test]
@@ -778,7 +757,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(
-            trim_markup(&hover.info.results[0]),
+            trim_markup(&hover.info.markup.as_str()),
             ("wrapper::Thing\n```\n\n```rust\nfn new() -> Thing")
         );
     }
@@ -802,7 +781,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), ("const C: u32"));
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), ("const C: u32"));
     }
 
     #[test]
@@ -818,7 +797,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
         ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), ("Thing"));
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), ("Thing"));
 
         /* FIXME: revive these tests
                 let (analysis, position) = analysis_and_position(
@@ -833,7 +812,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 );
 
                 let hover = analysis.hover(position).unwrap().unwrap();
-                assert_eq!(trim_markup(&hover.info.results[0]), ("Thing"));
+                assert_eq!(trim_markup(&hover.info.markup.as_str()), ("Thing"));
 
                 let (analysis, position) = analysis_and_position(
                     "
@@ -846,7 +825,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                     ",
                 );
                 let hover = analysis.hover(position).unwrap().unwrap();
-                assert_eq!(trim_markup(&hover.info.results[0]), ("enum Thing"));
+                assert_eq!(trim_markup(&hover.info.markup.as_str()), ("enum Thing"));
 
                 let (analysis, position) = analysis_and_position(
                     "
@@ -858,7 +837,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                     ",
                 );
                 let hover = analysis.hover(position).unwrap().unwrap();
-                assert_eq!(trim_markup(&hover.info.results[0]), ("enum Thing"));
+                assert_eq!(trim_markup(&hover.info.markup.as_str()), ("enum Thing"));
         */
     }
 
@@ -875,7 +854,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), "i32");
     }
 
     #[test]
@@ -892,7 +871,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), ("macro_rules! foo"));
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), ("macro_rules! foo"));
     }
 
     #[test]
@@ -903,7 +882,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
+        assert_eq!(trim_markup(&hover.info.markup.as_str()), "i32");
     }
 
     #[test]

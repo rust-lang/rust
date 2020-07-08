@@ -12,10 +12,10 @@ use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeLens, Command, CompletionItem, Diagnostic, DocumentFormattingParams, DocumentHighlight,
-    DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location, MarkupContent,
-    MarkupKind, Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensParams,
-    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    TextDocumentIdentifier, Url, WorkspaceEdit,
+    DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location, Position,
+    PrepareRenameResponse, Range, RenameParams, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, TextDocumentIdentifier,
+    Url, WorkspaceEdit,
 };
 use ra_ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
@@ -584,13 +584,10 @@ pub(crate) fn handle_hover(
     let range = to_proto::range(&line_index, info.range);
     let hover = lsp_ext::Hover {
         hover: lsp_types::Hover {
-            contents: HoverContents::Markup(MarkupContent {
-                kind: MarkupKind::Markdown,
-                value: crate::markdown::format_docs(&info.info.to_markup()),
-            }),
+            contents: HoverContents::Markup(to_proto::markup_content(info.info.markup)),
             range: Some(range),
         },
-        actions: prepare_hover_actions(&snap, position.file_id, info.info.actions()),
+        actions: prepare_hover_actions(&snap, position.file_id, &info.info.actions),
     };
 
     Ok(Some(hover))

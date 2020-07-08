@@ -6,8 +6,8 @@ use ra_db::{FileId, FileRange};
 use ra_ide::{
     Assist, AssistKind, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold,
     FoldKind, FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange,
-    Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess,
-    ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
+    Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget,
+    ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
 
@@ -694,6 +694,10 @@ pub(crate) fn runnable(
             expect_test: None,
         },
     })
+}
+
+pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
+    lsp_types::MarkupContent { kind: lsp_types::MarkupKind::Markdown, value: markup.into() }
 }
 
 #[cfg(test)]
