@@ -115,7 +115,7 @@
   
       bb8: {
           StorageDead(_5);                 // scope 1 at $DIR/simplify_try_if_let.rs:31:13: 31:14
-          StorageDead(_4);                 // scope 0 at $DIR/simplify_try_if_let.rs:32:9: 32:10
+          StorageDead(_4);                 // scope 0 at $DIR/simplify_try_if_let.rs:31:13: 31:14
           goto -> bb9;                     // scope 0 at $DIR/simplify_try_if_let.rs:21:9: 32:10
       }
   
