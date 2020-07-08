@@ -93,9 +93,9 @@ pub trait FileLoader {
     fn file_text(&self, file_id: FileId) -> Arc<String>;
     /// Note that we intentionally accept a `&str` and not a `&Path` here. This
     /// method exists to handle `#[path = "/some/path.rs"] mod foo;` and such,
-    /// so the input is guaranteed to be utf-8 string. We might introduce
-    /// `struct StrPath(str)` for clarity some day, but it's a bit messy, so we
-    /// get by with a `&str` for the time being.
+    /// so the input is guaranteed to be utf-8 string. One might be tempted to
+    /// introduce some kind of "utf-8 path with / separators", but that's a bad idea. Behold
+    /// `#[path = "C://no/way"]`
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
 }
