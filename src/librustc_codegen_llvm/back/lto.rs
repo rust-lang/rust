@@ -62,11 +62,11 @@ fn prepare_lto(
         }
     };
     let exported_symbols = cgcx.exported_symbols.as_ref().expect("needs exported symbols for LTO");
-    let mut symbol_white_list = {
-        let _timer = cgcx.prof.generic_activity("LLVM_lto_generate_symbol_white_list");
+    let mut symbols_below_threshold = {
+        let _timer = cgcx.prof.generic_activity("LLVM_lto_generate_symbols_below_threshold");
         exported_symbols[&LOCAL_CRATE].iter().filter_map(symbol_filter).collect::<Vec<CString>>()
     };
-    info!("{} symbols to preserve in this crate", symbol_white_list.len());
+    info!("{} symbols to preserve in this crate", symbols_below_threshold.len());
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, find the corresponding rlib and load the bitcode
@@ -102,8 +102,10 @@ fn prepare_lto(
             let exported_symbols =
                 cgcx.exported_symbols.as_ref().expect("needs exported symbols for LTO");
             {
-                let _timer = cgcx.prof.generic_activity("LLVM_lto_generate_symbol_white_list");
-                symbol_white_list.extend(exported_symbols[&cnum].iter().filter_map(symbol_filter));
+                let _timer =
+                    cgcx.prof.generic_activity("LLVM_lto_generate_symbols_below_threshold");
+                symbols_below_threshold
+                    .extend(exported_symbols[&cnum].iter().filter_map(symbol_filter));
             }
 
             let archive = ArchiveRO::open(&path).expect("wanted an rlib");
@@ -124,7 +126,7 @@ fn prepare_lto(
         }
     }
 
-    Ok((symbol_white_list, upstream_modules))
+    Ok((symbols_below_threshold, upstream_modules))
 }
 
 fn get_bitcode_slice_from_object_data(obj: &[u8]) -> Result<&[u8], String> {
@@ -155,9 +157,17 @@ pub(crate) fn run_fat(
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError> {
     let diag_handler = cgcx.create_diag_handler();
-    let (symbol_white_list, upstream_modules) = prepare_lto(cgcx, &diag_handler)?;
-    let symbol_white_list = symbol_white_list.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
-    fat_lto(cgcx, &diag_handler, modules, cached_modules, upstream_modules, &symbol_white_list)
+    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &diag_handler)?;
+    let symbols_below_threshold =
+        symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
+    fat_lto(
+        cgcx,
+        &diag_handler,
+        modules,
+        cached_modules,
+        upstream_modules,
+        &symbols_below_threshold,
+    )
 }
 
 /// Performs thin LTO by performing necessary global analysis and returning two
@@ -169,15 +179,23 @@ pub(crate) fn run_thin(
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let diag_handler = cgcx.create_diag_handler();
-    let (symbol_white_list, upstream_modules) = prepare_lto(cgcx, &diag_handler)?;
-    let symbol_white_list = symbol_white_list.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
+    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &diag_handler)?;
+    let symbols_below_threshold =
+        symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
         unreachable!(
             "We should never reach this case if the LTO step \
                       is deferred to the linker"
         );
     }
-    thin_lto(cgcx, &diag_handler, modules, upstream_modules, cached_modules, &symbol_white_list)
+    thin_lto(
+        cgcx,
+        &diag_handler,
+        modules,
+        upstream_modules,
+        cached_modules,
+        &symbols_below_threshold,
+    )
 }
 
 pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
@@ -192,7 +210,7 @@ fn fat_lto(
     modules: Vec<FatLTOInput<LlvmCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
-    symbol_white_list: &[*const libc::c_char],
+    symbols_below_threshold: &[*const libc::c_char],
 ) -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError> {
     let _timer = cgcx.prof.generic_activity("LLVM_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
@@ -306,14 +324,13 @@ fn fat_lto(
         drop(linker);
         save_temp_bitcode(&cgcx, &module, "lto.input");
 
-        // Internalize everything that *isn't* in our whitelist to help strip out
-        // more modules and such
+        // Internalize everything below threshold to help strip out more modules and such.
         unsafe {
-            let ptr = symbol_white_list.as_ptr();
+            let ptr = symbols_below_threshold.as_ptr();
             llvm::LLVMRustRunRestrictionPass(
                 llmod,
                 ptr as *const *const libc::c_char,
-                symbol_white_list.len() as libc::size_t,
+                symbols_below_threshold.len() as libc::size_t,
             );
             save_temp_bitcode(&cgcx, &module, "lto.after-restriction");
         }
@@ -395,7 +412,7 @@ fn thin_lto(
     modules: Vec<(String, ThinBuffer)>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
-    symbol_white_list: &[*const libc::c_char],
+    symbols_below_threshold: &[*const libc::c_char],
 ) -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let _timer = cgcx.prof.generic_activity("LLVM_thin_lto_global_analysis");
     unsafe {
@@ -463,8 +480,8 @@ fn thin_lto(
         let data = llvm::LLVMRustCreateThinLTOData(
             thin_modules.as_ptr(),
             thin_modules.len() as u32,
-            symbol_white_list.as_ptr(),
-            symbol_white_list.len() as u32,
+            symbols_below_threshold.as_ptr(),
+            symbols_below_threshold.len() as u32,
         )
         .ok_or_else(|| write::llvm_err(&diag_handler, "failed to prepare thin LTO context"))?;
 
