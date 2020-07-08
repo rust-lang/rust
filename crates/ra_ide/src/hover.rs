@@ -85,14 +85,6 @@ impl HoverResult {
         self.results.len()
     }
 
-    pub fn first(&self) -> Option<&str> {
-        self.results.first().map(String::as_str)
-    }
-
-    pub fn results(&self) -> &[String] {
-        &self.results
-    }
-
     pub fn actions(&self) -> &[HoverAction] {
         &self.actions
     }
@@ -403,10 +395,6 @@ mod tests {
         s.trim_start_matches("```rust\n").trim_end_matches("\n```")
     }
 
-    fn trim_markup_opt(s: Option<&str>) -> Option<&str> {
-        s.map(trim_markup)
-    }
-
     fn assert_impl_action(action: &HoverAction, position: u32) {
         let offset = match action {
             HoverAction::Implementaion(pos) => pos.offset,
@@ -418,7 +406,7 @@ mod tests {
     fn check_hover_result(ra_fixture: &str, expected: &[&str]) -> (String, Vec<HoverAction>) {
         let (analysis, position) = analysis_and_position(ra_fixture);
         let hover = analysis.hover(position).unwrap().unwrap();
-        let mut results = Vec::from(hover.info.results());
+        let mut results = hover.info.results.clone();
         results.sort();
 
         for (markup, expected) in
@@ -451,7 +439,7 @@ fn main() {
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(hover.range, TextRange::new(58.into(), 63.into()));
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("u32"));
+        assert_eq!(trim_markup(&hover.info.results[0]), ("u32"));
     }
 
     #[test]
@@ -650,7 +638,7 @@ fn main() {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Option\n```\n\n```rust\nSome"));
+        assert_eq!(trim_markup(&hover.info.results[0]), ("Option\n```\n\n```rust\nSome"));
 
         let (analysis, position) = analysis_and_position(
             "
@@ -663,7 +651,7 @@ fn main() {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Option<i32>"));
+        assert_eq!(trim_markup(&hover.info.results[0]), ("Option<i32>"));
     }
 
     #[test]
@@ -720,14 +708,14 @@ The Some variant
     fn hover_for_local_variable() {
         let (analysis, position) = analysis_and_position("fn func(foo: i32) { fo<|>o; }");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
     }
 
     #[test]
     fn hover_for_local_variable_pat() {
         let (analysis, position) = analysis_and_position("fn func(fo<|>o: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
     }
 
     #[test]
@@ -738,14 +726,14 @@ fn func(foo: i32) { if true { <|>foo; }; }
 ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
     }
 
     #[test]
     fn hover_for_param_edge() {
         let (analysis, position) = analysis_and_position("fn func(<|>foo: i32) {}");
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
     }
 
     #[test]
@@ -766,7 +754,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
+        assert_eq!(trim_markup(&hover.info.results[0]), ("Thing"));
     }
 
     #[test]
@@ -790,8 +778,8 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(
-            trim_markup_opt(hover.info.first()),
-            Some("wrapper::Thing\n```\n\n```rust\nfn new() -> Thing")
+            trim_markup(&hover.info.results[0]),
+            ("wrapper::Thing\n```\n\n```rust\nfn new() -> Thing")
         );
     }
 
@@ -814,7 +802,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("const C: u32"));
+        assert_eq!(trim_markup(&hover.info.results[0]), ("const C: u32"));
     }
 
     #[test]
@@ -830,7 +818,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
         ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
+        assert_eq!(trim_markup(&hover.info.results[0]), ("Thing"));
 
         /* FIXME: revive these tests
                 let (analysis, position) = analysis_and_position(
@@ -845,7 +833,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 );
 
                 let hover = analysis.hover(position).unwrap().unwrap();
-                assert_eq!(trim_markup_opt(hover.info.first()), Some("Thing"));
+                assert_eq!(trim_markup(&hover.info.results[0]), ("Thing"));
 
                 let (analysis, position) = analysis_and_position(
                     "
@@ -858,7 +846,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                     ",
                 );
                 let hover = analysis.hover(position).unwrap().unwrap();
-                assert_eq!(trim_markup_opt(hover.info.first()), Some("enum Thing"));
+                assert_eq!(trim_markup(&hover.info.results[0]), ("enum Thing"));
 
                 let (analysis, position) = analysis_and_position(
                     "
@@ -870,7 +858,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                     ",
                 );
                 let hover = analysis.hover(position).unwrap().unwrap();
-                assert_eq!(trim_markup_opt(hover.info.first()), Some("enum Thing"));
+                assert_eq!(trim_markup(&hover.info.results[0]), ("enum Thing"));
         */
     }
 
@@ -887,7 +875,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
     }
 
     #[test]
@@ -904,7 +892,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("macro_rules! foo"));
+        assert_eq!(trim_markup(&hover.info.results[0]), ("macro_rules! foo"));
     }
 
     #[test]
@@ -915,7 +903,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(trim_markup(&hover.info.results[0]), "i32");
     }
 
     #[test]
