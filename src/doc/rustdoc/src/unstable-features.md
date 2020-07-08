@@ -321,7 +321,7 @@ library, as an equivalent command-line argument is provided to `rustc` when buil
 ### `--index-page`: provide a top-level landing page for docs
 
 This feature allows you to generate an index-page with a given markdown file. A good example of it
-is the [rust documentation index](https://doc.rust-lang.org/index.html).
+is the [rust documentation index](https://doc.rust-lang.org/nightly/index.html).
 
 With this, you'll have a page which you can custom as much as you want at the top of your crates.
 
