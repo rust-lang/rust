@@ -52,6 +52,15 @@ where
         visit_results(body, blocks, self, vis)
     }
 
+    pub fn visit_reachable_with(
+        &self,
+        body: &'mir mir::Body<'tcx>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+    ) {
+        let blocks = mir::traversal::reachable(body);
+        visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
+    }
+
     pub fn visit_in_rpo_with(
         &self,
         body: &'mir mir::Body<'tcx>,
