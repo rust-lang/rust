@@ -9,9 +9,11 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
-    diagnostics::{MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields},
+    diagnostics::{
+        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields,
+    },
     utils::variant_data,
-    ApplicationTy, InferenceResult, Ty, TypeCtor,
+    ApplicationTy, CallableDef, InferenceResult, Ty, TypeCtor,
     _match::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
 };
 
@@ -24,7 +26,8 @@ pub use hir_def::{
         ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
         MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement, UnaryOp,
     },
-    LocalFieldId, VariantId,
+    src::HasSource,
+    LocalFieldId, Lookup, VariantId,
 };
 
 pub struct ExprValidator<'a, 'b: 'a> {
@@ -56,8 +59,15 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                     missed_fields,
                 );
             }
-            if let Expr::Match { expr, arms } = expr {
-                self.validate_match(id, *expr, arms, db, self.infer.clone());
+
+            match expr {
+                Expr::Match { expr, arms } => {
+                    self.validate_match(id, *expr, arms, db, self.infer.clone());
+                }
+                Expr::Call { .. } | Expr::MethodCall { .. } => {
+                    self.validate_call(db, id, expr);
+                }
+                _ => {}
             }
         }
         for (id, pat) in body.pats.iter() {
@@ -136,6 +146,54 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 }
             }
         }
+    }
+
+    fn validate_call(&mut self, db: &dyn HirDatabase, call_id: ExprId, expr: &Expr) -> Option<()> {
+        // Check that the number of arguments matches the number of parameters.
+        let (callee, args) = match expr {
+            Expr::Call { callee, args } => {
+                let callee = &self.infer.type_of_expr[*callee];
+                let (callable, _) = callee.as_callable()?;
+                let callee = match callable {
+                    CallableDef::FunctionId(func) => func,
+                    _ => return None,
+                };
+
+                (callee, args.clone())
+            }
+            Expr::MethodCall { receiver, args, .. } => {
+                let callee = self.infer.method_resolution(call_id)?;
+                let mut args = args.clone();
+                args.insert(0, *receiver);
+                (callee, args)
+            }
+            _ => return None,
+        };
+
+        let loc = callee.lookup(db.upcast());
+        let ast = loc.source(db.upcast());
+        let params = ast.value.param_list()?;
+
+        let mut param_count = params.params().count();
+        if params.self_param().is_some() {
+            param_count += 1;
+        }
+        let arg_count = args.len();
+
+        if arg_count != param_count {
+            let (_, source_map): (Arc<Body>, Arc<BodySourceMap>) =
+                db.body_with_source_map(self.func.into());
+            if let Ok(source_ptr) = source_map.expr_syntax(call_id) {
+                self.sink.push(MismatchedArgCount {
+                    file: source_ptr.file_id,
+                    call_expr: source_ptr.value,
+                    expected: param_count,
+                    found: arg_count,
+                });
+            }
+        }
+
+        None
     }
 
     fn validate_match(

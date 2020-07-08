@@ -127,6 +127,14 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             severity: Severity::Error,
             fix: missing_struct_field_fix(&sema, file_id, d),
         })
+    })
+    .on::<hir::diagnostics::MismatchedArgCount, _>(|d| {
+        res.borrow_mut().push(Diagnostic {
+            range: sema.diagnostics_range(d).range,
+            message: d.message(),
+            severity: Severity::Error,
+            fix: None,
+        })
     });
 
     if let Some(m) = sema.to_module_def(file_id) {
