@@ -389,10 +389,9 @@ mod tests {
         assert_eq!(offset, position.into());
     }
 
-    fn check_hover_result(ra_fixture: &str, expected: &[&str]) -> (String, Vec<HoverAction>) {
+    fn check_hover_result(ra_fixture: &str, expected: &str) -> (String, Vec<HoverAction>) {
         let (analysis, position) = analysis_and_position(ra_fixture);
         let hover = analysis.hover(position).unwrap().unwrap();
-        let expected = expected.join("\n\n___\n");
         let actual = trim_markup(hover.info.markup.as_str());
         assert_eq!(expected, actual);
 
@@ -423,8 +422,7 @@ fn main() {
 
     #[test]
     fn hover_shows_long_type_of_an_expression() {
-        check_hover_result(
-            r#"
+        check_hover_result(r#"
             //- /main.rs
             struct Scan<A, B, C> {
                 a: A,
@@ -457,9 +455,7 @@ fn main() {
                 let number = 5u32;
                 let mut iter<|> = scan(OtherStruct { i: num }, closure, number);
             }
-            "#,
-            &["FakeIter<Scan<OtherStruct<OtherStruct<i32>>, |&mut u32, &u32, &mut u32| -> FakeOption<u32>, u32>>"],
-        );
+            "#, "FakeIter<Scan<OtherStruct<OtherStruct<i32>>, |&mut u32, &u32, &mut u32| -> FakeOption<u32>, u32>>");
     }
 
     #[test]
@@ -474,7 +470,7 @@ fn main() {
                 let foo_test = fo<|>o();
             }
         "#,
-            &["pub fn foo() -> u32"],
+            "pub fn foo() -> u32",
         );
 
         // Multiple candidates but results are ambiguous.
@@ -498,7 +494,7 @@ fn main() {
                 let foo_test = fo<|>o();
             }
         "#,
-            &["{unknown}"],
+            "{unknown}",
         );
     }
 
@@ -513,7 +509,7 @@ fn main() {
                 let foo_test = fo<|>o();
             }
         "#,
-            &["pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str"],
+            "pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str",
         );
     }
 
@@ -527,7 +523,7 @@ fn main() {
             fn main() {
             }
         "#,
-            &["pub fn foo(a: u32, b: u32) -> u32"],
+            "pub fn foo(a: u32, b: u32) -> u32",
         );
     }
 
@@ -547,7 +543,7 @@ fn main() {
                 };
             }
         "#,
-            &["Foo\n```\n\n```rust\nfield_a: u32"],
+            "Foo\n```\n\n```rust\nfield_a: u32",
         );
 
         // Hovering over the field in the definition
@@ -564,7 +560,7 @@ fn main() {
                 };
             }
         "#,
-            &["Foo\n```\n\n```rust\nfield_a: u32"],
+            "Foo\n```\n\n```rust\nfield_a: u32",
         );
     }
 
@@ -575,7 +571,7 @@ fn main() {
             //- /main.rs
             const foo<|>: u32 = 0;
         "#,
-            &["const foo: u32"],
+            "const foo: u32",
         );
 
         check_hover_result(
@@ -583,7 +579,7 @@ fn main() {
             //- /main.rs
             static foo<|>: u32 = 0;
         "#,
-            &["static foo: u32"],
+            "static foo: u32",
         );
     }
 
@@ -600,7 +596,7 @@ struct Test<K, T = u8> {
 fn main() {
     let zz<|> = Test { t: 23u8, k: 33 };
 }"#,
-            &["Test<i32, u8>"],
+            "Test<i32, u8>",
         );
     }
 
@@ -643,7 +639,7 @@ fn main() {
                 Non<|>e
             }
         "#,
-            &["
+            "
 Option
 ```
 
@@ -654,7 +650,7 @@ ___
 
 The None variant
             "
-            .trim()],
+            .trim(),
         );
 
         check_hover_result(
@@ -668,7 +664,7 @@ The None variant
                 let s = Option::Som<|>e(12);
             }
         "#,
-            &["
+            "
 Option
 ```
 
@@ -679,7 +675,7 @@ ___
 
 The Some variant
             "
-            .trim()],
+            .trim(),
         );
     }
 
@@ -900,7 +896,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 }
             }
             ",
-            &["fn foo()"],
+            "fn foo()",
         );
 
         assert_eq!(hover_on, "foo")
@@ -918,7 +914,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let a = id!(ba<|>r);
             }
             ",
-            &["u32"],
+            "u32",
         );
 
         assert_eq!(hover_on, "bar")
@@ -939,7 +935,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let a = id!(ba<|>r);
             }
             ",
-            &["u32"],
+            "u32",
         );
 
         assert_eq!(hover_on, "bar")
@@ -963,7 +959,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let a = id!([0u32, bar(<|>)] );
             }
             ",
-            &["u32"],
+            "u32",
         );
 
         assert_eq!(hover_on, "bar()")
@@ -982,7 +978,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let _ = arr!("Tr<|>acks", &mastered_for_itunes);
             }
             "#,
-            &["&str"],
+            "&str",
         );
 
         assert_eq!(hover_on, "\"Tracks\"");
@@ -1001,7 +997,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 assert!(ba<|>r());
             }
             ",
-            &["fn bar() -> bool"],
+            "fn bar() -> bool",
         );
 
         assert_eq!(hover_on, "bar");
@@ -1035,7 +1031,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 fo<|>o();
             }
             ",
-            &["fn foo()\n```\n___\n\n<- `\u{3000}` here"],
+            "fn foo()\n```\n___\n\n<- `\u{3000}` here",
         );
     }
 
@@ -1046,21 +1042,21 @@ fn func(foo: i32) { if true { <|>foo; }; }
             //- /lib.rs
             async fn foo<|>() {}
             ",
-            &["async fn foo()"],
+            "async fn foo()",
         );
         check_hover_result(
             r"
             //- /lib.rs
             pub const unsafe fn foo<|>() {}
             ",
-            &["pub const unsafe fn foo()"],
+            "pub const unsafe fn foo()",
         );
         check_hover_result(
             r#"
             //- /lib.rs
             pub(crate) async unsafe extern "C" fn foo<|>() {}
             "#,
-            &[r#"pub(crate) async unsafe extern "C" fn foo()"#],
+            r#"pub(crate) async unsafe extern "C" fn foo()"#,
         );
     }
 
@@ -1071,7 +1067,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             //- /lib.rs
             unsafe trait foo<|>() {}
             ",
-            &["unsafe trait foo"],
+            "unsafe trait foo",
         );
         assert_impl_action(&actions[0], 13);
     }
@@ -1089,7 +1085,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
             fn my() {}
             ",
-            &["mod my"],
+            "mod my",
         );
     }
 
@@ -1105,7 +1101,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let bar = Ba<|>r;
             }
             "#,
-            &["struct Bar\n```\n___\n\nbar docs"],
+            "struct Bar\n```\n___\n\nbar docs",
         );
     }
 
@@ -1121,7 +1117,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let bar = Ba<|>r;
             }
             "#,
-            &["struct Bar\n```\n___\n\nbar docs"],
+            "struct Bar\n```\n___\n\nbar docs",
         );
     }
 
@@ -1139,7 +1135,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let bar = Ba<|>r;
             }
             "#,
-            &["struct Bar\n```\n___\n\nbar docs 0\n\nbar docs 1\n\nbar docs 2"],
+            "struct Bar\n```\n___\n\nbar docs 0\n\nbar docs 1\n\nbar docs 2",
         );
     }
 
@@ -1167,7 +1163,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 bar.fo<|>o();
             }
             "#,
-            &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\n Do the foo"],
+            "Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\n Do the foo",
         );
     }
 
@@ -1195,7 +1191,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 bar.fo<|>o();
             }
             "#,
-            &["Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\nDo the foo"],
+            "Bar\n```\n\n```rust\nfn foo(&self)\n```\n___\n\nDo the foo",
         );
     }
 
@@ -1206,7 +1202,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             //- /lib.rs
             trait foo<|>() {}
             ",
-            &["trait foo"],
+            "trait foo",
         );
         assert_impl_action(&actions[0], 6);
     }
@@ -1218,7 +1214,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             //- /lib.rs
             struct foo<|>() {}
             ",
-            &["struct foo"],
+            "struct foo",
         );
         assert_impl_action(&actions[0], 7);
     }
@@ -1230,7 +1226,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             //- /lib.rs
             union foo<|>() {}
             ",
-            &["union foo"],
+            "union foo",
         );
         assert_impl_action(&actions[0], 6);
     }
@@ -1245,7 +1241,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 B
             }
             ",
-            &["enum foo"],
+            "enum foo",
         );
         assert_impl_action(&actions[0], 5);
     }
@@ -1258,7 +1254,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             #[test]
             fn foo_<|>test() {}
             ",
-            &["fn foo_test()"],
+            "fn foo_test()",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1304,7 +1300,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 fn foo_test() {}
             }
             ",
-            &["mod tests"],
+            "mod tests",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1346,7 +1342,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let s<|>t = S{ f1:0 };
             }
             ",
-            &["S"],
+            "S",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1390,7 +1386,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let s<|>t = S{ f1:Arg(0) };
             }
             ",
-            &["S<Arg>"],
+            "S<Arg>",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1453,7 +1449,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let s<|>t = S{ f1: S{ f1: Arg(0) } };
             }
             ",
-            &["S<S<Arg>>"],
+            "S<S<Arg>>",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1519,7 +1515,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let s<|>t = (A(1), B(2), M::C(3) );
             }
             ",
-            &["(A, B, C)"],
+            "(A, B, C)",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1602,7 +1598,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let s<|>t = foo();
             }
             ",
-            &["impl Foo"],
+            "impl Foo",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1648,7 +1644,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let s<|>t = foo();
             }
             ",
-            &["impl Foo<S>"],
+            "impl Foo<S>",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1713,7 +1709,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let s<|>t = foo();
             }
             ",
-            &["impl Foo + Bar"],
+            "impl Foo + Bar",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1780,7 +1776,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let s<|>t = foo();
             }
             ",
-            &["impl Foo<S1> + Bar<S2>"],
+            "impl Foo<S1> + Bar<S2>",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1877,7 +1873,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             trait Foo {}
             fn foo(ar<|>g: &impl Foo) {}
             ",
-            &["&impl Foo"],
+            "&impl Foo",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1920,7 +1916,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
             fn foo(ar<|>g: &impl Foo + Bar<S>) {}
             ",
-            &["&impl Foo + Bar<S>"],
+            "&impl Foo + Bar<S>",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -1999,7 +1995,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             struct S {}
             fn foo(ar<|>g: &impl Foo<S>) {}
             ",
-            &["&impl Foo<S>"],
+            "&impl Foo<S>",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -2067,7 +2063,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let s<|>t = foo();
             }
             ",
-            &["B<dyn Foo>"],
+            "B<dyn Foo>",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -2126,7 +2122,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             trait Foo {}
             fn foo(ar<|>g: &dyn Foo) {}
             ",
-            &["&dyn Foo"],
+            "&dyn Foo",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -2167,7 +2163,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
             struct S {}
             fn foo(ar<|>g: &dyn Foo<S>) {}
             ",
-            &["&dyn Foo<S>"],
+            "&dyn Foo<S>",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -2230,7 +2226,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
             fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
             ",
-            &["&impl ImplTrait<B<dyn DynTrait<B<S>>>>"],
+            "&impl ImplTrait<B<dyn DynTrait<B<S>>>>",
         );
         assert_debug_snapshot!(actions,
             @r###"
@@ -2344,7 +2340,7 @@ fn func(foo: i32) { if true { <|>foo; }; }
                 let s<|>t = test().get();
             }
             ",
-            &["Foo::Item<impl Foo>"],
+            "Foo::Item<impl Foo>",
         );
         assert_debug_snapshot!(actions,
             @r###"
