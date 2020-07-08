@@ -9,8 +9,8 @@ use paths::{RelPath, RelPathBuf};
 ///
 /// It describes the set of files inside some directory.
 ///
-/// The current implementation is very limited, it allows white-listing file
-/// globs and black-listing directories.
+/// The current implementation is very limited, it allows including file globs
+/// and recursively excluding directories.
 #[derive(Debug, Clone)]
 pub(crate) struct Include {
     include_files: GlobSet,
