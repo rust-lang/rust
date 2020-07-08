@@ -665,7 +665,7 @@ impl<'a, 'b> ExtraInfo<'a, 'b> {
             (None, None) => return,
         };
         self.tcx.struct_span_lint_hir(
-            lint::builtin::INVALID_CODEBLOCK_ATTRIBUTE,
+            lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES,
             hir_id,
             self.sp,
             |lint| {
