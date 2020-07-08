@@ -15,7 +15,7 @@
 // We use `u128` in a whole bunch of places which we currently agree with the
 // compiler on ABIs and such, so we should be "good enough" for now and changes
 // to the `u128` ABI will be reflected here.
-#![allow(improper_ctypes)]
+#![allow(improper_ctypes, improper_ctypes_definitions)]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.
