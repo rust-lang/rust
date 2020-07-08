@@ -402,16 +402,10 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    /// Checks if an item is stable or error out.
-    ///
-    /// If the item defined by `def_id` is unstable and the corresponding `#![feature]` does not
-    /// exist, emits an error.
-    ///
-    /// This function will also check if the item is deprecated.
-    /// If so, and `id` is not `None`, a deprecated lint attached to `id` will be emitted.
-    ///
-    /// The `unmarked` closure is called definitions without a stability annotation.
-    /// This is needed for generic parameters, since they may not be marked when used in a staged_api crate.
+    /// Like `check_stability`, except that we permit items to have custom behaviour for
+    /// missing stability attributes (not necessarily just emit a `bug!`). This is necessary
+    /// for default generic parameters, which only have stability attributes if they were
+    /// added after the type on which they're defined.
     pub fn check_optional_stability(
         self,
         def_id: DefId,
