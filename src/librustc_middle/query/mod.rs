@@ -228,7 +228,11 @@ rustc_queries! {
         ///
         /// See the README for the `mir` module for details.
         query mir_const(key: ty::WithOptParam<LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
-            desc { |tcx| "processing MIR for `{}`", tcx.def_path_str(key.did.to_def_id()) }
+            desc {
+                |tcx| "processing MIR for {}`{}`",
+                if key.param_did.is_some() { "the const argument " } else { "" },
+                tcx.def_path_str(key.did.to_def_id()),
+            }
             no_hash
         }
 
@@ -246,8 +250,9 @@ rustc_queries! {
             ) {
             no_hash
             desc {
-                |tcx| "processing the potential const argument `{}`",
-                tcx.def_path_str(key.did.to_def_id())
+                |tcx| "processing {}`{}`",
+                if key.param_did.is_some() { "the const argument " } else { "" },
+                tcx.def_path_str(key.did.to_def_id()),
             }
         }
 
@@ -497,7 +502,10 @@ rustc_queries! {
             cache_on_disk_if { true }
         }
         query unsafety_check_result_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::UnsafetyCheckResult {
-            desc { |tcx| "unsafety-checking the const arg `{}`", tcx.def_path_str(key.0.to_def_id()) }
+            desc {
+                |tcx| "unsafety-checking the const argument `{}`",
+                tcx.def_path_str(key.0.to_def_id())
+            }
         }
 
         /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error.

@@ -1,5 +1,4 @@
 // ignore-tidy-filelength
-
 pub use self::fold::{TypeFoldable, TypeVisitor};
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
@@ -1571,11 +1570,45 @@ pub type PlaceholderType = Placeholder<BoundVar>;
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
 
+/// A `DefId` which is potentially bundled with its corresponding generic parameter
+/// in case `did` is a const argument.
+///
+/// This is used to prevent cycle errors during typeck
+/// as `type_of(const_arg)` depends on `typeck_tables_of(owning_body)`
+/// which once again requires the type of its generic arguments.
+///
+/// Luckily we only need to deal with const arguments once we
+/// know their corresponding parameters. We (ab)use this by
+/// calling `type_of(param_did)` for these arguments.
+///
+/// ```rust
+/// #![feature(const_generics)]
+///
+/// struct A;
+/// impl A {
+///     fn foo<const N: usize>(&self) -> usize { N }
+/// }
+/// struct B;
+/// impl B {
+///     fn foo<const N: u8>(&self) -> usize { 42 }
+/// }
+///
+/// fn main() {
+///     let a = A;
+///     a.foo::<7>();
+/// }
+/// ```
 #[derive(Copy, Clone, Debug, TypeFoldable, Lift, RustcEncodable, RustcDecodable)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Hash, HashStable)]
 pub struct WithOptParam<T> {
     pub did: T,
+    /// The `DefId` of the corresponding generic paramter in case `did` is
+    /// a const argument.
+    ///
+    /// Note that even if `did` is a const argument, this may still be `None`.
+    /// All queries taking `WithOptParam` start by calling `tcx.opt_const_param_of(def.did)`
+    /// to potentially update `param_did` in case it `None`.
     pub param_did: Option<DefId>,
 }
 
@@ -2896,7 +2929,6 @@ impl<'tcx> TyCtxt<'tcx> {
         match instance {
             ty::InstanceDef::Item(def) => {
                 if let Some((did, param_did)) = def.as_const_arg() {
-                    // The `param_did` is only `Some` for local `DefId`s.
                     self.optimized_mir_of_const_arg((did, param_did))
                 } else {
                     self.optimized_mir(def.did)
