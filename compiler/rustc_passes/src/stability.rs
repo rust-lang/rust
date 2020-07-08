@@ -37,8 +37,12 @@ enum AnnotationKind {
     Container,
 }
 
-/// Inheriting deprecations Nested items causes duplicate warnings.
-/// Inheriting the deprecation of `Foo<T>` onto the parameter `T`, would cause a duplicate warnings.
+/// Whether to inherit deprecation flags for nested items. In most cases, we do want to inherit
+/// deprecation, because nested items rarely have individual deprecation attributes, and so
+/// should be treated as deprecated if their parent is. However, default generic parameters
+/// have separate deprecation attributes from their parents, so we do not wish to inherit
+/// deprecation in this case. For example, inheriting deprecation for `T` in `Foo<T>`
+/// would cause a duplicate warning arising from both `Foo` and `T` being deprecated.
 #[derive(PartialEq, Copy, Clone)]
 enum InheritDeprecation {
     Yes,
