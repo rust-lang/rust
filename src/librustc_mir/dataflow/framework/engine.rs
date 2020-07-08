@@ -213,15 +213,6 @@ where
             }
         }
 
-        // Add blocks that are not reachable from START_BLOCK to the work queue. These blocks will
-        // be processed after the ones added above.
-        //
-        // FIXME(ecstaticmorse): Is this actually necessary? In principle, we shouldn't need to
-        // know the dataflow state in unreachable basic blocks.
-        for bb in body.basic_blocks().indices() {
-            dirty_queue.insert(bb);
-        }
-
         let mut state = BitSet::new_empty(bits_per_block);
         while let Some(bb) = dirty_queue.pop() {
             let bb_data = &body[bb];
