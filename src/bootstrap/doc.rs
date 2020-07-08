@@ -156,7 +156,7 @@ impl Step for RustbookSrc {
         let index = out.join("index.html");
         let rustbook = builder.tool_exe(Tool::Rustbook);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        if up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
+        if builder.config.dry_run || up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
             return;
         }
         builder.info(&format!("Rustbook ({}) - {}", target, name));
