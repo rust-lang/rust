@@ -24,24 +24,23 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
     loop {
         let predicates = tcx.predicates_of(current);
         for (predicate, _) in predicates.predicates {
-            match predicate.ignore_quantifiers().skip_binder().kind() {
-                ty::PredicateKind::ForAll(_) => bug!("unexpected predicate: {:?}", predicate),
-                ty::PredicateKind::RegionOutlives(_)
-                | ty::PredicateKind::TypeOutlives(_)
-                | ty::PredicateKind::WellFormed(_)
-                | ty::PredicateKind::Projection(_)
-                | ty::PredicateKind::ConstEvaluatable(..)
-                | ty::PredicateKind::ConstEquate(..) => continue,
-                ty::PredicateKind::ObjectSafe(_) => {
+            match predicate.skip_binders() {
+                ty::PredicateAtom::RegionOutlives(_)
+                | ty::PredicateAtom::TypeOutlives(_)
+                | ty::PredicateAtom::WellFormed(_)
+                | ty::PredicateAtom::Projection(_)
+                | ty::PredicateAtom::ConstEvaluatable(..)
+                | ty::PredicateAtom::ConstEquate(..) => continue,
+                ty::PredicateAtom::ObjectSafe(_) => {
                     bug!("object safe predicate on function: {:#?}", predicate)
                 }
-                ty::PredicateKind::ClosureKind(..) => {
+                ty::PredicateAtom::ClosureKind(..) => {
                     bug!("closure kind predicate on function: {:#?}", predicate)
                 }
-                ty::PredicateKind::Subtype(_) => {
+                ty::PredicateAtom::Subtype(_) => {
                     bug!("subtype predicate on function: {:#?}", predicate)
                 }
-                &ty::PredicateKind::Trait(pred, constness) => {
+                ty::PredicateAtom::Trait(pred, constness) => {
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }

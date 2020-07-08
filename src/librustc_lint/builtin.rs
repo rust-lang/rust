@@ -1202,7 +1202,7 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::fold::TypeFoldable;
-        use rustc_middle::ty::PredicateKind::*;
+        use rustc_middle::ty::PredicateAtom::*;
 
         if cx.tcx.features().trivial_bounds {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
@@ -1210,7 +1210,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
             for &(predicate, span) in predicates.predicates {
                 // We don't actually look inside of the predicate,
                 // so it is safe to skip this binder here.
-                let predicate_kind_name = match predicate.ignore_quantifiers().skip_binder().kind() {
+                let predicate_kind_name = match predicate.skip_binders() {
                     Trait(..) => "Trait",
                     TypeOutlives(..) |
                     RegionOutlives(..) => "Lifetime",
@@ -1225,7 +1225,6 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Subtype(..) |
                     ConstEvaluatable(..) |
                     ConstEquate(..) => continue,
-                    ForAll(_) => bug!("unexpected predicate: {:?}", predicate)
                 };
                 if predicate.is_global() {
                     cx.struct_span_lint(TRIVIAL_BOUNDS, span, |lint| {
@@ -1500,8 +1499,8 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.ignore_quantifiers().skip_binder().kind() {
-                &ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match a {
+            .filter_map(|(pred, _)| match pred.skip_binders() {
+                ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(a, b)) => match a {
                     ty::ReEarlyBound(ebr) if ebr.index == index => Some(b),
                     _ => None,
                 },
@@ -1516,8 +1515,8 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.ignore_quantifiers().skip_binder().kind() {
-                &ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
+            .filter_map(|(pred, _)| match pred.skip_binders() {
+                ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     a.is_param(index).then_some(b)
                 }
                 _ => None,

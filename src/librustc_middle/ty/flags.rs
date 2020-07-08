@@ -208,39 +208,6 @@ impl FlagComputation {
 
     fn add_predicate_kind(&mut self, kind: &ty::PredicateKind<'_>) {
         match kind {
-            ty::PredicateKind::Trait(trait_pred, _constness) => {
-                self.add_substs(trait_pred.trait_ref.substs);
-            }
-            ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
-                self.add_region(a);
-                self.add_region(b);
-            }
-            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, region)) => {
-                self.add_ty(ty);
-                self.add_region(region);
-            }
-            ty::PredicateKind::Subtype(ty::SubtypePredicate { a_is_expected: _, a, b }) => {
-                self.add_ty(a);
-                self.add_ty(b);
-            }
-            &ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
-                self.add_projection_ty(projection_ty);
-                self.add_ty(ty);
-            }
-            ty::PredicateKind::WellFormed(arg) => {
-                self.add_substs(slice::from_ref(arg));
-            }
-            ty::PredicateKind::ObjectSafe(_def_id) => {}
-            ty::PredicateKind::ClosureKind(_def_id, substs, _kind) => {
-                self.add_substs(substs);
-            }
-            ty::PredicateKind::ConstEvaluatable(_def_id, substs) => {
-                self.add_substs(substs);
-            }
-            ty::PredicateKind::ConstEquate(expected, found) => {
-                self.add_const(expected);
-                self.add_const(found);
-            }
             ty::PredicateKind::ForAll(binder) => {
                 let mut computation = FlagComputation::new();
 
@@ -248,6 +215,41 @@ impl FlagComputation {
 
                 self.add_bound_computation(computation);
             }
+            &ty::PredicateKind::Atom(atom) => match atom {
+                ty::PredicateAtom::Trait(trait_pred, _constness) => {
+                    self.add_substs(trait_pred.trait_ref.substs);
+                }
+                ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
+                    self.add_region(a);
+                    self.add_region(b);
+                }
+                ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, region)) => {
+                    self.add_ty(ty);
+                    self.add_region(region);
+                }
+                ty::PredicateAtom::Subtype(ty::SubtypePredicate { a_is_expected: _, a, b }) => {
+                    self.add_ty(a);
+                    self.add_ty(b);
+                }
+                ty::PredicateAtom::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
+                    self.add_projection_ty(projection_ty);
+                    self.add_ty(ty);
+                }
+                ty::PredicateAtom::WellFormed(arg) => {
+                    self.add_substs(slice::from_ref(&arg));
+                }
+                ty::PredicateAtom::ObjectSafe(_def_id) => {}
+                ty::PredicateAtom::ClosureKind(_def_id, substs, _kind) => {
+                    self.add_substs(substs);
+                }
+                ty::PredicateAtom::ConstEvaluatable(_def_id, substs) => {
+                    self.add_substs(substs);
+                }
+                ty::PredicateAtom::ConstEquate(expected, found) => {
+                    self.add_const(expected);
+                    self.add_const(found);
+                }
+            },
         }
     }
 

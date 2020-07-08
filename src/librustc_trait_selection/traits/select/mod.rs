@@ -408,18 +408,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             None => self.check_recursion_limit(&obligation, &obligation)?,
         }
 
-        match obligation.predicate.ignore_quantifiers().skip_binder().kind() {
-            ty::PredicateKind::ForAll(_) => {
-                bug!("unexpected predicate: {:?}", obligation.predicate)
-            }
-            &ty::PredicateKind::Trait(t, _) => {
+        match obligation.predicate.skip_binders() {
+            ty::PredicateAtom::Trait(t, _) => {
                 let t = ty::Binder::bind(t);
                 debug_assert!(!t.has_escaping_bound_vars());
                 let obligation = obligation.with(t);
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
 
-            &ty::PredicateKind::Subtype(p) => {
+            ty::PredicateAtom::Subtype(p) => {
                 let p = ty::Binder::bind(p);
                 // Does this code ever run?
                 match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
@@ -435,7 +432,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            &ty::PredicateKind::WellFormed(arg) => match wf::obligations(
+            ty::PredicateAtom::WellFormed(arg) => match wf::obligations(
                 self.infcx,
                 obligation.param_env,
                 obligation.cause.body_id,
@@ -449,12 +446,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 None => Ok(EvaluatedToAmbig),
             },
 
-            ty::PredicateKind::TypeOutlives(..) | ty::PredicateKind::RegionOutlives(..) => {
+            ty::PredicateAtom::TypeOutlives(..) | ty::PredicateAtom::RegionOutlives(..) => {
                 // We do not consider region relationships when evaluating trait matches.
                 Ok(EvaluatedToOkModuloRegions)
             }
 
-            &ty::PredicateKind::ObjectSafe(trait_def_id) => {
+            ty::PredicateAtom::ObjectSafe(trait_def_id) => {
                 if self.tcx().is_object_safe(trait_def_id) {
                     Ok(EvaluatedToOk)
                 } else {
@@ -462,7 +459,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            &ty::PredicateKind::Projection(data) => {
+            ty::PredicateAtom::Projection(data) => {
                 let data = ty::Binder::bind(data);
                 let project_obligation = obligation.with(data);
                 match project::poly_project_and_unify_type(self, &project_obligation) {
@@ -484,7 +481,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            &ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
+            ty::PredicateAtom::ClosureKind(_, closure_substs, kind) => {
                 match self.infcx.closure_kind(closure_substs) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
@@ -497,7 +494,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+            ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
                 match self.tcx().const_eval_resolve(
                     obligation.param_env,
                     def_id,
@@ -511,7 +508,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::ConstEquate(c1, c2) => {
+            ty::PredicateAtom::ConstEquate(c1, c2) => {
                 debug!("evaluate_predicate_recursively: equating consts c1={:?} c2={:?}", c1, c2);
 
                 let evaluate = |c: &'tcx ty::Const<'tcx>| {
@@ -792,8 +789,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
-        let result = match predicate.ignore_quantifiers().skip_binder().kind() {
-            ty::PredicateKind::Trait(ref data, _) => self.tcx().trait_is_auto(data.def_id()),
+        let result = match predicate.skip_binders() {
+            ty::PredicateAtom::Trait(ref data, _) => self.tcx().trait_is_auto(data.def_id()),
             _ => false,
         };
         debug!("coinductive_predicate({:?}) = {:?}", predicate, result);
@@ -1301,9 +1298,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let matching_bound = predicates.iter().find_map(|bound| {
-            if let ty::PredicateKind::Trait(pred, _) =
-                bound.ignore_quantifiers().skip_binder().kind()
-            {
+            if let ty::PredicateAtom::Trait(pred, _) = bound.skip_binders() {
                 let bound = ty::Binder::bind(pred.trait_ref);
                 if self.infcx.probe(|_| {
                     self.match_projection(obligation, bound, placeholder_trait_predicate.trait_ref)

@@ -2400,8 +2400,8 @@ fn bounds_from_generic_predicates<'tcx>(
     let mut projections = vec![];
     for (predicate, _) in predicates.predicates {
         debug!("predicate {:?}", predicate);
-        match predicate.ignore_quantifiers().skip_binder().kind() {
-            ty::PredicateKind::Trait(trait_predicate, _) => {
+        match predicate.skip_binders() {
+            ty::PredicateAtom::Trait(trait_predicate, _) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
                 if Some(def_id) != tcx.lang_items().sized_trait() {
@@ -2410,7 +2410,7 @@ fn bounds_from_generic_predicates<'tcx>(
                     entry.push(trait_predicate.def_id());
                 }
             }
-            ty::PredicateKind::Projection(projection_pred) => {
+            ty::PredicateAtom::Projection(projection_pred) => {
                 projections.push(ty::Binder::bind(projection_pred));
             }
             _ => {}
@@ -2938,9 +2938,9 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             parent: None,
             predicates: tcx.arena.alloc_from_iter(
                 self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                    match predicate.kind() {
-                        ty::PredicateKind::Trait(ref data, _)
-                            if data.skip_binder().self_ty().is_param(index) =>
+                    match predicate.skip_binders() {
+                        ty::PredicateAtom::Trait(data, _)
+                            if data.self_ty().is_param(index) =>
                         {
                             // HACK(eddyb) should get the original `Span`.
                             let span = tcx.def_span(def_id);
@@ -3612,7 +3612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_predicate(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::PredicateKind::WellFormed(arg).to_predicate(self.tcx),
+            ty::PredicateAtom::WellFormed(arg).to_predicate(self.tcx),
         ));
     }
 
@@ -3894,23 +3894,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .pending_obligations()
             .into_iter()
             .filter_map(move |obligation| {
-                match obligation.predicate.ignore_quantifiers().skip_binder().kind() {
-                    ty::PredicateKind::ForAll(_) => {
-                        bug!("unexpected predicate: {:?}", obligation.predicate)
-                    }
-                    &ty::PredicateKind::Projection(data) => {
+                match obligation.predicate.skip_binders() {
+                    ty::PredicateAtom::Projection(data) => {
                         Some((ty::Binder::bind(data).to_poly_trait_ref(self.tcx), obligation))
                     }
-                    &ty::PredicateKind::Trait(data, _) => {
+                    ty::PredicateAtom::Trait(data, _) => {
                         Some((ty::Binder::bind(data).to_poly_trait_ref(), obligation))
                     }
-                    ty::PredicateKind::Subtype(..) => None,
-                    ty::PredicateKind::RegionOutlives(..) => None,
-                    ty::PredicateKind::TypeOutlives(..) => None,
-                    ty::PredicateKind::WellFormed(..) => None,
-                    ty::PredicateKind::ObjectSafe(..) => None,
-                    ty::PredicateKind::ConstEvaluatable(..) => None,
-                    ty::PredicateKind::ConstEquate(..) => None,
+                    ty::PredicateAtom::Subtype(..) => None,
+                    ty::PredicateAtom::RegionOutlives(..) => None,
+                    ty::PredicateAtom::TypeOutlives(..) => None,
+                    ty::PredicateAtom::WellFormed(..) => None,
+                    ty::PredicateAtom::ObjectSafe(..) => None,
+                    ty::PredicateAtom::ConstEvaluatable(..) => None,
+                    ty::PredicateAtom::ConstEquate(..) => None,
                     // N.B., this predicate is created by breaking down a
                     // `ClosureType: FnFoo()` predicate, where
                     // `ClosureType` represents some `Closure`. It can't
@@ -3919,7 +3916,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // this closure yet; this is exactly why the other
                     // code is looking for a self type of a unresolved
                     // inference variable.
-                    ty::PredicateKind::ClosureKind(..) => None,
+                    ty::PredicateAtom::ClosureKind(..) => None,
                 }
             })
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))
@@ -4249,8 +4246,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 continue;
             }
 
-            if let ty::PredicateKind::Trait(predicate, _) =
-                error.obligation.predicate.ignore_quantifiers().skip_binder().kind()
+            if let ty::PredicateAtom::Trait(predicate, _) =
+                error.obligation.predicate.skip_binders()
             {
                 // Collect the argument position for all arguments that could have caused this
                 // `FulfillmentError`.
@@ -4298,8 +4295,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let hir::ExprKind::Path(qpath) = &path.kind {
                 if let hir::QPath::Resolved(_, path) = &qpath {
                     for error in errors {
-                        if let ty::PredicateKind::Trait(predicate, _) =
-                            error.obligation.predicate.ignore_quantifiers().skip_binder().kind()
+                        if let ty::PredicateAtom::Trait(predicate, _) =
+                            error.obligation.predicate.skip_binders()
                         {
                             // If any of the type arguments in this path segment caused the
                             // `FullfillmentError`, point at its span (#61860).
@@ -5372,7 +5369,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     item_def_id,
                 };
 
-                let predicate = ty::PredicateKind::Projection(ty::ProjectionPredicate {
+                let predicate = ty::PredicateAtom::Projection(ty::ProjectionPredicate {
                     projection_ty,
                     ty: expected,
                 })

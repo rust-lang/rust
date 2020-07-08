@@ -392,22 +392,22 @@ fn associated_type_projection_predicates(
 
     let predicates = item_predicates.filter_map(|obligation| {
         let pred = obligation.predicate;
-        match pred.ignore_quantifiers().skip_binder().kind() {
-            ty::PredicateKind::Trait(tr, _) => {
+        match pred.skip_binders() {
+            ty::PredicateAtom::Trait(tr, _) => {
                 if let ty::Projection(p) = tr.self_ty().kind {
                     if p == assoc_item_ty {
                         return Some(pred);
                     }
                 }
             }
-            ty::PredicateKind::Projection(proj) => {
+            ty::PredicateAtom::Projection(proj) => {
                 if let ty::Projection(p) = proj.projection_ty.self_ty().kind {
                     if p == assoc_item_ty {
                         return Some(pred);
                     }
                 }
             }
-            ty::PredicateKind::TypeOutlives(outlives) => {
+            ty::PredicateAtom::TypeOutlives(outlives) => {
                 if let ty::Projection(p) = outlives.0.kind {
                     if p == assoc_item_ty {
                         return Some(pred);
@@ -443,15 +443,15 @@ fn opaque_type_projection_predicates(
 
     let filtered_predicates = predicates.filter_map(|obligation| {
         let pred = obligation.predicate;
-        match pred.ignore_quantifiers().skip_binder().kind() {
-            ty::PredicateKind::Trait(tr, _) => {
+        match pred.skip_binders() {
+            ty::PredicateAtom::Trait(tr, _) => {
                 if let ty::Opaque(opaque_def_id, opaque_substs) = tr.self_ty().kind {
                     if opaque_def_id == def_id && opaque_substs == substs {
                         return Some(pred);
                     }
                 }
             }
-            ty::PredicateKind::Projection(proj) => {
+            ty::PredicateAtom::Projection(proj) => {
                 if let ty::Opaque(opaque_def_id, opaque_substs) = proj.projection_ty.self_ty().kind
                 {
                     if opaque_def_id == def_id && opaque_substs == substs {
@@ -459,7 +459,7 @@ fn opaque_type_projection_predicates(
                     }
                 }
             }
-            ty::PredicateKind::TypeOutlives(outlives) => {
+            ty::PredicateAtom::TypeOutlives(outlives) => {
                 if let ty::Opaque(opaque_def_id, opaque_substs) = outlives.0.kind {
                     if opaque_def_id == def_id && opaque_substs == substs {
                         return Some(pred);
@@ -470,7 +470,7 @@ fn opaque_type_projection_predicates(
                 }
             }
             // These can come from elaborating other predicates
-            ty::PredicateKind::RegionOutlives(_) => return None,
+            ty::PredicateAtom::RegionOutlives(_) => return None,
             _ => {}
         }
         tcx.sess.delay_span_bug(

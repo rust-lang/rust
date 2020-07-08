@@ -320,11 +320,44 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         match obligation.predicate.kind() {
             ty::PredicateKind::ForAll(binder) => match binder.skip_binder().kind() {
+                ty::PredicateKind::ForAll(_) => bug!("unexpected forall"),
                 // Evaluation will discard candidates using the leak check.
                 // This means we need to pass it the bound version of our
                 // predicate.
-                ty::PredicateKind::Trait(trait_ref, _constness) => {
-                    let trait_obligation = obligation.with(Binder::bind(*trait_ref));
+                &ty::PredicateKind::Atom(atom) => match atom {
+                    ty::PredicateAtom::Trait(trait_ref, _constness) => {
+                        let trait_obligation = obligation.with(Binder::bind(trait_ref));
+
+                        self.process_trait_obligation(
+                            obligation,
+                            trait_obligation,
+                            &mut pending_obligation.stalled_on,
+                        )
+                    }
+                    ty::PredicateAtom::Projection(projection) => {
+                        let project_obligation = obligation.with(Binder::bind(projection));
+
+                        self.process_projection_obligation(
+                            project_obligation,
+                            &mut pending_obligation.stalled_on,
+                        )
+                    }
+                    ty::PredicateAtom::RegionOutlives(_)
+                    | ty::PredicateAtom::TypeOutlives(_)
+                    | ty::PredicateAtom::WellFormed(_)
+                    | ty::PredicateAtom::ObjectSafe(_)
+                    | ty::PredicateAtom::ClosureKind(..)
+                    | ty::PredicateAtom::Subtype(_)
+                    | ty::PredicateAtom::ConstEvaluatable(..)
+                    | ty::PredicateAtom::ConstEquate(..) => {
+                        let (pred, _) = infcx.replace_bound_vars_with_placeholders(binder);
+                        ProcessResult::Changed(mk_pending(vec![obligation.with(pred)]))
+                    }
+                },
+            },
+            &ty::PredicateKind::Atom(atom) => match atom {
+                ty::PredicateAtom::Trait(ref data, _) => {
+                    let trait_obligation = obligation.with(Binder::dummy(*data));
 
                     self.process_trait_obligation(
                         obligation,
@@ -332,142 +365,112 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         &mut pending_obligation.stalled_on,
                     )
                 }
-                ty::PredicateKind::Projection(projection) => {
-                    let project_obligation = obligation.with(Binder::bind(*projection));
+
+                ty::PredicateAtom::RegionOutlives(data) => {
+                    match infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data)) {
+                        Ok(()) => ProcessResult::Changed(vec![]),
+                        Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
+                    }
+                }
+
+                ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
+                    if self.register_region_obligations {
+                        self.selcx.infcx().register_region_obligation_with_cause(
+                            t_a,
+                            r_b,
+                            &obligation.cause,
+                        );
+                    }
+                    ProcessResult::Changed(vec![])
+                }
+
+                ty::PredicateAtom::Projection(ref data) => {
+                    let project_obligation = obligation.with(Binder::dummy(*data));
 
                     self.process_projection_obligation(
                         project_obligation,
                         &mut pending_obligation.stalled_on,
                     )
                 }
-                ty::PredicateKind::RegionOutlives(_)
-                | ty::PredicateKind::TypeOutlives(_)
-                | ty::PredicateKind::WellFormed(_)
-                | ty::PredicateKind::ObjectSafe(_)
-                | ty::PredicateKind::ClosureKind(..)
-                | ty::PredicateKind::Subtype(_)
-                | ty::PredicateKind::ConstEvaluatable(..)
-                | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::ForAll(_) => {
-                    let (pred, _) = infcx.replace_bound_vars_with_placeholders(binder);
-                    ProcessResult::Changed(mk_pending(vec![obligation.with(pred)]))
+
+                ty::PredicateAtom::ObjectSafe(trait_def_id) => {
+                    if !self.selcx.tcx().is_object_safe(trait_def_id) {
+                        ProcessResult::Error(CodeSelectionError(Unimplemented))
+                    } else {
+                        ProcessResult::Changed(vec![])
+                    }
                 }
-            },
-            ty::PredicateKind::Trait(ref data, _) => {
-                let trait_obligation = obligation.with(Binder::dummy(*data));
 
-                self.process_trait_obligation(
-                    obligation,
-                    trait_obligation,
-                    &mut pending_obligation.stalled_on,
-                )
-            }
-
-            &ty::PredicateKind::RegionOutlives(data) => {
-                match infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data)) {
-                    Ok(()) => ProcessResult::Changed(vec![]),
-                    Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
+                ty::PredicateAtom::ClosureKind(_, closure_substs, kind) => {
+                    match self.selcx.infcx().closure_kind(closure_substs) {
+                        Some(closure_kind) => {
+                            if closure_kind.extends(kind) {
+                                ProcessResult::Changed(vec![])
+                            } else {
+                                ProcessResult::Error(CodeSelectionError(Unimplemented))
+                            }
+                        }
+                        None => ProcessResult::Unchanged,
+                    }
                 }
-            }
 
-            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
-                if self.register_region_obligations {
-                    self.selcx.infcx().register_region_obligation_with_cause(
-                        t_a,
-                        r_b,
+                ty::PredicateAtom::WellFormed(arg) => {
+                    match wf::obligations(
+                        self.selcx.infcx(),
+                        obligation.param_env,
+                        obligation.cause.body_id,
+                        arg,
+                        obligation.cause.span,
+                    ) {
+                        None => {
+                            pending_obligation.stalled_on =
+                                vec![TyOrConstInferVar::maybe_from_generic_arg(arg).unwrap()];
+                            ProcessResult::Unchanged
+                        }
+                        Some(os) => ProcessResult::Changed(mk_pending(os)),
+                    }
+                }
+
+                ty::PredicateAtom::Subtype(subtype) => {
+                    match self.selcx.infcx().subtype_predicate(
                         &obligation.cause,
-                    );
-                }
-                ProcessResult::Changed(vec![])
-            }
-
-            ty::PredicateKind::Projection(ref data) => {
-                let project_obligation = obligation.with(Binder::dummy(*data));
-
-                self.process_projection_obligation(
-                    project_obligation,
-                    &mut pending_obligation.stalled_on,
-                )
-            }
-
-            &ty::PredicateKind::ObjectSafe(trait_def_id) => {
-                if !self.selcx.tcx().is_object_safe(trait_def_id) {
-                    ProcessResult::Error(CodeSelectionError(Unimplemented))
-                } else {
-                    ProcessResult::Changed(vec![])
-                }
-            }
-
-            &ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
-                match self.selcx.infcx().closure_kind(closure_substs) {
-                    Some(closure_kind) => {
-                        if closure_kind.extends(kind) {
-                            ProcessResult::Changed(vec![])
-                        } else {
-                            ProcessResult::Error(CodeSelectionError(Unimplemented))
+                        obligation.param_env,
+                        Binder::dummy(subtype),
+                    ) {
+                        None => {
+                            // None means that both are unresolved.
+                            pending_obligation.stalled_on = vec![
+                                TyOrConstInferVar::maybe_from_ty(subtype.a).unwrap(),
+                                TyOrConstInferVar::maybe_from_ty(subtype.b).unwrap(),
+                            ];
+                            ProcessResult::Unchanged
+                        }
+                        Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                        Some(Err(err)) => {
+                            let expected_found =
+                                ExpectedFound::new(subtype.a_is_expected, subtype.a, subtype.b);
+                            ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
+                                expected_found,
+                                err,
+                            ))
                         }
                     }
-                    None => ProcessResult::Unchanged,
                 }
-            }
 
-            &ty::PredicateKind::WellFormed(arg) => {
-                match wf::obligations(
-                    self.selcx.infcx(),
-                    obligation.param_env,
-                    obligation.cause.body_id,
-                    arg,
-                    obligation.cause.span,
-                ) {
-                    None => {
-                        pending_obligation.stalled_on =
-                            vec![TyOrConstInferVar::maybe_from_generic_arg(arg).unwrap()];
-                        ProcessResult::Unchanged
-                    }
-                    Some(os) => ProcessResult::Changed(mk_pending(os)),
-                }
-            }
-
-            &ty::PredicateKind::Subtype(subtype) => {
-                match self.selcx.infcx().subtype_predicate(
-                    &obligation.cause,
-                    obligation.param_env,
-                    Binder::dummy(subtype),
-                ) {
-                    None => {
-                        // None means that both are unresolved.
-                        pending_obligation.stalled_on = vec![
-                            TyOrConstInferVar::maybe_from_ty(subtype.a).unwrap(),
-                            TyOrConstInferVar::maybe_from_ty(subtype.b).unwrap(),
-                        ];
-                        ProcessResult::Unchanged
-                    }
-                    Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
-                    Some(Err(err)) => {
-                        let expected_found =
-                            ExpectedFound::new(subtype.a_is_expected, subtype.a, subtype.b);
-                        ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
-                            expected_found,
-                            err,
-                        ))
+                ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
+                    match self.selcx.infcx().const_eval_resolve(
+                        obligation.param_env,
+                        def_id,
+                        substs,
+                        None,
+                        Some(obligation.cause.span),
+                    ) {
+                        Ok(_) => ProcessResult::Changed(vec![]),
+                        Err(err) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err))),
                     }
                 }
-            }
 
-            &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
-                match self.selcx.infcx().const_eval_resolve(
-                    obligation.param_env,
-                    def_id,
-                    substs,
-                    None,
-                    Some(obligation.cause.span),
-                ) {
-                    Ok(_) => ProcessResult::Changed(vec![]),
-                    Err(err) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err))),
-                }
-            }
-
-            ty::PredicateKind::ConstEquate(c1, c2) => {
+            ty::PredicateAtom::ConstEquate(c1, c2) => {
                 debug!("equating consts: c1={:?} c2={:?}", c1, c2);
 
                 let stalled_on = &mut pending_obligation.stalled_on;
@@ -491,43 +494,46 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                                 );
                                 Err(ErrorHandled::TooGeneric)
                             }
-                            Err(err) => Err(err),
+                        } else {
+                            Ok(c)
                         }
-                    } else {
-                        Ok(c)
-                    }
-                };
+                    };
 
-                match (evaluate(c1), evaluate(c2)) {
-                    (Ok(c1), Ok(c2)) => {
-                        match self
-                            .selcx
-                            .infcx()
-                            .at(&obligation.cause, obligation.param_env)
-                            .eq(c1, c2)
-                        {
-                            Ok(_) => ProcessResult::Changed(vec![]),
-                            Err(err) => {
-                                ProcessResult::Error(FulfillmentErrorCode::CodeConstEquateError(
-                                    ExpectedFound::new(true, c1, c2),
-                                    err,
-                                ))
+                    match (evaluate(c1), evaluate(c2)) {
+                        (Ok(c1), Ok(c2)) => {
+                            match self
+                                .selcx
+                                .infcx()
+                                .at(&obligation.cause, obligation.param_env)
+                                .eq(c1, c2)
+                            {
+                                Ok(_) => ProcessResult::Changed(vec![]),
+                                Err(err) => ProcessResult::Error(
+                                    FulfillmentErrorCode::CodeConstEquateError(
+                                        ExpectedFound::new(true, c1, c2),
+                                        err,
+                                    ),
+                                ),
                             }
                         }
-                    }
-                    (Err(ErrorHandled::Reported(ErrorReported)), _)
-                    | (_, Err(ErrorHandled::Reported(ErrorReported))) => ProcessResult::Error(
-                        CodeSelectionError(ConstEvalFailure(ErrorHandled::Reported(ErrorReported))),
-                    ),
-                    (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => span_bug!(
-                        obligation.cause.span(self.selcx.tcx()),
-                        "ConstEquate: const_eval_resolve returned an unexpected error"
-                    ),
-                    (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
-                        ProcessResult::Unchanged
+                        (Err(ErrorHandled::Reported(ErrorReported)), _)
+                        | (_, Err(ErrorHandled::Reported(ErrorReported))) => {
+                            ProcessResult::Error(CodeSelectionError(ConstEvalFailure(
+                                ErrorHandled::Reported(ErrorReported),
+                            )))
+                        }
+                        (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
+                            span_bug!(
+                                obligation.cause.span(self.selcx.tcx()),
+                                "ConstEquate: const_eval_resolve returned an unexpected error"
+                            )
+                        }
+                        (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                            ProcessResult::Unchanged
+                        }
                     }
                 }
-            }
+            },
         }
     }
 

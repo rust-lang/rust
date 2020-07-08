@@ -665,7 +665,7 @@ fn prune_cache_value_obligations<'a, 'tcx>(
         .obligations
         .iter()
         .filter(|obligation| {
-            match obligation.predicate.ignore_quantifiers().skip_binder().kind() {
+            match obligation.predicate.skip_binders() {
                 // We found a `T: Foo<X = U>` predicate, let's check
                 // if `U` references any unresolved type
                 // variables. In principle, we only care if this
@@ -675,7 +675,7 @@ fn prune_cache_value_obligations<'a, 'tcx>(
                 // indirect obligations (e.g., we project to `?0`,
                 // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
                 // ?0>`).
-                &ty::PredicateKind::Projection(data) => {
+                ty::PredicateAtom::Projection(data) => {
                     infcx.unresolved_type_vars(&ty::Binder::bind(data.ty)).is_some()
                 }
 
@@ -933,9 +933,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         debug!("assemble_candidates_from_predicates: predicate={:?}", predicate);
-        if let &ty::PredicateKind::Projection(data) =
-            predicate.ignore_quantifiers().skip_binder().kind()
-        {
+        if let ty::PredicateAtom::Projection(data) = predicate.skip_binders() {
             let data = ty::Binder::bind(data);
             let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;
 
@@ -1227,15 +1225,13 @@ fn confirm_object_candidate<'cx, 'tcx>(
         // select only those projections that are actually projecting an
         // item with the correct name
 
-        let env_predicates = env_predicates.filter_map(|o| {
-            match o.predicate.ignore_quantifiers().skip_binder().kind() {
-                &ty::PredicateKind::Projection(data)
-                    if data.projection_ty.item_def_id == obligation.predicate.item_def_id =>
-                {
-                    Some(ty::Binder::bind(data))
-                }
-                _ => None,
+        let env_predicates = env_predicates.filter_map(|o| match o.predicate.skip_binders() {
+            ty::PredicateAtom::Projection(data)
+                if data.projection_ty.item_def_id == obligation.predicate.item_def_id =>
+            {
+                Some(ty::Binder::bind(data))
             }
+            _ => None,
         });
 
         // select those with a relevant trait-ref

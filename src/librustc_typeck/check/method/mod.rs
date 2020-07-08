@@ -399,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         obligations.push(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::PredicateKind::WellFormed(method_ty.into()).to_predicate(tcx),
+            ty::PredicateAtom::WellFormed(method_ty.into()).to_predicate(tcx),
         ));
 
         let callee = MethodCallee { def_id, substs: trait_ref.substs, sig: fn_sig };

@@ -532,7 +532,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
-                ty::PredicateKind::ClosureKind(closure_def_id, substs, kind)
+                ty::PredicateAtom::ClosureKind(closure_def_id, substs, kind)
                     .to_predicate(self.tcx()),
             ));
         }

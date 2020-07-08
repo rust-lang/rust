@@ -415,12 +415,10 @@ impl AutoTraitFinder<'tcx> {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
             if let (
-                ty::PredicateKind::Trait(new_trait, _),
-                ty::PredicateKind::Trait(old_trait, _),
-            ) = (
-                new_pred.ignore_quantifiers().skip_binder().kind(),
-                old_pred.ignore_quantifiers().skip_binder().kind(),
-            ) {
+                ty::PredicateAtom::Trait(new_trait, _),
+                ty::PredicateAtom::Trait(old_trait, _),
+            ) = (new_pred.skip_binders(), old_pred.skip_binders())
+            {
                 if new_trait.def_id() == old_trait.def_id() {
                     let new_substs = new_trait.trait_ref.substs;
                     let old_substs = old_trait.trait_ref.substs;
@@ -639,8 +637,8 @@ impl AutoTraitFinder<'tcx> {
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
 
-            match predicate.ignore_quantifiers().skip_binder().kind() {
-                &ty::PredicateKind::Trait(p, _) => {
+            match predicate.skip_binders() {
+                ty::PredicateAtom::Trait(p, _) => {
                     if self.is_param_no_infer(p.trait_ref.substs)
                         && !only_projections
                         && is_new_pred
@@ -649,7 +647,7 @@ impl AutoTraitFinder<'tcx> {
                     }
                     predicates.push_back(ty::Binder::bind(p));
                 }
-                &ty::PredicateKind::Projection(p) => {
+                ty::PredicateAtom::Projection(p) => {
                     let p = ty::Binder::bind(p);
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
@@ -775,13 +773,13 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                &ty::PredicateKind::RegionOutlives(binder) => {
+                ty::PredicateAtom::RegionOutlives(binder) => {
                     let binder = ty::Binder::bind(binder);
                     if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
                         return false;
                     }
                 }
-                &ty::PredicateKind::TypeOutlives(binder) => {
+                ty::PredicateAtom::TypeOutlives(binder) => {
                     let binder = ty::Binder::bind(binder);
                     match (
                         binder.no_bound_vars(),

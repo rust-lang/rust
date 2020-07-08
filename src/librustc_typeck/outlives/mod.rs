@@ -31,8 +31,12 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
                     let mut pred: Vec<String> = predicates
                         .iter()
                         .map(|(out_pred, _)| match out_pred.kind() {
-                            ty::PredicateKind::RegionOutlives(p) => p.to_string(),
-                            ty::PredicateKind::TypeOutlives(p) => p.to_string(),
+                            ty::PredicateKind::Atom(ty::PredicateAtom::RegionOutlives(p)) => {
+                                p.to_string()
+                            }
+                            ty::PredicateKind::Atom(ty::PredicateAtom::TypeOutlives(p)) => {
+                                p.to_string()
+                            }
                             err => bug!("unexpected predicate {:?}", err),
                         })
                         .collect();
@@ -85,13 +89,13 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CratePredica
                 |(ty::OutlivesPredicate(kind1, region2), &span)| {
                     match kind1.unpack() {
                         GenericArgKind::Type(ty1) => Some((
-                            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty1, region2))
+                            ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty1, region2))
                                 .to_predicate(tcx)
                                 .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                             span,
                         )),
                         GenericArgKind::Lifetime(region1) => Some((
-                            ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
+                            ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(
                                 region1, region2,
                             ))
                             .to_predicate(tcx)
