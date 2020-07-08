@@ -6,14 +6,13 @@ mod args;
 use std::convert::TryFrom;
 
 use lsp_server::Connection;
+use ra_project_model::ProjectManifest;
 use rust_analyzer::{
     cli,
     config::{Config, LinkedProject},
     from_json, Result,
 };
-
-use ra_db::AbsPathBuf;
-use ra_project_model::ProjectManifest;
+use vfs::AbsPathBuf;
 
 use crate::args::HelpPrinted;
 

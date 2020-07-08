@@ -18,7 +18,7 @@ pub use crate::{
 };
 pub use relative_path::{RelativePath, RelativePathBuf};
 pub use salsa;
-pub use vfs::{file_set::FileSet, AbsPathBuf, VfsPath};
+pub use vfs::{file_set::FileSet, VfsPath};
 
 #[macro_export]
 macro_rules! impl_intern_key {
