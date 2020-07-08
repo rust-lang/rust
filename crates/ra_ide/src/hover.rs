@@ -113,31 +113,33 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
     let mut res = HoverResult::new();
 
-    if let Some((node, name_kind)) = match_ast! {
-        match (token.parent()) {
+    let node = token.parent();
+    let definition = match_ast! {
+        match node {
             ast::NameRef(name_ref) => {
-                classify_name_ref(&sema, &name_ref).map(|d| (name_ref.syntax().clone(), d.definition()))
+                classify_name_ref(&sema, &name_ref).map(|d| d.definition())
             },
             ast::Name(name) => {
-                classify_name(&sema, &name).map(|d| (name.syntax().clone(), d.definition()))
+                classify_name(&sema, &name).map(|d| d.definition())
             },
             _ => None,
         }
-    } {
+    };
+    if let Some(definition) = definition {
         let range = sema.original_range(&node).range;
-        if let Some(text) = hover_text_from_name_kind(db, name_kind) {
+        if let Some(text) = hover_text_from_name_kind(db, definition) {
             res.results.push(text);
         }
         if !res.is_empty() {
-            if let Some(action) = show_implementations_action(db, name_kind) {
+            if let Some(action) = show_implementations_action(db, definition) {
                 res.push_action(action);
             }
 
-            if let Some(action) = runnable_action(&sema, name_kind, position.file_id) {
+            if let Some(action) = runnable_action(&sema, definition, position.file_id) {
                 res.push_action(action);
             }
 
-            if let Some(action) = goto_type_action(db, name_kind) {
+            if let Some(action) = goto_type_action(db, definition) {
                 res.push_action(action);
             }
 
