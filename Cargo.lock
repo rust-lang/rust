@@ -1020,7 +1020,6 @@ dependencies = [
  "ra_prof",
  "ra_syntax",
  "ra_tt",
- "relative-path",
  "rustc-hash",
  "salsa",
  "stdx",
@@ -1407,12 +1406,6 @@ name = "regex-syntax"
 version = "0.6.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26412eb97c6b088a6997e05f69403a802a92d520de2f8e63c2b65f9e0f47c4e8"
-
-[[package]]
-name = "relative-path"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c602122c47b382cd045b10866a084b184035d45d8c2609cdd3762852ddfae2a1"
 
 [[package]]
 name = "remove_dir_all"

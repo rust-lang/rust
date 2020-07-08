@@ -5,9 +5,10 @@ use std::{env, path::Path, str::FromStr, sync::Arc, time::Instant};
 use anyhow::{format_err, Result};
 use ra_db::{
     salsa::{Database, Durability},
-    AbsPathBuf, FileId,
+    FileId,
 };
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
+use vfs::AbsPathBuf;
 
 use crate::cli::{load_cargo::load_cargo, Verbosity};
 

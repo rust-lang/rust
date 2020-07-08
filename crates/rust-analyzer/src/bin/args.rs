@@ -7,9 +7,9 @@ use std::{env, fmt::Write, path::PathBuf};
 
 use anyhow::{bail, Result};
 use pico_args::Arguments;
-use ra_db::AbsPathBuf;
 use ra_ssr::{SsrPattern, SsrRule};
 use rust_analyzer::cli::{BenchWhat, Position, Verbosity};
+use vfs::AbsPathBuf;
 
 pub(crate) struct Args {
     pub(crate) verbosity: Verbosity,

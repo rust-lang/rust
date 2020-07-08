@@ -12,17 +12,16 @@ use lsp_types::{
     notification::Exit, request::Shutdown, TextDocumentIdentifier, Url, WorkDoneProgress,
 };
 use lsp_types::{ProgressParams, ProgressParamsValue};
-use serde::Serialize;
-use serde_json::{to_string_pretty, Value};
-use tempfile::TempDir;
-use test_utils::{find_mismatch, Fixture};
-
-use ra_db::AbsPathBuf;
 use ra_project_model::ProjectManifest;
 use rust_analyzer::{
     config::{ClientCapsConfig, Config, FilesConfig, FilesWatcher, LinkedProject},
     main_loop,
 };
+use serde::Serialize;
+use serde_json::{to_string_pretty, Value};
+use tempfile::TempDir;
+use test_utils::{find_mismatch, Fixture};
+use vfs::AbsPathBuf;
 
 pub struct Project<'a> {
     fixture: &'a str,
