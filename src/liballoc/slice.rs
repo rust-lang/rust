@@ -136,8 +136,6 @@ pub use hack::to_vec;
 // `test_permutations` test
 mod hack {
     use crate::boxed::Box;
-    #[cfg(test)]
-    use crate::string::ToString;
     use crate::vec::Vec;
 
     // We shouldn't add inline attribute to this since this is used in
