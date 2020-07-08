@@ -1562,7 +1562,7 @@ impl Step for CrateLibrustc {
         let compiler = builder.compiler(builder.top_stage, run.host);
 
         for krate in builder.in_tree_crates("rustc-main") {
-            if run.path.ends_with(&krate.path) {
+            if krate.path.ends_with(&run.path) {
                 let test_kind = builder.kind.into();
 
                 builder.ensure(CrateLibrustc {
@@ -1669,7 +1669,7 @@ impl Step for Crate {
         };
 
         for krate in builder.in_tree_crates("test") {
-            if run.path.ends_with(&krate.local_path(&builder)) {
+            if krate.path.ends_with(&run.path) {
                 make(Mode::Std, krate);
             }
         }
