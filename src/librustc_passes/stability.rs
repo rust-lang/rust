@@ -42,7 +42,6 @@ enum AnnotationKind {
 /// have separate deprecation attributes from their parents, so we do not wish to inherit
 /// deprecation in this case. For example, inheriting deprecation for `T` in `Foo<T>`
 /// would cause a duplicate warning arising from both `Foo` and `T` being deprecated.
-#[derive(PartialEq, Copy, Clone)]
 enum InheritDeprecation {
     Yes,
     No,
@@ -50,7 +49,7 @@ enum InheritDeprecation {
 
 impl InheritDeprecation {
     fn yes(&self) -> bool {
-        *self == InheritDeprecation::Yes
+        matches!(self, InheritDeprecation::Yes)
     }
 }
 
