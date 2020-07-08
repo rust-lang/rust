@@ -10,4 +10,8 @@ pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
 //~^ ERROR: the type of const parameters must not depend on other generic parameters
 //~| ERROR: cycle detected when computing type of `Dependent::X`
 
+pub struct SelfDependent<const N: [u8; N]>;
+//~^ ERROR: the type of const parameters must not depend on other generic parameters
+//~| ERROR: cycle detected when computing type of `SelfDependent::N`
+
 fn main() {}
