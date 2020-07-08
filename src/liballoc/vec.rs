@@ -2637,11 +2637,7 @@ impl<T> IntoIter<T> {
     /// ```
     #[stable(feature = "vec_into_iter_as_slice", since = "1.15.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { &mut *self.as_raw_mut_slice() }
-    }
-
-    fn as_raw_mut_slice(&mut self) -> *mut [T] {
-        ptr::slice_from_raw_parts_mut(self.ptr as *mut T, self.len())
+        unsafe { &mut *ptr::slice_from_raw_parts_mut(self.ptr as *mut T, self.len()) }
     }
 }
 
@@ -2760,7 +2756,7 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
         let guard = DropGuard(self);
         // destroy the remaining elements
         unsafe {
-            ptr::drop_in_place(guard.0.as_raw_mut_slice());
+            ptr::drop_in_place(guard.0.as_mut_slice());
         }
         // now `guard` will be dropped and do the rest
     }
