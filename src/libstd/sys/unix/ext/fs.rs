@@ -624,7 +624,7 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn ctime_nsec(&self) -> i64;
-    /// Returns the blocksize for filesystem I/O.
+    /// Returns the block size for filesystem I/O.
     ///
     /// # Examples
     ///
@@ -635,7 +635,7 @@ pub trait MetadataExt {
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
-    ///     let blocksize = meta.blksize();
+    ///     let block_size = meta.blksize();
     ///     Ok(())
     /// }
     /// ```
