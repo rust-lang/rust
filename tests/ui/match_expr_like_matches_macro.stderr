@@ -1,5 +1,5 @@
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:9:14
+  --> $DIR/match_expr_like_matches_macro.rs:10:14
    |
 LL |       let _y = match x {
    |  ______________^
@@ -10,8 +10,18 @@ LL | |     };
    |
    = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
 
+error: match expression looks like `matches!` macro
+  --> $DIR/match_expr_like_matches_macro.rs:16:14
+   |
+LL |       let _w = match x {
+   |  ______________^
+LL | |         Some(_) => true,
+LL | |         _ => false,
+LL | |     };
+   | |_____^ help: try this: `matches!(x, Some(_))`
+
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/match_expr_like_matches_macro.rs:15:14
+  --> $DIR/match_expr_like_matches_macro.rs:22:14
    |
 LL |       let _z = match x {
    |  ______________^
@@ -23,20 +33,20 @@ LL | |     };
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:21:14
+  --> $DIR/match_expr_like_matches_macro.rs:28:15
    |
-LL |       let _z = match x {
-   |  ______________^
+LL |       let _zz = match x {
+   |  _______________^
 LL | |         Some(r) if r == 0 => false,
 LL | |         _ => true,
 LL | |     };
    | |_____^ help: try this: `!matches!(x, Some(r) if r == 0)`
 
 error: if let .. else expression looks like `matches!` macro
-  --> $DIR/match_expr_like_matches_macro.rs:27:15
+  --> $DIR/match_expr_like_matches_macro.rs:34:16
    |
-LL |     let _zz = if let Some(5) = x { true } else { false };
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `matches!(x, Some(5))`
+LL |     let _zzz = if let Some(5) = x { true } else { false };
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `matches!(x, Some(5))`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

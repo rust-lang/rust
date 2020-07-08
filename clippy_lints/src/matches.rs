@@ -446,11 +446,12 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `match` expressions producing a `bool` that could be written using `matches!`
+    /// **What it does:** Checks for `match`  or `if let` expressions producing a
+    /// `bool` that could be written using `matches!`
     ///
     /// **Why is this bad?** Readability and needless complexity.
     ///
-    /// **Known problems:** This can turn an intentionally exhaustive match into a non-exhaustive one.
+    /// **Known problems:** None
     ///
     /// **Example:**
     /// ```rust
@@ -462,8 +463,14 @@ declare_clippy_lint! {
     ///     _ => false,
     /// };
     ///
+    /// let a = if let Some(0) = x {
+    ///     true
+    /// } else {
+    ///     false
+    /// };
+    ///
     /// // Good
-    /// let a = matches!(x, Some(5));
+    /// let a = matches!(x, Some(0));
     /// ```
     pub MATCH_LIKE_MATCHES_MACRO,
     style,
@@ -499,9 +506,8 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             return;
         }
 
-        if !redundant_pattern_match::check(cx, expr) {
-            check_match_like_matches(cx, expr);
-        }
+        redundant_pattern_match::check(cx, expr);
+        check_match_like_matches(cx, expr);
 
         if let ExprKind::Match(ref ex, ref arms, MatchSource::Normal) = expr.kind {
             check_single_match(cx, ex, arms, expr);
@@ -1068,6 +1074,7 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
     if_chain! {
         if arms.len() == 2;
         if cx.tables().expr_ty(expr).is_bool();
+        if is_wild(&arms[1].pat);
         if let Some(first) = find_bool_lit(&arms[0].body.kind, desugared);
         if let Some(second) = find_bool_lit(&arms[1].body.kind, desugared);
         if first != second;
@@ -1437,16 +1444,14 @@ mod redundant_pattern_match {
     use rustc_mir::const_eval::is_const_fn;
     use rustc_span::source_map::Symbol;
 
-    pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+    pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Match(op, arms, ref match_source) = &expr.kind {
             match match_source {
                 MatchSource::Normal => find_sugg_for_match(cx, expr, op, arms),
                 MatchSource::IfLetDesugar { .. } => find_sugg_for_if_let(cx, expr, op, arms, "if"),
                 MatchSource::WhileLetDesugar => find_sugg_for_if_let(cx, expr, op, arms, "while"),
-                _ => false,
+                _ => {},
             }
-        } else {
-            false
         }
     }
 
@@ -1456,7 +1461,7 @@ mod redundant_pattern_match {
         op: &Expr<'_>,
         arms: &[Arm<'_>],
         keyword: &'static str,
-    ) -> bool {
+    ) {
         fn find_suggestion(cx: &LateContext<'_>, hir_id: HirId, path: &QPath<'_>) -> Option<&'static str> {
             if match_qpath(path, &paths::RESULT_OK) && can_suggest(cx, hir_id, sym!(result_type), "is_ok") {
                 return Some("is_ok()");
@@ -1487,7 +1492,7 @@ mod redundant_pattern_match {
         };
         let good_method = match good_method {
             Some(method) => method,
-            None => return false,
+            None => return,
         };
 
         // check that `while_let_on_iterator` lint does not trigger
@@ -1497,7 +1502,7 @@ mod redundant_pattern_match {
             if method_path.ident.name == sym!(next);
             if match_trait_method(cx, op, &paths::ITERATOR);
             then {
-                return false;
+                return;
             }
         }
 
@@ -1526,15 +1531,9 @@ mod redundant_pattern_match {
                 );
             },
         );
-        true
     }
 
-    fn find_sugg_for_match<'tcx>(
-        cx: &LateContext<'tcx>,
-        expr: &'tcx Expr<'_>,
-        op: &Expr<'_>,
-        arms: &[Arm<'_>],
-    ) -> bool {
+    fn find_sugg_for_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
         if arms.len() == 2 {
             let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
 
@@ -1599,10 +1598,8 @@ mod redundant_pattern_match {
                         );
                     },
                 );
-                return true;
             }
         }
-        false
     }
 
     #[allow(clippy::too_many_arguments)]

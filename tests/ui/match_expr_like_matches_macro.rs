@@ -1,6 +1,7 @@
 // run-rustfix
 
 #![warn(clippy::match_like_matches_macro)]
+#![allow(unreachable_patterns)]
 
 fn main() {
     let x = Some(5);
@@ -11,6 +12,12 @@ fn main() {
         _ => false,
     };
 
+    // Lint
+    let _w = match x {
+        Some(_) => true,
+        _ => false,
+    };
+
     // Turn into is_none
     let _z = match x {
         Some(_) => false,
@@ -18,24 +25,24 @@ fn main() {
     };
 
     // Lint
-    let _z = match x {
+    let _zz = match x {
         Some(r) if r == 0 => false,
         _ => true,
     };
 
     // Lint
-    let _zz = if let Some(5) = x { true } else { false };
+    let _zzz = if let Some(5) = x { true } else { false };
 
     // No lint
     let _a = match x {
         Some(_) => false,
-        None => false,
+        _ => false,
     };
 
     // No lint
-    let _a = match x {
+    let _ab = match x {
         Some(0) => false,
-        Some(_) => true,
+        _ => true,
         None => false,
     };
 }
