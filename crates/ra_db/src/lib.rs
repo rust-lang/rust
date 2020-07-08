@@ -16,7 +16,6 @@ pub use crate::{
         SourceRoot, SourceRootId,
     },
 };
-pub use relative_path::{RelativePath, RelativePathBuf};
 pub use salsa;
 pub use vfs::{file_set::FileSet, VfsPath};
 

@@ -5,8 +5,7 @@ use std::{fmt, sync::Arc, time};
 
 use ra_db::{
     salsa::{Database, Durability, SweepStrategy},
-    CrateGraph, FileId, RelativePathBuf, SourceDatabase, SourceDatabaseExt, SourceRoot,
-    SourceRootId,
+    CrateGraph, FileId, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 use ra_prof::{memory_usage, profile, Bytes};
 use rustc_hash::FxHashSet;
@@ -57,14 +56,14 @@ impl AnalysisChange {
 #[derive(Debug)]
 struct AddFile {
     file_id: FileId,
-    path: RelativePathBuf,
+    path: String,
     text: Arc<String>,
 }
 
 #[derive(Debug)]
 struct RemoveFile {
     file_id: FileId,
-    path: RelativePathBuf,
+    path: String,
 }
 
 #[derive(Default)]
