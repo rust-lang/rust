@@ -2687,7 +2687,7 @@ pub enum Node<'hir> {
     Crate(&'hir CrateItem<'hir>),
 }
 
-impl Node<'_> {
+impl<'hir> Node<'hir> {
     pub fn ident(&self) -> Option<Ident> {
         match self {
             Node::TraitItem(TraitItem { ident, .. })
@@ -2698,7 +2698,7 @@ impl Node<'_> {
         }
     }
 
-    pub fn fn_decl(&self) -> Option<&FnDecl<'_>> {
+    pub fn fn_decl(&self) -> Option<&FnDecl<'hir>> {
         match self {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
@@ -2722,7 +2722,7 @@ impl Node<'_> {
         }
     }
 
-    pub fn generics(&self) -> Option<&Generics<'_>> {
+    pub fn generics(&self) -> Option<&'hir Generics<'hir>> {
         match self {
             Node::TraitItem(TraitItem { generics, .. })
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
