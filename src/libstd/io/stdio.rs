@@ -872,6 +872,44 @@ impl fmt::Debug for StderrLock<'_> {
     }
 }
 
+/// Locks the current handle and reads a line of input, returning a `String` containing
+/// the input.
+/// 
+/// If you need more explicit control over
+/// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
+///
+/// [`Stdin::lock`]: struct.Stdin.html#method.lock
+/// [`Stdout::lock`]: struct.Stdout.html#method.lock
+/// 
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to read and write bytes that are not valid UTF-8 will 
+/// return an error.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::io::input;
+///
+/// fn main() {
+///     let user_input = input("Please enter some text: ");
+///         
+///     println!("You typed: {}", get);
+///         
+/// }
+/// ```
+pub fn input(message:&str) -> String {
+	use std::io::Write;
+	print!("{}", message);
+	let mut input = String::new();
+	let _ = std::io::stdout().flush();
+	std::io::stdin().read_line(&mut input).expect("RUST ERROR HELP");
+	if ['\n','\r'].contains(&input.chars().next_back().unwrap()) {
+		input.pop();
+	}
+	return input;
+}
+
 /// Resets the thread-local stderr handle to the specified writer
 ///
 /// This will replace the current thread's stderr handle, returning the old
