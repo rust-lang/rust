@@ -1,6 +1,9 @@
 //! There are many AstNodes, but only a few tokens, so we hand-write them here.
 
-use std::convert::{TryFrom, TryInto};
+use std::{
+    borrow::Cow,
+    convert::{TryFrom, TryInto},
+};
 
 use crate::{
     ast::{AstToken, Comment, RawString, String, Whitespace},
@@ -138,11 +141,11 @@ impl HasQuotes for String {}
 impl HasQuotes for RawString {}
 
 pub trait HasStringValue: HasQuotes {
-    fn value(&self) -> Option<std::string::String>;
+    fn value(&self) -> Option<Cow<'_, str>>;
 }
 
 impl HasStringValue for String {
-    fn value(&self) -> Option<std::string::String> {
+    fn value(&self) -> Option<Cow<'_, str>> {
         let text = self.text().as_str();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
@@ -156,15 +159,17 @@ impl HasStringValue for String {
         if has_error {
             return None;
         }
-        Some(buf)
+        // FIXME: don't actually allocate for borrowed case
+        let res = if buf == text { Cow::Borrowed(text) } else { Cow::Owned(buf) };
+        Some(res)
     }
 }
 
 impl HasStringValue for RawString {
-    fn value(&self) -> Option<std::string::String> {
+    fn value(&self) -> Option<Cow<'_, str>> {
         let text = self.text().as_str();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-        Some(text.to_string())
+        Some(Cow::Borrowed(text))
     }
 }
 
