@@ -13,6 +13,7 @@
 #![feature(fmt_internals)]
 #![feature(hashmap_internals)]
 #![feature(try_find)]
+#![feature(int_log)]
 #![feature(is_sorted)]
 #![feature(pattern)]
 #![feature(range_is_empty)]
