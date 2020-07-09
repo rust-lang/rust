@@ -1,5 +1,3 @@
-use std::iter::once;
-
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
     Module, ModuleDef, ModuleSource, Semantics,
@@ -211,7 +209,11 @@ fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
                 .into_iter()
                 .filter_map(|it| {
                     Some(HoverGotoTypeData {
-                        mod_path: mod_path(db, &it)?,
+                        mod_path: render_path(
+                            db,
+                            it.module(db)?,
+                            it.name(db).map(|name| name.to_string()),
+                        ),
                         nav: it.try_to_nav(db)?,
                     })
                 })
@@ -253,27 +255,19 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
     .map(|name| name.to_string())
 }
 
-fn determine_mod_path(db: &RootDatabase, module: Module, name: Option<String>) -> String {
-    once(db.crate_graph()[module.krate().into()].display_name.as_ref().map(ToString::to_string))
-        .chain(
-            module
-                .path_to_root(db)
-                .into_iter()
-                .rev()
-                .map(|it| it.name(db).map(|name| name.to_string())),
-        )
-        .chain(once(name))
-        .flatten()
-        .join("::")
-}
-
-// returns None only for ModuleDef::BuiltinType
-fn mod_path(db: &RootDatabase, item: &ModuleDef) -> Option<String> {
-    Some(determine_mod_path(db, item.module(db)?, item.name(db).map(|name| name.to_string())))
+fn render_path(db: &RootDatabase, module: Module, item_name: Option<String>) -> String {
+    let crate_name =
+        db.crate_graph()[module.krate().into()].display_name.as_ref().map(ToString::to_string);
+    let module_path = module
+        .path_to_root(db)
+        .into_iter()
+        .rev()
+        .flat_map(|it| it.name(db).map(|name| name.to_string()));
+    crate_name.into_iter().chain(module_path).chain(item_name).join("::")
 }
 
 fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
-    def.module(db).map(|module| determine_mod_path(db, module, definition_owner_name(db, def)))
+    def.module(db).map(|module| render_path(db, module, definition_owner_name(db, def)))
 }
 
 fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<String> {
