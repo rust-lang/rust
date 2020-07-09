@@ -1262,6 +1262,7 @@ name = "ra_syntax"
 version = "0.1.0"
 dependencies = [
  "arrayvec",
+ "expect",
  "itertools",
  "once_cell",
  "ra_parser",

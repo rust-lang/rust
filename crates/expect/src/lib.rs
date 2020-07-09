@@ -42,7 +42,9 @@ macro_rules! expect {
 /// expect_file!["/crates/foo/test_data/bar.html"]
 #[macro_export]
 macro_rules! expect_file {
-    [$path:literal] => {$crate::ExpectFile { path: $path }};
+    [$path:literal] => {$crate::ExpectFile {
+        path: $crate::ExpectFilePath::Static($path)
+    }};
 }
 
 #[derive(Debug)]
@@ -53,7 +55,13 @@ pub struct Expect {
 
 #[derive(Debug)]
 pub struct ExpectFile {
-    pub path: &'static str,
+    pub path: ExpectFilePath,
+}
+
+#[derive(Debug)]
+pub enum ExpectFilePath {
+    Static(&'static str),
+    Dynamic(PathBuf),
 }
 
 #[derive(Debug)]
@@ -112,6 +120,9 @@ impl Expect {
 }
 
 impl ExpectFile {
+    pub fn new(path: PathBuf) -> ExpectFile {
+        ExpectFile { path: ExpectFilePath::Dynamic(path) }
+    }
     pub fn assert_eq(&self, actual: &str) {
         let expected = self.read();
         if actual == expected {
@@ -125,8 +136,14 @@ impl ExpectFile {
     fn write(&self, contents: &str) {
         fs::write(self.abs_path(), contents).unwrap()
     }
+    fn path(&self) -> &Path {
+        match &self.path {
+            ExpectFilePath::Static(it) => it.as_ref(),
+            ExpectFilePath::Dynamic(it) => it.as_path(),
+        }
+    }
     fn abs_path(&self) -> PathBuf {
-        workspace_root().join(self.path)
+        workspace_root().join(self.path())
     }
 }
 
@@ -154,11 +171,11 @@ impl Runtime {
     fn fail_file(expect: &ExpectFile, expected: &str, actual: &str) {
         let mut rt = RT.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if update_expect() {
-            println!("\x1b[1m\x1b[92mupdating\x1b[0m: {}", expect.path);
+            println!("\x1b[1m\x1b[92mupdating\x1b[0m: {}", expect.path().display());
             expect.write(actual);
             return;
         }
-        rt.panic(expect.path.to_string(), expected, actual);
+        rt.panic(expect.path().display().to_string(), expected, actual);
     }
 
     fn panic(&mut self, position: String, expected: &str, actual: &str) {

@@ -1,11 +1,10 @@
 use std::{
-    env,
     fmt::Write,
     fs,
     path::{Component, Path, PathBuf},
 };
 
-use test_utils::{assert_eq_text, project_dir};
+use test_utils::project_dir;
 
 use crate::{fuzz, tokenize, SourceFile, SyntaxError, TextRange, TextSize, Token};
 
@@ -218,15 +217,7 @@ where
     for (path, input_code) in collect_rust_files(test_data_dir, paths) {
         let actual = f(&input_code, &path);
         let path = path.with_extension(outfile_extension);
-        if !path.exists() {
-            println!("\nfile: {}", path.display());
-            println!("No .txt file with expected result, creating...\n");
-            println!("{}\n{}", input_code, actual);
-            fs::write(&path, &actual).unwrap();
-            panic!("No expected result");
-        }
-        let expected = read_text(&path);
-        assert_equal_text(&expected, &actual, &path);
+        expect::ExpectFile::new(path).assert_eq(&actual)
     }
 }
 
@@ -257,29 +248,6 @@ fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
     }
     acc.sort();
     acc
-}
-
-/// Asserts that `expected` and `actual` strings are equal. If they differ only
-/// in trailing or leading whitespace the test won't fail and
-/// the contents of `actual` will be written to the file located at `path`.
-fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
-    if expected == actual {
-        return;
-    }
-    let dir = project_dir();
-    let pretty_path = path.strip_prefix(&dir).unwrap_or_else(|_| path);
-    if expected.trim() == actual.trim() {
-        println!("whitespace difference, rewriting");
-        println!("file: {}\n", pretty_path.display());
-        fs::write(path, actual).unwrap();
-        return;
-    }
-    if env::var("UPDATE_EXPECT").is_ok() {
-        println!("rewriting {}", pretty_path.display());
-        fs::write(path, actual).unwrap();
-        return;
-    }
-    assert_eq_text!(expected, actual, "file: {}", pretty_path.display());
 }
 
 /// Read file and normalize newlines.
