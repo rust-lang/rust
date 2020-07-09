@@ -628,6 +628,7 @@ impl Attributes {
     /// Cache must be populated before call
     pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
         use crate::html::format::href;
+        use crate::html::render::CURRENT_DEPTH;
 
         self.links
             .iter()
@@ -648,12 +649,13 @@ impl Attributes {
                         if let Some(ref fragment) = *fragment {
                             let cache = cache();
                             let url = match cache.extern_locations.get(krate) {
-                                Some(&(_, ref src, ExternalLocation::Local)) => {
-                                    src.to_str().expect("invalid file path")
+                                Some(&(_, _, ExternalLocation::Local)) => {
+                                    let depth = CURRENT_DEPTH.with(|l| l.get());
+                                    "../".repeat(depth)
                                 }
-                                Some(&(_, _, ExternalLocation::Remote(ref s))) => s,
+                                Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
                                 Some(&(_, _, ExternalLocation::Unknown)) | None => {
-                                    "https://doc.rust-lang.org/nightly"
+                                    String::from("https://doc.rust-lang.org/nightly")
                                 }
                             };
                             // This is a primitive so the url is done "by hand".
