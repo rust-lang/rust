@@ -27,7 +27,7 @@
 use crate::def_id::{DefId, CRATE_DEF_INDEX};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
-use crate::GLOBALS;
+use crate::SESSION_GLOBALS;
 use crate::{Span, DUMMY_SP};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -174,7 +174,7 @@ impl HygieneData {
     }
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
-        GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
+        SESSION_GLOBALS.with(|session_globals| f(&mut *session_globals.hygiene_data.borrow_mut()))
     }
 
     fn fresh_expn(&mut self, expn_data: Option<ExpnData>) -> ExpnId {

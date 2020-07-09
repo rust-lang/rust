@@ -284,7 +284,7 @@ fn parse_args() -> (OutputFormat, PathBuf) {
 fn main() {
     env_logger::init();
     let (format, dst) = parse_args();
-    let result = rustc_ast::with_default_globals(move || main_with_result(format, &dst));
+    let result = rustc_ast::with_default_session_globals(move || main_with_result(format, &dst));
     if let Err(e) = result {
         panic!("{}", e.to_string());
     }
