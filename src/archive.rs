@@ -220,8 +220,10 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         std::mem::drop(builder);
 
         if self.update_symbols {
+            let ranlib = crate::toolchain::get_toolchain_binary(self.config.sess, "ranlib");
+
             // Run ranlib to be able to link the archive
-            let status = std::process::Command::new("ranlib")
+            let status = std::process::Command::new(ranlib)
                 .arg(self.config.dst)
                 .status()
                 .expect("Couldn't run ranlib");

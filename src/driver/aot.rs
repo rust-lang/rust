@@ -277,6 +277,9 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
         return;
     }
 
+    let assembler = crate::toolchain::get_toolchain_binary(tcx.sess, "as");
+    let linker = crate::toolchain::get_toolchain_binary(tcx.sess, "ld");
+
     // Remove all LLVM style comments
     let global_asm = global_asm.lines().map(|line| {
         if let Some(index) = line.find("//") {
@@ -292,7 +295,7 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
 
     // Assemble `global_asm`
     let global_asm_object_file = add_file_stem_postfix(output_object_file.clone(), ".asm");
-    let mut child = Command::new("as")
+    let mut child = Command::new(assembler)
         .arg("-o").arg(&global_asm_object_file)
         .stdin(Stdio::piped())
         .spawn()
@@ -306,7 +309,7 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
     // Link the global asm and main object file together
     let main_object_file = add_file_stem_postfix(output_object_file.clone(), ".main");
     std::fs::rename(&output_object_file, &main_object_file).unwrap();
-    let status = Command::new("ld")
+    let status = Command::new(linker)
         .arg("-r") // Create a new object file
         .arg("-o").arg(output_object_file)
         .arg(&main_object_file)
