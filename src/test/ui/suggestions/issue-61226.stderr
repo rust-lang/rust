@@ -1,11 +1,11 @@
 error[E0423]: expected value, found struct `X`
-  --> $DIR/issue-61226.rs:3:10
+  --> $DIR/issue-61226.rs:4:18
    |
 LL | struct X {}
    | ----------- `X` defined here
 LL | fn main() {
-LL |     vec![X]; //…
-   |          ^ help: use struct literal syntax instead: `X {}`
+LL |     let _ = vec![X]; //…
+   |                  ^ help: use struct literal syntax instead: `X {}`
 
 error: aborting due to previous error
 

@@ -1,5 +1,5 @@
 // run-rustfix
 fn main() {
-    let _ = Option:Some("");
+    let _ = Box::new("foo".to_string());
     //~^ ERROR expected type, found
 }
