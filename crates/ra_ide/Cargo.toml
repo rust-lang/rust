@@ -36,5 +36,4 @@ ra_ssr = { path = "../ra_ssr" }
 hir = { path = "../ra_hir", package = "ra_hir" }
 
 [dev-dependencies]
-insta = "0.16.0"
 expect = { path = "../expect" }

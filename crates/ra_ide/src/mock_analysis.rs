@@ -71,26 +71,22 @@ impl MockAnalysis {
     }
 
     pub fn id_of(&self, path: &str) -> FileId {
-        let (idx, _) = self
-            .files
-            .iter()
-            .enumerate()
-            .find(|(_, data)| path == data.path)
-            .expect("no file in this mock");
-        FileId(idx as u32 + 1)
+        let (file_id, _) =
+            self.files().find(|(_, data)| path == data.path).expect("no file in this mock");
+        file_id
     }
     pub fn annotations(&self) -> Vec<(FileRange, String)> {
-        self.files
-            .iter()
-            .enumerate()
-            .flat_map(|(idx, fixture)| {
-                let file_id = FileId(idx as u32 + 1);
+        self.files()
+            .flat_map(|(file_id, fixture)| {
                 let annotations = extract_annotations(&fixture.text);
                 annotations
                     .into_iter()
                     .map(move |(range, data)| (FileRange { file_id, range }, data))
             })
             .collect()
+    }
+    pub fn files(&self) -> impl Iterator<Item = (FileId, &Fixture)> + '_ {
+        self.files.iter().enumerate().map(|(idx, fixture)| (FileId(idx as u32 + 1), fixture))
     }
     pub fn annotation(&self) -> (FileRange, String) {
         let mut all = self.annotations();
