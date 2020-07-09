@@ -904,18 +904,7 @@ pub fn inputln(prompt: &str) -> String {
     stdout()
         .write(prompt.as_bytes())
         .unwrap();
-    let mut input = String::new();
-    let _ = stdout().flush();
-    stdin()
-        .read_line(&mut input)
-        .expect("Failed to read from stdin");
-    if input.chars().next_back().unwrap() == '\n' {
-        input.pop();
-    }
-    if input.chars().next_back().unwrap() == '\r' {
-        input.pop();
-    }
-    return input;
+    return input();
 }
 
 /// Equivalent to the [`inputln`] method except that a prompt is not printed before
