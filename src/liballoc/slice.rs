@@ -156,9 +156,9 @@ mod hack {
     where
         T: Clone,
     {
-        let mut vector = Vec::with_capacity(s.len());
-        vector.extend_from_slice(s);
-        vector
+        let mut vec = Vec::with_capacity(s.len());
+        vec.extend_from_slice(s);
+        vec
     }
 }
 
