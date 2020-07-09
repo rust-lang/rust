@@ -4,6 +4,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
+use expect::expect_file;
 use test_utils::project_dir;
 
 use crate::{fuzz, tokenize, SourceFile, SyntaxError, TextRange, TextSize, Token};
@@ -217,7 +218,7 @@ where
     for (path, input_code) in collect_rust_files(test_data_dir, paths) {
         let actual = f(&input_code, &path);
         let path = path.with_extension(outfile_extension);
-        expect::ExpectFile::new(path).assert_eq(&actual)
+        expect_file![path].assert_eq(&actual)
     }
 }
 

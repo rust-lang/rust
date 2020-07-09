@@ -42,8 +42,8 @@ macro_rules! expect {
 /// expect_file!["/crates/foo/test_data/bar.html"]
 #[macro_export]
 macro_rules! expect_file {
-    [$path:literal] => {$crate::ExpectFile {
-        path: $crate::ExpectFilePath::Static($path)
+    [$path:expr] => {$crate::ExpectFile {
+        path: std::path::PathBuf::from($path)
     }};
 }
 
@@ -55,13 +55,7 @@ pub struct Expect {
 
 #[derive(Debug)]
 pub struct ExpectFile {
-    pub path: ExpectFilePath,
-}
-
-#[derive(Debug)]
-pub enum ExpectFilePath {
-    Static(&'static str),
-    Dynamic(PathBuf),
+    pub path: PathBuf,
 }
 
 #[derive(Debug)]
@@ -120,9 +114,6 @@ impl Expect {
 }
 
 impl ExpectFile {
-    pub fn new(path: PathBuf) -> ExpectFile {
-        ExpectFile { path: ExpectFilePath::Dynamic(path) }
-    }
     pub fn assert_eq(&self, actual: &str) {
         let expected = self.read();
         if actual == expected {
@@ -136,14 +127,8 @@ impl ExpectFile {
     fn write(&self, contents: &str) {
         fs::write(self.abs_path(), contents).unwrap()
     }
-    fn path(&self) -> &Path {
-        match &self.path {
-            ExpectFilePath::Static(it) => it.as_ref(),
-            ExpectFilePath::Dynamic(it) => it.as_path(),
-        }
-    }
     fn abs_path(&self) -> PathBuf {
-        workspace_root().join(self.path())
+        WORKSPACE_ROOT.join(&self.path)
     }
 }
 
@@ -171,11 +156,11 @@ impl Runtime {
     fn fail_file(expect: &ExpectFile, expected: &str, actual: &str) {
         let mut rt = RT.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if update_expect() {
-            println!("\x1b[1m\x1b[92mupdating\x1b[0m: {}", expect.path().display());
+            println!("\x1b[1m\x1b[92mupdating\x1b[0m: {}", expect.path.display());
             expect.write(actual);
             return;
         }
-        rt.panic(expect.path().display().to_string(), expected, actual);
+        rt.panic(expect.path.display().to_string(), expected, actual);
     }
 
     fn panic(&mut self, position: String, expected: &str, actual: &str) {
@@ -219,7 +204,7 @@ struct FileRuntime {
 
 impl FileRuntime {
     fn new(expect: &Expect) -> FileRuntime {
-        let path = workspace_root().join(expect.position.file);
+        let path = WORKSPACE_ROOT.join(expect.position.file);
         let original_text = fs::read_to_string(&path).unwrap();
         let patchwork = Patchwork::new(original_text.clone());
         FileRuntime { path, original_text, patchwork }
@@ -307,15 +292,17 @@ fn format_patch(line_indent: usize, patch: &str) -> String {
     buf
 }
 
-fn workspace_root() -> PathBuf {
-    Path::new(
-        &env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").to_owned()),
-    )
-    .ancestors()
-    .nth(2)
-    .unwrap()
-    .to_path_buf()
-}
+static WORKSPACE_ROOT: Lazy<PathBuf> = Lazy::new(|| {
+    let my_manifest =
+        env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").to_owned());
+    // Heuristic, see https://github.com/rust-lang/cargo/issues/3946
+    Path::new(&my_manifest)
+        .ancestors()
+        .filter(|it| it.join("Cargo.toml").exists())
+        .last()
+        .unwrap()
+        .to_path_buf()
+});
 
 #[cfg(test)]
 mod tests {
