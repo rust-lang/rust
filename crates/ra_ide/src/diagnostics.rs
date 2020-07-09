@@ -99,14 +99,6 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             fix,
         })
     })
-    .on::<hir::diagnostics::MissingMatchArms, _>(|d| {
-        res.borrow_mut().push(Diagnostic {
-            range: sema.diagnostics_range(d).range,
-            message: d.message(),
-            severity: Severity::Error,
-            fix: None,
-        })
-    })
     .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
         let node = d.ast(db);
         let replacement = format!("Ok({})", node.syntax());

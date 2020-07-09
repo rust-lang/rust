@@ -1104,6 +1104,7 @@ dependencies = [
  "chalk-ir",
  "chalk-solve",
  "ena",
+ "expect",
  "insta",
  "itertools",
  "log",

@@ -197,3 +197,33 @@ impl AstDiagnostic for MissingUnsafe {
         ast::Expr::cast(node).unwrap()
     }
 }
+
+#[derive(Debug)]
+pub struct MismatchedArgCount {
+    pub file: HirFileId,
+    pub call_expr: AstPtr<ast::Expr>,
+    pub expected: usize,
+    pub found: usize,
+}
+
+impl Diagnostic for MismatchedArgCount {
+    fn message(&self) -> String {
+        let s = if self.expected == 1 { "" } else { "s" };
+        format!("Expected {} argument{}, found {}", self.expected, s, self.found)
+    }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.call_expr.clone().into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+impl AstDiagnostic for MismatchedArgCount {
+    type AST = ast::CallExpr;
+    fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
+        let root = db.parse_or_expand(self.source().file_id).unwrap();
+        let node = self.source().value.to_node(&root);
+        ast::CallExpr::cast(node).unwrap()
+    }
+}

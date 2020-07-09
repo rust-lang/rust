@@ -32,3 +32,4 @@ chalk-ir = { version = "0.15.0" }
 
 [dev-dependencies]
 insta = "0.16.0"
+expect = { path = "../expect" }

@@ -9,9 +9,11 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
-    diagnostics::{MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields},
+    diagnostics::{
+        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields,
+    },
     utils::variant_data,
-    ApplicationTy, InferenceResult, Ty, TypeCtor,
+    ApplicationTy, CallableDef, InferenceResult, Ty, TypeCtor,
     _match::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
 };
 
@@ -24,7 +26,8 @@ pub use hir_def::{
         ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
         MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement, UnaryOp,
     },
-    LocalFieldId, VariantId,
+    src::HasSource,
+    LocalFieldId, Lookup, VariantId,
 };
 
 pub struct ExprValidator<'a, 'b: 'a> {
@@ -56,8 +59,15 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                     missed_fields,
                 );
             }
-            if let Expr::Match { expr, arms } = expr {
-                self.validate_match(id, *expr, arms, db, self.infer.clone());
+
+            match expr {
+                Expr::Match { expr, arms } => {
+                    self.validate_match(id, *expr, arms, db, self.infer.clone());
+                }
+                Expr::Call { .. } | Expr::MethodCall { .. } => {
+                    self.validate_call(db, id, expr);
+                }
+                _ => {}
             }
         }
         for (id, pat) in body.pats.iter() {
@@ -136,6 +146,68 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 }
             }
         }
+    }
+
+    fn validate_call(&mut self, db: &dyn HirDatabase, call_id: ExprId, expr: &Expr) -> Option<()> {
+        // Check that the number of arguments matches the number of parameters.
+
+        // FIXME: Due to shortcomings in the current type system implementation, only emit this
+        // diagnostic if there are no type mismatches in the containing function.
+        if self.infer.type_mismatches.iter().next().is_some() {
+            return Some(());
+        }
+
+        let is_method_call = matches!(expr, Expr::MethodCall { .. });
+        let (callee, args) = match expr {
+            Expr::Call { callee, args } => {
+                let callee = &self.infer.type_of_expr[*callee];
+                let (callable, _) = callee.as_callable()?;
+                let callee = match callable {
+                    CallableDef::FunctionId(func) => func,
+
+                    // FIXME: Handle tuple struct/variant constructor calls.
+                    _ => return None,
+                };
+
+                (callee, args.clone())
+            }
+            Expr::MethodCall { receiver, args, .. } => {
+                let callee = self.infer.method_resolution(call_id)?;
+                let mut args = args.clone();
+                args.insert(0, *receiver);
+                (callee, args)
+            }
+            _ => return None,
+        };
+
+        let loc = callee.lookup(db.upcast());
+        let ast = loc.source(db.upcast());
+        let params = ast.value.param_list()?;
+
+        let mut param_count = params.params().count();
+        let mut arg_count = args.len();
+
+        if params.self_param().is_some() {
+            param_count += 1;
+        }
+
+        if arg_count != param_count {
+            let (_, source_map) = db.body_with_source_map(self.func.into());
+            if let Ok(source_ptr) = source_map.expr_syntax(call_id) {
+                if is_method_call {
+                    param_count -= 1;
+                    arg_count -= 1;
+                }
+                self.sink.push(MismatchedArgCount {
+                    file: source_ptr.file_id,
+                    call_expr: source_ptr.value,
+                    expected: param_count,
+                    found: arg_count,
+                });
+            }
+        }
+
+        None
     }
 
     fn validate_match(
@@ -311,4 +383,122 @@ pub fn record_pattern_missing_fields(
         return None;
     }
     Some((variant_def, missed_fields, exhaustive))
+}
+
+#[cfg(test)]
+mod tests {
+    use expect::{expect, Expect};
+    use ra_db::fixture::WithFixture;
+
+    use crate::{diagnostics::MismatchedArgCount, test_db::TestDB};
+
+    fn check_diagnostic(ra_fixture: &str, expect: Expect) {
+        let msg = TestDB::with_single_file(ra_fixture).0.diagnostic::<MismatchedArgCount>().0;
+        expect.assert_eq(&msg);
+    }
+
+    fn check_no_diagnostic(ra_fixture: &str) {
+        let (s, diagnostic_count) =
+            TestDB::with_single_file(ra_fixture).0.diagnostic::<MismatchedArgCount>();
+
+        assert_eq!(0, diagnostic_count, "expected no diagnostic, found one: {}", s);
+    }
+
+    #[test]
+    fn simple_free_fn_zero() {
+        check_diagnostic(
+            r"
+            fn zero() {}
+            fn f() { zero(1); }
+            ",
+            expect![["\"zero(1)\": Expected 0 arguments, found 1\n"]],
+        );
+
+        check_no_diagnostic(
+            r"
+            fn zero() {}
+            fn f() { zero(); }
+            ",
+        );
+    }
+
+    #[test]
+    fn simple_free_fn_one() {
+        check_diagnostic(
+            r"
+            fn one(arg: u8) {}
+            fn f() { one(); }
+            ",
+            expect![["\"one()\": Expected 1 argument, found 0\n"]],
+        );
+
+        check_no_diagnostic(
+            r"
+            fn one(arg: u8) {}
+            fn f() { one(1); }
+            ",
+        );
+    }
+
+    #[test]
+    fn method_as_fn() {
+        check_diagnostic(
+            r"
+            struct S;
+            impl S {
+                fn method(&self) {}
+            }
+
+            fn f() {
+                S::method();
+            }
+            ",
+            expect![["\"S::method()\": Expected 1 argument, found 0\n"]],
+        );
+
+        check_no_diagnostic(
+            r"
+            struct S;
+            impl S {
+                fn method(&self) {}
+            }
+
+            fn f() {
+                S::method(&S);
+                S.method();
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn method_with_arg() {
+        check_diagnostic(
+            r"
+            struct S;
+            impl S {
+                fn method(&self, arg: u8) {}
+            }
+
+            fn f() {
+                S.method();
+            }
+            ",
+            expect![["\"S.method()\": Expected 1 argument, found 0\n"]],
+        );
+
+        check_no_diagnostic(
+            r"
+            struct S;
+            impl S {
+                fn method(&self, arg: u8) {}
+            }
+
+            fn f() {
+                S::method(&S, 0);
+                S.method(1);
+            }
+            ",
+        );
+    }
 }
