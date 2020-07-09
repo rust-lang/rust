@@ -13,7 +13,7 @@ use crate::{
         MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields,
     },
     utils::variant_data,
-    ApplicationTy, CallableDef, InferenceResult, Ty, TypeCtor,
+    ApplicationTy, InferenceResult, Ty, TypeCtor,
     _match::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
 };
 
@@ -162,34 +162,23 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             Expr::Call { callee, args } => {
                 let callee = &self.infer.type_of_expr[*callee];
                 let (callable, _) = callee.as_callable()?;
-                let callee = match callable {
-                    CallableDef::FunctionId(func) => func,
 
-                    // FIXME: Handle tuple struct/variant constructor calls.
-                    _ => return None,
-                };
-
-                (callee, args.clone())
+                (callable, args.clone())
             }
             Expr::MethodCall { receiver, args, .. } => {
                 let callee = self.infer.method_resolution(call_id)?;
                 let mut args = args.clone();
                 args.insert(0, *receiver);
-                (callee, args)
+                (callee.into(), args)
             }
             _ => return None,
         };
 
-        let loc = callee.lookup(db.upcast());
-        let ast = loc.source(db.upcast());
-        let params = ast.value.param_list()?;
+        let sig = db.callable_item_signature(callee);
+        let params = sig.value.params();
 
-        let mut param_count = params.params().count();
+        let mut param_count = params.len();
         let mut arg_count = args.len();
-
-        if params.self_param().is_some() {
-            param_count += 1;
-        }
 
         if arg_count != param_count {
             let (_, source_map) = db.body_with_source_map(self.func.into());
@@ -500,5 +489,33 @@ mod tests {
             }
             ",
         );
+    }
+
+    #[test]
+    fn tuple_struct() {
+        check_diagnostic(
+            r"
+            struct Tup(u8, u16);
+            fn f() {
+                Tup(0);
+            }
+            ",
+            expect![["\"Tup(0)\": Expected 2 arguments, found 1\n"]],
+        )
+    }
+
+    #[test]
+    fn enum_variant() {
+        check_diagnostic(
+            r"
+            enum En {
+                Variant(u8, u16),
+            }
+            fn f() {
+                En::Variant(0);
+            }
+            ",
+            expect![["\"En::Variant(0)\": Expected 2 arguments, found 1\n"]],
+        )
     }
 }
