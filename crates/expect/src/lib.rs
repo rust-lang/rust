@@ -275,7 +275,7 @@ fn format_patch(line_indent: usize, patch: &str) -> String {
     }
     let mut final_newline = false;
     for line in lines_with_ends(patch) {
-        if is_multiline {
+        if is_multiline && !line.trim().is_empty() {
             buf.push_str(indent);
             buf.push_str("    ");
         }

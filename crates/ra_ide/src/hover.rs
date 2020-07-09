@@ -1,5 +1,3 @@
-use std::iter::once;
-
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
     Module, ModuleDef, ModuleSource, Semantics,
@@ -11,16 +9,15 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+use stdx::format_to;
+use test_utils::mark;
 
 use crate::{
-    display::{
-        macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel, ToNav, TryToNav,
-    },
+    display::{macro_label, ShortLabel, ToNav, TryToNav},
     markup::Markup,
     runnables::runnable,
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
 };
-use test_utils::mark;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
@@ -73,20 +70,6 @@ pub struct HoverResult {
     pub actions: Vec<HoverAction>,
 }
 
-impl HoverResult {
-    pub fn new() -> HoverResult {
-        Self::default()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.markup.is_empty()
-    }
-
-    fn push_action(&mut self, action: HoverAction) {
-        self.actions.push(action);
-    }
-}
-
 // Feature: Hover
 //
 // Shows additional information, like type of an expression or documentation for definition when "focusing" code.
@@ -97,38 +80,32 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     let token = pick_best(file.token_at_offset(position.offset))?;
     let token = sema.descend_into_macros(token);
 
-    let mut res = HoverResult::new();
+    let mut res = HoverResult::default();
 
     let node = token.parent();
     let definition = match_ast! {
         match node {
-            ast::NameRef(name_ref) => {
-                classify_name_ref(&sema, &name_ref).map(|d| d.definition())
-            },
-            ast::Name(name) => {
-                classify_name(&sema, &name).map(|d| d.definition())
-            },
+            ast::NameRef(name_ref) => classify_name_ref(&sema, &name_ref).map(|d| d.definition()),
+            ast::Name(name) => classify_name(&sema, &name).map(|d| d.definition()),
             _ => None,
         }
     };
     if let Some(definition) = definition {
-        let range = sema.original_range(&node).range;
-        if let Some(text) = hover_text_from_name_kind(db, definition) {
-            res.markup.push_section(&text);
-        }
-        if !res.is_empty() {
+        if let Some(markup) = hover_for_definition(db, definition) {
+            res.markup = markup;
             if let Some(action) = show_implementations_action(db, definition) {
-                res.push_action(action);
+                res.actions.push(action);
             }
 
             if let Some(action) = runnable_action(&sema, definition, position.file_id) {
-                res.push_action(action);
+                res.actions.push(action);
             }
 
             if let Some(action) = goto_type_action(db, definition) {
-                res.push_action(action);
+                res.actions.push(action);
             }
 
+            let range = sema.original_range(&node).range;
             return Some(RangeInfo::new(range, res));
         }
     }
@@ -139,22 +116,16 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
     let ty = match_ast! {
         match node {
-            ast::MacroCall(_it) => {
-                // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
-                // (e.g expanding a builtin macro). So we give up here.
-                return None;
-            },
-            ast::Expr(it) => {
-                sema.type_of_expr(&it)
-            },
-            ast::Pat(it) => {
-                sema.type_of_pat(&it)
-            },
-            _ => None,
+            ast::Expr(it) => sema.type_of_expr(&it)?,
+            ast::Pat(it) => sema.type_of_pat(&it)?,
+            // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
+            // (e.g expanding a builtin macro). So we give up here.
+            ast::MacroCall(_it) => return None,
+            _ => return None,
         }
-    }?;
+    };
 
-    res.markup.push_section(&rust_code_markup(&ty.display(db)));
+    res.markup = Markup::fenced_block(&ty.display(db));
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
@@ -235,7 +206,11 @@ fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
                 .into_iter()
                 .filter_map(|it| {
                     Some(HoverGotoTypeData {
-                        mod_path: mod_path(db, &it)?,
+                        mod_path: render_path(
+                            db,
+                            it.module(db)?,
+                            it.name(db).map(|name| name.to_string()),
+                        ),
                         nav: it.try_to_nav(db)?,
                     })
                 })
@@ -247,15 +222,28 @@ fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     }
 }
 
-fn hover_text(
+fn hover_markup(
     docs: Option<String>,
     desc: Option<String>,
     mod_path: Option<String>,
-) -> Option<String> {
-    if let Some(desc) = desc {
-        Some(rust_code_markup_with_doc(&desc, docs.as_deref(), mod_path.as_deref()))
-    } else {
-        docs
+) -> Option<Markup> {
+    match desc {
+        Some(desc) => {
+            let mut buf = String::new();
+
+            if let Some(mod_path) = mod_path {
+                if !mod_path.is_empty() {
+                    format_to!(buf, "```rust\n{}\n```\n\n", mod_path);
+                }
+            }
+            format_to!(buf, "```rust\n{}\n```", desc);
+
+            if let Some(doc) = docs {
+                format_to!(buf, "\n___\n\n{}", doc);
+            }
+            Some(buf.into())
+        }
+        None => docs.map(Markup::from),
     }
 }
 
@@ -277,43 +265,35 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
     .map(|name| name.to_string())
 }
 
-fn determine_mod_path(db: &RootDatabase, module: Module, name: Option<String>) -> String {
-    once(db.crate_graph()[module.krate().into()].display_name.as_ref().map(ToString::to_string))
-        .chain(
-            module
-                .path_to_root(db)
-                .into_iter()
-                .rev()
-                .map(|it| it.name(db).map(|name| name.to_string())),
-        )
-        .chain(once(name))
-        .flatten()
-        .join("::")
-}
-
-// returns None only for ModuleDef::BuiltinType
-fn mod_path(db: &RootDatabase, item: &ModuleDef) -> Option<String> {
-    Some(determine_mod_path(db, item.module(db)?, item.name(db).map(|name| name.to_string())))
+fn render_path(db: &RootDatabase, module: Module, item_name: Option<String>) -> String {
+    let crate_name =
+        db.crate_graph()[module.krate().into()].display_name.as_ref().map(ToString::to_string);
+    let module_path = module
+        .path_to_root(db)
+        .into_iter()
+        .rev()
+        .flat_map(|it| it.name(db).map(|name| name.to_string()));
+    crate_name.into_iter().chain(module_path).chain(item_name).join("::")
 }
 
 fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
-    def.module(db).map(|module| determine_mod_path(db, module, definition_owner_name(db, def)))
+    def.module(db).map(|module| render_path(db, module, definition_owner_name(db, def)))
 }
 
-fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<String> {
+fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
     return match def {
         Definition::Macro(it) => {
             let src = it.source(db);
             let docs = Documentation::from_ast(&src.value).map(Into::into);
-            hover_text(docs, Some(macro_label(&src.value)), mod_path)
+            hover_markup(docs, Some(macro_label(&src.value)), mod_path)
         }
         Definition::Field(it) => {
             let src = it.source(db);
             match src.value {
                 FieldSource::Named(it) => {
                     let docs = Documentation::from_ast(&it).map(Into::into);
-                    hover_text(docs, it.short_label(), mod_path)
+                    hover_markup(docs, it.short_label(), mod_path)
                 }
                 _ => None,
             }
@@ -322,7 +302,7 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
             ModuleDef::Module(it) => match it.definition_source(db).value {
                 ModuleSource::Module(it) => {
                     let docs = Documentation::from_ast(&it).map(Into::into);
-                    hover_text(docs, it.short_label(), mod_path)
+                    hover_markup(docs, it.short_label(), mod_path)
                 }
                 _ => None,
             },
@@ -335,23 +315,23 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
             ModuleDef::Static(it) => from_def_source(db, it, mod_path),
             ModuleDef::Trait(it) => from_def_source(db, it, mod_path),
             ModuleDef::TypeAlias(it) => from_def_source(db, it, mod_path),
-            ModuleDef::BuiltinType(it) => Some(it.to_string()),
+            ModuleDef::BuiltinType(it) => return Some(it.to_string().into()),
         },
-        Definition::Local(it) => Some(rust_code_markup(&it.ty(db).display(db))),
+        Definition::Local(it) => return Some(Markup::fenced_block(&it.ty(db).display(db))),
         Definition::TypeParam(_) | Definition::SelfType(_) => {
             // FIXME: Hover for generic param
             None
         }
     };
 
-    fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<String>
+    fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>
     where
         D: HasSource<Ast = A>,
         A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel + ast::AttrsOwner,
     {
         let src = def.source(db);
         let docs = Documentation::from_ast(&src.value).map(Into::into);
-        hover_text(docs, src.value.short_label(), mod_path)
+        hover_markup(docs, src.value.short_label(), mod_path)
     }
 }
 
@@ -388,7 +368,7 @@ mod tests {
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
 
-        let actual = format!("{}:\n{}\n", hovered_element, hover.info.markup);
+        let actual = format!("*{}*\n{}\n", hovered_element, hover.info.markup);
         expect.assert_eq(&actual)
     }
 
@@ -409,7 +389,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                foo():
+                *foo()*
                 ```rust
                 u32
                 ```
@@ -441,7 +421,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                iter:
+                *iter*
                 ```rust
                 Iter<Scan<OtherStruct<OtherStruct<i32>>, |&mut u32, &u32, &mut u32| -> Option<u32>, u32>>
                 ```
@@ -459,7 +439,7 @@ pub fn foo() -> u32 { 1 }
 fn main() { let foo_test = fo<|>o(); }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 pub fn foo() -> u32
                 ```
@@ -486,7 +466,7 @@ mod c;
 fn main() { let foo_test = fo<|>o(); }
         "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 {unknown}
                 ```
@@ -503,7 +483,7 @@ pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str { }
 fn main() { let foo_test = fo<|>o(); }
         "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str
                 ```
@@ -520,7 +500,7 @@ pub fn foo<|>(a: u32, b: u32) -> u32 {}
 fn main() { }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 pub fn foo(a: u32, b: u32) -> u32
                 ```
@@ -540,7 +520,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                field_a:
+                *field_a*
                 ```rust
                 Foo
                 ```
@@ -561,7 +541,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                field_a:
+                *field_a*
                 ```rust
                 Foo
                 ```
@@ -578,7 +558,7 @@ fn main() {
         check(
             r#"const foo<|>: u32 = 0;"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 const foo: u32
                 ```
@@ -587,7 +567,7 @@ fn main() {
         check(
             r#"static foo<|>: u32 = 0;"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 static foo: u32
                 ```
@@ -605,7 +585,7 @@ fn main() {
     let zz<|> = Test { t: 23u8, k: 33 };
 }"#,
             expect![[r#"
-                zz:
+                *zz*
                 ```rust
                 Test<i32, u8>
                 ```
@@ -623,7 +603,7 @@ use Option::Some;
 fn main() { So<|>me(12); }
 "#,
             expect![[r#"
-                Some:
+                *Some*
                 ```rust
                 Option
                 ```
@@ -642,7 +622,7 @@ use Option::Some;
 fn main() { let b<|>ar = Some(12); }
 "#,
             expect![[r#"
-                bar:
+                *bar*
                 ```rust
                 Option<i32>
                 ```
@@ -660,7 +640,7 @@ enum Option<T> {
 }
 "#,
             expect![[r#"
-                None:
+                *None*
                 ```rust
                 Option
                 ```
@@ -685,7 +665,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Some:
+                *Some*
                 ```rust
                 Option
                 ```
@@ -705,7 +685,7 @@ fn main() {
         check(
             r#"fn func(foo: i32) { fo<|>o; }"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 i32
                 ```
@@ -718,7 +698,7 @@ fn main() {
         check(
             r#"fn func(fo<|>o: i32) {}"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 i32
                 ```
@@ -731,7 +711,7 @@ fn main() {
         check(
             r#"fn func(foo: i32) { if true { <|>foo; }; }"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 i32
                 ```
@@ -744,7 +724,7 @@ fn main() {
         check(
             r#"fn func(<|>foo: i32) {}"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 i32
                 ```
@@ -765,7 +745,7 @@ impl Thing {
 fn main() { let foo_<|>test = Thing::new(); }
             "#,
             expect![[r#"
-                foo_test:
+                *foo_test*
                 ```rust
                 Thing
                 ```
@@ -788,7 +768,7 @@ mod wrapper {
 fn main() { let foo_test = wrapper::Thing::new<|>(); }
 "#,
             expect![[r#"
-                new:
+                *new*
                 ```rust
                 wrapper::Thing
                 ```
@@ -818,7 +798,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                C:
+                *C*
                 ```rust
                 const C: u32
                 ```
@@ -836,7 +816,7 @@ impl Thing {
 }
 "#,
             expect![[r#"
-                Self { x: 0 }:
+                *Self { x: 0 }*
                 ```rust
                 Thing
                 ```
@@ -895,7 +875,7 @@ fn y() {
 }
 "#,
             expect![[r#"
-                x:
+                *x*
                 ```rust
                 i32
                 ```
@@ -912,7 +892,7 @@ macro_rules! foo { () => {} }
 fn f() { fo<|>o!(); }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 macro_rules! foo
                 ```
@@ -925,7 +905,7 @@ fn f() { fo<|>o!(); }
         check(
             r#"struct TS(String, i32<|>);"#,
             expect![[r#"
-                i32:
+                *i32*
                 i32
             "#]],
         )
@@ -942,7 +922,7 @@ id! {
 }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 fn foo()
                 ```
@@ -958,7 +938,7 @@ macro_rules! id { ($($tt:tt)*) => { $($tt)* } }
 fn foo(bar:u32) { let a = id!(ba<|>r); }
 "#,
             expect![[r#"
-                bar:
+                *bar*
                 ```rust
                 u32
                 ```
@@ -975,7 +955,7 @@ macro_rules! id { ($($tt:tt)*) => { id_deep!($($tt)*) } }
 fn foo(bar:u32) { let a = id!(ba<|>r); }
 "#,
             expect![[r#"
-                bar:
+                *bar*
                 ```rust
                 u32
                 ```
@@ -993,7 +973,7 @@ fn bar() -> u32 { 0 }
 fn foo() { let a = id!([0u32, bar(<|>)] ); }
 "#,
             expect![[r#"
-                bar():
+                *bar()*
                 ```rust
                 u32
                 ```
@@ -1012,7 +992,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                "Tracks":
+                *"Tracks"*
                 ```rust
                 &str
                 ```
@@ -1033,7 +1013,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                bar:
+                *bar*
                 ```rust
                 fn bar() -> bool
                 ```
@@ -1065,7 +1045,7 @@ fn foo() { }
 fn bar() { fo<|>o(); }
 ",
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 fn foo()
                 ```
@@ -1081,7 +1061,7 @@ fn bar() { fo<|>o(); }
         check(
             r#"async fn foo<|>() {}"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 async fn foo()
                 ```
@@ -1090,7 +1070,7 @@ fn bar() { fo<|>o(); }
         check(
             r#"pub const unsafe fn foo<|>() {}"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 pub const unsafe fn foo()
                 ```
@@ -1099,7 +1079,7 @@ fn bar() { fo<|>o(); }
         check(
             r#"pub(crate) async unsafe extern "C" fn foo<|>() {}"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 pub(crate) async unsafe extern "C" fn foo()
                 ```
@@ -1136,7 +1116,7 @@ mod my { pub struct Bar; }
 fn my() {}
 "#,
             expect![[r#"
-                my:
+                *my*
                 ```rust
                 mod my
                 ```
@@ -1154,7 +1134,7 @@ struct Bar;
 fn foo() { let bar = Ba<|>r; }
 "#,
             expect![[r#"
-                Bar:
+                *Bar*
                 ```rust
                 struct Bar
                 ```
@@ -1175,7 +1155,7 @@ struct Bar;
 fn foo() { let bar = Ba<|>r; }
 "#,
             expect![[r#"
-                Bar:
+                *Bar*
                 ```rust
                 struct Bar
                 ```
@@ -1198,7 +1178,7 @@ struct Bar;
 fn foo() { let bar = Ba<|>r; }
 "#,
             expect![[r#"
-                Bar:
+                *Bar*
                 ```rust
                 struct Bar
                 ```
@@ -1234,7 +1214,7 @@ bar!();
 fn foo() { let bar = Bar; bar.fo<|>o(); }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 Bar
                 ```
@@ -1270,7 +1250,7 @@ bar!();
 fn foo() { let bar = Bar; bar.fo<|>o(); }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 Bar
                 ```
