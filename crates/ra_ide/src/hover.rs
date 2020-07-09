@@ -93,9 +93,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     };
     if let Some(definition) = definition {
         if let Some(text) = hover_for_definition(db, definition) {
-            res.markup.push_section(&text);
-        }
-        if !res.markup.is_empty() {
+            res.markup = text.into();
             if let Some(action) = show_implementations_action(db, definition) {
                 res.actions.push(action);
             }
@@ -128,7 +126,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     };
 
-    res.markup.push_section(&rust_code_markup(&ty.display(db)));
+    res.markup = rust_code_markup(&ty.display(db)).into();
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
