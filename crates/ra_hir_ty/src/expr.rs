@@ -151,16 +151,15 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     fn validate_call(&mut self, db: &dyn HirDatabase, call_id: ExprId, expr: &Expr) -> Option<()> {
         // Check that the number of arguments matches the number of parameters.
 
-        // Due to shortcomings in the current type system implementation, only emit this diagnostic
-        // if there are no type mismatches in the containing function.
+        // FIXME: Due to shortcomings in the current type system implementation, only emit this
+        // diagnostic if there are no type mismatches in the containing function.
         if self.infer.type_mismatches.iter().next().is_some() {
             return Some(());
         }
 
-        let is_method_call;
+        let is_method_call = matches!(expr, Expr::MethodCall { .. });
         let (callee, args) = match expr {
             Expr::Call { callee, args } => {
-                is_method_call = false;
                 let callee = &self.infer.type_of_expr[*callee];
                 let (callable, _) = callee.as_callable()?;
                 let callee = match callable {
@@ -173,7 +172,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 (callee, args.clone())
             }
             Expr::MethodCall { receiver, args, .. } => {
-                is_method_call = true;
                 let callee = self.infer.method_resolution(call_id)?;
                 let mut args = args.clone();
                 args.insert(0, *receiver);
@@ -389,13 +387,14 @@ pub fn record_pattern_missing_fields(
 
 #[cfg(test)]
 mod tests {
-    use insta::assert_snapshot;
+    use expect::{expect, Expect};
     use ra_db::fixture::WithFixture;
 
     use crate::{diagnostics::MismatchedArgCount, test_db::TestDB};
 
-    fn check_diagnostic_message(ra_fixture: &str) -> String {
-        TestDB::with_single_file(ra_fixture).0.diagnostic::<MismatchedArgCount>().0
+    fn check_diagnostic(ra_fixture: &str, expect: Expect) {
+        let msg = TestDB::with_single_file(ra_fixture).0.diagnostic::<MismatchedArgCount>().0;
+        expect.assert_eq(&msg);
     }
 
     fn check_no_diagnostic(ra_fixture: &str) {
@@ -407,55 +406,43 @@ mod tests {
 
     #[test]
     fn simple_free_fn_zero() {
-        assert_snapshot!(check_diagnostic_message(
+        check_diagnostic(
             r"
             fn zero() {}
-
-            fn f() {
-                zero(1);
-            }
-            "
-        ),
-        @"\"zero(1)\": Expected 0 arguments, found 1\n");
+            fn f() { zero(1); }
+            ",
+            expect![["\"zero(1)\": Expected 0 arguments, found 1\n"]],
+        );
 
         check_no_diagnostic(
             r"
             fn zero() {}
-
-            fn f() {
-                zero();
-            }
+            fn f() { zero(); }
             ",
         );
     }
 
     #[test]
     fn simple_free_fn_one() {
-        assert_snapshot!(check_diagnostic_message(
+        check_diagnostic(
             r"
             fn one(arg: u8) {}
-
-            fn f() {
-                one();
-            }
-            "
-        ),
-        @"\"one()\": Expected 1 argument, found 0\n");
+            fn f() { one(); }
+            ",
+            expect![["\"one()\": Expected 1 argument, found 0\n"]],
+        );
 
         check_no_diagnostic(
             r"
             fn one(arg: u8) {}
-
-            fn f() {
-                one(1);
-            }
+            fn f() { one(1); }
             ",
         );
     }
 
     #[test]
     fn method_as_fn() {
-        assert_snapshot!(check_diagnostic_message(
+        check_diagnostic(
             r"
             struct S;
             impl S {
@@ -465,9 +452,9 @@ mod tests {
             fn f() {
                 S::method();
             }
-            "
-        ),
-        @"\"S::method()\": Expected 1 argument, found 0\n");
+            ",
+            expect![["\"S::method()\": Expected 1 argument, found 0\n"]],
+        );
 
         check_no_diagnostic(
             r"
@@ -486,7 +473,7 @@ mod tests {
 
     #[test]
     fn method_with_arg() {
-        assert_snapshot!(check_diagnostic_message(
+        check_diagnostic(
             r"
             struct S;
             impl S {
@@ -496,9 +483,9 @@ mod tests {
             fn f() {
                 S.method();
             }
-            "
-        ),
-        @"\"S.method()\": Expected 1 argument, found 0\n");
+            ",
+            expect![["\"S.method()\": Expected 1 argument, found 0\n"]],
+        );
 
         check_no_diagnostic(
             r"
