@@ -55,7 +55,7 @@ pub fn target() -> TargetResult {
 
             // FIXME: enable compilation tests for the target and
             // create the tests for this.
-            abi_blacklist: vec![
+            unsupported_abis: vec![
                 Abi::Cdecl,
                 Abi::Stdcall,
                 Abi::Fastcall,

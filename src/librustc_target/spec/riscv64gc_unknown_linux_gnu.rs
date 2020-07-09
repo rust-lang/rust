@@ -13,7 +13,7 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
-            abi_blacklist: super::riscv_base::abi_blacklist(),
+            unsupported_abis: super::riscv_base::unsupported_abis(),
             code_model: Some(CodeModel::Medium),
             cpu: "generic-rv64".to_string(),
             features: "+m,+a,+f,+d,+c".to_string(),

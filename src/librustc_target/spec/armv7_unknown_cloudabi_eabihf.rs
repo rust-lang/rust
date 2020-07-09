@@ -5,7 +5,7 @@ pub fn target() -> TargetResult {
     base.cpu = "cortex-a8".to_string();
     base.max_atomic_width = Some(64);
     base.features = "+v7,+vfp3,+neon".to_string();
-    base.abi_blacklist = super::arm_base::abi_blacklist();
+    base.unsupported_abis = super::arm_base::unsupported_abis();
     base.linker = Some("armv7-unknown-cloudabi-eabihf-cc".to_string());
 
     Ok(Target {
