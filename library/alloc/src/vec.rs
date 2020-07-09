@@ -2621,7 +2621,6 @@ where
 /// This `struct` is created by the `into_iter` method on [`Vec`] (provided
 /// by the [`IntoIterator`] trait).
 ///
-/// [`Vec`]: struct.Vec.html
 /// [`IntoIterator`]: ../../std/iter/trait.IntoIterator.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
@@ -2805,7 +2804,6 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
 /// This `struct` is created by the [`drain`] method on [`Vec`].
 ///
 /// [`drain`]: struct.Vec.html#method.drain
-/// [`Vec`]: struct.Vec.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     /// Index of tail to preserve
@@ -2937,7 +2935,6 @@ impl<T> FusedIterator for Drain<'_, T> {}
 /// documentation for more.
 ///
 /// [`splice()`]: struct.Vec.html#method.splice
-/// [`Vec`]: struct.Vec.html
 #[derive(Debug)]
 #[stable(feature = "vec_splice", since = "1.21.0")]
 pub struct Splice<'a, I: Iterator + 'a> {
