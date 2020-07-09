@@ -208,7 +208,8 @@ pub struct MismatchedArgCount {
 
 impl Diagnostic for MismatchedArgCount {
     fn message(&self) -> String {
-        format!("Expected {} arguments, found {}", self.expected, self.found)
+        let s = if self.expected == 1 { "" } else { "s" };
+        format!("Expected {} argument{}, found {}", self.expected, s, self.found)
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.call_expr.clone().into() }
