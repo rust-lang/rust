@@ -891,10 +891,10 @@ impl fmt::Debug for StderrLock<'_> {
 /// # Examples
 ///
 /// ```rust
-/// use std::io::inputln;
+/// use std::io::input_prompt;
 ///
 /// fn main() {
-///     let user_input = inputln("Please enter some text: ");
+///     let user_input = input_prompt("Please enter some text: ");
 ///         
 ///     println!("You typed: {}", user_input);
 ///         
@@ -907,10 +907,10 @@ pub fn input_prompt(prompt: &str) -> String {
     return input();
 }
 
-/// Equivalent to the [`inputln`] method except that a prompt is not printed before
+/// Equivalent to the [`input_prompt`] method except that a prompt is not printed before
 /// capturing input.
 ///
-/// [`inputln`]: #method.inputln
+/// [`input_prompt`]: #method.input_prompt
 /// 
 /// ### Note: Safety and Usage
 /// This function is not the recommended solution to get user input, it should
