@@ -909,7 +909,10 @@ pub fn inputln(prompt: &str) -> String {
     stdin()
         .read_line(&mut input)
         .expect("Failed to read from stdin");
-    if ['\n', '\r'].contains(&input.chars().next_back().unwrap()) {
+    if input.chars().next_back().unwrap() == '\n' {
+        input.pop();
+    }
+    if input.chars().next_back().unwrap() == '\r' {
         input.pop();
     }
     return input;
@@ -947,6 +950,12 @@ pub fn input() -> String {
     stdin()
         .read_line(&mut input)
         .expect("Failed to read from stdin");
+    if input.chars().next_back().unwrap() == '\n' {
+        input.pop();
+    }
+    if input.chars().next_back().unwrap() == '\r' {
+        input.pop();
+    }
     return input;
 }
 
