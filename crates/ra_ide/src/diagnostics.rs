@@ -324,10 +324,10 @@ mod tests {
     ///  * a diagnostic is produced
     ///  * this diagnostic touches the input cursor position
     ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
-    fn check_apply_diagnostic_fix_from_position(ra_fixture: &str, after: &str) {
-        let after = trim_indent(after);
+    fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
+        let after = trim_indent(ra_fixture_after);
 
-        let (analysis, file_position) = analysis_and_position(ra_fixture);
+        let (analysis, file_position) = analysis_and_position(ra_fixture_before);
         let diagnostic = analysis.diagnostics(file_position.file_id).unwrap().pop().unwrap();
         let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
@@ -348,21 +348,6 @@ mod tests {
         );
     }
 
-    fn check_apply_diagnostic_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
-        let ra_fixture_after = &trim_indent(ra_fixture_after);
-        let (analysis, file_id) = single_file(ra_fixture_before);
-        let before = analysis.file_text(file_id).unwrap();
-        let diagnostic = analysis.diagnostics(file_id).unwrap().pop().unwrap();
-        let mut fix = diagnostic.fix.unwrap();
-        let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
-        let actual = {
-            let mut actual = before.to_string();
-            edit.apply(&mut actual);
-            actual
-        };
-        assert_eq_text!(ra_fixture_after, &actual);
-    }
-
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
     /// apply to the file containing the cursor.
     fn check_no_diagnostic_for_target_file(ra_fixture: &str) {
@@ -379,96 +364,99 @@ mod tests {
 
     #[test]
     fn test_wrap_return_type() {
-        let before = r#"
-            //- /main.rs
-            use core::result::Result::{self, Ok, Err};
+        check_fix(
+            r#"
+//- /main.rs
+use core::result::Result::{self, Ok, Err};
 
-            fn div(x: i32, y: i32) -> Result<i32, ()> {
-                if y == 0 {
-                    return Err(());
-                }
-                x / y<|>
-            }
-            //- /core/lib.rs
-            pub mod result {
-                pub enum Result<T, E> { Ok(T), Err(E) }
-            }
-        "#;
-        let after = r#"
-            use core::result::Result::{self, Ok, Err};
+fn div(x: i32, y: i32) -> Result<i32, ()> {
+    if y == 0 {
+        return Err(());
+    }
+    x / y<|>
+}
+//- /core/lib.rs
+pub mod result {
+    pub enum Result<T, E> { Ok(T), Err(E) }
+}
+"#,
+            r#"
+use core::result::Result::{self, Ok, Err};
 
-            fn div(x: i32, y: i32) -> Result<i32, ()> {
-                if y == 0 {
-                    return Err(());
-                }
-                Ok(x / y)
-            }
-        "#;
-        check_apply_diagnostic_fix_from_position(before, after);
+fn div(x: i32, y: i32) -> Result<i32, ()> {
+    if y == 0 {
+        return Err(());
+    }
+    Ok(x / y)
+}
+"#,
+        );
     }
 
     #[test]
     fn test_wrap_return_type_handles_generic_functions() {
-        let before = r#"
+        check_fix(
+            r#"
             //- /main.rs
-            use core::result::Result::{self, Ok, Err};
+use core::result::Result::{self, Ok, Err};
 
-            fn div<T>(x: T) -> Result<T, i32> {
-                if x == 0 {
-                    return Err(7);
-                }
-                <|>x
-            }
-            //- /core/lib.rs
-            pub mod result {
-                pub enum Result<T, E> { Ok(T), Err(E) }
-            }
-        "#;
-        let after = r#"
-            use core::result::Result::{self, Ok, Err};
+fn div<T>(x: T) -> Result<T, i32> {
+    if x == 0 {
+        return Err(7);
+    }
+    <|>x
+}
+//- /core/lib.rs
+pub mod result {
+    pub enum Result<T, E> { Ok(T), Err(E) }
+}
+"#,
+            r#"
+use core::result::Result::{self, Ok, Err};
 
-            fn div<T>(x: T) -> Result<T, i32> {
-                if x == 0 {
-                    return Err(7);
-                }
-                Ok(x)
-            }
-        "#;
-        check_apply_diagnostic_fix_from_position(before, after);
+fn div<T>(x: T) -> Result<T, i32> {
+    if x == 0 {
+        return Err(7);
+    }
+    Ok(x)
+}
+"#,
+        );
     }
 
     #[test]
     fn test_wrap_return_type_handles_type_aliases() {
-        let before = r#"
-            //- /main.rs
-            use core::result::Result::{self, Ok, Err};
+        check_fix(
+            r#"
+//- /main.rs
+use core::result::Result::{self, Ok, Err};
 
-            type MyResult<T> = Result<T, ()>;
+type MyResult<T> = Result<T, ()>;
 
-            fn div(x: i32, y: i32) -> MyResult<i32> {
-                if y == 0 {
-                    return Err(());
-                }
-                x <|>/ y
-            }
-            //- /core/lib.rs
-            pub mod result {
-                pub enum Result<T, E> { Ok(T), Err(E) }
-            }
-        "#;
-        let after = r#"
-            use core::result::Result::{self, Ok, Err};
+fn div(x: i32, y: i32) -> MyResult<i32> {
+    if y == 0 {
+        return Err(());
+    }
+    x <|>/ y
+}
+//- /core/lib.rs
+pub mod result {
+    pub enum Result<T, E> { Ok(T), Err(E) }
+}
+"#,
+            r#"
+use core::result::Result::{self, Ok, Err};
 
-            type MyResult<T> = Result<T, ()>;
+type MyResult<T> = Result<T, ()>;
 
-            fn div(x: i32, y: i32) -> MyResult<i32> {
-                if y == 0 {
-                    return Err(());
-                }
-                Ok(x / y)
-            }
-        "#;
-        check_apply_diagnostic_fix_from_position(before, after);
+fn div(x: i32, y: i32) -> MyResult<i32> {
+    if y == 0 {
+        return Err(());
+    }
+    Ok(x / y)
+}
+"#,
+        );
     }
 
     #[test]
@@ -516,116 +504,97 @@ mod tests {
 
     #[test]
     fn test_fill_struct_fields_empty() {
-        let before = r"
-            struct TestStruct {
-                one: i32,
-                two: i64,
-            }
+        check_fix(
+            r#"
+struct TestStruct { one: i32, two: i64 }
 
-            fn test_fn() {
-                let s = TestStruct{};
-            }
-        ";
-        let after = r"
-            struct TestStruct {
-                one: i32,
-                two: i64,
-            }
+fn test_fn() {
+    let s = TestStruct {<|>};
+}
+"#,
+            r#"
+struct TestStruct { one: i32, two: i64 }
 
-            fn test_fn() {
-                let s = TestStruct{ one: (), two: ()};
-            }
-        ";
-        check_apply_diagnostic_fix(before, after);
+fn test_fn() {
+    let s = TestStruct { one: (), two: ()};
+}
+"#,
+        );
     }
 
     #[test]
     fn test_fill_struct_fields_self() {
-        let before = r"
-            struct TestStruct {
-                one: i32,
-            }
+        check_fix(
+            r#"
+struct TestStruct { one: i32 }
 
-            impl TestStruct {
-                fn test_fn() {
-                    let s = Self {};
-                }
-            }
-        ";
-        let after = r"
-            struct TestStruct {
-                one: i32,
-            }
+impl TestStruct {
+    fn test_fn() { let s = Self {<|>}; }
+}
+"#,
+            r#"
+struct TestStruct { one: i32 }
 
-            impl TestStruct {
-                fn test_fn() {
-                    let s = Self { one: ()};
-                }
-            }
-        ";
-        check_apply_diagnostic_fix(before, after);
+impl TestStruct {
+    fn test_fn() { let s = Self { one: ()}; }
+}
+"#,
+        );
     }
 
     #[test]
     fn test_fill_struct_fields_enum() {
-        let before = r"
-            enum Expr {
-                Bin { lhs: Box<Expr>, rhs: Box<Expr> }
-            }
+        check_fix(
+            r#"
+enum Expr {
+    Bin { lhs: Box<Expr>, rhs: Box<Expr> }
+}
 
-            impl Expr {
-                fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
-                    Expr::Bin { }
-                }
-            }
-        ";
-        let after = r"
-            enum Expr {
-                Bin { lhs: Box<Expr>, rhs: Box<Expr> }
-            }
+impl Expr {
+    fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
+        Expr::Bin {<|> }
+    }
+}
+"#,
+            r#"
+enum Expr {
+    Bin { lhs: Box<Expr>, rhs: Box<Expr> }
+}
 
-            impl Expr {
-                fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
-                    Expr::Bin { lhs: (), rhs: () }
-                }
-            }
-        ";
-        check_apply_diagnostic_fix(before, after);
+impl Expr {
+    fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
+        Expr::Bin { lhs: (), rhs: () }
+    }
+}
+"#,
+        );
     }
 
     #[test]
     fn test_fill_struct_fields_partial() {
-        let before = r"
-            struct TestStruct {
-                one: i32,
-                two: i64,
-            }
+        check_fix(
+            r#"
+struct TestStruct { one: i32, two: i64 }
 
-            fn test_fn() {
-                let s = TestStruct{ two: 2 };
-            }
-        ";
-        let after = r"
-            struct TestStruct {
-                one: i32,
-                two: i64,
-            }
+fn test_fn() {
+    let s = TestStruct{ two: 2<|> };
+}
+"#,
+            r"
+struct TestStruct { one: i32, two: i64 }
 
-            fn test_fn() {
-                let s = TestStruct{ two: 2, one: () };
-            }
-        ";
-        check_apply_diagnostic_fix(before, after);
+fn test_fn() {
+    let s = TestStruct{ two: 2, one: () };
+}
+",
+        );
     }
 
     #[test]
     fn test_fill_struct_fields_no_diagnostic() {
         check_no_diagnostic(
             r"
-            struct TestStruct {
-                one: i32,
-                two: i64,
-            }
+            struct TestStruct { one: i32, two: i64 }
 
             fn test_fn() {
                 let one = 1;
@@ -639,10 +608,7 @@ mod tests {
     fn test_fill_struct_fields_no_diagnostic_on_spread() {
         check_no_diagnostic(
             r"
-            struct TestStruct {
-                one: i32,
-                two: i64,
-            }
+            struct TestStruct { one: i32, two: i64 }
 
             fn test_fn() {
                 let one = 1;
@@ -855,10 +821,10 @@ fn main() {
 
     #[test]
     fn test_add_field_from_usage() {
-        check_apply_diagnostic_fix(
+        check_fix(
             r"
 fn main() {
-    Foo { bar: 3, baz: false};
+    Foo { bar: 3, baz<|>: false};
 }
 struct Foo {
     bar: i32
