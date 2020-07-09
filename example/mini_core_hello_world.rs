@@ -284,6 +284,26 @@ fn main() {
 
     #[cfg(not(jit))]
     test_tls();
+
+    #[cfg(not(jit))]
+    unsafe {
+        global_asm_test();
+    }
+}
+
+#[cfg(not(jit))]
+extern "C" {
+    fn global_asm_test();
+}
+
+#[cfg(not(jit))]
+global_asm! {
+    "
+    .global global_asm_test
+    global_asm_test:
+    // comment that would normally be removed by LLVM
+    ret
+    "
 }
 
 #[repr(C)]
