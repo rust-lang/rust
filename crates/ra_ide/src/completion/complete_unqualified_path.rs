@@ -638,4 +638,21 @@ fn f() {}
             expect![[""]],
         )
     }
+
+    #[test]
+    fn completes_type_or_trait_in_impl_block() {
+        check(
+            r#"
+trait MyTrait {}
+struct MyStruct {}
+
+impl My<|>
+"#,
+            expect![[r#"
+                st MyStruct
+                tt MyTrait
+                tp Self
+            "#]],
+        )
+    }
 }

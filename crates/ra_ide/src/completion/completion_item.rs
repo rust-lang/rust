@@ -58,7 +58,7 @@ pub struct CompletionItem {
     score: Option<CompletionScore>,
 }
 
-// We use custom debug for CompletionItem to make `insta`'s diffs more readable.
+// We use custom debug for CompletionItem to make snapshot tests more readable.
 impl fmt::Debug for CompletionItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = f.debug_struct("CompletionItem");
