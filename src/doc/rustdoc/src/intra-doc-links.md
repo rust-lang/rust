@@ -7,7 +7,6 @@ Rustdoc is capable of directly linking to other rustdoc pages in Markdown docume
 For example, in the following code all of the links will link to the rustdoc page for `Bar`:
 
 ```rust
-
 /// This struct is not [Bar]
 pub struct Foo1;
 
