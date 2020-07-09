@@ -87,6 +87,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
         ARG_LIST => Some(FoldKind::ArgList),
         RECORD_FIELD_DEF_LIST
         | RECORD_FIELD_PAT_LIST
+        | RECORD_FIELD_LIST
         | ITEM_LIST
         | EXTERN_ITEM_LIST
         | USE_TREE_LIST
@@ -355,7 +356,8 @@ fn main() <fold block>{
         0 => 0,
         _ => 1,
     }</fold>
-}</fold>"#,
+}</fold>
+"#,
         );
     }
 
@@ -370,7 +372,18 @@ fn main() <fold block>{
         3,
     )</fold>
 }</fold>
-        "#,
+"#,
+        )
+    }
+
+    #[test]
+    fn fold_record_literals() {
+        check(
+            r#"
+const _: S = S <fold block>{
+
+}</fold>;
+"#,
         )
     }
 }
