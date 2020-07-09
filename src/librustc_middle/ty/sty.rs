@@ -2340,14 +2340,41 @@ impl<'tcx> Const<'tcx> {
         assert_eq!(self.ty, ty);
         let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
-        self.eval(tcx, param_env).val.try_to_bits(size)
+        self.val.eval(tcx, param_env).try_to_bits(size)
     }
 
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> &Const<'tcx> {
-        if let ConstKind::Unevaluated(def, substs, promoted) = self.val {
+        if let Some(val) = self.val.try_eval(tcx, param_env) {
+            match val {
+                Ok(val) => Const::from_value(tcx, val, self.ty),
+                Err(ErrorReported) => tcx.const_error(self.ty),
+            }
+        } else {
+            self
+        }
+    }
+}
+
+impl<'tcx> ConstKind<'tcx> {
+    #[inline]
+    /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
+    /// unevaluated constant.
+    pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
+        self.try_eval(tcx, param_env).and_then(Result::ok).map(ConstKind::Value).unwrap_or(self)
+    }
+
+    #[inline]
+    /// Tries to evaluate the constant if it is `Unevaluated`. If that isn't possible or necessary
+    // return None
+    pub fn try_eval(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Option<Result<ConstValue<'tcx>, ErrorReported>> {
+        if let ConstKind::Unevaluated(def, substs, promoted) = self {
             use crate::mir::interpret::ErrorHandled;
 
             let param_env_and_substs = param_env.with_reveal_all().and(substs);
@@ -2378,27 +2405,25 @@ impl<'tcx> Const<'tcx> {
                 // and we use the original type, so nothing from `substs`
                 // (which may be identity substs, see above),
                 // can leak through `val` into the const we return.
-                Ok(val) => Const::from_value(tcx, val, self.ty),
-                Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
-                Err(ErrorHandled::Reported(ErrorReported)) => tcx.const_error(self.ty),
+                Ok(val) => Some(Ok(val)),
+                Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => None,
+                Err(ErrorHandled::Reported(e)) => Some(Err(e)),
             }
         } else {
-            self
+            None
         }
     }
+}
 
+impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.try_eval_bits(tcx, param_env, tcx.types.bool).and_then(|v| match v {
-            0 => Some(false),
-            1 => Some(true),
-            _ => None,
-        })
+        self.val.eval(tcx, param_env).try_to_bool()
     }
 
     #[inline]
     pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
-        self.try_eval_bits(tcx, param_env, tcx.types.usize).map(|v| v as u64)
+        self.val.eval(tcx, param_env).try_to_usize(tcx)
     }
 
     #[inline]
@@ -2411,7 +2436,8 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     /// Panics if the value cannot be evaluated or doesn't contain a valid `usize`.
     pub fn eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
-        self.eval_bits(tcx, param_env, tcx.types.usize) as u64
+        self.try_eval_usize(tcx, param_env)
+            .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
     }
 }
 
@@ -2448,13 +2474,28 @@ static_assert_size!(ConstKind<'_>, 40);
 
 impl<'tcx> ConstKind<'tcx> {
     #[inline]
-    pub fn try_to_scalar(&self) -> Option<Scalar> {
-        if let ConstKind::Value(val) = self { val.try_to_scalar() } else { None }
+    pub fn try_to_value(self) -> Option<ConstValue<'tcx>> {
+        if let ConstKind::Value(val) = self { Some(val) } else { None }
     }
 
     #[inline]
-    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-        if let ConstKind::Value(val) = self { val.try_to_bits(size) } else { None }
+    pub fn try_to_scalar(self) -> Option<Scalar> {
+        self.try_to_value()?.try_to_scalar()
+    }
+
+    #[inline]
+    pub fn try_to_bits(self, size: Size) -> Option<u128> {
+        self.try_to_value()?.try_to_bits(size)
+    }
+
+    #[inline]
+    pub fn try_to_bool(self) -> Option<bool> {
+        self.try_to_value()?.try_to_bool()
+    }
+
+    #[inline]
+    pub fn try_to_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_value()?.try_to_usize(tcx)
     }
 }
 
