@@ -29,7 +29,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::weak_lang_items;
-use rustc_hir::{GenericParamKind, Node};
+use rustc_hir::{GenericParamKind, HirId, Node};
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -1155,6 +1155,35 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     }
 }
 
+struct AnonConstInParamListDetector {
+    in_param_list: bool,
+    found_anon_const_in_list: bool,
+    ct: HirId,
+}
+
+impl<'v> Visitor<'v> for AnonConstInParamListDetector {
+    type Map = intravisit::ErasedMap<'v>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) {
+        let prev = self.in_param_list;
+        self.in_param_list = true;
+        intravisit::walk_generic_param(self, p);
+        self.in_param_list = prev;
+    }
+
+    fn visit_anon_const(&mut self, c: &'v hir::AnonConst) {
+        if self.in_param_list && self.ct == c.hir_id {
+            self.found_anon_const_in_list = true;
+        } else {
+            intravisit::walk_anon_const(self, c)
+        }
+    }
+}
+
 fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     use rustc_hir::*;
 
@@ -1176,10 +1205,32 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             let parent_id = tcx.hir().get_parent_item(hir_id);
             let parent_def_id = tcx.hir().local_def_id(parent_id);
 
-            // HACK(eddyb) this provides the correct generics when
-            // `feature(const_generics)` is enabled, so that const expressions
-            // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
-            if tcx.lazy_normalization() {
+            let mut in_param_list = false;
+            for (_parent, node) in tcx.hir().parent_iter(hir_id) {
+                if let Some(generics) = node.generics() {
+                    let mut visitor = AnonConstInParamListDetector {
+                        in_param_list: false,
+                        found_anon_const_in_list: false,
+                        ct: hir_id,
+                    };
+
+                    visitor.visit_generics(generics);
+                    in_param_list = visitor.found_anon_const_in_list;
+                    break;
+                }
+            }
+
+            if in_param_list {
+                // We do not allow generic parameters in anon consts if we are inside
+                // of a param list.
+                //
+                // This affects both default type bindings, e.g. `struct<T, U = [u8; std::mem::size_of::<T>()]>(T, U)`,
+                // and the types of const parameters, e.g. `struct V<const N: usize, const M: [u8; N]>();`.
+                None
+            } else if tcx.lazy_normalization() {
+                // HACK(eddyb) this provides the correct generics when
+                // `feature(const_generics)` is enabled, so that const expressions
+                // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
                 Some(parent_def_id.to_def_id())
             } else {
                 let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));

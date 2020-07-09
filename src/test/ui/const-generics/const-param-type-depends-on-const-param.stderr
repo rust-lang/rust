@@ -4,8 +4,8 @@ error[E0770]: the type of const parameters must not depend on other generic para
 LL | pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
    |                                                    ^ const parameters must have a concrete type
 
-error[E0769]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/const-param-type-depends-on-const-param.rs:13:40
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/const-param-type-depends-on-const-param.rs:12:40
    |
 LL | pub struct SelfDependent<const N: [u8; N]>;
    |                                        ^ const parameters must have a concrete type
@@ -19,32 +19,5 @@ LL | #![feature(const_generics)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
-error[E0391]: cycle detected when computing type of `Dependent::X`
-  --> $DIR/const-param-type-depends-on-const-param.rs:9:44
-   |
-LL | pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
-   |                                            ^
-   |
-   = note: ...which again requires computing type of `Dependent::X`, completing the cycle
-note: cycle used when computing type of `Dependent`
-  --> $DIR/const-param-type-depends-on-const-param.rs:9:1
-   |
-LL | pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to 2 previous errors; 1 warning emitted
 
-error[E0391]: cycle detected when computing type of `SelfDependent::N`
-  --> $DIR/const-param-type-depends-on-const-param.rs:13:32
-   |
-LL | pub struct SelfDependent<const N: [u8; N]>;
-   |                                ^
-   |
-   = note: ...which again requires computing type of `SelfDependent::N`, completing the cycle
-note: cycle used when computing type of `SelfDependent`
-  --> $DIR/const-param-type-depends-on-const-param.rs:13:1
-   |
-LL | pub struct SelfDependent<const N: [u8; N]>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 4 previous errors; 1 warning emitted
-
-For more information about this error, try `rustc --explain E0391`.
