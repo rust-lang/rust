@@ -1,6 +1,7 @@
 // ignore-tidy-linelength
 // only-macos
 // no-system-llvm
+// ignore-debug: the debug assertions get in the way
 // compile-flags: -O
 
 #![crate_type = "rlib"]
