@@ -1,22 +1,6 @@
----
-source: crates/rust-analyzer/src/diagnostics/to_proto.rs
-expression: diag
----
 [
     MappedRustDiagnostic {
-        location: Location {
-            uri: "file:///test/driver/subcommand/repl.rs",
-            range: Range {
-                start: Position {
-                    line: 290,
-                    character: 8,
-                },
-                end: Position {
-                    line: 290,
-                    character: 11,
-                },
-            },
-        },
+        url: "file:///test/driver/subcommand/repl.rs",
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {

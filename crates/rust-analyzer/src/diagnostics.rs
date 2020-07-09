@@ -18,7 +18,9 @@ pub struct DiagnosticsConfig {
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct DiagnosticCollection {
+    // FIXME: should be FxHashMap<FileId, Vec<ra_id::Diagnostic>>
     pub(crate) native: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
+    // FIXME: should be Vec<flycheck::Diagnostic>
     pub(crate) check: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
     pub(crate) check_fixes: CheckFixes,
     changes: FxHashSet<FileId>,

@@ -351,10 +351,10 @@ mod tests {
     use crate::{inlay_hints::InlayHintsConfig, mock_analysis::single_file};
 
     fn check(ra_fixture: &str) {
-        check_with_config(ra_fixture, InlayHintsConfig::default());
+        check_with_config(InlayHintsConfig::default(), ra_fixture);
     }
 
-    fn check_with_config(ra_fixture: &str, config: InlayHintsConfig) {
+    fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
         let (analysis, file_id) = single_file(ra_fixture);
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
@@ -363,7 +363,7 @@ mod tests {
         assert_eq!(expected, actual);
     }
 
-    fn check_expect(ra_fixture: &str, config: InlayHintsConfig, expect: Expect) {
+    fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
         let (analysis, file_id) = single_file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
         expect.assert_debug_eq(&inlay_hints)
@@ -372,6 +372,12 @@ mod tests {
     #[test]
     fn param_hints_only() {
         check_with_config(
+            InlayHintsConfig {
+                parameter_hints: true,
+                type_hints: false,
+                chaining_hints: false,
+                max_length: None,
+            },
             r#"
 fn foo(a: i32, b: i32) -> i32 { a + b }
 fn main() {
@@ -382,47 +388,41 @@ fn main() {
       //^ b
     );
 }"#,
-            InlayHintsConfig {
-                parameter_hints: true,
-                type_hints: false,
-                chaining_hints: false,
-                max_length: None,
-            },
         );
     }
 
     #[test]
     fn hints_disabled() {
         check_with_config(
-            r#"
-fn foo(a: i32, b: i32) -> i32 { a + b }
-fn main() {
-    let _x = foo(4, 4);
-}"#,
             InlayHintsConfig {
                 type_hints: false,
                 parameter_hints: false,
                 chaining_hints: false,
                 max_length: None,
             },
+            r#"
+fn foo(a: i32, b: i32) -> i32 { a + b }
+fn main() {
+    let _x = foo(4, 4);
+}"#,
         );
     }
 
     #[test]
     fn type_hints_only() {
         check_with_config(
-            r#"
-fn foo(a: i32, b: i32) -> i32 { a + b }
-fn main() {
-    let _x = foo(4, 4);
-      //^^ i32
-}"#,
             InlayHintsConfig {
                 type_hints: true,
                 parameter_hints: false,
                 chaining_hints: false,
                 max_length: None,
             },
+            r#"
+fn foo(a: i32, b: i32) -> i32 { a + b }
+fn main() {
+    let _x = foo(4, 4);
+      //^^ i32
+}"#,
         );
     }
 
@@ -590,6 +590,7 @@ fn main() {
     #[test]
     fn hint_truncation() {
         check_with_config(
+            InlayHintsConfig { max_length: Some(8), ..Default::default() },
             r#"
 struct Smol<T>(T);
 
@@ -603,7 +604,6 @@ fn main() {
     let c = Smol(Smol(0u32))
       //^ Smol<Smol<…>>
 }"#,
-            InlayHintsConfig { max_length: Some(8), ..Default::default() },
         );
     }
 
@@ -673,6 +673,7 @@ fn main() {
     #[test]
     fn omitted_parameters_hints_heuristics() {
         check_with_config(
+            InlayHintsConfig { max_length: Some(8), ..Default::default() },
             r#"
 fn map(f: i32) {}
 fn filter(predicate: i32) {}
@@ -753,13 +754,13 @@ fn main() {
     let _: f64 = a.div_euclid(b);
     let _: f64 = a.abs_sub(b);
 }"#,
-            InlayHintsConfig { max_length: Some(8), ..Default::default() },
         );
     }
 
     #[test]
     fn unit_structs_have_no_type_hints() {
         check_with_config(
+            InlayHintsConfig { max_length: Some(8), ..Default::default() },
             r#"
 enum Result<T, E> { Ok(T), Err(E) }
 use Result::*;
@@ -772,13 +773,18 @@ fn main() {
         Err(SyntheticSyntax) => (),
     }
 }"#,
-            InlayHintsConfig { max_length: Some(8), ..Default::default() },
         );
     }
 
     #[test]
     fn chaining_hints_ignore_comments() {
         check_expect(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
             r#"
 struct A(B);
 impl A { fn into_b(self) -> B { self.0 } }
@@ -792,12 +798,6 @@ fn main() {
         .into_c();
 }
 "#,
-            InlayHintsConfig {
-                parameter_hints: false,
-                type_hints: false,
-                chaining_hints: true,
-                max_length: None,
-            },
             expect![[r#"
                 [
                     InlayHint {
@@ -818,6 +818,12 @@ fn main() {
     #[test]
     fn chaining_hints_without_newlines() {
         check_with_config(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
             r#"
 struct A(B);
 impl A { fn into_b(self) -> B { self.0 } }
@@ -828,18 +834,18 @@ struct C;
 fn main() {
     let c = A(B(C)).into_b().into_c();
 }"#,
-            InlayHintsConfig {
-                parameter_hints: false,
-                type_hints: false,
-                chaining_hints: true,
-                max_length: None,
-            },
         );
     }
 
     #[test]
     fn struct_access_chaining_hints() {
         check_expect(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
             r#"
 struct A { pub b: B }
 struct B { pub c: C }
@@ -858,12 +864,6 @@ fn main() {
     let x = D
         .foo();
 }"#,
-            InlayHintsConfig {
-                parameter_hints: false,
-                type_hints: false,
-                chaining_hints: true,
-                max_length: None,
-            },
             expect![[r#"
                 [
                     InlayHint {
@@ -884,6 +884,12 @@ fn main() {
     #[test]
     fn generic_chaining_hints() {
         check_expect(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
             r#"
 struct A<T>(T);
 struct B<T>(T);
@@ -903,12 +909,6 @@ fn main() {
         .into_c();
 }
 "#,
-            InlayHintsConfig {
-                parameter_hints: false,
-                type_hints: false,
-                chaining_hints: true,
-                max_length: None,
-            },
             expect![[r#"
                 [
                     InlayHint {

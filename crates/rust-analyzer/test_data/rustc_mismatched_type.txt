@@ -1,22 +1,6 @@
----
-source: crates/rust-analyzer/src/diagnostics/to_proto.rs
-expression: diag
----
 [
     MappedRustDiagnostic {
-        location: Location {
-            uri: "file:///test/runtime/compiler_support.rs",
-            range: Range {
-                start: Position {
-                    line: 47,
-                    character: 64,
-                },
-                end: Position {
-                    line: 47,
-                    character: 69,
-                },
-            },
-        },
+        url: "file:///test/runtime/compiler_support.rs",
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {

@@ -121,6 +121,10 @@ impl ExpectFile {
         }
         Runtime::fail_file(self, &expected, actual);
     }
+    pub fn assert_debug_eq(&self, actual: &impl fmt::Debug) {
+        let actual = format!("{:#?}\n", actual);
+        self.assert_eq(&actual)
+    }
     fn read(&self) -> String {
         fs::read_to_string(self.abs_path()).unwrap_or_default().replace("\r\n", "\n")
     }

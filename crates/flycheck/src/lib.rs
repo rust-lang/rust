@@ -14,7 +14,8 @@ use std::{
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 
 pub use cargo_metadata::diagnostic::{
-    Applicability, Diagnostic, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion,
+    Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
+    DiagnosticSpanMacroExpansion,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]

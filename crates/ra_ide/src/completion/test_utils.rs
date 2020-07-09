@@ -13,15 +13,15 @@ use crate::{
 };
 
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
-    do_completion_with_config(code, kind, &CompletionConfig::default())
+    do_completion_with_config(CompletionConfig::default(), code, kind)
 }
 
 pub(crate) fn do_completion_with_config(
+    config: CompletionConfig,
     code: &str,
     kind: CompletionKind,
-    config: &CompletionConfig,
 ) -> Vec<CompletionItem> {
-    let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(code, config)
+    let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(config, code)
         .into_iter()
         .filter(|c| c.completion_kind == kind)
         .collect();
@@ -30,15 +30,15 @@ pub(crate) fn do_completion_with_config(
 }
 
 pub(crate) fn completion_list(code: &str, kind: CompletionKind) -> String {
-    completion_list_with_config(code, kind, &CompletionConfig::default())
+    completion_list_with_config(CompletionConfig::default(), code, kind)
 }
 
 pub(crate) fn completion_list_with_config(
+    config: CompletionConfig,
     code: &str,
     kind: CompletionKind,
-    config: &CompletionConfig,
 ) -> String {
-    let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(code, config)
+    let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(config, code)
         .into_iter()
         .filter(|c| c.completion_kind == kind)
         .collect();
@@ -70,19 +70,19 @@ fn monospace_width(s: &str) -> usize {
 }
 
 pub(crate) fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check_edit_with_config(what, ra_fixture_before, ra_fixture_after, &CompletionConfig::default())
+    check_edit_with_config(CompletionConfig::default(), what, ra_fixture_before, ra_fixture_after)
 }
 
 pub(crate) fn check_edit_with_config(
+    config: CompletionConfig,
     what: &str,
     ra_fixture_before: &str,
     ra_fixture_after: &str,
-    config: &CompletionConfig,
 ) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
     let (analysis, position) = analysis_and_position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
-        analysis.completions(config, position).unwrap().unwrap().into();
+        analysis.completions(&config, position).unwrap().unwrap().into();
     let (completion,) = completions
         .iter()
         .filter(|it| it.lookup() == what)
@@ -106,9 +106,9 @@ pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -
 }
 
 pub(crate) fn get_all_completion_items(
+    config: CompletionConfig,
     code: &str,
-    options: &CompletionConfig,
 ) -> Vec<CompletionItem> {
     let (analysis, position) = analysis_and_position(code);
-    analysis.completions(options, position).unwrap().unwrap().into()
+    analysis.completions(&config, position).unwrap().unwrap().into()
 }
