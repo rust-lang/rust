@@ -4,6 +4,7 @@
 #![warn(unused_lifetimes)]
 
 extern crate flate2;
+#[cfg(feature = "jit")]
 extern crate libc;
 extern crate rustc_middle;
 extern crate rustc_codegen_ssa;

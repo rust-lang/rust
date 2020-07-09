@@ -5,6 +5,7 @@
 
 use crate::prelude::*;
 
+#[cfg(feature = "jit")]
 #[no_mangle]
 pub static mut __cg_clif_global_atomic_mutex: libc::pthread_mutex_t = libc::PTHREAD_MUTEX_INITIALIZER;
 

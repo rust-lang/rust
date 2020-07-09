@@ -69,6 +69,7 @@ impl<'tcx> UnwindContext<'tcx> {
         }
     }
 
+    #[cfg(feature = "jit")]
     pub(crate) unsafe fn register_jit(
         self,
         jit_module: &mut Module<cranelift_simplejit::SimpleJITBackend>,
