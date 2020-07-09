@@ -150,6 +150,13 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
     fn validate_call(&mut self, db: &dyn HirDatabase, call_id: ExprId, expr: &Expr) -> Option<()> {
         // Check that the number of arguments matches the number of parameters.
+
+        // Due to shortcomings in the current type system implementation, only emit this diagnostic
+        // if there are no type mismatches in the containing function.
+        if self.infer.type_mismatches.iter().next().is_some() {
+            return Some(());
+        }
+
         let (callee, args) = match expr {
             Expr::Call { callee, args } => {
                 let callee = &self.infer.type_of_expr[*callee];
