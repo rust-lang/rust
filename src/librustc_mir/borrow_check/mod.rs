@@ -86,7 +86,7 @@ crate struct Upvar {
 
 const DEREF_PROJECTION: &[PlaceElem<'_>; 1] = &[ProjectionElem::Deref];
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers { mir_borrowck, ..*providers };
 }
 

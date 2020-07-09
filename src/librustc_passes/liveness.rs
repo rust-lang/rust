@@ -179,7 +179,7 @@ fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     );
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_liveness, ..*providers };
 }
 

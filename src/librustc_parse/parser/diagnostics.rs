@@ -346,13 +346,16 @@ impl<'a> Parser<'a> {
             if allow_unstable {
                 // Give extra information about type ascription only if it's a nightly compiler.
                 err.note(
-                    "`#![feature(type_ascription)]` lets you annotate an expression with a \
-                          type: `<expr>: <type>`",
+                    "`#![feature(type_ascription)]` lets you annotate an expression with a type: \
+                     `<expr>: <type>`",
                 );
-                err.note(
-                    "see issue #23416 <https://github.com/rust-lang/rust/issues/23416> \
-                     for more information",
-                );
+                if !likely_path {
+                    // Avoid giving too much info when it was likely an unrelated typo.
+                    err.note(
+                        "see issue #23416 <https://github.com/rust-lang/rust/issues/23416> \
+                        for more information",
+                    );
+                }
             }
         }
     }
@@ -1161,8 +1164,10 @@ impl<'a> Parser<'a> {
             } &&
             !self.token.is_reserved_ident() &&           // v `foo:bar(baz)`
             self.look_ahead(1, |t| t == &token::OpenDelim(token::Paren))
-            || self.look_ahead(1, |t| t == &token::Lt) &&     // `foo:bar<baz`
-            self.look_ahead(2, |t| t.is_ident())
+            || self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace)) // `foo:bar {`
+            || self.look_ahead(1, |t| t == &token::Colon) &&     // `foo:bar::<baz`
+            self.look_ahead(2, |t| t == &token::Lt) &&
+            self.look_ahead(3, |t| t.is_ident())
             || self.look_ahead(1, |t| t == &token::Colon) &&  // `foo:bar:baz`
             self.look_ahead(2, |t| t.is_ident())
             || self.look_ahead(1, |t| t == &token::ModSep)

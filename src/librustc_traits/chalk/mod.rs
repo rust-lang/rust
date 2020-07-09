@@ -29,7 +29,7 @@ use crate::chalk::lowering::{LowerInto, ParamsSubstitutor};
 
 use chalk_solve::Solution;
 
-crate fn provide(p: &mut Providers<'_>) {
+crate fn provide(p: &mut Providers) {
     *p = Providers { evaluate_goal, ..*p };
 }
 

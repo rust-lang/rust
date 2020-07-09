@@ -14,7 +14,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
 
-use crate::{Span, DUMMY_SP, GLOBALS};
+use crate::{Span, DUMMY_SP, SESSION_GLOBALS};
 
 #[cfg(test)]
 mod tests;
@@ -1387,7 +1387,7 @@ impl Ident {
 
 #[inline]
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
+    SESSION_GLOBALS.with(|session_globals| f(&mut *session_globals.symbol_interner.lock()))
 }
 
 /// An alternative to `Symbol`, useful when the chars within the symbol need to

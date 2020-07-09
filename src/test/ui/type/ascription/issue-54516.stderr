@@ -7,7 +7,6 @@ LL |     println!("{}", std::mem:size_of::<BTreeMap<u32, u32>>());
    |                            help: maybe write a path separator here: `::`
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
 
 error[E0423]: expected value, found module `std::mem`
   --> $DIR/issue-54516.rs:4:20

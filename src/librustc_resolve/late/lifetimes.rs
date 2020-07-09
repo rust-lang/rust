@@ -278,7 +278,7 @@ type ScopeRef<'a> = &'a Scope<'a>;
 
 const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         resolve_lifetimes,
 

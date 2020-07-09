@@ -38,7 +38,7 @@ pub struct Compiler {
     pub(crate) crate_name: Option<String>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries:
-        Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>,
+        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::Providers)>,
 }
 
 impl Compiler {
@@ -74,7 +74,7 @@ impl Compiler {
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
-    rustc_ast::with_default_globals(move || {
+    rustc_ast::with_default_session_globals(move || {
         let cfg = cfgspecs
             .into_iter()
             .map(|s| {
@@ -153,7 +153,7 @@ pub struct Config {
     ///
     /// The second parameter is local providers and the third parameter is external providers.
     pub override_queries:
-        Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>,
+        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::Providers)>,
 
     /// Registry of diagnostics codes.
     pub registry: Registry,

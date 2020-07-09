@@ -65,16 +65,20 @@ use sha1::Sha1;
 #[cfg(test)]
 mod tests;
 
-pub struct Globals {
+// Per-session global variables: this struct is stored in thread-local storage
+// in such a way that it is accessible without any kind of handle to all
+// threads within the compilation session, but is not accessible outside the
+// session.
+pub struct SessionGlobals {
     symbol_interner: Lock<symbol::Interner>,
     span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
     source_map: Lock<Option<Lrc<SourceMap>>>,
 }
 
-impl Globals {
-    pub fn new(edition: Edition) -> Globals {
-        Globals {
+impl SessionGlobals {
+    pub fn new(edition: Edition) -> SessionGlobals {
+        SessionGlobals {
             symbol_interner: Lock::new(symbol::Interner::fresh()),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
@@ -83,7 +87,7 @@ impl Globals {
     }
 }
 
-scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
+scoped_tls::scoped_thread_local!(pub static SESSION_GLOBALS: SessionGlobals);
 
 // FIXME: Perhaps this should not implement Rustc{Decodable, Encodable}
 //
@@ -713,14 +717,14 @@ impl rustc_serialize::UseSpecializedDecodable for Span {
 /// the `SourceMap` provided to this function. If that is not available,
 /// we fall back to printing the raw `Span` field values
 pub fn with_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) -> T {
-    GLOBALS.with(|globals| {
-        *globals.source_map.borrow_mut() = Some(source_map);
+    SESSION_GLOBALS.with(|session_globals| {
+        *session_globals.source_map.borrow_mut() = Some(source_map);
     });
     struct ClearSourceMap;
     impl Drop for ClearSourceMap {
         fn drop(&mut self) {
-            GLOBALS.with(|globals| {
-                globals.source_map.borrow_mut().take();
+            SESSION_GLOBALS.with(|session_globals| {
+                session_globals.source_map.borrow_mut().take();
             });
         }
     }
@@ -738,8 +742,8 @@ pub fn debug_with_source_map(
 }
 
 pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    GLOBALS.with(|globals| {
-        if let Some(source_map) = &*globals.source_map.borrow() {
+    SESSION_GLOBALS.with(|session_globals| {
+        if let Some(source_map) = &*session_globals.source_map.borrow() {
             debug_with_source_map(span, f, source_map)
         } else {
             f.debug_struct("Span")

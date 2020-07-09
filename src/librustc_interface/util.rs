@@ -141,7 +141,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     crate::callbacks::setup_callbacks();
 
     scoped_thread(cfg, || {
-        rustc_ast::with_globals(edition, || {
+        rustc_ast::with_session_globals(edition, || {
             ty::tls::GCX_PTR.set(&Lock::new(0), || {
                 if let Some(stderr) = stderr {
                     io::set_panic(Some(box Sink(stderr.clone())));
@@ -177,16 +177,17 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 
     let with_pool = move |pool: &ThreadPool| pool.install(move || f());
 
-    rustc_ast::with_globals(edition, || {
-        rustc_ast::GLOBALS.with(|syntax_globals| {
-            rustc_span::GLOBALS.with(|rustc_span_globals| {
-                // The main handler runs for each Rayon worker thread and sets up
-                // the thread local rustc uses. syntax_globals and rustc_span_globals are
-                // captured and set on the new threads. ty::tls::with_thread_locals sets up
-                // thread local callbacks from librustc_ast
+    rustc_ast::with_session_globals(edition, || {
+        rustc_ast::SESSION_GLOBALS.with(|ast_session_globals| {
+            rustc_span::SESSION_GLOBALS.with(|span_session_globals| {
+                // The main handler runs for each Rayon worker thread and sets
+                // up the thread local rustc uses. ast_session_globals and
+                // span_session_globals are captured and set on the new
+                // threads. ty::tls::with_thread_locals sets up thread local
+                // callbacks from librustc_ast.
                 let main_handler = move |thread: ThreadBuilder| {
-                    rustc_ast::GLOBALS.set(syntax_globals, || {
-                        rustc_span::GLOBALS.set(rustc_span_globals, || {
+                    rustc_ast::SESSION_GLOBALS.set(ast_session_globals, || {
+                        rustc_span::SESSION_GLOBALS.set(span_session_globals, || {
                             if let Some(stderr) = stderr {
                                 io::set_panic(Some(box Sink(stderr.clone())));
                             }

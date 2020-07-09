@@ -18,7 +18,7 @@ use rustc_trait_selection::traits::FulfillmentContext;
 use rustc_trait_selection::traits::TraitEngine;
 use smallvec::{smallvec, SmallVec};
 
-crate fn provide(p: &mut Providers<'_>) {
+crate fn provide(p: &mut Providers) {
     *p = Providers { implied_outlives_bounds, ..*p };
 }
 

@@ -867,7 +867,7 @@ pub struct Resolver<'a> {
     last_import_segment: bool,
     /// This binding should be ignored during in-module resolution, so that we don't get
     /// "self-confirming" import resolutions during import validation.
-    blacklisted_binding: Option<&'a NameBinding<'a>>,
+    unusable_binding: Option<&'a NameBinding<'a>>,
 
     /// The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
@@ -1266,7 +1266,7 @@ impl<'a> Resolver<'a> {
             indeterminate_imports: Vec::new(),
 
             last_import_segment: false,
-            blacklisted_binding: None,
+            unusable_binding: None,
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
@@ -3102,6 +3102,6 @@ impl CrateLint {
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     late::lifetimes::provide(providers);
 }

@@ -136,8 +136,6 @@ pub use hack::to_vec;
 // `test_permutations` test
 mod hack {
     use crate::boxed::Box;
-    #[cfg(test)]
-    use crate::string::ToString;
     use crate::vec::Vec;
 
     // We shouldn't add inline attribute to this since this is used in
@@ -156,9 +154,9 @@ mod hack {
     where
         T: Clone,
     {
-        let mut vector = Vec::with_capacity(s.len());
-        vector.extend_from_slice(s);
-        vector
+        let mut vec = Vec::with_capacity(s.len());
+        vec.extend_from_slice(s);
+        vec
     }
 }
 

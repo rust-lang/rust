@@ -69,7 +69,7 @@ fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
         .visit_item_likes_in_module(module_def_id, &mut ImplWfCheck { tcx, min_specialization });
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_impl_wf, ..*providers };
 }
 

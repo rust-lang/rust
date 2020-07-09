@@ -342,7 +342,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.target_features_whitelist = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         if tcx.sess.opts.actually_rustdoc {
@@ -360,7 +360,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     provide_extern(providers);
 }
 
-pub fn provide_extern(providers: &mut Providers<'_>) {
+pub fn provide_extern(providers: &mut Providers) {
     providers.wasm_import_module_map = |tcx, cnum| {
         // Build up a map from DefId to a `NativeLib` structure, where
         // `NativeLib` internally contains information about

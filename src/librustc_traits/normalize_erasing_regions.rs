@@ -7,7 +7,7 @@ use rustc_trait_selection::traits::query::normalize::AtExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 use std::sync::atomic::Ordering;
 
-crate fn provide(p: &mut Providers<'_>) {
+crate fn provide(p: &mut Providers) {
     *p = Providers { normalize_generic_arg_after_erasing_regions, ..*p };
 }
 

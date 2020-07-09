@@ -2966,7 +2966,7 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     None
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     context::provide(providers);
     erase_regions::provide(providers);
     layout::provide(providers);

@@ -1,6 +1,6 @@
 use rustc_ast::ast;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::with_default_globals;
+use rustc_ast::with_default_session_globals;
 use rustc_parse::{new_parser_from_source_str, parser::Parser, source_file_to_stream};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -124,7 +124,7 @@ impl<T: Write> Write for Shared<T> {
 }
 
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let output = Arc::new(Mutex::new(Vec::new()));
 
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));

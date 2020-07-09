@@ -62,7 +62,7 @@ fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     );
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         type_of: type_of::type_of,
         generics_of,
