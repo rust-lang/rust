@@ -494,7 +494,7 @@ fn projection_predicates(tcx: TyCtxt<'_>, def_id: DefId) -> &'_ ty::List<ty::Pre
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         asyncness,
         associated_item,

@@ -21,7 +21,7 @@ pub mod instance;
 mod needs_drop;
 mod ty;
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     common_traits::provide(providers);
     needs_drop::provide(providers);
     ty::provide(providers);

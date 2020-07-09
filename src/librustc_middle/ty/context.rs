@@ -1060,8 +1060,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn create_global_ctxt(
         s: &'tcx Session,
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
-        local_providers: ty::query::Providers<'tcx>,
-        extern_providers: ty::query::Providers<'tcx>,
+        local_providers: ty::query::Providers,
+        extern_providers: ty::query::Providers,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
         krate: &'tcx hir::Crate<'tcx>,
@@ -2699,7 +2699,7 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
     t as *const () == u as *const ()
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     providers.in_scope_traits_map = |tcx, id| tcx.gcx.trait_map.get(&id);
     providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {

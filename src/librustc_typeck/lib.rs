@@ -309,7 +309,7 @@ fn check_for_entry_fn(tcx: TyCtxt<'_>) {
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     collect::provide(providers);
     coherence::provide(providers);
     check::provide(providers);

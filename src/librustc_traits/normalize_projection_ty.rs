@@ -10,7 +10,7 @@ use rustc_trait_selection::traits::query::{
 use rustc_trait_selection::traits::{self, ObligationCause, SelectionContext};
 use std::sync::atomic::Ordering;
 
-crate fn provide(p: &mut Providers<'_>) {
+crate fn provide(p: &mut Providers) {
     *p = Providers { normalize_projection_ty, ..*p };
 }
 
