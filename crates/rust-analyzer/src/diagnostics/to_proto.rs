@@ -2,11 +2,7 @@
 //! `cargo check` json format to the LSP diagnostic format.
 use std::{collections::HashMap, path::Path};
 
-use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion};
-use lsp_types::{
-    Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DiagnosticTag, Location,
-    NumberOrString, Position, Range, TextEdit, Url,
-};
+use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
 use stdx::format_to;
 
 use crate::{lsp_ext, to_proto::url_from_abs_path};
@@ -14,22 +10,25 @@ use crate::{lsp_ext, to_proto::url_from_abs_path};
 use super::DiagnosticsConfig;
 
 /// Determines the LSP severity from a diagnostic
-fn map_diagnostic_to_severity(
+fn diagnostic_severity(
     config: &DiagnosticsConfig,
-    val: &flycheck::Diagnostic,
-) -> Option<DiagnosticSeverity> {
-    let res = match val.level {
-        DiagnosticLevel::Ice => DiagnosticSeverity::Error,
-        DiagnosticLevel::Error => DiagnosticSeverity::Error,
-        DiagnosticLevel::Warning => match &val.code {
-            Some(code) if config.warnings_as_hint.contains(&code.code) => DiagnosticSeverity::Hint,
-            Some(code) if config.warnings_as_info.contains(&code.code) => {
-                DiagnosticSeverity::Information
+    level: flycheck::DiagnosticLevel,
+    code: Option<flycheck::DiagnosticCode>,
+) -> Option<lsp_types::DiagnosticSeverity> {
+    let res = match level {
+        DiagnosticLevel::Ice => lsp_types::DiagnosticSeverity::Error,
+        DiagnosticLevel::Error => lsp_types::DiagnosticSeverity::Error,
+        DiagnosticLevel::Warning => match &code {
+            Some(code) if config.warnings_as_hint.contains(&code.code) => {
+                lsp_types::DiagnosticSeverity::Hint
             }
-            _ => DiagnosticSeverity::Warning,
+            Some(code) if config.warnings_as_info.contains(&code.code) => {
+                lsp_types::DiagnosticSeverity::Information
+            }
+            _ => lsp_types::DiagnosticSeverity::Warning,
         },
-        DiagnosticLevel::Note => DiagnosticSeverity::Information,
-        DiagnosticLevel::Help => DiagnosticSeverity::Hint,
+        DiagnosticLevel::Note => lsp_types::DiagnosticSeverity::Information,
+        DiagnosticLevel::Help => lsp_types::DiagnosticSeverity::Hint,
         DiagnosticLevel::Unknown => return None,
     };
     Some(res)
@@ -40,90 +39,50 @@ fn is_from_macro(file_name: &str) -> bool {
     file_name.starts_with('<') && file_name.ends_with('>')
 }
 
-/// Converts a Rust macro span to a LSP location recursively
-fn map_macro_span_to_location(
-    span_macro: &DiagnosticSpanMacroExpansion,
-    workspace_root: &Path,
-) -> Option<Location> {
-    if !is_from_macro(&span_macro.span.file_name) {
-        return Some(map_span_to_location(&span_macro.span, workspace_root));
-    }
-
-    if let Some(expansion) = &span_macro.span.expansion {
-        return map_macro_span_to_location(&expansion, workspace_root);
-    }
-
-    None
-}
-
 /// Converts a Rust span to a LSP location, resolving macro expansion site if neccesary
-fn map_span_to_location(span: &DiagnosticSpan, workspace_root: &Path) -> Location {
-    if span.expansion.is_some() {
-        let expansion = span.expansion.as_ref().unwrap();
-        if let Some(macro_range) = map_macro_span_to_location(&expansion, workspace_root) {
-            return macro_range;
-        }
+fn location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
+    let mut span = span.clone();
+    while let Some(expansion) = span.expansion {
+        span = expansion.span;
     }
-
-    map_span_to_location_naive(span, workspace_root)
+    return location_naive(workspace_root, &span);
 }
 
 /// Converts a Rust span to a LSP location
-fn map_span_to_location_naive(span: &DiagnosticSpan, workspace_root: &Path) -> Location {
-    let mut file_name = workspace_root.to_path_buf();
-    file_name.push(&span.file_name);
+fn location_naive(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
+    let file_name = workspace_root.join(&span.file_name);
     let uri = url_from_abs_path(&file_name);
 
     // FIXME: this doesn't handle UTF16 offsets correctly
-    let range = Range::new(
-        Position::new(span.line_start as u64 - 1, span.column_start as u64 - 1),
-        Position::new(span.line_end as u64 - 1, span.column_end as u64 - 1),
+    let range = lsp_types::Range::new(
+        lsp_types::Position::new(span.line_start as u64 - 1, span.column_start as u64 - 1),
+        lsp_types::Position::new(span.line_end as u64 - 1, span.column_end as u64 - 1),
     );
 
-    Location { uri, range }
+    lsp_types::Location { uri, range }
 }
 
-/// Converts a secondary Rust span to a LSP related information
+/// Converts a secondary Rust span to a LSP related inflocation(ormation
 ///
 /// If the span is unlabelled this will return `None`.
-fn map_secondary_span_to_related(
-    span: &DiagnosticSpan,
+fn diagnostic_related_information(
     workspace_root: &Path,
-) -> Option<DiagnosticRelatedInformation> {
+    span: &DiagnosticSpan,
+) -> Option<lsp_types::DiagnosticRelatedInformation> {
     let message = span.label.clone()?;
-    let location = map_span_to_location(span, workspace_root);
-    Some(DiagnosticRelatedInformation { location, message })
-}
-
-/// Determines if diagnostic is related to unused code
-fn is_unused_or_unnecessary(rd: &flycheck::Diagnostic) -> bool {
-    match &rd.code {
-        Some(code) => match code.code.as_str() {
-            "dead_code" | "unknown_lints" | "unreachable_code" | "unused_attributes"
-            | "unused_imports" | "unused_macros" | "unused_variables" => true,
-            _ => false,
-        },
-        None => false,
-    }
-}
-
-/// Determines if diagnostic is related to deprecated code
-fn is_deprecated(rd: &flycheck::Diagnostic) -> bool {
-    match &rd.code {
-        Some(code) => code.code.as_str() == "deprecated",
-        None => false,
-    }
+    let location = location(workspace_root, span);
+    Some(lsp_types::DiagnosticRelatedInformation { location, message })
 }
 
 enum MappedRustChildDiagnostic {
-    Related(DiagnosticRelatedInformation),
+    Related(lsp_types::DiagnosticRelatedInformation),
     SuggestedFix(lsp_ext::CodeAction),
     MessageLine(String),
 }
 
 fn map_rust_child_diagnostic(
-    rd: &flycheck::Diagnostic,
     workspace_root: &Path,
+    rd: &flycheck::Diagnostic,
 ) -> MappedRustChildDiagnostic {
     let spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
     if spans.is_empty() {
@@ -132,21 +91,20 @@ fn map_rust_child_diagnostic(
         return MappedRustChildDiagnostic::MessageLine(rd.message.clone());
     }
 
-    let mut edit_map: HashMap<Url, Vec<TextEdit>> = HashMap::new();
+    let mut edit_map: HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = HashMap::new();
     for &span in &spans {
-        match (&span.suggestion_applicability, &span.suggested_replacement) {
-            (Some(Applicability::MachineApplicable), Some(suggested_replacement)) => {
-                let location = map_span_to_location(span, workspace_root);
-                let edit = TextEdit::new(location.range, suggested_replacement.clone());
-                edit_map.entry(location.uri).or_default().push(edit);
-            }
-            _ => {}
+        if let (Some(Applicability::MachineApplicable), Some(suggested_replacement)) =
+            (&span.suggestion_applicability, &span.suggested_replacement)
+        {
+            let location = location(workspace_root, span);
+            let edit = lsp_types::TextEdit::new(location.range, suggested_replacement.clone());
+            edit_map.entry(location.uri).or_default().push(edit);
         }
     }
 
     if edit_map.is_empty() {
-        MappedRustChildDiagnostic::Related(DiagnosticRelatedInformation {
-            location: map_span_to_location(spans[0], workspace_root),
+        MappedRustChildDiagnostic::Related(lsp_types::DiagnosticRelatedInformation {
+            location: location(workspace_root, spans[0]),
             message: rd.message.clone(),
         })
     } else {
@@ -167,8 +125,8 @@ fn map_rust_child_diagnostic(
 
 #[derive(Debug)]
 pub(crate) struct MappedRustDiagnostic {
-    pub(crate) location: Location,
-    pub(crate) diagnostic: Diagnostic,
+    pub(crate) location: lsp_types::Location,
+    pub(crate) diagnostic: lsp_types::Diagnostic,
     pub(crate) fixes: Vec<lsp_ext::CodeAction>,
 }
 
@@ -192,7 +150,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         return Vec::new();
     }
 
-    let severity = map_diagnostic_to_severity(config, rd);
+    let severity = diagnostic_severity(config, rd.level.clone(), rd.code.clone());
 
     let mut source = String::from("rustc");
     let mut code = rd.code.as_ref().map(|c| c.code.clone());
@@ -210,7 +168,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     let mut tags = Vec::new();
 
     for secondary_span in rd.spans.iter().filter(|s| !s.is_primary) {
-        let related = map_secondary_span_to_related(secondary_span, workspace_root);
+        let related = diagnostic_related_information(workspace_root, secondary_span);
         if let Some(related) = related {
             related_information.push(related);
         }
@@ -219,7 +177,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     let mut fixes = Vec::new();
     let mut message = rd.message.clone();
     for child in &rd.children {
-        let child = map_rust_child_diagnostic(&child, workspace_root);
+        let child = map_rust_child_diagnostic(workspace_root, &child);
         match child {
             MappedRustChildDiagnostic::Related(related) => related_information.push(related),
             MappedRustChildDiagnostic::SuggestedFix(code_action) => fixes.push(code_action),
@@ -233,18 +191,30 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         }
     }
 
-    if is_unused_or_unnecessary(rd) {
-        tags.push(DiagnosticTag::Unnecessary);
-    }
+    if let Some(code) = &rd.code {
+        let code = code.code.as_str();
+        if matches!(
+            code,
+            "dead_code"
+                | "unknown_lints"
+                | "unreachable_code"
+                | "unused_attributes"
+                | "unused_imports"
+                | "unused_macros"
+                | "unused_variables"
+        ) {
+            tags.push(lsp_types::DiagnosticTag::Unnecessary);
+        }
 
-    if is_deprecated(rd) {
-        tags.push(DiagnosticTag::Deprecated);
+        if matches!(code, "deprecated") {
+            tags.push(lsp_types::DiagnosticTag::Deprecated);
+        }
     }
 
     primary_spans
         .iter()
         .map(|primary_span| {
-            let location = map_span_to_location(&primary_span, workspace_root);
+            let location = location(workspace_root, &primary_span);
 
             let mut message = message.clone();
             if needs_primary_span_label {
@@ -256,17 +226,16 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             // If error occurs from macro expansion, add related info pointing to
             // where the error originated
             if !is_from_macro(&primary_span.file_name) && primary_span.expansion.is_some() {
-                let def_loc = map_span_to_location_naive(&primary_span, workspace_root);
-                related_information.push(DiagnosticRelatedInformation {
-                    location: def_loc,
+                related_information.push(lsp_types::DiagnosticRelatedInformation {
+                    location: location_naive(workspace_root, &primary_span),
                     message: "Error originated from macro here".to_string(),
                 });
             }
 
-            let diagnostic = Diagnostic {
+            let diagnostic = lsp_types::Diagnostic {
                 range: location.range,
                 severity,
-                code: code.clone().map(NumberOrString::String),
+                code: code.clone().map(lsp_types::NumberOrString::String),
                 source: Some(source.clone()),
                 message,
                 related_information: if related_information.is_empty() {

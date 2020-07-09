@@ -59,6 +59,7 @@ winapi = "0.3.8"
 [dev-dependencies]
 tempfile = "3.1.0"
 insta = "0.16.0"
+expect = { path = "../expect" }
 test_utils = { path = "../test_utils" }
 mbe = { path = "../ra_mbe", package = "ra_mbe" }
 tt = { path = "../ra_tt", package = "ra_tt" }

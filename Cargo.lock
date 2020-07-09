@@ -1435,6 +1435,7 @@ dependencies = [
  "anyhow",
  "crossbeam-channel",
  "env_logger",
+ "expect",
  "flycheck",
  "globset",
  "insta",
