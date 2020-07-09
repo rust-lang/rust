@@ -368,7 +368,7 @@ mod tests {
         let content = analysis.db.file_text(position.file_id);
         let hovered_element = &content[hover.range];
 
-        let actual = format!("{}:\n{}\n", hovered_element, hover.info.markup);
+        let actual = format!("*{}*\n{}\n", hovered_element, hover.info.markup);
         expect.assert_eq(&actual)
     }
 
@@ -389,7 +389,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                foo():
+                *foo()*
                 ```rust
                 u32
                 ```
@@ -421,7 +421,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                iter:
+                *iter*
                 ```rust
                 Iter<Scan<OtherStruct<OtherStruct<i32>>, |&mut u32, &u32, &mut u32| -> Option<u32>, u32>>
                 ```
@@ -439,7 +439,7 @@ pub fn foo() -> u32 { 1 }
 fn main() { let foo_test = fo<|>o(); }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 pub fn foo() -> u32
                 ```
@@ -466,7 +466,7 @@ mod c;
 fn main() { let foo_test = fo<|>o(); }
         "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 {unknown}
                 ```
@@ -483,7 +483,7 @@ pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str { }
 fn main() { let foo_test = fo<|>o(); }
         "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str
                 ```
@@ -500,7 +500,7 @@ pub fn foo<|>(a: u32, b: u32) -> u32 {}
 fn main() { }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 pub fn foo(a: u32, b: u32) -> u32
                 ```
@@ -520,7 +520,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                field_a:
+                *field_a*
                 ```rust
                 Foo
                 ```
@@ -541,7 +541,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                field_a:
+                *field_a*
                 ```rust
                 Foo
                 ```
@@ -558,7 +558,7 @@ fn main() {
         check(
             r#"const foo<|>: u32 = 0;"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 const foo: u32
                 ```
@@ -567,7 +567,7 @@ fn main() {
         check(
             r#"static foo<|>: u32 = 0;"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 static foo: u32
                 ```
@@ -585,7 +585,7 @@ fn main() {
     let zz<|> = Test { t: 23u8, k: 33 };
 }"#,
             expect![[r#"
-                zz:
+                *zz*
                 ```rust
                 Test<i32, u8>
                 ```
@@ -603,7 +603,7 @@ use Option::Some;
 fn main() { So<|>me(12); }
 "#,
             expect![[r#"
-                Some:
+                *Some*
                 ```rust
                 Option
                 ```
@@ -622,7 +622,7 @@ use Option::Some;
 fn main() { let b<|>ar = Some(12); }
 "#,
             expect![[r#"
-                bar:
+                *bar*
                 ```rust
                 Option<i32>
                 ```
@@ -640,7 +640,7 @@ enum Option<T> {
 }
 "#,
             expect![[r#"
-                None:
+                *None*
                 ```rust
                 Option
                 ```
@@ -665,7 +665,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Some:
+                *Some*
                 ```rust
                 Option
                 ```
@@ -685,7 +685,7 @@ fn main() {
         check(
             r#"fn func(foo: i32) { fo<|>o; }"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 i32
                 ```
@@ -698,7 +698,7 @@ fn main() {
         check(
             r#"fn func(fo<|>o: i32) {}"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 i32
                 ```
@@ -711,7 +711,7 @@ fn main() {
         check(
             r#"fn func(foo: i32) { if true { <|>foo; }; }"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 i32
                 ```
@@ -724,7 +724,7 @@ fn main() {
         check(
             r#"fn func(<|>foo: i32) {}"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 i32
                 ```
@@ -745,7 +745,7 @@ impl Thing {
 fn main() { let foo_<|>test = Thing::new(); }
             "#,
             expect![[r#"
-                foo_test:
+                *foo_test*
                 ```rust
                 Thing
                 ```
@@ -768,7 +768,7 @@ mod wrapper {
 fn main() { let foo_test = wrapper::Thing::new<|>(); }
 "#,
             expect![[r#"
-                new:
+                *new*
                 ```rust
                 wrapper::Thing
                 ```
@@ -798,7 +798,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                C:
+                *C*
                 ```rust
                 const C: u32
                 ```
@@ -816,7 +816,7 @@ impl Thing {
 }
 "#,
             expect![[r#"
-                Self { x: 0 }:
+                *Self { x: 0 }*
                 ```rust
                 Thing
                 ```
@@ -875,7 +875,7 @@ fn y() {
 }
 "#,
             expect![[r#"
-                x:
+                *x*
                 ```rust
                 i32
                 ```
@@ -892,7 +892,7 @@ macro_rules! foo { () => {} }
 fn f() { fo<|>o!(); }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 macro_rules! foo
                 ```
@@ -905,7 +905,7 @@ fn f() { fo<|>o!(); }
         check(
             r#"struct TS(String, i32<|>);"#,
             expect![[r#"
-                i32:
+                *i32*
                 i32
             "#]],
         )
@@ -922,7 +922,7 @@ id! {
 }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 fn foo()
                 ```
@@ -938,7 +938,7 @@ macro_rules! id { ($($tt:tt)*) => { $($tt)* } }
 fn foo(bar:u32) { let a = id!(ba<|>r); }
 "#,
             expect![[r#"
-                bar:
+                *bar*
                 ```rust
                 u32
                 ```
@@ -955,7 +955,7 @@ macro_rules! id { ($($tt:tt)*) => { id_deep!($($tt)*) } }
 fn foo(bar:u32) { let a = id!(ba<|>r); }
 "#,
             expect![[r#"
-                bar:
+                *bar*
                 ```rust
                 u32
                 ```
@@ -973,7 +973,7 @@ fn bar() -> u32 { 0 }
 fn foo() { let a = id!([0u32, bar(<|>)] ); }
 "#,
             expect![[r#"
-                bar():
+                *bar()*
                 ```rust
                 u32
                 ```
@@ -992,7 +992,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                "Tracks":
+                *"Tracks"*
                 ```rust
                 &str
                 ```
@@ -1013,7 +1013,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                bar:
+                *bar*
                 ```rust
                 fn bar() -> bool
                 ```
@@ -1045,7 +1045,7 @@ fn foo() { }
 fn bar() { fo<|>o(); }
 ",
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 fn foo()
                 ```
@@ -1061,7 +1061,7 @@ fn bar() { fo<|>o(); }
         check(
             r#"async fn foo<|>() {}"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 async fn foo()
                 ```
@@ -1070,7 +1070,7 @@ fn bar() { fo<|>o(); }
         check(
             r#"pub const unsafe fn foo<|>() {}"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 pub const unsafe fn foo()
                 ```
@@ -1079,7 +1079,7 @@ fn bar() { fo<|>o(); }
         check(
             r#"pub(crate) async unsafe extern "C" fn foo<|>() {}"#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 pub(crate) async unsafe extern "C" fn foo()
                 ```
@@ -1116,7 +1116,7 @@ mod my { pub struct Bar; }
 fn my() {}
 "#,
             expect![[r#"
-                my:
+                *my*
                 ```rust
                 mod my
                 ```
@@ -1134,7 +1134,7 @@ struct Bar;
 fn foo() { let bar = Ba<|>r; }
 "#,
             expect![[r#"
-                Bar:
+                *Bar*
                 ```rust
                 struct Bar
                 ```
@@ -1155,7 +1155,7 @@ struct Bar;
 fn foo() { let bar = Ba<|>r; }
 "#,
             expect![[r#"
-                Bar:
+                *Bar*
                 ```rust
                 struct Bar
                 ```
@@ -1178,7 +1178,7 @@ struct Bar;
 fn foo() { let bar = Ba<|>r; }
 "#,
             expect![[r#"
-                Bar:
+                *Bar*
                 ```rust
                 struct Bar
                 ```
@@ -1214,7 +1214,7 @@ bar!();
 fn foo() { let bar = Bar; bar.fo<|>o(); }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 Bar
                 ```
@@ -1250,7 +1250,7 @@ bar!();
 fn foo() { let bar = Bar; bar.fo<|>o(); }
 "#,
             expect![[r#"
-                foo:
+                *foo*
                 ```rust
                 Bar
                 ```
