@@ -1,5 +1,7 @@
+use std::borrow::Cow;
+
 use ra_syntax::{
-    ast::{self, HasStringValue},
+    ast::{self, HasQuotes, HasStringValue},
     AstToken,
     SyntaxKind::{RAW_STRING, STRING},
     TextSize,
@@ -32,14 +34,17 @@ pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext) -> Option<
         target,
         |edit| {
             let max_hash_streak = count_hashes(&value);
-            let mut hashes = String::with_capacity(max_hash_streak + 1);
-            for _ in 0..hashes.capacity() {
-                hashes.push('#');
+            let hashes = "#".repeat(max_hash_streak + 1);
+            if matches!(value, Cow::Borrowed(_)) {
+                // Avoid replacing the whole string to better position the cursor.
+                edit.insert(token.syntax().text_range().start(), format!("r{}", hashes));
+                edit.insert(token.syntax().text_range().end(), format!("{}", hashes));
+            } else {
+                edit.replace(
+                    token.syntax().text_range(),
+                    format!("r{}\"{}\"{}", hashes, value, hashes),
+                );
             }
-            edit.replace(
-                token.syntax().text_range(),
-                format!("r{}\"{}\"{}", hashes, value, hashes),
-            );
         },
     )
 }
@@ -70,6 +75,14 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Optio
         |edit| {
             // parse inside string to escape `"`
             let escaped = value.escape_default().to_string();
+            if let Some(offsets) = token.quote_offsets() {
+                if token.text()[offsets.contents - token.syntax().text_range().start()] == escaped {
+                    edit.replace(offsets.quotes.0, "\"");
+                    edit.replace(offsets.quotes.1, "\"");
+                    return;
+                }
+            }
+
             edit.replace(token.syntax().text_range(), format!("\"{}\"", escaped));
         },
     )
