@@ -450,8 +450,9 @@ impl Ctx {
 
         // We cannot use `assoc_items()` here as that does not include macro calls.
         let items = impl_def
-            .item_list()?
-            .items()
+            .item_list()
+            .into_iter()
+            .flat_map(|it| it.items())
             .filter_map(|item| {
                 self.collect_inner_items(item.syntax());
                 let assoc = self.lower_assoc_item(&item)?;
