@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::mir::mono::CodegenUnit;
@@ -110,19 +112,33 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
 
     let module = new_module(tcx, cgu_name.as_str().to_string());
 
+    let mut global_asm = Vec::new();
     let mut cx = crate::CodegenCx::new(tcx, module, tcx.sess.opts.debuginfo != DebugInfo::None);
-    super::codegen_mono_items(&mut cx, mono_items);
+    super::codegen_mono_items(&mut cx, &mut global_asm, mono_items);
     let (mut module, debug, mut unwind_context) = tcx.sess.time("finalize CodegenCx", || cx.finalize());
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context);
 
-    emit_module(
+    let global_asm = global_asm.into_iter().map(|hir_id| {
+        let item = tcx.hir().expect_item(hir_id);
+        if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
+            asm.as_str().to_string()
+        } else {
+            bug!("Expected GlobalAsm found {:?}", item);
+        }
+    }).collect::<Vec<String>>().join("\n");
+
+    let codegen_result = emit_module(
         tcx,
         cgu.name().as_str().to_string(),
         ModuleKind::Regular,
         module,
         debug,
         unwind_context,
-    )
+    );
+
+    codegen_global_asm(tcx, &cgu.name().as_str(), &global_asm);
+
+    codegen_result
 }
 
 pub(super) fn run_aot(
@@ -251,6 +267,85 @@ pub(super) fn run_aot(
         linker_info: LinkerInfo::new(tcx),
         crate_info: CrateInfo::new(tcx),
     }, work_products))
+}
+
+fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    if global_asm.is_empty() {
+        return;
+    }
+
+    if tcx.sess.target.target.options.is_like_osx || tcx.sess.target.target.options.is_like_windows {
+        if global_asm.contains("__rust_probestack") {
+            return;
+        }
+
+        // FIXME fix linker error on macOS
+        tcx.sess.fatal("global_asm! is not yet supported on macOS and Windows");
+    }
+
+    let assembler = crate::toolchain::get_toolchain_binary(tcx.sess, "as");
+    let linker = crate::toolchain::get_toolchain_binary(tcx.sess, "ld");
+
+    // Remove all LLVM style comments
+    let global_asm = global_asm.lines().map(|line| {
+        if let Some(index) = line.find("//") {
+            &line[0..index]
+        } else {
+            line
+        }
+    }).collect::<Vec<_>>().join("\n");
+
+    let output_object_file = tcx
+        .output_filenames(LOCAL_CRATE)
+        .temp_path(OutputType::Object, Some(cgu_name));
+
+    // Assemble `global_asm`
+    let global_asm_object_file = add_file_stem_postfix(output_object_file.clone(), ".asm");
+    let mut child = Command::new(assembler)
+        .arg("-o").arg(&global_asm_object_file)
+        .stdin(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn `as`.");
+    child.stdin.take().unwrap().write_all(global_asm.as_bytes()).unwrap();
+    let status = child.wait().expect("Failed to wait for `as`.");
+    if !status.success() {
+        tcx.sess.fatal(&format!("Failed to assemble `{}`", global_asm));
+    }
+
+    // Link the global asm and main object file together
+    let main_object_file = add_file_stem_postfix(output_object_file.clone(), ".main");
+    std::fs::rename(&output_object_file, &main_object_file).unwrap();
+    let status = Command::new(linker)
+        .arg("-r") // Create a new object file
+        .arg("-o").arg(output_object_file)
+        .arg(&main_object_file)
+        .arg(&global_asm_object_file)
+        .status()
+        .unwrap();
+    if !status.success() {
+        tcx.sess.fatal(&format!(
+            "Failed to link `{}` and `{}` together",
+            main_object_file.display(),
+            global_asm_object_file.display(),
+        ));
+    }
+
+    std::fs::remove_file(global_asm_object_file).unwrap();
+    std::fs::remove_file(main_object_file).unwrap();
+}
+
+fn add_file_stem_postfix(mut path: PathBuf, postfix: &str) -> PathBuf {
+    let mut new_filename = path.file_stem().unwrap().to_owned();
+    new_filename.push(postfix);
+    if let Some(extension) = path.extension() {
+        new_filename.push(".");
+        new_filename.push(extension);
+    }
+    path.set_file_name(new_filename);
+    path
 }
 
 // Adapted from https://github.com/rust-lang/rust/blob/303d8aff6092709edd4dbd35b1c88e9aa40bf6d8/src/librustc_codegen_ssa/base.rs#L922-L953

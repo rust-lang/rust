@@ -64,6 +64,7 @@ mod optimize;
 mod pointer;
 mod pretty_clif;
 mod target_features_whitelist;
+mod toolchain;
 mod trap;
 mod unsize;
 mod value_and_place;
