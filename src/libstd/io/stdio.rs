@@ -874,38 +874,79 @@ impl fmt::Debug for StderrLock<'_> {
 
 /// Locks the current handle and reads a line of input, returning a `String` containing
 /// the input.
-/// 
+///
 /// If you need more explicit control over
 /// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
 ///
 /// [`Stdin::lock`]: struct.Stdin.html#method.lock
 /// [`Stdout::lock`]: struct.Stdout.html#method.lock
+///
+/// ### Note: Safety and Usage
+/// This function is not the recommended solution to get user input, it should
+/// only be used for simple actions. If you require more explicit control over
+/// getting user input, see the [`Stdin::read_line`] method.
 /// 
-/// ### Note: Windows Portability Consideration
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to read and write bytes that are not valid UTF-8 will 
-/// return an error.
+/// [`Stdin::read_line`]: struct.Stdin.html#method.read_line
 ///
 /// # Examples
 ///
-/// ```no_run
-/// use std::io::input;
+/// ```rust
+/// use std::io::inputln;
 ///
 /// fn main() {
-///     let user_input = input("Please enter some text: ");
+///     let user_input = inputln("Please enter some text: ");
 ///         
-///     println!("You typed: {}", get);
+///     println!("You typed: {}", user_input);
 ///         
 /// }
 /// ```
-pub fn input(message:&str) -> String {
-    print!("{}", message);
+pub fn inputln(prompt: &str) -> String {
+    stdout()
+        .write(prompt.as_bytes())
+        .unwrap();
     let mut input = String::new();
     let _ = stdout().flush();
-    stdin().read_line(&mut input).expect("Failed to read from stdin");
-    if ['\n','\r'].contains(&input.chars().next_back().unwrap()) {
+    stdin()
+        .read_line(&mut input)
+        .expect("Failed to read from stdin");
+    if ['\n', '\r'].contains(&input.chars().next_back().unwrap()) {
         input.pop();
     }
+    return input;
+}
+
+/// Equivalent to the [`inputln`] method except that a prompt is not printed before
+/// capturing input.
+///
+/// [`inputln`]: #method.inputln
+/// 
+/// ### Note: Safety and Usage
+/// This function is not the recommended solution to get user input, it should
+/// only be used for simple actions. If you require more explicit control over
+/// getting user input, see the [`Stdin::read_line`] method.
+/// 
+/// [`Stdin::read_line`]: struct.Stdin.html#method.read_line
+///
+/// # Examples
+///
+/// ```rust
+/// use std::io::input;
+///
+/// fn main() {
+///     print!("Please enter some text: ");
+///     
+///     let user_input = input();
+///     
+///     println!("You typed: {}", user_input);
+///     
+/// }
+/// ```
+pub fn input() -> String {
+    let mut input = String::new();
+    let _ = stdout().flush();
+    stdin()
+        .read_line(&mut input)
+        .expect("Failed to read from stdin");
     return input;
 }
 
