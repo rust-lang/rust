@@ -2027,6 +2027,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "slow_vector_initialization",
     },
     Lint {
+        name: "stable_sort_primitive",
+        group: "perf",
+        desc: "use of sort() when sort_unstable() is equivalent",
+        deprecation: None,
+        module: "stable_sort_primitive",
+    },
+    Lint {
         name: "string_add",
         group: "restriction",
         desc: "using `x + ..` where x is a `String` instead of `push_str()`",

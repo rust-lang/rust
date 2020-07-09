@@ -288,6 +288,7 @@ mod serde_api;
 mod shadow;
 mod single_component_path_imports;
 mod slow_vector_initialization;
+mod stable_sort_primitive;
 mod strings;
 mod suspicious_trait_impl;
 mod swap;
@@ -776,6 +777,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &shadow::SHADOW_UNRELATED,
         &single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS,
         &slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
+        &stable_sort_primitive::STABLE_SORT_PRIMITIVE,
         &strings::STRING_ADD,
         &strings::STRING_ADD_ASSIGN,
         &strings::STRING_LIT_AS_BYTES,
@@ -1078,6 +1080,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box macro_use::MacroUseImports::default());
     store.register_late_pass(|| box map_identity::MapIdentity);
     store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
+    store.register_late_pass(|| box stable_sort_primitive::StableSortPrimitive);
     store.register_late_pass(|| box repeat_once::RepeatOnce);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
@@ -1408,6 +1411,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&serde_api::SERDE_API_MISUSE),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
+        LintId::of(&stable_sort_primitive::STABLE_SORT_PRIMITIVE),
         LintId::of(&strings::STRING_LIT_AS_BYTES),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
@@ -1723,6 +1727,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&mutex_atomic::MUTEX_ATOMIC),
         LintId::of(&redundant_clone::REDUNDANT_CLONE),
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
+        LintId::of(&stable_sort_primitive::STABLE_SORT_PRIMITIVE),
         LintId::of(&types::BOX_VEC),
         LintId::of(&types::REDUNDANT_ALLOCATION),
         LintId::of(&vec::USELESS_VEC),
